@@ -2098,10 +2098,15 @@ fn mac_fixed_punctuation_pair_adjustment(
         return None;
     }
     let previous = state.prev_grapheme.as_deref()?;
-    if !punctuation_blank_before(grapheme)
-        || !punctuation_blank_after(previous)
-        || matches!(previous, "。" | "．")
-    {
+    // The pair shares the blank on its touching sides: a closing mark's
+    // trailing half and an opening mark's leading half, so 。）, ）、, 、「 and （「
+    // each lose half an em. An opening mark followed by a closing one has no
+    // blank between them.
+    let punctuation = |text: &str| punctuation_blank_after(text) || punctuation_blank_before(text);
+    let touching_blank = punctuation(previous)
+        && punctuation(grapheme)
+        && (punctuation_blank_after(previous) || punctuation_blank_before(grapheme));
+    if !touching_blank {
         return None;
     }
     let em = style.fixed_east_asia_em_px()?;
@@ -5731,11 +5736,71 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         paragraph_style,
                     ) + f64::EPSILON
                         >= candidate_overflow;
+                let fits_with_mac_punctuation_squeeze = candidate_overflow > f64::EPSILON
+                    && !fits_with_justified_space_shrink
+                    && mac_punctuation_compression_enabled(paragraph_style)
+                    && mac_punctuation_squeeze_admits(
+                        &current_line_clusters,
+                        (
+                            grapheme,
+                            script,
+                            computed.font_descriptor_hash,
+                            computed.advance.adjusted_glyph_width,
+                        ),
+                        candidate_width,
+                        candidate_overflow,
+                        effective_available - current_width,
+                    );
+                // A character that may not start a line stays at this line's
+                // end when it can hang there (`w:overflowPunct`) or, in a
+                // justified compressPunctuation paragraph on Word for Mac,
+                // when the line's punctuation can absorb it. Deciding it here
+                // rather than in `enforce_line_start_rules` lets the next
+                // line start after it and fill its whole width.
+                let keeps_line_start_forbidden_character = candidate_overflow > f64::EPSILON
+                    && !is_whitespace
+                    && !fits_with_justified_space_shrink
+                    && !fits_with_mac_punctuation_squeeze
+                    && paragraph_style.forbids_line_start(grapheme)
+                    && current_line_clusters
+                        .last()
+                        .is_some_and(|last| !last.is_whitespace && !last.forbid_line_start)
+                    && {
+                        let paragraph_end = grapheme_end_abs >= base_offset + text.len();
+                        let hangs =
+                            overflow_punctuation_set.is_some_and(|set| {
+                                single_char(grapheme)
+                                    .is_some_and(|character| char_set_contains(set, character))
+                            }) && paragraph_style.allows_hanging_punctuation_at(if paragraph_end {
+                                LineBreakKind::ParagraphEnd
+                            } else {
+                                LineBreakKind::Soft
+                            });
+                        let squeeze = if mac_punctuation_compression_enabled(paragraph_style) {
+                            mac_punctuation_squeeze_capacity_with(
+                                &current_line_clusters,
+                                (
+                                    grapheme,
+                                    script,
+                                    computed.font_descriptor_hash,
+                                    computed.advance.adjusted_glyph_width,
+                                ),
+                                candidate_width,
+                            )
+                            .0
+                        } else {
+                            0.0
+                        };
+                        let hang = if hangs { candidate_width } else { 0.0 };
+                        (hangs || squeeze > 0.0) && candidate_overflow <= hang + squeeze + 1e-9
+                    };
                 if candidate_overflow > f64::EPSILON
                     && current_width > 0.0
                     && !is_whitespace
                     && !zero_width_oracle_glyph
                     && !fits_with_justified_space_shrink
+                    && !fits_with_mac_punctuation_squeeze
+                    && !keeps_line_start_forbidden_character
                 {
                     if !buffer.is_empty() {
                         let segment_text = std::mem::take(&mut buffer);
@@ -6004,38 +6069,139 @@ fn punctuation_pair_blank_width(left: &InlineCluster, right: &InlineCluster) -> 
     let (Some(a), Some(b)) = (left.layout.as_ref(), right.layout.as_ref()) else {
         return 0.0;
     };
-    if a.script != ScriptCategory::EastAsia
-        || b.script != ScriptCategory::EastAsia
-        || a.font_descriptor_hash != b.font_descriptor_hash
+    punctuation_pair_blank(
+        (
+            left.text.as_str(),
+            a.script,
+            a.font_descriptor_hash,
+            a.adjusted_glyph_width,
+        ),
+        (
+            right.text.as_str(),
+            b.script,
+            b.font_descriptor_hash,
+            b.adjusted_glyph_width,
+        ),
+        right.width,
+    )
+    .0
+}
+
+/// The blank two neighbouring East Asian glyphs can give up, and how many
+/// half-em blanks that is (a centered mark's quarter counts as half of one).
+/// Each side is `(text, script, font hash, adjusted glyph width)`.
+fn punctuation_pair_blank(
+    left: (&str, ScriptCategory, u64, f64),
+    right: (&str, ScriptCategory, u64, f64),
+    right_width: f64,
+) -> (f64, f64) {
+    let (left_text, left_script, left_font, left_glyph) = left;
+    let (right_text, right_script, right_font, right_glyph) = right;
+    if left_script != ScriptCategory::EastAsia
+        || right_script != ScriptCategory::EastAsia
+        || left_font != right_font
     {
-        return 0.0;
+        return (0.0, 0.0);
     }
-    let left_text = left.text.as_str();
-    let right_text = right.text.as_str();
-    let blank = if is_auto_space_east_asian_text(left_text) {
+    let (glyph, share) = if is_auto_space_east_asian_text(left_text) {
         if punctuation_blank_before(right_text) {
-            b.adjusted_glyph_width * 0.5
+            (right_glyph, 0.5)
         } else if matches!(right_text, "・" | "：" | "；") {
-            b.adjusted_glyph_width * 0.25
+            (right_glyph, 0.25)
         } else {
-            0.0
+            (0.0, 0.0)
         }
     } else if is_auto_space_east_asian_text(right_text) {
         if punctuation_blank_after(left_text) {
-            a.adjusted_glyph_width * 0.5
+            (left_glyph, 0.5)
         } else if matches!(left_text, "・" | "：" | "；") {
-            a.adjusted_glyph_width * 0.25
+            (left_glyph, 0.25)
         } else {
-            0.0
+            (0.0, 0.0)
         }
     } else {
-        0.0
+        (0.0, 0.0)
     };
-    if blank.is_finite() {
-        blank.max(0.0).min(right.width.max(0.0))
+    let blank = glyph * share;
+    if blank.is_finite() && blank > 0.0 {
+        (blank.min(right_width.max(0.0)), share * 2.0)
     } else {
-        0.0
+        (0.0, 0.0)
     }
+}
+
+fn punctuation_side(cluster: &InlineCluster) -> Option<(&str, ScriptCategory, u64, f64)> {
+    cluster.layout.as_ref().map(|layout| {
+        (
+            cluster.text.as_str(),
+            layout.script,
+            layout.font_descriptor_hash,
+            layout.adjusted_glyph_width,
+        )
+    })
+}
+
+/// Word for Mac 16.114 squeeze probes: a justified `compressPunctuation`
+/// line keeps the character that overflows it while the reduction each
+/// half-em punctuation blank takes stays within this many times the gap each
+/// character would gain if the line ended before that character.
+const MAC_SQUEEZE_TO_EXPANSION_RATIO: f64 = 32.0;
+
+/// The punctuation blank `clusters` can give up between its characters, and
+/// how many half-em blanks that is.
+fn mac_punctuation_squeeze_capacity(clusters: &[InlineCluster]) -> (f64, f64) {
+    clusters.windows(2).fold((0.0, 0.0), |sum, pair| {
+        match (punctuation_side(&pair[0]), punctuation_side(&pair[1])) {
+            (Some(left), Some(right)) => {
+                let (width, count) = punctuation_pair_blank(left, right, pair[1].width);
+                (sum.0 + width, sum.1 + count)
+            }
+            _ => sum,
+        }
+    })
+}
+
+/// [`mac_punctuation_squeeze_capacity`] once `candidate` follows `clusters`.
+fn mac_punctuation_squeeze_capacity_with(
+    clusters: &[InlineCluster],
+    candidate: (&str, ScriptCategory, u64, f64),
+    candidate_width: f64,
+) -> (f64, f64) {
+    let (mut capacity, mut blanks) = mac_punctuation_squeeze_capacity(clusters);
+    if let Some(last) = clusters.last().and_then(punctuation_side) {
+        let (width, count) = punctuation_pair_blank(last, candidate, candidate_width);
+        capacity += width;
+        blanks += count;
+    }
+    (capacity, blanks)
+}
+
+/// Whether narrowing the punctuation blanks of `clusters` (and the blank the
+/// candidate would form with the last of them) admits a candidate that
+/// overflows by `overflow`, where `slack` is the room left without it.
+fn mac_punctuation_squeeze_admits(
+    clusters: &[InlineCluster],
+    candidate: (&str, ScriptCategory, u64, f64),
+    candidate_width: f64,
+    overflow: f64,
+    slack: f64,
+) -> bool {
+    let trailing_whitespace = clusters
+        .iter()
+        .rev()
+        .take_while(|cluster| cluster.is_whitespace)
+        .count();
+    let characters = clusters.len() - trailing_whitespace;
+    if characters == 0 || trailing_whitespace > 0 || slack <= 0.0 {
+        return false;
+    }
+    let (capacity, blanks) =
+        mac_punctuation_squeeze_capacity_with(clusters, candidate, candidate_width);
+    if blanks <= 0.0 || overflow > capacity + 1e-9 {
+        return false;
+    }
+    let gaps = (characters - 1) as f64;
+    overflow / blanks * gaps <= MAC_SQUEEZE_TO_EXPANSION_RATIO * slack + 1e-9
 }
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
@@ -6077,24 +6243,46 @@ fn compress_mac_punctuation_on_completed_line(
         .windows(2)
         .map(|pair| punctuation_pair_blank_width(&pair[0], &pair[1]))
         .sum();
-    let terminal_blank = if capacity + f64::EPSILON < overflow
-        && line.break_kind == LineBreakKind::ParagraphEnd
-        && style.allows_hanging_punctuation_at(line.break_kind)
-    {
+    // A final mark that may hang (`、`, `。`, `）`…) is handled the way Word for
+    // Mac 16.114 sets it (squeeze probes, scroll-offset-repro): its blank half
+    // hangs while that covers the overflow, otherwise the line's punctuation
+    // takes the whole overflow, then the half hangs and the punctuation takes
+    // the rest, and failing that the whole mark hangs.
+    let hang_unit = if style.allows_hanging_punctuation_at(line.break_kind) {
         line.clusters
             .last()
             .filter(|last| last.can_hang_line_end && punctuation_blank_after(last.text.as_str()))
             .and_then(|last| last.layout.as_ref())
             .map_or(0.0, |layout| {
-                (layout.adjusted_glyph_width * 0.5)
-                    .min(layout.glyph_box_width)
-                    .min(overflow)
+                (layout.adjusted_glyph_width * 0.5).min(layout.glyph_box_width)
             })
     } else {
         0.0
     };
-    let remaining = (overflow - terminal_blank).max(0.0);
-    if capacity + f64::EPSILON < remaining {
+    let (terminal_blank, remaining) = if hang_unit <= f64::EPSILON {
+        (0.0, overflow)
+    } else if overflow <= hang_unit + 1e-9 {
+        // A soft line is then justified, so the whole half hangs; the
+        // paragraph's last line keeps its natural positions.
+        let hang = if line.break_kind == LineBreakKind::Soft {
+            hang_unit
+        } else {
+            overflow
+        };
+        (hang, 0.0)
+    } else if overflow <= capacity + 1e-9 {
+        (0.0, overflow)
+    } else if overflow <= capacity + hang_unit + 1e-9 {
+        (hang_unit, overflow - hang_unit)
+    } else {
+        let whole = line
+            .clusters
+            .last()
+            .and_then(|last| last.layout.as_ref())
+            .map_or(0.0, |layout| layout.glyph_box_width);
+        (whole.min(overflow), (overflow - whole).max(0.0))
+    };
+    if capacity + 1e-9 < remaining {
         return;
     }
     if terminal_blank > 0.0 {
@@ -6621,7 +6809,29 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         paragraph_style,
                     )
                     <= effective_available + f64::EPSILON;
-            if width <= effective_available + f64::EPSILON || fits_with_justified_space_shrink {
+            // A line the wrap loop admitted by narrowing its punctuation
+            // (`mac_punctuation_squeeze_admits`) is compressed afterwards.
+            let fits_with_mac_punctuation_squeeze =
+                compressible_line && mac_punctuation_compression_enabled(paragraph_style) && {
+                    let line = &lines[line_index];
+                    let hang = if paragraph_style.allows_hanging_punctuation_at(line.break_kind) {
+                        line.clusters
+                            .last()
+                            .filter(|last| last.can_hang_line_end)
+                            .map_or(0.0, |last| last.width)
+                    } else {
+                        0.0
+                    };
+                    width
+                        - trailing_whitespace_width(&line.clusters)
+                        - mac_punctuation_squeeze_capacity(&line.clusters).0
+                        - hang
+                        <= effective_available + 1e-9
+                };
+            if width <= effective_available + f64::EPSILON
+                || fits_with_justified_space_shrink
+                || fits_with_mac_punctuation_squeeze
+            {
                 break;
             }
             if lines[line_index]
@@ -8949,6 +9159,51 @@ mod tests {
             .unwrap();
             assert_eq!(kern, -3.0);
             assert_eq!(*ctx.pair_measurements.borrow(), 0);
+        }
+    }
+
+    #[test]
+    fn mac_kerned_adjacent_punctuation_shares_one_half_em_in_every_pairing() {
+        // Word for Mac 16.114 sets each of these pairs 5.25pt apart at 10.5pt
+        // MS Mincho when the run is kerned, whatever characterSpacingControl
+        // says, and a full 10.5pt apart when it is not: closing→closing
+        // (`。）`), closing→opening (`。「`) and opening→opening (`（「`) alike.
+        use crate::line_metrics::WordLayoutPlatform;
+        let descriptor = "4.50pt 'MS Mincho', serif";
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Mac,
+            ..ParagraphStyle::default()
+        };
+        for kerning in [true, false] {
+            for pair in [
+                "。）", "）。", "）、", "、「", "」（", "（「", "。「", "）」",
+            ] {
+                let ctx = CountingKerningContext::new(kerning);
+                let style = ResolvedRunStyle::new(
+                    descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, kerning, None,
+                );
+                let mut cache = FxHashMap::default();
+                let mut kern = 0.0;
+                walk_text_advance_steps(
+                    &ctx,
+                    pair,
+                    &style,
+                    Some(&paragraph),
+                    &TextAdvanceState::default(),
+                    None,
+                    &mut cache,
+                    |step| {
+                        kern += step.advance.kerning_adjustment;
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(
+                    kern,
+                    if kerning { -3.0 } else { 0.0 },
+                    "{pair} kern={kerning}"
+                );
+            }
         }
     }
 
@@ -11838,6 +12093,230 @@ mod tests {
                 .collect::<Vec<_>>(),
             old
         );
+    }
+
+    /// Characters on the first line when the k-th character needs `squeeze`
+    /// points of reduction to fit: 10.5-unit glyphs, like 10.5pt MS Mincho.
+    fn mac_squeeze_first_line(text: &str, k: usize, squeeze: f64, style: &ParagraphStyle) -> usize {
+        let ctx = TestContext::new(10.5);
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            style,
+            0,
+            k as f64 * 10.5 - squeeze,
+        )
+        .unwrap();
+        lines[0]
+            .clusters
+            .iter()
+            .filter(|c| !c.is_whitespace)
+            .count()
+    }
+
+    /// `k`-th character preceded by commas at the 1-based `commas` positions.
+    fn mac_squeeze_text(k: usize, commas: &[usize]) -> String {
+        let kana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+        let mut kana = kana.chars().cycle();
+        (1..k + 15)
+            .map(|position| {
+                if commas.contains(&position) {
+                    '、'
+                } else {
+                    kana.next().unwrap()
+                }
+            })
+            .collect()
+    }
+
+    // Word for Mac 16.114 squeeze probes (justified MS Mincho 10.5pt,
+    // compressPunctuation): the k-th character is admitted by narrowing the
+    // commas only while the reduction per comma stays within 32 times the gap
+    // each character would gain if it were pushed to the next line. Each case
+    // is the last admitted and first refused reduction Word showed.
+    #[test]
+    fn mac_squeeze_admits_a_character_while_punctuation_reduction_beats_expansion() {
+        let style = mac_punctuation_test_style();
+        for (k, commas, admitted, refused) in [
+            (19, &[4, 9, 14][..], 8.75, 9.0),
+            (5, &[2, 4][..], 10.0, 10.05),
+            (6, &[2, 4][..], 9.85, 9.9),
+            (8, &[2, 4, 6][..], 9.85, 9.9),
+            (12, &[3, 9][..], 9.05, 9.1),
+            (40, &[10, 30][..], 6.55, 6.6),
+            (40, &[8, 20, 32][..], 7.5, 7.55),
+            (25, &[4, 10, 16, 22][..], 8.9, 8.95),
+        ] {
+            let text = mac_squeeze_text(k, commas);
+            assert_eq!(
+                mac_squeeze_first_line(&text, k, admitted, &style),
+                k,
+                "k={k} commas={commas:?} admits at {admitted}"
+            );
+            assert_eq!(
+                mac_squeeze_first_line(&text, k, refused, &style),
+                k - 1,
+                "k={k} commas={commas:?} refuses at {refused}"
+            );
+        }
+    }
+
+    #[test]
+    fn mac_squeeze_never_narrows_a_comma_past_its_blank_half() {
+        // One comma can give at most its 5.25pt blank: Word admits at 5.25 and
+        // refuses at 5.5 however long the line is.
+        let style = mac_punctuation_test_style();
+        for k in [10, 19, 30] {
+            let text = mac_squeeze_text(k, &[k / 2]);
+            assert_eq!(mac_squeeze_first_line(&text, k, 5.25, &style), k);
+            assert_eq!(mac_squeeze_first_line(&text, k, 5.5, &style), k - 1);
+        }
+        // Without punctuation there is nothing to narrow.
+        let plain = mac_squeeze_text(19, &[]);
+        assert_eq!(mac_squeeze_first_line(&plain, 19, 0.25, &style), 18);
+    }
+
+    #[test]
+    fn mac_squeeze_admission_needs_justified_compress_punctuation() {
+        // Word pushes the character out at a 3pt reduction for left/centered
+        // paragraphs and for doNotCompress documents; kerning does not matter.
+        let text = mac_squeeze_text(19, &[4, 9, 14]);
+        let style = mac_punctuation_test_style();
+        assert_eq!(mac_squeeze_first_line(&text, 19, 3.0, &style), 19);
+        let distribute = ParagraphStyle {
+            alignment: "distribute".into(),
+            ..style.clone()
+        };
+        assert_eq!(mac_squeeze_first_line(&text, 19, 3.0, &distribute), 19);
+        for alignment in ["left", "center"] {
+            let other = ParagraphStyle {
+                alignment: alignment.into(),
+                ..style.clone()
+            };
+            assert_eq!(
+                mac_squeeze_first_line(&text, 19, 3.0, &other),
+                18,
+                "{alignment}"
+            );
+        }
+        let mut no_compress = style.clone();
+        no_compress.east_asian_rules.character_spacing_control = Some("doNotCompress".into());
+        assert_eq!(mac_squeeze_first_line(&text, 19, 3.0, &no_compress), 18);
+    }
+
+    /// The first line of `text` (Japanese, so `、` and `。` may hang) at the
+    /// given right edge, as `(text, width)` per cluster.
+    fn mac_kinsoku_first_line(text: &str, right_edge: f64) -> Vec<(String, f64)> {
+        let ctx = TestContext::new(10.5);
+        let run = RunStyle {
+            properties: Some(Rc::new(RunProperties {
+                east_asia_language: Some(Rc::from("ja-JP")),
+                ..RunProperties::default()
+            })),
+            ..make_run(text)
+        };
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[run],
+            0.0,
+            &mac_punctuation_test_style(),
+            0,
+            right_edge,
+        )
+        .unwrap();
+        lines[0]
+            .clusters
+            .iter()
+            .map(|c| (c.text.to_string(), c.width))
+            .collect()
+    }
+
+    // Word for Mac 16.114 squeeze probe with a comma as the 19th character
+    // (it may not start a line): Word always keeps it, hanging its blank half
+    // while that covers the overflow, otherwise narrowing the three earlier
+    // commas, and hanging the half once those are exhausted.
+    #[test]
+    fn mac_line_end_comma_hangs_or_squeezes_like_word() {
+        let text = mac_squeeze_text(19, &[4, 9, 14, 19]);
+        for (overflow, hang, squeeze_each) in [
+            (0.25, 5.25, 0.0),
+            (5.25, 5.25, 0.0),
+            (5.5, 0.0, 5.5 / 3.0),
+            (10.0, 0.0, 10.0 / 3.0),
+            (15.75, 0.0, 5.25),
+            (16.0, 5.25, (16.0 - 5.25) / 3.0),
+            (17.0, 5.25, (17.0 - 5.25) / 3.0),
+        ] {
+            let line = mac_kinsoku_first_line(&text, 19.0 * 10.5 - overflow);
+            assert_eq!(line.len(), 19, "overflow {overflow}");
+            assert_eq!(line[18].0, "、");
+            assert!(
+                (line[18].1 - (10.5 - hang)).abs() < 1e-6,
+                "overflow {overflow}: line-end comma {}",
+                line[18].1
+            );
+            for index in [3, 8, 13] {
+                let narrowed = line[index].1 + line[index + 1].1 - 21.0;
+                assert!(
+                    (narrowed + squeeze_each).abs() < 1e-6,
+                    "overflow {overflow}: comma {index} narrowed {narrowed}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn mac_paragraph_end_period_hangs_whole_when_half_is_not_enough() {
+        // scroll-offset-repro page 3 `…ことがある。`: 15.8pt over with two
+        // commas (10.5pt) to give; Word sets the period wholly past the margin
+        // and narrows each comma by 2.65pt.
+        let text = "ああ、いいいい、うう。";
+        let natural = 11.0 * 10.5;
+        let line = mac_kinsoku_first_line(text, natural - 15.8);
+        assert_eq!(line.len(), 11);
+        assert!(line[10].1.abs() < 1e-6, "{}", line[10].1);
+        for index in [2, 7] {
+            let narrowed = line[index].1 + line[index + 1].1 - 21.0;
+            assert!((narrowed + 2.65).abs() < 1e-6, "{narrowed}");
+        }
+    }
+
+    #[test]
+    fn mac_squeezed_line_narrows_every_comma_equally() {
+        // At 8.75pt Word draws each of the three commas 7.58pt wide.
+        let text = mac_squeeze_text(19, &[4, 9, 14]);
+        let ctx = TestContext::new(10.5);
+        let lines = wrap_text_into_lines(
+            &ctx,
+            &text,
+            &[make_run(&text)],
+            0.0,
+            &mac_punctuation_test_style(),
+            0,
+            19.0 * 10.5 - 8.75,
+        )
+        .unwrap();
+        let widths = lines[0]
+            .clusters
+            .iter()
+            .filter(|c| c.text.as_str() == "、")
+            .map(|c| c.width)
+            .collect::<Vec<_>>();
+        let commas: Vec<f64> = lines[0]
+            .clusters
+            .windows(2)
+            .filter(|pair| pair[0].text.as_str() == "、")
+            .map(|pair| pair[0].width + pair[1].width - 10.5)
+            .collect();
+        assert_eq!(commas.len(), 3, "{widths:?}");
+        for comma in commas {
+            assert!((comma - (10.5 - 8.75 / 3.0)).abs() < 1e-6, "{comma}");
+        }
+        let total: f64 = lines[0].clusters.iter().map(|c| c.width).sum();
+        assert!((total - (19.0 * 10.5 - 8.75)).abs() < 1e-6, "{total}");
     }
 
     #[test]
@@ -15121,6 +15600,39 @@ mod tests {
             Some("あああ。")
         );
         assert_eq!(infos.get(1).map(|line| line.text.as_str()), Some("い"));
+    }
+
+    #[test]
+    fn hanging_punctuation_leaves_the_next_line_full() {
+        // The hung `。` takes no room from the next line: Word starts it at
+        // `い` and fills it as it would any other line.
+        let ctx = TestContext::new(10.0);
+        let text = "あああ。いいいいう";
+        let run = RunStyle {
+            properties: Some(Rc::new(RunProperties {
+                east_asia_language: Some(Rc::from("ja-JP")),
+                ..RunProperties::default()
+            })),
+            ..make_run(text)
+        };
+        let paragraph = ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                overflow_punctuation: Some(true),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&ctx, text, &[run], 0.0, &paragraph, 0, 35.0).unwrap();
+        let infos = collect_line_infos(&lines);
+        assert_eq!(
+            infos
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["あああ。", "いいい", "いう"]
+        );
     }
 
     #[test]
