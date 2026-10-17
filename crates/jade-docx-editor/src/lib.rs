@@ -86,6 +86,34 @@ pub async fn inspect_docx_compatibility(data: &[u8]) -> Result<JsValue, JsValue>
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
+/// The fonts the author embedded in the package (`w:embed*` in the fontTable),
+/// deobfuscated and filtered by their OS/2 embedding licence:
+/// `[{ family, bold, italic, subsetted, data: Uint8Array }]`. Hosts register
+/// them as `FontFace`s under `family`, on every thread that lays the document
+/// out, before loading it. A document without embedded fonts costs one
+/// fontTable parse.
+#[wasm_bindgen(js_name = embeddedDocxFonts)]
+pub async fn embedded_docx_fonts(data: &[u8]) -> Result<js_sys::Array, JsValue> {
+    let package = common::OpenXmlPackage::load(data)
+        .await
+        .map_err(|error| JsValue::from_str(&error.to_string()))?;
+    let fonts = js_sys::Array::new();
+    for font in jade_docx_reader::package_embedded_fonts(&package) {
+        let entry = js_sys::Object::new();
+        Reflect::set(&entry, &"family".into(), &font.family.as_str().into())?;
+        Reflect::set(&entry, &"bold".into(), &font.style.is_bold().into())?;
+        Reflect::set(&entry, &"italic".into(), &font.style.is_italic().into())?;
+        Reflect::set(&entry, &"subsetted".into(), &font.subsetted.into())?;
+        Reflect::set(
+            &entry,
+            &"data".into(),
+            &js_sys::Uint8Array::from(font.data.as_slice()).into(),
+        )?;
+        fonts.push(&entry);
+    }
+    Ok(fonts)
+}
+
 /// One `{ family, substitutes }` entry of [`set_word_font_fallbacks`].
 #[derive(serde::Deserialize)]
 struct WordFontFallback {
