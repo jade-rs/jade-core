@@ -1452,16 +1452,19 @@ impl NumberingCounter {
             concrete.resize(concrete.len().max(index + 1), None);
             shared.resize(shared.len().max(index + 1), None);
             if concrete[index].is_none() {
-                let inherited = if numbering.has_start_override(num_id, ancestor) {
-                    None
+                // An overridden level restarts this num alone; seeding it
+                // must not move the definition's shared list (a num that
+                // restarts chapter 7 but only numbers articles leaves the
+                // chapters where they were).
+                if numbering.has_start_override(num_id, ancestor) {
+                    concrete[index] = Some(numbering.start_value(num_id, ancestor).unwrap_or(1));
                 } else {
-                    shared[index]
-                };
-                concrete[index] = Some(
-                    inherited
-                        .unwrap_or_else(|| numbering.start_value(num_id, ancestor).unwrap_or(1)),
-                );
-                shared[index] = concrete[index];
+                    concrete[index] =
+                        Some(shared[index].unwrap_or_else(|| {
+                            numbering.start_value(num_id, ancestor).unwrap_or(1)
+                        }));
+                    shared[index] = concrete[index];
+                }
             }
         }
     }
@@ -1474,26 +1477,61 @@ impl NumberingCounter {
         start: Option<u32>,
         has_start_override: bool,
     ) -> u32 {
+        self.increment_with(
+            None,
+            num_id,
+            abstract_num_id,
+            level,
+            start,
+            has_start_override,
+        )
+    }
+
+    /// [`Self::increment`] reading each level's `w:lvlRestart` and start
+    /// overrides from `numbering`: a deeper level restarts only after the
+    /// levels its `w:lvlRestart` names (`0` never restarts it), and the
+    /// ancestors a num shares with its definition show the list's values.
+    pub fn increment_with(
+        &mut self,
+        numbering: Option<&NumberingPart>,
+        num_id: &str,
+        abstract_num_id: &str,
+        level: u32,
+        start: Option<u32>,
+        has_start_override: bool,
+    ) -> u32 {
+        // `w:lvlRestart` is one-based: the level restarts after any level up
+        // to the one it names.
+        let restarts = |deeper: usize| {
+            numbering
+                .and_then(|numbering| numbering.get_level_info(num_id, deeper as u32))
+                .and_then(|info| info.restart)
+                .is_none_or(|restart| level < restart)
+        };
         let counters = self.counters.entry(num_id.to_string()).or_default();
 
         // None distinguishes an unused/reset level from a valid zero start.
         counters.resize(counters.len().max(level as usize + 1), None);
-        for value in counters.iter_mut().skip(level as usize + 1) {
-            *value = None;
+        for (deeper, value) in counters.iter_mut().enumerate().skip(level as usize + 1) {
+            if restarts(deeper) {
+                *value = None;
+            }
         }
 
         let counter = &mut counters[level as usize];
-        let previous = (*counter).or_else(|| {
-            if has_start_override {
-                None
-            } else {
-                self.abstract_counters
-                    .get(abstract_num_id)
-                    .and_then(|levels| levels.get(level as usize))
-                    .copied()
-                    .flatten()
-            }
-        });
+        // Word keeps one list per definition: a num without a start override
+        // continues it after whichever num advanced it last. A level the
+        // definition has tracked, even one a parent reset, is the list's
+        // state; only an untracked one keeps the num's own.
+        let shared = self
+            .abstract_counters
+            .get(abstract_num_id)
+            .and_then(|levels| levels.get(level as usize))
+            .copied();
+        let previous = match shared {
+            Some(shared) if !has_start_override => shared,
+            _ => *counter,
+        };
         let value = previous.map_or_else(|| start.unwrap_or(1), |previous| previous + 1);
         *counter = Some(value);
 
@@ -1504,10 +1542,30 @@ impl NumberingCounter {
         while abstract_levels.len() <= level as usize {
             abstract_levels.push(None);
         }
-        for value in abstract_levels.iter_mut().skip((level + 1) as usize) {
-            *value = None;
+        for (deeper, value) in abstract_levels
+            .iter_mut()
+            .enumerate()
+            .skip((level + 1) as usize)
+        {
+            if restarts(deeper) {
+                *value = None;
+            }
         }
-        abstract_levels[level as usize] = *counter;
+        abstract_levels[level as usize] = Some(value);
+        if let Some(numbering) = numbering {
+            let concrete = self
+                .counters
+                .get_mut(num_id)
+                .expect("counter inserted above");
+            for (ancestor, shared) in abstract_levels.iter().enumerate().take(level as usize) {
+                if shared.is_some()
+                    && ancestor < concrete.len()
+                    && !numbering.has_start_override(num_id, ancestor as u32)
+                {
+                    concrete[ancestor] = *shared;
+                }
+            }
+        }
 
         value
     }
@@ -1980,6 +2038,104 @@ mod tests {
         assert_eq!(counter.increment("b", "definition", 0, Some(0), false), 1);
         assert_eq!(counter.increment("c", "definition", 0, Some(0), true), 0);
         assert_eq!(counter.increment("c", "definition", 0, Some(0), true), 1);
+    }
+
+    /// Nums sharing a definition without overrides are one list in Word:
+    /// scroll-offset-repro numbers `第４３条` through a heading style's num
+    /// and the next article, under the paragraph's own num, `第４４条`.
+    #[test]
+    fn interleaved_nums_of_one_definition_continue_one_list() {
+        let mut counter = NumberingCounter::new();
+        assert_eq!(counter.increment("21", "16", 1, Some(1), false), 1);
+        assert_eq!(counter.increment("21", "16", 1, Some(1), false), 2);
+        assert_eq!(counter.increment("22", "16", 1, Some(1), false), 3);
+        assert_eq!(counter.increment("21", "16", 1, Some(1), false), 4);
+        assert_eq!(counter.get_counter("21", 1), 4);
+        // A parent advanced through another num restarts the shared child.
+        assert_eq!(counter.increment("22", "16", 0, Some(1), false), 1);
+        assert_eq!(counter.increment("21", "16", 1, Some(1), false), 1);
+    }
+
+    /// scroll-offset-repro: num 23 restarts chapters at 7 and articles at 1
+    /// but numbers only articles; the chapters of num 22 stay at 1, 2.
+    #[test]
+    fn an_unused_overridden_ancestor_leaves_the_shared_list() {
+        let xml = r#"
+            <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:abstractNum w:abstractNumId="16">
+                <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="第%1章"/></w:lvl>
+                <w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="第%2条"/></w:lvl>
+              </w:abstractNum>
+              <w:num w:numId="21"><w:abstractNumId w:val="16"/></w:num>
+              <w:num w:numId="22"><w:abstractNumId w:val="16"/></w:num>
+              <w:num w:numId="23"><w:abstractNumId w:val="16"/>
+                <w:lvlOverride w:ilvl="0"><w:startOverride w:val="7"/></w:lvlOverride>
+                <w:lvlOverride w:ilvl="1"><w:startOverride w:val="1"/></w:lvlOverride>
+              </w:num>
+            </w:numbering>
+        "#;
+        let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
+        let mut counter = NumberingCounter::new();
+        let mut number = |num_id: &str, level: u32| {
+            counter.initialize_ancestor_levels(Some(&numbering), num_id, level);
+            counter.increment(
+                num_id,
+                numbering.abstract_num_id(num_id).unwrap_or_default(),
+                level,
+                numbering.start_value(num_id, level),
+                numbering.has_start_override(num_id, level),
+            );
+            numbering.format_number(num_id, level, &counter)
+        };
+        assert_eq!(number("22", 0), "第1章");
+        assert_eq!(number("23", 1), "第1条");
+        assert_eq!(number("21", 1), "第2条");
+        assert_eq!(number("22", 0), "第2章");
+        assert_eq!(number("21", 1), "第1条");
+        assert_eq!(number("22", 1), "第2条");
+        assert_eq!(number("21", 1), "第3条");
+    }
+
+    /// scroll-offset-repro numbers articles on across chapters: its article
+    /// level has `w:lvlRestart w:val="0"`, and a chapter through the heading
+    /// style's num does not restart them.
+    #[test]
+    fn level_restart_zero_continues_articles_across_chapters() {
+        let xml = r#"
+            <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:abstractNum w:abstractNumId="16">
+                <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="第%1章"/></w:lvl>
+                <w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlRestart w:val="0"/><w:lvlText w:val="第%2条"/></w:lvl>
+                <w:lvl w:ilvl="2"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlRestart w:val="1"/><w:lvlText w:val="%3"/></w:lvl>
+              </w:abstractNum>
+              <w:num w:numId="21"><w:abstractNumId w:val="16"/></w:num>
+              <w:num w:numId="22"><w:abstractNumId w:val="16"/></w:num>
+            </w:numbering>
+        "#;
+        let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
+        let mut counter = NumberingCounter::new();
+        let mut number = |num_id: &str, level: u32| {
+            counter.initialize_ancestor_levels(Some(&numbering), num_id, level);
+            counter.increment_with(
+                Some(&numbering),
+                num_id,
+                numbering.abstract_num_id(num_id).unwrap_or_default(),
+                level,
+                numbering.start_value(num_id, level),
+                numbering.has_start_override(num_id, level),
+            );
+            numbering.format_number(num_id, level, &counter)
+        };
+        assert_eq!(number("22", 0), "第1章");
+        assert_eq!(number("21", 1), "第1条");
+        assert_eq!(number("21", 2), "1");
+        assert_eq!(number("21", 2), "2");
+        assert_eq!(number("21", 1), "第2条");
+        // `w:lvlRestart="1"` restarts level 2 after a chapter, not an article.
+        assert_eq!(number("21", 2), "3");
+        assert_eq!(number("22", 0), "第2章");
+        assert_eq!(number("21", 1), "第3条");
+        assert_eq!(number("21", 2), "1");
     }
 
     #[test]

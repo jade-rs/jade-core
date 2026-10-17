@@ -14887,7 +14887,8 @@ where
                                         &inc.num_id,
                                         inc.level,
                                     );
-                                    numbering_counter.increment(
+                                    numbering_counter.increment_with(
+                                        numbering_part,
                                         &inc.num_id,
                                         &inc.abstract_num_id,
                                         inc.level,
@@ -14989,7 +14990,8 @@ where
                                     &inc.num_id,
                                     inc.level,
                                 );
-                                numbering_counter.increment(
+                                numbering_counter.increment_with(
+                                    numbering_part,
                                     &inc.num_id,
                                     &inc.abstract_num_id,
                                     inc.level,
@@ -15093,7 +15095,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -15260,7 +15263,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -15383,7 +15387,8 @@ where
                                         &inc.num_id,
                                         inc.level,
                                     );
-                                    numbering_counter.increment(
+                                    numbering_counter.increment_with(
+                                        numbering_part,
                                         &inc.num_id,
                                         &inc.abstract_num_id,
                                         inc.level,
@@ -15484,7 +15489,8 @@ where
                                     &inc.num_id,
                                     inc.level,
                                 );
-                                numbering_counter.increment(
+                                numbering_counter.increment_with(
+                                    numbering_part,
                                     &inc.num_id,
                                     &inc.abstract_num_id,
                                     inc.level,
@@ -15652,7 +15658,8 @@ where
                                 &inc.num_id,
                                 inc.level,
                             );
-                            numbering_counter.increment(
+                            numbering_counter.increment_with(
+                                numbering_part,
                                 &inc.num_id,
                                 &inc.abstract_num_id,
                                 inc.level,
@@ -15742,7 +15749,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -16112,7 +16120,8 @@ where
                                 num_id,
                                 level,
                             );
-                            numbering_counter.increment(
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
                                 num_id,
                                 abstract_num_id,
                                 level,
@@ -24041,7 +24050,8 @@ where
                 let number_x = origin.number_x;
                 let abstract_num_id = numbering_part.abstract_num_id(num_id).unwrap_or_default();
                 numbering_counter.initialize_ancestor_levels(Some(numbering_part), num_id, level);
-                numbering_counter.increment(
+                numbering_counter.increment_with(
+                    Some(numbering_part),
                     num_id,
                     abstract_num_id,
                     level,
