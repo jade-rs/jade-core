@@ -3130,6 +3130,9 @@ where
     /// only when it can split at all) and clears the flag.
     keep_next_tail_pending: Option<bool>,
     keep_next_tail_bottom: Option<f64>,
+    /// `w:keepNext` of the body paragraph whose lines `render_text_line` is
+    /// placing, whether or not a keepNext group owns it.
+    current_paragraph_keep_next: bool,
     active_keep_next_group_end: Option<usize>,
     keep_next_group_surfaces: std::collections::BTreeMap<usize, usize>,
     #[cfg(feature = "opentype-math")]
@@ -7694,6 +7697,7 @@ where
             measuring_keep_next: false,
             keep_next_tail_pending: None,
             keep_next_tail_bottom: None,
+            current_paragraph_keep_next: false,
             active_keep_next_group_end: None,
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
@@ -16020,6 +16024,11 @@ where
                 .as_ref()
                 .and_then(|props| props.keep_next)
                 .unwrap_or(false);
+        self.current_paragraph_keep_next = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.keep_next)
+            .unwrap_or(false);
         // `w:textAlignment` (§17.3.1.39): where glyphs sit vertically inside the
         // line box. Resolve once for the paragraph and thread the leading share
         // through the empty-line and text-line geometry.
@@ -18771,8 +18780,41 @@ where
         // Word-like widow/orphan control:
         // split is allowed only when both pages keep at least 2 lines.
         let mut force_break_before_line: Option<usize> = None;
+        // Room the forced break reserves past the paragraph's remaining lines.
+        let mut force_break_reserve = 0.0;
+        // keepNext also keeps this paragraph's last line on the page of the
+        // next paragraph's first line (this paragraph's line height stands in
+        // for it, as above). When the whole paragraph fits but that line does
+        // not, Word moves the last line, or the last two under widow control,
+        // or the whole paragraph when it cannot split.
+        let keep_next_property = self.current_paragraph_keep_next;
+        if keep_next_property
+            && !keep_lines_handled
+            && !keep_next_handled
+            && !self.pageless_mode
+            && !self.measuring_keep_next
+            && band_count > 1
+        {
+            let bottom_limit = self.effective_body_bottom();
+            let remaining = (bottom_limit - self.current_y).max(0.0);
+            let full_body_height = (bottom_limit - self.effective_body_top()).max(0.0);
+            if paragraph_height <= remaining + 1e-6
+                && paragraph_height + line_height > remaining + 1e-6
+                && paragraph_height + line_height <= full_body_height
+            {
+                let moved = if widow_control_enabled { 2 } else { 1 };
+                let kept = band_count.saturating_sub(moved);
+                if keep_lines_enabled || kept == 0 || (widow_control_enabled && kept < 2) {
+                    self.ensure_space(paragraph_height + line_height)?;
+                } else {
+                    force_break_before_line = band_starts.get(kept).copied();
+                    force_break_reserve = line_height;
+                }
+            }
+        }
         if !keep_lines_handled
             && !keep_next_handled
+            && force_break_before_line.is_none()
             && widow_control_enabled
             && !self.pageless_mode
             && band_count > 1
@@ -19072,8 +19114,8 @@ where
                     .enumerate()
                     .filter(|&(_, &start)| start >= line_index)
                     .map(|(band, _)| band_height(band))
-                    .sum();
-                self.ensure_space(remaining_height)?;
+                    .sum::<f64>();
+                self.ensure_space(remaining_height + force_break_reserve)?;
             }
             let break_kind = wrapped_line.break_kind;
             let extent_only = self.measuring_keep_next
@@ -54311,6 +54353,74 @@ mod tests {
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
             assert_eq!(page(5, 0), 1, "{case}");
+        }
+    }
+
+    /// The other half of keepNext: the paragraph's last line shares a page
+    /// with the next paragraph's first line. scroll-offset-repro page 4 moves
+    /// the second line of the keepNext body of `第１３条…` to page 5, where
+    /// the empty paragraph after it starts, though the line would fit.
+    #[test]
+    fn keep_next_paragraph_moves_its_last_line_to_the_next_paragraph() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, moved) in [(false, vec![3]), (true, vec![2, 3])] {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                (
+                    "one two three four five six seven eight one two three four five six seven eight",
+                    true,
+                ),
+                ("last", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            // filler (1 line) + 4 body lines fill the 5-line page exactly.
+            assert_eq!(paragraphs[1].lines.len(), 4);
+            let on_next: Vec<_> = (0..4)
+                .filter(|&line| renderer.page_for_y(paragraphs[1].lines[line].absolute_top) == 1)
+                .collect();
+            assert_eq!(on_next, moved, "widow={widow_control}");
+            assert_eq!(
+                renderer.page_for_y(paragraphs[2].lines[0].absolute_top),
+                1,
+                "widow={widow_control}"
+            );
         }
     }
 
