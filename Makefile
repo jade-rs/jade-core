@@ -1,4 +1,4 @@
-.PHONY: wasm wasm-docx wasm-xlsx wasm-xlsx-release wasm-pptx wasm-pptx-release wasm-otel wasm-release wasm-release-all wasm-release-otel wasm-release-size wasm-perf wasm-perf-o4 wasm-perf-simd wasm-perf-o4-simd wasm-profiling plugins plugins-release
+.PHONY: wasm wasm-docx wasm-otel wasm-release wasm-release-all wasm-release-otel wasm-release-size wasm-perf wasm-perf-o4 wasm-perf-simd wasm-perf-o4-simd wasm-profiling plugins plugins-release
 
 # Cargo and wasm-bindgen use the same optional external output directory.
 ifneq ($(strip $(CARGO_TARGET_DIR)),)
@@ -11,15 +11,6 @@ WASM_CARGO_BUILD_DIR := $(if $(strip $(CARGO_TARGET_DIR)),$(CARGO_TARGET_DIR),ta
 WASM_TARGET := wasm32-unknown-unknown
 WASM_OUT_DIR := crates/jade-docx-editor/pkg
 WASM_OUT_NAME := jade_docx
-# The spreadsheet entry point is its own module rather than another export of
-# the DOCX one: a page that only opens a workbook should not download the Word
-# layout engine, and the two have no code in common above `jade-painter`.
-WASM_XLSX_OUT_DIR := crates/jade-xlsx-editor/pkg
-WASM_XLSX_OUT_NAME := jade_xlsx
-# Likewise for slides. Three entry points, one per format, so opening a deck
-# downloads neither the Word layout engine nor the formula evaluator.
-WASM_PPTX_OUT_DIR := crates/jade-pptx-editor/pkg
-WASM_PPTX_OUT_NAME := jade_pptx
 WASM_OPT_FEATURES := --enable-bulk-memory --enable-sign-ext --enable-nontrapping-float-to-int --enable-reference-types --enable-mutable-globals
 
 # Directory served as Vite static assets by every package that sets
@@ -33,34 +24,14 @@ PLUGIN_OUT_DIR := public/plugins
 # the editor several times slower than release and invalidated perf
 # measurements (docs/perf-improvement-plan-20260702.md P0). For perf
 # evaluation use `wasm-release` / `wasm-profiling`.
-# `wasm` builds every entry point. The playground imports the spreadsheet glue
-# statically, so a build that produced only the DOCX module would fail at bundle
-# time rather than at run time, and every CI job that runs `make wasm` would
-# have to learn a second target.
-wasm: wasm-docx wasm-xlsx wasm-pptx
+# The spreadsheet and slide browser entry points (jade-xlsx-editor,
+# jade-pptx-editor) are built from the jade repository, not here.
+wasm: wasm-docx
 
 wasm-docx:
 	@cargo build -p jade-docx-editor --manifest-path crates/jade-docx-editor/Cargo.toml --target $(WASM_TARGET) --profile wasm-dev
 	@wasm-bindgen --target web --out-dir $(WASM_OUT_DIR) --out-name $(WASM_OUT_NAME) "$(WASM_CARGO_BUILD_DIR)/$(WASM_TARGET)/wasm-dev/jade_docx_editor.wasm"
 	@node scripts/optimize-wasm-js.mjs $(WASM_OUT_DIR)/$(WASM_OUT_NAME).js
-
-wasm-xlsx:
-	@cargo build -p jade-xlsx-editor --target $(WASM_TARGET) --profile wasm-dev
-	@wasm-bindgen --target web --out-dir $(WASM_XLSX_OUT_DIR) --out-name $(WASM_XLSX_OUT_NAME) "$(WASM_CARGO_BUILD_DIR)/$(WASM_TARGET)/wasm-dev/jade_xlsx_editor.wasm"
-
-wasm-xlsx-release:
-	@cargo build -p jade-xlsx-editor --target $(WASM_TARGET) --release
-	@wasm-bindgen --target web --out-dir $(WASM_XLSX_OUT_DIR) --out-name $(WASM_XLSX_OUT_NAME) "$(WASM_CARGO_BUILD_DIR)/$(WASM_TARGET)/release/jade_xlsx_editor.wasm"
-	@wasm-opt $(WASM_OPT_FEATURES) -O3 $(WASM_XLSX_OUT_DIR)/$(WASM_XLSX_OUT_NAME)_bg.wasm -o $(WASM_XLSX_OUT_DIR)/$(WASM_XLSX_OUT_NAME)_bg.wasm
-
-wasm-pptx:
-	@cargo build -p jade-pptx-editor --target $(WASM_TARGET) --profile wasm-dev
-	@wasm-bindgen --target web --out-dir $(WASM_PPTX_OUT_DIR) --out-name $(WASM_PPTX_OUT_NAME) "$(WASM_CARGO_BUILD_DIR)/$(WASM_TARGET)/wasm-dev/jade_pptx_editor.wasm"
-
-wasm-pptx-release:
-	@cargo build -p jade-pptx-editor --target $(WASM_TARGET) --release
-	@wasm-bindgen --target web --out-dir $(WASM_PPTX_OUT_DIR) --out-name $(WASM_PPTX_OUT_NAME) "$(WASM_CARGO_BUILD_DIR)/$(WASM_TARGET)/release/jade_pptx_editor.wasm"
-	@wasm-opt $(WASM_OPT_FEATURES) -O3 $(WASM_PPTX_OUT_DIR)/$(WASM_PPTX_OUT_NAME)_bg.wasm -o $(WASM_PPTX_OUT_DIR)/$(WASM_PPTX_OUT_NAME)_bg.wasm
 
 wasm-otel:
 	@cargo build -p jade-docx-editor --manifest-path crates/jade-docx-editor/Cargo.toml --target $(WASM_TARGET) --features otel --profile wasm-dev
@@ -72,7 +43,7 @@ wasm-otel:
 # `wasm-release` is DOCX only (the publish workflow ships that module alone);
 # `wasm-release-all` is the release counterpart of `wasm` and is what the
 # Amplify deploy runs, so the demo does not serve the `wasm-dev` profile.
-wasm-release-all: wasm-release wasm-xlsx-release wasm-pptx-release
+wasm-release-all: wasm-release
 
 wasm-release:
 	@cargo build -p jade-docx-editor --manifest-path crates/jade-docx-editor/Cargo.toml --target $(WASM_TARGET) --release

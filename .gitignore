@@ -2,8 +2,6 @@
 /target/
 **/target/
 crates/jade-docx-editor/pkg/
-crates/jade-xlsx-editor/pkg/
-crates/jade-pptx-editor/pkg/
 # Sample plugin wasm staged by `make plugins` when PLUGIN_OUT_DIR points into this tree.
 /public/plugins/
 # proptest saves failing seeds here; the cases worth keeping are checked in as tests

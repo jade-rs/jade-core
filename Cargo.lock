@@ -1354,25 +1354,6 @@ name = "jade-painter"
 version = "0.1.0"
 
 [[package]]
-name = "jade-pptx-editor"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "jade-canvas-painter",
- "jade-painter",
- "jade-pptx-headless-cli",
- "jade-pptx-layout",
- "jade-pptx-reader",
- "jade-pptx-render",
- "jade-pptx-writer",
- "js-sys",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "jade-pptx-headless-api"
 version = "0.1.0"
 dependencies = [
@@ -1508,24 +1489,6 @@ dependencies = [
  "serde",
  "statrs",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "jade-xlsx-editor"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "jade-canvas-painter",
- "jade-painter",
- "jade-xlsx-headless-api",
- "jade-xlsx-headless-editor",
- "jade-xlsx-layout",
- "jade-xlsx-reader",
- "jade-xlsx-render",
- "js-sys",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
