@@ -906,7 +906,8 @@ fn collect_layout_numbering_texts(docx_bytes: &[u8]) -> Result<HashMap<usize, St
             else {
                 continue;
             };
-            counters.increment(
+            counters.increment_with(
+                Some(&numbering),
                 num_id,
                 &abstract_num_id,
                 level,
