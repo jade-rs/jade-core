@@ -2,7 +2,7 @@
 name = "jade-preview-plugin-api"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 description = "Shared ABI + helper macros for authoring jade decoration plugins as WebAssembly guest modules."
 
 [lib]

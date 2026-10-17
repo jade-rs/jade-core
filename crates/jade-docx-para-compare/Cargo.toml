@@ -2,7 +2,7 @@
 name = "jade-docx-para-compare"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 
 [dependencies]
 jade-docx-writer = { path = "../jade-docx-writer" }

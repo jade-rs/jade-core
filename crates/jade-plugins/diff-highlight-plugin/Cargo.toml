@@ -2,7 +2,7 @@
 name = "diff-highlight-plugin"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 description = "jade decoration plugin: shades the parts of a paragraph that a document comparison reported as changed."
 
 [lib]

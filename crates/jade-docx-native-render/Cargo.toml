@@ -4,7 +4,7 @@
 name = "jade-docx-native-render"
 version = "0.1.0"
 edition = "2021"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 publish = false
 
 # Deliberately outside the workspace, for the same reason as

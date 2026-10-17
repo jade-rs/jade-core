@@ -2,7 +2,7 @@
 name = "jade-xlsx-headless-mcp"
 version = "0.1.0"
 edition = "2021"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 description = "Model Context Protocol (stdio) server for reading and editing XLSX workbooks headlessly"
 
 [[bin]]

@@ -2,7 +2,7 @@
 name = "jade-pptx-headless-cli"
 version = "0.1.0"
 edition = "2021"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 
 [dependencies]
 jade-pptx-headless-api = { path = "../jade-pptx-headless-api" }

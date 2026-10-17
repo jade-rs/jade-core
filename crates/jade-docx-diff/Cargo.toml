@@ -2,7 +2,7 @@
 name = "jade-docx-diff"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 description = "Structure-aware DOCX comparison: paragraph, table and row alignment, then a character-level diff"
 
 [lib]

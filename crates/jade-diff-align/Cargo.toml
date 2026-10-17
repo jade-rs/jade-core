@@ -2,7 +2,7 @@
 name = "jade-diff-align"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 description = "Sequence alignment shared by the document comparison engines"
 
 [lib]

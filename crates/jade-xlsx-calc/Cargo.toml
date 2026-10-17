@@ -2,7 +2,7 @@
 name = "jade-xlsx-calc"
 version = "0.1.0"
 edition = "2021"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 
 [dependencies]
 ironcalc_base = { package = "jade-xlsx-calc-engine", version = "0.1.0", path = "../../third_party/ironcalc-base" }

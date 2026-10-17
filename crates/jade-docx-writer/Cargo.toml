@@ -2,7 +2,7 @@
 name = "jade-docx-writer"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 
 [dependencies]
 zip = { version = "8.0", default-features = false, features = ["deflate"] }

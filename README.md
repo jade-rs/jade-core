@@ -33,8 +33,8 @@ make plugins-release              # sample decoration plugins -> $(PLUGIN_OUT_DI
 
 ## License
 
-PolyForm Noncommercial 1.0.0. Free for personal, research, educational, and noncommercial use. Commercial use requires a separate license — contact the author.
+MIT. See [LICENSE](LICENSE).
 
 Third-party dependency licenses: see THIRD_PARTY_LICENSES.html (regenerate with `cargo about generate about.hbs --all-features`).
 
-The full license text is in [LICENSE](LICENSE). `third_party/ironcalc-base` is vendored upstream code and keeps its own licenses (MIT / Apache-2.0).
+`third_party/ironcalc-base` is vendored upstream code and keeps its own licenses (MIT / Apache-2.0).
