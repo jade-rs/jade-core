@@ -1354,6 +1354,15 @@ name = "jade-painter"
 version = "0.1.0"
 
 [[package]]
+name = "jade-pixel-diff"
+version = "0.1.0"
+dependencies = [
+ "png 0.17.16",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "jade-pptx-headless-api"
 version = "0.1.0"
 dependencies = [

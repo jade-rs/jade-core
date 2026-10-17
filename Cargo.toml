@@ -2,6 +2,7 @@
 members = [
   "crates/jade-docx-extract",
   "crates/jade-diff-align",
+  "crates/jade-pixel-diff",
   "crates/jade-docx-diff",
   "crates/jade-docx-reader",
   "crates/jade-docx-writer",
