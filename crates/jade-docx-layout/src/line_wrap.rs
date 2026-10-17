@@ -2839,6 +2839,19 @@ impl WrappedLine {
             .iter()
             .rposition(|c| !c.is_whitespace)
             .map_or(0, |index| index + 1);
+        if content_end == 1 {
+            // Word centres a lone character on a distributed line.
+            let offset = (available_width - self.clusters[0].width).max(0.0) / 2.0;
+            if let Some(layout) = self.clusters[0]
+                .layout
+                .as_mut()
+                .filter(|_| offset > f64::EPSILON)
+            {
+                layout.leading_advance += offset;
+                self.clusters[0].width += offset;
+            }
+            return;
+        }
         if content_end < 2 {
             return;
         }
@@ -5881,7 +5894,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             0.0
                         };
                         let hang = if hangs { candidate_width } else { 0.0 };
-                        (hangs || squeeze > 0.0) && candidate_overflow <= hang + squeeze + 1e-9
+                        (hangs || squeeze > 0.0)
+                            && candidate_overflow <= hang + squeeze + WRAP_FIT_TOLERANCE_PX
                     };
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && current_width > 0.0
@@ -6292,11 +6306,11 @@ fn mac_punctuation_squeeze_admits(
     }
     let (capacity, blanks) =
         mac_punctuation_squeeze_capacity_with(clusters, candidate, candidate_width);
-    if blanks <= 0.0 || overflow > capacity + 1e-9 {
+    if blanks <= 0.0 || overflow > capacity + WRAP_FIT_TOLERANCE_PX {
         return false;
     }
     let gaps = (characters - 1) as f64;
-    overflow / blanks * gaps <= MAC_SQUEEZE_TO_EXPANSION_RATIO * slack + 1e-9
+    overflow / blanks * gaps <= MAC_SQUEEZE_TO_EXPANSION_RATIO * slack + WRAP_FIT_TOLERANCE_PX
 }
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
@@ -6323,7 +6337,7 @@ fn compress_mac_punctuation_on_completed_line(
         return;
     }
     let overflow = natural - trailing_whitespace_width(&line.clusters) - available;
-    if !overflow.is_finite() || overflow <= f64::EPSILON {
+    if !overflow.is_finite() || overflow <= WRAP_FIT_TOLERANCE_PX {
         return;
     }
     if line
@@ -6356,7 +6370,7 @@ fn compress_mac_punctuation_on_completed_line(
     };
     let (terminal_blank, remaining) = if hang_unit <= f64::EPSILON {
         (0.0, overflow)
-    } else if overflow <= hang_unit + 1e-9 {
+    } else if overflow <= hang_unit + WRAP_FIT_TOLERANCE_PX {
         // A soft line is then justified, so the whole half hangs; the
         // paragraph's last line keeps its natural positions.
         let hang = if line.break_kind == LineBreakKind::Soft {
@@ -6365,9 +6379,9 @@ fn compress_mac_punctuation_on_completed_line(
             overflow
         };
         (hang, 0.0)
-    } else if overflow <= capacity + 1e-9 {
+    } else if overflow <= capacity + WRAP_FIT_TOLERANCE_PX {
         (0.0, overflow)
-    } else if overflow <= capacity + hang_unit + 1e-9 {
+    } else if overflow <= capacity + hang_unit + WRAP_FIT_TOLERANCE_PX {
         (hang_unit, overflow - hang_unit)
     } else {
         let whole = line
@@ -6377,7 +6391,7 @@ fn compress_mac_punctuation_on_completed_line(
             .map_or(0.0, |layout| layout.glyph_box_width);
         (whole.min(overflow), (overflow - whole).max(0.0))
     };
-    if capacity + 1e-9 < remaining {
+    if capacity + WRAP_FIT_TOLERANCE_PX < remaining {
         return;
     }
     if terminal_blank > 0.0 {
@@ -6923,7 +6937,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         - trailing_whitespace_width(&line.clusters)
                         - mac_punctuation_squeeze_capacity(&line.clusters).0
                         - hang
-                        <= effective_available + 1e-9
+                        <= effective_available + WRAP_FIT_TOLERANCE_PX
                 };
             if width <= effective_available + WRAP_FIT_TOLERANCE_PX
                 || fits_with_justified_space_shrink
@@ -12091,6 +12105,30 @@ mod tests {
     }
 
     #[test]
+    fn distributed_line_of_one_character_centres_it() {
+        // Word for Mac 16.114 (squeeze probe sq4, `w:jc="distribute"`) sets a
+        // last line holding only `も` midway across the line: 177.96pt in a
+        // 196.5pt line from 84.96pt. A trailing space does not count.
+        let ctx = TestContext::new(10.5);
+        let paragraph = ParagraphStyle {
+            alignment: "distribute".into(),
+            ..ParagraphStyle::default()
+        };
+        for text in ["も", "も\u{3000}"] {
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 196.5)
+                    .unwrap();
+            let cluster = &lines[0].clusters[0];
+            let leading = cluster.layout.as_ref().unwrap().leading_advance;
+            assert!(
+                (leading - (196.5 - 10.5) / 2.0).abs() < 1e-9,
+                "{text:?} {leading}"
+            );
+            assert!((cluster.width - (196.5 + 10.5) / 2.0).abs() < 1e-9);
+        }
+    }
+
+    #[test]
     fn distributed_rtl_line_expands_in_visual_order() {
         let ctx = VariableWidthContext::new(5.0, 2.0);
         let text = "אבגד";
@@ -12121,7 +12159,9 @@ mod tests {
             alignment: "distribute".into(),
             ..ParagraphStyle::default()
         };
-        for text in ["", "A", "ABCD"] {
+        // A lone character is centred instead (Word for Mac 16.114 distribute
+        // probe: `A`, `も`, and `あ` before a trailing space all sit midway).
+        for (text, expected) in [("", 0.0), ("A", (100.0 + 5.0) / 2.0), ("ABCD", 20.0)] {
             let limit = if text == "ABCD" { 10.0 } else { 100.0 };
             let lines =
                 wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, limit)
@@ -12131,7 +12171,7 @@ mod tests {
                 .flat_map(|line| &line.clusters)
                 .map(|c| c.width)
                 .sum();
-            assert_eq!(width, text.len() as f64 * 5.0);
+            assert_eq!(width, expected, "{text:?}");
         }
         let tabbed = "A\tBC";
         let plain = ParagraphStyle {
@@ -12497,6 +12537,12 @@ mod tests {
     fn mac_line_end_comma_hangs_or_squeezes_like_word() {
         let text = mac_squeeze_text(19, &[4, 9, 14, 19]);
         for (overflow, hang, squeeze_each) in [
+            // f32 page geometry leaves an exact fit ~1e-5 px over: no hang,
+            // and the half-em and full-capacity boundaries stay where Word
+            // puts them.
+            (1.5e-5, 0.0, 0.0),
+            (5.25 + 1.5e-5, 5.25, 0.0),
+            (15.75 + 1.5e-5, 0.0, 5.25),
             (0.25, 5.25, 0.0),
             (5.25, 5.25, 0.0),
             (5.5, 0.0, 5.5 / 3.0),
