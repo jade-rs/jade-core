@@ -4834,6 +4834,13 @@ pub struct EastAsianLineBreakingSettings {
     pub no_line_break_before: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub no_line_break_after: Vec<String>,
+    /// `no_line_break_before` is a Japanese custom set, which replaces the
+    /// default table (ECMA-376 §17.15.1.59) rather than extending it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub no_line_break_before_replaces_default: bool,
+    /// `no_line_break_after` is a Japanese custom set (ECMA-376 §17.15.1.58).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub no_line_break_after_replaces_default: bool,
     /// `w:compat/w:compatSetting[@w:name="compatibilityMode"]`: the Word
     /// version whose layout rules the document asks for (12 = Word 2007,
     /// 14 = Word 2010, 15 = Word 2013 and later). `None` when absent.
