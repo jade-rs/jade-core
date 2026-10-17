@@ -7720,6 +7720,10 @@ fn add_border_extents(
     let mut last_visible = 0.0;
     let mut first_visible = true;
     let mut previous_row_grows = false;
+    let spans = {
+        let row_refs: Vec<&[PreparedCell]> = prepared_rows.iter().map(Vec::as_slice).collect();
+        compute_vertical_merge_row_spans(&row_refs)
+    };
     for (index, ((row, cells), height)) in table
         .rows
         .iter()
@@ -7734,6 +7738,7 @@ fn add_border_extents(
                 height,
                 &mut first_visible,
                 &mut previous_row_grows,
+                spans.get(index).map(Vec::as_slice),
             );
         }
     }
@@ -7747,12 +7752,15 @@ fn row_grows_for_borders(row: &TableRow) -> bool {
     ) || row.height.is_none()
 }
 
+/// `row_spans` (from [`compute_vertical_merge_row_spans`]) keeps a
+/// `w:vMerge` owner spanning more rows from sizing this one.
 fn add_row_border_extents(
     row: &TableRow,
     cells: &mut [PreparedCell],
     height: &mut f64,
     first_visible: &mut bool,
     previous_row_grows: &mut bool,
+    row_spans: Option<&[usize]>,
 ) -> f64 {
     let grows = row_grows_for_borders(row);
     let bottom = cells
@@ -7776,13 +7784,15 @@ fn add_row_border_extents(
         // so those cells do not size it.
         let content = cells
             .iter()
-            .filter(|cell| {
+            .enumerate()
+            .filter(|(cell_index, cell)| {
                 !cell.skip_render
                     && !cell
                         .text_direction
                         .is_some_and(direction_requires_vertical_stack)
+                    && !row_spans.is_some_and(|spans| spans_merged_owner(spans, *cell_index))
             })
-            .map(|cell| cell.height)
+            .map(|(_, cell)| cell.height)
             .fold(0.0_f64, f64::max);
         *height = height.max(content + top + bottom);
         if top > 0.0 {
@@ -10363,6 +10373,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                 &mut upper.height,
                 &mut first_visible,
                 &mut previous_row_grows,
+                None,
             );
             total_height += upper.height - previous_height;
         }
@@ -10375,6 +10386,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             &mut last.height,
             &mut first_visible,
             &mut previous_row_grows,
+            None,
         );
         total_height += last.height - previous_height;
     }
@@ -14392,7 +14404,14 @@ mod tests {
             ..TableRow::default()
         };
         let mut height = 40.0;
-        add_row_border_extents(&exact, &mut exact_cells, &mut height, &mut true, &mut false);
+        add_row_border_extents(
+            &exact,
+            &mut exact_cells,
+            &mut height,
+            &mut true,
+            &mut false,
+            None,
+        );
         assert_eq!(height, 40.0);
         assert_eq!(exact_cells[0].page_top_inset, 4.0);
         assert!(split_prepared_row_for_available_height(
@@ -14626,6 +14645,22 @@ mod tests {
         assert_eq!(owners, vec![(0, 2, rows[0][1].height)]);
         assert!(spans_merged_owner(&spans[0], 1));
         assert!(!spans_merged_owner(&spans[0], 0));
+        // The border pass does not size the first row from the owner either.
+        let mut rows = rows;
+        rows[0][0].height = 20.0;
+        rows[1][0].height = 20.0;
+        rows[0][1].height = 60.0;
+        let table = Table {
+            rows: vec![TableRow::default(), TableRow::default()],
+            ..Table::default()
+        };
+        let owner_height = rows[0][1].height;
+        let mut heights = vec![rows[0][0].height, rows[1][0].height];
+        add_border_extents(&table, &mut rows, &[false, false], &mut heights);
+        assert!(
+            heights[0] < owner_height,
+            "{heights:?} owner {owner_height}"
+        );
     }
 
     #[test]
