@@ -245,8 +245,21 @@ where
         );
         #[cfg(feature = "opentype-math")]
         std::mem::swap(&mut measurer.math_fonts, &mut self.math_fonts);
+        // Only part of a final paragraph without keepNext has to fit (see
+        // `keep_next_tail_pending`); a group ending in keepNext keeps it all.
+        let tail = elements.len().checked_sub(1).filter(|&last| {
+            elements[last].as_paragraph().is_some_and(|paragraph| {
+                !paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.keep_next)
+                    .unwrap_or(false)
+            })
+        });
+        measurer.keep_next_tail_bottom = None;
         let result = (|| {
             for (offset, element) in elements.iter().enumerate() {
+                measurer.keep_next_tail_pending = Some(offset) == tail;
                 measurer.render_body_element(
                     element,
                     options,
@@ -257,7 +270,12 @@ where
                     section,
                 )?;
             }
-            Ok((measurer.current_y - start_y).max(0.0))
+            measurer.keep_next_tail_pending = false;
+            let bottom = measurer
+                .keep_next_tail_bottom
+                .take()
+                .unwrap_or(measurer.current_y);
+            Ok((bottom - start_y).max(0.0))
         })();
         std::mem::swap(
             &mut measurer.applied_run_style_cache,

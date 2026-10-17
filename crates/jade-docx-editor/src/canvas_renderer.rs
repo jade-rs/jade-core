@@ -3122,6 +3122,12 @@ where
     host: RenderHostSlot<HostPainter>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
+    /// Set while a keepNext group measurement lays out the group's final,
+    /// non-keepNext paragraph: only its first lines that may not be split
+    /// from the group count. `render_text_line` records their bottom in
+    /// `keep_next_tail_bottom` and clears the flag.
+    keep_next_tail_pending: bool,
+    keep_next_tail_bottom: Option<f64>,
     active_keep_next_group_end: Option<usize>,
     keep_next_group_surfaces: std::collections::BTreeMap<usize, usize>,
     #[cfg(feature = "opentype-math")]
@@ -7684,6 +7690,8 @@ where
             host: RenderHostSlot { value: host },
             keep_next_measurer: None,
             measuring_keep_next: false,
+            keep_next_tail_pending: false,
+            keep_next_tail_bottom: None,
             active_keep_next_group_end: None,
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
@@ -19001,6 +19009,24 @@ where
                 Vec::new()
             };
 
+        // The lines of a keepNext group's final paragraph that must share a
+        // page with the group: one when it may split after any line, two
+        // (or all of three or fewer) under widow control, all under keepLines.
+        let keep_next_tail_bands = (self.measuring_keep_next && self.keep_next_tail_pending)
+            .then(|| {
+                if keep_lines_enabled {
+                    band_count
+                } else if widow_control_enabled {
+                    if band_count <= 3 {
+                        band_count
+                    } else {
+                        2
+                    }
+                } else {
+                    1
+                }
+            })
+            .filter(|&required| required > 0);
         let mut placed_end = base_offset;
         // `(page, column, top, bottom)` of the previous line's band, for lines
         // that continue it on the far side of a `bothSides` float.
@@ -19304,6 +19330,13 @@ where
             self.current_y += line_box_height;
             if let Some((_, band_bottom)) = continued_band {
                 self.current_y = self.current_y.max(band_bottom);
+            }
+            if let Some(required) = keep_next_tail_bands {
+                let band_end = band_starts.get(required).copied().unwrap_or(lines.len());
+                if line_index + 1 == band_end && self.keep_next_tail_pending {
+                    self.keep_next_tail_pending = false;
+                    self.keep_next_tail_bottom = Some(self.current_y);
+                }
             }
             if self.rendering_page_footnotes {
                 if self.note_area_bottom.is_some() {
@@ -54065,6 +54098,74 @@ mod tests {
                 "measurement does not prepare editor-only marks {middle:?}"
             );
             assert_eq!(unbalanced_saves(&painter), 0);
+        }
+    }
+
+    /// Word keeps a keepNext chain with the part of the following paragraph
+    /// that may not be split from it: its first line when it may split after
+    /// any line, two lines (or all of a short one) under widow control, and
+    /// all of it under keepLines. scroll-offset-repro page 3 keeps `第９条`,
+    /// its keepNext lead-in and the first line of `①…` at the page foot.
+    #[test]
+    fn keep_next_group_needs_only_the_lines_its_last_paragraph_cannot_split() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, keep_lines, heading_page) in
+            [(false, false, 0), (true, false, 1), (false, true, 1)]
+        {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                ("filler", false),
+                ("first", true),
+                ("middle", true),
+                ("one two three four five six seven eight", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    keep_lines: Some(keep_lines && !keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            assert_eq!(paragraphs[4].lines.len(), 2);
+            let page = |paragraph: usize, line: usize| {
+                renderer.page_for_y(paragraphs[paragraph].lines[line].absolute_top)
+            };
+            let case = format!("widow={widow_control} keepLines={keep_lines}");
+            assert_eq!(page(2, 0), heading_page, "{case}");
+            assert_eq!(page(4, 0), heading_page, "{case}");
+            assert_eq!(page(4, 1), 1, "{case}");
         }
     }
 
