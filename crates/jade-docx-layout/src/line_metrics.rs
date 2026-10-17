@@ -285,6 +285,33 @@ pub fn word_automatic_note_separator_advance_px(
     (size_pt.is_finite() && size_pt > 0.0).then_some(f64::from(size_pt) * 96.0 / 72.0 * 0.5)
 }
 
+/// The face Word for Mac sets a numbering label's `w:suff="space"` in: the
+/// label's descriptor with its family replaced by Arial. Word for Mac 16.114
+/// makes that space 0.278 em of the label size (Arial's and Century's space)
+/// whatever face the label, the paragraph mark, the paragraph style, the
+/// following run or the document defaults name. `None` on Word for Windows,
+/// whose traces were fitted with the label's high-ANSI face.
+pub fn word_numbering_suffix_space_descriptor(label_descriptor: &str) -> Option<String> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    let mut offset = 0;
+    for token in label_descriptor.split_inclusive(char::is_whitespace) {
+        offset += token.len();
+        let trimmed = token.trim_end();
+        if trimmed
+            .strip_suffix("pt")
+            .is_some_and(|size| size.parse::<f32>().is_ok())
+        {
+            return Some(format!(
+                "{}Arial, 'Liberation Sans', sans-serif",
+                &label_descriptor[..offset]
+            ));
+        }
+    }
+    None
+}
+
 /// Whether `compressPunctuation` narrows East Asian punctuation inside a
 /// line. Word for Mac 16.113 keeps `、` before `地` and `」、（` at the full 10.5pt
 /// em; the narrowing stays for Word for Windows, whose traces it was fitted to.
@@ -2336,6 +2363,26 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_numbering_suffix_space_is_measured_in_arial_at_the_label_size() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("bold 14.00pt 'ＭＳ 明朝', 'MS Mincho', serif")
+                .as_deref(),
+            Some("bold 14.00pt Arial, 'Liberation Sans', sans-serif")
+        );
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace").as_deref(),
+            Some("10.50pt Arial, 'Liberation Sans', sans-serif")
+        );
+        assert_eq!(word_numbering_suffix_space_descriptor("Courier"), None);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace"),
+            None
+        );
+    }
+
     use super::*;
 
     #[test]
