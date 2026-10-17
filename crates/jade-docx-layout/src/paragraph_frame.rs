@@ -369,6 +369,8 @@ mod tests {
                     forbid_line_start: false,
                     forbid_line_end: false,
                     can_hang_line_end: false,
+                    auto_space_leading: 0.0,
+                    auto_space_trailing: 0.0,
                     layout: None,
                     inline_object: None,
                 })

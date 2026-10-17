@@ -927,6 +927,8 @@ pub struct GraphemeAdvance {
     pub glyph_width: f64,
     pub adjusted_glyph_width: f64,
     pub implicit_latin_gap: f64,
+    /// The auto spacing after the glyph, included in `glyph_box_width`.
+    pub implicit_latin_trailing_gap: f64,
     pub implicit_numeric_gap: f64,
     pub kerning_adjustment: f64,
     pub snap_leading: f64,
@@ -1210,6 +1212,7 @@ fn compute_grapheme_advance_with_ascii_width(
         glyph_width,
         adjusted_glyph_width,
         implicit_latin_gap,
+        implicit_latin_trailing_gap,
         implicit_numeric_gap,
         kerning_adjustment,
         snap_leading,
@@ -4311,6 +4314,10 @@ pub struct InlineCluster {
     /// Whether Word permits this punctuation character to extend past the
     /// right text extent for the parent run's East-Asian editing language.
     pub can_hang_line_end: bool,
+    /// Auto spacing (autoSpaceDE/DN) set before and after this cluster's
+    /// glyph, inside its width; Word for Mac narrows it to fit a line.
+    pub auto_space_leading: f64,
+    pub auto_space_trailing: f64,
     pub layout: Option<InlineClusterLayout>,
     pub inline_object: Option<InlineObject>,
 }
@@ -4537,6 +4544,8 @@ impl InlineCluster {
             forbid_line_start,
             forbid_line_end,
             can_hang_line_end: false,
+            auto_space_leading: 0.0,
+            auto_space_trailing: 0.0,
             layout: None,
             inline_object: None,
         }
@@ -4563,6 +4572,8 @@ impl InlineCluster {
             forbid_line_start,
             forbid_line_end,
             can_hang_line_end: false,
+            auto_space_leading: 0.0,
+            auto_space_trailing: 0.0,
             layout: Some(layout),
             inline_object: None,
         }
@@ -4579,6 +4590,8 @@ impl InlineCluster {
             forbid_line_start: false,
             forbid_line_end: false,
             can_hang_line_end: false,
+            auto_space_leading: 0.0,
+            auto_space_trailing: 0.0,
             layout: None,
             inline_object: None,
         }
@@ -4595,6 +4608,8 @@ impl InlineCluster {
             forbid_line_start: false,
             forbid_line_end: false,
             can_hang_line_end: false,
+            auto_space_leading: 0.0,
+            auto_space_trailing: 0.0,
             layout: None,
             inline_object: Some(object),
         }
@@ -5769,6 +5784,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
             )?;
             let glyph_total_width;
             let is_whitespace = grapheme.trim().is_empty();
+            let auto_space;
             let cluster_layout = loop {
                 let (font_slot, font_desc, font_desc_hash, font_desc_id) =
                     style.font_key_for_grapheme(grapheme, active_script);
@@ -5837,10 +5853,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         paragraph_style,
                     ) + f64::EPSILON
                         >= candidate_overflow;
+                let squeeze_punctuation = mac_punctuation_compression_enabled(paragraph_style);
+                let candidate_auto_space_leading =
+                    computed.advance.implicit_latin_gap + computed.advance.implicit_numeric_gap;
                 let fits_with_mac_punctuation_squeeze = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && !fits_with_justified_space_shrink
-                    && mac_punctuation_compression_enabled(paragraph_style)
-                    && mac_punctuation_squeeze_admits(
+                    && mac_squeeze_enabled(paragraph_style)
+                    && mac_squeeze_admits(
                         &current_line_clusters,
                         (
                             grapheme,
@@ -5849,8 +5868,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             computed.advance.adjusted_glyph_width,
                         ),
                         candidate_width,
+                        candidate_auto_space_leading,
                         candidate_overflow,
                         effective_available - current_width,
+                        squeeze_punctuation,
                     );
                 // A character that may not start a line stays at this line's
                 // end when it can hang there (`w:overflowPunct`) or, in a
@@ -5878,8 +5899,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             } else {
                                 LineBreakKind::Soft
                             });
-                        let squeeze = if mac_punctuation_compression_enabled(paragraph_style) {
-                            mac_punctuation_squeeze_capacity_with(
+                        let squeeze = if squeeze_punctuation {
+                            mac_squeeze_budget_with(
                                 &current_line_clusters,
                                 (
                                     grapheme,
@@ -5888,8 +5909,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                                     computed.advance.adjusted_glyph_width,
                                 ),
                                 candidate_width,
+                                candidate_auto_space_leading,
+                                true,
                             )
-                            .0
+                            .shrink
                         } else {
                             0.0
                         };
@@ -5990,6 +6013,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     run_style.properties.as_deref(),
                 )) * 96.0
                     / 72.0;
+                auto_space = (
+                    computed.advance.implicit_latin_gap + computed.advance.implicit_numeric_gap,
+                    computed.advance.implicit_latin_trailing_gap,
+                );
                 break InlineClusterLayout {
                     character_border_edges: 0,
                     script,
@@ -6047,6 +6074,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 paragraph_style.forbids_line_end(grapheme),
                 cluster_layout,
             );
+            (cluster.auto_space_leading, cluster.auto_space_trailing) = auto_space;
             cluster.can_hang_line_end = overflow_punctuation_set.is_some_and(|set| {
                 single_char(grapheme).is_some_and(|character| char_set_contains(set, character))
             });
@@ -6244,6 +6272,103 @@ fn punctuation_pair_blank(
     }
 }
 
+/// How far a line may run past its room and still count as fitting. Word
+/// measures in whole twips, so content that exactly fills a line fits there;
+/// jade carries page sizes, margins and indents as f32 points, which leaves
+/// such a line up to ~1e-4 px over. Far below a twip (0.067 px).
+const WRAP_FIT_TOLERANCE_PX: f64 = 1e-3;
+
+/// Word for Mac 16.114 squeeze probes: a justified line keeps the character
+/// that overflows it by `D` while `D / shrink <= E / stretch`, where `E` is
+/// the room the line would keep without it. `shrink` is what the line can
+/// give up — half an em per punctuation blank in `compressPunctuation`
+/// documents and half of each auto-spacing gap in any document — and
+/// `stretch` what it could take — this share of an em per gap between
+/// characters and [`MAC_AUTO_SPACE_STRETCH_SHARE`] of each auto-spacing gap.
+/// Without auto spacing this keeps a character while the reduction per
+/// half-em blank is at most 32 times the gap each character would gain.
+const MAC_INTER_CHARACTER_STRETCH_EM: f64 = 1.0 / 64.0;
+
+/// The share of an auto-spacing gap counted as its stretch (auto-space
+/// probes: 2.33pt for the 2.625pt gaps of 10.5pt MS Mincho).
+const MAC_AUTO_SPACE_STRETCH_SHARE: f64 = 8.0 / 9.0;
+
+/// What a line can give up to keep one more character, and what its
+/// auto-spacing gaps could stretch instead (see
+/// [`MAC_INTER_CHARACTER_STRETCH_EM`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct MacSqueezeBudget {
+    shrink: f64,
+    auto_space_stretch: f64,
+}
+
+impl MacSqueezeBudget {
+    fn add_pair(
+        &mut self,
+        left: &InlineCluster,
+        right: (&str, ScriptCategory, u64, f64),
+        right_width: f64,
+        right_auto_space_leading: f64,
+        punctuation: bool,
+    ) {
+        if punctuation {
+            if let Some(left_side) = punctuation_side(left) {
+                self.shrink += punctuation_pair_blank(left_side, right, right_width).0;
+            }
+        }
+        let auto_space = left.auto_space_trailing + right_auto_space_leading;
+        if auto_space > 0.0 {
+            self.shrink += auto_space * 0.5;
+            self.auto_space_stretch += auto_space * MAC_AUTO_SPACE_STRETCH_SHARE;
+        }
+    }
+}
+
+/// [`MacSqueezeBudget`] of the gaps between the characters of `clusters`;
+/// punctuation blanks count only when `punctuation` (compressPunctuation).
+fn mac_squeeze_budget(clusters: &[InlineCluster], punctuation: bool) -> MacSqueezeBudget {
+    let mut budget = MacSqueezeBudget::default();
+    for pair in clusters.windows(2) {
+        if let Some(right) = punctuation_side(&pair[1]) {
+            budget.add_pair(
+                &pair[0],
+                right,
+                pair[1].width,
+                pair[1].auto_space_leading,
+                punctuation,
+            );
+        } else {
+            let auto_space = pair[0].auto_space_trailing + pair[1].auto_space_leading;
+            if auto_space > 0.0 {
+                budget.shrink += auto_space * 0.5;
+                budget.auto_space_stretch += auto_space * MAC_AUTO_SPACE_STRETCH_SHARE;
+            }
+        }
+    }
+    budget
+}
+
+/// [`mac_squeeze_budget`] once `candidate` follows `clusters`.
+fn mac_squeeze_budget_with(
+    clusters: &[InlineCluster],
+    candidate: (&str, ScriptCategory, u64, f64),
+    candidate_width: f64,
+    candidate_auto_space_leading: f64,
+    punctuation: bool,
+) -> MacSqueezeBudget {
+    let mut budget = mac_squeeze_budget(clusters, punctuation);
+    if let Some(last) = clusters.last() {
+        budget.add_pair(
+            last,
+            candidate,
+            candidate_width,
+            candidate_auto_space_leading,
+            punctuation,
+        );
+    }
+    budget
+}
+
 fn punctuation_side(cluster: &InlineCluster) -> Option<(&str, ScriptCategory, u64, f64)> {
     cluster.layout.as_ref().map(|layout| {
         (
@@ -6255,56 +6380,17 @@ fn punctuation_side(cluster: &InlineCluster) -> Option<(&str, ScriptCategory, u6
     })
 }
 
-/// How far a line may run past its room and still count as fitting. Word
-/// measures in whole twips, so content that exactly fills a line fits there;
-/// jade carries page sizes, margins and indents as f32 points, which leaves
-/// such a line up to ~1e-4 px over. Far below a twip (0.067 px).
-const WRAP_FIT_TOLERANCE_PX: f64 = 1e-3;
-
-/// Word for Mac 16.114 squeeze probes: a justified `compressPunctuation`
-/// line keeps the character that overflows it while the reduction each
-/// half-em punctuation blank takes stays within this many times the gap each
-/// character would gain if the line ended before that character.
-const MAC_SQUEEZE_TO_EXPANSION_RATIO: f64 = 32.0;
-
-/// The punctuation blank `clusters` can give up between its characters, and
-/// how many half-em blanks that is.
-fn mac_punctuation_squeeze_capacity(clusters: &[InlineCluster]) -> (f64, f64) {
-    clusters.windows(2).fold((0.0, 0.0), |sum, pair| {
-        match (punctuation_side(&pair[0]), punctuation_side(&pair[1])) {
-            (Some(left), Some(right)) => {
-                let (width, count) = punctuation_pair_blank(left, right, pair[1].width);
-                (sum.0 + width, sum.1 + count)
-            }
-            _ => sum,
-        }
-    })
-}
-
-/// [`mac_punctuation_squeeze_capacity`] once `candidate` follows `clusters`.
-fn mac_punctuation_squeeze_capacity_with(
+/// Whether squeezing `clusters` (see [`MacSqueezeBudget`]) keeps a candidate
+/// that overflows by `overflow`, where `slack` is the room left without it.
+#[allow(clippy::too_many_arguments)]
+fn mac_squeeze_admits(
     clusters: &[InlineCluster],
     candidate: (&str, ScriptCategory, u64, f64),
     candidate_width: f64,
-) -> (f64, f64) {
-    let (mut capacity, mut blanks) = mac_punctuation_squeeze_capacity(clusters);
-    if let Some(last) = clusters.last().and_then(punctuation_side) {
-        let (width, count) = punctuation_pair_blank(last, candidate, candidate_width);
-        capacity += width;
-        blanks += count;
-    }
-    (capacity, blanks)
-}
-
-/// Whether narrowing the punctuation blanks of `clusters` (and the blank the
-/// candidate would form with the last of them) admits a candidate that
-/// overflows by `overflow`, where `slack` is the room left without it.
-fn mac_punctuation_squeeze_admits(
-    clusters: &[InlineCluster],
-    candidate: (&str, ScriptCategory, u64, f64),
-    candidate_width: f64,
+    candidate_auto_space_leading: f64,
     overflow: f64,
     slack: f64,
+    punctuation: bool,
 ) -> bool {
     let trailing_whitespace = clusters
         .iter()
@@ -6318,13 +6404,34 @@ fn mac_punctuation_squeeze_admits(
     if characters == 0 || slack <= 0.0 {
         return false;
     }
-    let (capacity, blanks) =
-        mac_punctuation_squeeze_capacity_with(clusters, candidate, candidate_width);
-    if blanks <= 0.0 || overflow > capacity + WRAP_FIT_TOLERANCE_PX {
+    let budget = mac_squeeze_budget_with(
+        clusters,
+        candidate,
+        candidate_width,
+        candidate_auto_space_leading,
+        punctuation,
+    );
+    if budget.shrink <= 0.0 || overflow > budget.shrink + WRAP_FIT_TOLERANCE_PX {
         return false;
     }
-    let gaps = (characters - 1) as f64;
-    overflow / blanks * gaps <= MAC_SQUEEZE_TO_EXPANSION_RATIO * slack + WRAP_FIT_TOLERANCE_PX
+    let em = clusters
+        .iter()
+        .filter_map(|cluster| cluster.layout.as_ref())
+        .filter(|layout| layout.script == ScriptCategory::EastAsia)
+        .map(|layout| layout.adjusted_glyph_width)
+        .chain((candidate.1 == ScriptCategory::EastAsia).then_some(candidate.3))
+        .fold(0.0_f64, f64::max);
+    let stretch =
+        (characters - 1) as f64 * em * MAC_INTER_CHARACTER_STRETCH_EM + budget.auto_space_stretch;
+    overflow * stretch <= slack * budget.shrink + WRAP_FIT_TOLERANCE_PX
+}
+
+/// Word for Mac squeezes justified lines (auto spacing in any document,
+/// punctuation in compressPunctuation ones, [`mac_punctuation_compression_enabled`]).
+fn mac_squeeze_enabled(style: &ParagraphStyle) -> bool {
+    style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && is_justified_alignment(&style.alignment)
+        && style.oracle_advance_px_by_text_offset.is_none()
 }
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
@@ -6361,16 +6468,23 @@ fn compress_mac_punctuation_on_completed_line(
     {
         return;
     }
-    let capacity: f64 = line
-        .clusters
-        .windows(2)
-        .map(|pair| punctuation_pair_blank_width(&pair[0], &pair[1]))
-        .sum();
+    let punctuation = mac_punctuation_compression_enabled(style);
+    let capacity = mac_squeeze_budget(&line.clusters, punctuation).shrink;
     // A final mark that may hang (`、`, `。`, `）`…) is handled the way Word for
     // Mac 16.114 sets it (squeeze probes, scroll-offset-repro): its blank half
     // hangs while that covers the overflow, otherwise the line's punctuation
     // takes the whole overflow, then the half hangs and the punctuation takes
     // the rest, and failing that the whole mark hangs.
+    let final_mark_hangs = style.allows_hanging_punctuation_at(line.break_kind)
+        && line
+            .clusters
+            .last()
+            .is_some_and(|last| last.can_hang_line_end);
+    // Hanging is only measured for compressPunctuation documents; elsewhere a
+    // line ending in hanging punctuation keeps its earlier treatment.
+    if !punctuation && final_mark_hangs {
+        return;
+    }
     let hang_unit = if style.allows_hanging_punctuation_at(line.break_kind) {
         line.clusters
             .last()
@@ -6416,14 +6530,42 @@ fn compress_mac_punctuation_on_completed_line(
     if capacity <= f64::EPSILON {
         return;
     }
-    let fraction = (remaining / capacity).min(1.0);
+    // Word narrows the punctuation first, every blank by the same share of
+    // what it can give, and only then the auto spacing (math.docx keeps the
+    // gaps around `8pt` while `、` and `。` narrow 4.58pt each).
+    let punctuation_capacity = if punctuation {
+        mac_squeeze_budget(&line.clusters, true).shrink
+            - mac_squeeze_budget(&line.clusters, false).shrink
+    } else {
+        0.0
+    };
+    let auto_space_capacity = capacity - punctuation_capacity;
+    let punctuation_fraction = if punctuation_capacity > f64::EPSILON {
+        (remaining / punctuation_capacity).min(1.0)
+    } else {
+        0.0
+    };
+    let left_over = (remaining - punctuation_capacity * punctuation_fraction).max(0.0);
+    let auto_space_fraction = if auto_space_capacity > f64::EPSILON {
+        (left_over / auto_space_capacity).min(1.0)
+    } else {
+        0.0
+    };
     for i in 1..line.clusters.len() {
-        let reduction =
-            punctuation_pair_blank_width(&line.clusters[i - 1], &line.clusters[i]) * fraction;
+        let blank = if punctuation {
+            punctuation_pair_blank_width(&line.clusters[i - 1], &line.clusters[i])
+        } else {
+            0.0
+        };
+        let auto_space =
+            line.clusters[i - 1].auto_space_trailing + line.clusters[i].auto_space_leading;
+        let reduction = blank * punctuation_fraction + auto_space * 0.5 * auto_space_fraction;
         if reduction > 0.0 {
             let cluster = &mut line.clusters[i];
             cluster.width -= reduction;
-            cluster.layout.as_mut().unwrap().leading_advance -= reduction;
+            if let Some(layout) = cluster.layout.as_mut() {
+                layout.leading_advance -= reduction;
+            }
         }
     }
 }
@@ -6434,7 +6576,7 @@ fn compress_mac_punctuation_on_completed_lines(
     style: &ParagraphStyle,
     base_available: f64,
 ) {
-    if !mac_punctuation_compression_enabled(style) {
+    if !mac_squeeze_enabled(style) {
         return;
     }
     for (index, line) in lines.iter_mut().enumerate() {
@@ -6512,7 +6654,7 @@ fn compress_justified_word_spaces_to_available_width<C: LineWrapContext>(
         return Ok(());
     }
 
-    let compress_punctuation = mac_punctuation_compression_enabled(paragraph_style);
+    let compress_punctuation = mac_squeeze_enabled(paragraph_style);
     let base_available = column_right_edge - paragraph_style.right_indent - base_x;
     for (line_index, line) in lines.iter_mut().enumerate() {
         let available = paragraph_style
@@ -6934,10 +7076,10 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         paragraph_style,
                     )
                     <= effective_available + WRAP_FIT_TOLERANCE_PX;
-            // A line the wrap loop admitted by narrowing its punctuation
-            // (`mac_punctuation_squeeze_admits`) is compressed afterwards.
+            // A line the wrap loop admitted by narrowing its punctuation or
+            // auto spacing (`mac_squeeze_admits`) is compressed afterwards.
             let fits_with_mac_punctuation_squeeze =
-                compressible_line && mac_punctuation_compression_enabled(paragraph_style) && {
+                compressible_line && mac_squeeze_enabled(paragraph_style) && {
                     let line = &lines[line_index];
                     let hang = if paragraph_style.allows_hanging_punctuation_at(line.break_kind) {
                         line.clusters
@@ -6949,7 +7091,11 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     };
                     width
                         - trailing_whitespace_width(&line.clusters)
-                        - mac_punctuation_squeeze_capacity(&line.clusters).0
+                        - mac_squeeze_budget(
+                            &line.clusters,
+                            mac_punctuation_compression_enabled(paragraph_style),
+                        )
+                        .shrink
                         - hang
                         <= effective_available + WRAP_FIT_TOLERANCE_PX
                 };
@@ -12530,6 +12676,146 @@ mod tests {
         assert!(first.ends_with("前"), "{first}");
         let total: f64 = lines[0].clusters.iter().map(|c| c.width).sum();
         assert!((total - 414.7).abs() < 1e-6, "{total}");
+    }
+
+    /// 10.5pt MS Mincho: kana 10.5pt, ASCII half width.
+    struct MinchoContext {
+        style: ResolvedRunStyle,
+    }
+
+    impl MinchoContext {
+        fn new() -> Self {
+            let descriptor = "10.50pt 'MS Mincho', serif";
+            Self {
+                style: ResolvedRunStyle::new(
+                    descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, false, None,
+                ),
+            }
+        }
+    }
+
+    impl LineWrapContext for MinchoContext {
+        type Error = ();
+
+        fn resolve_run_style(
+            &self,
+            _properties: Option<&RunProperties>,
+        ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+            Ok(Rc::new(self.style.clone()))
+        }
+
+        fn measure_text(&self, text: &str, _font_descriptor: &str) -> Result<f64, Self::Error> {
+            Ok(text
+                .chars()
+                .map(|ch| if ch.is_ascii() { 7.0 } else { 14.0 })
+                .sum())
+        }
+    }
+
+    // Word for Mac 16.114 auto-space probes (justified 10.5pt MS Mincho,
+    // compressPunctuation and doNotCompress alike): an overflowing kana is
+    // kept by narrowing the auto spacing around `AB` runs. Each case is the
+    // last kept and the first refused overflow, in points.
+    #[test]
+    fn mac_squeeze_narrows_auto_spacing_like_word() {
+        let px = |pt: f64| pt * 96.0 / 72.0;
+        let kana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+        for (k, runs, kept, refused) in [
+            (30, 1, 2.2, 2.3),
+            (10, 2, 3.3, 3.4),
+            (20, 3, 3.2, 3.3),
+            (20, 1, 2.6, 2.7),
+        ] {
+            let positions: Vec<usize> = (0..runs)
+                .map(|i| ((i + 1) * (k - 1) + runs / 2) / (runs + 1))
+                .collect();
+            let mut letters = kana.chars().cycle();
+            let mut text = String::new();
+            for unit in 1..k {
+                if positions.contains(&unit) {
+                    text.push_str("AB");
+                } else {
+                    text.push(letters.next().unwrap());
+                }
+            }
+            let head_chars = text.chars().count();
+            let natural_pt = text
+                .chars()
+                .map(|ch| if ch.is_ascii() { 5.25 } else { 10.5 })
+                .sum::<f64>()
+                + 10.5
+                + runs as f64 * 2.0 * 2.625;
+            text.extend(letters.by_ref().take(15));
+            for compress in [true, false] {
+                let mut style = mac_punctuation_test_style();
+                style.east_asian_rules.character_spacing_control = Some(
+                    if compress {
+                        "compressPunctuation"
+                    } else {
+                        "doNotCompress"
+                    }
+                    .into(),
+                );
+                let first = |overflow: f64| {
+                    wrap_text_into_lines(
+                        &MinchoContext::new(),
+                        &text,
+                        &[make_run(&text)],
+                        0.0,
+                        &style,
+                        0,
+                        px(natural_pt - overflow),
+                    )
+                    .unwrap()[0]
+                        .clusters
+                        .iter()
+                        .filter(|c| !c.is_whitespace)
+                        .count()
+                };
+                let case = format!("k={k} runs={runs} compress={compress}");
+                assert_eq!(first(kept), head_chars + 1, "{case} keeps at {kept}");
+                assert_eq!(first(refused), head_chars, "{case} refuses at {refused}");
+            }
+        }
+    }
+
+    #[test]
+    fn mac_squeeze_narrows_punctuation_before_auto_spacing() {
+        // math.docx: Word narrows `、` and `。` 4.58pt each to fit the line and
+        // leaves the auto spacing around `8pt` alone.
+        let text = "後、ホームタブ。下の数式は8ptに変更した場合";
+        let ctx = MinchoContext::new();
+        let style = mac_punctuation_test_style();
+        let natural = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 2000.0)
+            .unwrap()[0]
+            .clusters
+            .iter()
+            .map(|c| c.width)
+            .sum::<f64>();
+        let squeeze = 9.16 * 96.0 / 72.0;
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &style,
+            0,
+            natural - squeeze,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 1);
+        let digit = lines[0].clusters.iter().find(|c| c.text == "8").unwrap();
+        let after = lines[0].clusters.iter().find(|c| c.text == "に").unwrap();
+        assert!(digit.auto_space_leading > 0.0);
+        assert!(
+            (digit.layout.as_ref().unwrap().leading_advance - digit.auto_space_leading).abs()
+                < 1e-9,
+            "auto spacing before `8` stays"
+        );
+        assert!(
+            after.layout.as_ref().unwrap().leading_advance >= -1e-9,
+            "and after `t`"
+        );
     }
 
     #[test]
