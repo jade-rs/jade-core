@@ -604,7 +604,8 @@ impl ParagraphStyle {
         if !custom.is_empty() && custom.iter().any(|entry| entry == text) {
             return true;
         }
-        single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c))
+        !self.east_asian_rules.no_line_break_before_replaces_default
+            && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c))
     }
 
     pub fn forbids_line_end(&self, text: &str) -> bool {
@@ -615,7 +616,8 @@ impl ParagraphStyle {
         if !custom.is_empty() && custom.iter().any(|entry| entry == text) {
             return true;
         }
-        single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_AFTER.contains(&c))
+        !self.east_asian_rules.no_line_break_after_replaces_default
+            && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_AFTER.contains(&c))
     }
 }
 
@@ -717,6 +719,10 @@ pub struct EastAsianLineBreakingRules {
     pub character_spacing_control: Option<String>,
     pub no_line_break_before: Vec<String>,
     pub no_line_break_after: Vec<String>,
+    /// The custom sets above replace the default tables instead of adding to
+    /// them (a Japanese `w:noLineBreaksBefore`/`After`, ECMA-376 §17.15.1.58-59).
+    pub no_line_break_before_replaces_default: bool,
+    pub no_line_break_after_replaces_default: bool,
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
     pub compatibility_mode: Option<u32>,
@@ -750,6 +756,8 @@ impl EastAsianLineBreakingRules {
             character_spacing_control: settings.character_spacing_control.clone(),
             no_line_break_before: settings.no_line_break_before.clone(),
             no_line_break_after: settings.no_line_break_after.clone(),
+            no_line_break_before_replaces_default: settings.no_line_break_before_replaces_default,
+            no_line_break_after_replaces_default: settings.no_line_break_after_replaces_default,
             compatibility_mode: settings.compatibility_mode,
         }
     }
@@ -794,9 +802,12 @@ pub fn merge_east_asian_rules(
     }
     if !settings.no_line_break_before.is_empty() {
         merged.no_line_break_before = settings.no_line_break_before.clone();
+        merged.no_line_break_before_replaces_default =
+            settings.no_line_break_before_replaces_default;
     }
     if !settings.no_line_break_after.is_empty() {
         merged.no_line_break_after = settings.no_line_break_after.clone();
+        merged.no_line_break_after_replaces_default = settings.no_line_break_after_replaces_default;
     }
     if settings.compatibility_mode.is_some() {
         merged.compatibility_mode = settings.compatibility_mode;
@@ -7987,6 +7998,37 @@ mod float_exclusion_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ECMA-376 §17.15.1.58-59: a Japanese custom set replaces the default
+    /// table; a custom set for another language only adds to it (jlsi/jade#467).
+    #[test]
+    fn japanese_custom_kinsoku_sets_replace_the_default_tables() {
+        let style = |replaces_default: bool| ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                no_line_break_before: vec!["、".into(), "々".into()],
+                no_line_break_after: vec!["「".into()],
+                no_line_break_before_replaces_default: replaces_default,
+                no_line_break_after_replaces_default: replaces_default,
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+
+        let replacing = style(true);
+        assert!(replacing.forbids_line_start("、"));
+        assert!(replacing.forbids_line_start("々"));
+        assert!(!replacing.forbids_line_start("。"));
+        assert!(!replacing.forbids_line_start("ッ"));
+        assert!(replacing.forbids_line_end("「"));
+        assert!(!replacing.forbids_line_end("（"));
+
+        let extending = style(false);
+        assert!(extending.forbids_line_start("、"));
+        assert!(extending.forbids_line_start("。"));
+        assert!(extending.forbids_line_start("ッ"));
+        assert!(extending.forbids_line_end("（"));
+    }
 
     #[test]
     fn indent_char_units_supersede_twips_values() {
