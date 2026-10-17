@@ -32,9 +32,8 @@ use jade_docx_layout::line_metrics::{
     collapsed_spacing_before, doc_grid_has_active_char_grid, doc_grid_has_active_line_grid,
     resolve_effective_snap_to_grid, resolve_line_height_points_with_default_multiplier,
     resolve_widow_orphan_decision, run_font_slots, word_east_asian_fe_font_size_floor,
-    word_east_asian_font_line_box_applies, word_east_asian_font_metrics_apply,
-    word_empty_paragraph_line_height_pt, word_face_line_height_pt,
-    word_font_lines_affect_line_height, word_grid_line_centres_text,
+    word_east_asian_font_line_box_applies, word_empty_paragraph_line_height_pt,
+    word_face_line_height_pt, word_font_lines_affect_line_height, word_grid_line_centres_text,
     word_paragraph_between_border_extent_pt, word_paragraph_border_extent_pt,
     word_paragraphs_share_border_box, word_run_border_extent_pt,
     word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
@@ -14800,13 +14799,18 @@ where
             self.paragraph_east_asian_rules(paragraph.properties.as_ref(), paragraph);
         paragraph_style.enable_line_break_rules =
             paragraph_style.east_asian_rules.use_east_asian_layout;
-        paragraph_style.word_east_asian_font_line_box = word_east_asian_font_metrics_apply(
-            paragraph
-                .properties
-                .as_ref()
-                .and_then(|props| props.spacing.as_ref()),
-            self.document_east_asian_rules.use_east_asian_layout,
-        );
+        paragraph_style.word_east_asian_font_line_box =
+            jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply_on_grid(
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.spacing.as_ref()),
+                self.document_east_asian_rules.use_east_asian_layout,
+                word_grid_line_centres_text(
+                    self.resolve_paragraph_snap_to_grid(paragraph),
+                    self.current_doc_grid.as_ref(),
+                ),
+            );
         if paragraph_style
             .east_asian_rules
             .character_spacing_control
@@ -17978,9 +17982,10 @@ where
         let word_fonts_affect_height =
             word_font_lines_affect_line_height(word_font_line_box, spacing_ref, snap_to_grid);
         let word_grid_line_box = word_grid_line_centres_text(snap_to_grid, current_doc_grid)
-            && word_east_asian_font_metrics_apply(
+            && jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply_on_grid(
                 spacing_ref,
                 self.document_east_asian_rules.use_east_asian_layout,
+                true,
             );
         let (east_asian_line_pt, single_line_pt) = if word_fonts_affect_height || word_grid_line_box
         {
@@ -19279,7 +19284,12 @@ where
             }
             let content_height = (max_bottom_offset - min_top_offset).max(1.0);
             let line_box_height = line_height.max(content_height);
-            let top_leading = (line_height - content_height).max(0.0) * top_leading_share;
+            // An atLeast line's extra over the auto grid line sits above it.
+            let extra_above = paragraph_style
+                .word_grid_line_sizing
+                .map_or(0.0, |grid| grid.extra_above_px(Some(content_height)));
+            let top_leading = extra_above
+                + (line_height - extra_above - content_height).max(0.0) * top_leading_share;
             // jade-docx-layout planned this line on the band of the previous
             // one (text continues past a `bothSides` float): reuse its top.
             let continued_band = float_band

@@ -3,10 +3,10 @@ use crate::line_metrics::{
     doc_grid_has_active_char_grid, doc_grid_has_active_line_grid, resolve_effective_snap_to_grid,
     resolve_line_height_points_with_default_multiplier, resolve_widow_orphan_decision,
     text_font_slots, word_east_asian_fe_font_size_floor, word_east_asian_font_line_box_applies,
-    word_east_asian_font_line_height_pt, word_east_asian_font_metrics_apply,
-    word_grid_line_centres_text, word_run_border_extent_pt, word_run_vertical_extent_pt,
-    word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
-    WidowOrphanDecision, WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
+    word_east_asian_font_line_height_pt, word_grid_line_centres_text, word_run_border_extent_pt,
+    word_run_vertical_extent_pt, word_sizes_east_asian_lines_from_faces,
+    word_tallest_single_line_height_pt, WidowOrphanDecision,
+    WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
 };
 use crate::line_wrap::{
     apply_paragraph_indent_with_char_unit, layout_text_vertically, merge_east_asian_rules,
@@ -1005,13 +1005,15 @@ fn build_paragraph_input<C: LineWrapContext>(
     if paragraph_style.alignment.is_empty() && paragraph_style.bidi {
         paragraph_style.alignment = "right".to_string();
     }
-    paragraph_style.word_east_asian_font_line_box = word_east_asian_font_metrics_apply(
-        paragraph
-            .properties
-            .as_ref()
-            .and_then(|props| props.spacing.as_ref()),
-        document.east_asian_line_breaking.use_east_asian_layout,
-    );
+    paragraph_style.word_east_asian_font_line_box =
+        crate::line_metrics::word_east_asian_font_metrics_apply_on_grid(
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|props| props.spacing.as_ref()),
+            document.east_asian_line_breaking.use_east_asian_layout,
+            crate::line_metrics::word_grid_line_centres_text(snap_to_grid, doc_grid),
+        );
     paragraph_style.word_grid_line_sizing = crate::line_metrics::WordGridLineSizing::new(
         paragraph
             .properties
