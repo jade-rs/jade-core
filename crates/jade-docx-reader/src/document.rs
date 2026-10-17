@@ -63,6 +63,10 @@ pub struct Document {
     /// hanging indent.
     #[serde(default)]
     pub no_tab_hanging_indent: bool,
+    /// `w:adjustLineHeightInTable`: applies the section's line grid pitch to
+    /// lines in table cells. Absent, table cells ignore the line grid.
+    #[serde(default)]
+    pub adjust_line_height_in_table: bool,
     /// Effective `w:docDefaults/w:rPrDefault/w:rPr/w:sz` font size in points.
     /// Empty paragraphs need this value even though they contain no run to
     /// carry the materialized style cascade.

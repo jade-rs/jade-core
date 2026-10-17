@@ -1720,9 +1720,23 @@ where
         // a fixed table line would make an empty 10.5pt row taller than the
         // body line Word draws it as. Resolve before the table painter state
         // is configured, since the prepass may activate fonts on the host.
-        let empty_paragraph_line_height =
-            points_to_px(self.resolve_empty_paragraph_line_height_points()?);
-        let paragraph_line_heights = self.collect_table_paragraph_line_heights(table)?;
+        // Without `w:adjustLineHeightInTable` the section's line grid pitch
+        // does not reach cell lines (ECMA-376 §17.15.3.1), so the prepass and
+        // the cell layout below both see the grid without its line pitch.
+        let table_doc_grid = jade_docx_layout::line_metrics::doc_grid_for_table_cells(
+            self.current_doc_grid.as_ref(),
+            self.document_adjust_line_height_in_table,
+        );
+        let section_doc_grid =
+            std::mem::replace(&mut self.current_doc_grid, table_doc_grid.clone());
+        let prepass = self
+            .resolve_empty_paragraph_line_height_points()
+            .and_then(|empty| {
+                self.collect_table_paragraph_line_heights(table)
+                    .map(|heights| (points_to_px(empty), heights))
+            });
+        self.current_doc_grid = section_doc_grid;
+        let (empty_paragraph_line_height, paragraph_line_heights) = prepass?;
         let paragraph_east_asian_rules = self.collect_table_paragraph_east_asian_rules(table);
         let line_height = empty_paragraph_line_height;
 
@@ -1773,7 +1787,7 @@ where
             render_changes: options.render_changes,
             render_original: options.render_original,
             note_markers,
-            doc_grid: self.current_doc_grid.clone(),
+            doc_grid: table_doc_grid,
             styles_part: self.styles_part.clone(),
             document_snap_to_grid_default: self.document_snap_to_grid_default,
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
