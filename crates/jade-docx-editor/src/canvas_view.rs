@@ -6869,16 +6869,12 @@ impl OffscreenDocumentView {
             // worker the caret page's full canvas is valid after this edit render
             // so it can skip the redundant bitmap-fetch full repaint. `null` when
             // the render did not fully paint the caret page.
-            // A completed-pagination edit may stop immediately after proving
-            // paragraph geometry stable. Do not advertise that retained band
-            // canvas as a reusable full-page source: a following on-demand
-            // repaint is the pixel oracle, while unchanged non-caret pages can
-            // advance their generation without fetching.
-            match (
-                renderer_ref.last_completed_pagination_edit_preserved(),
-                renderer_ref.last_edit_full_page_valid(),
-            ) {
-                (true, _) | (_, None) => {
+            // A completed-pagination edit that proves paragraph geometry stable
+            // stops right after the edited paragraph, exactly like the lazy
+            // stable edit: the band paints over the page's retained pixels, so
+            // the caret page is as valid as any other band render.
+            match renderer_ref.last_edit_full_page_valid() {
+                None => {
                     Reflect::set(
                         &result,
                         &JsValue::from_str("editRenderedPageIndex"),
@@ -6890,7 +6886,7 @@ impl OffscreenDocumentView {
                         &JsValue::NULL,
                     )?;
                 }
-                (false, Some((page0, kind))) => {
+                Some((page0, kind)) => {
                     Reflect::set(
                         &result,
                         &JsValue::from_str("editRenderedPageIndex"),
