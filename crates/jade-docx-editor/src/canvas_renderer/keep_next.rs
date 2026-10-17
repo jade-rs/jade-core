@@ -259,10 +259,12 @@ where
         measurer.keep_next_tail_bottom = None;
         let result = (|| {
             for (offset, element) in elements.iter().enumerate() {
-                // From the second member on, the group needs only the lines
-                // of the first member that cannot be split from it (see
-                // `keep_next_tail_pending`); the first member stays whole.
-                measurer.keep_next_tail_pending = (offset > 0 && element.as_paragraph().is_some())
+                // The group needs only the lines of its first member that may
+                // split that cannot be split from what precedes them (see
+                // `keep_next_tail_pending`).
+                measurer.keep_next_tail_pending = element
+                    .as_paragraph()
+                    .is_some()
                     .then_some(Some(offset) == tail);
                 measurer.render_body_element(
                     element,
