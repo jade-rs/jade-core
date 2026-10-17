@@ -27873,10 +27873,29 @@ where
         // from the shared layout walk, including grid pitch and tracking.
         let mut suffix_style = style.clone();
         let mut resolved = (*style.resolved).clone();
-        resolved.font_descriptor_latin_ascii = Rc::clone(&resolved.font_descriptor_latin_hansi);
-        resolved.font_descriptor_latin_ascii_hash = resolved.font_descriptor_latin_hansi_hash;
-        resolved.font_descriptor_latin_ascii_id = resolved.font_descriptor_latin_hansi_id;
-        resolved.font_hint = None;
+        if let Some(descriptor) =
+            jade_docx_layout::line_metrics::word_numbering_suffix_space_descriptor(
+                &resolved.font_descriptor_latin_hansi,
+            )
+        {
+            // Word for Mac: an Arial-width space whatever the label's faces.
+            let descriptor: Rc<str> = Rc::from(descriptor);
+            resolved = jade_docx_layout::font_resolver::ResolvedRunStyle::new(
+                Rc::clone(&descriptor),
+                descriptor,
+                Rc::clone(&resolved.font_descriptor_east_asia),
+                Rc::clone(&resolved.font_descriptor_complex),
+                resolved.letter_spacing_px,
+                resolved.text_scale_x,
+                resolved.enable_pair_kerning,
+                None,
+            );
+        } else {
+            resolved.font_descriptor_latin_ascii = Rc::clone(&resolved.font_descriptor_latin_hansi);
+            resolved.font_descriptor_latin_ascii_hash = resolved.font_descriptor_latin_hansi_hash;
+            resolved.font_descriptor_latin_ascii_id = resolved.font_descriptor_latin_hansi_id;
+            resolved.font_hint = None;
+        }
         suffix_style.resolved = Rc::new(resolved);
         let suffix_segment = TextSegment {
             text: " ".into(),
