@@ -19366,7 +19366,15 @@ where
                 }
                 placed_end = line_end;
             }
-            self.ensure_space(line_box_height)?;
+            // Word for Mac centres a grid line's text in its pitches and keeps
+            // the line while the text clears the page foot; only the padding
+            // below it may cross.
+            let fit_height = if paragraph_style.word_grid_line_sizing.is_some() {
+                (top_leading + content_height).min(line_box_height)
+            } else {
+                line_box_height
+            };
+            self.ensure_space(fit_height)?;
             // A taller far-side segment that no longer fits moved to a new
             // page or column: it starts there like any line, and the old
             // band's bottom must not be applied to the new page.
@@ -54230,6 +54238,76 @@ mod tests {
                 .absolute_top
         };
         assert!(page_top(1) > page_top(0));
+    }
+
+    /// Word for Mac centres a line's text in the grid pitches it takes, and
+    /// keeps the line on the page while its text clears the page foot: only
+    /// the padding below the text may cross it (scroll-offset-repro keeps a
+    /// 14pt chapter heading, two 18pt pitches, 8.4pt over the foot).
+    #[test]
+    fn mac_grid_line_stays_while_only_its_padding_crosses_the_page_foot() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::PageSettings;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let paragraph = |text: &str, size: f32| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_family: Some("MS Mincho".into()),
+                font_size: Some(size),
+                ..Default::default()
+            });
+            paragraph.properties = Some(ParagraphProperties {
+                widow_control: Some(false),
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(paragraph)
+        };
+        let heading_page = |body_height: f32| {
+            let settings = PageSettings {
+                width: Some(300.0),
+                height: Some(400.0),
+                margin_top: Some(20.0),
+                margin_bottom: Some(400.0 - 20.0 - body_height),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![
+                        paragraph("本文", 10.5),
+                        paragraph("本文", 10.5),
+                        paragraph("本文", 10.5),
+                        paragraph("第七章", 14.0),
+                    ],
+                }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    doc_grid: Some(DocGrid {
+                        grid_type: Some("lines".into()),
+                        line_pitch: Some(18.0),
+                        char_space: None,
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            renderer.page_for_y(paragraphs[3].lines[0].absolute_top)
+        };
+        // Three 18pt lines, then the heading's 36pt line from 54pt: its 14pt
+        // text sits 11pt down, ending at 79pt, and its box at 90pt.
+        let stays = heading_page(85.0);
+        let moves = heading_page(75.0);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(stays, 0, "text clears the 85pt foot");
+        assert_eq!(moves, 1, "text crosses the 75pt foot");
     }
 
     /// Word keeps a keepNext chain with the part of the following paragraph
