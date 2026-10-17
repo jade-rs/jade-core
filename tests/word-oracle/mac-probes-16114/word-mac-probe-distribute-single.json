@@ -1,0 +1,202 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "c026d03f510c5485ad260675a3c7d64a61d5688976e94e00054029f73d9d38db",
+ "pdf_sha256": "fff45a7ad8140eda6d5c2b4050bd5e0c547b6ecc9615357a15176b33ba1d612a",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 69.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 293.769,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "A"
+    },
+    {
+     "baseline_pt": 93.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 193.769,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "A"
+    },
+    {
+     "baseline_pt": 117.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 84.96,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 502.577,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "AB"
+    },
+    {
+     "baseline_pt": 141.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 84.96,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 302.577,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "AB"
+    },
+    {
+     "baseline_pt": 165.36,
+     "characters": [
+      {
+       "text": "も",
+       "x_pt": 292.31,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "も"
+    },
+    {
+     "baseline_pt": 189.36,
+     "characters": [
+      {
+       "text": "も",
+       "x_pt": 192.31,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "も"
+    },
+    {
+     "baseline_pt": 213.36,
+     "characters": [
+      {
+       "text": "も",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 499.66,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "もも"
+    },
+    {
+     "baseline_pt": 237.36,
+     "characters": [
+      {
+       "text": "も",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 299.66,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "もも"
+    },
+    {
+     "baseline_pt": 261.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 294.058,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "A"
+    },
+    {
+     "baseline_pt": 285.84,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 194.058,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "A"
+    },
+    {
+     "baseline_pt": 309.36,
+     "characters": [
+      {
+       "text": "あ",
+       "x_pt": 292.31,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "あ"
+    },
+    {
+     "baseline_pt": 333.36,
+     "characters": [
+      {
+       "text": "あ",
+       "x_pt": 192.31,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "あ"
+    }
+   ]
+  }
+ ]
+}
