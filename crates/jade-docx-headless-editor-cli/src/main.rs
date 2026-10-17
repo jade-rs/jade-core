@@ -1,15 +1,10 @@
 use futures::executor::block_on;
 use jade_docx_headless_api::{
-    CollaborativeDroppedMessage, CollaborativeEditRequest, CollaborativeRejectedCommand,
-    CollaborativeSessionTracker, HeadlessApplyAndQueryRequest, HeadlessEditRequest,
-    HeadlessQueryRequest,
+    HeadlessApplyAndQueryRequest, HeadlessEditRequest, HeadlessQueryRequest,
 };
 use jade_docx_headless_editor::{
-    apply_collaborative_operations_with_tracker_output, apply_headless_commands,
-    apply_headless_commands_and_execute_queries,
+    apply_headless_commands, apply_headless_commands_and_execute_queries,
     apply_headless_commands_and_execute_queries_with_diff, execute_headless_queries,
-    project_headless_commands_to_collaborative, stamp_collaborative_request_with_clock,
-    CollaborativeClientClock,
 };
 use jade_docx_layout::font_measurer::{
     FontdueLineWrapContext, FontdueMeasurer, RegisteredFontStyle,
@@ -45,18 +40,6 @@ enum CliArgs {
         input: PathBuf,
         output: PathBuf,
         commands: PathBuf,
-    },
-    CollaborativeEdit {
-        input: PathBuf,
-        output: PathBuf,
-        request: PathBuf,
-        result_output: Option<PathBuf>,
-    },
-    CollaborativeProject {
-        commands: PathBuf,
-        output: Option<PathBuf>,
-        client_id: Option<String>,
-        base_revision: Option<String>,
     },
     HeadlessQuery {
         input: PathBuf,
@@ -99,29 +82,6 @@ enum CliArgs {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct CollaborativeCliRequest {
-    request: CollaborativeEditRequest,
-    #[serde(default)]
-    tracker: CollaborativeSessionTracker,
-    #[serde(default)]
-    next_revision: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct CollaborativeCliResult {
-    dropped: Vec<CollaborativeDroppedMessage>,
-    applied_op_ids: Vec<String>,
-    applied_revision: Option<String>,
-    tracker: CollaborativeSessionTracker,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct CollaborativeProjectResult {
-    request: CollaborativeEditRequest,
-    rejected: Vec<CollaborativeRejectedCommand>,
-}
-
 fn main() {
     if let Err(err) = run() {
         eprintln!("{err}");
@@ -138,18 +98,6 @@ fn run() -> Result<(), String> {
             output,
             commands,
         } => run_headless_edit(input, output, commands),
-        CliArgs::CollaborativeEdit {
-            input,
-            output,
-            request,
-            result_output,
-        } => run_collaborative_edit(input, output, request, result_output),
-        CliArgs::CollaborativeProject {
-            commands,
-            output,
-            client_id,
-            base_revision,
-        } => run_collaborative_project(commands, output, client_id, base_revision),
         CliArgs::HeadlessQuery {
             input,
             queries,
@@ -215,116 +163,6 @@ fn run_headless_edit(input: PathBuf, output: PathBuf, commands: PathBuf) -> Resu
         input_docx_path.display(),
         output.display()
     );
-
-    Ok(())
-}
-
-fn run_collaborative_edit(
-    input: PathBuf,
-    output: PathBuf,
-    request: PathBuf,
-    result_output: Option<PathBuf>,
-) -> Result<(), String> {
-    let input_docx_path = input.clone();
-    let input = std::fs::read(&input)
-        .map_err(|err| format!("failed to read input docx {}: {err}", input.display()))?;
-    let request_json = std::fs::read_to_string(&request)
-        .map_err(|err| format!("failed to read request json {}: {err}", request.display()))?;
-
-    let cli_request: CollaborativeCliRequest =
-        serde_json::from_str(&request_json).map_err(|err| {
-            format!(
-                "failed to parse collaborative request {}: {err}",
-                request.display()
-            )
-        })?;
-
-    let mut tracker = cli_request.tracker;
-    let response = apply_collaborative_operations_with_tracker_output(
-        &input,
-        &cli_request.request,
-        &mut tracker,
-        cli_request.next_revision,
-    )
-    .map_err(|err| format!("collaborative edit failed: {err}"))?;
-
-    std::fs::write(&output, &response.output_docx)
-        .map_err(|err| format!("failed to write output docx {}: {err}", output.display()))?;
-
-    let result = CollaborativeCliResult {
-        dropped: response.dropped,
-        applied_op_ids: response.applied_op_ids,
-        applied_revision: response.applied_revision,
-        tracker,
-    };
-    let output_json = serde_json::to_string_pretty(&result)
-        .map_err(|err| format!("failed to serialize collaborative response: {err}"))?;
-    if let Some(output_path) = result_output {
-        std::fs::write(&output_path, &output_json).map_err(|err| {
-            format!(
-                "failed to write collaborative result {}: {err}",
-                output_path.display()
-            )
-        })?;
-        println!(
-            "collaborative edit completed: {} -> {}, {}",
-            input_docx_path.display(),
-            output.display(),
-            output_path.display()
-        );
-    } else {
-        println!("{output_json}");
-        println!(
-            "collaborative edit completed: {} -> {}",
-            input_docx_path.display(),
-            output.display(),
-        );
-    }
-
-    Ok(())
-}
-
-fn run_collaborative_project(
-    commands: PathBuf,
-    output: Option<PathBuf>,
-    client_id: Option<String>,
-    base_revision: Option<String>,
-) -> Result<(), String> {
-    let commands_json = std::fs::read_to_string(&commands)
-        .map_err(|err| format!("failed to read command json {}: {err}", commands.display()))?;
-    let request: HeadlessEditRequest = serde_json::from_str(&commands_json)
-        .map_err(|err| format!("failed to parse command json {}: {err}", commands.display()))?;
-
-    let projection = project_headless_commands_to_collaborative(&request);
-    let projected_request = if let Some(client_id) = client_id {
-        let mut clock = CollaborativeClientClock::new(client_id);
-        stamp_collaborative_request_with_clock(&projection.request, &mut clock, base_revision)
-    } else {
-        projection.request
-    };
-
-    let result = CollaborativeProjectResult {
-        request: projected_request,
-        rejected: projection.rejected,
-    };
-    let output_json = serde_json::to_string_pretty(&result)
-        .map_err(|err| format!("failed to serialize collaborative projection: {err}"))?;
-
-    if let Some(output_path) = output {
-        std::fs::write(&output_path, &output_json).map_err(|err| {
-            format!(
-                "failed to write collaborative projection {}: {err}",
-                output_path.display()
-            )
-        })?;
-        println!(
-            "collaborative project completed: {} -> {}",
-            commands.display(),
-            output_path.display()
-        );
-    } else {
-        println!("{output_json}");
-    }
 
     Ok(())
 }
@@ -2162,8 +2000,6 @@ where
 
     match mode.as_str() {
         "headless-edit" => parse_headless_edit_args(args),
-        "collaborative-edit" => parse_collaborative_edit_args(args),
-        "collaborative-project" => parse_collaborative_project_args(args),
         "headless-query" => parse_headless_query_args(args),
         "headless-edit-query" => parse_headless_edit_query_args(args),
         "headless-edit-query-diff" => parse_headless_edit_query_diff_args(args),
@@ -2213,104 +2049,6 @@ where
         input: input.ok_or_else(|| format!("missing --input\n{}", usage()))?,
         output: output.ok_or_else(|| format!("missing --output\n{}", usage()))?,
         commands: commands.ok_or_else(|| format!("missing --commands\n{}", usage()))?,
-    })
-}
-
-fn parse_collaborative_edit_args<I>(mut args: I) -> Result<CliArgs, String>
-where
-    I: Iterator<Item = String>,
-{
-    let mut input: Option<PathBuf> = None;
-    let mut output: Option<PathBuf> = None;
-    let mut request: Option<PathBuf> = None;
-    let mut result_output: Option<PathBuf> = None;
-
-    while let Some(flag) = args.next() {
-        match flag.as_str() {
-            "--input" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--input requires a file path".to_string())?;
-                input = Some(PathBuf::from(value));
-            }
-            "--output" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--output requires a file path".to_string())?;
-                output = Some(PathBuf::from(value));
-            }
-            "--request" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--request requires a file path".to_string())?;
-                request = Some(PathBuf::from(value));
-            }
-            "--result-output" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--result-output requires a file path".to_string())?;
-                result_output = Some(PathBuf::from(value));
-            }
-            "--help" | "-h" => {
-                return Err(usage());
-            }
-            _ => return Err(format!("unknown argument: {flag}\n{}", usage())),
-        }
-    }
-
-    Ok(CliArgs::CollaborativeEdit {
-        input: input.ok_or_else(|| format!("missing --input\n{}", usage()))?,
-        output: output.ok_or_else(|| format!("missing --output\n{}", usage()))?,
-        request: request.ok_or_else(|| format!("missing --request\n{}", usage()))?,
-        result_output,
-    })
-}
-
-fn parse_collaborative_project_args<I>(mut args: I) -> Result<CliArgs, String>
-where
-    I: Iterator<Item = String>,
-{
-    let mut commands: Option<PathBuf> = None;
-    let mut output: Option<PathBuf> = None;
-    let mut client_id: Option<String> = None;
-    let mut base_revision: Option<String> = None;
-
-    while let Some(flag) = args.next() {
-        match flag.as_str() {
-            "--commands" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--commands requires a file path".to_string())?;
-                commands = Some(PathBuf::from(value));
-            }
-            "--output" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "--output requires a file path".to_string())?;
-                output = Some(PathBuf::from(value));
-            }
-            "--client-id" => {
-                client_id = Some(
-                    args.next()
-                        .ok_or_else(|| "--client-id requires a value".to_string())?,
-                );
-            }
-            "--base-revision" => {
-                base_revision = Some(
-                    args.next()
-                        .ok_or_else(|| "--base-revision requires a value".to_string())?,
-                );
-            }
-            "--help" | "-h" => return Err(usage()),
-            _ => return Err(format!("unknown argument: {flag}\n{}", usage())),
-        }
-    }
-
-    Ok(CliArgs::CollaborativeProject {
-        commands: commands.ok_or_else(|| format!("missing --commands\n{}", usage()))?,
-        output,
-        client_id,
-        base_revision,
     })
 }
 
@@ -2591,8 +2329,6 @@ fn usage() -> String {
     [
         "usage:",
         "  cargo run -p jade-docx-headless-editor-cli -- headless-edit --input <in.docx> --output <out.docx> --commands <commands.json>",
-        "  cargo run -p jade-docx-headless-editor-cli -- collaborative-edit --input <in.docx> --output <out.docx> --request <request.json> [--result-output <result.json>]",
-        "  cargo run -p jade-docx-headless-editor-cli -- collaborative-project --commands <commands.json> [--output <result.json>] [--client-id <client>] [--base-revision <rev>]",
         "  cargo run -p jade-docx-headless-editor-cli -- headless-query --input <in.docx> --queries <queries.json> [--output <result.json>]",
         "  cargo run -p jade-docx-headless-editor-cli -- headless-edit-query --input <in.docx> [--output <out.docx> | --dry-run] --request <request.json> [--query-output <result.json>]",
         "  cargo run -p jade-docx-headless-editor-cli -- headless-edit-query-diff --input <in.docx> [--output <out.docx> | --dry-run] --request <request.json> [--result-output <result.json>]",
@@ -2624,58 +2360,6 @@ mod tests {
                 input: PathBuf::from("in.docx"),
                 output: PathBuf::from("out.docx"),
                 commands: PathBuf::from("cmd.json"),
-            }
-        );
-    }
-
-    #[test]
-    fn parses_collaborative_edit_mode() {
-        let args = vec![
-            "collaborative-edit".to_string(),
-            "--input".to_string(),
-            "in.docx".to_string(),
-            "--output".to_string(),
-            "out.docx".to_string(),
-            "--request".to_string(),
-            "request.json".to_string(),
-            "--result-output".to_string(),
-            "result.json".to_string(),
-        ];
-
-        let parsed = parse_args(args.into_iter()).expect("args should parse");
-        assert_eq!(
-            parsed,
-            CliArgs::CollaborativeEdit {
-                input: PathBuf::from("in.docx"),
-                output: PathBuf::from("out.docx"),
-                request: PathBuf::from("request.json"),
-                result_output: Some(PathBuf::from("result.json")),
-            }
-        );
-    }
-
-    #[test]
-    fn parses_collaborative_project_mode() {
-        let args = vec![
-            "collaborative-project".to_string(),
-            "--commands".to_string(),
-            "commands.json".to_string(),
-            "--output".to_string(),
-            "projection.json".to_string(),
-            "--client-id".to_string(),
-            "client-a".to_string(),
-            "--base-revision".to_string(),
-            "rev-1".to_string(),
-        ];
-
-        let parsed = parse_args(args.into_iter()).expect("args should parse");
-        assert_eq!(
-            parsed,
-            CliArgs::CollaborativeProject {
-                commands: PathBuf::from("commands.json"),
-                output: Some(PathBuf::from("projection.json")),
-                client_id: Some("client-a".to_string()),
-                base_revision: Some("rev-1".to_string()),
             }
         );
     }

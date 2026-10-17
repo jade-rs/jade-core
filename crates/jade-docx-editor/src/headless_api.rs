@@ -79,21 +79,20 @@ use crate::word_document::{
     ShapeInsertSpec, TableBorderSpec, WordDocument,
 };
 use jade_docx_headless_api::{
-    CollaborativeEditRequest, HeadlessCharacterStyleSnapshot, HeadlessCitationSource,
-    HeadlessCommand, HeadlessCommentAnchor, HeadlessCommentSnapshot, HeadlessCommentThreadSnapshot,
-    HeadlessCoverParagraph, HeadlessCustomNumberingLevel, HeadlessDeleteDirection,
-    HeadlessDocumentProtection, HeadlessDocumentTheme, HeadlessDropCapKind, HeadlessEditRequest,
-    HeadlessEquationPlacement, HeadlessHeaderFooterLine, HeadlessHeaderFooterSnapshot,
-    HeadlessMultilevelListPreset, HeadlessOutlineItem, HeadlessPageSetupSnapshot,
-    HeadlessParagraphIndent, HeadlessParagraphSnapshot, HeadlessParagraphSpacing,
-    HeadlessParagraphText, HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResponse,
-    HeadlessQueryResult, HeadlessRevisionKindFilter, HeadlessRevisionSnapshot,
-    HeadlessRevisionTarget, HeadlessRunSnapshot, HeadlessRunStyle, HeadlessSearchMatch,
-    HeadlessSectionBreakType, HeadlessShapeKind, HeadlessStyleKindFilter, HeadlessStyleSnapshot,
-    HeadlessTableCellDeleteDirection, HeadlessTableCellInsertDirection, HeadlessTableCellSelection,
-    HeadlessTableCellSnapshot, HeadlessTableColumnDetailSnapshot, HeadlessTableColumnSnapshot,
-    HeadlessTableFitMode, HeadlessTableRowSnapshot, HeadlessTableSnapshot,
-    HeadlessTableTextWrapping,
+    HeadlessCharacterStyleSnapshot, HeadlessCitationSource, HeadlessCommand, HeadlessCommentAnchor,
+    HeadlessCommentSnapshot, HeadlessCommentThreadSnapshot, HeadlessCoverParagraph,
+    HeadlessCustomNumberingLevel, HeadlessDeleteDirection, HeadlessDocumentProtection,
+    HeadlessDocumentTheme, HeadlessDropCapKind, HeadlessEditRequest, HeadlessEquationPlacement,
+    HeadlessHeaderFooterLine, HeadlessHeaderFooterSnapshot, HeadlessMultilevelListPreset,
+    HeadlessOutlineItem, HeadlessPageSetupSnapshot, HeadlessParagraphIndent,
+    HeadlessParagraphSnapshot, HeadlessParagraphSpacing, HeadlessParagraphText, HeadlessQuery,
+    HeadlessQueryRequest, HeadlessQueryResponse, HeadlessQueryResult, HeadlessRevisionKindFilter,
+    HeadlessRevisionSnapshot, HeadlessRevisionTarget, HeadlessRunSnapshot, HeadlessRunStyle,
+    HeadlessSearchMatch, HeadlessSectionBreakType, HeadlessShapeKind, HeadlessStyleKindFilter,
+    HeadlessStyleSnapshot, HeadlessTableCellDeleteDirection, HeadlessTableCellInsertDirection,
+    HeadlessTableCellSelection, HeadlessTableCellSnapshot, HeadlessTableColumnDetailSnapshot,
+    HeadlessTableColumnSnapshot, HeadlessTableFitMode, HeadlessTableRowSnapshot,
+    HeadlessTableSnapshot, HeadlessTableTextWrapping,
 };
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
@@ -1703,13 +1702,6 @@ pub fn apply_headless_commands_to_document(
     apply_headless_commands_with_selection_to_document(word_doc, None, request).map(|_| ())
 }
 
-pub fn apply_collaborative_operations_to_document(
-    word_doc: &mut WordDocument,
-    request: &CollaborativeEditRequest,
-) -> Result<(), HeadlessApiApplyError> {
-    apply_collaborative_operations_with_selection_to_document(word_doc, None, request).map(|_| ())
-}
-
 pub fn apply_headless_commands_with_selection_to_document(
     word_doc: &mut WordDocument,
     initial_selection: Option<SelectionRange>,
@@ -1722,15 +1714,6 @@ pub fn apply_headless_commands_with_selection_to_document(
         initial_selection,
         request,
     )
-}
-
-pub fn apply_collaborative_operations_with_selection_to_document(
-    word_doc: &mut WordDocument,
-    initial_selection: Option<SelectionRange>,
-    request: &CollaborativeEditRequest,
-) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
-    let projected = HeadlessEditRequest::from(request.clone());
-    apply_headless_commands_with_selection_to_document(word_doc, initial_selection, &projected)
 }
 
 /// The commands Word's plain-text paste performs at a collapsed caret: each
