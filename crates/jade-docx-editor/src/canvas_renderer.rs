@@ -54240,6 +54240,98 @@ mod tests {
         assert!(page_top(1) > page_top(0));
     }
 
+    /// A `w:vMerge` owner taller than the rows it spans gives its excess to
+    /// the last of them, but where the span crosses the page foot its text
+    /// must still split with the first row rather than run past the page
+    /// (complex-tables staggered merges).
+    #[test]
+    fn vertical_merge_owner_crossing_the_page_foot_stays_on_its_pages() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        let exact = |text: &str| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    line: Some(20.0),
+                    line_rule: Some("exact".into()),
+                    after: Some(0.0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(paragraph)
+        };
+        let cell = |blocks: Vec<BodyElement>, merge: Option<&str>| TableCell {
+            blocks,
+            vertical_merge: merge.map(str::to_string),
+            ..Default::default()
+        };
+        let table = Table {
+            rows: vec![
+                TableRow {
+                    cells: vec![
+                        cell(vec![exact("a")], None),
+                        cell(
+                            (0..12).map(|i| exact(&format!("owner{i}"))).collect(),
+                            Some("restart"),
+                        ),
+                    ],
+                    ..Default::default()
+                },
+                TableRow {
+                    cells: vec![
+                        cell(vec![exact("b")], None),
+                        cell(vec![exact("")], Some("continue")),
+                    ],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        let mut elements: Vec<BodyElement> = (0..6).map(|i| exact(&format!("filler{i}"))).collect();
+        elements.push(BodyElement::Table(Box::new(table)));
+        elements.push(exact("after"));
+        let settings = PageSettings {
+            width: Some(300.0),
+            height: Some(400.0),
+            margin_top: Some(100.0),
+            margin_bottom: Some(100.0),
+            margin_left: Some(20.0),
+            margin_right: Some(20.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let foot = renderer.page_height - renderer.margin_bottom + 1.0;
+        let lines = renderer.layout_debug_lines();
+        let owners: Vec<_> = lines
+            .iter()
+            .filter(|l| l.text.starts_with("owner"))
+            .collect();
+        assert_eq!(owners.len(), 12);
+        for line in &lines {
+            assert!(
+                line.top + line.height <= foot,
+                "{:?} page {} ends at {} below {foot}",
+                line.text,
+                line.page,
+                line.top + line.height
+            );
+        }
+        assert!(owners.iter().any(|l| l.page > owners[0].page));
+    }
+
     /// Word for Mac centres a line's text in the grid pitches it takes, and
     /// keeps the line on the page while its text clears the page foot: only
     /// the padding below the text may cross it (scroll-offset-repro keeps a
