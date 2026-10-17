@@ -1731,7 +1731,11 @@ fn marker_spacing_gap_ratio(
     grapheme: &str,
     script: ScriptCategory,
 ) -> f64 {
-    if !paragraph_style.east_asian_rules.use_east_asian_layout {
+    // Word for Mac adds nothing after a literal `(8)` or `(8) ` before East
+    // Asian text (trust-beneficiary-sale-keep-next page 5).
+    if !paragraph_style.east_asian_rules.use_east_asian_layout
+        || paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+    {
         return 0.0;
     }
     if script != ScriptCategory::EastAsia {
@@ -15167,6 +15171,34 @@ mod tests {
         ];
         let ratio = marker_spacing_gap_ratio(&paragraph, &clusters, "年", ScriptCategory::EastAsia);
         assert_eq!(ratio, 0.0);
+    }
+
+    #[test]
+    fn mac_sets_no_marker_gap_after_a_literal_parenthesized_number() {
+        // trust-beneficiary-sale-keep-next page 5: Word for Mac 16.113 sets
+        // `(8) 売主` with the ASCII space alone between `)` and `売`.
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let mut clusters = vec![
+            InlineCluster::grapheme(0, 1, 0.0, "(", false, false, false),
+            InlineCluster::grapheme(1, 2, 0.0, "8", false, false, false),
+            InlineCluster::grapheme(2, 3, 0.0, ")", false, false, false),
+        ];
+        assert_eq!(
+            marker_spacing_gap_ratio(&paragraph, &clusters, "売", ScriptCategory::EastAsia),
+            0.0
+        );
+        clusters.push(InlineCluster::grapheme(3, 4, 0.0, " ", true, false, false));
+        assert_eq!(
+            marker_spacing_gap_ratio(&paragraph, &clusters, "売", ScriptCategory::EastAsia),
+            0.0
+        );
     }
 
     #[test]
