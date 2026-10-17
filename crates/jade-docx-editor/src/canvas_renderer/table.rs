@@ -1922,6 +1922,11 @@ where
             prepared_rows.push(row_layout);
             row_heights.push(row_height);
         }
+        // The heights with every owner sizing its first row: a span that
+        // crosses the page foot falls back to them below, so the owner's
+        // text splits with that row instead of running past the page.
+        let contained_row_heights = row_heights.clone();
+        let has_merge_owners;
         // A `w:vMerge` owner spanning rows does not size its first row; the
         // rows take their other cells' heights and only what the owner needs
         // beyond all of them goes to the last row it spans.
@@ -1929,7 +1934,8 @@ where
             let row_refs: Vec<&[PreparedCell]> = prepared_rows.iter().map(Vec::as_slice).collect();
             let spans = compute_vertical_merge_row_spans(&row_refs);
             let owners = merged_cell_owners(&row_refs, &spans);
-            if !owners.is_empty() {
+            has_merge_owners = !owners.is_empty();
+            if has_merge_owners {
                 for (row_index, cells) in prepared_rows.iter().enumerate() {
                     if hidden_rows[row_index]
                         || !(0..cells.len()).any(|cell| spans_merged_owner(&spans[row_index], cell))
@@ -1963,8 +1969,19 @@ where
             &column_widths,
             table.bidi_visual,
         );
-        let last_row_bottom_border =
-            add_border_extents(table, &mut prepared_rows, &hidden_rows, &mut row_heights);
+        let contained_row_heights = has_merge_owners.then(|| {
+            let mut rows = prepared_rows.clone();
+            let mut heights = contained_row_heights;
+            add_border_extents(table, &mut rows, &hidden_rows, &mut heights, false);
+            heights
+        });
+        let last_row_bottom_border = add_border_extents(
+            table,
+            &mut prepared_rows,
+            &hidden_rows,
+            &mut row_heights,
+            true,
+        );
         let row_refs: Vec<&[PreparedCell]> = prepared_rows.iter().map(Vec::as_slice).collect();
         let row_spans = compute_vertical_merge_row_spans(&row_refs);
 
@@ -2043,6 +2060,19 @@ where
         let mut last_visible_row_index = None;
         for (row_index, prepared_row) in prepared_rows.iter().enumerate() {
             let row = &table.rows[row_index];
+            if let Some(contained) = contained_row_heights
+                .as_ref()
+                .filter(|_| !self.pageless_mode)
+            {
+                let span = row_spans[row_index].iter().copied().max().unwrap_or(1);
+                let end = (row_index + span).min(row_heights.len());
+                if span > 1
+                    && self.current_y + row_heights[row_index..end].iter().sum::<f64>()
+                        > self.table_row_bottom_limit()
+                {
+                    row_heights[row_index..end].copy_from_slice(&contained[row_index..end]);
+                }
+            }
             let original_row_height = row_heights[row_index];
             if let Some(info) = self.table_layouts.get_mut(table_index) {
                 info.row_heights.push(original_row_height);
@@ -7720,6 +7750,7 @@ fn add_border_extents(
     prepared_rows: &mut [Vec<PreparedCell>],
     hidden_rows: &[bool],
     row_heights: &mut [f64],
+    exclude_merge_owners: bool,
 ) -> f64 {
     let mut last_visible = 0.0;
     let mut first_visible = true;
@@ -7742,7 +7773,10 @@ fn add_border_extents(
                 height,
                 &mut first_visible,
                 &mut previous_row_grows,
-                spans.get(index).map(Vec::as_slice),
+                spans
+                    .get(index)
+                    .map(Vec::as_slice)
+                    .filter(|_| exclude_merge_owners),
             );
         }
     }
@@ -12079,7 +12113,7 @@ mod tests {
             }
             let mut prepared = vec![cells];
             let mut row_heights = vec![33.0];
-            add_border_extents(&table, &mut prepared, &[false], &mut row_heights);
+            add_border_extents(&table, &mut prepared, &[false], &mut row_heights, true);
             let mut cells = prepared.remove(0);
             assign_row_paragraph_indices(&mut cells, 70, &HashMap::new());
             let original = cells.clone();
@@ -14262,7 +14296,7 @@ mod tests {
             row[0].border_top.width_px = points_to_px(0.5);
         }
         let mut heights = vec![24.0, 24.0];
-        add_border_extents(&table, &mut rows, &[false, false], &mut heights);
+        add_border_extents(&table, &mut rows, &[false, false], &mut heights, true);
         assert_eq!(heights, vec![24.0, 24.0]);
         for row in &rows {
             assert!((row[0].padding.top - points_to_px(0.5)).abs() < 1e-9);
@@ -14285,7 +14319,7 @@ mod tests {
         let mut rows = vec![vec![make_prepared_cell(0, 1, None, false)]; 2];
         let padding = rows[1][0].padding.top;
         let mut heights = vec![24.0, 24.0];
-        add_border_extents(&table, &mut rows, &[false, false], &mut heights);
+        add_border_extents(&table, &mut rows, &[false, false], &mut heights, true);
         assert_eq!(rows[1][0].padding.top, padding);
         assert_eq!(heights[1], 24.0);
     }
@@ -14323,7 +14357,7 @@ mod tests {
             rows: vec![TableRow::default(), TableRow::default()],
             ..Table::default()
         };
-        add_border_extents(&table, &mut rows, &[false, false], &mut heights);
+        add_border_extents(&table, &mut rows, &[false, false], &mut heights, true);
         assert_eq!(heights, [24.0, 20.0]);
         assert_eq!(rows[1][0].page_top_inset, 0.0);
     }
@@ -14660,7 +14694,7 @@ mod tests {
         };
         let owner_height = rows[0][1].height;
         let mut heights = vec![rows[0][0].height, rows[1][0].height];
-        add_border_extents(&table, &mut rows, &[false, false], &mut heights);
+        add_border_extents(&table, &mut rows, &[false, false], &mut heights, true);
         assert!(
             heights[0] < owner_height,
             "{heights:?} owner {owner_height}"
