@@ -6193,6 +6193,17 @@ fn punctuation_pair_blank_width(left: &InlineCluster, right: &InlineCluster) -> 
 /// The blank two neighbouring East Asian glyphs can give up, and how many
 /// half-em blanks that is (a centered mark's quarter counts as half of one).
 /// Each side is `(text, script, font hash, adjusted glyph width)`.
+/// An East Asian glyph with no blank side of its own, next to which a
+/// punctuation mark's blank can be narrowed: kana, kanji, the ideographic
+/// space and also fullwidth digits and letters (Word narrows the comma before
+/// `１０`), which [`is_auto_space_east_asian_text`] counts as fullwidth forms.
+fn is_squeeze_neighbour(text: &str) -> bool {
+    (text == "\u{3000}" || is_non_whitespace_east_asian_grapheme(text))
+        && !punctuation_blank_before(text)
+        && !punctuation_blank_after(text)
+        && !matches!(text, "・" | "：" | "；")
+}
+
 fn punctuation_pair_blank(
     left: (&str, ScriptCategory, u64, f64),
     right: (&str, ScriptCategory, u64, f64),
@@ -6206,7 +6217,7 @@ fn punctuation_pair_blank(
     {
         return (0.0, 0.0);
     }
-    let (glyph, share) = if is_auto_space_east_asian_text(left_text) {
+    let (glyph, share) = if is_squeeze_neighbour(left_text) {
         if punctuation_blank_before(right_text) {
             (right_glyph, 0.5)
         } else if matches!(right_text, "・" | "：" | "；") {
@@ -6214,7 +6225,7 @@ fn punctuation_pair_blank(
         } else {
             (0.0, 0.0)
         }
-    } else if is_auto_space_east_asian_text(right_text) {
+    } else if is_squeeze_neighbour(right_text) {
         if punctuation_blank_after(left_text) {
             (left_glyph, 0.5)
         } else if matches!(left_text, "・" | "：" | "；") {
@@ -6301,7 +6312,10 @@ fn mac_punctuation_squeeze_admits(
         .take_while(|cluster| cluster.is_whitespace)
         .count();
     let characters = clusters.len() - trailing_whitespace;
-    if characters == 0 || trailing_whitespace > 0 || slack <= 0.0 {
+    // Pushed out, the candidate would leave the trailing spaces hanging and
+    // the line ending at its last character.
+    let slack = slack + trailing_whitespace_width(clusters);
+    if characters == 0 || slack <= 0.0 {
         return false;
     }
     let (capacity, blanks) =
@@ -12471,6 +12485,51 @@ mod tests {
         // Without punctuation there is nothing to narrow.
         let plain = mac_squeeze_text(19, &[]);
         assert_eq!(mac_squeeze_first_line(&plain, 19, 0.25, &style), 18);
+    }
+
+    #[test]
+    fn mac_squeeze_counts_the_blank_before_fullwidth_digits() {
+        // scroll-offset-repro page 6: Word narrows both commas by 2.65pt to
+        // keep `１０` on the line, the second comma's blank sitting before the
+        // fullwidth `１`.
+        let text = "採用日から６か月間継続勤務し、所定労働日の８割以上出勤した社員に対しては、１０日の年次有給休暇を与える。";
+        let ctx = TestContext::new(10.5);
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &mac_punctuation_test_style(),
+            0,
+            404.2,
+        )
+        .unwrap();
+        let first: String = lines[0].clusters.iter().map(|c| c.text.as_str()).collect();
+        assert!(first.ends_with("１０"), "{first}");
+    }
+
+    #[test]
+    fn mac_squeeze_reaches_past_fullwidth_spaces() {
+        // scroll-offset-repro page 5: `…この場合、　　　前日…`. Word keeps
+        // `前` by narrowing four commas 3.95pt each, the last before the
+        // spaces; pushed out, the spaces would hang and the line would end at
+        // the comma with room to spare.
+        let text = "を得ない事情により、これらを繰り上げ、又は繰り下げることがある。この場合、\u{3000}\u{3000}\u{3000}前日までに社員に通知する。";
+        let ctx = TestContext::new(10.5);
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &mac_punctuation_test_style(),
+            0,
+            414.7,
+        )
+        .unwrap();
+        let first: String = lines[0].clusters.iter().map(|c| c.text.as_str()).collect();
+        assert!(first.ends_with("前"), "{first}");
+        let total: f64 = lines[0].clusters.iter().map(|c| c.width).sum();
+        assert!((total - 414.7).abs() < 1e-6, "{total}");
     }
 
     #[test]
