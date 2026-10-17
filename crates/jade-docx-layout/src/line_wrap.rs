@@ -5641,7 +5641,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 // line and incorrectly starts the remainder at the left edge.
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 if current_width > 0.0
-                    && desired_width + segment_width > effective_available + f64::EPSILON
+                    && desired_width + segment_width > effective_available + WRAP_FIT_TOLERANCE_PX
                 {
                     let next_line_index = lines.len() + 1;
                     let next_available = paragraph_style
@@ -5662,7 +5662,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     );
                     let next_effective_available = (next_available - WRAP_SAFETY_PX).max(1.0);
 
-                    if next_desired_width + segment_width <= next_effective_available + f64::EPSILON
+                    if next_desired_width + segment_width
+                        <= next_effective_available + WRAP_FIT_TOLERANCE_PX
                     {
                         lines.push(WrappedLine {
                             segments: std::mem::take(&mut current_line),
@@ -5823,7 +5824,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         paragraph_style,
                     ) + f64::EPSILON
                         >= candidate_overflow;
-                let fits_with_mac_punctuation_squeeze = candidate_overflow > f64::EPSILON
+                let fits_with_mac_punctuation_squeeze = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && !fits_with_justified_space_shrink
                     && mac_punctuation_compression_enabled(paragraph_style)
                     && mac_punctuation_squeeze_admits(
@@ -5844,7 +5845,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 // when the line's punctuation can absorb it. Deciding it here
                 // rather than in `enforce_line_start_rules` lets the next
                 // line start after it and fill its whole width.
-                let keeps_line_start_forbidden_character = candidate_overflow > f64::EPSILON
+                let keeps_line_start_forbidden_character = candidate_overflow
+                    > WRAP_FIT_TOLERANCE_PX
                     && !is_whitespace
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
@@ -5881,7 +5883,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         let hang = if hangs { candidate_width } else { 0.0 };
                         (hangs || squeeze > 0.0) && candidate_overflow <= hang + squeeze + 1e-9
                     };
-                if candidate_overflow > f64::EPSILON
+                if candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && current_width > 0.0
                     && !is_whitespace
                     && !zero_width_oracle_glyph
@@ -6228,6 +6230,12 @@ fn punctuation_side(cluster: &InlineCluster) -> Option<(&str, ScriptCategory, u6
     })
 }
 
+/// How far a line may run past its room and still count as fitting. Word
+/// measures in whole twips, so content that exactly fills a line fits there;
+/// jade carries page sizes, margins and indents as f32 points, which leaves
+/// such a line up to ~1e-4 px over. Far below a twip (0.067 px).
+const WRAP_FIT_TOLERANCE_PX: f64 = 1e-3;
+
 /// Word for Mac 16.114 squeeze probes: a justified `compressPunctuation`
 /// line keeps the character that overflows it while the reduction each
 /// half-em punctuation blank takes stays within this many times the gap each
@@ -6494,7 +6502,9 @@ fn compress_justified_word_spaces_to_available_width<C: LineWrapContext>(
             // advances fit. Remeasure only a potentially overfull last line;
             // compression does not expand it to the content edge.
             let natural: f64 = line.clusters.iter().map(|cluster| cluster.width).sum();
-            if natural - trailing_whitespace_width(&line.clusters) <= available + f64::EPSILON {
+            if natural - trailing_whitespace_width(&line.clusters)
+                <= available + WRAP_FIT_TOLERANCE_PX
+            {
                 continue;
             }
             natural_cache = Some(natural);
@@ -6895,7 +6905,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         &lines[line_index].clusters,
                         paragraph_style,
                     )
-                    <= effective_available + f64::EPSILON;
+                    <= effective_available + WRAP_FIT_TOLERANCE_PX;
             // A line the wrap loop admitted by narrowing its punctuation
             // (`mac_punctuation_squeeze_admits`) is compressed afterwards.
             let fits_with_mac_punctuation_squeeze =
@@ -6915,7 +6925,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         - hang
                         <= effective_available + 1e-9
                 };
-            if width <= effective_available + f64::EPSILON
+            if width <= effective_available + WRAP_FIT_TOLERANCE_PX
                 || fits_with_justified_space_shrink
                 || fits_with_mac_punctuation_squeeze
             {
@@ -6948,7 +6958,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     .take_while(|cluster| cluster.is_whitespace)
                     .map(|cluster| cluster.width)
                     .sum();
-                if width - trailing_space_width <= effective_available + f64::EPSILON {
+                if width - trailing_space_width <= effective_available + WRAP_FIT_TOLERANCE_PX {
                     break;
                 }
                 if is_justified_alignment(&paragraph_style.alignment) {
@@ -6998,7 +7008,8 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                             character_borders,
                             snap_to_chars_cell_width_cache,
                         )?;
-                        if width_without_trailing_punctuation <= effective_available + f64::EPSILON
+                        if width_without_trailing_punctuation
+                            <= effective_available + WRAP_FIT_TOLERANCE_PX
                         {
                             break;
                         }
@@ -7038,7 +7049,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     .map_or(incremental_width, |widths| {
                         widths.get(line_index).copied().unwrap_or(0.0)
                     });
-                if intrinsic_width > effective_available + f64::EPSILON
+                if intrinsic_width > effective_available + WRAP_FIT_TOLERANCE_PX
                     && !has_terminal_overflow_punctuation
                     && !has_word_break_opportunity
                 {
@@ -12382,6 +12393,29 @@ mod tests {
                 "k={k} commas={commas:?} refuses at {refused}"
             );
         }
+    }
+
+    #[test]
+    fn characters_that_exactly_fill_an_indented_line_stay_on_it() {
+        // Indents travel as f32 points, so 19 em of room set as a twips right
+        // indent arrives a few 1e-5 px short. Word works in whole twips and
+        // keeps all 19 characters (squeeze probe, paragraph at D = 0).
+        let style = mac_punctuation_test_style();
+        let text = mac_squeeze_text(19, &[]);
+        // A4 width 11906tw and 1701tw margins, also carried as f32 points.
+        let page_pt = f64::from(11906.0_f32 / 20.0);
+        let margin_pt = f64::from(1701.0_f32 / 20.0);
+        let right_indent_pt = f64::from((8504.0_f32 - 19.0 * 210.0) / 20.0);
+        let available = (page_pt - 2.0 * margin_pt - right_indent_pt) * 96.0 / 72.0;
+        let ctx = TestContext::new(14.0);
+        let lines =
+            wrap_text_into_lines(&ctx, &text, &[make_run(&text)], 0.0, &style, 0, available)
+                .unwrap();
+        assert!(
+            available < 19.0 * 14.0,
+            "the fixture reproduces the f32 shortfall"
+        );
+        assert_eq!(lines[0].clusters.len(), 19);
     }
 
     #[test]

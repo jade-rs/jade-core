@@ -15969,6 +15969,9 @@ where
             );
             self.ensure_space(spacing_before)?;
             if flow_container != (self.current_page_number, self.column_index) {
+                // The paragraph now starts in another column or page: its
+                // lines take that column's origin and width.
+                self.sync_column_state(&mut x, &mut column_x, &mut column_width, &mut column_right);
                 self.trailing_spacing_after = None;
                 spacing_before = self.body_paragraph_spacing_before(
                     paragraph,
@@ -30481,26 +30484,12 @@ where
             self.ensure_space(spacing_after)?;
             self.current_y += spacing_after;
         } else {
+            // Space after that does not fit ends at the page foot: Word
+            // starts the next paragraph at the top of the next page without
+            // it, and opens no page for it after the last paragraph. The
+            // next line's `ensure_space` makes the page advance.
             let bottom_limit = self.effective_body_bottom();
-            if self.current_y + spacing_after > bottom_limit {
-                self.render_footer_simple()?;
-                let next_page = self.current_page_number + 1;
-                self.begin_next_page_backing(next_page)?;
-                self.record_valign_used_height_for_current_page();
-                self.current_page_number += 1;
-                self.record_page_section(self.current_page_number);
-                self.deferred_cached_draw_page = self.current_page_number;
-                self.deferred_cached_draw_commands.clear();
-                self.current_y = self.effective_body_top() + self.current_page_valign_offset();
-                self.last_line_baseline = self.current_y;
-                self.header_drawn = false;
-                self.footer_drawn = false;
-                self.render_header_simple()?;
-                self.current_y += spacing_after;
-                self.last_line_baseline = self.current_y;
-            } else {
-                self.current_y += spacing_after;
-            }
+            self.current_y = (self.current_y + spacing_after).min(bottom_limit.max(self.current_y));
         }
         Ok(())
     }
@@ -52980,7 +52969,10 @@ mod tests {
                     spacing: Some(Spacing {
                         before: (index == 1).then_some(24.0),
                         after: Some(0.0),
-                        line: Some(if index == 0 { 80.0 } else { 10.0 }),
+                        // The first line fits the 64pt body this page leaves
+                        // between the default footer distance and its top;
+                        // the following 24pt before does not.
+                        line: Some(if index == 0 { 50.0 } else { 10.0 }),
                         line_rule: Some("exact".into()),
                         ..Default::default()
                     }),
@@ -54107,6 +54099,79 @@ mod tests {
             );
             assert_eq!(unbalanced_saves(&painter), 0);
         }
+    }
+
+    /// A paragraph ending exactly at the page foot pushes the next one to a
+    /// new page; the next one must not start back at the top of the same page.
+    #[test]
+    fn paragraph_after_one_that_fills_the_page_starts_on_the_next_page() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        let elements = (0..6)
+            .map(|_| {
+                let mut paragraph =
+                    note_test_paragraph("one two three four five six seven eight", None);
+                paragraph.properties = Some(ParagraphProperties {
+                    widow_control: Some(false),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        after: Some(20.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                BodyElement::from_paragraph(paragraph)
+            })
+            .collect();
+        let settings = PageSettings {
+            width: Some(200.0),
+            height: Some(792.0),
+            margin_top: Some((792.0 - 100.0) / 2.0),
+            margin_bottom: Some((792.0 - 100.0) / 2.0),
+            margin_left: Some(20.0),
+            margin_right: Some(20.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let paragraphs = renderer.selection.paragraphs();
+        // Two 20pt lines and 20pt after: paragraphs 0 and 1 fill the 100pt
+        // body (0–40, 60–100), so paragraph 2 opens page 2 at its top.
+        let pages: Vec<_> = paragraphs
+            .iter()
+            .map(|p| renderer.page_for_y(p.lines[0].absolute_top))
+            .collect();
+        let tops: Vec<_> = paragraphs
+            .iter()
+            .flat_map(|p| p.lines.iter().map(|l| l.absolute_top))
+            .collect();
+        assert_eq!(
+            pages,
+            vec![0, 0, 1, 1, 2, 2],
+            "tops {tops:?} page_h {}",
+            renderer.page_height
+        );
+        let page_top = |page: usize| {
+            paragraphs
+                .iter()
+                .find(|p| renderer.page_for_y(p.lines[0].absolute_top) == page)
+                .unwrap()
+                .lines[0]
+                .absolute_top
+        };
+        assert!(page_top(1) > page_top(0));
     }
 
     /// Word keeps a keepNext chain with the part of the following paragraph
