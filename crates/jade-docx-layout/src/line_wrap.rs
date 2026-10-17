@@ -7425,8 +7425,8 @@ fn prevent_mid_word_breaks(
         // strings such as synthetic width tests, but when a previous line has a
         // legal separator before the trailing Latin word, prefer that word boundary
         // over browser-only splits such as `Worl`/`d`.
-        while let Some(cluster) = prev_line.clusters.last() {
-            if !is_latin_word_grapheme(&cluster.text) {
+        while !prev_line.clusters.is_empty() {
+            if !is_latin_word_cluster(&prev_line.clusters, prev_line.clusters.len() - 1) {
                 break;
             }
             if prev_line.clusters.len() <= 1 {
@@ -7472,10 +7472,18 @@ fn line_break_splits_latin_word(
     gap.is_empty()
 }
 
+/// Whether the cluster at `index` belongs to the Latin word around it: a
+/// letter, or a slash right after one (Word keeps `header/footer` whole).
+fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
+    let text = clusters[index].text.as_str();
+    is_latin_word_grapheme(text)
+        || (text == "/" && index > 0 && is_latin_word_grapheme(&clusters[index - 1].text))
+}
+
 fn has_preceding_latin_break_opportunity(line: &WrappedLine) -> bool {
     let mut saw_trailing_latin = false;
     for (index, cluster) in line.clusters.iter().enumerate().rev() {
-        if is_latin_word_grapheme(&cluster.text) {
+        if is_latin_word_cluster(&line.clusters, index) {
             saw_trailing_latin = true;
             continue;
         }
@@ -7519,10 +7527,8 @@ fn move_remaining_split_latin_word_to_next_line(
     }
 
     let mut moved_width = 0.0;
-    while current
-        .clusters
-        .last()
-        .is_some_and(|cluster| is_latin_word_grapheme(&cluster.text))
+    while !current.clusters.is_empty()
+        && is_latin_word_cluster(&current.clusters, current.clusters.len() - 1)
     {
         let Some((cluster, segment)) = detach_trailing_cluster(current) else {
             break;
@@ -12178,6 +12184,32 @@ mod tests {
         let infos = collect_line_infos(&lines);
         assert_eq!(infos.first().map(|line| line.text.as_str()), Some("abc "));
         assert_eq!(infos.get(1).map(|line| line.text.as_str()), Some("d"));
+    }
+
+    #[test]
+    fn slash_joined_latin_word_moves_as_one_word() {
+        // word-compat-comprehensive: Word sets `header/footer` on the next
+        // line whole rather than splitting it after the slash or a letter.
+        let ctx = TestContext::new(10.0);
+        let text = "and header/footer run";
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            135.0,
+        )
+        .expect("wrap");
+        let infos = collect_line_infos(&lines);
+        assert_eq!(
+            infos
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["and ", "header/footer ", "run"]
+        );
     }
 
     #[test]
