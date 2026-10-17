@@ -20,6 +20,27 @@ fn is_no_line_break_after_tag(name: &[u8]) -> bool {
     matches!(name, b"noLineBreakAfter" | b"noLineBreaksAfter")
 }
 
+/// Whether a `w:noLineBreaksBefore`/`w:noLineBreaksAfter` element is the
+/// Japanese custom set. ECMA-376 §17.15.1.58-59: a custom set replaces the
+/// application's default set for its language, and jade's default tables are
+/// the Japanese ones (`jade_text_layout::kinsoku`).
+fn is_japanese_custom_line_break_set(element: &quick_xml::events::BytesStart<'_>) -> bool {
+    let name = element.name();
+    if !matches!(
+        local_name(name.as_ref()),
+        b"noLineBreaksBefore" | b"noLineBreaksAfter"
+    ) {
+        return false;
+    }
+    element.attributes().flatten().any(|attr| {
+        local_name(attr.key.as_ref()) == b"lang"
+            && attr
+                .value
+                .get(..2)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"ja"))
+    })
+}
+
 fn push_line_break_entries(target: &mut Vec<String>, raw: &str) {
     for ch in raw.chars() {
         if ch.is_whitespace() {
@@ -88,6 +109,13 @@ pub struct DocumentSettings {
     pub no_line_break_before: Vec<String>,
     #[serde(default)]
     pub no_line_break_after: Vec<String>,
+    /// A Japanese `w:noLineBreaksBefore` set replaces the default table
+    /// instead of adding to it.
+    #[serde(default)]
+    pub no_line_break_before_replaces_default: bool,
+    /// A Japanese `w:noLineBreaksAfter` set replaces the default table.
+    #[serde(default)]
+    pub no_line_break_after_replaces_default: bool,
     /// Mirrors `<w:evenAndOddHeaders/>`. When true, sections that declare an
     /// even-page header/footer reference use it on even-numbered pages.
     #[serde(default)]
@@ -358,6 +386,9 @@ impl DocumentSettings {
                         }
                     }
                     if is_no_line_break_before_tag(name) {
+                        if is_japanese_custom_line_break_set(e) {
+                            settings.no_line_break_before_replaces_default = true;
+                        }
                         inside_no_line_break_before = true;
                         if let Some(value) = e
                             .attributes()
@@ -371,6 +402,9 @@ impl DocumentSettings {
                         }
                     } else if is_no_line_break_after_tag(name) {
                         inside_no_line_break_after = true;
+                        if is_japanese_custom_line_break_set(e) {
+                            settings.no_line_break_after_replaces_default = true;
+                        }
                         if let Some(value) = e
                             .attributes()
                             .flatten()
@@ -502,6 +536,9 @@ impl DocumentSettings {
                         }
                     }
                     if is_no_line_break_before_tag(name) {
+                        if is_japanese_custom_line_break_set(e) {
+                            settings.no_line_break_before_replaces_default = true;
+                        }
                         if let Some(value) = e
                             .attributes()
                             .flatten()
@@ -513,6 +550,9 @@ impl DocumentSettings {
                             );
                         }
                     } else if is_no_line_break_after_tag(name) {
+                        if is_japanese_custom_line_break_set(e) {
+                            settings.no_line_break_after_replaces_default = true;
+                        }
                         if let Some(value) = e
                             .attributes()
                             .flatten()
@@ -622,6 +662,8 @@ impl DocumentSettings {
             character_spacing_control: self.character_spacing_control.clone(),
             no_line_break_before: self.no_line_break_before.clone(),
             no_line_break_after: self.no_line_break_after.clone(),
+            no_line_break_before_replaces_default: self.no_line_break_before_replaces_default,
+            no_line_break_after_replaces_default: self.no_line_break_after_replaces_default,
             compatibility_mode: self.compatibility_mode,
         }
     }
@@ -887,6 +929,33 @@ mod tests {
             settings.no_line_break_after,
             vec!["（".to_string(), "「".to_string()]
         );
+    }
+
+    #[test]
+    fn japanese_custom_line_break_sets_replace_the_default_tables() {
+        let settings = |body: &str| {
+            DocumentSettings::from_xml(&format!(
+                r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{body}</w:settings>"#
+            ))
+            .expect("parse settings")
+            .to_line_breaking_settings()
+        };
+
+        let japanese = settings(
+            r#"<w:noLineBreaksBefore w:lang="ja-JP" w:val="、。"/><w:noLineBreaksAfter w:lang="ja-JP" w:val="「"/>"#,
+        );
+        assert!(japanese.no_line_break_before_replaces_default);
+        assert!(japanese.no_line_break_after_replaces_default);
+
+        let chinese = settings(r#"<w:noLineBreaksBefore w:lang="zh-CN" w:val="、"/>"#);
+        assert!(!chinese.no_line_break_before_replaces_default);
+        assert!(!chinese.no_line_break_after_replaces_default);
+
+        let legacy = settings(
+            r#"<w:compat><w:noLineBreakBefore w:val="、"/><w:noLineBreakAfter>。</w:noLineBreakAfter></w:compat>"#,
+        );
+        assert!(!legacy.no_line_break_before_replaces_default);
+        assert!(!legacy.no_line_break_after_replaces_default);
     }
 
     #[test]

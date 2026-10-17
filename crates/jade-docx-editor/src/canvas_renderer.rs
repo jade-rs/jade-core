@@ -50691,6 +50691,8 @@ mod tests {
             character_spacing_control: Some("compress".to_string()),
             no_line_break_before: vec!["「".into()],
             no_line_break_after: vec!["」".into()],
+            no_line_break_before_replaces_default: false,
+            no_line_break_after_replaces_default: true,
             compatibility_mode: None,
         };
         let overrides = EastAsianLineBreakingSettings {
@@ -50705,6 +50707,8 @@ mod tests {
             character_spacing_control: Some("doNotCompress".to_string()),
             no_line_break_before: vec!["、".into()],
             no_line_break_after: vec!["。".into()],
+            no_line_break_before_replaces_default: true,
+            no_line_break_after_replaces_default: false,
             compatibility_mode: None,
         };
 
@@ -50723,6 +50727,9 @@ mod tests {
         );
         assert_eq!(merged.no_line_break_before, vec!["、"]);
         assert_eq!(merged.no_line_break_after, vec!["。"]);
+        // A custom set brings along whether it replaces the default table.
+        assert!(merged.no_line_break_before_replaces_default);
+        assert!(!merged.no_line_break_after_replaces_default);
     }
 
     #[test]
@@ -50739,6 +50746,8 @@ mod tests {
             character_spacing_control: None,
             no_line_break_before: vec!["、".into()],
             no_line_break_after: vec!["。".into()],
+            no_line_break_before_replaces_default: false,
+            no_line_break_after_replaces_default: false,
             compatibility_mode: None,
         };
         let merged = merge_east_asian_rules(&base, None);
