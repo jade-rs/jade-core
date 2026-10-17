@@ -1047,12 +1047,16 @@ impl LayoutConfig {
             style.enable_line_break_rules = rules.use_east_asian_layout;
         }
         style.word_east_asian_font_line_box =
-            jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply(
+            jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply_on_grid(
                 paragraph
                     .properties
                     .as_ref()
                     .and_then(|props| props.spacing.as_ref()),
                 self.document_uses_east_asian_layout,
+                jade_docx_layout::line_metrics::word_grid_line_centres_text(
+                    enabled,
+                    self.doc_grid.as_ref(),
+                ),
             );
         let text_alignment = paragraph
             .properties
