@@ -58,6 +58,11 @@ pub struct DocumentSettings {
     /// the paragraph's left indent.
     #[serde(default)]
     pub no_tab_hanging_indent: bool,
+    /// Mirrors the `w:adjustLineHeightInTable` compatibility switch. When
+    /// false (the OOXML default), the section's line grid pitch is not applied
+    /// to lines in table cells (ECMA-376 §17.15.3.1).
+    #[serde(default)]
+    pub adjust_line_height_in_table: bool,
     #[serde(default)]
     pub use_east_asian_layout: bool,
     #[serde(default)]
@@ -393,6 +398,10 @@ impl DocumentSettings {
                                 settings.no_tab_hanging_indent =
                                     Self::parse_on_off_attribute(e.attributes().flatten());
                             }
+                            b"adjustLineHeightInTable" => {
+                                settings.adjust_line_height_in_table =
+                                    Self::parse_on_off_attribute(e.attributes().flatten());
+                            }
                             b"characterSpacingControl" => {
                                 if let Some(value) = e
                                     .attributes()
@@ -529,6 +538,10 @@ impl DocumentSettings {
                             }
                             b"noTabHangInd" => {
                                 settings.no_tab_hanging_indent =
+                                    Self::parse_on_off_attribute(e.attributes().flatten());
+                            }
+                            b"adjustLineHeightInTable" => {
+                                settings.adjust_line_height_in_table =
                                     Self::parse_on_off_attribute(e.attributes().flatten());
                             }
                             b"characterSpacingControl" => {
@@ -934,6 +947,29 @@ mod tests {
                 .expect("parse disabled setting")
                 .no_tab_hanging_indent
         );
+    }
+
+    #[test]
+    fn parses_adjust_line_height_in_table_compatibility_switch() {
+        let parse = |compat: &str| {
+            let xml = format!(
+                r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{compat}</w:settings>"#
+            );
+            DocumentSettings::from_xml(&xml)
+                .expect("parse settings")
+                .adjust_line_height_in_table
+        };
+
+        assert!(!parse(""));
+        assert!(parse("<w:compat><w:adjustLineHeightInTable/></w:compat>"));
+        assert!(parse(
+            "<w:compat><w:adjustLineHeightInTable></w:adjustLineHeightInTable></w:compat>"
+        ));
+        assert!(!parse(
+            r#"<w:compat><w:adjustLineHeightInTable w:val="0"/></w:compat>"#
+        ));
+        // Outside `w:compat` the element is not the compatibility switch.
+        assert!(!parse("<w:adjustLineHeightInTable/>"));
     }
 
     #[test]

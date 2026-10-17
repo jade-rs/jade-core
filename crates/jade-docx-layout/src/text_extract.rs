@@ -497,6 +497,7 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     // stops from settings.xml, so apply it for every oracle document.
     document.default_tab_stop = settings.default_tab_stop;
     document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
+    document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
     if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
@@ -792,9 +793,19 @@ fn build_paragraph_input<C: LineWrapContext>(
     content_left_x: f64,
     content_right_x: f64,
     section_content_height_pt: f32,
+    in_table_cell: bool,
 ) -> Result<Option<ParagraphLayoutInput>, C::Error> {
     let document = layout_context.document;
-    let doc_grid = paragraph_doc_grid(document);
+    let table_cell_doc_grid;
+    let doc_grid = if in_table_cell {
+        table_cell_doc_grid = crate::line_metrics::doc_grid_for_table_cells(
+            paragraph_doc_grid(document),
+            document.adjust_line_height_in_table,
+        );
+        table_cell_doc_grid.as_ref()
+    } else {
+        paragraph_doc_grid(document)
+    };
     let allow_font_size_defaults = paragraph_allows_style_font_size_defaults(document, doc_grid);
     let protect_explicit_east_asian_paragraph =
         !allow_font_size_defaults && paragraph_uses_east_asian_fonting(paragraph);
@@ -1552,6 +1563,7 @@ fn layout_table_lines<C: LineWrapContext>(
                             cell_content_left,
                             cell_content_right,
                             bounds.section_content_height_pt,
+                            true,
                         )?
                         else {
                             continue;
@@ -1967,6 +1979,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 column_layout.left(0),
                 column_layout.right(0),
                 section_content_height_pt,
+                false,
             )?
             else {
                 if !lines.is_empty() {
@@ -2452,6 +2465,7 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
             .map_err(LineLayoutError::DocumentParse)?;
         document.default_tab_stop = settings.default_tab_stop;
         document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
+        document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
         if needs_style_defaults {
@@ -3261,6 +3275,50 @@ mod tests {
             lines[1].paragraph_index, 4,
             "Word COM counts one invisible row-control paragraph after each row"
         );
+    }
+
+    /// ECMA-376 §17.15.3.1: cell lines take the section's line grid pitch only
+    /// under `w:adjustLineHeightInTable` (jlsi/jade#468).
+    #[test]
+    fn table_cell_lines_take_the_line_grid_only_with_adjust_line_height_in_table() {
+        let line_height = |adjust_line_height_in_table: bool| {
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![BodyElement::from_table(Table {
+                        columns: vec![TableColumn { width: Some(200.0) }],
+                        rows: vec![TableRow {
+                            height: Some(40.0),
+                            cells: vec![TableCell {
+                                blocks: vec![BodyElement::from_paragraph(paragraph_with_runs(
+                                    vec![plain_run("Hello")],
+                                ))],
+                                ..TableCell::default()
+                            }],
+                            ..TableRow::default()
+                        }],
+                        ..Table::default()
+                    })],
+                }),
+                default_section: Some(jade_docx_reader::SectionProperties {
+                    doc_grid: Some(jade_docx_reader::DocGrid {
+                        grid_type: Some("lines".into()),
+                        line_pitch: Some(30.0),
+                        char_space: None,
+                    }),
+                    ..Default::default()
+                }),
+                adjust_line_height_in_table,
+                ..Document::default()
+            };
+            let context = FixedWidthContext::new(5.0);
+            let layout = layout_document_lines(&document, &context).expect("layout table lines");
+            let lines: Vec<_> = layout.get_lines().collect();
+            assert_eq!(lines.len(), 1);
+            lines[0].height
+        };
+
+        assert!((line_height(true) - points_to_px(30.0)).abs() < 0.01);
+        assert!(line_height(false) < points_to_px(30.0) - 1.0);
     }
 
     #[test]

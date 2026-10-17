@@ -2163,6 +2163,22 @@ pub fn doc_grid_has_active_char_grid(doc_grid: Option<&DocGrid>) -> bool {
     }
 }
 
+/// The section grid as it applies to paragraphs in table cells. ECMA-376
+/// §17.15.3.1: unless `w:adjustLineHeightInTable` is set, the line grid pitch
+/// is not added to lines in table cells, so the grid loses its line pitch
+/// there. The character grid is left as it is; its behaviour inside cells has
+/// not been traced separately (jlsi/jade#468).
+pub fn doc_grid_for_table_cells(
+    doc_grid: Option<&DocGrid>,
+    adjust_line_height_in_table: bool,
+) -> Option<DocGrid> {
+    let mut grid = doc_grid?.clone();
+    if !adjust_line_height_in_table {
+        grid.line_pitch = None;
+    }
+    Some(grid)
+}
+
 /// Character pitch Word uses to convert `w:*Chars` indents when an active
 /// character grid applies to the paragraph: the paragraph font size widened by
 /// the grid's extra character spacing (`w:docGrid/@w:charSpace`, stored in
@@ -2321,6 +2337,33 @@ pub fn resolve_line_height_points_with_default_multiplier(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn table_cell_doc_grid_drops_only_the_line_pitch_without_adjust_line_height() {
+        let lines_and_chars = DocGrid {
+            grid_type: Some("linesAndChars".into()),
+            line_pitch: Some(18.0),
+            char_space: Some(1.5),
+        };
+        assert_eq!(
+            doc_grid_for_table_cells(None, false).map(|g| g.line_pitch),
+            None
+        );
+
+        let kept = doc_grid_for_table_cells(Some(&lines_and_chars), true).unwrap();
+        assert_eq!(kept.line_pitch, Some(18.0));
+        assert!(doc_grid_has_active_line_grid(Some(&kept)));
+
+        let cell = doc_grid_for_table_cells(Some(&lines_and_chars), false).unwrap();
+        assert_eq!(cell.line_pitch, None);
+        assert_eq!(cell.char_space, Some(1.5));
+        assert!(!doc_grid_has_active_line_grid(Some(&cell)));
+        assert!(doc_grid_has_active_char_grid(Some(&cell)));
+        assert_eq!(
+            resolve_line_height_points(10.5, None, Some(&cell), true, Some(600.0), None),
+            resolve_line_height_points(10.5, None, None, true, Some(600.0), None),
+        );
+    }
 
     #[test]
     fn preceding_after_crosses_only_mac_section_starts_and_defers_context_checks() {

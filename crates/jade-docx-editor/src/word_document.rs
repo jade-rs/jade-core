@@ -2359,6 +2359,7 @@ impl WordDocument {
             parsed_doc.display_content_revisions = doc_settings.display_content_revisions;
             parsed_doc.default_tab_stop = doc_settings.default_tab_stop;
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
+            parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;

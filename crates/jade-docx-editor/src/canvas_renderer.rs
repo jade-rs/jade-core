@@ -3566,6 +3566,8 @@ where
     document_snap_to_grid_default: bool,
     document_default_tab_width: Option<f64>,
     document_no_tab_hanging_indent: bool,
+    /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
+    document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
     /// `set_word_oracle_advances`). Lets the production measurement path skip the
     /// oracle lookup entirely with a single cheap check.
@@ -7868,6 +7870,7 @@ where
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
+            document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
             word_oracle_text_advances: RefCell::new(FxHashMap::default()),
@@ -12593,6 +12596,7 @@ where
         // built-in default for every document.
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
+        self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
         let new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
         if self.document_east_asian_rules != new_east_asian_rules {
@@ -36734,6 +36738,90 @@ mod tests {
                 [("A", "#112233"), ("B", "#AA0000"), ("漢", "#112233")]
                     .map(|(text, color)| (text.into(), color.into())),
                 "nested={nested}"
+            );
+        }
+    }
+
+    /// ECMA-376 §17.15.3.1: without `w:adjustLineHeightInTable` the section's
+    /// line grid pitch is not added to lines in table cells (jlsi/jade#468).
+    #[test]
+    fn table_cell_lines_ignore_the_line_grid_unless_adjust_line_height_in_table() {
+        let grid = DocGrid {
+            grid_type: Some("lines".into()),
+            line_pitch: Some(18.0),
+            char_space: None,
+        };
+        let grid_line_px = points_to_px(18.0);
+        for (nested, adjust) in [(false, false), (false, true), (true, false), (true, true)] {
+            let (mut renderer, _) = recording_renderer();
+            let mut document = table_measure_document();
+            document.default_section = Some(SectionProperties {
+                doc_grid: Some(grid.clone()),
+                ..Default::default()
+            });
+            document.adjust_line_height_in_table = adjust;
+            let BodyElement::Table(table) = &mut document.body.as_mut().unwrap().elements[0] else {
+                panic!("table")
+            };
+            table.rows.truncate(1);
+            table.rows[0].cells.truncate(1);
+            let mut blocks = doc_with_paragraph_texts(&["CELL\ncell"])
+                .body
+                .unwrap()
+                .elements;
+            let BodyElement::Paragraph(paragraph) = &mut blocks[0] else {
+                panic!("paragraph")
+            };
+            for run in &mut paragraph.runs {
+                run.properties
+                    .get_or_insert_with(Default::default)
+                    .font_size = Some(10.5);
+            }
+            paragraph
+                .properties
+                .get_or_insert_with(Default::default)
+                .spacing = Some(jade_docx_reader::Spacing {
+                before: Some(0.0),
+                after: Some(0.0),
+                ..Default::default()
+            });
+            let ungridded_px = points_to_px(
+                renderer
+                    .resolve_paragraph_line_height_points(paragraph)
+                    .unwrap(),
+            );
+            assert!(ungridded_px < grid_line_px);
+            table.rows[0].cells[0].blocks = blocks;
+            if nested {
+                let inner = table.clone();
+                table.rows[0].cells[0].blocks = vec![BodyElement::Table(inner)];
+            }
+
+            renderer
+                .render(&document, &Options::default())
+                .expect("render gridded table");
+            let lines: Vec<_> = renderer
+                .layout_debug_lines()
+                .into_iter()
+                .filter(|line| line.paragraph == 0)
+                .collect();
+            assert_eq!(lines.len(), 2);
+            let expected = if adjust { grid_line_px } else { ungridded_px };
+            for line in &lines {
+                assert!(
+                    (line.height - expected).abs() < 0.001,
+                    "nested={nested}, adjust={adjust}, actual={}, expected={expected}",
+                    line.height
+                );
+            }
+            assert!((lines[1].top - lines[0].top - expected).abs() < 0.001);
+            // The section grid itself is untouched for the body that follows.
+            assert_eq!(
+                renderer
+                    .current_doc_grid
+                    .as_ref()
+                    .and_then(|grid| grid.line_pitch),
+                Some(18.0)
             );
         }
     }
