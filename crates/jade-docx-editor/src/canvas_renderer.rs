@@ -3122,11 +3122,13 @@ where
     host: RenderHostSlot<HostPainter>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
-    /// Set while a keepNext group measurement lays out the group's final,
-    /// non-keepNext paragraph: only its first lines that may not be split
-    /// from the group count. `render_text_line` records their bottom in
-    /// `keep_next_tail_bottom` and clears the flag.
-    keep_next_tail_pending: bool,
+    /// Set while a keepNext group measurement lays out a group member after
+    /// the first: `Some(true)` for the final, non-keepNext paragraph,
+    /// `Some(false)` for a keepNext one. Only the member's first lines that
+    /// may not be split from what precedes them count: `render_text_line`
+    /// records their bottom in `keep_next_tail_bottom` (for a keepNext member
+    /// only when it can split at all) and clears the flag.
+    keep_next_tail_pending: Option<bool>,
     keep_next_tail_bottom: Option<f64>,
     active_keep_next_group_end: Option<usize>,
     keep_next_group_surfaces: std::collections::BTreeMap<usize, usize>,
@@ -7690,7 +7692,7 @@ where
             host: RenderHostSlot { value: host },
             keep_next_measurer: None,
             measuring_keep_next: false,
-            keep_next_tail_pending: false,
+            keep_next_tail_pending: None,
             keep_next_tail_bottom: None,
             active_keep_next_group_end: None,
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
@@ -19009,9 +19011,11 @@ where
         // The lines of a keepNext group's final paragraph that must share a
         // page with the group: one when it may split after any line, two
         // (or all of three or fewer) under widow control, all under keepLines.
-        let keep_next_tail_bands = (self.measuring_keep_next && self.keep_next_tail_pending)
-            .then(|| {
-                if keep_lines_enabled {
+        let keep_next_tail_bands = self
+            .keep_next_tail_pending
+            .filter(|_| self.measuring_keep_next)
+            .and_then(|is_tail| {
+                let required = if keep_lines_enabled {
                     band_count
                 } else if widow_control_enabled {
                     if band_count <= 3 {
@@ -19021,9 +19025,11 @@ where
                     }
                 } else {
                     1
-                }
-            })
-            .filter(|&required| required > 0);
+                };
+                // A keepNext member that cannot split is measured whole and
+                // the group continues past it.
+                (required > 0 && (is_tail || required < band_count)).then_some(required)
+            });
         let mut placed_end = base_offset;
         // `(page, column, top, bottom)` of the previous line's band, for lines
         // that continue it on the far side of a `bothSides` float.
@@ -19330,8 +19336,8 @@ where
             }
             if let Some(required) = keep_next_tail_bands {
                 let band_end = band_starts.get(required).copied().unwrap_or(lines.len());
-                if line_index + 1 == band_end && self.keep_next_tail_pending {
-                    self.keep_next_tail_pending = false;
+                if line_index + 1 == band_end && self.keep_next_tail_pending.is_some() {
+                    self.keep_next_tail_pending = None;
                     self.keep_next_tail_bottom = Some(self.current_y);
                 }
             }
@@ -54239,6 +54245,72 @@ mod tests {
             assert_eq!(page(2, 0), heading_page, "{case}");
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
+        }
+    }
+
+    /// A keepNext paragraph may itself split between its lines: Word keeps
+    /// it from the paragraph after it, not from the page. scroll-offset-repro
+    /// page 4 sets `第１３条…` and the first line of its two-line keepNext body
+    /// at the page foot, and the body's second line on page 5.
+    #[test]
+    fn keep_next_group_may_split_inside_a_later_member() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, heading_page) in [(false, 0), (true, 1)] {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                ("filler", false),
+                ("filler", false),
+                ("first", true),
+                ("one two three four five six seven eight", true),
+                ("last", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            assert_eq!(paragraphs[4].lines.len(), 2);
+            let page = |paragraph: usize, line: usize| {
+                renderer.page_for_y(paragraphs[paragraph].lines[line].absolute_top)
+            };
+            let case = format!("widow={widow_control}");
+            assert_eq!(page(3, 0), heading_page, "{case}");
+            assert_eq!(page(4, 0), heading_page, "{case}");
+            assert_eq!(page(4, 1), 1, "{case}");
+            assert_eq!(page(5, 0), 1, "{case}");
         }
     }
 
