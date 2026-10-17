@@ -1,0 +1,28 @@
+---
+source: crates/jade-docx-extract/tests/snapshot_all.rs
+expression: paragraphs
+---
+- text: "\n"
+  numbering_text: ""
+  accepted_text: "\n"
+  accepted_numbering_text: ""
+  in_table: true
+  table_path:
+    - table: 0
+      row: 0
+      cell: 0
+  in_textbox: false
+  in_shape: false
+  para_id: 1E1B2383
+- text: "\n"
+  numbering_text: ""
+  accepted_text: "\n"
+  accepted_numbering_text: ""
+  in_table: true
+  table_path:
+    - table: 0
+      row: 0
+      cell: 0
+  in_textbox: false
+  in_shape: false
+  para_id: "28E51435"

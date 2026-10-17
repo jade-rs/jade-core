@@ -1,0 +1,435 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "e25433005e28dc1488c4c826b3e472392e155f32df4c304a31a4d3828a1ae29f",
+ "pdf_sha256": "e3ab7771d8809965dcf3b5173c80bf1c5e4b869181dcf7dd0a547e8a0308b707",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 187.453,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 65.203,
+       "advance_pt": 6.547,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "e",
+       "x_pt": 71.715,
+       "advance_pt": 3.898,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "l",
+       "x_pt": 75.594,
+       "advance_pt": 2.132,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "l",
+       "x_pt": 77.715,
+       "advance_pt": 2.132,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "o",
+       "x_pt": 79.836,
+       "advance_pt": 4.256,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "c",
+       "x_pt": 86.121,
+       "advance_pt": 3.683,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "o",
+       "x_pt": 89.783,
+       "advance_pt": 4.256,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "m",
+       "x_pt": 94.018,
+       "advance_pt": 6.77,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "m",
+       "x_pt": 100.75,
+       "advance_pt": 6.77,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "e",
+       "x_pt": 107.483,
+       "advance_pt": 3.898,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "n",
+       "x_pt": 111.359,
+       "advance_pt": 4.622,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      },
+      {
+       "text": "t",
+       "x_pt": 115.952,
+       "advance_pt": 2.753,
+       "font": "YuMincho-Regular",
+       "size_pt": 7.955
+      }
+     ],
+     "text": "Hellocomment"
+    },
+    {
+     "baseline_pt": 189.692,
+     "characters": [
+      {
+       "text": "コ",
+       "x_pt": 412.701,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "メ",
+       "x_pt": 419.613,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "ン",
+       "x_pt": 426.525,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "ト",
+       "x_pt": 433.438,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "の",
+       "x_pt": 440.35,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "追",
+       "x_pt": 447.262,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "加",
+       "x_pt": 454.175,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "[",
+       "x_pt": 464.478,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "智",
+       "x_pt": 468.0,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "植",
+       "x_pt": 474.912,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "1",
+       "x_pt": 481.825,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "]",
+       "x_pt": 485.347,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": ":",
+       "x_pt": 488.87,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "H",
+       "x_pt": 495.782,
+       "advance_pt": 5.654,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "e",
+       "x_pt": 501.364,
+       "advance_pt": 3.366,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "l",
+       "x_pt": 504.685,
+       "advance_pt": 1.841,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "l",
+       "x_pt": 506.501,
+       "advance_pt": 1.841,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "o",
+       "x_pt": 508.318,
+       "advance_pt": 3.676,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "C",
+       "x_pt": 513.71,
+       "advance_pt": 5.015,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "o",
+       "x_pt": 518.659,
+       "advance_pt": 3.676,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "m",
+       "x_pt": 522.29,
+       "advance_pt": 5.847,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "m",
+       "x_pt": 528.057,
+       "advance_pt": 5.847,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "e",
+       "x_pt": 533.824,
+       "advance_pt": 3.367,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "n",
+       "x_pt": 537.145,
+       "advance_pt": 3.992,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "t",
+       "x_pt": 541.084,
+       "advance_pt": 2.377,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      }
+     ],
+     "text": "コメントの追加[智植1]:HelloComment"
+    },
+    {
+     "baseline_pt": 207.41,
+     "characters": [
+      {
+       "text": "コ",
+       "x_pt": 412.701,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "メ",
+       "x_pt": 419.613,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "ン",
+       "x_pt": 426.525,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "ト",
+       "x_pt": 433.438,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "の",
+       "x_pt": 440.35,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "追",
+       "x_pt": 447.262,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "加",
+       "x_pt": 454.175,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "[",
+       "x_pt": 464.478,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "智",
+       "x_pt": 468.0,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "植",
+       "x_pt": 474.912,
+       "advance_pt": 6.87,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "1",
+       "x_pt": 481.825,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "R",
+       "x_pt": 485.347,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "2",
+       "x_pt": 488.87,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "]",
+       "x_pt": 492.392,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": ":",
+       "x_pt": 495.915,
+       "advance_pt": 3.435,
+       "font": "MS-Mincho",
+       "size_pt": 6.803
+      },
+      {
+       "text": "R",
+       "x_pt": 502.827,
+       "advance_pt": 4.713,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "e",
+       "x_pt": 507.478,
+       "advance_pt": 3.366,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "p",
+       "x_pt": 510.804,
+       "advance_pt": 3.902,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "l",
+       "x_pt": 514.651,
+       "advance_pt": 1.841,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      },
+      {
+       "text": "y",
+       "x_pt": 516.472,
+       "advance_pt": 3.346,
+       "font": "YuMincho-Regular",
+       "size_pt": 6.87
+      }
+     ],
+     "text": "コメントの追加[智植1R2]:Reply"
+    }
+   ]
+  }
+ ]
+}

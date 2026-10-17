@@ -1,0 +1,23 @@
+[package]
+name = "jade-pptx-headless-mcp"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "Model Context Protocol (stdio) server for reading PPTX presentations headlessly"
+
+[[bin]]
+name = "jade-pptx-headless-mcp"
+path = "src/main.rs"
+
+[dependencies]
+jade-pptx-headless-api = { path = "../jade-pptx-headless-api" }
+# The CLI crate's library half holds the deck-query functions; this server is
+# a second front end over the same code.
+jade-pptx-headless-cli = { path = "../jade-pptx-headless-cli" }
+jade-pptx-reader = { path = "../jade-pptx-reader" }
+base64 = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

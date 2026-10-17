@@ -1,0 +1,30 @@
+[workspace]
+
+[package]
+name = "jade-docx-native-render"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
+
+# Deliberately outside the workspace, for the same reason as
+# `jade-skia-painter`: it pulls in `skia-safe`, and the workspace CI builds
+# with `--all-features`, which would make every run pay for that.
+
+[dependencies]
+jade-docx-editor = { path = "../jade-docx-editor" }
+jade-painter = { path = "../jade-painter" }
+jade-skia-painter = { path = "../jade-skia-painter" }
+jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping"] }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = "0.3"
+futures = "0.3"
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-selection = { path = "../jade-selection" }
+
+[dev-dependencies]
+# Only so a failing render test can write the page out as a PNG to look at.
+image = { version = "0.25", default-features = false, features = ["png"] }
+lopdf = "=0.39.0"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

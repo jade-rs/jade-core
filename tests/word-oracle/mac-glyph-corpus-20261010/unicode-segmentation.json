@@ -1,0 +1,262 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "ced08035a1ec321342637d0b1a60e194937e4b8be45a58fe40f174b63dc74cec",
+ "pdf_sha256": "f19d4383a94a4b445a794e201f5994a6a6237be1a35c8e45549f3f4aea9a46b7",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 70.56,
+     "characters": [
+      {
+       "text": "今",
+       "x_pt": 56.64,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "日",
+       "x_pt": 67.68,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "は",
+       "x_pt": 78.72,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "竈",
+       "x_pt": 89.52,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "門",
+       "x_pt": 100.56,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "禰",
+       "x_pt": 111.6,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "󠄀",
+       "x_pt": 122.64,
+       "advance_pt": 0.0,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "豆",
+       "x_pt": 122.64,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "子",
+       "x_pt": 133.68,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "が",
+       "x_pt": 144.72,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "𠮷",
+       "x_pt": 155.52,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "野",
+       "x_pt": 166.56,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "屋",
+       "x_pt": 177.6,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "で",
+       "x_pt": 188.64,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "🧑",
+       "x_pt": 199.68,
+       "advance_pt": 11.04,
+       "font": "AppleColorEmoji",
+       "size_pt": 11.04
+      },
+      {
+       "text": "🧑",
+       "x_pt": 210.72,
+       "advance_pt": 0.0,
+       "font": "AppleColorEmoji",
+       "size_pt": 11.04
+      },
+      {
+       "text": "🧒",
+       "x_pt": 210.72,
+       "advance_pt": 0.0,
+       "font": "AppleColorEmoji",
+       "size_pt": 11.04
+      },
+      {
+       "text": "🧒",
+       "x_pt": 210.72,
+       "advance_pt": 0.0,
+       "font": "AppleColorEmoji",
+       "size_pt": 11.04
+      },
+      {
+       "text": "で",
+       "x_pt": 210.72,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "𩸽",
+       "x_pt": 221.52,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "と",
+       "x_pt": 232.56,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "チ",
+       "x_pt": 243.6,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ェ",
+       "x_pt": 254.64,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ﾌ",
+       "x_pt": 265.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ﾟ",
+       "x_pt": 271.2,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "を",
+       "x_pt": 276.72,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "頼",
+       "x_pt": 287.52,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ん",
+       "x_pt": 298.56,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "で",
+       "x_pt": 309.6,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "𠮟",
+       "x_pt": 320.64,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ら",
+       "x_pt": 331.68,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "れ",
+       "x_pt": 342.72,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "た",
+       "x_pt": 353.76,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "😇",
+       "x_pt": 364.56,
+       "advance_pt": 11.04,
+       "font": "AppleColorEmoji",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "今日は竈門禰󠄀豆子が𠮷野屋で🧑🧑🧒🧒で𩸽とチェﾌﾟを頼んで𠮟られた😇"
+    }
+   ]
+  }
+ ]
+}

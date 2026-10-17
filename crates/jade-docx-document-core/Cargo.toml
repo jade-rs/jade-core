@@ -1,0 +1,39 @@
+[package]
+name = "jade-docx-document-core"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "Renderer-independent DOCX document model and editing engine"
+
+[lints.rust]
+# This crate includes the editor command modules and their Kani proof harnesses.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
+[dependencies]
+base64 = "0.22"
+cfb = "0.7"
+png = "0.17"
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-selection = { path = "../jade-selection" }
+jade-docx-reader = { path = "../jade-docx-reader" }
+jade-docx-writer = { path = "../jade-docx-writer" }
+serde = { version = "1.0", features = ["derive", "rc"] }
+thiserror = "2.0"
+unicode-segmentation = "1.10"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }
+emf-core = { git = "https://github.com/mythrnr/emf-rs.git", tag = "0.0.8", package = "emf-core", default-features = false, features = ["svg"] }
+wmf-core = { git = "https://github.com/mythrnr/wmf-rs.git", tag = "0.0.24", package = "wmf-core", default-features = false, features = ["svg"] }
+
+[features]
+default = []
+otel = ["tracing"]
+
+[dependencies.tracing]
+version = "0.1"
+optional = true
+
+[dev-dependencies]
+serde_json = "1.0"
+jade-docx-layout-engine = { package = "jade-docx-layout", path = "../jade-docx-layout" }
+futures = "0.3"
+proptest = "1.6"

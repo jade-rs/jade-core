@@ -1,0 +1,23 @@
+# Word for Mac 16.x (Microsoft 365), 2026-09-03, via word-mac-table-rows.applescript.
+# Values are points from the page top; consecutive rows give the painted row height.
+
+## public/fixtures/yokohama_table_row_heights.docx, table 1
+para 1 y=99.550003   (lead paragraph, 2 lines)
+para 2 y=129.449997  (第6節　特別土地保有税...)
+row 1 y=144.750000 height=auto
+row 2 y=160.100006 height=auto              -> row 1 = 15.35pt
+row 3 y=174.649994 height=46.2 rule=exactly -> row 2 = 14.55pt
+row 4 y=221.350006 height=5.0  rule=exactly -> row 3 = 46.70pt
+row 5 y=225.949997 height=auto              -> row 4 =  4.60pt
+after y=240.500000 (第3章　目的税)           -> row 5 = 14.55pt
+para 39 y=254.300003 (第1節　入湯税...)
+table total: 95.75pt (rows 3 + 4 = 51.30pt = the declared 46.2pt + 5.0pt)
+
+## Source document (~/Downloads/yokohama-edited (1).docx, page 1), table 1
+row 1 y=423.549988
+row 2 y=438.899994
+row 3 y=453.450012 height=46.2 rule=exactly
+row 4 y=500.149994 height=5.0  rule=exactly
+row 5 y=504.750000
+after y=520.099976 (第3章　目的税)
+table total: 96.55pt

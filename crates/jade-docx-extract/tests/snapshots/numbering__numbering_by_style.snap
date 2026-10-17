@@ -1,0 +1,36 @@
+---
+source: crates/docx-extract/tests/numbering.rs
+expression: paragraphs
+---
+- text: （適用範囲）
+  numbering_text: 第1条
+  accepted_text: （適用範囲）
+  accepted_numbering_text: 第1条
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 3550E91E
+- text: 本規則は、社員に適用します。
+  numbering_text: "1"
+  accepted_text: 本規則は、社員に適用します。
+  accepted_numbering_text: "1"
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 7C0C065A
+- text: あああああああああああああああああああああああああああああ。
+  numbering_text: "2"
+  accepted_text: あああああああああああああああああああああああああああああ。
+  accepted_numbering_text: "2"
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 745C9E75
+- text: ああああああああああああああああああああああ
+  numbering_text: （1）
+  accepted_text: ああああああああああああああああああああああ
+  accepted_numbering_text: （1）
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 2037E0C6

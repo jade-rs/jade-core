@@ -1,0 +1,15 @@
+[package]
+name = "jade-docx-annotations"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "Browser-independent DOCX package annotation transformation"
+
+[dependencies]
+jade-docx-reader = { path = "../jade-docx-reader" }
+jade-docx-writer = { path = "../jade-docx-writer" }
+
+[dev-dependencies]
+futures = "0.3"
+proptest = "1.6"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

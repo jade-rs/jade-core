@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8367840399edcb5fc66aec8eabb2a9e76b082646a3c1116ec7085b8c95eeb4b5 # shrinks to name = "A", major_font = "A", minor_font = "&", east_asia_font = "A", colors = [0, 0, 0, 0, 0, 0, 0, 0]

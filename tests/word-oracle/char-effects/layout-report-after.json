@@ -1,0 +1,886 @@
+{
+  "input": "public/fixtures/char-effects.docx",
+  "summary": {
+    "word_line_count": 6,
+    "layout_line_count": 6,
+    "compared_line_count": 6,
+    "diff_count": 0,
+    "stored_diff_count": 0,
+    "first_diff_index": null,
+    "max_abs_y_delta_pt": 0.0,
+    "max_abs_x_delta_pt": 0.0,
+    "coordinate_adjustments": [
+      {
+        "page": 1,
+        "x_delta_pt": 0.3,
+        "y_delta_pt": 0.3
+      }
+    ]
+  },
+  "diffs": [],
+  "word_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Shadowed text",
+      "numbering_text": null,
+      "text_with_numbering": "Shadowed text",
+      "x_pt": 57.0,
+      "y_pt": 57.0,
+      "width_pt": 112.5,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 20.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "S",
+          "x_pt": 57.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 1,
+          "text": "h",
+          "x_pt": 68.25,
+          "y_pt": 57.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 2,
+          "text": "a",
+          "x_pt": 78.0,
+          "y_pt": 57.0,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 3,
+          "text": "d",
+          "x_pt": 87.0,
+          "y_pt": 57.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 4,
+          "text": "o",
+          "x_pt": 96.75,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 5,
+          "text": "w",
+          "x_pt": 107.25,
+          "y_pt": 57.0,
+          "advance_pt": 14.25
+        },
+        {
+          "char_index": 6,
+          "text": "e",
+          "x_pt": 121.5,
+          "y_pt": 57.0,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 7,
+          "text": "d",
+          "x_pt": 130.5,
+          "y_pt": 57.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 8,
+          "text": " ",
+          "x_pt": 140.25,
+          "y_pt": 57.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 9,
+          "text": "t",
+          "x_pt": 145.5,
+          "y_pt": 57.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 10,
+          "text": "e",
+          "x_pt": 150.75,
+          "y_pt": 57.0,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 11,
+          "text": "x",
+          "x_pt": 159.75,
+          "y_pt": 57.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 12,
+          "text": "t",
+          "x_pt": 169.5,
+          "y_pt": 57.0,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 12
+    },
+    {
+      "index": 1,
+      "paragraph_index": 1,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Outlined text",
+      "numbering_text": null,
+      "text_with_numbering": "Outlined text",
+      "x_pt": 57.0,
+      "y_pt": 79.5,
+      "width_pt": 99.75,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 20.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "O",
+          "x_pt": 57.0,
+          "y_pt": 79.5,
+          "advance_pt": 14.25
+        },
+        {
+          "char_index": 1,
+          "text": "u",
+          "x_pt": 71.25,
+          "y_pt": 79.5,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 2,
+          "text": "t",
+          "x_pt": 81.75,
+          "y_pt": 79.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 3,
+          "text": "l",
+          "x_pt": 87.0,
+          "y_pt": 79.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 4,
+          "text": "i",
+          "x_pt": 92.25,
+          "y_pt": 79.5,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 5,
+          "text": "n",
+          "x_pt": 98.25,
+          "y_pt": 79.5,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 6,
+          "text": "e",
+          "x_pt": 108.0,
+          "y_pt": 79.5,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 7,
+          "text": "d",
+          "x_pt": 117.0,
+          "y_pt": 79.5,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 8,
+          "text": " ",
+          "x_pt": 126.75,
+          "y_pt": 79.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 9,
+          "text": "t",
+          "x_pt": 132.0,
+          "y_pt": 79.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 10,
+          "text": "e",
+          "x_pt": 137.25,
+          "y_pt": 79.5,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 11,
+          "text": "x",
+          "x_pt": 146.25,
+          "y_pt": 79.5,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 12,
+          "text": "t",
+          "x_pt": 156.75,
+          "y_pt": 79.5,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 12
+    },
+    {
+      "index": 2,
+      "paragraph_index": 2,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Embossed text",
+      "numbering_text": null,
+      "text_with_numbering": "Embossed text",
+      "x_pt": 57.0,
+      "y_pt": 102.75,
+      "width_pt": 111.75,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 20.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "E",
+          "x_pt": 57.0,
+          "y_pt": 102.75,
+          "advance_pt": 12.0
+        },
+        {
+          "char_index": 1,
+          "text": "m",
+          "x_pt": 69.0,
+          "y_pt": 102.75,
+          "advance_pt": 15.75
+        },
+        {
+          "char_index": 2,
+          "text": "b",
+          "x_pt": 84.75,
+          "y_pt": 102.75,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 3,
+          "text": "o",
+          "x_pt": 94.5,
+          "y_pt": 102.75,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 4,
+          "text": "s",
+          "x_pt": 105.0,
+          "y_pt": 102.75,
+          "advance_pt": 7.5
+        },
+        {
+          "char_index": 5,
+          "text": "s",
+          "x_pt": 112.5,
+          "y_pt": 102.75,
+          "advance_pt": 7.5
+        },
+        {
+          "char_index": 6,
+          "text": "e",
+          "x_pt": 120.0,
+          "y_pt": 102.75,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 7,
+          "text": "d",
+          "x_pt": 129.0,
+          "y_pt": 102.75,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 8,
+          "text": " ",
+          "x_pt": 139.5,
+          "y_pt": 102.75,
+          "advance_pt": 4.5
+        },
+        {
+          "char_index": 9,
+          "text": "t",
+          "x_pt": 144.0,
+          "y_pt": 102.75,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 10,
+          "text": "e",
+          "x_pt": 150.0,
+          "y_pt": 102.75,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 11,
+          "text": "x",
+          "x_pt": 159.0,
+          "y_pt": 102.75,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 12,
+          "text": "t",
+          "x_pt": 168.75,
+          "y_pt": 102.75,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 12
+    },
+    {
+      "index": 3,
+      "paragraph_index": 3,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Imprinted text",
+      "numbering_text": null,
+      "text_with_numbering": "Imprinted text",
+      "x_pt": 57.0,
+      "y_pt": 126.0,
+      "width_pt": 108.0,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 20.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "I",
+          "x_pt": 57.0,
+          "y_pt": 126.0,
+          "advance_pt": 6.75
+        },
+        {
+          "char_index": 1,
+          "text": "m",
+          "x_pt": 63.75,
+          "y_pt": 126.0,
+          "advance_pt": 15.75
+        },
+        {
+          "char_index": 2,
+          "text": "p",
+          "x_pt": 79.5,
+          "y_pt": 126.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 3,
+          "text": "r",
+          "x_pt": 89.25,
+          "y_pt": 126.0,
+          "advance_pt": 6.75
+        },
+        {
+          "char_index": 4,
+          "text": "i",
+          "x_pt": 96.0,
+          "y_pt": 126.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 5,
+          "text": "n",
+          "x_pt": 101.25,
+          "y_pt": 126.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 6,
+          "text": "t",
+          "x_pt": 111.75,
+          "y_pt": 126.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 7,
+          "text": "e",
+          "x_pt": 117.0,
+          "y_pt": 126.0,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 8,
+          "text": "d",
+          "x_pt": 126.0,
+          "y_pt": 126.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 9,
+          "text": " ",
+          "x_pt": 135.75,
+          "y_pt": 126.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 10,
+          "text": "t",
+          "x_pt": 141.0,
+          "y_pt": 126.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 11,
+          "text": "e",
+          "x_pt": 146.25,
+          "y_pt": 126.0,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 12,
+          "text": "x",
+          "x_pt": 155.25,
+          "y_pt": 126.0,
+          "advance_pt": 9.75
+        },
+        {
+          "char_index": 13,
+          "text": "t",
+          "x_pt": 165.0,
+          "y_pt": 126.0,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 13
+    },
+    {
+      "index": 4,
+      "paragraph_index": 4,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Visible  tail",
+      "numbering_text": null,
+      "text_with_numbering": "Visible  tail",
+      "x_pt": 57.0,
+      "y_pt": 148.5,
+      "width_pt": 52.5,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 12.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "V",
+          "x_pt": 57.0,
+          "y_pt": 148.5,
+          "advance_pt": 9.0
+        },
+        {
+          "char_index": 1,
+          "text": "i",
+          "x_pt": 66.0,
+          "y_pt": 148.5,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 2,
+          "text": "s",
+          "x_pt": 69.0,
+          "y_pt": 148.5,
+          "advance_pt": 4.5
+        },
+        {
+          "char_index": 3,
+          "text": "i",
+          "x_pt": 73.5,
+          "y_pt": 148.5,
+          "advance_pt": 3.75
+        },
+        {
+          "char_index": 4,
+          "text": "b",
+          "x_pt": 77.25,
+          "y_pt": 148.5,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 5,
+          "text": "l",
+          "x_pt": 83.25,
+          "y_pt": 148.5,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 6,
+          "text": "e",
+          "x_pt": 86.25,
+          "y_pt": 148.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 7,
+          "text": " ",
+          "x_pt": 91.5,
+          "y_pt": 148.5,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 8,
+          "text": " ",
+          "x_pt": 94.5,
+          "y_pt": 148.5,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 9,
+          "text": "t",
+          "x_pt": 97.5,
+          "y_pt": 148.5,
+          "advance_pt": 3.75
+        },
+        {
+          "char_index": 10,
+          "text": "a",
+          "x_pt": 101.25,
+          "y_pt": 148.5,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 11,
+          "text": "i",
+          "x_pt": 106.5,
+          "y_pt": 148.5,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 12,
+          "text": "l",
+          "x_pt": 109.5,
+          "y_pt": 148.5,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 12
+    },
+    {
+      "index": 5,
+      "paragraph_index": 5,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "BaseRaisedBaseLowered",
+      "numbering_text": null,
+      "text_with_numbering": "BaseRaisedBaseLowered",
+      "x_pt": 57.0,
+      "y_pt": 162.75,
+      "width_pt": 116.25,
+      "font": {
+        "name": "Times New Roman",
+        "name_ascii": "Times New Roman",
+        "name_far_east": "+本文のフォント - 日本語",
+        "name_bi": "Times New Roman",
+        "size_pt": 12.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "B",
+          "x_pt": 57.0,
+          "y_pt": 162.75,
+          "advance_pt": 8.25
+        },
+        {
+          "char_index": 1,
+          "text": "a",
+          "x_pt": 65.25,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 2,
+          "text": "s",
+          "x_pt": 70.5,
+          "y_pt": 162.75,
+          "advance_pt": 4.5
+        },
+        {
+          "char_index": 3,
+          "text": "e",
+          "x_pt": 75.0,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 4,
+          "text": "R",
+          "x_pt": 80.25,
+          "y_pt": 162.75,
+          "advance_pt": 8.25
+        },
+        {
+          "char_index": 5,
+          "text": "a",
+          "x_pt": 88.5,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 6,
+          "text": "i",
+          "x_pt": 93.75,
+          "y_pt": 162.75,
+          "advance_pt": 3.0
+        },
+        {
+          "char_index": 7,
+          "text": "s",
+          "x_pt": 96.75,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 8,
+          "text": "e",
+          "x_pt": 102.0,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 9,
+          "text": "d",
+          "x_pt": 107.25,
+          "y_pt": 162.75,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 10,
+          "text": "B",
+          "x_pt": 113.25,
+          "y_pt": 162.75,
+          "advance_pt": 7.5
+        },
+        {
+          "char_index": 11,
+          "text": "a",
+          "x_pt": 120.75,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 12,
+          "text": "s",
+          "x_pt": 126.0,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 13,
+          "text": "e",
+          "x_pt": 131.25,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 14,
+          "text": "L",
+          "x_pt": 136.5,
+          "y_pt": 162.75,
+          "advance_pt": 7.5
+        },
+        {
+          "char_index": 15,
+          "text": "o",
+          "x_pt": 144.0,
+          "y_pt": 162.75,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 16,
+          "text": "w",
+          "x_pt": 150.0,
+          "y_pt": 162.75,
+          "advance_pt": 8.25
+        },
+        {
+          "char_index": 17,
+          "text": "e",
+          "x_pt": 158.25,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 18,
+          "text": "r",
+          "x_pt": 163.5,
+          "y_pt": 162.75,
+          "advance_pt": 4.5
+        },
+        {
+          "char_index": 19,
+          "text": "e",
+          "x_pt": 168.0,
+          "y_pt": 162.75,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 20,
+          "text": "d",
+          "x_pt": 173.25,
+          "y_pt": 162.75,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 20
+    }
+  ],
+  "layout_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Shadowed text",
+      "numbering_text": null,
+      "text_with_numbering": "Shadowed text",
+      "x_pt": 57.0,
+      "y_pt": 57.0,
+      "width_pt": 112.5,
+      "height_pt": 23.0,
+      "char_start": 0,
+      "char_end": 12
+    },
+    {
+      "index": 1,
+      "paragraph_index": 1,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Outlined text",
+      "numbering_text": null,
+      "text_with_numbering": "Outlined text",
+      "x_pt": 57.0,
+      "y_pt": 79.5,
+      "width_pt": 99.75,
+      "height_pt": 23.0,
+      "char_start": 1,
+      "char_end": 13
+    },
+    {
+      "index": 2,
+      "paragraph_index": 2,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Embossed text",
+      "numbering_text": null,
+      "text_with_numbering": "Embossed text",
+      "x_pt": 57.0,
+      "y_pt": 102.75,
+      "width_pt": 111.75,
+      "height_pt": 23.0,
+      "char_start": 2,
+      "char_end": 14
+    },
+    {
+      "index": 3,
+      "paragraph_index": 3,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Imprinted text",
+      "numbering_text": null,
+      "text_with_numbering": "Imprinted text",
+      "x_pt": 57.0,
+      "y_pt": 126.0,
+      "width_pt": 108.0,
+      "height_pt": 23.0,
+      "char_start": 3,
+      "char_end": 16
+    },
+    {
+      "index": 4,
+      "paragraph_index": 4,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Visible  tail",
+      "numbering_text": null,
+      "text_with_numbering": "Visible  tail",
+      "x_pt": 57.0,
+      "y_pt": 148.5,
+      "width_pt": 52.5,
+      "height_pt": 13.799999237060547,
+      "char_start": 4,
+      "char_end": 16
+    },
+    {
+      "index": 5,
+      "paragraph_index": 5,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "BaseRaisedBaseLowered",
+      "numbering_text": null,
+      "text_with_numbering": "BaseRaisedBaseLowered",
+      "x_pt": 57.0,
+      "y_pt": 162.75,
+      "width_pt": 116.25,
+      "height_pt": 13.799999237060547,
+      "char_start": 5,
+      "char_end": 25
+    }
+  ]
+}

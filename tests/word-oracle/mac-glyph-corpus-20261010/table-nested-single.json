@@ -1,0 +1,17 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "c113770ce1d608c746013d007628b4f3d5de3b5be23e8ff41076f52303ec5e40",
+ "pdf_sha256": "b8aadc99917c5327521dfcf70cdc18feb39cbeff2d90dc2a3f42dc9f3c28af23",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": []
+  }
+ ]
+}

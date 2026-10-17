@@ -1,0 +1,28 @@
+[package]
+name = "jade-docx-headless-mcp"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "Model Context Protocol (stdio) server for fast, in-memory headless DOCX editing"
+
+[[bin]]
+name = "jade-docx-headless-mcp"
+path = "src/main.rs"
+
+[dependencies]
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-docx-document-core = { path = "../jade-docx-document-core" }
+jade-selection = { path = "../jade-selection" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures = "0.3"
+base64 = "0.22"
+# Native-only: regex replacement lives here rather than in the shared query
+# API, which is compiled into the WebAssembly editor core.
+regex = "1.11"
+
+[dev-dependencies]
+# Test-only: crack open exported .docx bytes to assert field-code preservation.
+zip = { version = "8.0", default-features = false, features = ["deflate"] }
+# Test-only: property-test find/replace against a plain-string model.
+proptest = "1.6"

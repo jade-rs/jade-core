@@ -1,0 +1,7936 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "ff0b7e1a9089ca3e4a92b9f8defc19ee114fb5a10e29fd394a13ae7e8966e5e8",
+ "pdf_sha256": "4732ae18e8d5be9d40ae24c2e076ebe5c0dd2c0f7d4df0eece3cef88f3d6ba3a",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 87.383,
+     "characters": [
+      {
+       "text": "シ",
+       "x_pt": 191.468,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "ス",
+       "x_pt": 207.788,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "テ",
+       "x_pt": 224.107,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "ム",
+       "x_pt": 240.427,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "開",
+       "x_pt": 256.746,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "発",
+       "x_pt": 273.066,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "業",
+       "x_pt": 289.386,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "務",
+       "x_pt": 305.705,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "委",
+       "x_pt": 322.025,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "託",
+       "x_pt": 338.344,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "契",
+       "x_pt": 354.664,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "約",
+       "x_pt": 370.984,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      },
+      {
+       "text": "書",
+       "x_pt": 387.303,
+       "advance_pt": 16.08,
+       "font": "YuMincho-Regular",
+       "size_pt": 15.922
+      }
+     ],
+     "text": "システム開発業務委託契約書"
+    },
+    {
+     "baseline_pt": 122.88,
+     "characters": [
+      {
+       "text": "株",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "会",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "社",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "サ",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "プ",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ル",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "商",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "以",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "下",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 304.425,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 312.008,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 319.591,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 327.175,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 334.758,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 342.341,
+       "advance_pt": 7.624,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "株",
+       "x_pt": 352.026,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 362.526,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "会",
+       "x_pt": 373.026,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "社",
+       "x_pt": 383.526,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 394.025,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 404.525,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 415.025,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "開",
+       "x_pt": 425.525,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "発",
+       "x_pt": 436.025,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 446.524,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "以",
+       "x_pt": 457.024,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "下",
+       "x_pt": 467.524,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 478.024,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 488.524,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 499.023,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 509.523,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "株式会社サンプル商事（以下「甲」という。）とAAAAAA株式会社テスト開発（以下「乙」と"
+    },
+    {
+     "baseline_pt": 138.0,
+     "characters": [
+      {
+       "text": "い",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "シ",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ム",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "開",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "発",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "関",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "次",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "お",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "締",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "いう。）は、甲の業務システムの開発に関し、次のとおり契約を締結する。"
+    },
+    {
+     "baseline_pt": 164.718,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "1",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "目",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "的",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第1条（目的）"
+    },
+    {
+     "baseline_pt": 182.88,
+     "characters": [
+      {
+       "text": "本",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "対",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "別",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "紙",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "シ",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ム",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 335.925,
+       "advance_pt": 7.044,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 342.928,
+       "advance_pt": 7.044,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 349.932,
+       "advance_pt": 7.044,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 356.935,
+       "advance_pt": 7.044,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 363.939,
+       "advance_pt": 7.044,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "開",
+       "x_pt": 373.047,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "発",
+       "x_pt": 383.546,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 394.046,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 404.546,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 415.046,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "以",
+       "x_pt": 425.546,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "下",
+       "x_pt": 436.045,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 446.545,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 457.045,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 467.545,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 478.045,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 488.544,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 499.044,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 509.544,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "本契約は、甲が乙に対し、別紙に定める業務システムのBBBBB開発業務（以下「本業務」とい"
+    },
+    {
+     "baseline_pt": 198.0,
+     "characters": [
+      {
+       "text": "う",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "受",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "つ",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "必",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "要",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "項",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "目",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "的",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "う。）を委託し、乙がこれを受託することについて、必要な事項を定めることを目的とする。"
+    },
+    {
+     "baseline_pt": 224.958,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "2",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "業",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "務",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "の",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "遂",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "行",
+       "x_pt": 155.938,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 166.648,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第2条（業務の遂行）"
+    },
+    {
+     "baseline_pt": 243.12,
+     "characters": [
+      {
+       "text": "乙",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "遂",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "善",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "良",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "管",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "理",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "者",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "注",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "意",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "っ",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "誠",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "実",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "乙は、本業務の遂行にあたり、善良なる管理者の注意をもって誠実に業務を行うものとし、甲か"
+    },
+    {
+     "baseline_pt": 258.24,
+     "characters": [
+      {
+       "text": "ら",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "理",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "的",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "求",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "っ",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "場",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "進",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "捗",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "状",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "況",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "課",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "題",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "対",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "応",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "針",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "つ",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "面",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "又",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "ら合理的な求めがあった場合には、業務の進捗状況、課題及びその対応方針について、書面又は"
+    },
+    {
+     "baseline_pt": 273.36,
+     "characters": [
+      {
+       "text": "電",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "磁",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "的",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "法",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "速",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "や",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "報",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "告",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "け",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ば",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "電磁的方法により速やかに報告しなければならない。"
+    },
+    {
+     "baseline_pt": 300.078,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "3",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "委",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "託",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "料",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第3条（委託料）"
+    },
+    {
+     "baseline_pt": 318.24,
+     "characters": [
+      {
+       "text": "甲",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "対",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "価",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "対",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "額",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "5",
+       "x_pt": 272.925,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "5",
+       "x_pt": 278.176,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 283.426,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ",",
+       "x_pt": 288.676,
+       "advance_pt": 2.64,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 291.297,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 296.548,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 301.798,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "円",
+       "x_pt": 309.675,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 320.175,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "消",
+       "x_pt": 330.675,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "費",
+       "x_pt": 341.174,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "税",
+       "x_pt": 351.674,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "別",
+       "x_pt": 362.174,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 372.674,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 383.174,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "支",
+       "x_pt": 393.673,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "払",
+       "x_pt": 404.173,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 414.673,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 425.173,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "甲は、本業務の対価として、乙に対し月額550,000円（消費税別）を支払う。"
+    },
+    {
+     "baseline_pt": 339.36,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "項",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "料",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "毎",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "末",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "締",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "翌",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "末",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "指",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "銀",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "口",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "座",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "振",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "込",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "む",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "法",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前項の委託料は、毎月末日締めとし、翌月末日までに乙の指定する銀行口座に振り込む方法によ"
+    },
+    {
+     "baseline_pt": 354.48,
+     "characters": [
+      {
+       "text": "り",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "支",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "払",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "振",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "込",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "手",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "料",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "負",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "担",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "り支払う。振込手数料は甲の負担とする。"
+    },
+    {
+     "baseline_pt": 381.438,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "4",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "成",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "果",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "物",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第4条（成果物）"
+    },
+    {
+     "baseline_pt": 399.6,
+     "characters": [
+      {
+       "text": "乙",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "次",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "表",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "成",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "果",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "物",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ぞ",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "納",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "期",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "納",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "乙は、次の表に定める成果物を、それぞれの納期までに甲に納入する。"
+    },
+    {
+     "baseline_pt": 420.798,
+     "characters": [
+      {
+       "text": "成",
+       "x_pt": 71.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "果",
+       "x_pt": 81.99,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "物",
+       "x_pt": 92.7,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "内",
+       "x_pt": 171.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "容",
+       "x_pt": 182.07,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "納",
+       "x_pt": 401.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "期",
+       "x_pt": 411.99,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "成果物内容納期"
+    },
+    {
+     "baseline_pt": 436.56,
+     "characters": [
+      {
+       "text": "要",
+       "x_pt": 71.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "件",
+       "x_pt": 81.78,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 92.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "義",
+       "x_pt": 102.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 113.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 171.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 181.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "要",
+       "x_pt": 192.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "件",
+       "x_pt": 202.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 213.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 223.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "機",
+       "x_pt": 234.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "能",
+       "x_pt": 244.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "要",
+       "x_pt": 255.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "件",
+       "x_pt": 265.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 276.358,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 286.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 297.358,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 307.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 318.357,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 328.857,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 339.357,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 401.28,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 406.53,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 411.781,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "6",
+       "x_pt": 417.031,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 424.385,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "5",
+       "x_pt": 437.509,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 444.864,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 457.989,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "9",
+       "x_pt": 463.24,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 470.593,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "要件定義書業務要件及び機能要件をまとめたもの2026年5月29日"
+    },
+    {
+     "baseline_pt": 452.16,
+     "characters": [
+      {
+       "text": "設",
+       "x_pt": 71.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "計",
+       "x_pt": 81.78,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 92.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "基",
+       "x_pt": 171.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 181.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "設",
+       "x_pt": 192.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "計",
+       "x_pt": 202.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 213.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 223.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "詳",
+       "x_pt": 234.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "細",
+       "x_pt": 244.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "設",
+       "x_pt": 255.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "計",
+       "x_pt": 265.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 401.28,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 406.53,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 411.781,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "6",
+       "x_pt": 417.031,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 424.385,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "7",
+       "x_pt": 437.509,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 444.864,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 457.989,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 463.24,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 470.593,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "設計書基本設計及び詳細設計2026年7月31日"
+    },
+    {
+     "baseline_pt": 467.76,
+     "characters": [
+      {
+       "text": "プ",
+       "x_pt": 71.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ロ",
+       "x_pt": 81.78,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "グ",
+       "x_pt": 92.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ラ",
+       "x_pt": 102.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ム",
+       "x_pt": 113.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ソ",
+       "x_pt": 171.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 181.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 192.36,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "コ",
+       "x_pt": 202.86,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 213.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ド",
+       "x_pt": 223.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "一",
+       "x_pt": 234.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 244.859,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 255.359,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 265.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "実",
+       "x_pt": 276.358,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 286.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "環",
+       "x_pt": 297.358,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "境",
+       "x_pt": 307.858,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 401.28,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 406.53,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 411.781,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "6",
+       "x_pt": 417.031,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 424.385,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "9",
+       "x_pt": 437.509,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 444.864,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 457.989,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 463.24,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 470.593,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "プログラムソースコード一式及び実行環境2026年9月30日"
+    },
+    {
+     "baseline_pt": 507.198,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "5",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "契",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "約",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "期",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "間",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 155.938,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第5条（契約期間）"
+    },
+    {
+     "baseline_pt": 525.36,
+     "characters": [
+      {
+       "text": "本",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "有",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "効",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "期",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 175.8,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 181.05,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 186.301,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "6",
+       "x_pt": 191.551,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 198.905,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "4",
+       "x_pt": 212.03,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 219.384,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 232.509,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 239.863,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 250.363,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 260.863,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 273.989,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "4",
+       "x_pt": 279.239,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 286.593,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 297.093,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 307.593,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 318.092,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 328.592,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 339.092,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 349.592,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "本契約の有効期間は、2026年4月1日から24か月間とする。"
+    },
+    {
+     "baseline_pt": 546.48,
+     "characters": [
+      {
+       "text": "期",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "満",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "了",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 125.925,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 133.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 143.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "前",
+       "x_pt": 154.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 164.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 175.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 185.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 196.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 206.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 217.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ず",
+       "x_pt": 227.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 238.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 248.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 259.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 269.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 280.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "面",
+       "x_pt": 290.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 301.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 311.776,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 322.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "別",
+       "x_pt": 332.776,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "段",
+       "x_pt": 343.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 353.775,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "申",
+       "x_pt": 364.275,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "出",
+       "x_pt": 374.775,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 385.275,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 395.775,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 406.274,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 416.774,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 427.274,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 437.774,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 448.274,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 458.773,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 469.273,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 479.773,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 490.273,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "同",
+       "x_pt": 500.773,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "一",
+       "x_pt": 511.272,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "期間満了の1か月前までに甲乙いずれからも書面による別段の申出がないときは、本契約は同一"
+    },
+    {
+     "baseline_pt": 561.6,
+     "characters": [
+      {
+       "text": "条",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "件",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "更",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 125.925,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 133.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 143.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "更",
+       "x_pt": 154.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "新",
+       "x_pt": 164.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "さ",
+       "x_pt": 175.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "れ",
+       "x_pt": 185.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 196.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 206.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 217.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 227.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 238.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 248.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "以",
+       "x_pt": 259.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 269.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 280.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "同",
+       "x_pt": 290.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "様",
+       "x_pt": 301.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 311.776,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 322.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 332.776,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 343.276,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "条件で更に1年間更新されるものとし、以後も同様とする。"
+    },
+    {
+     "baseline_pt": 588.318,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "6",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "秘",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "密",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "保",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "持",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 155.938,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第6条（秘密保持）"
+    },
+    {
+     "baseline_pt": 606.48,
+     "characters": [
+      {
+       "text": "甲",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "関",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "知",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "得",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "相",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "手",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "技",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "術",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "又",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "営",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "情",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "報",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "相",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "手",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "前",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "面",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "甲及び乙は、本契約に関して知り得た相手方の技術上又は営業上の情報を、相手方の事前の書面"
+    },
+    {
+     "baseline_pt": 621.6,
+     "characters": [
+      {
+       "text": "に",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "承",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "諾",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "く",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "第",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "三",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "者",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "開",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "示",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "又",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "目",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "的",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "以",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "外",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "使",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "用",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "による承諾なく第三者に開示し、又は本契約の目的以外に使用してはならない。"
+    },
+    {
+     "baseline_pt": 648.558,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "7",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "再",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "委",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "託",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第7条（再委託）"
+    },
+    {
+     "baseline_pt": 666.72,
+     "characters": [
+      {
+       "text": "乙",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "前",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "面",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "承",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "諾",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "得",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "場",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "限",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "り",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "業",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "務",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "一",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "部",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "第",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "三",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "者",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "再",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "乙は、甲の事前の書面による承諾を得た場合に限り、本業務の一部を第三者に再委託することが"
+    },
+    {
+     "baseline_pt": 681.84,
+     "characters": [
+      {
+       "text": "で",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "場",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "再",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "先",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "為",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "つ",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "対",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "責",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "任",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "負",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "できる。この場合、乙は再委託先の行為について甲に対し責任を負う。"
+    },
+    {
+     "baseline_pt": 708.558,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "8",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "知",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "的",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "財",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "産",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "権",
+       "x_pt": 155.938,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 166.648,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第8条（知的財産権）"
+    },
+    {
+     "baseline_pt": 726.72,
+     "characters": [
+      {
+       "text": "成",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "果",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "物",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "関",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "著",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "作",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "権",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "著",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "作",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "権",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "法",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "第",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 241.425,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "7",
+       "x_pt": 246.676,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 254.029,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "及",
+       "x_pt": 264.529,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "び",
+       "x_pt": 275.029,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "第",
+       "x_pt": 285.529,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 298.655,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "8",
+       "x_pt": 303.905,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 311.259,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 321.759,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 332.259,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 342.758,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 353.258,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "権",
+       "x_pt": 363.758,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "利",
+       "x_pt": 374.258,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 384.758,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "含",
+       "x_pt": 395.257,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "む",
+       "x_pt": 405.757,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 416.257,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 426.757,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 437.257,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 447.756,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 458.256,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 468.756,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "料",
+       "x_pt": 479.256,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 489.756,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "支",
+       "x_pt": 500.255,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "払",
+       "x_pt": 510.755,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "成果物に関する著作権（著作権法第27条及び第28条に定める権利を含む。）は、委託料の支払"
+    },
+    {
+     "baseline_pt": 741.84,
+     "characters": [
+      {
+       "text": "が",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "完",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "了",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "時",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "移",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "転",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "が完了した時に乙から甲に移転する。"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 81.678,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "9",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 91.678,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 102.388,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "損",
+       "x_pt": 113.098,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "害",
+       "x_pt": 123.808,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "賠",
+       "x_pt": 134.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "償",
+       "x_pt": 145.228,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 155.938,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第9条（損害賠償）"
+    },
+    {
+     "baseline_pt": 99.84,
+     "characters": [
+      {
+       "text": "甲",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "又",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "違",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "反",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "相",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "手",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "損",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "害",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "与",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "え",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "場",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "損",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "害",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "賠",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "償",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "責",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "任",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "負",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "甲又は乙は、本契約に違反して相手方に損害を与えた場合、その損害を賠償する責任を負う。た"
+    },
+    {
+     "baseline_pt": 114.96,
+     "characters": [
+      {
+       "text": "だ",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 81.373,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 91.945,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 102.518,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 113.091,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "賠",
+       "x_pt": 123.663,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "償",
+       "x_pt": 134.236,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "額",
+       "x_pt": 144.809,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 155.381,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 165.954,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "損",
+       "x_pt": 176.527,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "害",
+       "x_pt": 187.099,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "発",
+       "x_pt": 197.672,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "生",
+       "x_pt": 208.245,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 218.817,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "直",
+       "x_pt": 229.39,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "前",
+       "x_pt": 239.963,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 255.783,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 261.033,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 270.564,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 281.137,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 291.71,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 302.282,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 312.855,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 323.428,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 334.0,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 344.573,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "支",
+       "x_pt": 355.146,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "払",
+       "x_pt": 365.718,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "っ",
+       "x_pt": 376.291,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 386.864,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "委",
+       "x_pt": 397.436,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "託",
+       "x_pt": 408.009,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "料",
+       "x_pt": 418.582,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 429.155,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "総",
+       "x_pt": 439.727,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "額",
+       "x_pt": 450.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 460.873,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 471.445,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "限",
+       "x_pt": 482.018,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 492.591,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 503.163,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 513.736,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 524.309,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "だし、その賠償額は、損害発生の直前12か月間に甲が乙に支払った委託料の総額を上限とする。"
+    },
+    {
+     "baseline_pt": 141.918,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "1",
+       "x_pt": 84.188,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 89.438,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPS-BoldMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "条",
+       "x_pt": 96.928,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 107.638,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "協",
+       "x_pt": 118.348,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "議",
+       "x_pt": 129.058,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 139.768,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第10条（協議）"
+    },
+    {
+     "baseline_pt": 160.08,
+     "characters": [
+      {
+       "text": "本",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "項",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "又",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 228.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 238.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "解",
+       "x_pt": 249.297,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "釈",
+       "x_pt": 259.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 270.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "疑",
+       "x_pt": 280.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "義",
+       "x_pt": 291.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 301.796,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "生",
+       "x_pt": 312.296,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "じ",
+       "x_pt": 322.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 333.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "事",
+       "x_pt": 343.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "項",
+       "x_pt": 354.295,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 364.795,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "つ",
+       "x_pt": 375.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 385.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 396.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 406.794,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 417.294,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 427.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 438.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "誠",
+       "x_pt": 448.793,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "実",
+       "x_pt": 459.293,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 469.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "協",
+       "x_pt": 480.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "議",
+       "x_pt": 490.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 501.292,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 511.792,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "本契約に定めのない事項又は本契約の解釈に疑義が生じた事項については、甲乙誠実に協議の上"
+    },
+    {
+     "baseline_pt": 175.2,
+     "characters": [
+      {
+       "text": "解",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "決",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "解決する。"
+    },
+    {
+     "baseline_pt": 196.32,
+     "characters": [
+      {
+       "text": "本",
+       "x_pt": 70.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "契",
+       "x_pt": 81.3,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "約",
+       "x_pt": 91.8,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 102.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "締",
+       "x_pt": 112.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 123.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 133.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "証",
+       "x_pt": 144.299,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 154.799,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 165.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 175.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 186.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 196.798,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 207.298,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 217.797,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 230.925,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "通",
+       "x_pt": 238.28,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 248.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "作",
+       "x_pt": 259.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "成",
+       "x_pt": 269.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 280.279,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 290.779,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "甲",
+       "x_pt": 301.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "乙",
+       "x_pt": 311.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "記",
+       "x_pt": 322.278,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "名",
+       "x_pt": 332.778,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "押",
+       "x_pt": 343.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "印",
+       "x_pt": 353.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 364.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 374.777,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 385.277,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "各",
+       "x_pt": 395.776,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 408.905,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "通",
+       "x_pt": 416.259,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 426.759,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "保",
+       "x_pt": 437.259,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "有",
+       "x_pt": 447.758,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 458.258,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 468.758,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 479.258,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "本契約の締結を証するため、本書2通を作成し、甲乙記名押印の上、各1通を保有する。"
+    },
+    {
+     "baseline_pt": 217.2,
+     "characters": [
+      {
+       "text": "2",
+       "x_pt": 70.8,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 76.05,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 81.301,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "6",
+       "x_pt": 86.551,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "年",
+       "x_pt": 93.905,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "4",
+       "x_pt": 107.03,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "月",
+       "x_pt": 114.384,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 127.509,
+       "advance_pt": 5.28,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "日",
+       "x_pt": 134.864,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "2026年4月1日"
+    }
+   ]
+  }
+ ]
+}

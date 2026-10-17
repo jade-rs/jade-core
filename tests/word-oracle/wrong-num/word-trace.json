@@ -1,0 +1,215 @@
+[
+  {
+    "index": 0,
+    "paragraph_index": 1,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "（目的）",
+    "numbering_text": "第１条",
+    "text_with_numbering": "第１条（目的）",
+    "x_pt": 119.25,
+    "y_pt": 119.25,
+    "width_pt": 31.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "Times New Roman",
+      "size_pt": 10.5,
+      "bold": -1,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "（",
+        "x_pt": 119.25,
+        "y_pt": 119.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "目",
+        "x_pt": 129.75,
+        "y_pt": 119.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "的",
+        "x_pt": 140.25,
+        "y_pt": 119.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "）",
+        "x_pt": 150.75,
+        "y_pt": 119.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 3
+  },
+  {
+    "index": 1,
+    "paragraph_index": 2,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "この",
+    "numbering_text": null,
+    "text_with_numbering": "この",
+    "x_pt": 84.75,
+    "y_pt": 137.25,
+    "width_pt": 10.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "Arial",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "Times New Roman",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "こ",
+        "x_pt": 84.75,
+        "y_pt": 137.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "の",
+        "x_pt": 95.25,
+        "y_pt": 137.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 1
+  },
+  {
+    "index": 2,
+    "paragraph_index": 6,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "（社員の定義）",
+    "numbering_text": "第２条",
+    "text_with_numbering": "第２条（社員の定義）",
+    "x_pt": 119.25,
+    "y_pt": 209.25,
+    "width_pt": 63.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "Times New Roman",
+      "size_pt": 10.5,
+      "bold": -1,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "（",
+        "x_pt": 119.25,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "社",
+        "x_pt": 129.75,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "員",
+        "x_pt": 140.25,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "の",
+        "x_pt": 150.75,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "定",
+        "x_pt": 161.25,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "義",
+        "x_pt": 171.75,
+        "y_pt": 209.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "）",
+        "x_pt": 182.25,
+        "y_pt": 209.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 3,
+    "paragraph_index": 7,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "この",
+    "numbering_text": null,
+    "text_with_numbering": "この",
+    "x_pt": 84.75,
+    "y_pt": 227.25,
+    "width_pt": 10.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "Arial",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "Times New Roman",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "こ",
+        "x_pt": 84.75,
+        "y_pt": 227.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "の",
+        "x_pt": 95.25,
+        "y_pt": 227.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 1
+  }
+]

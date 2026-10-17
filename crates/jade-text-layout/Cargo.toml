@@ -1,0 +1,11 @@
+[package]
+name = "jade-text-layout"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+unicode-segmentation = "1.10"
+
+[dev-dependencies]
+proptest = "1.6"

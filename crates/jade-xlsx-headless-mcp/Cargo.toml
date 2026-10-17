@@ -1,0 +1,21 @@
+[package]
+name = "jade-xlsx-headless-mcp"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "Model Context Protocol (stdio) server for reading and editing XLSX workbooks headlessly"
+
+[[bin]]
+name = "jade-xlsx-headless-mcp"
+path = "src/main.rs"
+
+[dependencies]
+jade-xlsx-headless-api = { path = "../jade-xlsx-headless-api" }
+jade-xlsx-headless-editor = { path = "../jade-xlsx-headless-editor" }
+base64 = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+# Test-only: reopen exported bytes without going through the protocol.
+jade-xlsx-headless-editor = { path = "../jade-xlsx-headless-editor" }

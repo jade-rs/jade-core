@@ -1,0 +1,110 @@
+[workspace]
+members = [
+  "crates/jade-docx-extract",
+  "crates/jade-diff-align",
+  "crates/jade-docx-diff",
+  "crates/jade-docx-reader",
+  "crates/jade-docx-writer",
+  "crates/jade-docx-annotations",
+  "crates/jade-docx-editor",
+  "crates/jade-docx-layout",
+  "crates/jade-selection",
+  "crates/jade-text-layout",
+  "crates/jade-docx-document-core",
+  "crates/jade-docx-headless-api",
+  "crates/jade-docx-headless-editor",
+  "crates/jade-docx-headless-editor-cli",
+  "crates/jade-docx-headless-mcp",
+  "crates/jade-canvas-painter",
+  "crates/jade-painter",
+  "crates/jade-docx-pdf-renderer",
+  "crates/jade-docx-para-compare",
+  "crates/jade-preview-plugin-api",
+  "crates/jade-opc",
+  "crates/jade-pptx-editor",
+  "crates/jade-pptx-reader",
+  "crates/jade-pptx-writer",
+  "crates/jade-pptx-layout",
+  "crates/jade-pptx-render",
+  "crates/jade-pptx-headless-api",
+  "crates/jade-pptx-headless-cli",
+  "crates/jade-pptx-headless-mcp",
+  "crates/jade-xlsx-reader",
+  "crates/jade-xlsx-writer",
+  "crates/jade-xlsx-editor",
+  "crates/jade-xlsx-headless-api",
+  "crates/jade-xlsx-headless-editor",
+  "crates/jade-xlsx-headless-cli",
+  "crates/jade-xlsx-headless-mcp",
+  "crates/jade-xlsx-calc",
+  "crates/jade-xlsx-layout",
+  "crates/jade-xlsx-render",
+  "crates/jade-plugins/circle-mark-plugin",
+  "crates/jade-plugins/diff-highlight-plugin",
+]
+# `jade-skia-painter` is an experimental native rasterising backend. It is kept
+# out of the workspace so `cargo test --all --all-features` never pulls Skia's
+# prebuilt C++ binaries into everyone's builds; build it explicitly from its own
+# directory instead.
+exclude = [
+  "third_party/ironcalc-base",
+  "crates/jade-skia-painter",
+  "crates/jade-docx-native-render",
+  "crates/jade-xlsx-native-render",
+]
+resolver = "2"
+
+# Dev-loop WASM profile
+# `make wasm` (the default dev loop) builds this profile instead of the plain
+# `dev` profile. The old behaviour (dev = opt-level 0) made the playground
+# editor several times slower than release and invalidated perf measurements
+# (docs/perf-improvement-plan-20260702.md P0). opt-level 1 keeps compile times
+# and debuggability reasonable for our own crates; dependencies (rustc-hash,
+# unicode-segmentation, ...) rarely change and get full optimization so
+# hashing/segmentation hot paths stay near release speed even in dev builds.
+# A dedicated profile (rather than changing `dev`) keeps `cargo test`/`cargo
+# check` compile times untouched. For accurate perf evaluation still use
+# `make wasm-release` / `make wasm-profiling`.
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.wasm-dev.package."*"]
+opt-level = 3
+
+# WASM release profile
+# Speed-first: opt-level = 3 maximizes runtime performance at the cost of a
+# larger binary. This is the production policy — the editor is compute-heavy
+# (text layout / glyph measurement / reflow) and benefits more from raw speed
+# than from a smaller download. Use the `release-size` profile when binary size
+# matters more than throughput.
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+# Size-focused profile (the previous `release` defaults). Prioritizes a smaller
+# wasm binary over runtime speed.
+# Build with: cargo build --profile release-size
+[profile.release-size]
+inherits = "release"
+opt-level = "s"
+
+# Performance-focused profile for benchmarking/comparison.
+# Kept as an alias of the speed-first release profile so existing
+# `cargo build --profile perf` / `make wasm-perf` invocations keep working.
+# Build with: cargo build --profile perf
+[profile.perf]
+inherits = "release"
+opt-level = 3
+strip = "symbols"
+
+# Profiling-focused profile for browser/devtools traces.
+# Build with: cargo build --profile profiling
+[profile.profiling]
+inherits = "release"
+opt-level = 3
+debug = 2
+strip = "none"

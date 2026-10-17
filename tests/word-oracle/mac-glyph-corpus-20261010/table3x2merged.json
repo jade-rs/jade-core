@@ -1,0 +1,100 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "4d8e586f98906687c7e9b91c19dd1057eb4cd56a07f27c1704c9cc988404db0e",
+ "pdf_sha256": "6ae41c236f917b3fd5aa4af4515f317fa6a0262aa688f92cdc55d20b15fdea0e",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 71.52,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 66.24,
+       "advance_pt": 7.51,
+       "font": "YuGothic-Regular",
+       "size_pt": 10.08
+      },
+      {
+       "text": "e",
+       "x_pt": 73.68,
+       "advance_pt": 5.625,
+       "font": "YuGothic-Regular",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 79.195,
+       "advance_pt": 2.641,
+       "font": "YuGothic-Regular",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 81.837,
+       "advance_pt": 2.641,
+       "font": "YuGothic-Regular",
+       "size_pt": 10.08
+      },
+      {
+       "text": "o",
+       "x_pt": 84.479,
+       "advance_pt": 5.655,
+       "font": "YuGothic-Regular",
+       "size_pt": 10.08
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 95.52,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 226.8,
+       "advance_pt": 9.284,
+       "font": "Cambria",
+       "size_pt": 10.08
+      },
+      {
+       "text": "o",
+       "x_pt": 235.92,
+       "advance_pt": 5.352,
+       "font": "Cambria",
+       "size_pt": 10.08
+      },
+      {
+       "text": "r",
+       "x_pt": 241.442,
+       "advance_pt": 4.173,
+       "font": "Cambria",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 245.523,
+       "advance_pt": 2.732,
+       "font": "Cambria",
+       "size_pt": 10.08
+      },
+      {
+       "text": "d",
+       "x_pt": 248.162,
+       "advance_pt": 5.594,
+       "font": "Cambria",
+       "size_pt": 10.08
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

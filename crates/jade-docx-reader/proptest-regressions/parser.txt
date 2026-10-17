@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc fa23fae80eb37d85e6cc89fc45dc03600abb7a29e14c8bdac9f01c2fed089814 # shrinks to val = None, color = None, fill = None
+cc d0bc46ecbb5a18f6d9360a95c12c204e517f5487ff8f202797b5ba5f88371d47 # shrinks to val = Some("horzStripe"), color = (None, None), fill = (None, None)

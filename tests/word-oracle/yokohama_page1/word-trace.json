@@ -1,0 +1,7330 @@
+[
+  {
+    "index": 0,
+    "paragraph_index": 1,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "○横浜市市税条例",
+    "numbering_text": null,
+    "text_with_numbering": "○横浜市市税条例",
+    "x_pt": 84.75,
+    "y_pt": 112.5,
+    "width_pt": 99.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "○",
+        "x_pt": 84.75,
+        "y_pt": 112.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "横",
+        "x_pt": 95.25,
+        "y_pt": 112.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "浜",
+        "x_pt": 141.75,
+        "y_pt": 112.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "市",
+        "x_pt": 152.25,
+        "y_pt": 112.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 126.75,
+        "y_pt": 112.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "税",
+        "x_pt": 173.25,
+        "y_pt": 112.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "条",
+        "x_pt": 183.75,
+        "y_pt": 112.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "例",
+        "x_pt": 158.25,
+        "y_pt": 112.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 7
+  },
+  {
+    "index": 1,
+    "paragraph_index": 2,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "昭和25年8月11日",
+    "numbering_text": null,
+    "text_with_numbering": "昭和25年8月11日",
+    "x_pt": 84.75,
+    "y_pt": 126.75,
+    "width_pt": 431.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "昭",
+        "x_pt": 84.75,
+        "y_pt": 126.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "和",
+        "x_pt": 95.25,
+        "y_pt": 126.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "2",
+        "x_pt": 456.0,
+        "y_pt": 126.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "5",
+        "x_pt": 114.0,
+        "y_pt": 126.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "年",
+        "x_pt": 468.75,
+        "y_pt": 126.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "8",
+        "x_pt": 135.0,
+        "y_pt": 126.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 6,
+        "text": "月",
+        "x_pt": 142.5,
+        "y_pt": 126.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 7,
+        "text": "1",
+        "x_pt": 156.0,
+        "y_pt": 126.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 8,
+        "text": "1",
+        "x_pt": 161.25,
+        "y_pt": 126.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "日",
+        "x_pt": 516.0,
+        "y_pt": 126.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 9
+  },
+  {
+    "index": 2,
+    "paragraph_index": 3,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "条例第34号",
+    "numbering_text": null,
+    "text_with_numbering": "条例第34号",
+    "x_pt": 84.75,
+    "y_pt": 140.25,
+    "width_pt": 418.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "条",
+        "x_pt": 84.75,
+        "y_pt": 140.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "例",
+        "x_pt": 95.25,
+        "y_pt": 140.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "第",
+        "x_pt": 105.75,
+        "y_pt": 140.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "3",
+        "x_pt": 503.25,
+        "y_pt": 140.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "4",
+        "x_pt": 124.5,
+        "y_pt": 140.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 5,
+        "text": "号",
+        "x_pt": 132.0,
+        "y_pt": 140.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 5
+  },
+  {
+    "index": 3,
+    "paragraph_index": 4,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "注　昭和60年3月から改正経過を注記した。",
+    "numbering_text": null,
+    "text_with_numbering": "注　昭和60年3月から改正経過を注記した。",
+    "x_pt": 84.75,
+    "y_pt": 153.75,
+    "width_pt": 431.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "注",
+        "x_pt": 84.75,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "　",
+        "x_pt": 95.25,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "昭",
+        "x_pt": 332.25,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "和",
+        "x_pt": 342.75,
+        "y_pt": 153.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 4,
+        "text": "6",
+        "x_pt": 356.25,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "0",
+        "x_pt": 135.0,
+        "y_pt": 153.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 6,
+        "text": "年",
+        "x_pt": 142.5,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "3",
+        "x_pt": 382.5,
+        "y_pt": 153.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 8,
+        "text": "月",
+        "x_pt": 390.0,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "か",
+        "x_pt": 400.5,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "ら",
+        "x_pt": 184.5,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "改",
+        "x_pt": 195.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "正",
+        "x_pt": 432.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "経",
+        "x_pt": 216.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "過",
+        "x_pt": 453.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "を",
+        "x_pt": 237.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "注",
+        "x_pt": 474.0,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "記",
+        "x_pt": 484.5,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "し",
+        "x_pt": 495.0,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "た",
+        "x_pt": 505.5,
+        "y_pt": 153.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "。",
+        "x_pt": 516.0,
+        "y_pt": 153.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 20
+  },
+  {
+    "index": 4,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "市会の議決を経て、横浜市市税条例を次のように定める。",
+    "numbering_text": null,
+    "text_with_numbering": "市会の議決を経て、横浜市市税条例を次のように定める。",
+    "x_pt": 84.75,
+    "y_pt": 167.25,
+    "width_pt": 274.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "市",
+        "x_pt": 84.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "会",
+        "x_pt": 95.25,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "の",
+        "x_pt": 105.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "議",
+        "x_pt": 116.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "決",
+        "x_pt": 138.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "を",
+        "x_pt": 137.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "経",
+        "x_pt": 159.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "て",
+        "x_pt": 170.25,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "、",
+        "x_pt": 180.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "横",
+        "x_pt": 191.25,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "浜",
+        "x_pt": 201.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "市",
+        "x_pt": 200.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "市",
+        "x_pt": 222.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "税",
+        "x_pt": 221.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "条",
+        "x_pt": 243.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "例",
+        "x_pt": 191.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "を",
+        "x_pt": 264.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "次",
+        "x_pt": 275.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "の",
+        "x_pt": 273.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "よ",
+        "x_pt": 296.25,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "う",
+        "x_pt": 306.75,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 21,
+        "text": "に",
+        "x_pt": 305.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 22,
+        "text": "定",
+        "x_pt": 327.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "め",
+        "x_pt": 338.25,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "る",
+        "x_pt": 348.75,
+        "y_pt": 167.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "。",
+        "x_pt": 359.25,
+        "y_pt": 167.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 25
+  },
+  {
+    "index": 5,
+    "paragraph_index": 6,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "横浜市市税条例",
+    "numbering_text": null,
+    "text_with_numbering": "横浜市市税条例",
+    "x_pt": 84.75,
+    "y_pt": 180.75,
+    "width_pt": 88.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "横",
+        "x_pt": 84.75,
+        "y_pt": 180.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "浜",
+        "x_pt": 95.25,
+        "y_pt": 180.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "市",
+        "x_pt": 105.75,
+        "y_pt": 180.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "市",
+        "x_pt": 152.25,
+        "y_pt": 180.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "税",
+        "x_pt": 126.75,
+        "y_pt": 180.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "条",
+        "x_pt": 173.25,
+        "y_pt": 180.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "例",
+        "x_pt": 147.75,
+        "y_pt": 180.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 6,
+    "paragraph_index": 7,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "目次",
+    "numbering_text": null,
+    "text_with_numbering": "目次",
+    "x_pt": 84.75,
+    "y_pt": 194.25,
+    "width_pt": 10.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "目",
+        "x_pt": 84.75,
+        "y_pt": 194.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "次",
+        "x_pt": 95.25,
+        "y_pt": 194.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 1
+  },
+  {
+    "index": 7,
+    "paragraph_index": 8,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第1章　総則(第1条―第20条)",
+    "numbering_text": null,
+    "text_with_numbering": "第1章　総則(第1条―第20条)",
+    "x_pt": 84.75,
+    "y_pt": 208.5,
+    "width_pt": 147.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 208.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 98.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "章",
+        "x_pt": 117.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "総",
+        "x_pt": 138.75,
+        "y_pt": 208.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "則",
+        "x_pt": 149.25,
+        "y_pt": 208.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "(",
+        "x_pt": 159.75,
+        "y_pt": 208.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 7,
+        "text": "第",
+        "x_pt": 165.0,
+        "y_pt": 208.5,
+        "advance_pt": 1.5
+      },
+      {
+        "char_index": 8,
+        "text": "1",
+        "x_pt": 166.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "条",
+        "x_pt": 186.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "―",
+        "x_pt": 184.5,
+        "y_pt": 208.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "第",
+        "x_pt": 195.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "2",
+        "x_pt": 220.5,
+        "y_pt": 208.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 13,
+        "text": "0",
+        "x_pt": 225.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "条",
+        "x_pt": 221.25,
+        "y_pt": 208.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": ")",
+        "x_pt": 231.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 15
+  },
+  {
+    "index": 8,
+    "paragraph_index": 9,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第2章　普通税",
+    "numbering_text": null,
+    "text_with_numbering": "第2章　普通税",
+    "x_pt": 84.75,
+    "y_pt": 222.0,
+    "width_pt": 75.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 222.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "2",
+        "x_pt": 98.25,
+        "y_pt": 222.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "章",
+        "x_pt": 105.75,
+        "y_pt": 222.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 222.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "普",
+        "x_pt": 126.75,
+        "y_pt": 222.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "通",
+        "x_pt": 149.25,
+        "y_pt": 222.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "税",
+        "x_pt": 159.75,
+        "y_pt": 222.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 9,
+    "paragraph_index": 10,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第1節　市民税(第21条―第40条の10)",
+    "numbering_text": null,
+    "text_with_numbering": "第1節　市民税(第21条―第40条の10)",
+    "x_pt": 84.75,
+    "y_pt": 235.5,
+    "width_pt": 210.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 235.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 98.25,
+        "y_pt": 235.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 105.75,
+        "y_pt": 235.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 150.75,
+        "y_pt": 235.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "民",
+        "x_pt": 161.25,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "税",
+        "x_pt": 147.75,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "(",
+        "x_pt": 182.25,
+        "y_pt": 235.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 8,
+        "text": "第",
+        "x_pt": 187.5,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "2",
+        "x_pt": 177.0,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "1",
+        "x_pt": 206.25,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "条",
+        "x_pt": 189.75,
+        "y_pt": 235.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "―",
+        "x_pt": 200.25,
+        "y_pt": 235.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "第",
+        "x_pt": 210.75,
+        "y_pt": 235.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 14,
+        "text": "4",
+        "x_pt": 224.25,
+        "y_pt": 235.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 15,
+        "text": "0",
+        "x_pt": 229.5,
+        "y_pt": 235.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 16,
+        "text": "条",
+        "x_pt": 237.0,
+        "y_pt": 235.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "の",
+        "x_pt": 247.5,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "1",
+        "x_pt": 285.0,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "0",
+        "x_pt": 266.25,
+        "y_pt": 235.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": ")",
+        "x_pt": 295.5,
+        "y_pt": 235.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 20
+  },
+  {
+    "index": 10,
+    "paragraph_index": 11,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第2節　固定資産税(第41条―第70条)",
+    "numbering_text": null,
+    "text_with_numbering": "第2節　固定資産税(第41条―第70条)",
+    "x_pt": 84.75,
+    "y_pt": 249.0,
+    "width_pt": 207.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 249.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "2",
+        "x_pt": 98.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 129.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "固",
+        "x_pt": 126.75,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "定",
+        "x_pt": 161.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "資",
+        "x_pt": 147.75,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "産",
+        "x_pt": 182.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "税",
+        "x_pt": 192.75,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "(",
+        "x_pt": 179.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "第",
+        "x_pt": 208.5,
+        "y_pt": 249.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 11,
+        "text": "4",
+        "x_pt": 222.0,
+        "y_pt": 249.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 12,
+        "text": "1",
+        "x_pt": 227.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "条",
+        "x_pt": 210.75,
+        "y_pt": 249.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "―",
+        "x_pt": 245.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "第",
+        "x_pt": 255.75,
+        "y_pt": 249.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 16,
+        "text": "7",
+        "x_pt": 269.25,
+        "y_pt": 249.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 17,
+        "text": "0",
+        "x_pt": 274.5,
+        "y_pt": 249.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 18,
+        "text": "条",
+        "x_pt": 282.0,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": ")",
+        "x_pt": 292.5,
+        "y_pt": 249.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 19
+  },
+  {
+    "index": 11,
+    "paragraph_index": 12,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第3節　軽自動車税(第71条―第81条の2)",
+    "numbering_text": null,
+    "text_with_numbering": "第3節　軽自動車税(第71条―第81条の2)",
+    "x_pt": 84.75,
+    "y_pt": 262.5,
+    "width_pt": 226.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 262.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "3",
+        "x_pt": 98.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 129.75,
+        "y_pt": 262.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "軽",
+        "x_pt": 126.75,
+        "y_pt": 262.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "自",
+        "x_pt": 137.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "動",
+        "x_pt": 171.75,
+        "y_pt": 262.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "車",
+        "x_pt": 182.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "税",
+        "x_pt": 168.75,
+        "y_pt": 262.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "(",
+        "x_pt": 179.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "第",
+        "x_pt": 208.5,
+        "y_pt": 262.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 11,
+        "text": "7",
+        "x_pt": 222.0,
+        "y_pt": 262.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 12,
+        "text": "1",
+        "x_pt": 227.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "条",
+        "x_pt": 210.75,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "―",
+        "x_pt": 245.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "第",
+        "x_pt": 231.75,
+        "y_pt": 262.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 16,
+        "text": "8",
+        "x_pt": 245.25,
+        "y_pt": 262.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 17,
+        "text": "1",
+        "x_pt": 250.5,
+        "y_pt": 262.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 18,
+        "text": "条",
+        "x_pt": 258.0,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "の",
+        "x_pt": 292.5,
+        "y_pt": 262.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 20,
+        "text": "2",
+        "x_pt": 306.0,
+        "y_pt": 262.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 21,
+        "text": ")",
+        "x_pt": 311.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 21
+  },
+  {
+    "index": 12,
+    "paragraph_index": 13,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第4節　市たばこ税(第81条の3―第92条)",
+    "numbering_text": null,
+    "text_with_numbering": "第4節　市たばこ税(第81条の3―第92条)",
+    "x_pt": 84.75,
+    "y_pt": 276.0,
+    "width_pt": 226.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 276.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "4",
+        "x_pt": 98.25,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 129.75,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 150.75,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "た",
+        "x_pt": 137.25,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "ば",
+        "x_pt": 147.75,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "こ",
+        "x_pt": 158.25,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "税",
+        "x_pt": 168.75,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "(",
+        "x_pt": 179.25,
+        "y_pt": 276.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 10,
+        "text": "第",
+        "x_pt": 184.5,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "8",
+        "x_pt": 222.0,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "1",
+        "x_pt": 203.25,
+        "y_pt": 276.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 13,
+        "text": "条",
+        "x_pt": 210.75,
+        "y_pt": 276.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "の",
+        "x_pt": 221.25,
+        "y_pt": 276.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 15,
+        "text": "3",
+        "x_pt": 234.75,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "―",
+        "x_pt": 264.0,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "第",
+        "x_pt": 250.5,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "9",
+        "x_pt": 287.25,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "2",
+        "x_pt": 268.5,
+        "y_pt": 276.0,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 20,
+        "text": "条",
+        "x_pt": 276.75,
+        "y_pt": 276.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 21,
+        "text": ")",
+        "x_pt": 311.25,
+        "y_pt": 276.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 21
+  },
+  {
+    "index": 13,
+    "paragraph_index": 14,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第5節　削除",
+    "numbering_text": null,
+    "text_with_numbering": "第5節　削除",
+    "x_pt": 84.75,
+    "y_pt": 290.25,
+    "width_pt": 76.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 290.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "5",
+        "x_pt": 98.25,
+        "y_pt": 290.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 105.75,
+        "y_pt": 290.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 290.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "削",
+        "x_pt": 126.75,
+        "y_pt": 290.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "除",
+        "x_pt": 161.25,
+        "y_pt": 290.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 5
+  },
+  {
+    "index": 14,
+    "paragraph_index": 15,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第6節　特別土地保有税(第104条の2―第120条)",
+    "numbering_text": null,
+    "text_with_numbering": "第6節　特別土地保有税(第104条の2―第120条)",
+    "x_pt": 84.75,
+    "y_pt": 303.75,
+    "width_pt": 258.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 303.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "6",
+        "x_pt": 98.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 129.75,
+        "y_pt": 303.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "特",
+        "x_pt": 126.75,
+        "y_pt": 303.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "別",
+        "x_pt": 137.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "土",
+        "x_pt": 171.75,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "地",
+        "x_pt": 158.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "保",
+        "x_pt": 192.75,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "有",
+        "x_pt": 179.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "税",
+        "x_pt": 213.75,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "(",
+        "x_pt": 200.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "第",
+        "x_pt": 229.5,
+        "y_pt": 303.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 13,
+        "text": "1",
+        "x_pt": 243.0,
+        "y_pt": 303.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 14,
+        "text": "0",
+        "x_pt": 248.25,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "4",
+        "x_pt": 229.5,
+        "y_pt": 303.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 16,
+        "text": "条",
+        "x_pt": 237.0,
+        "y_pt": 303.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "の",
+        "x_pt": 247.5,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "2",
+        "x_pt": 285.0,
+        "y_pt": 303.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 19,
+        "text": "―",
+        "x_pt": 290.25,
+        "y_pt": 303.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "第",
+        "x_pt": 300.75,
+        "y_pt": 303.75,
+        "advance_pt": 12.75
+      },
+      {
+        "char_index": 21,
+        "text": "1",
+        "x_pt": 313.5,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 22,
+        "text": "2",
+        "x_pt": 294.75,
+        "y_pt": 303.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 23,
+        "text": "0",
+        "x_pt": 300.0,
+        "y_pt": 303.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 24,
+        "text": "条",
+        "x_pt": 332.25,
+        "y_pt": 303.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": ")",
+        "x_pt": 342.75,
+        "y_pt": 303.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 25
+  },
+  {
+    "index": 15,
+    "paragraph_index": 16,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第3章　目的税",
+    "numbering_text": null,
+    "text_with_numbering": "第3章　目的税",
+    "x_pt": 84.75,
+    "y_pt": 317.25,
+    "width_pt": 75.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 317.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "3",
+        "x_pt": 98.25,
+        "y_pt": 317.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "章",
+        "x_pt": 117.75,
+        "y_pt": 317.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 317.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "目",
+        "x_pt": 138.75,
+        "y_pt": 317.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "的",
+        "x_pt": 149.25,
+        "y_pt": 317.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "税",
+        "x_pt": 159.75,
+        "y_pt": 317.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 16,
+    "paragraph_index": 17,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第1節　入湯税(第121条―第128条)",
+    "numbering_text": null,
+    "text_with_numbering": "第1節　入湯税(第121条―第128条)",
+    "x_pt": 84.75,
+    "y_pt": 330.75,
+    "width_pt": 197.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 330.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 98.25,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 129.75,
+        "y_pt": 330.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "入",
+        "x_pt": 126.75,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "湯",
+        "x_pt": 161.25,
+        "y_pt": 330.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "税",
+        "x_pt": 171.75,
+        "y_pt": 330.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "(",
+        "x_pt": 182.25,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "第",
+        "x_pt": 163.5,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "1",
+        "x_pt": 201.0,
+        "y_pt": 330.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 10,
+        "text": "2",
+        "x_pt": 206.25,
+        "y_pt": 330.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 11,
+        "text": "1",
+        "x_pt": 211.5,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "条",
+        "x_pt": 195.0,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "―",
+        "x_pt": 229.5,
+        "y_pt": 330.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "第",
+        "x_pt": 240.0,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "1",
+        "x_pt": 229.5,
+        "y_pt": 330.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 16,
+        "text": "2",
+        "x_pt": 234.75,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "8",
+        "x_pt": 264.0,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "条",
+        "x_pt": 247.5,
+        "y_pt": 330.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": ")",
+        "x_pt": 282.0,
+        "y_pt": 330.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 19
+  },
+  {
+    "index": 17,
+    "paragraph_index": 18,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第2節　事業所税(第129条―第129条の13)",
+    "numbering_text": null,
+    "text_with_numbering": "第2節　事業所税(第129条―第129条の13)",
+    "x_pt": 84.75,
+    "y_pt": 344.25,
+    "width_pt": 231.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 344.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "2",
+        "x_pt": 98.25,
+        "y_pt": 344.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 105.75,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 344.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "事",
+        "x_pt": 150.75,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "業",
+        "x_pt": 137.25,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "所",
+        "x_pt": 171.75,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "税",
+        "x_pt": 158.25,
+        "y_pt": 344.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "(",
+        "x_pt": 168.75,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "第",
+        "x_pt": 198.0,
+        "y_pt": 344.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 10,
+        "text": "1",
+        "x_pt": 211.5,
+        "y_pt": 344.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 11,
+        "text": "2",
+        "x_pt": 216.75,
+        "y_pt": 344.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 12,
+        "text": "9",
+        "x_pt": 222.0,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "条",
+        "x_pt": 205.5,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "―",
+        "x_pt": 240.0,
+        "y_pt": 344.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "第",
+        "x_pt": 250.5,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "1",
+        "x_pt": 240.0,
+        "y_pt": 344.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "2",
+        "x_pt": 269.25,
+        "y_pt": 344.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 18,
+        "text": "9",
+        "x_pt": 274.5,
+        "y_pt": 344.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 19,
+        "text": "条",
+        "x_pt": 282.0,
+        "y_pt": 344.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "の",
+        "x_pt": 292.5,
+        "y_pt": 344.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 21,
+        "text": "1",
+        "x_pt": 306.0,
+        "y_pt": 344.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 22,
+        "text": "3",
+        "x_pt": 311.25,
+        "y_pt": 344.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 23,
+        "text": ")",
+        "x_pt": 316.5,
+        "y_pt": 344.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 23
+  },
+  {
+    "index": 18,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第3節　都市計画税(第130条―第135条)",
+    "numbering_text": null,
+    "text_with_numbering": "第3節　都市計画税(第130条―第135条)",
+    "x_pt": 84.75,
+    "y_pt": 357.75,
+    "width_pt": 218.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 357.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "3",
+        "x_pt": 98.25,
+        "y_pt": 357.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "節",
+        "x_pt": 105.75,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 140.25,
+        "y_pt": 357.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "都",
+        "x_pt": 150.75,
+        "y_pt": 357.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "市",
+        "x_pt": 161.25,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "計",
+        "x_pt": 147.75,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "画",
+        "x_pt": 182.25,
+        "y_pt": 357.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "税",
+        "x_pt": 192.75,
+        "y_pt": 357.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "(",
+        "x_pt": 203.25,
+        "y_pt": 357.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 10,
+        "text": "第",
+        "x_pt": 208.5,
+        "y_pt": 357.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 11,
+        "text": "1",
+        "x_pt": 222.0,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "3",
+        "x_pt": 203.25,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "0",
+        "x_pt": 232.5,
+        "y_pt": 357.75,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 14,
+        "text": "条",
+        "x_pt": 240.0,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "―",
+        "x_pt": 226.5,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "第",
+        "x_pt": 261.0,
+        "y_pt": 357.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 17,
+        "text": "1",
+        "x_pt": 274.5,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "3",
+        "x_pt": 255.75,
+        "y_pt": 357.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 19,
+        "text": "5",
+        "x_pt": 261.0,
+        "y_pt": 357.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": "条",
+        "x_pt": 292.5,
+        "y_pt": 357.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": ")",
+        "x_pt": 303.0,
+        "y_pt": 357.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 21
+  },
+  {
+    "index": 19,
+    "paragraph_index": 20,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "附則",
+    "numbering_text": null,
+    "text_with_numbering": "附則",
+    "x_pt": 84.75,
+    "y_pt": 371.25,
+    "width_pt": 10.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "附",
+        "x_pt": 84.75,
+        "y_pt": 371.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "則",
+        "x_pt": 95.25,
+        "y_pt": 371.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 1
+  },
+  {
+    "index": 20,
+    "paragraph_index": 21,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第1章　総則",
+    "numbering_text": null,
+    "text_with_numbering": "第1章　総則",
+    "x_pt": 84.75,
+    "y_pt": 385.5,
+    "width_pt": 88.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 385.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 98.25,
+        "y_pt": 385.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "章",
+        "x_pt": 105.75,
+        "y_pt": 385.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 152.25,
+        "y_pt": 385.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "総",
+        "x_pt": 162.75,
+        "y_pt": 385.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "則",
+        "x_pt": 173.25,
+        "y_pt": 385.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 5
+  },
+  {
+    "index": 21,
+    "paragraph_index": 22,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(課税の根拠)",
+    "numbering_text": null,
+    "text_with_numbering": "(課税の根拠)",
+    "x_pt": 84.75,
+    "y_pt": 399.0,
+    "width_pt": 69.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 399.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "課",
+        "x_pt": 90.0,
+        "y_pt": 399.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "税",
+        "x_pt": 100.5,
+        "y_pt": 399.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "の",
+        "x_pt": 123.0,
+        "y_pt": 399.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "根",
+        "x_pt": 133.5,
+        "y_pt": 399.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "拠",
+        "x_pt": 132.0,
+        "y_pt": 399.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": ")",
+        "x_pt": 154.5,
+        "y_pt": 399.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 22,
+    "paragraph_index": 23,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第1条　市税及びその賦課徴収については、地方税法(昭和25年法律第226号。以下「法」と",
+    "numbering_text": null,
+    "text_with_numbering": "第1条　市税及びその賦課徴収については、地方税法(昭和25年法律第226号。以下「法」と",
+    "x_pt": 84.75,
+    "y_pt": 412.5,
+    "width_pt": 430.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 412.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 98.25,
+        "y_pt": 412.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "条",
+        "x_pt": 105.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 126.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "税",
+        "x_pt": 137.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "及",
+        "x_pt": 147.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "び",
+        "x_pt": 158.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "そ",
+        "x_pt": 168.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "の",
+        "x_pt": 179.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "賦",
+        "x_pt": 189.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "課",
+        "x_pt": 200.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "徴",
+        "x_pt": 210.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "収",
+        "x_pt": 221.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "に",
+        "x_pt": 231.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "つ",
+        "x_pt": 242.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "い",
+        "x_pt": 252.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "て",
+        "x_pt": 263.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "は",
+        "x_pt": 273.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "、",
+        "x_pt": 284.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "地",
+        "x_pt": 294.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "方",
+        "x_pt": 305.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "税",
+        "x_pt": 315.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "法",
+        "x_pt": 326.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "(",
+        "x_pt": 336.75,
+        "y_pt": 412.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 25,
+        "text": "昭",
+        "x_pt": 342.0,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "和",
+        "x_pt": 352.5,
+        "y_pt": 412.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 27,
+        "text": "2",
+        "x_pt": 366.0,
+        "y_pt": 412.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 28,
+        "text": "5",
+        "x_pt": 371.25,
+        "y_pt": 412.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 29,
+        "text": "年",
+        "x_pt": 378.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "法",
+        "x_pt": 389.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "律",
+        "x_pt": 399.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "第",
+        "x_pt": 410.25,
+        "y_pt": 412.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 33,
+        "text": "2",
+        "x_pt": 423.75,
+        "y_pt": 412.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 34,
+        "text": "2",
+        "x_pt": 429.0,
+        "y_pt": 412.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 35,
+        "text": "6",
+        "x_pt": 434.25,
+        "y_pt": 412.5,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 36,
+        "text": "号",
+        "x_pt": 441.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "。",
+        "x_pt": 452.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "以",
+        "x_pt": 462.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "下",
+        "x_pt": 473.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "「",
+        "x_pt": 483.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "法",
+        "x_pt": 494.25,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 42,
+        "text": "」",
+        "x_pt": 504.75,
+        "y_pt": 412.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "と",
+        "x_pt": 515.25,
+        "y_pt": 412.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 43
+  },
+  {
+    "index": 23,
+    "paragraph_index": 23,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "いう。)その他別に定めがあるもののほか、この条例の定めるところによる。",
+    "numbering_text": null,
+    "text_with_numbering": "いう。)その他別に定めがあるもののほか、この条例の定めるところによる。",
+    "x_pt": 84.75,
+    "y_pt": 426.0,
+    "width_pt": 363.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 44,
+        "text": "い",
+        "x_pt": 84.75,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "う",
+        "x_pt": 95.25,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 46,
+        "text": "。",
+        "x_pt": 117.75,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 47,
+        "text": ")",
+        "x_pt": 116.25,
+        "y_pt": 426.0,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 48,
+        "text": "そ",
+        "x_pt": 133.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "の",
+        "x_pt": 144.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 50,
+        "text": "他",
+        "x_pt": 154.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 51,
+        "text": "別",
+        "x_pt": 153.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "に",
+        "x_pt": 175.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 53,
+        "text": "定",
+        "x_pt": 174.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 54,
+        "text": "め",
+        "x_pt": 196.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 55,
+        "text": "が",
+        "x_pt": 207.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 56,
+        "text": "あ",
+        "x_pt": 205.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "る",
+        "x_pt": 216.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 58,
+        "text": "も",
+        "x_pt": 238.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 59,
+        "text": "の",
+        "x_pt": 237.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 60,
+        "text": "の",
+        "x_pt": 259.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 61,
+        "text": "ほ",
+        "x_pt": 270.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 62,
+        "text": "か",
+        "x_pt": 280.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 63,
+        "text": "、",
+        "x_pt": 279.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 64,
+        "text": "こ",
+        "x_pt": 301.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "の",
+        "x_pt": 312.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "条",
+        "x_pt": 322.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "例",
+        "x_pt": 333.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "の",
+        "x_pt": 343.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 69,
+        "text": "定",
+        "x_pt": 354.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 70,
+        "text": "め",
+        "x_pt": 352.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 71,
+        "text": "る",
+        "x_pt": 363.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 72,
+        "text": "と",
+        "x_pt": 385.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 73,
+        "text": "こ",
+        "x_pt": 384.0,
+        "y_pt": 426.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 74,
+        "text": "ろ",
+        "x_pt": 406.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 75,
+        "text": "に",
+        "x_pt": 417.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 76,
+        "text": "よ",
+        "x_pt": 427.5,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 77,
+        "text": "る",
+        "x_pt": 438.0,
+        "y_pt": 426.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 78,
+        "text": "。",
+        "x_pt": 448.5,
+        "y_pt": 426.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 44,
+    "char_end": 78
+  },
+  {
+    "index": 24,
+    "paragraph_index": 24,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(用語の意義)",
+    "numbering_text": null,
+    "text_with_numbering": "(用語の意義)",
+    "x_pt": 84.75,
+    "y_pt": 439.5,
+    "width_pt": 57.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 439.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "用",
+        "x_pt": 90.0,
+        "y_pt": 439.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "語",
+        "x_pt": 100.5,
+        "y_pt": 439.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "の",
+        "x_pt": 123.0,
+        "y_pt": 439.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "意",
+        "x_pt": 133.5,
+        "y_pt": 439.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "義",
+        "x_pt": 132.0,
+        "y_pt": 439.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": ")",
+        "x_pt": 142.5,
+        "y_pt": 439.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  },
+  {
+    "index": 25,
+    "paragraph_index": 25,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第2条　この条例における次の各号に掲げる用語の意義は、それぞれ当該各号に定めるところ",
+    "numbering_text": null,
+    "text_with_numbering": "第2条　この条例における次の各号に掲げる用語の意義は、それぞれ当該各号に定めるところ",
+    "x_pt": 84.75,
+    "y_pt": 453.0,
+    "width_pt": 430.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 453.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "2",
+        "x_pt": 98.25,
+        "y_pt": 453.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "条",
+        "x_pt": 105.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "こ",
+        "x_pt": 126.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "の",
+        "x_pt": 137.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "条",
+        "x_pt": 147.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "例",
+        "x_pt": 158.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "に",
+        "x_pt": 168.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "お",
+        "x_pt": 179.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "け",
+        "x_pt": 189.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "る",
+        "x_pt": 200.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "次",
+        "x_pt": 210.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "の",
+        "x_pt": 221.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "各",
+        "x_pt": 231.75,
+        "y_pt": 453.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "号",
+        "x_pt": 210.75,
+        "y_pt": 453.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "に",
+        "x_pt": 252.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "掲",
+        "x_pt": 263.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "げ",
+        "x_pt": 273.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "る",
+        "x_pt": 284.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "用",
+        "x_pt": 294.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "語",
+        "x_pt": 305.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "の",
+        "x_pt": 315.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "意",
+        "x_pt": 326.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "義",
+        "x_pt": 336.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "は",
+        "x_pt": 347.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "、",
+        "x_pt": 357.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "そ",
+        "x_pt": 368.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "れ",
+        "x_pt": 378.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "ぞ",
+        "x_pt": 389.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "れ",
+        "x_pt": 399.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "当",
+        "x_pt": 410.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "該",
+        "x_pt": 420.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "各",
+        "x_pt": 431.25,
+        "y_pt": 453.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 34,
+        "text": "号",
+        "x_pt": 410.25,
+        "y_pt": 453.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "に",
+        "x_pt": 452.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 36,
+        "text": "定",
+        "x_pt": 462.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "め",
+        "x_pt": 473.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "る",
+        "x_pt": 483.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "と",
+        "x_pt": 494.25,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "こ",
+        "x_pt": 504.75,
+        "y_pt": 453.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "ろ",
+        "x_pt": 515.25,
+        "y_pt": 453.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 26,
+    "paragraph_index": 25,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "による。",
+    "numbering_text": null,
+    "text_with_numbering": "による。",
+    "x_pt": 84.75,
+    "y_pt": 466.5,
+    "width_pt": 43.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "に",
+        "x_pt": 84.75,
+        "y_pt": 466.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "よ",
+        "x_pt": 95.25,
+        "y_pt": 466.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 44,
+        "text": "る",
+        "x_pt": 117.75,
+        "y_pt": 466.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "。",
+        "x_pt": 128.25,
+        "y_pt": 466.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 45
+  },
+  {
+    "index": 27,
+    "paragraph_index": 26,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(1)　徴税吏員　市長又はその委任を受けた市職員をいう。",
+    "numbering_text": null,
+    "text_with_numbering": "(1)　徴税吏員　市長又はその委任を受けた市職員をいう。",
+    "x_pt": 84.75,
+    "y_pt": 480.75,
+    "width_pt": 279.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 480.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 90.0,
+        "y_pt": 480.75,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 107.25,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 100.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "徴",
+        "x_pt": 123.0,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "税",
+        "x_pt": 133.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "吏",
+        "x_pt": 144.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "員",
+        "x_pt": 142.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "　",
+        "x_pt": 165.0,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "市",
+        "x_pt": 175.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "長",
+        "x_pt": 186.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "又",
+        "x_pt": 184.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "は",
+        "x_pt": 207.0,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "そ",
+        "x_pt": 217.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "の",
+        "x_pt": 228.0,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "委",
+        "x_pt": 238.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "任",
+        "x_pt": 237.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "を",
+        "x_pt": 259.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "受",
+        "x_pt": 258.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "け",
+        "x_pt": 280.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": "た",
+        "x_pt": 279.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 21,
+        "text": "市",
+        "x_pt": 301.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "職",
+        "x_pt": 312.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "員",
+        "x_pt": 310.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "を",
+        "x_pt": 321.0,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "い",
+        "x_pt": 331.5,
+        "y_pt": 480.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "う",
+        "x_pt": 342.0,
+        "y_pt": 480.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "。",
+        "x_pt": 364.5,
+        "y_pt": 480.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 27
+  },
+  {
+    "index": 28,
+    "paragraph_index": 27,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(2)　徴収金　市税並びにその延滞金、過少申告加算金、不申告加算金、重加算金及び滞納",
+    "numbering_text": null,
+    "text_with_numbering": "(2)　徴収金　市税並びにその延滞金、過少申告加算金、不申告加算金、重加算金及び滞納",
+    "x_pt": 84.75,
+    "y_pt": 494.25,
+    "width_pt": 416.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 494.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "2",
+        "x_pt": 90.0,
+        "y_pt": 494.25,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 107.25,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 100.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "徴",
+        "x_pt": 111.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "収",
+        "x_pt": 133.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "金",
+        "x_pt": 132.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "　",
+        "x_pt": 154.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "市",
+        "x_pt": 165.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "税",
+        "x_pt": 175.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "並",
+        "x_pt": 174.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "び",
+        "x_pt": 196.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "に",
+        "x_pt": 207.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "そ",
+        "x_pt": 217.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "の",
+        "x_pt": 228.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "延",
+        "x_pt": 226.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "滞",
+        "x_pt": 249.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "金",
+        "x_pt": 259.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "、",
+        "x_pt": 258.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "過",
+        "x_pt": 268.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "少",
+        "x_pt": 279.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "申",
+        "x_pt": 289.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "告",
+        "x_pt": 300.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "加",
+        "x_pt": 322.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "算",
+        "x_pt": 333.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 25,
+        "text": "金",
+        "x_pt": 331.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 26,
+        "text": "、",
+        "x_pt": 354.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "不",
+        "x_pt": 364.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "申",
+        "x_pt": 375.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 29,
+        "text": "告",
+        "x_pt": 373.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "加",
+        "x_pt": 384.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "算",
+        "x_pt": 394.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "金",
+        "x_pt": 405.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "、",
+        "x_pt": 415.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "重",
+        "x_pt": 426.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 35,
+        "text": "加",
+        "x_pt": 436.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "算",
+        "x_pt": 459.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 37,
+        "text": "金",
+        "x_pt": 457.5,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "及",
+        "x_pt": 468.0,
+        "y_pt": 494.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "び",
+        "x_pt": 478.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 40,
+        "text": "滞",
+        "x_pt": 501.0,
+        "y_pt": 494.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 41,
+        "text": "納",
+        "x_pt": 499.5,
+        "y_pt": 494.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 29,
+    "paragraph_index": 27,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "処分費をいう。",
+    "numbering_text": null,
+    "text_with_numbering": "処分費をいう。",
+    "x_pt": 84.75,
+    "y_pt": 507.75,
+    "width_pt": 87.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "処",
+        "x_pt": 84.75,
+        "y_pt": 507.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "分",
+        "x_pt": 95.25,
+        "y_pt": 507.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 44,
+        "text": "費",
+        "x_pt": 129.75,
+        "y_pt": 507.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "を",
+        "x_pt": 140.25,
+        "y_pt": 507.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "い",
+        "x_pt": 150.75,
+        "y_pt": 507.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 47,
+        "text": "う",
+        "x_pt": 137.25,
+        "y_pt": 507.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 48,
+        "text": "。",
+        "x_pt": 171.75,
+        "y_pt": 507.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 48
+  },
+  {
+    "index": 30,
+    "paragraph_index": 28,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(3)　納税通知書　納税者が納付すべき市税について、その賦課の根拠となった法律及びこ",
+    "numbering_text": null,
+    "text_with_numbering": "(3)　納税通知書　納税者が納付すべき市税について、その賦課の根拠となった法律及びこ",
+    "x_pt": 84.75,
+    "y_pt": 521.25,
+    "width_pt": 416.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 521.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "3",
+        "x_pt": 90.0,
+        "y_pt": 521.25,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 107.25,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 100.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "納",
+        "x_pt": 123.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "税",
+        "x_pt": 121.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "通",
+        "x_pt": 132.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "知",
+        "x_pt": 142.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "書",
+        "x_pt": 153.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "　",
+        "x_pt": 175.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "納",
+        "x_pt": 186.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "税",
+        "x_pt": 196.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "者",
+        "x_pt": 195.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "が",
+        "x_pt": 205.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "納",
+        "x_pt": 228.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "付",
+        "x_pt": 226.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "す",
+        "x_pt": 237.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "べ",
+        "x_pt": 247.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "き",
+        "x_pt": 270.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "市",
+        "x_pt": 280.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "税",
+        "x_pt": 291.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "に",
+        "x_pt": 301.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "つ",
+        "x_pt": 312.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "い",
+        "x_pt": 310.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 24,
+        "text": "て",
+        "x_pt": 333.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 25,
+        "text": "、",
+        "x_pt": 331.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "そ",
+        "x_pt": 342.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "の",
+        "x_pt": 364.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "賦",
+        "x_pt": 375.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 29,
+        "text": "課",
+        "x_pt": 373.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 30,
+        "text": "の",
+        "x_pt": 396.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "根",
+        "x_pt": 406.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "拠",
+        "x_pt": 417.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "と",
+        "x_pt": 427.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "な",
+        "x_pt": 438.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 35,
+        "text": "っ",
+        "x_pt": 448.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 36,
+        "text": "た",
+        "x_pt": 459.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "法",
+        "x_pt": 469.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "律",
+        "x_pt": 480.0,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "及",
+        "x_pt": 490.5,
+        "y_pt": 521.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "び",
+        "x_pt": 501.0,
+        "y_pt": 521.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 41,
+        "text": "こ",
+        "x_pt": 499.5,
+        "y_pt": 521.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 31,
+    "paragraph_index": 28,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "の条例の規定、納税者の住所及び氏名、課税標準額、税率、税額、納期、各納期におけ",
+    "numbering_text": null,
+    "text_with_numbering": "の条例の規定、納税者の住所及び氏名、課税標準額、税率、税額、納期、各納期におけ",
+    "x_pt": 84.75,
+    "y_pt": 534.75,
+    "width_pt": 412.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "の",
+        "x_pt": 84.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "条",
+        "x_pt": 95.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "例",
+        "x_pt": 105.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 45,
+        "text": "の",
+        "x_pt": 140.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 46,
+        "text": "規",
+        "x_pt": 126.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "定",
+        "x_pt": 137.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 48,
+        "text": "、",
+        "x_pt": 147.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "納",
+        "x_pt": 158.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 50,
+        "text": "税",
+        "x_pt": 192.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 51,
+        "text": "者",
+        "x_pt": 203.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "の",
+        "x_pt": 189.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 53,
+        "text": "住",
+        "x_pt": 224.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "所",
+        "x_pt": 234.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 55,
+        "text": "及",
+        "x_pt": 245.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "び",
+        "x_pt": 255.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "氏",
+        "x_pt": 266.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 58,
+        "text": "名",
+        "x_pt": 276.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 59,
+        "text": "、",
+        "x_pt": 287.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 60,
+        "text": "課",
+        "x_pt": 297.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 61,
+        "text": "税",
+        "x_pt": 308.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 62,
+        "text": "標",
+        "x_pt": 294.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 63,
+        "text": "準",
+        "x_pt": 329.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 64,
+        "text": "額",
+        "x_pt": 315.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 65,
+        "text": "、",
+        "x_pt": 350.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "税",
+        "x_pt": 360.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "率",
+        "x_pt": 371.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "、",
+        "x_pt": 381.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 69,
+        "text": "税",
+        "x_pt": 368.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 70,
+        "text": "額",
+        "x_pt": 402.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 71,
+        "text": "、",
+        "x_pt": 413.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 72,
+        "text": "納",
+        "x_pt": 399.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 73,
+        "text": "期",
+        "x_pt": 410.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 74,
+        "text": "、",
+        "x_pt": 444.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 75,
+        "text": "各",
+        "x_pt": 455.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 76,
+        "text": "納",
+        "x_pt": 465.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 77,
+        "text": "期",
+        "x_pt": 476.25,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 78,
+        "text": "に",
+        "x_pt": 486.75,
+        "y_pt": 534.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 79,
+        "text": "お",
+        "x_pt": 497.25,
+        "y_pt": 534.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 80,
+        "text": "け",
+        "x_pt": 483.75,
+        "y_pt": 534.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 80
+  },
+  {
+    "index": 32,
+    "paragraph_index": 28,
+    "line_index_in_paragraph": 2,
+    "page": 1,
+    "text": "る納付額、納付の場所並びに納期限までに税金を納付しなかった場合に執られるべき措",
+    "numbering_text": null,
+    "text_with_numbering": "る納付額、納付の場所並びに納期限までに税金を納付しなかった場合に執られるべき措",
+    "x_pt": 84.75,
+    "y_pt": 548.25,
+    "width_pt": 423.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 81,
+        "text": "る",
+        "x_pt": 84.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 82,
+        "text": "納",
+        "x_pt": 95.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 83,
+        "text": "付",
+        "x_pt": 129.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 84,
+        "text": "額",
+        "x_pt": 140.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 85,
+        "text": "、",
+        "x_pt": 126.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 86,
+        "text": "納",
+        "x_pt": 161.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 87,
+        "text": "付",
+        "x_pt": 147.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 88,
+        "text": "の",
+        "x_pt": 182.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 89,
+        "text": "場",
+        "x_pt": 168.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 90,
+        "text": "所",
+        "x_pt": 203.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 91,
+        "text": "並",
+        "x_pt": 213.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 92,
+        "text": "び",
+        "x_pt": 224.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 93,
+        "text": "に",
+        "x_pt": 210.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 94,
+        "text": "納",
+        "x_pt": 221.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 95,
+        "text": "期",
+        "x_pt": 255.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 96,
+        "text": "限",
+        "x_pt": 266.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 97,
+        "text": "ま",
+        "x_pt": 276.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 98,
+        "text": "で",
+        "x_pt": 287.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 99,
+        "text": "に",
+        "x_pt": 297.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 100,
+        "text": "税",
+        "x_pt": 308.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 101,
+        "text": "金",
+        "x_pt": 318.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 102,
+        "text": "を",
+        "x_pt": 329.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 103,
+        "text": "納",
+        "x_pt": 339.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 104,
+        "text": "付",
+        "x_pt": 350.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 105,
+        "text": "し",
+        "x_pt": 360.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 106,
+        "text": "な",
+        "x_pt": 371.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 107,
+        "text": "か",
+        "x_pt": 357.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 108,
+        "text": "っ",
+        "x_pt": 392.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 109,
+        "text": "た",
+        "x_pt": 402.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 110,
+        "text": "場",
+        "x_pt": 413.25,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 111,
+        "text": "合",
+        "x_pt": 399.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 112,
+        "text": "に",
+        "x_pt": 434.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 113,
+        "text": "執",
+        "x_pt": 444.75,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 114,
+        "text": "ら",
+        "x_pt": 455.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 115,
+        "text": "れ",
+        "x_pt": 465.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 116,
+        "text": "る",
+        "x_pt": 452.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 117,
+        "text": "べ",
+        "x_pt": 462.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 118,
+        "text": "き",
+        "x_pt": 497.25,
+        "y_pt": 548.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 119,
+        "text": "措",
+        "x_pt": 507.75,
+        "y_pt": 548.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 81,
+    "char_end": 119
+  },
+  {
+    "index": 33,
+    "paragraph_index": 28,
+    "line_index_in_paragraph": 3,
+    "page": 1,
+    "text": "置及び賦課に不服がある場合における救済の方法を記載した文書で、市が作成するもの",
+    "numbering_text": null,
+    "text_with_numbering": "置及び賦課に不服がある場合における救済の方法を記載した文書で、市が作成するもの",
+    "x_pt": 84.75,
+    "y_pt": 561.75,
+    "width_pt": 412.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 120,
+        "text": "置",
+        "x_pt": 84.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 121,
+        "text": "及",
+        "x_pt": 95.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 122,
+        "text": "び",
+        "x_pt": 129.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 123,
+        "text": "賦",
+        "x_pt": 116.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 124,
+        "text": "課",
+        "x_pt": 126.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 125,
+        "text": "に",
+        "x_pt": 137.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 126,
+        "text": "不",
+        "x_pt": 147.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 127,
+        "text": "服",
+        "x_pt": 182.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 128,
+        "text": "が",
+        "x_pt": 192.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 129,
+        "text": "あ",
+        "x_pt": 203.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 130,
+        "text": "る",
+        "x_pt": 213.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 131,
+        "text": "場",
+        "x_pt": 224.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 132,
+        "text": "合",
+        "x_pt": 234.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 133,
+        "text": "に",
+        "x_pt": 221.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 134,
+        "text": "お",
+        "x_pt": 231.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 135,
+        "text": "け",
+        "x_pt": 266.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 136,
+        "text": "る",
+        "x_pt": 252.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 137,
+        "text": "救",
+        "x_pt": 287.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 138,
+        "text": "済",
+        "x_pt": 297.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 139,
+        "text": "の",
+        "x_pt": 308.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 140,
+        "text": "方",
+        "x_pt": 318.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 141,
+        "text": "法",
+        "x_pt": 329.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 142,
+        "text": "を",
+        "x_pt": 339.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 143,
+        "text": "記",
+        "x_pt": 350.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 144,
+        "text": "載",
+        "x_pt": 360.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 145,
+        "text": "し",
+        "x_pt": 371.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 146,
+        "text": "た",
+        "x_pt": 381.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 147,
+        "text": "文",
+        "x_pt": 392.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 148,
+        "text": "書",
+        "x_pt": 378.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 149,
+        "text": "で",
+        "x_pt": 389.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 150,
+        "text": "、",
+        "x_pt": 423.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 151,
+        "text": "市",
+        "x_pt": 434.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 152,
+        "text": "が",
+        "x_pt": 444.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 153,
+        "text": "作",
+        "x_pt": 431.25,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 154,
+        "text": "成",
+        "x_pt": 441.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 155,
+        "text": "す",
+        "x_pt": 452.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 156,
+        "text": "る",
+        "x_pt": 486.75,
+        "y_pt": 561.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 157,
+        "text": "も",
+        "x_pt": 497.25,
+        "y_pt": 561.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 158,
+        "text": "の",
+        "x_pt": 483.75,
+        "y_pt": 561.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 120,
+    "char_end": 158
+  },
+  {
+    "index": 34,
+    "paragraph_index": 28,
+    "line_index_in_paragraph": 4,
+    "page": 1,
+    "text": "をいう。",
+    "numbering_text": null,
+    "text_with_numbering": "をいう。",
+    "x_pt": 84.75,
+    "y_pt": 576.0,
+    "width_pt": 55.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 159,
+        "text": "を",
+        "x_pt": 84.75,
+        "y_pt": 576.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 160,
+        "text": "い",
+        "x_pt": 95.25,
+        "y_pt": 576.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 161,
+        "text": "う",
+        "x_pt": 129.75,
+        "y_pt": 576.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 162,
+        "text": "。",
+        "x_pt": 140.25,
+        "y_pt": 576.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 159,
+    "char_end": 162
+  },
+  {
+    "index": 35,
+    "paragraph_index": 29,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(4)　納付書　市が作成する用紙により、納税者がその納付すべき徴収金額並びに住所、氏",
+    "numbering_text": null,
+    "text_with_numbering": "(4)　納付書　市が作成する用紙により、納税者がその納付すべき徴収金額並びに住所、氏",
+    "x_pt": 84.75,
+    "y_pt": 589.5,
+    "width_pt": 426.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 589.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "4",
+        "x_pt": 90.0,
+        "y_pt": 589.5,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 107.25,
+        "y_pt": 589.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 112.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "納",
+        "x_pt": 111.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "付",
+        "x_pt": 133.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "書",
+        "x_pt": 144.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "　",
+        "x_pt": 142.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "市",
+        "x_pt": 153.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "が",
+        "x_pt": 175.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "作",
+        "x_pt": 174.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "成",
+        "x_pt": 196.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "す",
+        "x_pt": 195.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "る",
+        "x_pt": 217.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "用",
+        "x_pt": 228.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "紙",
+        "x_pt": 226.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "に",
+        "x_pt": 249.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "よ",
+        "x_pt": 259.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "り",
+        "x_pt": 258.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "、",
+        "x_pt": 280.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "納",
+        "x_pt": 291.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "税",
+        "x_pt": 301.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "者",
+        "x_pt": 312.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "が",
+        "x_pt": 322.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "そ",
+        "x_pt": 333.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "の",
+        "x_pt": 343.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "納",
+        "x_pt": 354.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "付",
+        "x_pt": 364.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 28,
+        "text": "す",
+        "x_pt": 363.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "べ",
+        "x_pt": 373.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "き",
+        "x_pt": 384.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 31,
+        "text": "徴",
+        "x_pt": 406.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "収",
+        "x_pt": 417.0,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "金",
+        "x_pt": 427.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "額",
+        "x_pt": 438.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "並",
+        "x_pt": 436.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "び",
+        "x_pt": 459.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 37,
+        "text": "に",
+        "x_pt": 457.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 38,
+        "text": "住",
+        "x_pt": 480.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 39,
+        "text": "所",
+        "x_pt": 478.5,
+        "y_pt": 589.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "、",
+        "x_pt": 489.0,
+        "y_pt": 589.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 41,
+        "text": "氏",
+        "x_pt": 511.5,
+        "y_pt": 589.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 36,
+    "paragraph_index": 29,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "名又は名称その他納付について必要な事項を記載した文書をいう。",
+    "numbering_text": null,
+    "text_with_numbering": "名又は名称その他納付について必要な事項を記載した文書をいう。",
+    "x_pt": 84.75,
+    "y_pt": 603.0,
+    "width_pt": 318.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "名",
+        "x_pt": 84.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "又",
+        "x_pt": 95.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 44,
+        "text": "は",
+        "x_pt": 129.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "名",
+        "x_pt": 140.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 46,
+        "text": "称",
+        "x_pt": 126.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 47,
+        "text": "そ",
+        "x_pt": 161.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 48,
+        "text": "の",
+        "x_pt": 171.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "他",
+        "x_pt": 182.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 50,
+        "text": "納",
+        "x_pt": 168.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 51,
+        "text": "付",
+        "x_pt": 203.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "に",
+        "x_pt": 189.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 53,
+        "text": "つ",
+        "x_pt": 200.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "い",
+        "x_pt": 210.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 55,
+        "text": "て",
+        "x_pt": 245.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "必",
+        "x_pt": 255.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "要",
+        "x_pt": 266.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 58,
+        "text": "な",
+        "x_pt": 252.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 59,
+        "text": "事",
+        "x_pt": 287.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 60,
+        "text": "項",
+        "x_pt": 297.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 61,
+        "text": "を",
+        "x_pt": 308.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 62,
+        "text": "記",
+        "x_pt": 318.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 63,
+        "text": "載",
+        "x_pt": 305.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 64,
+        "text": "し",
+        "x_pt": 339.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "た",
+        "x_pt": 350.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "文",
+        "x_pt": 360.75,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "書",
+        "x_pt": 371.25,
+        "y_pt": 603.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "を",
+        "x_pt": 381.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 69,
+        "text": "い",
+        "x_pt": 368.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 70,
+        "text": "う",
+        "x_pt": 402.75,
+        "y_pt": 603.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 71,
+        "text": "。",
+        "x_pt": 389.25,
+        "y_pt": 603.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 71
+  },
+  {
+    "index": 37,
+    "paragraph_index": 30,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(5)　納入書　市が作成する用紙により、特別徴収義務者がその納入すべき納入金額並びに",
+    "numbering_text": null,
+    "text_with_numbering": "(5)　納入書　市が作成する用紙により、特別徴収義務者がその納入すべき納入金額並びに",
+    "x_pt": 84.75,
+    "y_pt": 616.5,
+    "width_pt": 426.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 616.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "5",
+        "x_pt": 90.0,
+        "y_pt": 616.5,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 107.25,
+        "y_pt": 616.5,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 112.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "納",
+        "x_pt": 123.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "入",
+        "x_pt": 133.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "書",
+        "x_pt": 144.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "　",
+        "x_pt": 142.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "市",
+        "x_pt": 165.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "が",
+        "x_pt": 163.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "作",
+        "x_pt": 186.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "成",
+        "x_pt": 196.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "す",
+        "x_pt": 207.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "る",
+        "x_pt": 217.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "用",
+        "x_pt": 228.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "紙",
+        "x_pt": 226.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "に",
+        "x_pt": 237.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "よ",
+        "x_pt": 247.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "り",
+        "x_pt": 258.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "、",
+        "x_pt": 268.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": "特",
+        "x_pt": 291.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 21,
+        "text": "別",
+        "x_pt": 289.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "徴",
+        "x_pt": 300.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "収",
+        "x_pt": 322.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "義",
+        "x_pt": 333.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 25,
+        "text": "務",
+        "x_pt": 331.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "者",
+        "x_pt": 342.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "が",
+        "x_pt": 364.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "そ",
+        "x_pt": 375.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 29,
+        "text": "の",
+        "x_pt": 373.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "納",
+        "x_pt": 384.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 31,
+        "text": "入",
+        "x_pt": 406.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 32,
+        "text": "す",
+        "x_pt": 405.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 33,
+        "text": "べ",
+        "x_pt": 427.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "き",
+        "x_pt": 438.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 35,
+        "text": "納",
+        "x_pt": 448.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "入",
+        "x_pt": 447.0,
+        "y_pt": 616.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 37,
+        "text": "金",
+        "x_pt": 469.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "額",
+        "x_pt": 480.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "並",
+        "x_pt": 490.5,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "び",
+        "x_pt": 501.0,
+        "y_pt": 616.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "に",
+        "x_pt": 511.5,
+        "y_pt": 616.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 38,
+    "paragraph_index": 30,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "住所、氏名又は名称その他納入について必要な事項を記載した文書をいう。",
+    "numbering_text": null,
+    "text_with_numbering": "住所、氏名又は名称その他納入について必要な事項を記載した文書をいう。",
+    "x_pt": 84.75,
+    "y_pt": 630.0,
+    "width_pt": 370.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "住",
+        "x_pt": 84.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "所",
+        "x_pt": 95.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "、",
+        "x_pt": 105.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 45,
+        "text": "氏",
+        "x_pt": 140.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "名",
+        "x_pt": 150.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "又",
+        "x_pt": 161.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 48,
+        "text": "は",
+        "x_pt": 171.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "名",
+        "x_pt": 182.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 50,
+        "text": "称",
+        "x_pt": 192.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 51,
+        "text": "そ",
+        "x_pt": 179.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "の",
+        "x_pt": 213.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 53,
+        "text": "他",
+        "x_pt": 224.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "納",
+        "x_pt": 234.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 55,
+        "text": "入",
+        "x_pt": 245.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "に",
+        "x_pt": 255.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "つ",
+        "x_pt": 266.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 58,
+        "text": "い",
+        "x_pt": 276.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 59,
+        "text": "て",
+        "x_pt": 263.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 60,
+        "text": "必",
+        "x_pt": 297.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 61,
+        "text": "要",
+        "x_pt": 284.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 62,
+        "text": "な",
+        "x_pt": 318.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 63,
+        "text": "事",
+        "x_pt": 305.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 64,
+        "text": "項",
+        "x_pt": 315.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "を",
+        "x_pt": 326.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 66,
+        "text": "記",
+        "x_pt": 360.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "載",
+        "x_pt": 371.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "し",
+        "x_pt": 381.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 69,
+        "text": "た",
+        "x_pt": 392.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 70,
+        "text": "文",
+        "x_pt": 402.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 71,
+        "text": "書",
+        "x_pt": 413.25,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 72,
+        "text": "を",
+        "x_pt": 423.75,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 73,
+        "text": "い",
+        "x_pt": 410.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 74,
+        "text": "う",
+        "x_pt": 444.75,
+        "y_pt": 630.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 75,
+        "text": "。",
+        "x_pt": 455.25,
+        "y_pt": 630.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 75
+  },
+  {
+    "index": 39,
+    "paragraph_index": 31,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(平18条例70・一部改正)",
+    "numbering_text": null,
+    "text_with_numbering": "(平18条例70・一部改正)",
+    "x_pt": 84.75,
+    "y_pt": 644.25,
+    "width_pt": 166.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 644.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "平",
+        "x_pt": 90.0,
+        "y_pt": 644.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 2,
+        "text": "1",
+        "x_pt": 103.5,
+        "y_pt": 644.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 3,
+        "text": "8",
+        "x_pt": 108.75,
+        "y_pt": 644.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "条",
+        "x_pt": 164.25,
+        "y_pt": 644.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "例",
+        "x_pt": 174.75,
+        "y_pt": 644.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 6,
+        "text": "7",
+        "x_pt": 188.25,
+        "y_pt": 644.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 7,
+        "text": "0",
+        "x_pt": 193.5,
+        "y_pt": 644.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 8,
+        "text": "・",
+        "x_pt": 198.75,
+        "y_pt": 644.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "一",
+        "x_pt": 161.25,
+        "y_pt": 644.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "部",
+        "x_pt": 171.75,
+        "y_pt": 644.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "改",
+        "x_pt": 230.25,
+        "y_pt": 644.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "正",
+        "x_pt": 192.75,
+        "y_pt": 644.25,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": ")",
+        "x_pt": 251.25,
+        "y_pt": 644.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 13
+  },
+  {
+    "index": 40,
+    "paragraph_index": 32,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(税目)",
+    "numbering_text": null,
+    "text_with_numbering": "(税目)",
+    "x_pt": 84.75,
+    "y_pt": 657.75,
+    "width_pt": 38.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 657.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "税",
+        "x_pt": 90.0,
+        "y_pt": 657.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "目",
+        "x_pt": 112.5,
+        "y_pt": 657.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": ")",
+        "x_pt": 123.0,
+        "y_pt": 657.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 3
+  },
+  {
+    "index": 41,
+    "paragraph_index": 33,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "第3条　市税として課する普通税は、次に掲げるものとする。",
+    "numbering_text": null,
+    "text_with_numbering": "第3条　市税として課する普通税は、次に掲げるものとする。",
+    "x_pt": 84.75,
+    "y_pt": 671.25,
+    "width_pt": 283.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "第",
+        "x_pt": 84.75,
+        "y_pt": 671.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 1,
+        "text": "3",
+        "x_pt": 98.25,
+        "y_pt": 671.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 2,
+        "text": "条",
+        "x_pt": 105.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 116.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 126.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "税",
+        "x_pt": 137.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "と",
+        "x_pt": 147.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "し",
+        "x_pt": 158.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "て",
+        "x_pt": 168.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "課",
+        "x_pt": 179.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "す",
+        "x_pt": 189.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "る",
+        "x_pt": 200.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "普",
+        "x_pt": 210.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "通",
+        "x_pt": 221.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "税",
+        "x_pt": 231.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "は",
+        "x_pt": 242.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "、",
+        "x_pt": 252.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "次",
+        "x_pt": 263.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "に",
+        "x_pt": 273.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "掲",
+        "x_pt": 284.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "げ",
+        "x_pt": 294.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "る",
+        "x_pt": 305.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "も",
+        "x_pt": 315.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "の",
+        "x_pt": 326.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "と",
+        "x_pt": 336.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "す",
+        "x_pt": 347.25,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "る",
+        "x_pt": 357.75,
+        "y_pt": 671.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "。",
+        "x_pt": 368.25,
+        "y_pt": 671.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 27
+  },
+  {
+    "index": 42,
+    "paragraph_index": 34,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "(1)　市民税",
+    "numbering_text": null,
+    "text_with_numbering": "(1)　市民税",
+    "x_pt": 84.75,
+    "y_pt": 684.75,
+    "width_pt": 48.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "ＭＳ Ｐゴシック",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "(",
+        "x_pt": 84.75,
+        "y_pt": 684.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 1,
+        "text": "1",
+        "x_pt": 90.0,
+        "y_pt": 684.75,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 2,
+        "text": ")",
+        "x_pt": 95.25,
+        "y_pt": 684.75,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 3,
+        "text": "　",
+        "x_pt": 112.5,
+        "y_pt": 684.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "市",
+        "x_pt": 111.0,
+        "y_pt": 684.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "民",
+        "x_pt": 133.5,
+        "y_pt": 684.75,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "税",
+        "x_pt": 132.0,
+        "y_pt": 684.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 6
+  }
+]

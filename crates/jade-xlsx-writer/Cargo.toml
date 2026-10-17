@@ -1,0 +1,19 @@
+[package]
+name = "jade-xlsx-writer"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-opc = { path = "../jade-opc" }
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+jade-xlsx-layout = { path = "../jade-xlsx-layout" }
+quick-xml = "0.39"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+
+[dev-dependencies]
+jade-xlsx-headless-api = { path = "../jade-xlsx-headless-api" }
+jade-xlsx-headless-editor = { path = "../jade-xlsx-headless-editor" }
+proptest = "1.6"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

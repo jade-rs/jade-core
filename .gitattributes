@@ -1,0 +1,5 @@
+CLAUDE.md merge=union
+TODO.md merge=union
+
+# Keep the vendored upstream bytes and generated patch intact for provenance.
+third_party/ironcalc-base/** -whitespace

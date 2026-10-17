@@ -1,0 +1,52 @@
+---
+source: crates/docx-extract/tests/snapshot_all.rs
+expression: paragraphs
+---
+- text: MS 明朝　12PT　字送り20PT
+  numbering_text: ""
+  accepted_text: MS 明朝　12PT　字送り20PT
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 5AF060E2
+- text: 字下げ2文字（20PTの2文字）
+  numbering_text: ""
+  accepted_text: 字下げ2文字（20PTの2文字）
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: "47445677"
+- text: 字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ
+  numbering_text: ""
+  accepted_text: 字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 23B5F550
+- text: ぶら下げ2文字（20PTの2文字）
+  numbering_text: ""
+  accepted_text: ぶら下げ2文字（20PTの2文字）
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 4C6179FB
+- text: 字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ
+  numbering_text: ""
+  accepted_text: 字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ字下げ
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: "52916341"
+- text: ""
+  numbering_text: ""
+  accepted_text: ""
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: "570E6660"

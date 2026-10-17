@@ -1,0 +1,71 @@
+[
+  {
+    "index": 0,
+    "paragraph_index": 0,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "Hello\u0002",
+    "numbering_text": null,
+    "text_with_numbering": "Hello\u0002",
+    "x_pt": 84.75,
+    "y_pt": 99.0,
+    "width_pt": 24.75,
+    "font": {
+      "name": "游明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "H",
+        "x_pt": 84.75,
+        "y_pt": 99.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 1,
+        "text": "e",
+        "x_pt": 93.75,
+        "y_pt": 99.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 2,
+        "text": "l",
+        "x_pt": 98.25,
+        "y_pt": 99.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 3,
+        "text": "l",
+        "x_pt": 101.25,
+        "y_pt": 99.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 4,
+        "text": "o",
+        "x_pt": 104.25,
+        "y_pt": 99.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 5,
+        "text": "\u0002",
+        "x_pt": 109.5,
+        "y_pt": 99.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 5
+  }
+]

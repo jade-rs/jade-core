@@ -1,0 +1,1316 @@
+[
+  {
+    "index": 0,
+    "paragraph_index": 0,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "MS 明朝　12PT　字送り20PT",
+    "numbering_text": null,
+    "text_with_numbering": "MS 明朝　12PT　字送り20PT",
+    "x_pt": 84.75,
+    "y_pt": 100.5,
+    "width_pt": 245.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "M",
+        "x_pt": 84.75,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 1,
+        "text": "S",
+        "x_pt": 94.5,
+        "y_pt": 100.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": " ",
+        "x_pt": 105.0,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 3,
+        "text": "明",
+        "x_pt": 114.75,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "朝",
+        "x_pt": 135.0,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "　",
+        "x_pt": 154.5,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "1",
+        "x_pt": 174.75,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 7,
+        "text": "2",
+        "x_pt": 184.5,
+        "y_pt": 100.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "P",
+        "x_pt": 195.0,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 9,
+        "text": "T",
+        "x_pt": 204.75,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 10,
+        "text": "　",
+        "x_pt": 214.5,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "字",
+        "x_pt": 234.75,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "送",
+        "x_pt": 255.0,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "り",
+        "x_pt": 274.5,
+        "y_pt": 100.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "2",
+        "x_pt": 300.0,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 15,
+        "text": "0",
+        "x_pt": 309.75,
+        "y_pt": 100.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 16,
+        "text": "P",
+        "x_pt": 319.5,
+        "y_pt": 100.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "T",
+        "x_pt": 330.0,
+        "y_pt": 100.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 17
+  },
+  {
+    "index": 1,
+    "paragraph_index": 1,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "字下げ2文字（20PTの2文字）",
+    "numbering_text": null,
+    "text_with_numbering": "字下げ2文字（20PTの2文字）",
+    "x_pt": 84.75,
+    "y_pt": 118.5,
+    "width_pt": 264.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "字",
+        "x_pt": 84.75,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 1,
+        "text": "下",
+        "x_pt": 105.0,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "げ",
+        "x_pt": 124.5,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "2",
+        "x_pt": 150.0,
+        "y_pt": 118.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 4,
+        "text": "文",
+        "x_pt": 165.0,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "字",
+        "x_pt": 184.5,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "（",
+        "x_pt": 204.75,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "2",
+        "x_pt": 225.0,
+        "y_pt": 118.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 8,
+        "text": "0",
+        "x_pt": 234.75,
+        "y_pt": 118.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 9,
+        "text": "P",
+        "x_pt": 244.5,
+        "y_pt": 118.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "T",
+        "x_pt": 255.0,
+        "y_pt": 118.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 11,
+        "text": "の",
+        "x_pt": 270.0,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "2",
+        "x_pt": 294.75,
+        "y_pt": 118.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 13,
+        "text": "文",
+        "x_pt": 309.75,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "字",
+        "x_pt": 330.0,
+        "y_pt": 118.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "）",
+        "x_pt": 349.5,
+        "y_pt": 118.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 15
+  },
+  {
+    "index": 2,
+    "paragraph_index": 2,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "字下げ字下げ字下げ字下げ字下げ字下げ字",
+    "numbering_text": null,
+    "text_with_numbering": "字下げ字下げ字下げ字下げ字下げ字下げ字",
+    "x_pt": 84.75,
+    "y_pt": 136.5,
+    "width_pt": 365.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "字",
+        "x_pt": 84.75,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 1,
+        "text": "下",
+        "x_pt": 105.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "げ",
+        "x_pt": 165.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "字",
+        "x_pt": 145.5,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "下",
+        "x_pt": 166.5,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "げ",
+        "x_pt": 186.75,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "字",
+        "x_pt": 207.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "下",
+        "x_pt": 267.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "げ",
+        "x_pt": 247.5,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "字",
+        "x_pt": 267.75,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "下",
+        "x_pt": 288.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "げ",
+        "x_pt": 308.25,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "字",
+        "x_pt": 328.5,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "下",
+        "x_pt": 348.75,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "げ",
+        "x_pt": 369.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "字",
+        "x_pt": 389.25,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "下",
+        "x_pt": 409.5,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "げ",
+        "x_pt": 429.75,
+        "y_pt": 136.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "字",
+        "x_pt": 450.0,
+        "y_pt": 136.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 18
+  },
+  {
+    "index": 3,
+    "paragraph_index": 2,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "下げ字下げ字下げ字下げ字下げ字下げ",
+    "numbering_text": null,
+    "text_with_numbering": "下げ字下げ字下げ字下げ字下げ字下げ",
+    "x_pt": 84.75,
+    "y_pt": 154.5,
+    "width_pt": 320.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 19,
+        "text": "下",
+        "x_pt": 84.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": "げ",
+        "x_pt": 105.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 21,
+        "text": "字",
+        "x_pt": 124.5,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 22,
+        "text": "下",
+        "x_pt": 144.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "げ",
+        "x_pt": 165.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 24,
+        "text": "字",
+        "x_pt": 184.5,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 25,
+        "text": "下",
+        "x_pt": 204.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 26,
+        "text": "げ",
+        "x_pt": 225.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "字",
+        "x_pt": 244.5,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 28,
+        "text": "下",
+        "x_pt": 264.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 29,
+        "text": "げ",
+        "x_pt": 285.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 30,
+        "text": "字",
+        "x_pt": 304.5,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 31,
+        "text": "下",
+        "x_pt": 324.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 32,
+        "text": "げ",
+        "x_pt": 345.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 33,
+        "text": "字",
+        "x_pt": 364.5,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 34,
+        "text": "下",
+        "x_pt": 384.75,
+        "y_pt": 154.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "げ",
+        "x_pt": 405.0,
+        "y_pt": 154.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 19,
+    "char_end": 35
+  },
+  {
+    "index": 4,
+    "paragraph_index": 4,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "ぶら下げ2文字（20PTの2文字）",
+    "numbering_text": null,
+    "text_with_numbering": "ぶら下げ2文字（20PTの2文字）",
+    "x_pt": 84.75,
+    "y_pt": 190.5,
+    "width_pt": 285.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "ぶ",
+        "x_pt": 84.75,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 1,
+        "text": "ら",
+        "x_pt": 105.0,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "下",
+        "x_pt": 124.5,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "げ",
+        "x_pt": 144.75,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "2",
+        "x_pt": 169.5,
+        "y_pt": 190.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 5,
+        "text": "文",
+        "x_pt": 184.5,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "字",
+        "x_pt": 204.75,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "（",
+        "x_pt": 225.0,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "2",
+        "x_pt": 244.5,
+        "y_pt": 190.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "0",
+        "x_pt": 255.0,
+        "y_pt": 190.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 10,
+        "text": "P",
+        "x_pt": 264.75,
+        "y_pt": 190.5,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 11,
+        "text": "T",
+        "x_pt": 274.5,
+        "y_pt": 190.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 12,
+        "text": "の",
+        "x_pt": 289.5,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "2",
+        "x_pt": 315.0,
+        "y_pt": 190.5,
+        "advance_pt": 15.0
+      },
+      {
+        "char_index": 14,
+        "text": "文",
+        "x_pt": 330.0,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "字",
+        "x_pt": 349.5,
+        "y_pt": 190.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "）",
+        "x_pt": 369.75,
+        "y_pt": 190.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 16
+  },
+  {
+    "index": 5,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "字下げ字下げ字下げ字下げ字下げ字下げ字下げ",
+    "numbering_text": null,
+    "text_with_numbering": "字下げ字下げ字下げ字下げ字下げ字下げ字下げ",
+    "x_pt": 84.75,
+    "y_pt": 208.5,
+    "width_pt": 405.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "字",
+        "x_pt": 84.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 1,
+        "text": "下",
+        "x_pt": 105.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 2,
+        "text": "げ",
+        "x_pt": 125.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 3,
+        "text": "字",
+        "x_pt": 145.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 4,
+        "text": "下",
+        "x_pt": 165.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "げ",
+        "x_pt": 186.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "字",
+        "x_pt": 206.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "下",
+        "x_pt": 226.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "げ",
+        "x_pt": 246.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "字",
+        "x_pt": 267.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "下",
+        "x_pt": 287.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 11,
+        "text": "げ",
+        "x_pt": 307.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "字",
+        "x_pt": 327.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "下",
+        "x_pt": 348.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 14,
+        "text": "げ",
+        "x_pt": 368.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "字",
+        "x_pt": 388.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "下",
+        "x_pt": 408.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "げ",
+        "x_pt": 429.0,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "字",
+        "x_pt": 449.25,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "下",
+        "x_pt": 469.5,
+        "y_pt": 208.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 20,
+        "text": "げ",
+        "x_pt": 489.75,
+        "y_pt": 208.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 20
+  },
+  {
+    "index": 6,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "字下げ字下げ字下げ字下げ字下げ字下げ字",
+    "numbering_text": null,
+    "text_with_numbering": "字下げ字下げ字下げ字下げ字下げ字下げ字",
+    "x_pt": 84.75,
+    "y_pt": 226.5,
+    "width_pt": 384.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 21,
+        "text": "字",
+        "x_pt": 84.75,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 22,
+        "text": "下",
+        "x_pt": 105.0,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "げ",
+        "x_pt": 125.25,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 24,
+        "text": "字",
+        "x_pt": 185.25,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 25,
+        "text": "下",
+        "x_pt": 166.5,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 26,
+        "text": "げ",
+        "x_pt": 186.75,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "字",
+        "x_pt": 207.0,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 28,
+        "text": "下",
+        "x_pt": 227.25,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 29,
+        "text": "げ",
+        "x_pt": 247.5,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 30,
+        "text": "字",
+        "x_pt": 267.75,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 31,
+        "text": "下",
+        "x_pt": 288.0,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 32,
+        "text": "げ",
+        "x_pt": 308.25,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 33,
+        "text": "字",
+        "x_pt": 328.5,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 34,
+        "text": "下",
+        "x_pt": 348.75,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "げ",
+        "x_pt": 369.0,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "字",
+        "x_pt": 389.25,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 37,
+        "text": "下",
+        "x_pt": 409.5,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 38,
+        "text": "げ",
+        "x_pt": 469.5,
+        "y_pt": 226.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 39,
+        "text": "字",
+        "x_pt": 450.0,
+        "y_pt": 226.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 21,
+    "char_end": 39
+  },
+  {
+    "index": 7,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 2,
+    "page": 1,
+    "text": "下げ字下げ字下げ字下げ字下げ字下げ字下",
+    "numbering_text": null,
+    "text_with_numbering": "下げ字下げ字下げ字下げ字下げ字下げ字下",
+    "x_pt": 84.75,
+    "y_pt": 244.5,
+    "width_pt": 365.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 40,
+        "text": "下",
+        "x_pt": 84.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 41,
+        "text": "げ",
+        "x_pt": 105.0,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 42,
+        "text": "字",
+        "x_pt": 125.25,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 43,
+        "text": "下",
+        "x_pt": 145.5,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 44,
+        "text": "げ",
+        "x_pt": 166.5,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 45,
+        "text": "字",
+        "x_pt": 186.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 46,
+        "text": "下",
+        "x_pt": 207.0,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 47,
+        "text": "げ",
+        "x_pt": 227.25,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 48,
+        "text": "字",
+        "x_pt": 247.5,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 49,
+        "text": "下",
+        "x_pt": 267.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 50,
+        "text": "げ",
+        "x_pt": 288.0,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 51,
+        "text": "字",
+        "x_pt": 308.25,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "下",
+        "x_pt": 328.5,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 53,
+        "text": "げ",
+        "x_pt": 348.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 54,
+        "text": "字",
+        "x_pt": 408.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 55,
+        "text": "下",
+        "x_pt": 389.25,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 56,
+        "text": "げ",
+        "x_pt": 409.5,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 57,
+        "text": "字",
+        "x_pt": 429.75,
+        "y_pt": 244.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 58,
+        "text": "下",
+        "x_pt": 450.0,
+        "y_pt": 244.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 40,
+    "char_end": 58
+  },
+  {
+    "index": 8,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 3,
+    "page": 1,
+    "text": "げ字下げ字下げ",
+    "numbering_text": null,
+    "text_with_numbering": "げ字下げ字下げ",
+    "x_pt": 84.75,
+    "y_pt": 262.5,
+    "width_pt": 140.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "ＭＳ 明朝",
+      "name_far_east": "ＭＳ 明朝",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 59,
+        "text": "げ",
+        "x_pt": 84.75,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 60,
+        "text": "字",
+        "x_pt": 105.0,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 61,
+        "text": "下",
+        "x_pt": 125.25,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 62,
+        "text": "げ",
+        "x_pt": 144.75,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 63,
+        "text": "字",
+        "x_pt": 165.0,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 64,
+        "text": "下",
+        "x_pt": 225.0,
+        "y_pt": 262.5,
+        "advance_pt": null
+      },
+      {
+        "char_index": 65,
+        "text": "げ",
+        "x_pt": 204.75,
+        "y_pt": 262.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 59,
+    "char_end": 65
+  }
+]

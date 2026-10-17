@@ -1,0 +1,120 @@
+{
+  "input": "public/fixtures/hello.docx",
+  "summary": {
+    "word_line_count": 2,
+    "layout_line_count": 3,
+    "compared_line_count": 2,
+    "diff_count": 2,
+    "stored_diff_count": 2,
+    "first_diff_index": 1,
+    "max_abs_y_delta_pt": 0.25,
+    "max_abs_x_delta_pt": 0.25
+  },
+  "diffs": [
+    {
+      "index": 1,
+      "kind": "paragraph",
+      "paragraph_index": 1,
+      "word": {
+        "index": 1,
+        "paragraph_index": 1,
+        "line_index_in_paragraph": 0,
+        "page": 2,
+        "text": "World",
+        "x_pt": 56.45,
+        "y_pt": 56.45,
+        "char_start": 0,
+        "char_end": 5
+      },
+      "layout": {
+        "index": 1,
+        "paragraph_index": 0,
+        "line_index_in_paragraph": 1,
+        "page": 2,
+        "text": "",
+        "x_pt": 56.70000076293945,
+        "y_pt": 56.70000076293945,
+        "width_pt": -0.0,
+        "height_pt": 13.799999237060547
+      },
+      "message": "paragraph differs: Word=1 jade-docx-layout=0"
+    },
+    {
+      "index": 2,
+      "kind": "line-count",
+      "paragraph_index": null,
+      "word": null,
+      "layout": {
+        "index": 2,
+        "paragraph_index": 1,
+        "line_index_in_paragraph": 0,
+        "page": 2,
+        "text": "World",
+        "x_pt": 56.70000076293945,
+        "y_pt": 70.5,
+        "width_pt": 33.31200063228607,
+        "height_pt": 13.799999237060547
+      },
+      "message": "line count differs: Word=2 jade-docx-layout=3"
+    }
+  ],
+  "word_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Hello",
+      "x_pt": 56.45,
+      "y_pt": 56.45,
+      "char_start": 0,
+      "char_end": 6
+    },
+    {
+      "index": 1,
+      "paragraph_index": 1,
+      "line_index_in_paragraph": 0,
+      "page": 2,
+      "text": "World",
+      "x_pt": 56.45,
+      "y_pt": 56.45,
+      "char_start": 0,
+      "char_end": 5
+    }
+  ],
+  "layout_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "Hello",
+      "x_pt": 56.70000076293945,
+      "y_pt": 56.70000076293945,
+      "width_pt": 29.47200107574463,
+      "height_pt": 13.799999237060547
+    },
+    {
+      "index": 1,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 1,
+      "page": 2,
+      "text": "",
+      "x_pt": 56.70000076293945,
+      "y_pt": 56.70000076293945,
+      "width_pt": -0.0,
+      "height_pt": 13.799999237060547
+    },
+    {
+      "index": 2,
+      "paragraph_index": 1,
+      "line_index_in_paragraph": 0,
+      "page": 2,
+      "text": "World",
+      "x_pt": 56.70000076293945,
+      "y_pt": 70.5,
+      "width_pt": 33.31200063228607,
+      "height_pt": 13.799999237060547
+    }
+  ]
+}

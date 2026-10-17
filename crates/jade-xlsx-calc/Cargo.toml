@@ -1,0 +1,13 @@
+[package]
+name = "jade-xlsx-calc"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+ironcalc_base = { package = "jade-xlsx-calc-engine", version = "0.1.0", path = "../../third_party/ironcalc-base" }
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+thiserror = "2.0"
+
+[dev-dependencies]
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

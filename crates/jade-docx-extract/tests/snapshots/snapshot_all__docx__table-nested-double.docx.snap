@@ -1,0 +1,5 @@
+---
+source: crates/docx-extract/tests/snapshot_all.rs
+expression: paragraphs
+---
+[]

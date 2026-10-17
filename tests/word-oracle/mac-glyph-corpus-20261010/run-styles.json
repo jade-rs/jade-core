@@ -1,0 +1,94 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "863325594a9bb81388f03be1381ba6adee0f554bf3cc84009a0bf3358cf7abb4",
+ "pdf_sha256": "c5d4d992012bfb6cfa31c4da5dcb9f083271c07830213f92a890ec9b98c9b1d7",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 56.64,
+       "advance_pt": 7.584,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 64.08,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 69.599,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 72.479,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 75.602,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "W",
+       "x_pt": 83.76,
+       "advance_pt": 10.168,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 93.84,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 99.845,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 104.405,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 107.286,
+       "advance_pt": 6.127,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "HelloWorld"
+    }
+   ]
+  }
+ ]
+}

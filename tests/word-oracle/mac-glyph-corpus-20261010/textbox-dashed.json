@@ -1,0 +1,141 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "da08e80597204c603ca3a73e254704ee86c8103ab9b1441a9ea68161e527a77e",
+ "pdf_sha256": "4f7f466de6fe2db84f8ced3dcbb4403161780182906877cef91947518912bc11",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 594.96,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 56.64,
+       "advance_pt": 7.584,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 64.08,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 69.599,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 72.479,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 75.602,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 104.64,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 179.04,
+       "advance_pt": 7.584,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 186.48,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 191.999,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 194.879,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 198.002,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 238.32,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 56.64,
+       "advance_pt": 10.168,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 66.72,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 72.725,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 77.285,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 80.166,
+       "advance_pt": 6.127,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

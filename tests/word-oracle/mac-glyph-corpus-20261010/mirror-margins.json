@@ -1,0 +1,191 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "6f24b2d1a643bec54bc31f2071afcbd9b89d767f54e6ce3fee2a639b691ac881",
+ "pdf_sha256": "284f0eadf1c922a3cda6fe46e6b1d63a5bc67043df7cbee2e767681cae29522e",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 83.04,
+     "characters": [
+      {
+       "text": "R",
+       "x_pt": 90.0,
+       "advance_pt": 8.004,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 98.004,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "c",
+       "x_pt": 103.33,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "t",
+       "x_pt": 108.655,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "o",
+       "x_pt": 111.989,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "m",
+       "x_pt": 120.989,
+       "advance_pt": 9.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 130.322,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "r",
+       "x_pt": 135.648,
+       "advance_pt": 3.996,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "g",
+       "x_pt": 139.644,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 145.644,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "n",
+       "x_pt": 148.978,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "Rectomargin"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 83.04,
+     "characters": [
+      {
+       "text": "V",
+       "x_pt": 54.0,
+       "advance_pt": 8.664,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 62.666,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "r",
+       "x_pt": 67.992,
+       "advance_pt": 3.996,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "s",
+       "x_pt": 71.988,
+       "advance_pt": 4.668,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "o",
+       "x_pt": 76.658,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "m",
+       "x_pt": 85.658,
+       "advance_pt": 9.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 94.992,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "r",
+       "x_pt": 100.318,
+       "advance_pt": 3.996,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "g",
+       "x_pt": 104.314,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 110.314,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "n",
+       "x_pt": 113.647,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "Versomargin"
+    }
+   ]
+  }
+ ]
+}

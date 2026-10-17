@@ -1,0 +1,20 @@
+[package]
+name = "jade-docx-headless-editor"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-docx-document-core = { path = "../jade-docx-document-core" }
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+thiserror = "2.0"
+futures = "0.3"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+proptest = "1.6"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "realworld_bench"
+harness = false

@@ -1,0 +1,13 @@
+[package]
+name = "jade-docx-para-compare"
+version = "0.1.0"
+edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-docx-writer = { path = "../jade-docx-writer" }
+quick-xml = "0.39"
+similar = "2.7"
+thiserror = "2.0"
+unicode-normalization = "0.1"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

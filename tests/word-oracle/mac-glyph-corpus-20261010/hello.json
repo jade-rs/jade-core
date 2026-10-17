@@ -1,0 +1,107 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "8b52024e2cdd8588730478a30ab7ed1066ad8adb1917f3c87436726f7b64f137",
+ "pdf_sha256": "73c21f201c59a83d0c082878bd5b1a4995a0d830d1cba97aac36f8bc51f01832",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 56.64,
+       "advance_pt": 7.584,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 64.08,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 69.599,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 72.479,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 75.602,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 56.64,
+       "advance_pt": 10.168,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 66.72,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 72.725,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 77.285,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 80.166,
+       "advance_pt": 6.127,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

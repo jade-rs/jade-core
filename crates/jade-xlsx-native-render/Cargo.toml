@@ -1,0 +1,23 @@
+[workspace]
+
+[package]
+name = "jade-xlsx-native-render"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
+
+# Outside the workspace for the same reason as `jade-skia-painter`: it pulls in
+# Skia's prebuilt C++ binaries, and the workspace CI builds `--all-features`,
+# which would make every run pay for that.
+
+[lib]
+name = "jade_xlsx_native_render"
+path = "src/lib.rs"
+
+[dependencies]
+jade-painter = { path = "../jade-painter" }
+jade-skia-painter = { path = "../jade-skia-painter" }
+jade-xlsx-layout = { path = "../jade-xlsx-layout" }
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+jade-xlsx-render = { path = "../jade-xlsx-render" }

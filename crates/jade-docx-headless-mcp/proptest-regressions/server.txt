@@ -1,0 +1,17 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4e7dee9ce11c26bff18db5971109525fac03f0a10184c9d79e7b391909716569 # shrinks to ops = [(4, 0)]
+cc fe2339a05113d0a96ef399401a4dead0c924c40a03da122ac9bd69d12b099095 # shrinks to start = 0, end = 0, text = ""
+cc 7e2eb90557bd019fb4576435d612fa4179fe10601af833e920eb843d8f5b264e # shrinks to content = "丙", count = 2, forward = false
+cc ac8514c79178ba994beb62a85a95b8078084c246944c5fc283c8146d591599c8 # shrinks to ops = [(6, 4)]
+cc 45fe9087c4f972e2989ea3a9be17ebd744112be8a1b4955a62b948ea456ec7d0 # shrinks to ops = [(1, 1)]
+cc 0f636dd5083649b992422aa128dfa8bbeacf66be77ae3d87cdc41978baaa48e0 # shrinks to ops = [(2, 2), (1, 2)]
+cc 3e6de1a2c650d4527f3388d961cd62db32adefa7fb8e39ffd7eda842f8ea402f # shrinks to ops = [(6, 0), (11, 0), (7, 0)]
+cc 20279c1e55b94c12bcfd63c543ed8da066a7b233ab621e7cfb2db40a217e7772 # shrinks to ops = [(22, 0), (21, 0), (16, 1)]
+cc f42fc16ed98c68676e77d5f54aa3bab4945de456ff3fa7f3c8de48609bb851bd
+cc 55a5e7a27961c50fa835a55dfdb37416d5bf006127a82d67353ae71ada76c3ed
+cc a93843495a7f1aab6152b8258cc74776fd7529cf05767e235ec0ac3c8f8b96cf # shrinks to ops = [(16, 0), (3, 0)]

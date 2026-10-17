@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 0b034ec44f246ed3aa38ec9b80c0eff5b231e651910729922ec5926128c72afb # shrinks to hash_bytes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 30, 47, 252, 36, 21, 168, 200, 186, 14, 21, 243, 112, 193, 20, 237, 95, 206, 27, 48, 161, 90, 2, 63, 14, 16, 103, 109, 86], salt_bytes = [37, 151, 176, 33, 123, 117, 198, 193, 178, 144, 136, 241, 23, 129, 134, 186], spin_count = 7555

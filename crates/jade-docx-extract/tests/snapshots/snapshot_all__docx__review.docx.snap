@@ -1,0 +1,12 @@
+---
+source: crates/docx-extract/tests/snapshot_all.rs
+expression: paragraphs
+---
+- text: Hello ~~World~~
+  numbering_text: ""
+  accepted_text: "Hello "
+  accepted_numbering_text: ""
+  in_table: false
+  in_textbox: false
+  in_shape: false
+  para_id: 7D50D6B3

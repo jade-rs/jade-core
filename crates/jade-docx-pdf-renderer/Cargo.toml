@@ -1,0 +1,20 @@
+[package]
+name = "jade-docx-pdf-renderer"
+version = "0.1.0"
+edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-docx-extract = { path = "../jade-docx-extract" }
+jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping"] }
+jade-docx-reader = { path = "../jade-docx-reader" }
+futures = "0.3"
+flate2 = "1"
+lopdf = "=0.39.0"
+png = "0.17"
+quick-xml = "0.39"
+ttf-parser = "0.25"
+subsetter = "0.1"
+
+[dev-dependencies]
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

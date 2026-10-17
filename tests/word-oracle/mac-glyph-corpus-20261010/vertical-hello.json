@@ -1,0 +1,83 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "8afcb1dfce491ec6432c7a39fa643bbee4a420dbeaef932a5919204c9d27cff4",
+ "pdf_sha256": "aadb6b4af0a7b1c8c5a7d0a37ac748cfdc8c1b741186128eac287e9410dc7ea8",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 841.92,
+   "height_pt": 595.2,
+   "rows": [
+    {
+     "baseline_pt": 94.463,
+     "characters": [
+      {
+       "text": "こ",
+       "x_pt": 728.322,
+       "advance_pt": 10.353,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "こ"
+    },
+    {
+     "baseline_pt": 104.958,
+     "characters": [
+      {
+       "text": "ん",
+       "x_pt": 728.322,
+       "advance_pt": 10.353,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "ん"
+    },
+    {
+     "baseline_pt": 115.453,
+     "characters": [
+      {
+       "text": "に",
+       "x_pt": 728.322,
+       "advance_pt": 10.353,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "に"
+    },
+    {
+     "baseline_pt": 125.947,
+     "characters": [
+      {
+       "text": "ち",
+       "x_pt": 728.322,
+       "advance_pt": 10.353,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "ち"
+    },
+    {
+     "baseline_pt": 136.442,
+     "characters": [
+      {
+       "text": "は",
+       "x_pt": 728.322,
+       "advance_pt": 10.353,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "は"
+    }
+   ]
+  }
+ ]
+}

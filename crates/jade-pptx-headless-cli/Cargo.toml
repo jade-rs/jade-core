@@ -1,0 +1,16 @@
+[package]
+name = "jade-pptx-headless-cli"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-pptx-headless-api = { path = "../jade-pptx-headless-api" }
+jade-pptx-layout = { path = "../jade-pptx-layout" }
+jade-opc = { path = "../jade-opc" }
+jade-pptx-reader = { path = "../jade-pptx-reader" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+zip = { version = "8.0", default-features = false, features = ["deflate"] }

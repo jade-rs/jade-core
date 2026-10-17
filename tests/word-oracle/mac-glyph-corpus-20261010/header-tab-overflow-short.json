@@ -1,0 +1,409 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "4fa200bd6280c49b2b0b545b360e038b96fd0f4d9d396dc7efceeb7e39ac4a3c",
+ "pdf_sha256": "87379d8c1897aa5550f48f548b8933d88e2181903905531190236613081bf180",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 53.52,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 84.96,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 92.384,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 99.807,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 107.231,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 114.655,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 122.078,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 129.502,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 136.926,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 144.349,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 151.773,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 159.197,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 166.62,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 174.044,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 181.468,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 188.891,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 196.315,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 203.739,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 211.163,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 218.586,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 226.01,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 233.434,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 240.857,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 248.281,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 255.705,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 263.128,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 270.552,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 277.976,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 285.399,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 292.823,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 300.247,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 307.67,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 315.094,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 322.518,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 329.941,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 337.365,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 344.789,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 352.212,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 378.96,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 386.195,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 393.429,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 400.664,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 407.899,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 415.133,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 422.368,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 429.603,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 436.837,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 444.072,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 451.307,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 458.541,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 465.776,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 473.011,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 480.245,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 487.48,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 494.715,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "B",
+       "x_pt": 501.949,
+       "advance_pt": 7.276,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBB"
+    }
+   ]
+  }
+ ]
+}

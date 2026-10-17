@@ -1,0 +1,553 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "fixture": "2col",
+      "docx_sha256": "02e7f6a0da7e08ab377c854bb0fc1b1085298900266c063a473bcab134e20ff8"
+    },
+    {
+      "fixture": "align-center",
+      "docx_sha256": "4a298bb5721dffe08f0e67ced147664c1ee65dd27fab1160cadc3f8e41946776"
+    },
+    {
+      "fixture": "alt-chunk-html",
+      "docx_sha256": "30b50771581f01170852ba6e9812103d03d850d23d767079a715f3187971754d"
+    },
+    {
+      "fixture": "blank",
+      "docx_sha256": "502ae0afa055458fb242b3e952c6d627af1ee733d2af1abea9d09acde58a2052"
+    },
+    {
+      "fixture": "break",
+      "docx_sha256": "ed4a21d26526e9d25b9ab52b9111051dc7e9bc7b37e318f847f3ff1d6929739a"
+    },
+    {
+      "fixture": "char-effects",
+      "docx_sha256": "bb6623ddb7a611c6a224d2d3128d20fb1b424f1677941162fc4972288b38263b"
+    },
+    {
+      "fixture": "char-spacing",
+      "docx_sha256": "6064f2d4aa131ac92bc583e1e0c119e955b3d32af49222cf640801ab3a04e2c1"
+    },
+    {
+      "fixture": "character-styles",
+      "docx_sha256": "b703c15db08f76998659447939ba6f930a018834bfdf3dc0b7dfef9a58b7fc8b"
+    },
+    {
+      "fixture": "comment",
+      "docx_sha256": "e25433005e28dc1488c4c826b3e472392e155f32df4c304a31a4d3828a1ae29f"
+    },
+    {
+      "fixture": "contract",
+      "docx_sha256": "36b690c9ec99a1e5ce7b145b9ec42ccae9e56afb2415df0fb608111fb2fe99c4"
+    },
+    {
+      "fixture": "contract-clause-page-top",
+      "docx_sha256": "805eea366104efe30ab6a6f93b5cac9ac0a0a37333dd871a92135f18e88e554e"
+    },
+    {
+      "fixture": "direction-with-selection",
+      "docx_sha256": "2b02a35fad34b190bb88c60c70925b8e38f7331b99a9767b4fbfd4d77082675d"
+    },
+    {
+      "fixture": "document-property-fields",
+      "docx_sha256": "c39cbd16b3f92c37ec27ed2fb8656db8ac395cfeeef5c7afe6b74adf404af7e7"
+    },
+    {
+      "fixture": "document-variable-fields",
+      "docx_sha256": "44b9d94d12bfbcd8e86f2cf61a360bc3ac1b9fbfd9992af14d79878bc5fe42e2"
+    },
+    {
+      "fixture": "endnote",
+      "docx_sha256": "06477c7f53f9b7c80147bd15f7db44254b6e72ee5cd7e39af422a7b81b17d19e"
+    },
+    {
+      "fixture": "floating-inside-outside",
+      "docx_sha256": "7928b10c2849bac71a61b74b282cdc700afb1344e77dbc9f1134fdd6c7a79312"
+    },
+    {
+      "fixture": "floating-simple-position",
+      "docx_sha256": "78430251c1eee992826b0deeb3c2a4029baf0d223ab10432ed39ef482906c1c4"
+    },
+    {
+      "fixture": "floating-square-wrap",
+      "docx_sha256": "66004027672929d429fba9659e2cec4f3e648c0311b0e5aba339f1ac4657dff6"
+    },
+    {
+      "fixture": "floating-through-concave",
+      "docx_sha256": "eed31ff26467f552b917fe032a526de1934b033865b6052d4017d46db9cfa993"
+    },
+    {
+      "fixture": "floating-tight-polygon",
+      "docx_sha256": "881e9c6a971ce1a2a8c53b3bf884bb06a44623ca9be809f874ad19e6eddb13f8"
+    },
+    {
+      "fixture": "floating-top-bottom-offset",
+      "docx_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca"
+    },
+    {
+      "fixture": "floating-wrap-sides",
+      "docx_sha256": "33a9df9946ed6df47bca02a13ccc41c829db7332aeb6ec38e5c183dac3c32f46"
+    },
+    {
+      "fixture": "floating-z-order",
+      "docx_sha256": "5739f577365ce8b1f0e8d8e39e818db382b1c53d073e43c7478ec83e92742806"
+    },
+    {
+      "fixture": "footer",
+      "docx_sha256": "6b705a687e44525d912231b2f380d26846396bb12b55a62f85a0dd4550f0df26"
+    },
+    {
+      "fixture": "footnote",
+      "docx_sha256": "eecd3c87d245794afb8a91116647fb8a79651d39343156d76eb82bb6618badc1"
+    },
+    {
+      "fixture": "footnote-long-continuation",
+      "docx_sha256": "89839c9589cf3e4e246360340397bb20124331fcd40ebb0305a157d483dafbe2"
+    },
+    {
+      "fixture": "footnote-table-each-page",
+      "docx_sha256": "0c58780723a92f1aee1fa45bfd3e2a70bb69d4d47409777bb932f2caaccc98cb"
+    },
+    {
+      "fixture": "footnote-table-textbox-order",
+      "docx_sha256": "5c792b1eb9b78b40914c6f35a4b9e5bd0696d66f301d333021cc6343e490ffc7"
+    },
+    {
+      "fixture": "header",
+      "docx_sha256": "0a60d96f0ae85a6d58724eeb7c6dfcabe28a5fe08d39b3434a1d5ef9c5f0e536"
+    },
+    {
+      "fixture": "header-footer-edge-cases",
+      "docx_sha256": "d6c325b84a42e5df290543623f000e00eafdbdbe72322b2f56fd391ba7a37d69"
+    },
+    {
+      "fixture": "header-footer-sectionpages",
+      "docx_sha256": "9904e5c52526c3a8fd897b78747c865a06d17d656f3e7c5a12c891c3d2cbd65f"
+    },
+    {
+      "fixture": "header-footer-sections",
+      "docx_sha256": "ad8ebbab1554d9aa9edf9cac2b995ac98de7519e88d8e51658147028302dc1e2"
+    },
+    {
+      "fixture": "header-tab-overflow-long",
+      "docx_sha256": "fff19b66f4026fc9ebd07e3d6882784fd43f316306b753f5a0ef817f7688f3c2"
+    },
+    {
+      "fixture": "header-tab-overflow-short",
+      "docx_sha256": "4fa200bd6280c49b2b0b545b360e038b96fd0f4d9d396dc7efceeb7e39ac4a3c"
+    },
+    {
+      "fixture": "hello",
+      "docx_sha256": "8b52024e2cdd8588730478a30ab7ed1066ad8adb1917f3c87436726f7b64f137"
+    },
+    {
+      "fixture": "hyperlink",
+      "docx_sha256": "a1942b51275713b4df4c15c17cb862af06cef3cdd952c8d1b2aed107c9eb682c"
+    },
+    {
+      "fixture": "hyperlink-field-edge-cases",
+      "docx_sha256": "af6bf1b8408f442d5f922716cc2640f2b5cafda0103026091c81b667ad28af29"
+    },
+    {
+      "fixture": "if-compare-field-edge-cases",
+      "docx_sha256": "97a1ed1b33e618e055f907c82b29d42a72d9e1476c3b053af0db8eff481c3f59"
+    },
+    {
+      "fixture": "image-crop-edge-cases",
+      "docx_sha256": "35fce353ed31bec47b7aa9c4f9adda6fc7e35b042c593542aa08bf9d3726b04a"
+    },
+    {
+      "fixture": "image-floating",
+      "docx_sha256": "ab809320e0c3df9635e01895450b3ed66733927774087f5f0b7918eea73681a5"
+    },
+    {
+      "fixture": "image-inline",
+      "docx_sha256": "47046cfb756165f2ec3d0b85212455a3b2490e29789edb7c7f530b3377c4495e"
+    },
+    {
+      "fixture": "indent-with-grid",
+      "docx_sha256": "aade13e21663fc7628061e65902f6e9b32ca18f92daa7e166a7cf7e9bcec3e59"
+    },
+    {
+      "fixture": "line-numbering",
+      "docx_sha256": "559c0573b3d85d07b9d5134dc1319c30bf08180de0f965df4c1446370f40aff5"
+    },
+    {
+      "fixture": "line-spacing",
+      "docx_sha256": "b7c83b323aaef401be21d338f560e6748c9fdc256ab00b72653a870c52b28956"
+    },
+    {
+      "fixture": "math",
+      "docx_sha256": "d665bab259ca7a0f44e3a09cd166b86fb283dab3e576a3c9018f7e61235d1c86"
+    },
+    {
+      "fixture": "merged-table-over-page",
+      "docx_sha256": "1fd9d10fde0a7acfb986e9381db4bf99f93d0219d8b6e705bfa788d083fdf9fe"
+    },
+    {
+      "fixture": "mirror-margins",
+      "docx_sha256": "6f24b2d1a643bec54bc31f2071afcbd9b89d767f54e6ce3fee2a639b691ac881"
+    },
+    {
+      "fixture": "nda",
+      "docx_sha256": "f782e62b4cfcb8cd8e8cc421c6be43ebbb657df654ff2b510dee78f90f0b962d"
+    },
+    {
+      "fixture": "note-styles-creation",
+      "docx_sha256": "edcbc843e8b1e22877ed8fba38c84343b1bcc5fa0b613f21268598b90ab1ea6d"
+    },
+    {
+      "fixture": "noto-jp-yokohama_page6",
+      "docx_sha256": "e60324c89c8a62818e519c3375cd6f8d4e5e9f30e43ad82547da646d2a7ecb77"
+    },
+    {
+      "fixture": "noto-yokohama_page6",
+      "docx_sha256": "833a39953e277fe237f53d3c1126897af1ff57cdd10519623bd857dcf1b9af71"
+    },
+    {
+      "fixture": "numbering-by-style",
+      "docx_sha256": "433b491ad64c654bffc20357a4056da745fefdabdbb070a7b4e9a93ed4c90d9d"
+    },
+    {
+      "fixture": "numbering-del",
+      "docx_sha256": "d16a8f3e6f015beab66f4a7fe9856153eb3da6d8586958d04a97b80bb8a40335"
+    },
+    {
+      "fixture": "numbering-del2",
+      "docx_sha256": "fcf38842d2c3a17ea76126cdc80fd4e158083b2d113c38c75843eb25712a3bb3"
+    },
+    {
+      "fixture": "numbering-restart",
+      "docx_sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20"
+    },
+    {
+      "fixture": "numbering-with-review",
+      "docx_sha256": "fa8a0b6fe3feb83a4f02a9d4bc4f22dc0d320f08b71b2d7cf9199fa087b413ed"
+    },
+    {
+      "fixture": "review",
+      "docx_sha256": "67c9106ee8f8425943864072905e6dc5f364f739d658260841bcc02bc6ae0741"
+    },
+    {
+      "fixture": "review-duplicate-ids",
+      "docx_sha256": "b262103e09c531dbdb5945ff1a0400dc1bb0694e10486ba11172a68fdee3e9b7"
+    },
+    {
+      "fixture": "review-kinds",
+      "docx_sha256": "88cba97ca259c24992c01b99622fed2a086dc5df3533d4bdb7a1276728fca94c"
+    },
+    {
+      "fixture": "rich-paste-cr",
+      "docx_sha256": "8596d3fb01db8c2c517d08ec672f6884caa95dc51c20fa934591caecfb454a2b"
+    },
+    {
+      "fixture": "run-styles",
+      "docx_sha256": "863325594a9bb81388f03be1381ba6adee0f554bf3cc84009a0bf3358cf7abb4"
+    },
+    {
+      "fixture": "scroll-offset-repro",
+      "docx_sha256": "28549d891bbe655f2fc8e691feebf1352832763003f82a9dfb292c0a8eaac7b7"
+    },
+    {
+      "fixture": "section-break-next-column",
+      "docx_sha256": "ce2b695ca89adda54856aeebef9977c3526cd82d25885cc23516a681987f6f4e"
+    },
+    {
+      "fixture": "section-break-types",
+      "docx_sha256": "3a311a8617ad6de5c50aebe6e6ac4898a1b92832baed33287ed95ac051cce865"
+    },
+    {
+      "fixture": "shape-preset-geometries",
+      "docx_sha256": "26c3381dd82336ce6449cdf80d74ddabd7087217d3f07dadbec00bd51913dad8"
+    },
+    {
+      "fixture": "system-dev-contract",
+      "docx_sha256": "ff0b7e1a9089ca3e4a92b9f8defc19ee114fb5a10e29fd394a13ae7e8966e5e8"
+    },
+    {
+      "fixture": "tab",
+      "docx_sha256": "aedc4a67c6a2457de49babfcf8987cb6b44ecafc163687922a2f595aabbfe631"
+    },
+    {
+      "fixture": "table-bidi-alignment",
+      "docx_sha256": "8e0727a300cf0be7049465b33e3c4419d63034f4b104877922d33b4fde6cd6fd"
+    },
+    {
+      "fixture": "table-bidi-visual",
+      "docx_sha256": "34b12018a851ce7ebc39bb7661297f6460fe54005e7950c59b6fd2a2e0318091"
+    },
+    {
+      "fixture": "table-border-conflicts",
+      "docx_sha256": "2130dd654c2d0138577e36d17c05f6c168be860f39735151e093f6e25248a9e8"
+    },
+    {
+      "fixture": "table-cell-fit-text",
+      "docx_sha256": "2f11b93894009a6aae32f06f831718f53924afe225860dd87d17acde14ec0ec1"
+    },
+    {
+      "fixture": "table-cell-preferred-widths",
+      "docx_sha256": "f0a3892760d1c44bcb04454839ed3f3eb7ea9901760a91617b4129be5777c4bf"
+    },
+    {
+      "fixture": "table-cell-spacing",
+      "docx_sha256": "6c8fe8af178072447bddc35cf2ba115cc5d8de136d99a1b6a53145222da941e5"
+    },
+    {
+      "fixture": "table-complex-horizontal-direction",
+      "docx_sha256": "6a4d059940f971ce1ae2bbd4f466a6148c2b81381173b2dd103a14d14523fada"
+    },
+    {
+      "fixture": "table-complex-indented-recursive",
+      "docx_sha256": "fe34c789257ef67ab0fce76fc4c5e7bee3ce75abd4cab9b81ba2187eacd89ba1"
+    },
+    {
+      "fixture": "table-complex-long-paragraphs",
+      "docx_sha256": "61a91bdbe4bc0870d712ffd42085b479653abdccac83c9cad8bf8048eaa70c62"
+    },
+    {
+      "fixture": "table-complex-merged-continuations",
+      "docx_sha256": "288a9e60257c7205ffd495821d36844ae9111b787117c7f0bde3fb2a98435db6"
+    },
+    {
+      "fixture": "table-complex-narrow-grid",
+      "docx_sha256": "9ba011cc2d4f0e967b1857f6549f4e06a3650eb3a86db94f008d1cb742365b15"
+    },
+    {
+      "fixture": "table-complex-nested-merges",
+      "docx_sha256": "3b4cec0eb7ac77a05b6698198daeb61324bd743e5bef92f23a17821fce9f49c8"
+    },
+    {
+      "fixture": "table-complex-nested-pagination",
+      "docx_sha256": "b629e515186235bca483cf39de2533d646ae141fb9b1e24f9c39a7abc6bf249f"
+    },
+    {
+      "fixture": "table-complex-omitted-grid",
+      "docx_sha256": "42c5093a7dbfa13a392a6e058032efc819b22831555eb1b6223469fd15db71db"
+    },
+    {
+      "fixture": "table-complex-oversized-min-height",
+      "docx_sha256": "cfc39d10e8463112a695199786394126bd2dabd4042c509d02e5773357c7d9c5"
+    },
+    {
+      "fixture": "table-complex-oversized-nested",
+      "docx_sha256": "96c56def4ec3a64aa5f4787f2e2fd59ece9695f980b0995f375015706e6d6aeb"
+    },
+    {
+      "fixture": "table-complex-pagination",
+      "docx_sha256": "2390d9cb311d916058ff3b53e3f794d4672693821adaa171225e893320fed082"
+    },
+    {
+      "fixture": "table-complex-paragraph-alignment",
+      "docx_sha256": "a5e0c6646a22266999407e139948afb43e9a75b0969cb03be635ef48750efb1a"
+    },
+    {
+      "fixture": "table-complex-recursive-parallel",
+      "docx_sha256": "d19e7a0a5585d1280cb859a6936798434bd64c2db44d62f5d3d639ca598a1b20"
+    },
+    {
+      "fixture": "table-complex-spaced-recursive",
+      "docx_sha256": "25267fc38f924ece8166ae6e5c15a7430d7e61a16c5159b36d77984c2a06ebd9"
+    },
+    {
+      "fixture": "table-complex-staggered-merges",
+      "docx_sha256": "21ac955c2ed3b6781c54aaa147ec2c67fd49d22f76c8e7f1c81ce0d00c1d08b4"
+    },
+    {
+      "fixture": "table-diagonal-borders",
+      "docx_sha256": "50d7a59238ccd5afe3d19f1410e5293d81a307729abfed886e1a1970f4fe4c77"
+    },
+    {
+      "fixture": "table-floating-anchor-defaults",
+      "docx_sha256": "fabd3618890b8e6ed90d2a3ecc8546e9498fe3d3cb88f94dfb04a4f56b0dd86c"
+    },
+    {
+      "fixture": "table-floating-horizontal",
+      "docx_sha256": "ff8bc3d9b36655babccdd67d18696a8c611e2655c8ab413680a45b05517e1005"
+    },
+    {
+      "fixture": "table-floating-inline-vertical",
+      "docx_sha256": "f7982d80f886b2c219b0a714b5cf87be66776ead6c726750f964b38a0a18efa3"
+    },
+    {
+      "fixture": "table-floating-overlap",
+      "docx_sha256": "c6984694a5673dc3857f00b6bc48e1b4a28514a59ce16fb28d4a46a49212d1f5"
+    },
+    {
+      "fixture": "table-floating-wrap",
+      "docx_sha256": "92d2e139e30c8fc2a95f162733fc0cabb8a90a541b10cc750acf5d85b6d041e8"
+    },
+    {
+      "fixture": "table-hidden-rows",
+      "docx_sha256": "183ccd393fd54057d2472c3dc7c2e9d5280e98f3cd6846857913922c378919a1"
+    },
+    {
+      "fixture": "table-hide-mark",
+      "docx_sha256": "9b026eb37bf4e52e845e7d2805e923985e5148de47fc2138dc418185780ad71e"
+    },
+    {
+      "fixture": "table-lacked",
+      "docx_sha256": "3c20c77761195e82877c1cd31e74b74e0209982537600d898dca6e4a21604b19"
+    },
+    {
+      "fixture": "table-legacy-hmerge",
+      "docx_sha256": "d7d32bbe5fc8baec326089fbff419b557732e80d86245794633a8a052feb7ffa"
+    },
+    {
+      "fixture": "table-nested",
+      "docx_sha256": "6c8718493d59ce8cdcf6b6d5a38fda35b192343efcda304d04e24bcdadc85df3"
+    },
+    {
+      "fixture": "table-nested-double",
+      "docx_sha256": "703d40094fa1e4d5887f6d50ae20a9f007cf28274be19bb45cd2e1a02a7ab70b"
+    },
+    {
+      "fixture": "table-nested-single",
+      "docx_sha256": "c113770ce1d608c746013d007628b4f3d5de3b5be23e8ff41076f52303ec5e40"
+    },
+    {
+      "fixture": "table-nowrap-autofit",
+      "docx_sha256": "150d8dcec149cccf86bccbc676e50f58598a4c59195b84dec8129549225b4437"
+    },
+    {
+      "fixture": "table-object-edge-cases",
+      "docx_sha256": "213a649eb3ee4c8444aad9fed606203a06504fba7457ea245c5949dcf8d13de8"
+    },
+    {
+      "fixture": "table-repeating-header",
+      "docx_sha256": "b0e1d64b757da296151e869eeaee17df29a67f4d0ce8e6955b5ce45c88f8840c"
+    },
+    {
+      "fixture": "table-row-height-defaults",
+      "docx_sha256": "b1476f9d0124c22cb4d78c31664db3d31d882c7e805ea5edd24a808cfe3672ed"
+    },
+    {
+      "fixture": "table-row-height-overflow",
+      "docx_sha256": "61b3a38889e047cd62f4c42fa685af0621020f16fc0993e66ff11f6dc01c477f"
+    },
+    {
+      "fixture": "table-vertical-merge-page-break",
+      "docx_sha256": "8864c260e9ed6cab81d0acf7b659b6d6afd9685a18a0cff940aeb6c2ff304ee8"
+    },
+    {
+      "fixture": "table-with-text-direction",
+      "docx_sha256": "88307c084de10d547d799d6ac9c44c1d94ac33cd9d10bdafb63e9a08b5136d89"
+    },
+    {
+      "fixture": "table2x2",
+      "docx_sha256": "aafe20651ad4530dd400f8eb62f24ba85bb7839982fda5ca4dd061db17b628b6"
+    },
+    {
+      "fixture": "table3x2merged",
+      "docx_sha256": "4d8e586f98906687c7e9b91c19dd1057eb4cd56a07f27c1704c9cc988404db0e"
+    },
+    {
+      "fixture": "tabs",
+      "docx_sha256": "4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de"
+    },
+    {
+      "fixture": "textbox",
+      "docx_sha256": "2c40e7367933f260f27845604d6fc1161970bd208cb3e364e2529e01b06c6c69"
+    },
+    {
+      "fixture": "textbox-body-properties",
+      "docx_sha256": "a360a8668dc3d745f0d617be078ca16197ab6d58e7c1aee7687802d74e1182cc"
+    },
+    {
+      "fixture": "textbox-dashed",
+      "docx_sha256": "da08e80597204c603ca3a73e254704ee86c8103ab9b1441a9ea68161e527a77e"
+    },
+    {
+      "fixture": "textbox-tall-header-overlap",
+      "docx_sha256": "544e9bedd0958929959c11e46a520afe98f534d39e8466ac9d4f0c5ec05b3898"
+    },
+    {
+      "fixture": "toc",
+      "docx_sha256": "8681e70be18ecce7aeaf04dd64da01efa416be6c521138ff6e2f15cd1828d6cb"
+    },
+    {
+      "fixture": "toc-caption-edge-cases",
+      "docx_sha256": "6fd230e95681adb84ef4319a86bab13285c4e1934c632cca12fdf17cd72d90d4"
+    },
+    {
+      "fixture": "toc-direct-outline-levels",
+      "docx_sha256": "52bd807f528f6379c0f1c393ac69045db2228e12bb301a6fe6a4faf9e9980327"
+    },
+    {
+      "fixture": "toc-instrtext-edge-cases",
+      "docx_sha256": "3dbe67594235f371babbe632095e927e2d961a975d4830291dc60db57d1a3fba"
+    },
+    {
+      "fixture": "toc-sequence-page-number",
+      "docx_sha256": "13716c2bbb36014faf589dca242bc7fa41f02a52d41ba54a81ae57e66dfdc94c"
+    },
+    {
+      "fixture": "toc-tc-field-edge-cases",
+      "docx_sha256": "bcb8cd4678d801537ebbb87d240ca53004a8bb6a41c4ac43da137df6f97bf752"
+    },
+    {
+      "fixture": "trust-beneficiary-sale-keep-next",
+      "docx_sha256": "d3dd6067ce240361a19c8c80aa79ba9d215fc74af54c46ea18e597277e444ccd"
+    },
+    {
+      "fixture": "underline-kinds",
+      "docx_sha256": "479875424f3da2cac9fefd37edc97ec53ae1c274d3d5dc336e492a60ac071e6c"
+    },
+    {
+      "fixture": "underline-words",
+      "docx_sha256": "f7220cd89126b233bf801ee7d0d0fcdb462ae43850145a9f102794bd8c8ab302"
+    },
+    {
+      "fixture": "unicode-segmentation",
+      "docx_sha256": "ced08035a1ec321342637d0b1a60e194937e4b8be45a58fe40f174b63dc74cec"
+    },
+    {
+      "fixture": "vertical-hello",
+      "docx_sha256": "8afcb1dfce491ec6432c7a39fa643bbee4a420dbeaef932a5919204c9d27cff4"
+    },
+    {
+      "fixture": "word-compat-comprehensive",
+      "docx_sha256": "8f415f8bb3c647433142b355e3ae4c85e94f1d16e6da99c479c1e464e7f1b256"
+    },
+    {
+      "fixture": "wrong-num",
+      "docx_sha256": "d553ecaf5868bc2cf80c0c293073d9ec8842890a6e3e3ef9a1aa048f7cc5191e"
+    },
+    {
+      "fixture": "yokohama",
+      "docx_sha256": "56f6b91547b029173e67269d365d470662a5521232fb138fe955846be6beda13"
+    },
+    {
+      "fixture": "yokohama-word-textbox",
+      "docx_sha256": "ab18adc8301f381a2cacd56905993ca058ee06234581aff10b8922bc45d8a7e4"
+    },
+    {
+      "fixture": "yokohama_mini",
+      "docx_sha256": "74ec3350aafaeef4fc32f0257404de6e494205747e69b82046f51edd3b32938a"
+    },
+    {
+      "fixture": "yokohama_page1",
+      "docx_sha256": "a24c314edfeab6900e255fc9442cdb49ad678f64620ea0446cc84c0f6cdc8515"
+    },
+    {
+      "fixture": "yokohama_page3_only",
+      "docx_sha256": "7167ac1c4e35112cc80f734ea7075e33bcb86961266108c27edf0cdf8887fac4"
+    },
+    {
+      "fixture": "yokohama_page6",
+      "docx_sha256": "2c6c095c0a5796f43d1a375e954b98be1a37f1f289f80f2e6c81c8331f5fe7b1"
+    },
+    {
+      "fixture": "yokohama_table",
+      "docx_sha256": "fd5cd9b0a9063635c67b5ed05208cfa32492fa6ffa20edbb39a4b20921faeefa"
+    },
+    {
+      "fixture": "yokohama_table_repro",
+      "docx_sha256": "262f5959a2cd00b6d349d2b17dd7acc5039503a539e387540667470870ea1f53"
+    },
+    {
+      "fixture": "yokohama_table_row_heights",
+      "docx_sha256": "efc1e557d3f91ca84714616535c4d60aa645e0233db1cf4fd5711f54510bb1de"
+    }
+  ]
+}

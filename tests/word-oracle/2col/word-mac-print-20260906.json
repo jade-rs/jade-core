@@ -1,0 +1,668 @@
+{
+  "source": "Word for Mac print dialog > PDF",
+  "word_version": "16.112.3",
+  "word_build": "16.112.26083020",
+  "docx_sha256": "02e7f6a0da7e08ab377c854bb0fc1b1085298900266c063a473bcab134e20ff8",
+  "pdf_sha256": "f885e955d33bb0ebe1fea618430aa3230dd2ab8951a5a49e4d846ee38e9730d8",
+  "producer": "macOS バージョン15.4.1（ビルド24E263） Quartz PDFContext",
+  "page_count": 1,
+  "lines": [
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 103.87762000000009,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 121.87762000000009,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 139.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 157.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 175.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 193.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 211.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 229.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 247.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 265.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 283.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 301.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 319.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 337.87762000000004,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 355.87762000000004,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 373.87762000000004,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 391.87762000000004,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 409.87762000000004,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 427.87762000000004,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 445.87762000000004,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 463.87762000000004,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 481.87762000000004,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 499.87762000000004,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 517.87762,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 535.87762,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 553.87762,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 571.87762,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 589.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 607.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 625.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 643.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 661.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 679.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 697.8776200000001,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 85.477896,
+      "top_pt": 715.8776200000001,
+      "width_pt": 201.98356800000005,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 1,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 85.477896,
+      "top_pt": 733.87762,
+      "width_pt": 201.99602399999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 103.87762000000009,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 121.87762000000009,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 139.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 157.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 175.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 193.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 211.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 229.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 247.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 265.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 283.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 301.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 319.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 337.87762000000004,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 355.87762000000004,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 373.87762000000004,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 391.87762000000004,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 409.87762000000004,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 427.87762000000004,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 445.87762000000004,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 463.87762000000004,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 481.87762000000004,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 499.87762000000004,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.560000000000002
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 517.87762,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 535.87762,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 553.87762,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 571.87762,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.56000000000006
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 589.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 607.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 625.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 643.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 661.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World Hello World Hello World Hello",
+      "x_pt": 308.6778,
+      "top_pt": 679.8776200000001,
+      "width_pt": 201.98366400000003,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "World Hello World Hello World Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 697.8776200000001,
+      "width_pt": 201.99599999999998,
+      "height_pt": 10.559999999999945
+    },
+    {
+      "page": 1,
+      "column": 2,
+      "text": "Hello World",
+      "x_pt": 308.6778,
+      "top_pt": 715.8776200000001,
+      "width_pt": 55.90463999999997,
+      "height_pt": 10.559999999999945
+    }
+  ],
+  "captured_at": "2026-09-06",
+  "coordinate_note": "PDF ink bounds in points, top measured from page top; not legacy Word line boxes",
+  "extraction": "pdfplumber: crop each page into left/right halves; extract_text_lines() in each crop; reading order column 1 then column 2",
+  "font_ui": {
+    "family": "游明朝",
+    "style": "Regular",
+    "size_pt": 10.5
+  },
+  "font_files": [
+    {
+      "file": "yumin.ttf",
+      "sha256": "926c1f98c3c603656222e0122c6bdabe17817d1c284a69abd4c337276dde9233"
+    },
+    {
+      "file": "yumindb.ttf",
+      "sha256": "78c98f5fd80dbd11961311122cece9b708d8c9890f77d10c1a34436851518ae7"
+    }
+  ]
+}

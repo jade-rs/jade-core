@@ -1,0 +1,14 @@
+[package]
+name = "jade-skia-painter"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
+
+[dependencies]
+jade-painter = { path = "../jade-painter" }
+skia-safe = { version = "0.87", features = ["svg", "webp"] }
+lopdf = { version = "=0.39.0", default-features = false }
+
+[dev-dependencies]
+jade-docx-editor = { path = "../jade-docx-editor" }

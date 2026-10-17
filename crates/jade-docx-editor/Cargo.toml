@@ -1,0 +1,90 @@
+[package]
+name = "jade-docx-editor"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde-wasm-bindgen = "0.6"
+zip = { version = "8.0", default-features = false, features = ["deflate"] }
+thiserror = "2.0"
+console_error_panic_hook = "0.1"
+unicode-segmentation = "1.10"
+unicode-script = "0.5"
+base64 = "0.22"
+cfb = "0.7"
+bumpalo = { version = "3", features = ["collections"] }
+png = "0.17"
+emf-core = { git = "https://github.com/mythrnr/emf-rs.git", tag = "0.0.8", package = "emf-core", default-features = false, features = ["svg"] }
+wmf-core = { git = "https://github.com/mythrnr/wmf-rs.git", tag = "0.0.24", package = "wmf-core", default-features = false, features = ["svg"] }
+indexmap = "2.7"
+rustc-hash = "2.1"
+jade-docx-writer = { path = "../jade-docx-writer" }
+jade-docx-reader = { path = "../jade-docx-reader" }
+jade-docx-annotations = { path = "../jade-docx-annotations" }
+jade-docx-layout = { path = "../jade-docx-layout" }
+jade-canvas-painter = { path = "../jade-canvas-painter" }
+jade-painter = { path = "../jade-painter" }
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-preview-plugin-api = { path = "../jade-preview-plugin-api" }
+serde_json = "1.0"
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["registry"], optional = true }
+
+[features]
+default = []
+opentype-math = ["jade-docx-layout/opentype-math"]
+otel = ["tracing", "tracing-subscriber"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
+  "Window",
+  "Blob",
+  "BlobPropertyBag",
+  "File",
+  "FileReader",
+  "Url",
+  "HtmlCanvasElement",
+  "CanvasRenderingContext2d",
+  "OffscreenCanvas",
+  "ImageBitmap",
+  "ImageBitmapRenderingContext",
+  "OffscreenCanvasRenderingContext2d",
+  "TextMetrics",
+  "ImageData",
+  "HtmlImageElement",
+  "CssStyleDeclaration",
+  "DomRect",
+  "EventTarget",
+  "KeyboardEvent",
+  "PointerEvent",
+  "CompositionEvent",
+  "HtmlTextAreaElement",
+  "InputEvent",
+  "WorkerGlobalScope",
+  "DedicatedWorkerGlobalScope",
+]
+
+[dev-dependencies]
+futures = "0.3"
+proptest = "1.6"
+
+[[example]]
+name = "math_font_plan"
+required-features = ["opentype-math"]

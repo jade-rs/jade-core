@@ -1,0 +1,70 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "8596d3fb01db8c2c517d08ec672f6884caa95dc51c20fa934591caecfb454a2b",
+ "pdf_sha256": "3d2d4b624f85ad974793d933a593f7d67874324a7ca2fa293bbc5e5ab534a099",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.68,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 56.64,
+       "advance_pt": 8.664,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "A"
+    },
+    {
+     "baseline_pt": 81.6,
+     "characters": [
+      {
+       "text": "B",
+       "x_pt": 56.64,
+       "advance_pt": 8.004,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "B"
+    },
+    {
+     "baseline_pt": 99.36,
+     "characters": [
+      {
+       "text": "日",
+       "x_pt": 56.64,
+       "advance_pt": 12.0,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "日"
+    },
+    {
+     "baseline_pt": 147.84,
+     "characters": [
+      {
+       "text": "本",
+       "x_pt": 56.64,
+       "advance_pt": 12.0,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "本"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 54d03362c64c47178da360c381b2ca88f99b0214025dd5f8e68196279efa3c93 # shrinks to rows = 2, cols = 2, rect = MergeRect { row0: 0, col0: 0, row1: 0, col1: 1 }
+cc 8b0502850bfc37c5d0a78ef50f14e10a468cc550e1e5f04d27c2c530c8917664 # shrinks to rows = 2, cols = 3, rect = MergeRect { row0: 0, col0: 0, row1: 0, col1: 1 }

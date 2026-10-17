@@ -1,0 +1,100 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "ed4a21d26526e9d25b9ab52b9111051dc7e9bc7b37e318f847f3ff1d6929739a",
+ "pdf_sha256": "ff6378c71e4758c0c40cc43ebe05647de49abcb26dbd7576e8fab890bb767388",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 594.96,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 56.64,
+       "advance_pt": 7.584,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 64.08,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 69.599,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 72.479,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 75.602,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 80.16,
+     "characters": [
+      {
+       "text": "w",
+       "x_pt": 56.64,
+       "advance_pt": 8.545,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 65.04,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 71.045,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 75.603,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 78.484,
+       "advance_pt": 6.127,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "world"
+    }
+   ]
+  }
+ ]
+}

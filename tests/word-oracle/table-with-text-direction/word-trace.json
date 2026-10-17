@@ -1,0 +1,663 @@
+﻿[
+    {
+        "index":  0,
+        "paragraph_index":  0,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "こ",
+        "numbering_text":  null,
+        "text_with_numbering":  "こ",
+        "x_pt":  273.75,
+        "y_pt":  99.75,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "こ",
+                               "x_pt":  273.75,
+                               "y_pt":  99.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  0
+    },
+    {
+        "index":  1,
+        "paragraph_index":  0,
+        "line_index_in_paragraph":  1,
+        "page":  1,
+        "text":  "ん",
+        "numbering_text":  null,
+        "text_with_numbering":  "ん",
+        "x_pt":  273.75,
+        "y_pt":  117,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  1,
+                               "text":  "ん",
+                               "x_pt":  273.75,
+                               "y_pt":  117,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  1,
+        "char_end":  1
+    },
+    {
+        "index":  2,
+        "paragraph_index":  0,
+        "line_index_in_paragraph":  2,
+        "page":  1,
+        "text":  "に",
+        "numbering_text":  null,
+        "text_with_numbering":  "に",
+        "x_pt":  273.75,
+        "y_pt":  129,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  2,
+                               "text":  "に",
+                               "x_pt":  273.75,
+                               "y_pt":  129,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  2,
+        "char_end":  2
+    },
+    {
+        "index":  3,
+        "paragraph_index":  0,
+        "line_index_in_paragraph":  3,
+        "page":  1,
+        "text":  "ち",
+        "numbering_text":  null,
+        "text_with_numbering":  "ち",
+        "x_pt":  273.75,
+        "y_pt":  140.25,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  3,
+                               "text":  "ち",
+                               "x_pt":  273.75,
+                               "y_pt":  140.25,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  3,
+        "char_end":  3
+    },
+    {
+        "index":  4,
+        "paragraph_index":  0,
+        "line_index_in_paragraph":  4,
+        "page":  1,
+        "text":  "は\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "は\r\u0007",
+        "x_pt":  255.75,
+        "y_pt":  105.75,
+        "width_pt":  18,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  4,
+                               "text":  "は",
+                               "x_pt":  255.75,
+                               "y_pt":  105.75,
+                               "advance_pt":  18
+                           },
+                           {
+                               "char_index":  5,
+                               "text":  "\r\u0007",
+                               "x_pt":  273.75,
+                               "y_pt":  105.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  4,
+        "char_end":  5
+    },
+    {
+        "index":  5,
+        "paragraph_index":  1,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "世",
+        "numbering_text":  null,
+        "text_with_numbering":  "世",
+        "x_pt":  486,
+        "y_pt":  105.75,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "世",
+                               "x_pt":  486,
+                               "y_pt":  105.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  0
+    },
+    {
+        "index":  6,
+        "paragraph_index":  1,
+        "line_index_in_paragraph":  1,
+        "page":  1,
+        "text":  "界",
+        "numbering_text":  null,
+        "text_with_numbering":  "界",
+        "x_pt":  486,
+        "y_pt":  116.25,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  1,
+                               "text":  "界",
+                               "x_pt":  486,
+                               "y_pt":  116.25,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  1,
+        "char_end":  1
+    },
+    {
+        "index":  7,
+        "paragraph_index":  1,
+        "line_index_in_paragraph":  2,
+        "page":  1,
+        "text":  "\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "\r\u0007",
+        "x_pt":  273.75,
+        "y_pt":  105.75,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  2,
+                               "text":  "\r\u0007",
+                               "x_pt":  273.75,
+                               "y_pt":  105.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  2,
+        "char_end":  2
+    },
+    {
+        "index":  8,
+        "paragraph_index":  2,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "\r\u0007",
+        "x_pt":  273.75,
+        "y_pt":  105.75,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "\r\u0007",
+                               "x_pt":  273.75,
+                               "y_pt":  105.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  0
+    },
+    {
+        "index":  9,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "H",
+        "numbering_text":  null,
+        "text_with_numbering":  "H",
+        "x_pt":  90.75,
+        "y_pt":  207,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "H",
+                               "x_pt":  90.75,
+                               "y_pt":  207,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  0
+    },
+    {
+        "index":  10,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  1,
+        "page":  1,
+        "text":  "e",
+        "numbering_text":  null,
+        "text_with_numbering":  "e",
+        "x_pt":  90.75,
+        "y_pt":  198.75,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  1,
+                               "text":  "e",
+                               "x_pt":  90.75,
+                               "y_pt":  198.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  1,
+        "char_end":  1
+    },
+    {
+        "index":  11,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  2,
+        "page":  1,
+        "text":  "l",
+        "numbering_text":  null,
+        "text_with_numbering":  "l",
+        "x_pt":  90.75,
+        "y_pt":  193.5,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  2,
+                               "text":  "l",
+                               "x_pt":  90.75,
+                               "y_pt":  193.5,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  2,
+        "char_end":  2
+    },
+    {
+        "index":  12,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  3,
+        "page":  1,
+        "text":  "l",
+        "numbering_text":  null,
+        "text_with_numbering":  "l",
+        "x_pt":  90.75,
+        "y_pt":  173.25,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  3,
+                               "text":  "l",
+                               "x_pt":  90.75,
+                               "y_pt":  173.25,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  3,
+        "char_end":  3
+    },
+    {
+        "index":  13,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  4,
+        "page":  1,
+        "text":  "o",
+        "numbering_text":  null,
+        "text_with_numbering":  "o",
+        "x_pt":  90.75,
+        "y_pt":  188.25,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  4,
+                               "text":  "o",
+                               "x_pt":  90.75,
+                               "y_pt":  188.25,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  4,
+        "char_end":  4
+    },
+    {
+        "index":  14,
+        "paragraph_index":  3,
+        "line_index_in_paragraph":  5,
+        "page":  1,
+        "text":  "\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "\r\u0007",
+        "x_pt":  90.75,
+        "y_pt":  207,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  5,
+                               "text":  "\r\u0007",
+                               "x_pt":  90.75,
+                               "y_pt":  207,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  5,
+        "char_end":  5
+    },
+    {
+        "index":  15,
+        "paragraph_index":  4,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "Hello世界",
+        "numbering_text":  null,
+        "text_with_numbering":  "Hello世界",
+        "x_pt":  303,
+        "y_pt":  156.75,
+        "width_pt":  38.25,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "H",
+                               "x_pt":  303,
+                               "y_pt":  156.75,
+                               "advance_pt":  9
+                           },
+                           {
+                               "char_index":  1,
+                               "text":  "e",
+                               "x_pt":  312,
+                               "y_pt":  156.75,
+                               "advance_pt":  4.5
+                           },
+                           {
+                               "char_index":  2,
+                               "text":  "l",
+                               "x_pt":  316.5,
+                               "y_pt":  156.75,
+                               "advance_pt":  3
+                           },
+                           {
+                               "char_index":  3,
+                               "text":  "l",
+                               "x_pt":  319.5,
+                               "y_pt":  156.75,
+                               "advance_pt":  3
+                           },
+                           {
+                               "char_index":  4,
+                               "text":  "o",
+                               "x_pt":  322.5,
+                               "y_pt":  156.75,
+                               "advance_pt":  8.25
+                           },
+                           {
+                               "char_index":  5,
+                               "text":  "世",
+                               "x_pt":  330.75,
+                               "y_pt":  156.75,
+                               "advance_pt":  10.5
+                           },
+                           {
+                               "char_index":  6,
+                               "text":  "界",
+                               "x_pt":  341.25,
+                               "y_pt":  156.75,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  6
+    },
+    {
+        "index":  16,
+        "paragraph_index":  4,
+        "line_index_in_paragraph":  1,
+        "page":  1,
+        "text":  "\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "\r\u0007",
+        "x_pt":  90.75,
+        "y_pt":  207,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  7,
+                               "text":  "\r\u0007",
+                               "x_pt":  90.75,
+                               "y_pt":  207,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  7,
+        "char_end":  7
+    },
+    {
+        "index":  17,
+        "paragraph_index":  5,
+        "line_index_in_paragraph":  0,
+        "page":  1,
+        "text":  "\r\u0007",
+        "numbering_text":  null,
+        "text_with_numbering":  "\r\u0007",
+        "x_pt":  90.75,
+        "y_pt":  207,
+        "width_pt":  0,
+        "font":  {
+                     "name":  "游明朝",
+                     "name_ascii":  "+本文のフォント",
+                     "name_far_east":  "+本文のフォント - 日本語",
+                     "name_bi":  "+本文のフォント - コンプレックス スクリプト",
+                     "size_pt":  10.5,
+                     "bold":  0,
+                     "italic":  0,
+                     "subscript":  0,
+                     "superscript":  0
+                 },
+        "characters":  [
+                           {
+                               "char_index":  0,
+                               "text":  "\r\u0007",
+                               "x_pt":  90.75,
+                               "y_pt":  207,
+                               "advance_pt":  null
+                           }
+                       ],
+        "char_start":  0,
+        "char_end":  0
+    }
+]

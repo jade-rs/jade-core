@@ -1,0 +1,47 @@
+[package]
+name = "jade-docx-layout"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-selection = { path = "../jade-selection" }
+jade-text-layout = { path = "../jade-text-layout" }
+serde = { version = "1.0", features = ["derive"] }
+unicode-segmentation = "1.10"
+indexmap = "2.7"
+rustc-hash = "2.1"
+smallvec = "1.15"
+unicode-script = "0.5"
+unicode-bidi = "0.3"
+jade-docx-reader = { path = "../jade-docx-reader" }
+fontdue = "0.9"
+rustybuzz = { version = "0.20", optional = true }
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout"], optional = true }
+
+[features]
+default = []
+# In-process OpenType shaping. Off by default so wasm builds never link rustybuzz.
+native-shaping = ["dep:rustybuzz"]
+# Font bytes supplied by a host; no font files or browser loading policy.
+opentype-math = ["dep:ttf-parser"]
+
+[dev-dependencies]
+fontdb = "0.23"
+futures = "0.3"
+proptest = "1.6"
+criterion = { version = "0.5", features = ["html_reports"] }
+serde_json = "1.0"
+unicode-segmentation = "1.10"
+
+[[bench]]
+name = "layout_cache_bench"
+harness = false
+
+[[bench]]
+name = "scroll_edit_wrap_bench"
+harness = false
+
+[[example]]
+name = "math_font_info"
+required-features = ["opentype-math"]

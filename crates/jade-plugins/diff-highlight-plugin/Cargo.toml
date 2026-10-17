@@ -1,0 +1,15 @@
+[package]
+name = "diff-highlight-plugin"
+version = "0.1.0"
+edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
+description = "jade decoration plugin: shades the parts of a paragraph that a document comparison reported as changed."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+jade-preview-plugin-api = { path = "../../jade-preview-plugin-api" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -1,0 +1,15 @@
+[package]
+name = "jade-docx-headless-editor-cli"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-docx-headless-editor = { path = "../jade-docx-headless-editor" }
+jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping"] }
+jade-docx-pdf-renderer = { path = "../jade-docx-pdf-renderer" }
+jade-docx-reader = { path = "../jade-docx-reader" }
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

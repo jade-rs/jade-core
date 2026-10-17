@@ -1,0 +1,275 @@
+{
+  "input": "public/fixtures/unicode-segmentation.docx",
+  "summary": {
+    "word_line_count": 1,
+    "layout_line_count": 1,
+    "compared_line_count": 1,
+    "diff_count": 0,
+    "stored_diff_count": 0,
+    "first_diff_index": null,
+    "max_abs_y_delta_pt": 0.0,
+    "max_abs_x_delta_pt": 0.0,
+    "coordinate_adjustments": [
+      {
+        "page": 1,
+        "x_delta_pt": 0.3,
+        "y_delta_pt": 0.3
+      }
+    ]
+  },
+  "diffs": [],
+  "word_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "今日は竈門禰󠄀豆子が𠮷野屋で👨‍👨‍👧‍👦で𩸽とチェﾌﾟを頼んで𠮟られた😇",
+      "numbering_text": null,
+      "text_with_numbering": "今日は竈門禰󠄀豆子が𠮷野屋で👨‍👨‍👧‍👦で𩸽とチェﾌﾟを頼んで𠮟られた😇",
+      "x_pt": 57.0,
+      "y_pt": 57.0,
+      "width_pt": 310.5,
+      "font": {
+        "name": "ヒラギノ角ゴ ProN W3",
+        "name_ascii": "Arial Unicode MS",
+        "name_far_east": "ヒラギノ角ゴ ProN W3",
+        "name_bi": "Arial Unicode MS",
+        "size_pt": 11.0,
+        "bold": 0,
+        "italic": 0,
+        "subscript": 0,
+        "superscript": 0
+      },
+      "characters": [
+        {
+          "char_index": 0,
+          "text": "今",
+          "x_pt": 57.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 1,
+          "text": "日",
+          "x_pt": 68.25,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 2,
+          "text": "は",
+          "x_pt": 78.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 3,
+          "text": "竈",
+          "x_pt": 90.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 4,
+          "text": "門",
+          "x_pt": 101.25,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 5,
+          "text": "禰󠄀",
+          "x_pt": 111.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 6,
+          "text": "豆",
+          "x_pt": 123.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 7,
+          "text": "子",
+          "x_pt": 134.25,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 8,
+          "text": "が",
+          "x_pt": 144.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 9,
+          "text": "𠮷",
+          "x_pt": 156.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 10,
+          "text": "野",
+          "x_pt": 167.25,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 11,
+          "text": "屋",
+          "x_pt": 177.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 12,
+          "text": "で",
+          "x_pt": 189.0,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 13,
+          "text": "👨‍👨‍👧‍👦",
+          "x_pt": 200.25,
+          "y_pt": 57.0,
+          "advance_pt": 13.5
+        },
+        {
+          "char_index": 14,
+          "text": "で",
+          "x_pt": 213.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 15,
+          "text": "𩸽",
+          "x_pt": 225.0,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 16,
+          "text": "と",
+          "x_pt": 235.5,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 17,
+          "text": "チ",
+          "x_pt": 246.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 18,
+          "text": "ェ",
+          "x_pt": 258.0,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 19,
+          "text": "ﾌ",
+          "x_pt": 268.5,
+          "y_pt": 57.0,
+          "advance_pt": 6.0
+        },
+        {
+          "char_index": 20,
+          "text": "ﾟ",
+          "x_pt": 274.5,
+          "y_pt": 57.0,
+          "advance_pt": 5.25
+        },
+        {
+          "char_index": 21,
+          "text": "を",
+          "x_pt": 279.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 22,
+          "text": "頼",
+          "x_pt": 291.0,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 23,
+          "text": "ん",
+          "x_pt": 301.5,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 24,
+          "text": "で",
+          "x_pt": 312.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 25,
+          "text": "𠮟",
+          "x_pt": 324.0,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 26,
+          "text": "ら",
+          "x_pt": 334.5,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 27,
+          "text": "れ",
+          "x_pt": 345.75,
+          "y_pt": 57.0,
+          "advance_pt": 11.25
+        },
+        {
+          "char_index": 28,
+          "text": "た",
+          "x_pt": 357.0,
+          "y_pt": 57.0,
+          "advance_pt": 10.5
+        },
+        {
+          "char_index": 29,
+          "text": "😇",
+          "x_pt": 367.5,
+          "y_pt": 57.0,
+          "advance_pt": null
+        }
+      ],
+      "char_start": 0,
+      "char_end": 29
+    }
+  ],
+  "layout_lines": [
+    {
+      "index": 0,
+      "paragraph_index": 0,
+      "line_index_in_paragraph": 0,
+      "page": 1,
+      "text": "今日は竈門禰󠄀豆子が𠮷野屋で👨‍👨‍👧‍👦で𩸽とチェﾌﾟを頼んで𠮟られた😇",
+      "numbering_text": null,
+      "text_with_numbering": "今日は竈門禰󠄀豆子が𠮷野屋で👨‍👨‍👧‍👦で𩸽とチェﾌﾟを頼んで𠮟られた😇",
+      "x_pt": 57.0,
+      "y_pt": 57.0,
+      "width_pt": 310.5,
+      "height_pt": 13.799999237060547
+    }
+  ]
+}

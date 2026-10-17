@@ -1,0 +1,940 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de",
+ "pdf_sha256": "a04a336a8772b5d353a61f8cd820bcce48d645a00a4f3e21dc6388f595fe92bf",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 83.04,
+     "characters": [
+      {
+       "text": "左",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 108.0,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "央",
+       "x_pt": 118.5,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 210.75,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "左中央右"
+    },
+    {
+     "baseline_pt": 97.92,
+     "characters": [
+      {
+       "text": "項",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "目",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 95.625,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 103.175,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 106.041,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 108.907,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 111.773,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 114.639,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 117.505,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 120.371,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 123.237,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 126.103,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 128.969,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 131.835,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 134.701,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 137.567,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 140.433,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 143.299,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 146.165,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 149.031,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 151.896,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 154.762,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 157.628,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 160.494,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 163.36,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 166.226,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 169.092,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 171.958,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 174.824,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 177.69,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 180.556,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 183.422,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 186.288,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 189.154,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 192.02,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 194.886,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 197.752,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 200.618,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 203.484,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 206.35,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 209.216,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 212.082,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 214.948,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 217.814,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 220.68,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 223.546,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 226.412,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 229.278,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 232.143,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 235.009,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 237.875,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 240.741,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 243.607,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 246.473,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 249.339,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 252.205,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 255.071,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 257.937,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 260.803,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 263.669,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 266.535,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 269.401,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 272.267,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 275.133,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 277.999,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 280.865,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 283.731,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 286.597,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 289.463,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 292.329,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 295.195,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 298.061,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 300.927,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 303.793,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 306.659,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 309.525,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 312.391,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 315.257,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 318.123,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 320.989,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 323.855,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 326.721,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 329.587,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 332.453,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 335.319,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 338.185,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 341.051,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 343.917,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 346.783,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 349.649,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 352.515,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 355.381,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 358.247,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 361.113,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 363.979,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 366.845,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 369.711,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 372.577,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 375.443,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 378.308,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 381.174,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 384.04,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 386.906,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 389.772,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 392.638,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 395.504,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 398.37,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 401.236,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 404.102,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 406.968,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 409.834,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 412.7,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 415.566,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 418.432,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 421.298,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 424.164,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 427.03,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 429.896,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 432.762,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 435.628,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 440.679,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 446.37,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": ",",
+       "x_pt": 452.061,
+       "advance_pt": 2.883,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 454.932,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 460.623,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 466.314,
+       "advance_pt": 5.724,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "項目1.....................................................................................................................10,000"
+    }
+   ]
+  }
+ ]
+}

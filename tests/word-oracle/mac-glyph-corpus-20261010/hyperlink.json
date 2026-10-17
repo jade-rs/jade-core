@@ -1,0 +1,268 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "a1942b51275713b4df4c15c17cb862af06cef3cdd952c8d1b2aed107c9eb682c",
+ "pdf_sha256": "5a7cd526bc3c019ec943af1019509b56145213c617afda4471c0cb5241c6c0af",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "V",
+       "x_pt": 56.64,
+       "advance_pt": 6.668,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 63.36,
+       "advance_pt": 3.069,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 66.238,
+       "advance_pt": 4.747,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 71.037,
+       "advance_pt": 3.069,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 74.158,
+       "advance_pt": 3.732,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 77.76,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "x",
+       "x_pt": 83.04,
+       "advance_pt": 5.332,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 88.564,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 93.844,
+       "advance_pt": 9.185,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "p",
+       "x_pt": 102.967,
+       "advance_pt": 6.138,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 109.207,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 112.092,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 117.373,
+       "advance_pt": 2.263,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 119.772,
+       "advance_pt": 4.869,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 124.566,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 130.321,
+       "advance_pt": 9.185,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 139.68,
+       "advance_pt": 3.732,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 143.52,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 151.685,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 154.564,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 160.082,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 165.357,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 169.914,
+       "advance_pt": 6.16,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 178.554,
+       "advance_pt": 9.185,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 187.671,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 193.432,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 197.989,
+       "advance_pt": 5.388,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 203.507,
+       "advance_pt": 2.263,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Visitexample.comtolearnmore."
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.2,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 56.64,
+       "advance_pt": 10.168,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 66.72,
+       "advance_pt": 5.862,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 72.725,
+       "advance_pt": 4.571,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 77.285,
+       "advance_pt": 2.992,
+       "font": "Cambria",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 80.166,
+       "advance_pt": 6.127,
+       "font": "Cambria",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

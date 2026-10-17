@@ -1,0 +1,15 @@
+[package]
+name = "jade-pptx-layout"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[dependencies]
+jade-pptx-reader = { path = "../jade-pptx-reader" }
+jade-text-layout = { path = "../jade-text-layout" }
+serde = { version = "1.0", features = ["derive"] }
+unicode-segmentation = "1.10"
+unicode-script = "0.5"
+
+[dev-dependencies]
+proptest = "1.6"

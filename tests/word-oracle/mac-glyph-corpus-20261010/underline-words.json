@@ -1,0 +1,87 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.113.3",
+ "word_build": "16.113.26092714",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "f7220cd89126b233bf801ee7d0d0fcdb462ae43850145a9f102794bd8c8ab302",
+ "pdf_sha256": "63553b0277fd22f4c136c5c71f064baa53374ed74d9df89c859740e2fa165e32",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 75.36,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 56.64,
+       "advance_pt": 14.382,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "l",
+       "x_pt": 71.084,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "p",
+       "x_pt": 76.644,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "h",
+       "x_pt": 86.645,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "a",
+       "x_pt": 96.647,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "B",
+       "x_pt": 110.517,
+       "advance_pt": 13.287,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 123.857,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 132.736,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "a",
+       "x_pt": 138.287,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "AlphaBeta"
+    }
+   ]
+  }
+ ]
+}

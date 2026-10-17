@@ -1,0 +1,5780 @@
+[
+  {
+    "index": 0,
+    "paragraph_index": 0,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "数式エディタについて（補足）",
+    "numbering_text": null,
+    "text_with_numbering": "数式エディタについて（補足）",
+    "x_pt": 84.75,
+    "y_pt": 86.25,
+    "width_pt": 156.0,
+    "font": {
+      "name": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_ascii": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 12.0,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "数",
+        "x_pt": 84.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 1,
+        "text": "式",
+        "x_pt": 96.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 2,
+        "text": "エ",
+        "x_pt": 108.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 3,
+        "text": "デ",
+        "x_pt": 120.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 4,
+        "text": "ィ",
+        "x_pt": 132.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 5,
+        "text": "タ",
+        "x_pt": 144.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 6,
+        "text": "に",
+        "x_pt": 156.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 7,
+        "text": "つ",
+        "x_pt": 168.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 8,
+        "text": "い",
+        "x_pt": 180.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 9,
+        "text": "て",
+        "x_pt": 192.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 10,
+        "text": "（",
+        "x_pt": 204.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 11,
+        "text": "補",
+        "x_pt": 216.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 12,
+        "text": "足",
+        "x_pt": 228.75,
+        "y_pt": 86.25,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 13,
+        "text": "）",
+        "x_pt": 240.75,
+        "y_pt": 86.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 13
+  },
+  {
+    "index": 1,
+    "paragraph_index": 2,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "＜数式を入力する方法＞",
+    "numbering_text": null,
+    "text_with_numbering": "＜数式を入力する方法＞",
+    "x_pt": 84.75,
+    "y_pt": 123.0,
+    "width_pt": 105.0,
+    "font": {
+      "name": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_ascii": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "＜",
+        "x_pt": 84.75,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "数",
+        "x_pt": 95.25,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "式",
+        "x_pt": 105.75,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "を",
+        "x_pt": 116.25,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "入",
+        "x_pt": 126.75,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "力",
+        "x_pt": 137.25,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "す",
+        "x_pt": 147.75,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "る",
+        "x_pt": 158.25,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "方",
+        "x_pt": 168.75,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "法",
+        "x_pt": 179.25,
+        "y_pt": 123.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "＞",
+        "x_pt": 189.75,
+        "y_pt": 123.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 10
+  },
+  {
+    "index": 2,
+    "paragraph_index": 3,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "1. Microsoft数式3.0の利用",
+    "numbering_text": null,
+    "text_with_numbering": "1. Microsoft数式3.0の利用",
+    "x_pt": 84.75,
+    "y_pt": 141.0,
+    "width_pt": 126.75,
+    "font": {
+      "name": "Bookman Old Style",
+      "name_ascii": "Bookman Old Style",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "1",
+        "x_pt": 84.75,
+        "y_pt": 141.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 1,
+        "text": ".",
+        "x_pt": 91.5,
+        "y_pt": 141.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 2,
+        "text": " ",
+        "x_pt": 94.5,
+        "y_pt": 141.0,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 3,
+        "text": "M",
+        "x_pt": 98.25,
+        "y_pt": 141.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 4,
+        "text": "i",
+        "x_pt": 108.0,
+        "y_pt": 141.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 5,
+        "text": "c",
+        "x_pt": 111.0,
+        "y_pt": 141.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 6,
+        "text": "r",
+        "x_pt": 116.25,
+        "y_pt": 141.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 7,
+        "text": "o",
+        "x_pt": 120.75,
+        "y_pt": 141.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 8,
+        "text": "s",
+        "x_pt": 126.75,
+        "y_pt": 141.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 9,
+        "text": "o",
+        "x_pt": 132.0,
+        "y_pt": 141.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 10,
+        "text": "f",
+        "x_pt": 138.0,
+        "y_pt": 141.0,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 11,
+        "text": "t",
+        "x_pt": 141.75,
+        "y_pt": 141.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 12,
+        "text": "数",
+        "x_pt": 147.75,
+        "y_pt": 141.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "式",
+        "x_pt": 158.25,
+        "y_pt": 141.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 14,
+        "text": "3",
+        "x_pt": 171.75,
+        "y_pt": 141.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 15,
+        "text": ".",
+        "x_pt": 178.5,
+        "y_pt": 141.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 16,
+        "text": "0",
+        "x_pt": 181.5,
+        "y_pt": 141.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 17,
+        "text": "の",
+        "x_pt": 190.5,
+        "y_pt": 141.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "利",
+        "x_pt": 201.0,
+        "y_pt": 141.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "用",
+        "x_pt": 211.5,
+        "y_pt": 141.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 19
+  },
+  {
+    "index": 3,
+    "paragraph_index": 4,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "「挿入」タブ－「オブジェクト（テキストのグループ）」をクリックし、「オブジェクト",
+    "numbering_text": null,
+    "text_with_numbering": "「挿入」タブ－「オブジェクト（テキストのグループ）」をクリックし、「オブジェクト",
+    "x_pt": 84.75,
+    "y_pt": 159.0,
+    "width_pt": 400.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "「",
+        "x_pt": 84.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "挿",
+        "x_pt": 95.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "入",
+        "x_pt": 105.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "」",
+        "x_pt": 116.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "タ",
+        "x_pt": 126.75,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "ブ",
+        "x_pt": 151.5,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "－",
+        "x_pt": 147.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "「",
+        "x_pt": 158.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "オ",
+        "x_pt": 168.75,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 9,
+        "text": "ブ",
+        "x_pt": 193.5,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "ジ",
+        "x_pt": 189.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "ェ",
+        "x_pt": 200.25,
+        "y_pt": 159.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 12,
+        "text": "ク",
+        "x_pt": 211.5,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "ト",
+        "x_pt": 222.0,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "（",
+        "x_pt": 232.5,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "テ",
+        "x_pt": 243.0,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "キ",
+        "x_pt": 253.5,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "ス",
+        "x_pt": 264.0,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "ト",
+        "x_pt": 274.5,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "の",
+        "x_pt": 285.0,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "グ",
+        "x_pt": 295.5,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "ル",
+        "x_pt": 306.0,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "ー",
+        "x_pt": 316.5,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "プ",
+        "x_pt": 341.25,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 24,
+        "text": "）",
+        "x_pt": 337.5,
+        "y_pt": 159.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 25,
+        "text": "」",
+        "x_pt": 342.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "を",
+        "x_pt": 353.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "ク",
+        "x_pt": 363.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "リ",
+        "x_pt": 374.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "ッ",
+        "x_pt": 384.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "ク",
+        "x_pt": 395.25,
+        "y_pt": 159.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 31,
+        "text": "し",
+        "x_pt": 406.5,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 32,
+        "text": "、",
+        "x_pt": 431.25,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 33,
+        "text": "「",
+        "x_pt": 422.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "オ",
+        "x_pt": 432.75,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "ブ",
+        "x_pt": 457.5,
+        "y_pt": 159.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "ジ",
+        "x_pt": 453.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "ェ",
+        "x_pt": 464.25,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "ク",
+        "x_pt": 474.75,
+        "y_pt": 159.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "ト",
+        "x_pt": 485.25,
+        "y_pt": 159.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 39
+  },
+  {
+    "index": 4,
+    "paragraph_index": 4,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "の種類」から「Microsoft数式3.0」をクリック",
+    "numbering_text": null,
+    "text_with_numbering": "の種類」から「Microsoft数式3.0」をクリック",
+    "x_pt": 84.75,
+    "y_pt": 177.0,
+    "width_pt": 212.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 40,
+        "text": "の",
+        "x_pt": 84.75,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "種",
+        "x_pt": 95.25,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 42,
+        "text": "類",
+        "x_pt": 105.75,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "」",
+        "x_pt": 116.25,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "か",
+        "x_pt": 126.75,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "ら",
+        "x_pt": 137.25,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "「",
+        "x_pt": 147.75,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "M",
+        "x_pt": 158.25,
+        "y_pt": 177.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 48,
+        "text": "i",
+        "x_pt": 168.0,
+        "y_pt": 177.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 49,
+        "text": "c",
+        "x_pt": 171.0,
+        "y_pt": 177.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 50,
+        "text": "r",
+        "x_pt": 176.25,
+        "y_pt": 177.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 51,
+        "text": "o",
+        "x_pt": 180.75,
+        "y_pt": 177.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 52,
+        "text": "s",
+        "x_pt": 186.0,
+        "y_pt": 177.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 53,
+        "text": "o",
+        "x_pt": 190.5,
+        "y_pt": 177.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 54,
+        "text": "f",
+        "x_pt": 195.75,
+        "y_pt": 177.0,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 55,
+        "text": "t",
+        "x_pt": 199.5,
+        "y_pt": 177.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 56,
+        "text": "数",
+        "x_pt": 206.25,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "式",
+        "x_pt": 216.75,
+        "y_pt": 177.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 58,
+        "text": "3",
+        "x_pt": 230.25,
+        "y_pt": 177.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 59,
+        "text": ".",
+        "x_pt": 235.5,
+        "y_pt": 177.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 60,
+        "text": "0",
+        "x_pt": 238.5,
+        "y_pt": 177.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 61,
+        "text": "」",
+        "x_pt": 244.5,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 62,
+        "text": "を",
+        "x_pt": 255.0,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 63,
+        "text": "ク",
+        "x_pt": 265.5,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 64,
+        "text": "リ",
+        "x_pt": 276.0,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "ッ",
+        "x_pt": 286.5,
+        "y_pt": 177.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "ク",
+        "x_pt": 297.0,
+        "y_pt": 177.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 40,
+    "char_end": 66
+  },
+  {
+    "index": 5,
+    "paragraph_index": 5,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "一例　\u0001",
+    "numbering_text": null,
+    "text_with_numbering": "一例　\u0001",
+    "x_pt": 84.75,
+    "y_pt": 198.0,
+    "width_pt": 31.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "一",
+        "x_pt": 84.75,
+        "y_pt": 198.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "例",
+        "x_pt": 95.25,
+        "y_pt": 198.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "　",
+        "x_pt": 105.75,
+        "y_pt": 198.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "\u0001",
+        "x_pt": 116.25,
+        "y_pt": 198.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 3
+  },
+  {
+    "index": 6,
+    "paragraph_index": 6,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "＜特徴＞",
+    "numbering_text": null,
+    "text_with_numbering": "＜特徴＞",
+    "x_pt": 84.75,
+    "y_pt": 231.0,
+    "width_pt": 31.5,
+    "font": {
+      "name": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_ascii": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "＜",
+        "x_pt": 84.75,
+        "y_pt": 231.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "特",
+        "x_pt": 95.25,
+        "y_pt": 231.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "徴",
+        "x_pt": 105.75,
+        "y_pt": 231.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "＞",
+        "x_pt": 116.25,
+        "y_pt": 231.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 3
+  },
+  {
+    "index": 7,
+    "paragraph_index": 7,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・上の例のように、文中に数式が入ると行間が少し広くなる。",
+    "numbering_text": null,
+    "text_with_numbering": "・上の例のように、文中に数式が入ると行間が少し広くなる。",
+    "x_pt": 84.75,
+    "y_pt": 249.0,
+    "width_pt": 283.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "上",
+        "x_pt": 95.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "の",
+        "x_pt": 105.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "例",
+        "x_pt": 116.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "の",
+        "x_pt": 126.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "よ",
+        "x_pt": 137.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "う",
+        "x_pt": 147.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "に",
+        "x_pt": 158.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "、",
+        "x_pt": 168.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "文",
+        "x_pt": 179.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "中",
+        "x_pt": 189.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "に",
+        "x_pt": 200.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "数",
+        "x_pt": 210.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "式",
+        "x_pt": 221.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "が",
+        "x_pt": 231.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "入",
+        "x_pt": 242.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "る",
+        "x_pt": 252.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "と",
+        "x_pt": 263.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "行",
+        "x_pt": 273.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "間",
+        "x_pt": 284.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "が",
+        "x_pt": 294.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "少",
+        "x_pt": 305.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "し",
+        "x_pt": 315.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "広",
+        "x_pt": 326.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "く",
+        "x_pt": 336.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "な",
+        "x_pt": 347.25,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "る",
+        "x_pt": 357.75,
+        "y_pt": 249.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "。",
+        "x_pt": 368.25,
+        "y_pt": 249.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 27
+  },
+  {
+    "index": 8,
+    "paragraph_index": 8,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・図と同じ扱いで、任意の位置に配置するときは、右ク",
+    "numbering_text": null,
+    "text_with_numbering": "・図と同じ扱いで、任意の位置に配置するときは、右ク",
+    "x_pt": 84.75,
+    "y_pt": 267.0,
+    "width_pt": 248.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 267.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 1,
+        "text": "図",
+        "x_pt": 93.75,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "と",
+        "x_pt": 104.25,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "同",
+        "x_pt": 114.75,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "じ",
+        "x_pt": 125.25,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "扱",
+        "x_pt": 135.75,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "い",
+        "x_pt": 146.25,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "で",
+        "x_pt": 156.75,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "、",
+        "x_pt": 167.25,
+        "y_pt": 267.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 9,
+        "text": "任",
+        "x_pt": 177.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "意",
+        "x_pt": 187.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "の",
+        "x_pt": 198.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "位",
+        "x_pt": 208.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "置",
+        "x_pt": 219.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "に",
+        "x_pt": 229.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "配",
+        "x_pt": 240.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "置",
+        "x_pt": 250.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "す",
+        "x_pt": 261.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "る",
+        "x_pt": 271.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "と",
+        "x_pt": 282.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "き",
+        "x_pt": 292.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "は",
+        "x_pt": 303.0,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "、",
+        "x_pt": 313.5,
+        "y_pt": 267.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 23,
+        "text": "右",
+        "x_pt": 322.5,
+        "y_pt": 267.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "ク",
+        "x_pt": 333.0,
+        "y_pt": 267.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 24
+  },
+  {
+    "index": 9,
+    "paragraph_index": 8,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "リック‐「オブジェクトの書式設定」－「レイアウト」",
+    "numbering_text": null,
+    "text_with_numbering": "リック‐「オブジェクトの書式設定」－「レイアウト」",
+    "x_pt": 84.75,
+    "y_pt": 285.0,
+    "width_pt": 237.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 25,
+        "text": "リ",
+        "x_pt": 84.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "ッ",
+        "x_pt": 95.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "ク",
+        "x_pt": 105.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "‐",
+        "x_pt": 116.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "「",
+        "x_pt": 126.75,
+        "y_pt": 285.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 30,
+        "text": "オ",
+        "x_pt": 132.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "ブ",
+        "x_pt": 143.25,
+        "y_pt": 285.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 32,
+        "text": "ジ",
+        "x_pt": 174.75,
+        "y_pt": 285.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 33,
+        "text": "ェ",
+        "x_pt": 164.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "ク",
+        "x_pt": 174.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 35,
+        "text": "ト",
+        "x_pt": 185.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 36,
+        "text": "の",
+        "x_pt": 195.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "書",
+        "x_pt": 206.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "式",
+        "x_pt": 216.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "設",
+        "x_pt": 227.25,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "定",
+        "x_pt": 237.75,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "」",
+        "x_pt": 248.25,
+        "y_pt": 285.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 42,
+        "text": "－",
+        "x_pt": 253.5,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "「",
+        "x_pt": 264.0,
+        "y_pt": 285.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 44,
+        "text": "レ",
+        "x_pt": 270.0,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "イ",
+        "x_pt": 280.5,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "ア",
+        "x_pt": 291.0,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "ウ",
+        "x_pt": 301.5,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 48,
+        "text": "ト",
+        "x_pt": 312.0,
+        "y_pt": 285.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "」",
+        "x_pt": 322.5,
+        "y_pt": 285.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 25,
+    "char_end": 49
+  },
+  {
+    "index": 10,
+    "paragraph_index": 8,
+    "line_index_in_paragraph": 2,
+    "page": 1,
+    "text": "－「前面」をクリック。その後、ドラッグで任意の位",
+    "numbering_text": null,
+    "text_with_numbering": "－「前面」をクリック。その後、ドラッグで任意の位",
+    "x_pt": 84.75,
+    "y_pt": 303.0,
+    "width_pt": 237.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 50,
+        "text": "－",
+        "x_pt": 84.75,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 51,
+        "text": "「",
+        "x_pt": 95.25,
+        "y_pt": 303.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 52,
+        "text": "前",
+        "x_pt": 105.0,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 53,
+        "text": "面",
+        "x_pt": 115.5,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "」",
+        "x_pt": 126.0,
+        "y_pt": 303.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 55,
+        "text": "を",
+        "x_pt": 135.75,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "ク",
+        "x_pt": 146.25,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "リ",
+        "x_pt": 156.75,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 58,
+        "text": "ッ",
+        "x_pt": 167.25,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 59,
+        "text": "ク",
+        "x_pt": 177.75,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 60,
+        "text": "。",
+        "x_pt": 188.25,
+        "y_pt": 303.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 61,
+        "text": "そ",
+        "x_pt": 197.25,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 62,
+        "text": "の",
+        "x_pt": 207.75,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 63,
+        "text": "後",
+        "x_pt": 218.25,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 64,
+        "text": "、",
+        "x_pt": 228.75,
+        "y_pt": 303.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 65,
+        "text": "ド",
+        "x_pt": 238.5,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "ラ",
+        "x_pt": 249.0,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "ッ",
+        "x_pt": 259.5,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "グ",
+        "x_pt": 270.0,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 69,
+        "text": "で",
+        "x_pt": 280.5,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 70,
+        "text": "任",
+        "x_pt": 291.0,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 71,
+        "text": "意",
+        "x_pt": 301.5,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 72,
+        "text": "の",
+        "x_pt": 312.0,
+        "y_pt": 303.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 73,
+        "text": "位",
+        "x_pt": 322.5,
+        "y_pt": 303.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 50,
+    "char_end": 73
+  },
+  {
+    "index": 11,
+    "paragraph_index": 8,
+    "line_index_in_paragraph": 3,
+    "page": 1,
+    "text": "置に配置可能。",
+    "numbering_text": null,
+    "text_with_numbering": "置に配置可能。",
+    "x_pt": 84.75,
+    "y_pt": 321.0,
+    "width_pt": 63.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 74,
+        "text": "置",
+        "x_pt": 84.75,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 75,
+        "text": "に",
+        "x_pt": 95.25,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 76,
+        "text": "配",
+        "x_pt": 105.75,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 77,
+        "text": "置",
+        "x_pt": 116.25,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 78,
+        "text": "可",
+        "x_pt": 126.75,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 79,
+        "text": "能",
+        "x_pt": 137.25,
+        "y_pt": 321.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 80,
+        "text": "。",
+        "x_pt": 147.75,
+        "y_pt": 321.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 74,
+    "char_end": 80
+  },
+  {
+    "index": 12,
+    "paragraph_index": 9,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・図と同じで、拡大・縮小が可能。",
+    "numbering_text": null,
+    "text_with_numbering": "・図と同じで、拡大・縮小が可能。",
+    "x_pt": 84.75,
+    "y_pt": 339.0,
+    "width_pt": 157.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "図",
+        "x_pt": 95.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "と",
+        "x_pt": 105.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "同",
+        "x_pt": 116.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "じ",
+        "x_pt": 126.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "で",
+        "x_pt": 137.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "、",
+        "x_pt": 147.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "拡",
+        "x_pt": 158.25,
+        "y_pt": 339.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "大",
+        "x_pt": 179.25,
+        "y_pt": 339.0,
+        "advance_pt": 0.0
+      },
+      {
+        "char_index": 9,
+        "text": "・",
+        "x_pt": 179.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "縮",
+        "x_pt": 189.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "小",
+        "x_pt": 200.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "が",
+        "x_pt": 210.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "可",
+        "x_pt": 221.25,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "能",
+        "x_pt": 231.75,
+        "y_pt": 339.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "。",
+        "x_pt": 242.25,
+        "y_pt": 339.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 15
+  },
+  {
+    "index": 13,
+    "paragraph_index": 10,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・フォントは、「Times New Roman」の斜体が基本。",
+    "numbering_text": null,
+    "text_with_numbering": "・フォントは、「Times New Roman」の斜体が基本。",
+    "x_pt": 84.75,
+    "y_pt": 357.0,
+    "width_pt": 243.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "フ",
+        "x_pt": 95.25,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "ォ",
+        "x_pt": 105.75,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "ン",
+        "x_pt": 116.25,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "ト",
+        "x_pt": 126.75,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "は",
+        "x_pt": 137.25,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "、",
+        "x_pt": 147.75,
+        "y_pt": 357.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 7,
+        "text": "「",
+        "x_pt": 153.0,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "T",
+        "x_pt": 163.5,
+        "y_pt": 357.0,
+        "advance_pt": 17.25
+      },
+      {
+        "char_index": 9,
+        "text": "i",
+        "x_pt": 180.75,
+        "y_pt": 357.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 10,
+        "text": "m",
+        "x_pt": 173.25,
+        "y_pt": 357.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 11,
+        "text": "e",
+        "x_pt": 183.0,
+        "y_pt": 357.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 12,
+        "text": "s",
+        "x_pt": 188.25,
+        "y_pt": 357.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 13,
+        "text": " ",
+        "x_pt": 192.75,
+        "y_pt": 357.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 14,
+        "text": "N",
+        "x_pt": 206.25,
+        "y_pt": 357.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 15,
+        "text": "e",
+        "x_pt": 204.75,
+        "y_pt": 357.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 16,
+        "text": "w",
+        "x_pt": 210.0,
+        "y_pt": 357.0,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 17,
+        "text": " ",
+        "x_pt": 218.25,
+        "y_pt": 357.0,
+        "advance_pt": 2.25
+      },
+      {
+        "char_index": 18,
+        "text": "R",
+        "x_pt": 220.5,
+        "y_pt": 357.0,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 19,
+        "text": "o",
+        "x_pt": 228.75,
+        "y_pt": 357.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 20,
+        "text": "m",
+        "x_pt": 234.0,
+        "y_pt": 357.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 21,
+        "text": "a",
+        "x_pt": 243.0,
+        "y_pt": 357.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 22,
+        "text": "n",
+        "x_pt": 249.0,
+        "y_pt": 357.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 23,
+        "text": "」",
+        "x_pt": 255.0,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "の",
+        "x_pt": 265.5,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "斜",
+        "x_pt": 276.0,
+        "y_pt": 357.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 26,
+        "text": "体",
+        "x_pt": 297.0,
+        "y_pt": 357.0,
+        "advance_pt": 0.0
+      },
+      {
+        "char_index": 27,
+        "text": "が",
+        "x_pt": 297.0,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "基",
+        "x_pt": 307.5,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "本",
+        "x_pt": 318.0,
+        "y_pt": 357.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "。",
+        "x_pt": 328.5,
+        "y_pt": 357.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 30
+  },
+  {
+    "index": 14,
+    "paragraph_index": 12,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "2. 数式（π）ボタンの利用",
+    "numbering_text": null,
+    "text_with_numbering": "2. 数式（π）ボタンの利用",
+    "x_pt": 84.75,
+    "y_pt": 393.0,
+    "width_pt": 117.0,
+    "font": {
+      "name": "Bookman Old Style",
+      "name_ascii": "Bookman Old Style",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "2",
+        "x_pt": 84.75,
+        "y_pt": 393.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 1,
+        "text": ".",
+        "x_pt": 91.5,
+        "y_pt": 393.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 2,
+        "text": " ",
+        "x_pt": 94.5,
+        "y_pt": 393.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 3,
+        "text": "数",
+        "x_pt": 99.75,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "式",
+        "x_pt": 110.25,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "（",
+        "x_pt": 120.75,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "π",
+        "x_pt": 131.25,
+        "y_pt": 393.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 7,
+        "text": "）",
+        "x_pt": 138.75,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "ボ",
+        "x_pt": 149.25,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "タ",
+        "x_pt": 159.75,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "ン",
+        "x_pt": 170.25,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "の",
+        "x_pt": 180.75,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "利",
+        "x_pt": 191.25,
+        "y_pt": 393.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "用",
+        "x_pt": 201.75,
+        "y_pt": 393.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 13
+  },
+  {
+    "index": 15,
+    "paragraph_index": 13,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "「挿入」タブ－「数式（π）（記号と特殊文字のグループ）」をクリック",
+    "numbering_text": null,
+    "text_with_numbering": "「挿入」タブ－「数式（π）（記号と特殊文字のグループ）」をクリック",
+    "x_pt": 84.75,
+    "y_pt": 411.0,
+    "width_pt": 325.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "「",
+        "x_pt": 84.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "挿",
+        "x_pt": 95.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "入",
+        "x_pt": 105.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "」",
+        "x_pt": 116.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "タ",
+        "x_pt": 126.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "ブ",
+        "x_pt": 137.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "－",
+        "x_pt": 147.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "「",
+        "x_pt": 158.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "数",
+        "x_pt": 168.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "式",
+        "x_pt": 179.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "（",
+        "x_pt": 189.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "π",
+        "x_pt": 200.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "）",
+        "x_pt": 210.75,
+        "y_pt": 411.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 13,
+        "text": "（",
+        "x_pt": 216.0,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "記",
+        "x_pt": 226.5,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "号",
+        "x_pt": 237.0,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "と",
+        "x_pt": 247.5,
+        "y_pt": 411.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "特",
+        "x_pt": 272.25,
+        "y_pt": 411.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "殊",
+        "x_pt": 268.5,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "文",
+        "x_pt": 279.0,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "字",
+        "x_pt": 289.5,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "の",
+        "x_pt": 300.0,
+        "y_pt": 411.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 22,
+        "text": "グ",
+        "x_pt": 324.75,
+        "y_pt": 411.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 23,
+        "text": "ル",
+        "x_pt": 321.0,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "ー",
+        "x_pt": 331.5,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "プ",
+        "x_pt": 342.0,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "）",
+        "x_pt": 352.5,
+        "y_pt": 411.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 27,
+        "text": "」",
+        "x_pt": 357.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "を",
+        "x_pt": 368.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "ク",
+        "x_pt": 378.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "リ",
+        "x_pt": 389.25,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "ッ",
+        "x_pt": 399.75,
+        "y_pt": 411.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "ク",
+        "x_pt": 410.25,
+        "y_pt": 411.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 32
+  },
+  {
+    "index": 16,
+    "paragraph_index": 14,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "一例　𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "numbering_text": null,
+    "text_with_numbering": "一例　𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "x_pt": 84.75,
+    "y_pt": 426.75,
+    "width_pt": 146.25,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "一",
+        "x_pt": 84.75,
+        "y_pt": 426.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "例",
+        "x_pt": 95.25,
+        "y_pt": 426.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "　",
+        "x_pt": 105.75,
+        "y_pt": 426.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "𝑃",
+        "x_pt": 116.25,
+        "y_pt": 426.75,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 5,
+        "text": "𝑎",
+        "x_pt": 127.5,
+        "y_pt": 426.75,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 6,
+        "text": "≤",
+        "x_pt": 133.5,
+        "y_pt": 426.75,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 7,
+        "text": "𝑋",
+        "x_pt": 147.0,
+        "y_pt": 426.75,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 8,
+        "text": "≤",
+        "x_pt": 153.75,
+        "y_pt": 426.75,
+        "advance_pt": 14.25
+      },
+      {
+        "char_index": 9,
+        "text": "𝑏",
+        "x_pt": 168.0,
+        "y_pt": 426.75,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 11,
+        "text": "=",
+        "x_pt": 179.25,
+        "y_pt": 426.75,
+        "advance_pt": 16.5
+      },
+      {
+        "char_index": 13,
+        "text": "𝑎",
+        "x_pt": 195.75,
+        "y_pt": 426.75,
+        "advance_pt": 2.25
+      },
+      {
+        "char_index": 15,
+        "text": "𝑏",
+        "x_pt": 198.0,
+        "y_pt": 426.75,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 17,
+        "text": "𝑓",
+        "x_pt": 204.0,
+        "y_pt": 426.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "𝑥",
+        "x_pt": 214.5,
+        "y_pt": 426.75,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "𝑑",
+        "x_pt": 225.0,
+        "y_pt": 426.75,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 22,
+        "text": "𝑥",
+        "x_pt": 231.0,
+        "y_pt": 426.75,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 22
+  },
+  {
+    "index": 17,
+    "paragraph_index": 15,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "＜特徴＞",
+    "numbering_text": null,
+    "text_with_numbering": "＜特徴＞",
+    "x_pt": 84.75,
+    "y_pt": 447.0,
+    "width_pt": 31.5,
+    "font": {
+      "name": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_ascii": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_far_east": "HG丸ｺﾞｼｯｸM-PRO",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "＜",
+        "x_pt": 84.75,
+        "y_pt": 447.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "特",
+        "x_pt": 95.25,
+        "y_pt": 447.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "徴",
+        "x_pt": 105.75,
+        "y_pt": 447.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "＞",
+        "x_pt": 116.25,
+        "y_pt": 447.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 3
+  },
+  {
+    "index": 18,
+    "paragraph_index": 16,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・上の例のように、文中に数式が入る時、行間はそのままである。自動的に積分などの",
+    "numbering_text": null,
+    "text_with_numbering": "・上の例のように、文中に数式が入る時、行間はそのままである。自動的に積分などの",
+    "x_pt": 84.75,
+    "y_pt": 465.0,
+    "width_pt": 400.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "上",
+        "x_pt": 95.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "の",
+        "x_pt": 105.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "例",
+        "x_pt": 116.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "の",
+        "x_pt": 126.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "よ",
+        "x_pt": 137.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "う",
+        "x_pt": 147.75,
+        "y_pt": 465.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "に",
+        "x_pt": 172.5,
+        "y_pt": 465.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "、",
+        "x_pt": 168.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "文",
+        "x_pt": 179.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "中",
+        "x_pt": 189.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "に",
+        "x_pt": 200.25,
+        "y_pt": 465.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 12,
+        "text": "数",
+        "x_pt": 225.75,
+        "y_pt": 465.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 13,
+        "text": "式",
+        "x_pt": 222.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "が",
+        "x_pt": 232.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "入",
+        "x_pt": 243.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "る",
+        "x_pt": 253.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "時",
+        "x_pt": 264.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "、",
+        "x_pt": 274.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "行",
+        "x_pt": 285.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "間",
+        "x_pt": 295.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "は",
+        "x_pt": 306.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "そ",
+        "x_pt": 316.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "の",
+        "x_pt": 327.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "ま",
+        "x_pt": 337.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "ま",
+        "x_pt": 348.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "で",
+        "x_pt": 358.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "あ",
+        "x_pt": 369.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "る",
+        "x_pt": 379.5,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "。",
+        "x_pt": 390.0,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "自",
+        "x_pt": 400.5,
+        "y_pt": 465.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 31,
+        "text": "動",
+        "x_pt": 411.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "的",
+        "x_pt": 422.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "に",
+        "x_pt": 432.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "積",
+        "x_pt": 443.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 35,
+        "text": "分",
+        "x_pt": 453.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 36,
+        "text": "な",
+        "x_pt": 464.25,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "ど",
+        "x_pt": 474.75,
+        "y_pt": 465.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 38,
+        "text": "の",
+        "x_pt": 485.25,
+        "y_pt": 465.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 38
+  },
+  {
+    "index": 19,
+    "paragraph_index": 16,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "記号は小さくなる。",
+    "numbering_text": null,
+    "text_with_numbering": "記号は小さくなる。",
+    "x_pt": 84.75,
+    "y_pt": 483.0,
+    "width_pt": 84.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 39,
+        "text": "記",
+        "x_pt": 84.75,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "号",
+        "x_pt": 95.25,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "は",
+        "x_pt": 105.75,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 42,
+        "text": "小",
+        "x_pt": 116.25,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "さ",
+        "x_pt": 126.75,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "く",
+        "x_pt": 137.25,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "な",
+        "x_pt": 147.75,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "る",
+        "x_pt": 158.25,
+        "y_pt": 483.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "。",
+        "x_pt": 168.75,
+        "y_pt": 483.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 39,
+    "char_end": 47
+  },
+  {
+    "index": 20,
+    "paragraph_index": 17,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・一行に数式のみ配置するときは、次のように、行間が広くなる。",
+    "numbering_text": null,
+    "text_with_numbering": "・一行に数式のみ配置するときは、次のように、行間が広くなる。",
+    "x_pt": 84.75,
+    "y_pt": 501.0,
+    "width_pt": 304.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "一",
+        "x_pt": 95.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "行",
+        "x_pt": 105.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "に",
+        "x_pt": 116.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "数",
+        "x_pt": 126.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "式",
+        "x_pt": 137.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "の",
+        "x_pt": 147.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "み",
+        "x_pt": 158.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "配",
+        "x_pt": 168.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "置",
+        "x_pt": 179.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "す",
+        "x_pt": 189.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "る",
+        "x_pt": 200.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "と",
+        "x_pt": 210.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "き",
+        "x_pt": 221.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 14,
+        "text": "は",
+        "x_pt": 231.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "、",
+        "x_pt": 242.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "次",
+        "x_pt": 252.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 17,
+        "text": "の",
+        "x_pt": 263.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "よ",
+        "x_pt": 273.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "う",
+        "x_pt": 284.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "に",
+        "x_pt": 294.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "、",
+        "x_pt": 305.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "行",
+        "x_pt": 315.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "間",
+        "x_pt": 326.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "が",
+        "x_pt": 336.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "広",
+        "x_pt": 347.25,
+        "y_pt": 501.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 26,
+        "text": "く",
+        "x_pt": 372.0,
+        "y_pt": 501.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "な",
+        "x_pt": 368.25,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "る",
+        "x_pt": 378.75,
+        "y_pt": 501.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "。",
+        "x_pt": 389.25,
+        "y_pt": 501.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 29
+  },
+  {
+    "index": 21,
+    "paragraph_index": 18,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "numbering_text": null,
+    "text_with_numbering": "𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "x_pt": 84.75,
+    "y_pt": 520.5,
+    "width_pt": 115.5,
+    "font": {
+      "name": "Cambria Math",
+      "name_ascii": "Cambria Math",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": -1,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "𝑃",
+        "x_pt": 84.75,
+        "y_pt": 520.5,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 2,
+        "text": "𝑎",
+        "x_pt": 96.0,
+        "y_pt": 520.5,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 3,
+        "text": "≤",
+        "x_pt": 102.0,
+        "y_pt": 520.5,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 4,
+        "text": "𝑋",
+        "x_pt": 115.5,
+        "y_pt": 520.5,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 5,
+        "text": "≤",
+        "x_pt": 122.25,
+        "y_pt": 520.5,
+        "advance_pt": 14.25
+      },
+      {
+        "char_index": 6,
+        "text": "𝑏",
+        "x_pt": 136.5,
+        "y_pt": 520.5,
+        "advance_pt": 12.0
+      },
+      {
+        "char_index": 8,
+        "text": "=",
+        "x_pt": 148.5,
+        "y_pt": 520.5,
+        "advance_pt": 16.5
+      },
+      {
+        "char_index": 10,
+        "text": "𝑎",
+        "x_pt": 165.0,
+        "y_pt": 520.5,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 12,
+        "text": "𝑏",
+        "x_pt": 168.75,
+        "y_pt": 520.5,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 14,
+        "text": "𝑓",
+        "x_pt": 173.25,
+        "y_pt": 520.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "𝑥",
+        "x_pt": 183.75,
+        "y_pt": 520.5,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 18,
+        "text": "𝑑",
+        "x_pt": 194.25,
+        "y_pt": 520.5,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 19,
+        "text": "𝑥",
+        "x_pt": 200.25,
+        "y_pt": 520.5,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 19
+  },
+  {
+    "index": 22,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・任意の位置に配置するときは、あらかじめ数式を作",
+    "numbering_text": null,
+    "text_with_numbering": "・任意の位置に配置するときは、あらかじめ数式を作",
+    "x_pt": 84.75,
+    "y_pt": 555.0,
+    "width_pt": 244.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "任",
+        "x_pt": 95.25,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "意",
+        "x_pt": 105.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "の",
+        "x_pt": 116.25,
+        "y_pt": 555.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 4,
+        "text": "位",
+        "x_pt": 127.5,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "置",
+        "x_pt": 138.0,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "に",
+        "x_pt": 148.5,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 7,
+        "text": "配",
+        "x_pt": 159.0,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "置",
+        "x_pt": 169.5,
+        "y_pt": 555.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 9,
+        "text": "す",
+        "x_pt": 180.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "る",
+        "x_pt": 191.25,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "と",
+        "x_pt": 201.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 12,
+        "text": "き",
+        "x_pt": 212.25,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 13,
+        "text": "は",
+        "x_pt": 222.75,
+        "y_pt": 555.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 14,
+        "text": "、",
+        "x_pt": 234.0,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 15,
+        "text": "あ",
+        "x_pt": 244.5,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 16,
+        "text": "ら",
+        "x_pt": 255.0,
+        "y_pt": 555.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "か",
+        "x_pt": 279.75,
+        "y_pt": 555.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "じ",
+        "x_pt": 276.0,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 19,
+        "text": "め",
+        "x_pt": 286.5,
+        "y_pt": 555.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 20,
+        "text": "数",
+        "x_pt": 297.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "式",
+        "x_pt": 308.25,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "を",
+        "x_pt": 318.75,
+        "y_pt": 555.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "作",
+        "x_pt": 329.25,
+        "y_pt": 555.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 23
+  },
+  {
+    "index": 23,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "成しておき、「挿入」タブ－「テキストボックス」を",
+    "numbering_text": null,
+    "text_with_numbering": "成しておき、「挿入」タブ－「テキストボックス」を",
+    "x_pt": 84.75,
+    "y_pt": 573.0,
+    "width_pt": 234.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 24,
+        "text": "成",
+        "x_pt": 84.75,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "し",
+        "x_pt": 95.25,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "て",
+        "x_pt": 105.75,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "お",
+        "x_pt": 116.25,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "き",
+        "x_pt": 126.75,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "、",
+        "x_pt": 137.25,
+        "y_pt": 573.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 30,
+        "text": "「",
+        "x_pt": 142.5,
+        "y_pt": 573.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 31,
+        "text": "挿",
+        "x_pt": 152.25,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "入",
+        "x_pt": 162.75,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "」",
+        "x_pt": 173.25,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "タ",
+        "x_pt": 183.75,
+        "y_pt": 573.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "ブ",
+        "x_pt": 219.0,
+        "y_pt": 573.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "－",
+        "x_pt": 204.75,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "「",
+        "x_pt": 215.25,
+        "y_pt": 573.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 38,
+        "text": "テ",
+        "x_pt": 225.0,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "キ",
+        "x_pt": 235.5,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "ス",
+        "x_pt": 246.0,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "ト",
+        "x_pt": 256.5,
+        "y_pt": 573.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 42,
+        "text": "ボ",
+        "x_pt": 291.75,
+        "y_pt": 573.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 43,
+        "text": "ッ",
+        "x_pt": 277.5,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "ク",
+        "x_pt": 288.0,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 45,
+        "text": "ス",
+        "x_pt": 298.5,
+        "y_pt": 573.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "」",
+        "x_pt": 309.0,
+        "y_pt": 573.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 47,
+        "text": "を",
+        "x_pt": 318.75,
+        "y_pt": 573.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 24,
+    "char_end": 47
+  },
+  {
+    "index": 24,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 2,
+    "page": 1,
+    "text": "開いて、そこにコピー＆ペーストする。テキストボ",
+    "numbering_text": null,
+    "text_with_numbering": "開いて、そこにコピー＆ペーストする。テキストボ",
+    "x_pt": 84.75,
+    "y_pt": 591.0,
+    "width_pt": 234.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 48,
+        "text": "開",
+        "x_pt": 84.75,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 49,
+        "text": "い",
+        "x_pt": 95.25,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 50,
+        "text": "て",
+        "x_pt": 105.75,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 51,
+        "text": "、",
+        "x_pt": 116.25,
+        "y_pt": 591.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 52,
+        "text": "そ",
+        "x_pt": 127.5,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 53,
+        "text": "こ",
+        "x_pt": 138.0,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "に",
+        "x_pt": 148.5,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 55,
+        "text": "コ",
+        "x_pt": 159.0,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "ピ",
+        "x_pt": 169.5,
+        "y_pt": 591.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 57,
+        "text": "ー",
+        "x_pt": 180.75,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 58,
+        "text": "＆",
+        "x_pt": 191.25,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 59,
+        "text": "ペ",
+        "x_pt": 201.75,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 60,
+        "text": "ー",
+        "x_pt": 212.25,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 61,
+        "text": "ス",
+        "x_pt": 222.75,
+        "y_pt": 591.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 62,
+        "text": "ト",
+        "x_pt": 234.0,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 63,
+        "text": "す",
+        "x_pt": 244.5,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 64,
+        "text": "る",
+        "x_pt": 255.0,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "。",
+        "x_pt": 265.5,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "テ",
+        "x_pt": 276.0,
+        "y_pt": 591.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 67,
+        "text": "キ",
+        "x_pt": 287.25,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "ス",
+        "x_pt": 297.75,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 69,
+        "text": "ト",
+        "x_pt": 308.25,
+        "y_pt": 591.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 70,
+        "text": "ボ",
+        "x_pt": 318.75,
+        "y_pt": 591.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 48,
+    "char_end": 70
+  },
+  {
+    "index": 25,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 3,
+    "page": 1,
+    "text": "ックスの囲み線は、右クリック‐「オブジェクトの",
+    "numbering_text": null,
+    "text_with_numbering": "ックスの囲み線は、右クリック‐「オブジェクトの",
+    "x_pt": 84.75,
+    "y_pt": 609.0,
+    "width_pt": 234.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 71,
+        "text": "ッ",
+        "x_pt": 84.75,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 72,
+        "text": "ク",
+        "x_pt": 95.25,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 73,
+        "text": "ス",
+        "x_pt": 105.75,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 74,
+        "text": "の",
+        "x_pt": 116.25,
+        "y_pt": 609.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 75,
+        "text": "囲",
+        "x_pt": 127.5,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 76,
+        "text": "み",
+        "x_pt": 138.0,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 77,
+        "text": "線",
+        "x_pt": 148.5,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 78,
+        "text": "は",
+        "x_pt": 159.0,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 79,
+        "text": "、",
+        "x_pt": 169.5,
+        "y_pt": 609.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 80,
+        "text": "右",
+        "x_pt": 180.75,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 81,
+        "text": "ク",
+        "x_pt": 191.25,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 82,
+        "text": "リ",
+        "x_pt": 201.75,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 83,
+        "text": "ッ",
+        "x_pt": 212.25,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 84,
+        "text": "ク",
+        "x_pt": 222.75,
+        "y_pt": 609.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 85,
+        "text": "‐",
+        "x_pt": 234.0,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 86,
+        "text": "「",
+        "x_pt": 244.5,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 87,
+        "text": "オ",
+        "x_pt": 255.0,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 88,
+        "text": "ブ",
+        "x_pt": 265.5,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 89,
+        "text": "ジ",
+        "x_pt": 276.0,
+        "y_pt": 609.0,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 90,
+        "text": "ェ",
+        "x_pt": 287.25,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 91,
+        "text": "ク",
+        "x_pt": 297.75,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 92,
+        "text": "ト",
+        "x_pt": 308.25,
+        "y_pt": 609.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 93,
+        "text": "の",
+        "x_pt": 318.75,
+        "y_pt": 609.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 71,
+    "char_end": 93
+  },
+  {
+    "index": 26,
+    "paragraph_index": 19,
+    "line_index_in_paragraph": 4,
+    "page": 1,
+    "text": "書式設定」－「色と線」で、線を「色なし」にする。",
+    "numbering_text": null,
+    "text_with_numbering": "書式設定」－「色と線」で、線を「色なし」にする。",
+    "x_pt": 84.75,
+    "y_pt": 627.0,
+    "width_pt": 237.75,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 94,
+        "text": "書",
+        "x_pt": 84.75,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 95,
+        "text": "式",
+        "x_pt": 95.25,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 96,
+        "text": "設",
+        "x_pt": 105.75,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 97,
+        "text": "定",
+        "x_pt": 116.25,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 98,
+        "text": "」",
+        "x_pt": 126.75,
+        "y_pt": 627.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 99,
+        "text": "－",
+        "x_pt": 135.75,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 100,
+        "text": "「",
+        "x_pt": 146.25,
+        "y_pt": 627.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 101,
+        "text": "色",
+        "x_pt": 156.0,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 102,
+        "text": "と",
+        "x_pt": 166.5,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 103,
+        "text": "線",
+        "x_pt": 201.75,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 104,
+        "text": "」",
+        "x_pt": 187.5,
+        "y_pt": 627.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 105,
+        "text": "で",
+        "x_pt": 196.5,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 106,
+        "text": "、",
+        "x_pt": 207.0,
+        "y_pt": 627.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 107,
+        "text": "線",
+        "x_pt": 216.0,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 108,
+        "text": "を",
+        "x_pt": 226.5,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 109,
+        "text": "「",
+        "x_pt": 237.0,
+        "y_pt": 627.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 110,
+        "text": "色",
+        "x_pt": 246.75,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 111,
+        "text": "な",
+        "x_pt": 282.0,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 112,
+        "text": "し",
+        "x_pt": 267.75,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 113,
+        "text": "」",
+        "x_pt": 278.25,
+        "y_pt": 627.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 114,
+        "text": "に",
+        "x_pt": 287.25,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 115,
+        "text": "す",
+        "x_pt": 322.5,
+        "y_pt": 627.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 116,
+        "text": "る",
+        "x_pt": 308.25,
+        "y_pt": 627.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 117,
+        "text": "。",
+        "x_pt": 318.75,
+        "y_pt": 627.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 94,
+    "char_end": 117
+  },
+  {
+    "index": 27,
+    "paragraph_index": 20,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・数式のフォントサイズは10.5ptが基本であるが、サイズを変えたいときは、数式を選",
+    "numbering_text": null,
+    "text_with_numbering": "・数式のフォントサイズは10.5ptが基本であるが、サイズを変えたいときは、数式を選",
+    "x_pt": 84.75,
+    "y_pt": 645.0,
+    "width_pt": 400.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 645.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 1,
+        "text": "数",
+        "x_pt": 94.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "式",
+        "x_pt": 105.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "の",
+        "x_pt": 115.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "フ",
+        "x_pt": 126.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 5,
+        "text": "ォ",
+        "x_pt": 136.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 6,
+        "text": "ン",
+        "x_pt": 147.0,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 7,
+        "text": "ト",
+        "x_pt": 171.75,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 8,
+        "text": "サ",
+        "x_pt": 168.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 9,
+        "text": "イ",
+        "x_pt": 178.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 10,
+        "text": "ズ",
+        "x_pt": 189.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 11,
+        "text": "は",
+        "x_pt": 199.5,
+        "y_pt": 645.0,
+        "advance_pt": 12.75
+      },
+      {
+        "char_index": 12,
+        "text": "1",
+        "x_pt": 212.25,
+        "y_pt": 645.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 13,
+        "text": "0",
+        "x_pt": 218.25,
+        "y_pt": 645.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 14,
+        "text": ".",
+        "x_pt": 224.25,
+        "y_pt": 645.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 15,
+        "text": "5",
+        "x_pt": 227.25,
+        "y_pt": 645.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 16,
+        "text": "p",
+        "x_pt": 232.5,
+        "y_pt": 645.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 17,
+        "text": "t",
+        "x_pt": 238.5,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 18,
+        "text": "が",
+        "x_pt": 259.5,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 19,
+        "text": "基",
+        "x_pt": 255.75,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 20,
+        "text": "本",
+        "x_pt": 266.25,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "で",
+        "x_pt": 276.75,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "あ",
+        "x_pt": 287.25,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "る",
+        "x_pt": 297.75,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "が",
+        "x_pt": 308.25,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "、",
+        "x_pt": 318.75,
+        "y_pt": 645.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 26,
+        "text": "サ",
+        "x_pt": 328.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 27,
+        "text": "イ",
+        "x_pt": 339.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 28,
+        "text": "ズ",
+        "x_pt": 349.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "を",
+        "x_pt": 360.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "変",
+        "x_pt": 370.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "え",
+        "x_pt": 381.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "た",
+        "x_pt": 391.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "い",
+        "x_pt": 402.0,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 34,
+        "text": "と",
+        "x_pt": 412.5,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 35,
+        "text": "き",
+        "x_pt": 437.25,
+        "y_pt": 645.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 36,
+        "text": "は",
+        "x_pt": 433.5,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 37,
+        "text": "、",
+        "x_pt": 444.0,
+        "y_pt": 645.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 38,
+        "text": "数",
+        "x_pt": 453.75,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 39,
+        "text": "式",
+        "x_pt": 464.25,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 40,
+        "text": "を",
+        "x_pt": 474.75,
+        "y_pt": 645.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 41,
+        "text": "選",
+        "x_pt": 485.25,
+        "y_pt": 645.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 41
+  },
+  {
+    "index": 28,
+    "paragraph_index": 20,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "択後、ホームタブのフォントサイズを変更する。下の数式は8ptに変更した場合の例。",
+    "numbering_text": null,
+    "text_with_numbering": "択後、ホームタブのフォントサイズを変更する。下の数式は8ptに変更した場合の例。",
+    "x_pt": 84.75,
+    "y_pt": 663.0,
+    "width_pt": 390.0,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 42,
+        "text": "択",
+        "x_pt": 84.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 43,
+        "text": "後",
+        "x_pt": 95.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 44,
+        "text": "、",
+        "x_pt": 105.75,
+        "y_pt": 663.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 45,
+        "text": "ホ",
+        "x_pt": 111.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 46,
+        "text": "ー",
+        "x_pt": 122.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 47,
+        "text": "ム",
+        "x_pt": 132.75,
+        "y_pt": 663.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 48,
+        "text": "タ",
+        "x_pt": 168.0,
+        "y_pt": 663.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 49,
+        "text": "ブ",
+        "x_pt": 153.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 50,
+        "text": "の",
+        "x_pt": 164.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 51,
+        "text": "フ",
+        "x_pt": 174.75,
+        "y_pt": 663.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 52,
+        "text": "ォ",
+        "x_pt": 210.0,
+        "y_pt": 663.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 53,
+        "text": "ン",
+        "x_pt": 195.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "ト",
+        "x_pt": 206.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 55,
+        "text": "サ",
+        "x_pt": 216.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 56,
+        "text": "イ",
+        "x_pt": 227.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 57,
+        "text": "ズ",
+        "x_pt": 237.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 58,
+        "text": "を",
+        "x_pt": 248.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 59,
+        "text": "変",
+        "x_pt": 258.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 60,
+        "text": "更",
+        "x_pt": 269.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 61,
+        "text": "す",
+        "x_pt": 279.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 62,
+        "text": "る",
+        "x_pt": 290.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 63,
+        "text": "。",
+        "x_pt": 300.75,
+        "y_pt": 663.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 64,
+        "text": "下",
+        "x_pt": 306.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 65,
+        "text": "の",
+        "x_pt": 317.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 66,
+        "text": "数",
+        "x_pt": 327.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 67,
+        "text": "式",
+        "x_pt": 338.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 68,
+        "text": "は",
+        "x_pt": 348.75,
+        "y_pt": 663.0,
+        "advance_pt": 12.75
+      },
+      {
+        "char_index": 69,
+        "text": "8",
+        "x_pt": 361.5,
+        "y_pt": 663.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 70,
+        "text": "p",
+        "x_pt": 367.5,
+        "y_pt": 663.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 71,
+        "text": "t",
+        "x_pt": 373.5,
+        "y_pt": 663.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 72,
+        "text": "に",
+        "x_pt": 380.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 73,
+        "text": "変",
+        "x_pt": 390.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 74,
+        "text": "更",
+        "x_pt": 401.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 75,
+        "text": "し",
+        "x_pt": 411.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 76,
+        "text": "た",
+        "x_pt": 422.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 77,
+        "text": "場",
+        "x_pt": 432.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 78,
+        "text": "合",
+        "x_pt": 443.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 79,
+        "text": "の",
+        "x_pt": 453.75,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 80,
+        "text": "例",
+        "x_pt": 464.25,
+        "y_pt": 663.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 81,
+        "text": "。",
+        "x_pt": 474.75,
+        "y_pt": 663.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 42,
+    "char_end": 81
+  },
+  {
+    "index": 29,
+    "paragraph_index": 21,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "numbering_text": null,
+    "text_with_numbering": "𝑃𝑎≤𝑋≤𝑏=𝑎𝑏𝑓𝑥𝑑𝑥",
+    "x_pt": 84.75,
+    "y_pt": 686.25,
+    "width_pt": 87.75,
+    "font": {
+      "name": "Cambria Math",
+      "name_ascii": "Cambria Math",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 8.0,
+      "bold": 0,
+      "italic": -1,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "𝑃",
+        "x_pt": 84.75,
+        "y_pt": 686.25,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 2,
+        "text": "𝑎",
+        "x_pt": 93.0,
+        "y_pt": 686.25,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 3,
+        "text": "≤",
+        "x_pt": 97.5,
+        "y_pt": 686.25,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "𝑋",
+        "x_pt": 108.0,
+        "y_pt": 686.25,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 5,
+        "text": "≤",
+        "x_pt": 113.25,
+        "y_pt": 686.25,
+        "advance_pt": 11.25
+      },
+      {
+        "char_index": 6,
+        "text": "𝑏",
+        "x_pt": 124.5,
+        "y_pt": 686.25,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 8,
+        "text": "=",
+        "x_pt": 132.75,
+        "y_pt": 686.25,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 10,
+        "text": "𝑎",
+        "x_pt": 146.25,
+        "y_pt": 686.25,
+        "advance_pt": 2.25
+      },
+      {
+        "char_index": 12,
+        "text": "𝑏",
+        "x_pt": 148.5,
+        "y_pt": 686.25,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 14,
+        "text": "𝑓",
+        "x_pt": 152.25,
+        "y_pt": 686.25,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 16,
+        "text": "𝑥",
+        "x_pt": 160.5,
+        "y_pt": 686.25,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 18,
+        "text": "𝑑",
+        "x_pt": 168.0,
+        "y_pt": 686.25,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 19,
+        "text": "𝑥",
+        "x_pt": 172.5,
+        "y_pt": 686.25,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 19
+  },
+  {
+    "index": 30,
+    "paragraph_index": 22,
+    "line_index_in_paragraph": 0,
+    "page": 1,
+    "text": "・フォントは、「Cambria Math」の斜体が基本。ドラッグしてTimesNewRomanへの",
+    "numbering_text": null,
+    "text_with_numbering": "・フォントは、「Cambria Math」の斜体が基本。ドラッグしてTimesNewRomanへの",
+    "x_pt": 84.75,
+    "y_pt": 717.0,
+    "width_pt": 400.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 0,
+        "text": "・",
+        "x_pt": 84.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 1,
+        "text": "フ",
+        "x_pt": 95.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 2,
+        "text": "ォ",
+        "x_pt": 105.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 3,
+        "text": "ン",
+        "x_pt": 116.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 4,
+        "text": "ト",
+        "x_pt": 126.75,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 5,
+        "text": "は",
+        "x_pt": 151.5,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 6,
+        "text": "、",
+        "x_pt": 147.75,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 7,
+        "text": "「",
+        "x_pt": 153.0,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 8,
+        "text": "C",
+        "x_pt": 163.5,
+        "y_pt": 717.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 9,
+        "text": "a",
+        "x_pt": 171.0,
+        "y_pt": 717.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 10,
+        "text": "m",
+        "x_pt": 177.0,
+        "y_pt": 717.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 11,
+        "text": "b",
+        "x_pt": 186.0,
+        "y_pt": 717.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 12,
+        "text": "r",
+        "x_pt": 192.0,
+        "y_pt": 717.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 13,
+        "text": "i",
+        "x_pt": 196.5,
+        "y_pt": 717.0,
+        "advance_pt": 3.75
+      },
+      {
+        "char_index": 14,
+        "text": "a",
+        "x_pt": 200.25,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 15,
+        "text": " ",
+        "x_pt": 205.5,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 16,
+        "text": "M",
+        "x_pt": 224.25,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 17,
+        "text": "a",
+        "x_pt": 220.5,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 18,
+        "text": "t",
+        "x_pt": 225.75,
+        "y_pt": 717.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 19,
+        "text": "h",
+        "x_pt": 230.25,
+        "y_pt": 717.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 20,
+        "text": "」",
+        "x_pt": 236.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 21,
+        "text": "の",
+        "x_pt": 246.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 22,
+        "text": "斜",
+        "x_pt": 257.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 23,
+        "text": "体",
+        "x_pt": 267.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 24,
+        "text": "が",
+        "x_pt": 278.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 25,
+        "text": "基",
+        "x_pt": 288.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 26,
+        "text": "本",
+        "x_pt": 299.25,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 27,
+        "text": "。",
+        "x_pt": 324.0,
+        "y_pt": 717.0,
+        "advance_pt": null
+      },
+      {
+        "char_index": 28,
+        "text": "ド",
+        "x_pt": 320.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 29,
+        "text": "ラ",
+        "x_pt": 330.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 30,
+        "text": "ッ",
+        "x_pt": 341.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 31,
+        "text": "グ",
+        "x_pt": 351.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 32,
+        "text": "し",
+        "x_pt": 362.25,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 33,
+        "text": "て",
+        "x_pt": 372.75,
+        "y_pt": 717.0,
+        "advance_pt": 13.5
+      },
+      {
+        "char_index": 34,
+        "text": "T",
+        "x_pt": 386.25,
+        "y_pt": 717.0,
+        "advance_pt": 6.75
+      },
+      {
+        "char_index": 35,
+        "text": "i",
+        "x_pt": 393.0,
+        "y_pt": 717.0,
+        "advance_pt": 3.0
+      },
+      {
+        "char_index": 36,
+        "text": "m",
+        "x_pt": 396.0,
+        "y_pt": 717.0,
+        "advance_pt": 9.75
+      },
+      {
+        "char_index": 37,
+        "text": "e",
+        "x_pt": 405.75,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 38,
+        "text": "s",
+        "x_pt": 411.0,
+        "y_pt": 717.0,
+        "advance_pt": 4.5
+      },
+      {
+        "char_index": 39,
+        "text": "N",
+        "x_pt": 415.5,
+        "y_pt": 717.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 40,
+        "text": "e",
+        "x_pt": 424.5,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 41,
+        "text": "w",
+        "x_pt": 429.75,
+        "y_pt": 717.0,
+        "advance_pt": 8.25
+      },
+      {
+        "char_index": 42,
+        "text": "R",
+        "x_pt": 438.0,
+        "y_pt": 717.0,
+        "advance_pt": 7.5
+      },
+      {
+        "char_index": 43,
+        "text": "o",
+        "x_pt": 445.5,
+        "y_pt": 717.0,
+        "advance_pt": 5.25
+      },
+      {
+        "char_index": 44,
+        "text": "m",
+        "x_pt": 450.75,
+        "y_pt": 717.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 45,
+        "text": "a",
+        "x_pt": 459.75,
+        "y_pt": 717.0,
+        "advance_pt": 6.0
+      },
+      {
+        "char_index": 46,
+        "text": "n",
+        "x_pt": 465.75,
+        "y_pt": 717.0,
+        "advance_pt": 9.0
+      },
+      {
+        "char_index": 47,
+        "text": "へ",
+        "x_pt": 474.75,
+        "y_pt": 717.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 48,
+        "text": "の",
+        "x_pt": 485.25,
+        "y_pt": 717.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 0,
+    "char_end": 48
+  },
+  {
+    "index": 31,
+    "paragraph_index": 22,
+    "line_index_in_paragraph": 1,
+    "page": 1,
+    "text": "変更も可能。",
+    "numbering_text": null,
+    "text_with_numbering": "変更も可能。",
+    "x_pt": 84.75,
+    "y_pt": 735.0,
+    "width_pt": 52.5,
+    "font": {
+      "name": "ＭＳ 明朝",
+      "name_ascii": "+本文のフォント",
+      "name_far_east": "+本文のフォント - 日本語",
+      "name_bi": "+本文のフォント - コンプレックス スクリプト",
+      "size_pt": 10.5,
+      "bold": 0,
+      "italic": 0,
+      "subscript": 0,
+      "superscript": 0
+    },
+    "characters": [
+      {
+        "char_index": 49,
+        "text": "変",
+        "x_pt": 84.75,
+        "y_pt": 735.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 50,
+        "text": "更",
+        "x_pt": 95.25,
+        "y_pt": 735.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 51,
+        "text": "も",
+        "x_pt": 105.75,
+        "y_pt": 735.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 52,
+        "text": "可",
+        "x_pt": 116.25,
+        "y_pt": 735.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 53,
+        "text": "能",
+        "x_pt": 126.75,
+        "y_pt": 735.0,
+        "advance_pt": 10.5
+      },
+      {
+        "char_index": 54,
+        "text": "。",
+        "x_pt": 137.25,
+        "y_pt": 735.0,
+        "advance_pt": null
+      }
+    ],
+    "char_start": 49,
+    "char_end": 54
+  }
+]
