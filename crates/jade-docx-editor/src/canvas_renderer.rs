@@ -15843,6 +15843,7 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
             if let Some(alignment) = &props.alignment {
@@ -15877,6 +15878,7 @@ where
                         self.current_doc_grid.as_ref(),
                         indent_snap_to_grid,
                     );
+                indent_char_unit_pt = char_unit_pt;
                 apply_paragraph_indent_with_char_unit(
                     &mut x,
                     &mut paragraph_style,
@@ -16130,28 +16132,20 @@ where
                             }
                         }
 
-                        if props.indent.as_ref().and_then(|i| i.left).is_none() {
-                            if let Some(level_indent) =
-                                level_info.as_ref().and_then(|info| info.indent.as_ref())
-                            {
-                                if let Some(left) = level_indent.left {
-                                    x += points_to_px(left);
-                                }
-                            }
-                        }
-
-                        let mut number_x = x;
-                        let hanging_source =
-                            props.indent.as_ref().and_then(|i| i.hanging).or_else(|| {
-                                level_info
-                                    .as_ref()
-                                    .and_then(|info| info.indent.as_ref())
-                                    .and_then(|indent| indent.hanging)
-                            });
-
-                        if let Some(hanging) = hanging_source {
-                            number_x -= points_to_px(hanging);
-                        }
+                        let level_indent =
+                            level_info.as_ref().and_then(|info| info.indent.as_ref());
+                        let origin = jade_docx_layout::line_wrap::numbered_paragraph_origin(
+                            x,
+                            paragraph_style.first_line_indent,
+                            props.indent.as_ref(),
+                            level_indent.and_then(|indent| indent.left),
+                            level_indent.and_then(|indent| indent.hanging),
+                            paragraph_style.bidi,
+                            indent_char_unit_pt,
+                        );
+                        x = origin.x;
+                        let number_x = origin.number_x;
+                        let body_start = origin.body_start;
 
                         if render_deleted_number {
                             if let Some(number_text) = old_number_text.as_ref() {
@@ -16162,9 +16156,9 @@ where
                                     numbering_context,
                                 )?;
                                 let desired_start = number_x + number_width + 8.0;
-                                if desired_start > x {
+                                if desired_start > body_start {
                                     numbering_first_line_offset =
-                                        numbering_first_line_offset.max(desired_start - x);
+                                        numbering_first_line_offset.max(desired_start - body_start);
                                 }
                                 pending_numbering = Some(PendingNumberingRender {
                                     paragraph_index,
@@ -16232,7 +16226,7 @@ where
 
                             numbering_first_line_offset =
                                 jade_docx_layout::line_wrap::numbering_first_line_offset(
-                                    x,
+                                    body_start,
                                     number_x + numbering_span_width,
                                     numbering_first_line_offset,
                                     level_info.as_ref().and_then(|info| info.suffix.as_deref()),
@@ -23965,22 +23959,17 @@ where
             let level_info =
                 numbering_part.and_then(|part| part.get_level_info(num_id, level).cloned());
             if let (Some(numbering_part), Some(level_info)) = (numbering_part, level_info) {
-                if props
-                    .indent
-                    .as_ref()
-                    .and_then(|indent| indent.left)
-                    .is_none()
-                {
-                    if let Some(left) = level_info.indent.as_ref().and_then(|indent| indent.left) {
-                        x += points_to_px(left);
-                    }
-                }
-                let hanging = props
-                    .indent
-                    .as_ref()
-                    .and_then(|indent| indent.hanging)
-                    .or_else(|| level_info.indent.as_ref().and_then(|indent| indent.hanging));
-                let number_x = x - hanging.map(points_to_px).unwrap_or(0.0);
+                let origin = jade_docx_layout::line_wrap::numbered_paragraph_origin(
+                    x,
+                    format.style.first_line_indent,
+                    props.indent.as_ref(),
+                    level_info.indent.as_ref().and_then(|indent| indent.left),
+                    level_info.indent.as_ref().and_then(|indent| indent.hanging),
+                    format.style.bidi,
+                    jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT,
+                );
+                x = origin.x;
+                let number_x = origin.number_x;
                 let abstract_num_id = numbering_part.abstract_num_id(num_id).unwrap_or_default();
                 numbering_counter.initialize_ancestor_levels(Some(numbering_part), num_id, level);
                 numbering_counter.increment(
@@ -24013,7 +24002,7 @@ where
                 )?;
                 format.style.first_line_indent +=
                     jade_docx_layout::line_wrap::numbering_first_line_offset(
-                        x,
+                        origin.body_start,
                         number_x + marker_width,
                         0.0,
                         level_info.suffix.as_deref(),

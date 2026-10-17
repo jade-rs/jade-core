@@ -1140,6 +1140,10 @@ impl StylesPart {
                             .get_or_insert_with(ParagraphProperties::default);
                         props.snap_to_grid = Some(parse_on_off_attr(element, b"w:val"));
                     }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
+                        props.snap_to_grid = Some(parse_on_off_attr(element, b"w:val"));
+                    }
                 }
             }
             b"w:widowControl" => {
@@ -1148,6 +1152,10 @@ impl StylesPart {
                         let props = style
                             .paragraph_properties
                             .get_or_insert_with(ParagraphProperties::default);
+                        props.widow_control = Some(parse_on_off_attr(element, b"w:val"));
+                    }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                         props.widow_control = Some(parse_on_off_attr(element, b"w:val"));
                     }
                 }
@@ -1160,6 +1168,10 @@ impl StylesPart {
                             .get_or_insert_with(ParagraphProperties::default);
                         props.suppress_auto_hyphens = Some(parse_on_off_attr(element, b"w:val"));
                     }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
+                        props.suppress_auto_hyphens = Some(parse_on_off_attr(element, b"w:val"));
+                    }
                 }
             }
             b"w:contextualSpacing" => {
@@ -1168,6 +1180,10 @@ impl StylesPart {
                         let props = style
                             .paragraph_properties
                             .get_or_insert_with(ParagraphProperties::default);
+                        props.contextual_spacing = Some(parse_on_off_attr(element, b"w:val"));
+                    }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                         props.contextual_spacing = Some(parse_on_off_attr(element, b"w:val"));
                     }
                 }
@@ -1211,6 +1227,10 @@ impl StylesPart {
                             .get_or_insert_with(ParagraphProperties::default);
                         props.page_break_before = Some(parse_on_off_attr(element, b"w:val"));
                     }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
+                        props.page_break_before = Some(parse_on_off_attr(element, b"w:val"));
+                    }
                 }
             }
             b"w:suppressLineNumbers" => {
@@ -1219,6 +1239,10 @@ impl StylesPart {
                         let props = style
                             .paragraph_properties
                             .get_or_insert_with(ParagraphProperties::default);
+                        props.suppress_line_numbers = Some(parse_on_off_attr(element, b"w:val"));
+                    }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                         props.suppress_line_numbers = Some(parse_on_off_attr(element, b"w:val"));
                     }
                 }
@@ -1231,6 +1255,10 @@ impl StylesPart {
                             .get_or_insert_with(ParagraphProperties::default);
                         props.keep_lines = Some(parse_on_off_attr(element, b"w:val"));
                     }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
+                        props.keep_lines = Some(parse_on_off_attr(element, b"w:val"));
+                    }
                 }
             }
             b"w:keepNext" => {
@@ -1239,6 +1267,10 @@ impl StylesPart {
                         let props = style
                             .paragraph_properties
                             .get_or_insert_with(ParagraphProperties::default);
+                        props.keep_next = Some(parse_on_off_attr(element, b"w:val"));
+                    }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                         props.keep_next = Some(parse_on_off_attr(element, b"w:val"));
                     }
                 }
@@ -2698,6 +2730,43 @@ mod tests {
         assert_eq!(indent.physical_right(true), Some(36.0));
         assert_eq!(indent.physical_left_chars(false), Some(200));
         assert_eq!(indent.physical_right_chars(true), Some(200));
+    }
+
+    #[test]
+    fn parses_doc_default_paragraph_on_off_properties() {
+        // Word for Mac 16.114 leaves a single line of a paragraph at a page
+        // top when `w:pPrDefault` turns widow control off, so these defaults
+        // must reach the cascade like any style's.
+        let xml = r#"
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:pPrDefault>
+      <w:pPr>
+        <w:widowControl w:val="0"/>
+        <w:keepNext/>
+        <w:keepLines/>
+        <w:pageBreakBefore w:val="0"/>
+        <w:snapToGrid w:val="0"/>
+        <w:suppressAutoHyphens/>
+        <w:suppressLineNumbers/>
+        <w:contextualSpacing/>
+      </w:pPr>
+    </w:pPrDefault>
+  </w:docDefaults>
+</w:styles>
+"#;
+        let part = StylesPart::from_xml(xml).expect("parse styles");
+        let defaults = part
+            .doc_default_paragraph_properties()
+            .expect("pPrDefault parsed");
+        assert_eq!(defaults.widow_control, Some(false));
+        assert_eq!(defaults.keep_next, Some(true));
+        assert_eq!(defaults.keep_lines, Some(true));
+        assert_eq!(defaults.page_break_before, Some(false));
+        assert_eq!(defaults.snap_to_grid, Some(false));
+        assert_eq!(defaults.suppress_auto_hyphens, Some(true));
+        assert_eq!(defaults.suppress_line_numbers, Some(true));
+        assert_eq!(defaults.contextual_spacing, Some(true));
     }
 
     #[test]

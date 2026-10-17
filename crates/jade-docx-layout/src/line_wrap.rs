@@ -4826,6 +4826,16 @@ pub fn resolve_indent_left_pt(indent: &Indent, bidi: bool, char_unit_pt: f64) ->
     }
 }
 
+/// Whether the physical left indent is set in character units. Word for Mac
+/// 16.114 starts the first line of such a paragraph at that indent and hangs
+/// the continuation lines past it, rather than subtracting the hanging from
+/// the first line as it does for a point indent (`w:left` with `w:hanging`).
+pub fn left_indent_is_character_unit(indent: &Indent, bidi: bool) -> bool {
+    indent
+        .physical_left_chars(bidi)
+        .is_some_and(|chars| chars != 0)
+}
+
 /// Resolved physical right indent in points; same precedence rules.
 pub fn resolve_indent_right_pt(indent: &Indent, bidi: bool, char_unit_pt: f64) -> Option<f64> {
     match indent.physical_right_chars(bidi) {
@@ -4861,6 +4871,78 @@ pub fn resolve_indent_first_line_pt(
         }
     }
     indent.first_line.map(f64::from)
+}
+
+/// Where a numbered paragraph's marker and lines start.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NumberedParagraphOrigin {
+    /// The paragraph's left edge for continuation lines.
+    pub x: f64,
+    /// Where the number is drawn.
+    pub number_x: f64,
+    /// Where the first line would start without its marker: the base the
+    /// marker's extent is measured from (see [`numbering_first_line_offset`]).
+    pub body_start: f64,
+}
+
+/// Resolves a numbered paragraph's geometry the way Word for Mac 16.114 does
+/// (indent probe), given the numbering level's `w:ind` left and hanging in
+/// points: `x` is the paragraph left after
+/// [`apply_paragraph_indent_with_char_unit`] with `has_numbering`, and
+/// `first_line_indent_px` the first-line offset it set.
+///
+/// - Without a paragraph left indent (points or characters) the level's
+///   `w:left` applies.
+/// - The paragraph's own hanging (characters before points) wins; a
+///   paragraph first-line indent cancels the level's hanging; otherwise the
+///   level's hanging applies.
+/// - Under a character-unit left indent the first line stays at that indent
+///   and the continuation lines hang past it
+///   ([`left_indent_is_character_unit`]); under a point indent the hanging is
+///   taken from the first line.
+pub fn numbered_paragraph_origin(
+    x: f64,
+    first_line_indent_px: f64,
+    paragraph: Option<&Indent>,
+    level_left: Option<f32>,
+    level_hanging: Option<f32>,
+    bidi: bool,
+    char_unit_pt: f64,
+) -> NumberedParagraphOrigin {
+    let mut x = x;
+    let paragraph_left =
+        paragraph.and_then(|indent| resolve_indent_left_pt(indent, bidi, char_unit_pt));
+    if paragraph_left.is_none() {
+        if let Some(left) = level_left {
+            x += points_to_px(left);
+        }
+    }
+    let paragraph_hanging =
+        paragraph.and_then(
+            |indent| match indent.hanging_chars.filter(|chars| *chars != 0) {
+                Some(chars) => Some(char_unit_indent_pt(chars, char_unit_pt)),
+                None => indent.hanging.map(f64::from),
+            },
+        );
+    let paragraph_first_line = paragraph
+        .is_some_and(|indent| indent.first_line.is_some() || indent.first_line_chars.is_some());
+    let hanging_pt = paragraph_hanging.or_else(|| {
+        (!paragraph_first_line)
+            .then(|| level_hanging.map(f64::from))
+            .flatten()
+    });
+    let hanging_px = hanging_pt.map_or(0.0, |pt| points_to_px(pt as f32));
+    if hanging_px != 0.0
+        && paragraph.is_some_and(|indent| left_indent_is_character_unit(indent, bidi))
+    {
+        x += hanging_px;
+    }
+    let body_start = x + first_line_indent_px;
+    NumberedParagraphOrigin {
+        x,
+        number_x: body_start - hanging_px,
+        body_start,
+    }
 }
 
 /// Numbered first-line text follows a space/nothing marker directly. A tab
@@ -4918,11 +5000,16 @@ pub fn apply_paragraph_indent_with_char_unit(
         *x += left_px;
         applied_left_indent += left_px;
     }
-    paragraph_style.tab_origin_offset -= applied_left_indent;
     if let Some(first_line_pt) = resolve_indent_first_line_pt(indent, char_unit_pt, !has_numbering)
     {
         paragraph_style.first_line_indent = points_to_px(first_line_pt as f32);
+        if first_line_pt < 0.0 && left_indent_is_character_unit(indent, bidi) {
+            // The first line stays at the character indent; the rest hang.
+            *x -= paragraph_style.first_line_indent;
+            applied_left_indent -= paragraph_style.first_line_indent;
+        }
     }
+    paragraph_style.tab_origin_offset -= applied_left_indent;
     if let Some(right_pt) = resolve_indent_right_pt(indent, bidi, char_unit_pt) {
         paragraph_style.right_indent = points_to_px(right_pt as f32);
     }
@@ -8332,6 +8419,140 @@ mod tests {
         let mut x_default = 0.0;
         apply_paragraph_indent(&mut x_default, &mut style_default, &indent, false);
         assert!((x_default - points_to_px(10.5)).abs() < 1e-6);
+    }
+
+    /// Word for Mac 16.114 indent probe: a character-unit left indent places
+    /// the first line there and hangs the continuation lines past it by the
+    /// hanging amount; a point left indent subtracts the hanging from the
+    /// first line instead.
+    #[test]
+    fn character_left_indent_hangs_continuation_lines_past_it() {
+        let cases = [
+            // leftChars=202 left=565 hangingChars=67 hanging=141
+            (Some(202), Some(28.25), Some(67), Some(7.05), 21.21, 28.245),
+            // leftChars=202 hangingChars=67, no twips values
+            (Some(202), None, Some(67), None, 21.21, 28.245),
+            // a twips hanging also hangs past a character left indent
+            (Some(202), Some(28.25), None, Some(5.65), 21.21, 26.86),
+            // leftChars=202 left=565 without any hanging
+            (Some(202), Some(28.25), None, None, 21.21, 21.21),
+            // point indents: the first line starts left - hanging
+            (None, Some(28.25), None, Some(7.05), 21.2, 28.25),
+        ];
+        for (left_chars, left, hanging_chars, hanging, first_pt, continuation_pt) in cases {
+            let indent = Indent {
+                left_chars,
+                left: left.map(|value: f64| value as f32),
+                hanging_chars,
+                hanging: hanging.map(|value: f64| value as f32),
+                ..Indent::default()
+            };
+            let mut style = ParagraphStyle::default();
+            let mut x = 0.0;
+            apply_paragraph_indent_with_char_unit(&mut x, &mut style, &indent, false, 10.5);
+            let case = format!("{indent:?}");
+            assert!(
+                (x - points_to_px(continuation_pt as f32)).abs() < 1e-3,
+                "{case}: continuation {x}"
+            );
+            assert!(
+                (x + style.first_line_indent - points_to_px(first_pt as f32)).abs() < 1e-3,
+                "{case}: first line {}",
+                x + style.first_line_indent
+            );
+        }
+    }
+
+    /// Word for Mac 16.114 indent probe over a numbering level with
+    /// `w:left="533" w:hanging="113"`: where the marker and continuation
+    /// lines start for each paragraph indent.
+    #[test]
+    fn numbered_paragraph_origin_follows_word_indent_precedence() {
+        let cases: [(Indent, f64, f64); 6] = [
+            // w:left="420" w:firstLine="4": firstLine replaces the hanging
+            (
+                Indent {
+                    left: Some(21.0),
+                    first_line: Some(0.2),
+                    ..Indent::default()
+                },
+                21.2,
+                21.0,
+            ),
+            // leftChars=202 left=565 hangingChars=67 hanging=141
+            (
+                Indent {
+                    left_chars: Some(202),
+                    left: Some(28.25),
+                    hanging_chars: Some(67),
+                    hanging: Some(7.05),
+                    ..Indent::default()
+                },
+                21.21,
+                28.245,
+            ),
+            // left=565 hanging=141
+            (
+                Indent {
+                    left: Some(28.25),
+                    hanging: Some(7.05),
+                    ..Indent::default()
+                },
+                21.2,
+                28.25,
+            ),
+            // leftChars=202 left=565: the level's hanging hangs past it
+            (
+                Indent {
+                    left_chars: Some(202),
+                    left: Some(28.25),
+                    ..Indent::default()
+                },
+                21.21,
+                26.86,
+            ),
+            // leftChars=202 hangingChars=67 only: no level left on top
+            (
+                Indent {
+                    left_chars: Some(202),
+                    hanging_chars: Some(67),
+                    ..Indent::default()
+                },
+                21.21,
+                28.245,
+            ),
+            // no paragraph indent: the level's
+            (Indent::default(), 21.0, 26.65),
+        ];
+        for (paragraph, marker_pt, continuation_pt) in cases {
+            let mut style = ParagraphStyle::default();
+            let mut x = 0.0;
+            apply_paragraph_indent_with_char_unit(&mut x, &mut style, &paragraph, true, 10.5);
+            let origin = numbered_paragraph_origin(
+                x,
+                style.first_line_indent,
+                Some(&paragraph),
+                Some(26.65),
+                Some(5.65),
+                false,
+                10.5,
+            );
+            let case = format!("{paragraph:?}");
+            assert!(
+                (origin.number_x - points_to_px(marker_pt as f32)).abs() < 1e-2,
+                "{case}: marker {}",
+                origin.number_x
+            );
+            assert!(
+                (origin.x - points_to_px(continuation_pt as f32)).abs() < 1e-2,
+                "{case}: continuation {}",
+                origin.x
+            );
+            assert!(
+                (origin.body_start - (origin.x + style.first_line_indent)).abs() < 1e-9,
+                "{case}: body start"
+            );
+        }
     }
 
     /// Unambiguous script values handled by the fast path must agree with the
