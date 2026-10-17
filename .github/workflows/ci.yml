@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # 03:00 JST: retain corpus coverage outside the PR feedback loop.
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      pdf_parity_full:
+        description: Compare every PDF fixture across all densities, themes and edit states
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    # A stalled dependency install used to burn the full six-hour default.
+    timeout-minutes: 45
+    env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Cargo check
+        run: cargo check --all --all-features
+
+  test:
+    runs-on: ubuntu-latest
+    # A stalled dependency install used to burn the full six-hour default.
+    timeout-minutes: 45
+    env:
+      # Keep hundreds of test binaries/link jobs within hosted-runner disk and memory.
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Cargo property tests (headless API)
+        run: cargo test -p jade-docx-editor --all-features property_
+
+      - name: Cargo test
+        run: |
+          cargo test --all --all-features -- \
+            --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
+            --skip text_extract::tests::line_layout_exposes_index_text_page_and_geometry
+
+      - name: Audit edited DOCX fixture corpus
+        run: |
+          python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
+          python3 scripts/audit-mac-release-corpus.py
+
+  native-macos:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/native-macos
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target/native-macos
+
+      - name: Cargo check native crates
+        run: |
+          cargo check --manifest-path crates/jade-skia-painter/Cargo.toml --all-targets --locked
+          cargo check --manifest-path crates/jade-docx-native-render/Cargo.toml --all-targets --locked
+          cargo check --manifest-path crates/jade-xlsx-native-render/Cargo.toml --all-targets --locked
+
+      - name: Cargo clippy native crates
+        run: |
+          cargo clippy --manifest-path crates/jade-skia-painter/Cargo.toml --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path crates/jade-docx-native-render/Cargo.toml --all-targets --locked -- -D warnings
+          cargo clippy --manifest-path crates/jade-xlsx-native-render/Cargo.toml --all-targets --locked -- -D warnings
+
+      - name: Install PDF rasterizer
+        run: |
+          brew install poppler
+          swiftc tests/pdf/render_coregraphics.swift -o "$RUNNER_TEMP/render-coregraphics"
+          echo "JADE_PDF_COREGRAPHICS=$RUNNER_TEMP/render-coregraphics" >> "$GITHUB_ENV"
+
+      - name: Setup native PDF comparison Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/pdf/requirements.txt
+
+      - name: Install native PDF comparison dependencies
+        run: python -m pip install -r tests/pdf/requirements.txt
+
+      - name: Verify native PDF structure and representative rendering
+        env:
+          JADE_PDFTOPPM: pdftoppm
+          JADE_PDFTOTEXT: pdftotext
+          FULL_PDF_CORPUS: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.pdf_parity_full) }}
+        run: |
+          cargo fmt --manifest-path crates/jade-skia-painter/Cargo.toml -- --check
+          cargo fmt --manifest-path crates/jade-docx-native-render/Cargo.toml -- --check
+          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked -- --include-ignored
+          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked
+          if [[ "$FULL_PDF_CORPUS" == "true" ]]; then
+            JADE_PDF_CORPUS_ALL=1 cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test pdf_export -- --ignored
+          else
+            cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test pdf_export -- --ignored --skip edited_corpus_documents_keep_live_pixels_after_undo_and_redo
+          fi
+          python tests/pdf/native_reader_parity.py crates/jade-docx-native-render/target/pdf-parity --readers poppler pdfium coregraphics
+
+      - name: Upload native PDF differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-pdf-parity
+          path: |
+            crates/jade-docx-native-render/target/pdf-parity
+            crates/jade-docx-native-render/target/pdf-text-parity
+          if-no-files-found: ignore
+
+  xlsx-native:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/xlsx-native
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target/xlsx-native
+      - name: Verify the vendored formula engine
+        run: |
+          cargo fmt --manifest-path third_party/ironcalc-base/Cargo.toml -- --check
+          cargo test --manifest-path third_party/ironcalc-base/Cargo.toml --locked --lib
+          cargo clippy --manifest-path third_party/ironcalc-base/Cargo.toml --locked --lib -- -D warnings
+      - name: Verify native SDK formatting and rendering
+        run: |
+          cargo fmt --manifest-path crates/jade-xlsx-native-render/Cargo.toml -- --check
+          cargo test --manifest-path crates/jade-xlsx-native-render/Cargo.toml --locked
+          cargo clippy --manifest-path crates/jade-xlsx-native-render/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Verify shared SVG source rectangles and opacity
+        run: |
+          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked --test svg_image --test image_opacity
+          cargo clippy --manifest-path crates/jade-skia-painter/Cargo.toml --locked --test image_opacity -- -D warnings
