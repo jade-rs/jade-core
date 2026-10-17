@@ -189,6 +189,15 @@ impl DocumentParser {
         text.trim_matches(|ch| matches!(ch, ' ' | '\t' | '\n' | '\r'))
     }
 
+    /// Word sets a line feed written inside `w:t` as a space; only `w:br`
+    /// and `w:cr` break the line, and those become `\n` in run text.
+    fn line_feeds_as_spaces(text: &str) -> String {
+        if !text.contains(['\n', '\r']) {
+            return text.to_string();
+        }
+        text.replace("\r\n", " ").replace(['\n', '\r'], " ")
+    }
+
     /// Creates a new parser instance. The parser has no internal state so this
     /// is mainly a convenience constructor for callers that prefer fluent APIs.
     pub fn new() -> Self {
@@ -3403,11 +3412,11 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) => match e.name().as_ref() {
                     b"w:t" | b"w:delText" => {
                         in_text = false;
-                        let text_to_push = if current_text_preserve {
-                            current_text.clone()
+                        let text_to_push = Self::line_feeds_as_spaces(if current_text_preserve {
+                            &current_text
                         } else {
-                            Self::trim_xml_whitespace(&current_text).to_string()
-                        };
+                            Self::trim_xml_whitespace(&current_text)
+                        });
                         current_text.clear();
                         current_text_preserve = false;
                         if let Some(ref mut run) = current_run {
@@ -11161,6 +11170,25 @@ mod tests {
         assert_eq!(paragraph.runs[0].text, "Hello");
         assert_eq!(paragraph.runs[1].text, "\n");
         assert_eq!(paragraph.runs[2].text, "world");
+    }
+
+    #[test]
+    fn line_feed_inside_text_reads_as_a_space() {
+        // word-compat-comprehensive: Word sets `Part<TAB>One<LF>Overview` in
+        // a w:t on one line with a space for the line feed; only w:br and
+        // w:cr break the line.
+        let body =
+            "<w:p><w:r><w:t xml:space=\"preserve\">Part\tOne\nOverview\r\nEnd</w:t></w:r></w:p>";
+
+        let document = parse_document_from_body(body);
+        let body = document.body.expect("body");
+        let paragraph = match &body.elements[0] {
+            BodyElement::Paragraph(p) => p.as_ref(),
+            _ => panic!("expected paragraph"),
+        };
+
+        assert_eq!(paragraph.runs.len(), 1);
+        assert_eq!(paragraph.runs[0].text, "Part\tOne Overview End");
     }
 
     #[test]

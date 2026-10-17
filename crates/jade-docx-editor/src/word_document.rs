@@ -36452,10 +36452,11 @@ mod tests {
                     xml_escape_text(&text),
                 ));
                 if *outline_level <= 8 && !text.trim().is_empty() {
+                    // Word reads a line feed inside w:t as a space.
                     expected.push(NavigationHeadingInfo {
                         paragraph_index,
                         level: outline_level + 1,
-                        text,
+                        text: text.replace("\r\n", " ").replace(['\n', '\r'], " "),
                     });
                 }
             }
