@@ -245,8 +245,8 @@ where
         );
         #[cfg(feature = "opentype-math")]
         std::mem::swap(&mut measurer.math_fonts, &mut self.math_fonts);
-        // Only part of a final paragraph without keepNext has to fit (see
-        // `keep_next_tail_pending`); a group ending in keepNext keeps it all.
+        // A group ending in keepNext (before a table, a page break or the
+        // section end) has no tail paragraph.
         let tail = elements.len().checked_sub(1).filter(|&last| {
             elements[last].as_paragraph().is_some_and(|paragraph| {
                 !paragraph
@@ -259,7 +259,11 @@ where
         measurer.keep_next_tail_bottom = None;
         let result = (|| {
             for (offset, element) in elements.iter().enumerate() {
-                measurer.keep_next_tail_pending = Some(offset) == tail;
+                // From the second member on, the group needs only the lines
+                // of the first member that cannot be split from it (see
+                // `keep_next_tail_pending`); the first member stays whole.
+                measurer.keep_next_tail_pending = (offset > 0 && element.as_paragraph().is_some())
+                    .then_some(Some(offset) == tail);
                 measurer.render_body_element(
                     element,
                     options,
@@ -269,8 +273,11 @@ where
                     first_element + offset,
                     section,
                 )?;
+                if measurer.keep_next_tail_bottom.is_some() {
+                    break;
+                }
             }
-            measurer.keep_next_tail_pending = false;
+            measurer.keep_next_tail_pending = None;
             let bottom = measurer
                 .keep_next_tail_bottom
                 .take()
