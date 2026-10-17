@@ -5881,9 +5881,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 // justified compressPunctuation paragraph on Word for Mac,
                 // when the line's punctuation can absorb it. Deciding it here
                 // rather than in `enforce_line_start_rules` lets the next
-                // line start after it and fill its whole width.
+                // line start after it and fill its whole width. The Windows
+                // layout keeps the repair it is calibrated with (trust
+                // pagination).
                 let keeps_line_start_forbidden_character = candidate_overflow
                     > WRAP_FIT_TOLERANCE_PX
+                    && paragraph_style.word_platform
+                        == crate::line_metrics::WordLayoutPlatform::Mac
                     && !is_whitespace
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
@@ -16288,8 +16292,31 @@ mod tests {
 
     #[test]
     fn hanging_punctuation_leaves_the_next_line_full() {
-        // The hung `。` takes no room from the next line: Word starts it at
-        // `い` and fills it as it would any other line.
+        // The hung `。` takes no room from the next line: Word for Mac starts
+        // it at `い` and fills it as it would any other line. The Windows
+        // layout keeps the kinsoku repair it was calibrated with
+        // (trust-beneficiary-sale-pagination).
+        for (platform, expected) in [
+            (
+                crate::line_metrics::WordLayoutPlatform::Mac,
+                ["あああ。", "いいい", "いう"],
+            ),
+            (
+                crate::line_metrics::WordLayoutPlatform::Windows,
+                WINDOWS_HANGING_LINES,
+            ),
+        ] {
+            assert_eq!(
+                hanging_punctuation_lines(platform),
+                expected,
+                "{platform:?}"
+            );
+        }
+    }
+
+    const WINDOWS_HANGING_LINES: [&str; 3] = ["あああ。", "いい", "いいう"];
+
+    fn hanging_punctuation_lines(platform: crate::line_metrics::WordLayoutPlatform) -> Vec<String> {
         let ctx = TestContext::new(10.0);
         let text = "あああ。いいいいう";
         let run = RunStyle {
@@ -16306,17 +16333,14 @@ mod tests {
                 overflow_punctuation: Some(true),
                 ..EastAsianLineBreakingRules::default()
             },
+            word_platform: platform,
             ..ParagraphStyle::default()
         };
         let lines = wrap_text_into_lines(&ctx, text, &[run], 0.0, &paragraph, 0, 35.0).unwrap();
-        let infos = collect_line_infos(&lines);
-        assert_eq!(
-            infos
-                .iter()
-                .map(|line| line.text.as_str())
-                .collect::<Vec<_>>(),
-            ["あああ。", "いいい", "いう"]
-        );
+        collect_line_infos(&lines)
+            .into_iter()
+            .map(|line| line.text)
+            .collect()
     }
 
     #[test]
