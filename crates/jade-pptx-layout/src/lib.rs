@@ -14,6 +14,7 @@ mod interaction;
 mod measure;
 mod paragraph_format;
 mod placeholder;
+mod preset_shapes;
 mod presets;
 mod style;
 mod table;
@@ -38,6 +39,7 @@ pub use interaction::{
     creation_rect, crop_transform, drag_transform, grouping_transform, DragKind, ObjectTransform,
 };
 pub use measure::{HeuristicMeasure, RunStyle, TextMeasure};
+pub use preset_shapes::is_known as is_known_preset;
 pub use table_style::{builtin_table_style, resolve_table_style};
 pub use text::{format_number, PlacedLine, PlacedRun};
 pub use text_format::{text_format_for_deck_shape, TextFormatState};
@@ -86,6 +88,35 @@ pub enum PlacedGeometry {
     /// Custom geometry: closed subpaths in normalized shape coordinates,
     /// curves already flattened.
     Path(Vec<Vec<(f64, f64)>>),
+    /// A preset evaluated from its ECMA-376 definition: each DrawingML path
+    /// keeps its own fill mode and stroke, and open subpaths stay open.
+    Paths(Vec<PlacedPath>),
+}
+
+/// One DrawingML `<a:path>`, flattened, in normalized shape coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedPath {
+    pub subpaths: Vec<PlacedSubpath>,
+    pub fill: PathFill,
+    pub stroked: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedSubpath {
+    pub points: Vec<(f64, f64)>,
+    pub closed: bool,
+}
+
+/// A path's `fill` attribute: the shape's fill, none, or that fill shaded
+/// (the darker face of a cube, the lit fold of a scroll).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PathFill {
+    None,
+    Norm,
+    Lighten,
+    LightenLess,
+    Darken,
+    DarkenLess,
 }
 
 /// A gradient as the renderer paints it: stops at 0..1 along a direction.
@@ -94,6 +125,19 @@ pub struct PlacedGradient {
     /// Clockwise degrees: 0 runs left to right, 90 top to bottom.
     pub angle_deg: f64,
     pub stops: Vec<PlacedGradientStop>,
+    /// A path gradient: stop 0 sits on the focus, stop 1 on the box's edge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radial: Option<PlacedRadial>,
+}
+
+/// Where and how a path gradient radiates, in normalized box coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedRadial {
+    /// `true` for `circle` (ellipses), `false` for `rect`/`shape`
+    /// (rectangles growing from the focus to the box).
+    pub elliptical: bool,
+    /// The focus rectangle: left, top, right, bottom in 0..1.
+    pub focus: (f64, f64, f64, f64),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -110,6 +154,40 @@ pub struct PlacedOutline {
     /// Canvas `setLineDash` segments in px; empty for a solid stroke.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dash_px: Vec<f64>,
+    /// Arrowhead at the stroke's start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_end: Option<PlacedLineEnd>,
+    /// Arrowhead at the stroke's end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tail_end: Option<PlacedLineEnd>,
+}
+
+/// An arrowhead ready to draw: its kind and its size in px.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedLineEnd {
+    /// `triangle`, `stealth`, `diamond`, `oval` or `arrow`.
+    pub kind: String,
+    /// Across the line.
+    pub width_px: f64,
+    /// Along the line.
+    pub length_px: f64,
+}
+
+/// PowerPoint sizes a line end as a multiple of the line's width, with a
+/// floor so a hairline still shows its arrow.
+fn place_line_end(end: &jade_pptx_reader::LineEnd, line_width_px: f64) -> PlacedLineEnd {
+    let factor = |size: &str| match size {
+        "sm" => 2.0,
+        "lg" => 5.0,
+        _ => 3.0,
+    };
+    // Like PowerPoint, thin lines size their ends from a ~2pt floor.
+    let base = line_width_px.max(2.6);
+    PlacedLineEnd {
+        kind: end.kind.clone(),
+        width_px: (base * factor(&end.width)).max(4.0),
+        length_px: (base * factor(&end.length)).max(4.0),
+    }
 }
 
 /// Which part a placed shape came from. Master and layout shapes draw under
@@ -167,6 +245,69 @@ pub struct PlacedShape {
     /// are in the turned frame, whose width is the shape's height.
     #[serde(default)]
     pub text_rotation_deg: f64,
+    /// An outer shadow drawn under the shape's silhouette.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<PlacedShadow>,
+    /// A picture's opacity when it is translucent (`alphaModFix`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_alpha: Option<f64>,
+    /// `<a:pattFill>`: the hatch to draw over `fill` (which holds the two
+    /// colours' blend for renderers that draw no patterns).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<PlacedPattern>,
+}
+
+/// A preset pattern with its resolved colours.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedPattern {
+    pub preset: String,
+    pub foreground: String,
+    pub background: String,
+}
+
+pub(crate) fn resolve_pattern(fill: &Fill, theme: &ThemeColors) -> Option<PlacedPattern> {
+    match fill {
+        Fill::Pattern {
+            preset,
+            foreground,
+            background,
+        } => Some(PlacedPattern {
+            preset: preset.clone(),
+            foreground: resolve_color(foreground, theme),
+            background: resolve_color(background, theme),
+        }),
+        _ => None,
+    }
+}
+
+/// `<a:outerShdw>` ready to draw: the offset (in the shape's unrotated
+/// frame), the blur radius and the colour.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedShadow {
+    pub color: String,
+    pub dx: f64,
+    pub dy: f64,
+    pub blur_px: f64,
+}
+
+pub(crate) fn place_shadow(
+    shadow: Option<&jade_pptx_reader::Shadow>,
+    theme: &ThemeColors,
+) -> Option<PlacedShadow> {
+    let shadow = shadow?;
+    let color = resolve_color(&shadow.color, theme);
+    if color.ends_with(",0)") {
+        // Fully transparent: an explicit "no shadow".
+        return None;
+    }
+    let distance = emu_to_px(shadow.distance_emu);
+    let direction = (shadow.direction_deg as f64).to_radians();
+    Some(PlacedShadow {
+        color,
+        dx: distance * direction.cos(),
+        dy: distance * direction.sin(),
+        blur_px: emu_to_px(shadow.blur_emu),
+    })
 }
 
 impl PlacedOrigin {
@@ -299,14 +440,28 @@ pub(crate) fn resolve_fill(fill: &Fill, theme: &ThemeColors) -> Option<String> {
             &resolve_color(background, theme),
             0.5,
         )),
-        Fill::None => None,
+        Fill::None | Fill::Group | Fill::Picture { .. } => None,
     }
 }
 
 /// The gradient a fill paints, when it is one.
-fn resolve_gradient(fill: &Fill, theme: &ThemeColors) -> Option<PlacedGradient> {
+pub(crate) fn resolve_gradient(fill: &Fill, theme: &ThemeColors) -> Option<PlacedGradient> {
     match fill {
-        Fill::Gradient { stops, angle_deg } if !stops.is_empty() => Some(PlacedGradient {
+        Fill::Gradient {
+            stops,
+            angle_deg,
+            path,
+        } if !stops.is_empty() => Some(PlacedGradient {
+            radial: path.as_ref().map(|path| {
+                let left = (path.left as f64).clamp(0.0, 1.0);
+                let top = (path.top as f64).clamp(0.0, 1.0);
+                let right = (1.0 - path.right as f64).clamp(left, 1.0);
+                let bottom = (1.0 - path.bottom as f64).clamp(top, 1.0);
+                PlacedRadial {
+                    elliptical: path.kind == "circle",
+                    focus: (left, top, right, bottom),
+                }
+            }),
             angle_deg: angle_deg
                 .filter(|angle| angle.is_finite())
                 .map(|angle| angle as f64)
@@ -341,6 +496,10 @@ fn substitute_color(target: &Color, color: &Color) -> Color {
             shade: *shade,
             tint: *tint,
         },
+        Color::Transformed { base, ops } => Color::Transformed {
+            base: Box::new(substitute_color(base, color)),
+            ops: ops.clone(),
+        },
         other => other.clone(),
     }
 }
@@ -349,7 +508,12 @@ fn substitute_color(target: &Color, color: &Color) -> Color {
 fn substitute_placeholder_color(fill: &Fill, color: &Color) -> Fill {
     match fill {
         Fill::Solid(target) => Fill::Solid(substitute_color(target, color)),
-        Fill::Gradient { stops, angle_deg } => Fill::Gradient {
+        Fill::Gradient {
+            stops,
+            angle_deg,
+            path,
+        } => Fill::Gradient {
+            path: path.clone(),
             stops: stops
                 .iter()
                 .map(|stop| jade_pptx_reader::GradientStop {
@@ -360,6 +524,7 @@ fn substitute_placeholder_color(fill: &Fill, color: &Color) -> Fill {
             angle_deg: *angle_deg,
         },
         Fill::None => Fill::None,
+        Fill::Picture { .. } | Fill::Group => fill.clone(),
         Fill::Pattern {
             preset,
             foreground,
@@ -411,6 +576,8 @@ pub struct InheritedContent<'a> {
     /// The theme's `bgFillStyleLst`, for `fillRef idx` 1001–1003.
     pub theme_background_fill_styles: Option<&'a [Fill]>,
     pub theme_line_styles: Option<&'a [Outline]>,
+    /// The theme's effect styles, for a shape style's `effectRef`.
+    pub theme_effect_styles: Option<&'a [Option<jade_pptx_reader::Shadow>]>,
 }
 
 pub fn layout_slide(
@@ -450,6 +617,7 @@ pub fn layout_deck_slide(
             theme_fill_styles: Some(slide_theme.fill_styles),
             theme_background_fill_styles: Some(slide_theme.background_fill_styles),
             theme_line_styles: Some(slide_theme.line_styles),
+            theme_effect_styles: Some(slide_theme.effect_styles),
         },
         slide_theme.colors,
         measure,
@@ -522,12 +690,66 @@ pub fn layout_slide_inheriting(
         &mut shapes,
     );
 
+    // The nearest part that states a background wins, whether it states a
+    // fill or a reference to the theme's background fill styles.
     let background_fill = [Some(content), inherited.layout, inherited.master]
         .into_iter()
         .flatten()
-        .find_map(|tree| tree.background.as_ref());
+        .find(|tree| tree.background.is_some() || tree.background_ref.is_some())
+        .and_then(|tree| match (&tree.background, &tree.background_ref) {
+            (Some(fill), _) => Some(fill.clone()),
+            (None, Some((index, color))) => Some(
+                inherited
+                    .theme_background_fill_styles
+                    .and_then(|styles| styles.get(index.checked_sub(1001)? as usize))
+                    .map(|fill| substitute_placeholder_color(fill, color))
+                    .unwrap_or_else(|| Fill::Solid(color.clone())),
+            ),
+            (None, None) => None,
+        });
+    let background_fill = background_fill.as_ref();
     let background = background_fill.and_then(|fill| resolve_fill(fill, theme));
     let background_gradient = background_fill.and_then(|fill| resolve_gradient(fill, theme));
+    // A picture background draws as a slide-sized picture under everything.
+    if let Some(Fill::Picture {
+        image_part: Some(part),
+        ..
+    }) = background_fill
+    {
+        let rect = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: slide_size.width_px(),
+            height: slide_size.height_px(),
+        };
+        shapes.insert(
+            0,
+            PlacedShape {
+                text_region: None,
+                local_rect: None,
+                group_transforms: Vec::new(),
+                group_ids: Vec::new(),
+                name: "Background".to_string(),
+                rect,
+                rotation_rad: 0.0,
+                flip_h: false,
+                flip_v: false,
+                geometry: PlacedGeometry::Rect,
+                fill: None,
+                gradient: None,
+                outline: None,
+                image_part: Some(part.clone()),
+                source_rect: None,
+                lines: Vec::new(),
+                origin: PlacedOrigin::Master,
+                source_id: None,
+                text_rotation_deg: 0.0,
+                shadow: None,
+                image_alpha: None,
+                pattern: None,
+            },
+        );
+    }
 
     SlideLayout {
         groups: content
@@ -709,6 +931,8 @@ fn place_chart(
             color: CHART_FRAME_COLOR.to_string(),
             width_px: 1.0,
             dash_px: Vec::new(),
+            head_end: None,
+            tail_end: None,
         }),
         image_part: None,
         source_rect: None,
@@ -716,6 +940,9 @@ fn place_chart(
         origin,
         source_id: chart.id,
         text_rotation_deg: 0.0,
+        shadow: None,
+        image_alpha: None,
+        pattern: None,
     }];
     placed.extend(chart::plot_chart(chart, rect, has_title, context, origin));
     placed
@@ -821,6 +1048,14 @@ pub(crate) fn resolve_outline(
             .iter()
             .map(|unit| unit * width_px)
             .collect(),
+        head_end: outline
+            .and_then(|l| l.head_end.as_ref())
+            .or_else(|| matrix.and_then(|l| l.head_end.as_ref()))
+            .map(|end| place_line_end(end, width_px)),
+        tail_end: outline
+            .and_then(|l| l.tail_end.as_ref())
+            .or_else(|| matrix.and_then(|l| l.tail_end.as_ref()))
+            .map(|end| place_line_end(end, width_px)),
     })
 }
 
@@ -902,7 +1137,11 @@ fn place_shape(
     let gradient = effective_fill
         .as_ref()
         .and_then(|fill| resolve_gradient(fill, context.theme));
+    let pattern = effective_fill
+        .as_ref()
+        .and_then(|fill| resolve_pattern(fill, context.theme));
     Some(PlacedShape {
+        pattern,
         text_region,
         local_rect: None,
         group_transforms: Vec::new(),
@@ -939,6 +1178,16 @@ fn place_shape(
         origin,
         source_id: shape.id,
         text_rotation_deg,
+        shadow: place_shadow(
+            shape.shadow.as_ref().or_else(|| {
+                // `<a:effectLst/>` stated empty would also stop the style;
+                // without one, the style's effect reference applies.
+                let index = visual.style?.effect_index.checked_sub(1)? as usize;
+                context.inherited.theme_effect_styles?.get(index)?.as_ref()
+            }),
+            context.theme,
+        ),
+        image_alpha: None,
     })
 }
 
@@ -1069,15 +1318,24 @@ fn place_picture(
         rotation_rad: rotation_rad(transform),
         flip_h: transform.flip_h,
         flip_v: transform.flip_v,
-        geometry: PlacedGeometry::Rect,
+        geometry: presets::resolve(
+            picture.preset_geometry.as_deref(),
+            &picture.adjustments,
+            placed_rect(transform, space).width,
+            placed_rect(transform, space).height,
+        )
+        .map_or(PlacedGeometry::Rect, |preset| preset.geometry),
         fill: None,
         gradient: None,
-        outline: None,
+        outline: resolve_outline(picture.outline.as_ref(), None, context.theme, None),
         image_part: picture.image_part.clone(),
         source_rect: picture.source_rect,
         lines: Vec::new(),
         origin,
         source_id: picture.id,
         text_rotation_deg: 0.0,
+        shadow: place_shadow(picture.shadow.as_ref(), context.theme),
+        image_alpha: picture.alpha.map(f64::from),
+        pattern: None,
     })
 }
