@@ -1,0 +1,210 @@
+# jade-docx-headless-mcp の実行ファイルを release に添付する。
+#
+# ## なぜ必要か
+#
+# jade-docx-headless-mcp は LLM から docx を編集するための stdio MCP サーバで、
+# 利用者のマシンで動かす。これまで release にバイナリが無かったため、試すには
+# Rust toolchain を入れて `cargo build --release -p jade-docx-headless-mcp` する必要があった。
+# 非開発者や、Rust を触らないメンバーにはこれが障壁になる。
+#
+# release を publish したときに各プラットフォーム向けの実行ファイルを添付し、
+# ダウンロードして展開すれば使える状態にする。
+#
+# ## 対象プラットフォーム
+#
+# 利用者の環境は **Windows と macOS** を想定しているため、その 2 つを必ず出す。
+# Linux(x64) は CI / コンテナから使う場合のために併せて出す。
+#
+# Windows は成果物を zip、他は tar.gz にする（Windows でも tar は使えるが、
+# 受け取る側の手間が少ない形に寄せる）。
+#
+# ## 手動実行 (workflow_dispatch)
+#
+# tag を渡したときだけその release へ添付する。省略した場合は artifact に置く
+# だけで release は触らない。動作確認のつもりの実行が、配布中のバイナリを
+# 書き換えないようにするため。
+name: release jade-docx-headless-mcp binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          添付先の release タグ。ビルドはこのワークフローを実行した ref
+          （既定 main）から行い、タグはあくまで添付先として使う。
+          省略すると release へは添付せず、この run の artifact にだけ残す。
+        required: false
+        type: string
+
+env:
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: 'true'
+  SCCACHE_IGNORE_SERVER_IO_ERROR: 'true'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      # 1 プラットフォームが落ちても他は出したいので止めない。
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: jade-docx-headless-mcp-x86_64-pc-windows-msvc
+            bin: jade-docx-headless-mcp.exe
+            archive: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: jade-docx-headless-mcp-aarch64-apple-darwin
+            bin: jade-docx-headless-mcp
+            archive: tar
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: jade-docx-headless-mcp-x86_64-apple-darwin
+            bin: jade-docx-headless-mcp
+            archive: tar
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: jade-docx-headless-mcp-x86_64-unknown-linux-gnu
+            bin: jade-docx-headless-mcp
+            archive: tar
+
+    runs-on: ${{ matrix.os }}
+
+    # Windows でも同じ shell を使ってコードパスを 1 本にする
+    # （GitHub の Windows runner には Git for Windows の bash が入っている）。
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # ビルド元と添付先は別物として扱う。
+          #
+          # release イベントでは publish されたタグをビルドする（その release が
+          # 表しているコードから作った実行ファイルを添付するのが筋のため）。
+          # 手動実行では実行した ref（既定 main）をビルドし、tag 入力は添付先と
+          # してのみ使う。tag をチェックアウトすると、その時点に対象 crate や
+          # 修正が入っていない過去 release へ添付しようとした瞬間にビルドが
+          # 落ちる（elsa 側で実際に踏んだ: package ID specification ... did not
+          # match any packages）。
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      # rustup を用意するのが目的。実際にビルドに使われるのは rust-toolchain.toml の
+      # pin（1.93.1）であって、この action が入れる stable ではない。
+      # そのため、ここで `targets:` を指定しても pin 側には入らない。
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # rust-toolchain.toml の targets は wasm32-unknown-unknown だけなので、
+      # クロスコンパイルになる target は明示的に足す必要がある。
+      #
+      # ホストと同じ target（arm64 mac の aarch64-apple-darwin、windows-msvc、linux-gnu）は
+      # rustup が自動で入れるため気付きにくいが、arm64 runner 上の x86_64-apple-darwin だけは
+      # 入らず `can't find crate for core` で落ちる。
+      #
+      # rust-toolchain.toml のあるディレクトリで実行するので、stable ではなく
+      # pin された toolchain 側に target が入る。
+      - name: Install build target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: ${{ matrix.target }}
+          workspaces: |
+            . -> target
+
+      - name: Build jade-docx-headless-mcp
+        run: cargo build --release -p jade-docx-headless-mcp --target ${{ matrix.target }}
+
+      # 起動しないバイナリを配るのは「バイナリが無い」より悪いので、上げる前に確認する。
+      # MCP は 1 行 1 JSON-RPC の stdio プロトコルなので、initialize が返れば起動は確認できる。
+      # x86_64-apple-darwin は arm64 runner 上の cross-compile なので実行できず skip。
+      - name: Smoke test (native target only)
+        if: matrix.target != 'x86_64-apple-darwin'
+        run: |
+          BIN="target/${{ matrix.target }}/release/${{ matrix.bin }}"
+          REQ='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}'
+          OUT=$(printf '%s\n' "$REQ" | "$BIN")
+          echo "$OUT"
+          echo "$OUT" | grep -q '"result"' || { echo "initialize が result を返さなかった"; exit 1; }
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" dist/
+          cd dist
+
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            ASSET="${{ matrix.name }}.zip"
+            # Windows runner の bash に zip コマンドは無いため PowerShell を使う。
+            powershell -Command "Compress-Archive -Path '${{ matrix.bin }}' -DestinationPath '$ASSET' -Force"
+          else
+            ASSET="${{ matrix.name }}.tar.gz"
+            tar czf "$ASSET" "${{ matrix.bin }}"
+          fi
+
+          # sha256sum は Linux / Git for Windows にあり、macOS には無い（shasum を使う）。
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$ASSET" > "$ASSET.sha256"
+          else
+            shasum -a 256 "$ASSET" > "$ASSET.sha256"
+          fi
+
+          echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+          ls -la
+
+      # 手動実行でも必ずここに残る。tag を指定しない dispatch は release を
+      # 触らないので、動作確認だけしたいときはこの artifact を取ればよい。
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            dist/${{ env.ASSET }}
+            dist/${{ env.ASSET }}.sha256
+          if-no-files-found: error
+
+      # release への添付は「添付先が明示されているとき」だけ行う。
+      #
+      # 以前は tag 省略時に `gh release list --limit 1` で最新 release へ上げて
+      # いたが、これだと動作確認のつもりの手動実行が、配布中のバイナリを
+      # --clobber で書き換えてしまう。artifact が 1 つ増えないことより、
+      # 配布物が意図せず入れ替わるほうがずっと悪い。
+      - name: Upload to release
+        if: github.event_name == 'release' || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          echo "添付先: $TAG"
+          gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256" --clobber
+
+      # ビルド元と添付先がずれ得る以上、どこから作ってどこへ付けたのかは必ず残す。
+      # 過去 release へ main のバイナリを足した場合、その asset はタグのソースとは
+      # 対応しない。
+      - name: Summarize
+        run: |
+          BUILT_FROM="${{ github.event.release.tag_name || github.ref_name }}"
+          echo "ビルド元: \`$BUILT_FROM\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "添付先: release \`${{ github.event.release.tag_name }}\`（同じコード）" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            echo "添付先: release \`${{ inputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> 注意: このバイナリは \`$BUILT_FROM\` から作っており、タグ \`${{ inputs.tag }}\` のソースとは一致しない。" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "添付先: なし（tag 未指定の手動実行）" >> "$GITHUB_STEP_SUMMARY"
+            echo "バイナリはこの run の artifact \`${{ matrix.name }}\` にある。" >> "$GITHUB_STEP_SUMMARY"
+          fi

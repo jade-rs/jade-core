@@ -989,7 +989,7 @@ pub(crate) fn drop_calc_chain(package: &mut OpcPackage, workbook_part: &str) -> 
 }
 
 /// `xml` without the elements `matches` picks (each removed whole).
-fn remove_elements(
+pub(crate) fn remove_elements(
     xml: &str,
     matches: impl Fn(&quick_xml::events::BytesStart<'_>) -> bool,
 ) -> Result<String> {

@@ -220,7 +220,8 @@ fn project_with_epoch<'a>(
         let scope = name
             .local_sheet_index
             .and_then(|index| u32::try_from(index).ok());
-        let _ = model.new_defined_name(&name.name, scope, &name.formula);
+        let formula = jade_xlsx_reader::collapse_ref_errors(&name.formula);
+        let _ = model.new_defined_name(&name.name, scope, &formula);
     }
 
     let mut projected = Vec::new();
@@ -238,7 +239,9 @@ fn project_with_epoch<'a>(
                             engine_sheet,
                             engine_row,
                             engine_column,
-                            format!("={formula}"),
+                            // A reference into a deleted sheet reads `#REF!B4`
+                            // in the file; Excel evaluates it as `#REF!`.
+                            format!("={}", jade_xlsx_reader::collapse_ref_errors(formula)),
                         )
                         .is_ok()
                     {
