@@ -2090,34 +2090,44 @@ fn pair_has_fixed_cjk_advances(
 fn mac_fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
-    style: &ResolvedRunStyle,
+    font_descriptor: &str,
+    font_descriptor_hash: u64,
     state: &TextAdvanceState,
     measured_width: f64,
     paragraph_style: Option<&ParagraphStyle>,
 ) -> Option<f64> {
+    let paragraph_style = paragraph_style?;
     if script != ScriptCategory::EastAsia
-        || paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |p| {
-            p.word_platform
-        }) != crate::line_metrics::WordLayoutPlatform::Mac
+        || paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
+        || !matches!(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+            Some("compressPunctuation" | "compressPunctuationAndJapaneseKana")
+        )
+        || state.prev_font_descriptor_hash != Some(font_descriptor_hash)
     {
         return None;
     }
     let previous = state.prev_grapheme.as_deref()?;
-    if !punctuation_blank_before(grapheme)
-        || !punctuation_blank_after(previous)
-        || matches!(previous, "。" | "．")
-    {
+    let closes_on = punctuation_blank_after(grapheme)
+        || (punctuation_blank_before(grapheme) && !matches!(previous, "。" | "．"));
+    if !punctuation_blank_after(previous) || !closes_on {
         return None;
     }
-    let em = style.fixed_east_asia_em_px()?;
+    let em = crate::line_metrics::word_fixed_east_asian_em_px(font_descriptor)?;
     let previous_width = state.prev_raw_glyph_width?;
     let tolerance = fixed_cjk_metric_tolerance_px(em);
     if (measured_width - em).abs() > tolerance || (previous_width - em).abs() > tolerance {
         return None;
     }
-    // JLREQ adjacent closing/comma→opening punctuation shares one half-em
-    // blank. Original Word MS Mincho rows retain this with enabled kerning;
-    // a stand-in with no such pair must not replace it with two full cells.
+    // `w:characterSpacingControl="compressPunctuation"`: a closing bracket,
+    // comma or full stop followed by another one or by an opening bracket
+    // gives up its half-em blank. Word for Mac's MS Mincho rows in `math` and
+    // `scroll-offset-repro` set `）」` `、「` `）（` `。）` `）。` `）、` that
+    // way, and the `doNotCompress` documents (trust, nda, contract) keep
+    // full cells whether or not kerning is on.
     Some(-0.5 * em)
 }
 
@@ -2181,7 +2191,22 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     } else {
         0.0
     };
-    let kerning_adjustment = if !measured_width_is_oracle
+    let punctuation_adjustment = if measured_width_is_oracle {
+        None
+    } else {
+        mac_fixed_punctuation_pair_adjustment(
+            grapheme,
+            script,
+            font_descriptor,
+            font_descriptor_hash,
+            state,
+            measured_glyph_width,
+            paragraph_style,
+        )
+    };
+    let kerning_adjustment = if let Some(adjustment) = punctuation_adjustment {
+        adjustment * style.text_scale_x.max(0.01)
+    } else if !measured_width_is_oracle
         && style.enable_pair_kerning
         && state.prev_grapheme.is_some()
         && state.prev_font_descriptor_hash == Some(font_descriptor_hash)
@@ -2193,19 +2218,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             state,
             measured_glyph_width,
             paragraph_style,
-        ) {
+        )
+    {
         let prev_grapheme = state.prev_grapheme.as_deref().unwrap_or_default();
-        let punctuation_adjustment = mac_fixed_punctuation_pair_adjustment(
-            grapheme,
-            script,
-            style,
-            state,
-            measured_glyph_width,
-            paragraph_style,
-        );
-        let word_pair_adjustment = if punctuation_adjustment.is_some() {
-            punctuation_adjustment
-        } else if prev_grapheme.len() == 1
+        let word_pair_adjustment = if prev_grapheme.len() == 1
             && grapheme.len() == 1
             && prev_grapheme.is_ascii()
             && grapheme.is_ascii()
@@ -8943,22 +8959,26 @@ mod tests {
     #[test]
     fn mac_fixed_punctuation_pairs_do_not_depend_on_standin_kerning() {
         use crate::line_metrics::WordLayoutPlatform;
-        for host_adjustment in [0.0, -1.0, -3.0] {
-            let mut ctx = CountingKerningContext::new(true);
+        let kern = |text: &str, control: Option<&str>, kerning: bool, host_adjustment: f64| {
+            let mut ctx = CountingKerningContext::new(kerning);
             ctx.pair_adjustment = host_adjustment;
             let descriptor = "4.50pt 'MS Mincho', serif";
             let style = ResolvedRunStyle::new(
-                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, true, None,
+                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, kerning, None,
             );
             let paragraph = ParagraphStyle {
                 word_platform: WordLayoutPlatform::Mac,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    character_spacing_control: control.map(str::to_string),
+                    ..EastAsianLineBreakingRules::default()
+                },
                 ..ParagraphStyle::default()
             };
             let mut cache = FxHashMap::default();
             let mut kern = 0.0;
             walk_text_advance_steps(
                 &ctx,
-                "、「",
+                text,
                 &style,
                 Some(&paragraph),
                 &TextAdvanceState::default(),
@@ -8970,8 +8990,35 @@ mod tests {
                 },
             )
             .unwrap();
-            assert_eq!(kern, -3.0);
-            assert_eq!(*ctx.pair_measurements.borrow(), 0);
+            assert_eq!(*ctx.pair_measurements.borrow(), 0, "{text}");
+            kern
+        };
+        // compressPunctuation: a closing bracket, comma or full stop gives up
+        // its half-em blank before another one or an opening bracket, with or
+        // without kerning, whatever the stand-in face's pair kerning says.
+        for text in ["、「", "）」", "）（", "。）", "）。", "）、"] {
+            for host_adjustment in [0.0, -1.0, -3.0] {
+                for kerning in [true, false] {
+                    assert_eq!(
+                        kern(text, Some("compressPunctuation"), kerning, host_adjustment),
+                        -3.0,
+                        "{text} kerning={kerning}"
+                    );
+                }
+            }
+        }
+        // Not between an opening bracket and what follows, nor after a full
+        // stop before an opening bracket.
+        for text in ["「（", "「あ", "。「"] {
+            assert_eq!(
+                kern(text, Some("compressPunctuation"), true, -1.0),
+                0.0,
+                "{text}"
+            );
+        }
+        // doNotCompress documents keep full cells even with kerning on.
+        for control in [Some("doNotCompress"), None] {
+            assert_eq!(kern("、「", control, true, -1.0), 0.0, "{control:?}");
         }
     }
 
@@ -9033,10 +9080,12 @@ mod tests {
                 0,
             ),
             (
+                // Punctuation compression needs compressPunctuation (see
+                // mac_fixed_punctuation_pairs_do_not_depend_on_standin_kerning).
                 "4.50pt 'MS Mincho', serif",
                 "、「",
                 WordLayoutPlatform::Mac,
-                -3.0,
+                0.0,
                 0,
             ),
             // The cell, not a narrower stand-in glyph, sets the advance.
