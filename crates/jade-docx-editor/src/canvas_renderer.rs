@@ -15868,7 +15868,12 @@ where
                 paragraph_style.alignment = alignment.to_string();
             }
             if let Some(indent) = &props.indent {
-                let has_numbering = props.numbering.is_some();
+                // `w:numId="0"` switches numbering off: no list, ordinary indents.
+                let has_numbering = props
+                    .numbering
+                    .as_ref()
+                    .and_then(Numbering::list_id)
+                    .is_some();
                 // Honor `w:mirrorIndents`: swap start/end indents on verso
                 // (even) pages. The swap is keyed on the page where the
                 // paragraph begins, an approximation for paragraphs that span a
@@ -24021,7 +24026,7 @@ where
         let numbering = props
             .numbering
             .as_ref()
-            .and_then(|numbering| Some((numbering.id.as_deref()?, numbering.level?)));
+            .and_then(|numbering| Some((numbering.list_id()?, numbering.level?)));
         if let Some(indent) = props.indent.as_ref() {
             let char_unit_pt = f64::from(Self::estimate_paragraph_font_size(paragraph));
             apply_paragraph_indent_with_char_unit(
@@ -54353,6 +54358,44 @@ mod tests {
             );
         }
         assert!(owners.iter().any(|l| l.page > owners[0].page));
+    }
+
+    /// `w:numId="0"` switches a style's numbering off, so the paragraph's
+    /// hanging indent is an ordinary one: scroll-offset-repro's
+    /// `　会社は、…` (left 227 hanging 227) starts its first line at the
+    /// margin and fills the line from there.
+    #[test]
+    fn numbering_switched_off_keeps_the_hanging_first_line() {
+        use jade_docx_reader::document::Indent;
+        let paragraph = |numbering: Option<Numbering>| {
+            let mut paragraph = note_test_paragraph("one two three four five six seven", None);
+            paragraph.properties = Some(ParagraphProperties {
+                indent: Some(Indent {
+                    left: Some(30.0),
+                    hanging: Some(30.0),
+                    ..Indent::default()
+                }),
+                numbering,
+                ..Default::default()
+            });
+            paragraph
+        };
+        let first_line = |paragraph: Paragraph| {
+            let (mut renderer, _) = recording_renderer();
+            renderer.selection = SelectionManager::new();
+            renderer.current_y = 120.0;
+            renderer
+                .render_paragraph(&paragraph, &Options::default())
+                .unwrap();
+            let line = &renderer.layout_debug_lines()[0];
+            (line.start_x, line.end - line.start)
+        };
+        let plain = first_line(paragraph(None));
+        let switched_off = first_line(paragraph(Some(Numbering {
+            id: Some("0".into()),
+            level: Some(0),
+        })));
+        assert_eq!(switched_off, plain);
     }
 
     /// Word for Mac centres a line's text in the grid pitches it takes, and
