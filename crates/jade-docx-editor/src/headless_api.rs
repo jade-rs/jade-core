@@ -10853,6 +10853,58 @@ mod tests {
     }
 
     #[test]
+    fn a_deferred_load_keeps_inherited_fonts_out_of_edited_runs() {
+        // The editor loads with the round-trip XML deferred to the first edit.
+        // That pass recorded which font properties a run has as its own only
+        // after the styles' fonts had been filled in, and a run it cannot tie
+        // to its `w:r` (one inside a `w:moveTo`) kept them all: editing it
+        // wrote the document's default fonts and size into its `w:rPr`.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/review-kinds.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc = executor::block_on(WordDocument::load_for_initial_render(
+            &bytes,
+            &Options::default(),
+        ))
+        .expect("load");
+        word_doc.ensure_roundtrip_xml().expect("round-trip XML");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetHighlightColor {
+                    // "words" of the moved text, inside its `w:moveTo`.
+                    start_paragraph: 2,
+                    start_offset: 13,
+                    end_paragraph: 2,
+                    end_offset: 18,
+                    color: "yellow".to_string(),
+                }],
+            },
+        )
+        .expect("highlight applies");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        let body = &xml[xml.find("<w:body>").expect("body")..];
+        let target = body.split("</w:p>").nth(2).expect("third paragraph");
+        assert!(
+            target.contains("<w:highlight w:val=\"yellow\"/>"),
+            "{target}"
+        );
+        for inherited in ["<w:rFonts", "<w:sz ", "<w:kern", "<w:w "] {
+            assert!(!target.contains(inherited), "{inherited} written: {target}");
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
