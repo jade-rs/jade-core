@@ -10666,11 +10666,22 @@ impl WordDocument {
         let mut touched_paragraphs = Vec::new();
 
         for paragraph_index in start..=end {
-            let mut paragraph_changed = false;
+            // A target may name part of a run: cut the runs there, so the
+            // decision takes exactly that part.
+            let cuts = targets.map_or_else(Vec::new, |targets| targets.run_cuts(paragraph_index));
+            let mut paragraph_changed = !cuts.is_empty();
+            let zero_width = (!cuts.is_empty()).then(|| self.zero_width_runs(paragraph_index));
             {
                 let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
                     continue;
                 };
+                if let Some(zero_width) = &zero_width {
+                    for cut in cuts.iter().rev() {
+                        let tail =
+                            split_runs_at_preserving_source(&mut paragraph.runs, *cut, zero_width);
+                        paragraph.runs.extend(tail);
+                    }
+                }
                 let mut new_runs = Vec::with_capacity(paragraph.runs.len());
                 let mut original_offset = 0usize;
                 let mut removed_text_ranges = Vec::new();
@@ -10678,30 +10689,32 @@ impl WordDocument {
                     let run_start = original_offset;
                     let run_end = run_start.saturating_add(run.text.len());
                     original_offset = run_end;
-                    let Some(mark) = run.revision.as_ref() else {
+                    let Some(mark) = run.revision.clone() else {
                         new_runs.push(run);
                         continue;
                     };
-                    if kind_filter
-                        .as_ref()
-                        .is_some_and(|filter| filter != &mark.kind)
-                    {
-                        new_runs.push(run);
-                        continue;
-                    }
-                    // An unidentified run can never match a requested id.
-                    if id_filter.is_some_and(|filter| !filter.matches(mark.id.as_deref())) {
-                        new_runs.push(run);
-                        continue;
-                    }
-                    if targets.is_some_and(|targets| {
-                        !targets.contains_run(
-                            paragraph_index,
-                            run_start,
-                            run_end,
-                            mark.id.as_deref(),
-                        )
-                    }) {
+                    let selected = |layer: &&RevisionMark| {
+                        kind_filter
+                            .as_ref()
+                            .is_none_or(|filter| filter == &layer.kind)
+                            // An unidentified run can never match a requested id.
+                            && id_filter.is_none_or(|filter| filter.matches(layer.id.as_deref()))
+                            && targets.is_none_or(|targets| {
+                                targets.contains_run(
+                                    paragraph_index,
+                                    run_start,
+                                    run_end,
+                                    layer.id.as_deref(),
+                                )
+                            })
+                    };
+                    // Deleted text may still be a tracked insertion: the two
+                    // layers are decided apart, the deletion first.
+                    let decide_deletion = Some(&mark)
+                        .filter(|m| m.is_deletion())
+                        .is_some_and(|m| selected(&m));
+                    let decide_insertion = mark.insertion_layer().is_some_and(|m| selected(&m));
+                    if !decide_deletion && !decide_insertion {
                         new_runs.push(run);
                         continue;
                     }
@@ -10711,23 +10724,34 @@ impl WordDocument {
                     // Move-to behaves like an insertion (its content stays at the
                     // new location); move-from behaves like a deletion (its
                     // content leaves the original location).
-                    match (decision, mark.kind.clone()) {
-                        (RevisionDecision::Accept, RevisionKind::Inserted)
-                        | (RevisionDecision::Accept, RevisionKind::MovedTo)
-                        | (RevisionDecision::Reject, RevisionKind::Deleted)
-                        | (RevisionDecision::Reject, RevisionKind::MovedFrom) => {
-                            run.revision = None;
-                            run.revision_node_id = None;
-                            new_runs.push(run);
+                    let mut kept = Some(mark.clone());
+                    let mut removed = false;
+                    if decide_deletion {
+                        match decision {
+                            RevisionDecision::Accept => removed = true,
+                            RevisionDecision::Reject => kept = mark.insertion.as_deref().cloned(),
                         }
-                        (RevisionDecision::Accept, RevisionKind::Deleted)
-                        | (RevisionDecision::Accept, RevisionKind::MovedFrom)
-                        | (RevisionDecision::Reject, RevisionKind::Inserted)
-                        | (RevisionDecision::Reject, RevisionKind::MovedTo) => {
-                            if run_start < run_end {
-                                removed_text_ranges.push((run_start, run_end));
+                    }
+                    if !removed && decide_insertion {
+                        match decision {
+                            RevisionDecision::Accept => {
+                                kept =
+                                    kept.filter(RevisionMark::is_deletion).map(|mut deletion| {
+                                        deletion.insertion = None;
+                                        deletion
+                                    });
                             }
+                            RevisionDecision::Reject => removed = true,
                         }
+                    }
+                    if removed {
+                        if run_start < run_end {
+                            removed_text_ranges.push((run_start, run_end));
+                        }
+                    } else {
+                        run.revision = kept;
+                        run.revision_node_id = None;
+                        new_runs.push(run);
                     }
                 }
 
@@ -26790,6 +26814,7 @@ impl WordDocument {
             author: session.author.clone(),
             date: session.date.clone(),
             date_utc: session.date_utc.clone(),
+            insertion: None,
         };
 
         // A field's code is not written anew from the model, which cannot
@@ -26869,13 +26894,16 @@ impl WordDocument {
             .and_then(|run| run.revision.as_ref())
             .filter(|mark| matches_session(mark))
             .cloned();
-        let revision_mark = left_mark.or(right_mark).unwrap_or_else(|| RevisionMark {
+        let mut revision_mark = left_mark.or(right_mark).unwrap_or_else(|| RevisionMark {
             kind: RevisionKind::Deleted,
             id: Some(self.allocate_revision_id().to_string()),
             author: session.author.clone(),
             date: session.date.clone(),
             date_utc: session.date_utc.clone(),
+            insertion: None,
         });
+        // The deletion only: each run keeps the insertion it belongs to.
+        revision_mark.insertion = None;
 
         // A deletion can bridge two adjacent deletion wrappers created by
         // separate keystrokes. Give the contiguous right-hand side the chosen
@@ -26884,13 +26912,16 @@ impl WordDocument {
             .iter_mut()
             .take_while(|run| run.revision.as_ref().is_some_and(&matches_session))
         {
-            run.revision = Some(revision_mark.clone());
+            run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.revision_node_id = None;
         }
 
         // As for an insertion: a field's code stays out of the revision.
+        // Text that is still a tracked insertion stays one, inside the
+        // deletion, as Word keeps it: rejecting the deletion gives the
+        // insertion back, and rejecting every change removes the text.
         for run in middle.iter_mut().filter(|run| !zero_width.keeps(run)) {
-            run.revision = Some(revision_mark.clone());
+            run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.node_id = None;
             run.text_node_id = None;
             run.revision_node_id = None;
@@ -31381,6 +31412,23 @@ impl WordDocument {
             .revision
             .as_ref()
             .expect("wrap_run_element called without revision mark");
+        let wrapper = Self::revision_wrapper(doc, mark, XmlNode::Element(run_element));
+        // Deleted text that is still someone's insertion sits inside it, as
+        // Word writes it: `<w:ins><w:del><w:r>`.
+        match mark.insertion.as_deref() {
+            Some(insertion) if mark.is_deletion() => {
+                Self::revision_wrapper(doc, insertion, XmlNode::Element(wrapper))
+            }
+            _ => wrapper,
+        }
+    }
+
+    /// `child` inside the `w:ins` / `w:del` / move element `mark` describes.
+    fn revision_wrapper(
+        doc: &mut DocxXmlDocument,
+        mark: &RevisionMark,
+        child: XmlNode,
+    ) -> XmlElement {
         let wrapper_name = match mark.kind {
             RevisionKind::Inserted => "w:ins",
             RevisionKind::Deleted => "w:del",
@@ -31420,11 +31468,7 @@ impl WordDocument {
         // which left every revision-wrapped run unaddressable — commenting on a
         // paragraph that carried a tracked change failed for exactly that
         // reason.
-        doc.create_element_preserving_child_ids(
-            wrapper_name,
-            attributes,
-            vec![XmlNode::Element(run_element)],
-        )
+        doc.create_element_preserving_child_ids(wrapper_name, attributes, vec![child])
     }
 
     fn sync_run_properties_node(
@@ -33963,6 +34007,21 @@ impl RevisionTargets {
         Some((*first, *paragraphs.max()?))
     }
 
+    /// Every offset where a run target of `paragraph` starts or ends, in
+    /// order.
+    fn run_cuts(&self, paragraph: usize) -> Vec<usize> {
+        let mut cuts: Vec<usize> = self
+            .runs
+            .get(&paragraph)
+            .into_iter()
+            .flatten()
+            .flat_map(|(start, end, _)| [*start, *end])
+            .collect();
+        cuts.sort_unstable();
+        cuts.dedup();
+        cuts
+    }
+
     fn has_paragraph_mark(&self, paragraph: usize) -> bool {
         self.marks.contains_key(&paragraph)
     }
@@ -34170,6 +34229,20 @@ fn collect_paragraph_mark_revision_ids(
     }) {
         collect_paragraph_mark_revision_ids(child, decision, kind_filter, id_filter, join, ids);
     }
+}
+
+/// `deletion` laid over a run that carried `previous`: deleted text that is
+/// still a tracked insertion keeps it, inside the deletion.
+fn deleted_over(previous: Option<RevisionMark>, deletion: &RevisionMark) -> RevisionMark {
+    let mut mark = deletion.clone();
+    mark.insertion = previous.and_then(|previous| {
+        if previous.is_deletion() {
+            previous.insertion
+        } else {
+            Some(Box::new(previous))
+        }
+    });
+    mark
 }
 
 fn collect_max_revision_id(element: &XmlElement) -> u32 {
