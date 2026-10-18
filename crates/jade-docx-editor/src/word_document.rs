@@ -33284,7 +33284,10 @@ impl WordDocument {
                 });
             }
         }
-        doc.create_element("w:hyperlink", attributes, children)
+        // The runs inside were just created and their ids recorded on the
+        // model runs. `create_element` would renumber them, and the next edit,
+        // finding no run in the wrapper, dropped it with the link.
+        doc.create_element_preserving_child_ids("w:hyperlink", attributes, children)
     }
 
     fn create_authored_field_element(
