@@ -10575,6 +10575,57 @@ mod tests {
     }
 
     #[test]
+    fn typing_after_enter_at_the_start_keeps_the_hyperlink() {
+        // Enter at the start of a paragraph holding a w:hyperlink rebuilds
+        // the link's wrapper; the wrapper renumbered the run inside, so the
+        // next edit found no run in it and dropped it. The saved paragraph
+        // kept the link's text and Hyperlink style but lost the link.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: 0,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 1,
+                        offset: 0,
+                        text: "あいう".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        let link = xml
+            .find("<w:hyperlink")
+            .expect("the hyperlink survives the save");
+        let text = xml.find(">example.com<").expect("the link text is saved");
+        let close = xml.find("</w:hyperlink>").expect("the hyperlink is closed");
+        assert!(
+            link < text && text < close,
+            "the link text sits inside it: {xml}"
+        );
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
