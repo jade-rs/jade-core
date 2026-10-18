@@ -313,11 +313,17 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
         .map(str::to_string)
         .collect();
     let is_declared = |tag: &str| declared.iter().any(|declared| declared == tag);
+    let declared_attributes = document.paragraph_declared_property_attributes(paragraph_index);
+    let is_declared_attribute = |tag: &str, attribute: &str| {
+        declared_attributes
+            .iter()
+            .any(|(declared, name)| declared == tag && name == attribute)
+    };
     if let Some(paragraph) = document.paragraph_mut(paragraph_index) {
         let before = paragraph.properties.clone().unwrap_or_default();
         let mut props = style_paragraph_props.unwrap_or_default();
         props.style = Some(next_style.as_str().into());
-        keep_declared_paragraph_properties(&mut props, &before, is_declared);
+        keep_declared_paragraph_properties(&mut props, &before, is_declared, is_declared_attribute);
         props.numbering = if is_declared("w:numPr") {
             before.numbering
         } else {
