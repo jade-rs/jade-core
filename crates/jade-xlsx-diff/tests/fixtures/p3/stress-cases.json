@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "duplicate_rows": {
+    "row_count": 512,
+    "insert_at_row": 258
+  },
+  "wide_sparse": {
+    "old_column_count": 16383,
+    "insert_at_column": 8192
+  },
+  "multi_sheet": {
+    "sheet_count": 128,
+    "target_sheet": 65,
+    "insert_at_row": 2
+  }
+}
