@@ -126,6 +126,24 @@ fn a_cell_without_wrap_text_stays_on_one_line() {
 }
 
 #[test]
+fn a_line_break_without_wrap_text_is_not_drawn() {
+    // Excel keeps the cell on one line and shows its line breaks as
+    // nothing — not as a box for a character the font has no glyph for.
+    for text in ["two\nlines", "two\r\nlines"] {
+        let sheet = sheet_with(text, None, 20.0);
+        let layout = laid_out(&sheet, &StyleTable::default());
+        assert_eq!(layout.cell(CellRef::new(0, 0)).unwrap().lines, ["twolines"]);
+    }
+    // With wrap text, the break is where the line breaks.
+    let sheet = sheet_with("two\nlines", Some(0), 20.0);
+    let layout = laid_out(&sheet, &wrapping_style());
+    assert_eq!(
+        layout.cell(CellRef::new(0, 0)).unwrap().lines,
+        ["two", "lines"]
+    );
+}
+
+#[test]
 fn shrink_to_fit_reduces_the_shared_layout_font() {
     let mut styles = StyleTable::default();
     styles.cell_formats.push(CellFormat {
