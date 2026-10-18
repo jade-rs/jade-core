@@ -1318,6 +1318,88 @@ fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
     }
 }
 
+/// Whether `family` is one of Word's fixed-pitch Japanese faces: ＭＳ 明朝 and
+/// ＭＳ ゴシック under their Japanese, English and PostScript names. Their
+/// proportional siblings (ＭＳ Ｐ明朝, ＭＳ Ｐゴシック, MS UI Gothic) are not.
+pub fn is_word_monospace_family(family: &str) -> bool {
+    matches!(
+        family.trim().trim_matches(|ch| ch == '\'' || ch == '"'),
+        "ＭＳ 明朝"
+            | "MS 明朝"
+            | "MS Mincho"
+            | "ＭＳ明朝"
+            | "Mincho"
+            | "MS-Mincho"
+            | "ＭＳ ゴシック"
+            | "MS ゴシック"
+            | "MS Gothic"
+            | "ＭＳゴシック"
+            | "MS-Gothic"
+    )
+}
+
+thread_local! {
+    static WORD_MONOSPACE_EM: std::cell::RefCell<Option<(String, Option<f64>)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// The em size in px of `font_descriptor` when its requested (first) family
+/// is a Word fixed-pitch face ([`is_word_monospace_family`]), else `None`.
+/// Cached for the last descriptor: the wrap loop asks once per grapheme.
+pub fn word_monospace_em_px(font_descriptor: &str) -> Option<f64> {
+    WORD_MONOSPACE_EM.with(|cell| {
+        let mut cached = cell.borrow_mut();
+        if let Some((descriptor, em)) = cached.as_ref() {
+            if descriptor == font_descriptor {
+                return *em;
+            }
+        }
+        let em = split_font_descriptor(font_descriptor)
+            .filter(|(size_pt, family)| {
+                size_pt.is_finite() && *size_pt > 0.0 && is_word_monospace_family(family)
+            })
+            .map(|(size_pt, _)| f64::from(size_pt) * 96.0 / 72.0);
+        *cached = Some((font_descriptor.to_owned(), em));
+        em
+    })
+}
+
+/// The cell a single-scalar grapheme occupies in a Word fixed-pitch face, in
+/// em: 1 for the JIS full-width repertoire (CJK ideographs, kana, CJK symbols
+/// and punctuation, enclosed CJK and compatibility characters, full-width
+/// forms) and ½ for ASCII and half-width katakana. These faces set every
+/// glyph on that grid, so the advance follows from the character alone and
+/// Word's line breaks do not depend on which face a host substitutes for a
+/// missing ＭＳ 明朝 (jlsi/jade#469). Other characters return `None` and keep
+/// the host measurement.
+pub fn word_monospace_cell_em(grapheme: &str) -> Option<f64> {
+    let mut chars = grapheme.chars();
+    let ch = chars.next()?;
+    if chars.next().is_some() {
+        return None;
+    }
+    match ch as u32 {
+        0x20..=0x7E | 0xFF61..=0xFF9F => Some(0.5),
+        0x3000..=0x30FF
+        | 0x31F0..=0x31FF
+        | 0x3200..=0x33FF
+        | 0x3400..=0x4DBF
+        | 0x4E00..=0x9FFF
+        | 0xF900..=0xFAFF
+        | 0xFF01..=0xFF60
+        | 0xFFE0..=0xFFE6
+        | 0x20000..=0x2FFFD => Some(1.0),
+        _ => None,
+    }
+}
+
+/// The advance Word gives `grapheme` set in `font_descriptor` when the face is
+/// fixed-pitch and the character's cell is known ([`word_monospace_cell_em`]).
+pub fn word_monospace_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
+    let cell = word_monospace_cell_em(grapheme)?;
+    Some(word_monospace_em_px(font_descriptor)? * cell)
+}
+
 #[cfg(test)]
 thread_local! {
     pub(crate) static WORD_FIXED_CJK_DESCRIPTOR_PARSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -2363,6 +2445,81 @@ mod tests {
             resolve_line_height_points(10.5, None, Some(&cell), true, Some(600.0), None),
             resolve_line_height_points(10.5, None, None, true, Some(600.0), None),
         );
+    }
+
+    #[test]
+    fn word_fixed_pitch_faces_and_cells() {
+        for family in [
+            "ＭＳ 明朝",
+            "MS 明朝",
+            "MS Mincho",
+            "'MS Mincho'",
+            "ＭＳ明朝",
+            "Mincho",
+            "MS-Mincho",
+            "ＭＳ ゴシック",
+            "MS ゴシック",
+            "MS Gothic",
+            "ＭＳゴシック",
+            "MS-Gothic",
+        ] {
+            assert!(is_word_monospace_family(family), "{family}");
+        }
+        for family in [
+            "ＭＳ Ｐ明朝",
+            "MS PMincho",
+            "ＭＳ Ｐゴシック",
+            "MS PGothic",
+            "MS UI Gothic",
+            "Yu Mincho",
+        ] {
+            assert!(!is_word_monospace_family(family), "{family}");
+        }
+
+        for (grapheme, cell) in [
+            ("a", Some(0.5)),
+            (" ", Some(0.5)),
+            ("~", Some(0.5)),
+            ("ｱ", Some(0.5)),
+            ("ﾟ", Some(0.5)),
+            ("あ", Some(1.0)),
+            ("ー", Some(1.0)),
+            ("・", Some(1.0)),
+            ("漢", Some(1.0)),
+            ("　", Some(1.0)),
+            ("Ａ", Some(1.0)),
+            ("㈱", Some(1.0)),
+            ("￥", Some(1.0)),
+            ("é", None),
+            ("…", None),
+            ("\t", None),
+            ("か\u{3099}", None),
+        ] {
+            assert_eq!(word_monospace_cell_em(grapheme), cell, "{grapheme:?}");
+        }
+
+        assert_eq!(
+            word_monospace_em_px("10.50pt 'ＭＳ 明朝', 'MS Mincho', serif"),
+            Some(14.0)
+        );
+        assert_eq!(
+            word_monospace_em_px("bold 12.00pt 'MS Gothic', serif"),
+            Some(16.0)
+        );
+        assert_eq!(
+            word_monospace_em_px("10.50pt 'MS PMincho', 'MS Mincho'"),
+            None
+        );
+        assert_eq!(
+            word_monospace_advance_px("10.50pt 'MS Mincho'", "A"),
+            Some(7.0)
+        );
+        assert_eq!(
+            word_monospace_advance_px("10.50pt 'MS Mincho'", "字"),
+            Some(14.0)
+        );
+        assert_eq!(word_monospace_advance_px("10.50pt 'MS Mincho'", "é"), None);
+        assert_eq!(word_monospace_advance_px("10.50pt 'Century'", "A"), None);
     }
 
     #[test]
