@@ -311,11 +311,7 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
         .filter(|numbering| numbering.id.is_some());
     // The split copied the source's w:pPr, and only w:pStyle changes in it:
     // what it declares stays the paragraph's own, as a reload reads it.
-    let declared: Vec<String> = document
-        .paragraph_declared_property_tags(paragraph_index)
-        .into_iter()
-        .map(str::to_string)
-        .collect();
+    let declared: Vec<String> = document.paragraph_declared_property_tags(paragraph_index);
     let is_declared = |tag: &str| declared.iter().any(|declared| declared == tag);
     let declared_attributes = document.paragraph_declared_property_attributes(paragraph_index);
     let is_declared_attribute = |tag: &str, attribute: &str| {

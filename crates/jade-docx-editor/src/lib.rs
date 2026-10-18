@@ -202,7 +202,9 @@ pub struct Options {
     revision_date_utc: Option<String>,
     pageless: bool,
     preview_mode: bool,
-    shortcut_config: ShortcutConfig,
+    /// Shared: the renderer keeps a copy of the options on every render, and
+    /// the binding table is the bulk of them.
+    shortcut_config: std::rc::Rc<ShortcutConfig>,
     dark_mode: bool,
 }
 
@@ -337,7 +339,7 @@ impl Options {
     /// explicitly (otherwise the browser keeps `Ctrl+A` = Select All).
     pub fn set_shortcuts(&mut self, value: JsValue) -> Result<(), JsValue> {
         if value.is_null() || value.is_undefined() {
-            self.shortcut_config = ShortcutConfig::default();
+            self.shortcut_config = std::rc::Rc::new(ShortcutConfig::default());
             return Ok(());
         }
 
@@ -588,7 +590,7 @@ impl Options {
             }
         }
 
-        self.shortcut_config = config;
+        self.shortcut_config = std::rc::Rc::new(config);
         Ok(())
     }
 
@@ -648,7 +650,7 @@ impl Default for Options {
             revision_date_utc: None,
             pageless: false,
             preview_mode: false,
-            shortcut_config: ShortcutConfig::default(),
+            shortcut_config: std::rc::Rc::new(ShortcutConfig::default()),
             dark_mode: false,
         }
     }
