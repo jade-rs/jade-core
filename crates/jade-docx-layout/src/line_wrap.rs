@@ -605,7 +605,11 @@ impl ParagraphStyle {
             return true;
         }
         !self.east_asian_rules.no_line_break_before_replaces_default
-            && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c))
+            && single_char(text).is_some_and(|c| {
+                DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c)
+                    && (self.east_asian_rules.strict_first_and_last_chars
+                        || !STRICT_ONLY_NO_LINE_BREAK_BEFORE.contains(&c))
+            })
     }
 
     pub fn forbids_line_end(&self, text: &str) -> bool {
@@ -620,6 +624,14 @@ impl ParagraphStyle {
             && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_AFTER.contains(&c))
     }
 }
+
+/// Members of the default line-start table that Word forbids only under
+/// `w:strictFirstAndLastChars`: its standard set (標準) lets the small kana and
+/// `ー` start a line (trust-beneficiary-sale-keep-next page 12, `ーシング`).
+const STRICT_ONLY_NO_LINE_BREAK_BEFORE: &[char] = &[
+    'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ', 'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ッ',
+    'ャ', 'ュ', 'ョ', 'ヮ', 'ヵ', 'ヶ', 'ー',
+];
 
 /// Splits the first printable grapheme into a synthetic enlarged run and
 /// returns the exact geometry consumed by [`wrap_text_into_lines`]. Both the
@@ -723,6 +735,8 @@ pub struct EastAsianLineBreakingRules {
     /// them (a Japanese `w:noLineBreaksBefore`/`After`, ECMA-376 §17.15.1.58-59).
     pub no_line_break_before_replaces_default: bool,
     pub no_line_break_after_replaces_default: bool,
+    /// `w:strictFirstAndLastChars` (see [`STRICT_ONLY_NO_LINE_BREAK_BEFORE`]).
+    pub strict_first_and_last_chars: bool,
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
     pub compatibility_mode: Option<u32>,
@@ -758,6 +772,7 @@ impl EastAsianLineBreakingRules {
             no_line_break_after: settings.no_line_break_after.clone(),
             no_line_break_before_replaces_default: settings.no_line_break_before_replaces_default,
             no_line_break_after_replaces_default: settings.no_line_break_after_replaces_default,
+            strict_first_and_last_chars: settings.strict_first_and_last_chars,
             compatibility_mode: settings.compatibility_mode,
         }
     }
@@ -8565,7 +8580,7 @@ mod tests {
         let extending = style(false);
         assert!(extending.forbids_line_start("、"));
         assert!(extending.forbids_line_start("。"));
-        assert!(extending.forbids_line_start("ッ"));
+        assert!(extending.forbids_line_start("）"));
         assert!(extending.forbids_line_end("（"));
     }
 
@@ -14865,15 +14880,23 @@ mod tests {
     }
 
     #[test]
-    fn default_kinsoku_table_marks_small_kana_and_choon_as_no_line_start() {
-        let paragraph = ParagraphStyle {
+    fn small_kana_and_choon_start_a_line_unless_kinsoku_is_strict() {
+        // Word's standard set (標準) leaves them out: Word for Mac starts
+        // trust-beneficiary-sale-keep-next's page 12 line with `ーシング`.
+        // `w:strictFirstAndLastChars` adds them.
+        let mut paragraph = ParagraphStyle {
             enable_line_break_rules: true,
             ..ParagraphStyle::default()
         };
+        assert!(!paragraph.forbids_line_start("ぁ"));
+        assert!(!paragraph.forbids_line_start("ッ"));
+        assert!(!paragraph.forbids_line_start("ー"));
+        assert!(paragraph.forbids_line_start("］"));
+        assert!(!paragraph.forbids_line_start("あ"));
+        paragraph.east_asian_rules.strict_first_and_last_chars = true;
         assert!(paragraph.forbids_line_start("ぁ"));
         assert!(paragraph.forbids_line_start("ッ"));
         assert!(paragraph.forbids_line_start("ー"));
-        assert!(paragraph.forbids_line_start("］"));
         assert!(!paragraph.forbids_line_start("あ"));
     }
 

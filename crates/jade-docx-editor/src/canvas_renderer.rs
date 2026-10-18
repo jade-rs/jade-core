@@ -50799,6 +50799,7 @@ mod tests {
             no_line_break_after: vec!["」".into()],
             no_line_break_before_replaces_default: false,
             no_line_break_after_replaces_default: true,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
         let overrides = EastAsianLineBreakingSettings {
@@ -50815,6 +50816,7 @@ mod tests {
             no_line_break_after: vec!["。".into()],
             no_line_break_before_replaces_default: true,
             no_line_break_after_replaces_default: false,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
 
@@ -50854,6 +50856,7 @@ mod tests {
             no_line_break_after: vec!["。".into()],
             no_line_break_before_replaces_default: false,
             no_line_break_after_replaces_default: false,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
         let merged = merge_east_asian_rules(&base, None);
