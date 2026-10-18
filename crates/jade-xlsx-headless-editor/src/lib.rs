@@ -826,6 +826,19 @@ impl HeadlessWorkbook {
         edits: Vec<(usize, CellEdit)>,
         styles: Option<(String, String)>,
     ) -> Result<()> {
+        self.write_edits_with_parts(edits, styles, Vec::new())
+    }
+
+    /// [`Self::write_edits_with_styles`] with further parts replaced
+    /// wholesale in the same write — a sheet part whose merge list changed
+    /// alongside the cells the merge cleared. The cell edits patch the
+    /// replaced text.
+    fn write_edits_with_parts(
+        &mut self,
+        edits: Vec<(usize, CellEdit)>,
+        styles: Option<(String, String)>,
+        extra_parts: Vec<(String, String)>,
+    ) -> Result<()> {
         let mut references = HashSet::with_capacity(edits.len());
         for (index, edit) in &edits {
             if !references.insert((*index, edit.reference)) {
@@ -850,11 +863,12 @@ impl HeadlessWorkbook {
                 cells,
             })
             .collect::<Vec<_>>();
-        let parts = jade_xlsx_writer::table::follow_table_headers(
+        let mut parts = extra_parts;
+        parts.extend(jade_xlsx_writer::table::follow_table_headers(
             &self.source,
             &self.workbook,
             &mut sheets,
-        )?;
+        )?);
         let written = jade_xlsx_writer::write_xlsx_with_parts(
             &self.source,
             styles
