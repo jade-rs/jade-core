@@ -26901,16 +26901,22 @@ where
         let mut border = None;
         let mut font_hint = None;
 
+        // Complex-script bold/italic (`w:bCs`/`w:iCs`, ECMA-376 Part 1
+        // §17.3.2.6 / §17.3.2.17) style only the complex-script face.
+        let mut complex_font_style = String::new();
         if let Some(props) = properties {
-            // The renderer is script-agnostic, so complex-script bold/italic
-            // (`w:bCs`/`w:iCs`, ECMA-376 Part 1 §17.3.2.6 / §17.3.2.17) is ORed
-            // with the Latin/East-Asian `w:b`/`w:i` toggles.
-            if props.bold.unwrap_or(false) || props.bold_complex.unwrap_or(false) {
+            if props.bold.unwrap_or(false) {
                 font_style.push_str("bold ");
             }
+            if props.bold_complex.unwrap_or(false) {
+                complex_font_style.push_str("bold ");
+            }
 
-            if props.italic.unwrap_or(false) || props.italic_complex.unwrap_or(false) {
+            if props.italic.unwrap_or(false) {
                 font_style.push_str("italic ");
+            }
+            if props.italic_complex.unwrap_or(false) {
+                complex_font_style.push_str("italic ");
             }
 
             if let Some(size) = props.font_size {
@@ -27030,8 +27036,9 @@ where
         }
 
         let families_rc = resolve_font_families(properties);
-        let descriptors = families_rc.to_descriptor_set_with_sizes(
+        let descriptors = families_rc.to_descriptor_set_with_styles(
             &font_style,
+            &complex_font_style,
             font_size_pt,
             font_size_complex_pt.unwrap_or(font_size_pt),
         );
@@ -39893,10 +39900,13 @@ mod tests {
         );
     }
 
-    /// Complex-script bold/italic (`w:bCs`/`w:iCs`, §17.3.2.6 / §17.3.2.17) are
-    /// ORed into the script-agnostic font-style prefix alongside `w:b`/`w:i`.
+    /// Complex-script bold/italic (`w:bCs`/`w:iCs`, §17.3.2.6 / §17.3.2.17)
+    /// style only the complex-script face; `w:b`/`w:i` style the others.
+    /// Word for Mac sets scroll-offset-repro's `w:bCs` Japanese body at the
+    /// regular 10.5pt pitch, not the 10.71pt of its synthetic bold.
     #[test]
-    fn complex_script_bold_italic_flow_into_font_style_prefix() {
+    fn complex_script_bold_italic_style_only_the_complex_face() {
+        use jade_docx_layout::line_wrap::ScriptCategory;
         let renderer = test_renderer();
 
         let complex = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
@@ -39904,35 +39914,35 @@ mod tests {
             italic_complex: Some(true),
             ..RunProperties::default()
         }));
-        assert!(
-            complex.font_style_prefix.contains("bold"),
-            "w:bCs must emit a bold font-style prefix"
-        );
-        assert!(
-            complex.font_style_prefix.contains("italic"),
-            "w:iCs must emit an italic font-style prefix"
-        );
+        let complex_face = complex.descriptors.for_script(ScriptCategory::Complex);
+        assert!(complex_face.contains("bold"), "{complex_face}");
+        assert!(complex_face.contains("italic"), "{complex_face}");
+        for script in [ScriptCategory::Latin, ScriptCategory::EastAsia] {
+            let face = complex.descriptors.for_script(script);
+            assert!(!face.contains("bold") && !face.contains("italic"), "{face}");
+        }
+        assert!(!complex.font_style_prefix.contains("bold"));
 
         let off = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
             bold_complex: Some(false),
             italic_complex: Some(false),
             ..RunProperties::default()
         }));
-        assert!(
-            !off.font_style_prefix.contains("bold"),
-            "w:bCs=false must not emit bold"
-        );
-        assert!(
-            !off.font_style_prefix.contains("italic"),
-            "w:iCs=false must not emit italic"
-        );
+        assert!(!off
+            .descriptors
+            .for_script(ScriptCategory::Complex)
+            .contains("bold"));
 
-        // `w:b` still wins on its own even if the complex flag is absent.
+        // `w:b` bolds the Latin and East Asian faces.
         let latin = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
             bold: Some(true),
             ..RunProperties::default()
         }));
         assert!(latin.font_style_prefix.contains("bold"));
+        assert!(latin
+            .descriptors
+            .for_script(ScriptCategory::EastAsia)
+            .contains("bold"));
     }
 
     /// `w:outline` (§17.3.2.23) sets the resolved style's `outline` flag only when
