@@ -16,13 +16,23 @@
 //!   and the cell is re-projected as that cached literal so its dependents
 //!   still evaluate against what Excel last computed. A recomputed `#DIV/0!`
 //!   or `#REF!` is a real result and comes through.
+//! - With nothing cached — a formula just typed — there is nothing to keep:
+//!   the cell takes the engine's answer, the `#NAME?` Excel shows for a
+//!   misspelt function, and is still reported as skipped, so the file asks
+//!   for a full calculation on load and an Excel that knows the function
+//!   computes it. While the file asks for one, a cached artifact is not
+//!   trusted as Excel's and the cell stays skipped.
+//! - A skipped cell is projected as its value — an error included — so its
+//!   dependents read what it shows, as in Excel. Only a cell whose own
+//!   formula the engine fails is skipped; one that merely passes another
+//!   cell's error along takes it.
 
 pub mod formula_text;
 
 use ironcalc_base::cell::CellValue as EngineValue;
 use ironcalc_base::Model;
 use jade_xlsx_reader::{CellRef, CellValue, DateSystem, Workbook};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -138,7 +148,9 @@ pub fn evaluate_with_manual_filter_rows(
 }
 
 fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalculated> {
-    let mut skipped: HashSet<(usize, CellRef)> = HashSet::new();
+    // Each skipped cell and what it holds: its cached value, or the engine's
+    // answer when nothing is cached.
+    let mut skipped: HashMap<(usize, CellRef), CellValue> = HashMap::new();
     let formula_count: usize = workbook
         .sheets
         .iter()
@@ -164,13 +176,29 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
         let round = read_back(&model, workbook, &projected)?;
 
         let Some(first) = round.disqualified.into_iter().next() else {
+            let mut cells = round.cells;
+            // A skipped cell with nothing cached shows the engine's answer.
+            for cell in &reasons {
+                let value = &skipped[&(cell.sheet, cell.reference)];
+                if cached_value(workbook, cell.sheet, cell.reference) != *value {
+                    cells.push(ComputedCell {
+                        sheet: cell.sheet,
+                        reference: cell.reference,
+                        value: value.clone(),
+                    });
+                }
+            }
             reasons.extend(unparsed);
             return Ok(Recalculated {
-                cells: round.cells,
+                cells,
                 skipped: reasons,
             });
         };
-        skipped.insert((first.sheet, first.reference));
+        let holds = match cached_value(workbook, first.sheet, first.reference) {
+            CellValue::Empty => CellValue::Error(first.reason.clone()),
+            cached => cached,
+        };
+        skipped.insert((first.sheet, first.reference), holds);
         reasons.push(first);
     }
     Err(CalcError::Engine(
@@ -184,7 +212,7 @@ type Projection<'a> = (Model<'a>, Vec<(usize, CellRef)>, Vec<SkippedCell>);
 
 fn project<'a>(
     workbook: &Workbook,
-    skipped: &HashSet<(usize, CellRef)>,
+    skipped: &HashMap<(usize, CellRef), CellValue>,
     time_zone: &'a str,
 ) -> Result<Projection<'a>> {
     use ironcalc_base::date_system::{with_date_system, DateSystem as EngineDateSystem};
@@ -197,7 +225,7 @@ fn project<'a>(
 
 fn project_with_epoch<'a>(
     workbook: &Workbook,
-    skipped: &HashSet<(usize, CellRef)>,
+    skipped: &HashMap<(usize, CellRef), CellValue>,
     time_zone: &'a str,
 ) -> Result<Projection<'a>> {
     let mut model =
@@ -212,6 +240,16 @@ fn project_with_epoch<'a>(
             }
         } else {
             model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
+        }
+    }
+
+    // Tables before formulas, so structured references (`Table1[Amount]`)
+    // parse.
+    for sheet in &workbook.sheets {
+        for table in &sheet.tables {
+            if let Some(table) = engine_table(&sheet.name, table) {
+                model.add_table(table);
+            }
         }
     }
 
@@ -234,8 +272,8 @@ fn project_with_epoch<'a>(
             let engine_row = row.index as i32 + 1;
             for cell in &row.cells {
                 let engine_column = cell.reference.column as i32 + 1;
-                let as_cached = skipped.contains(&(index, cell.reference));
-                if let (Some(formula), false) = (&cell.formula, as_cached) {
+                let held = skipped.get(&(index, cell.reference));
+                if let (Some(formula), None) = (&cell.formula, held) {
                     if model
                         .update_cell_with_formula(
                             engine_sheet,
@@ -258,7 +296,8 @@ fn project_with_epoch<'a>(
                         reason: "the engine could not parse the formula".to_string(),
                     });
                 }
-                set_literal(&mut model, engine_sheet, engine_row, engine_column, cell);
+                let value = held.unwrap_or(&cell.value);
+                set_literal(&mut model, engine_sheet, engine_row, engine_column, value);
             }
         }
     }
@@ -266,21 +305,62 @@ fn project_with_epoch<'a>(
     Ok((model, projected, unparsed))
 }
 
-fn set_literal(
-    model: &mut Model<'_>,
-    sheet: u32,
-    row: i32,
-    column: i32,
-    cell: &jade_xlsx_reader::Cell,
-) {
+/// A table as the engine holds it: its range in A1 form and its columns.
+fn engine_table(
+    sheet: &str,
+    table: &jade_xlsx_reader::Table,
+) -> Option<ironcalc_base::types::Table> {
+    use ironcalc_base::expressions::utils::number_to_column;
+    let corner = |reference: CellRef| {
+        Some(format!(
+            "{}{}",
+            number_to_column(reference.column as i32 + 1)?,
+            reference.row + 1
+        ))
+    };
+    Some(ironcalc_base::types::Table {
+        name: table.name.clone(),
+        display_name: table.display_name.clone(),
+        sheet_name: sheet.to_string(),
+        reference: format!(
+            "{}:{}",
+            corner(table.reference.start)?,
+            corner(table.reference.end)?
+        ),
+        totals_row_count: table.totals_row_count,
+        header_row_count: table.header_row_count,
+        header_row_dxf_id: None,
+        data_dxf_id: None,
+        totals_row_dxf_id: None,
+        columns: table
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(index, name)| ironcalc_base::types::TableColumn {
+                id: index as u32 + 1,
+                name: name.clone(),
+                ..Default::default()
+            })
+            .collect(),
+        style_info: Default::default(),
+        has_filters: table.auto_filter,
+    })
+}
+
+fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: &CellValue) {
     // Projection failures here are deliberate no-ops: an unset cell reads as
-    // empty, which is the conservative meaning for a value the engine cannot
-    // hold (an error literal, say — the engine has no setter for those).
-    let _ = match &cell.value {
+    // empty, the conservative meaning for a value the engine cannot hold.
+    let _ = match value {
         CellValue::Number(number) => model.update_cell_with_number(sheet, row, column, *number),
         CellValue::Text(text) => model.update_cell_with_text(sheet, row, column, text),
         CellValue::Bool(flag) => model.update_cell_with_bool(sheet, row, column, *flag),
-        CellValue::Empty | CellValue::Error(_) => Ok(()),
+        // The engine has no setter for an error; a formula that is only the
+        // error literal holds it, so cells reading it see the error, as in
+        // Excel, not an empty cell.
+        CellValue::Error(error) => {
+            model.update_cell_with_formula(sheet, row, column, format!("={error}"))
+        }
+        CellValue::Empty => Ok(()),
     };
 }
 
@@ -305,7 +385,14 @@ fn read_back(
             )
             .map_err(CalcError::Engine)?;
         let value = to_cell_value(value);
-        if is_engine_artifact(&value) && cached_value(workbook, *sheet_index, *reference) != value {
+        // An artifact the cell's own formula produced overwrites nothing
+        // Excel computed only when the cache holds the same answer and the
+        // file is not waiting on a full calculation that would replace it.
+        if is_engine_artifact(&value)
+            && artifact_starts_here(model, *sheet_index, *reference)
+            && (cached_value(workbook, *sheet_index, *reference) != value
+                || workbook.full_calculation_on_load)
+        {
             disqualified.push(SkippedCell {
                 sheet: *sheet_index,
                 reference: *reference,
@@ -336,6 +423,34 @@ fn cached_value(workbook: &Workbook, sheet: usize, reference: CellRef) -> CellVa
         .and_then(|row| row.cells.iter().find(|cell| cell.reference == reference))
         .map(|cell| cell.value.clone())
         .unwrap_or(CellValue::Empty)
+}
+
+/// Whether an engine artifact in this cell comes from its own formula, not
+/// from a cell it reads. One that only passes another cell's along is that
+/// cell's to answer for: skipped there, this one evaluates clean next round;
+/// shown there — a misspelt function just typed — Excel shows it here too.
+/// An error the engine did not trace to a cell counts as this one's.
+fn artifact_starts_here(model: &Model<'_>, sheet: usize, reference: CellRef) -> bool {
+    use ironcalc_base::types::{Cell, FormulaValue};
+    let Ok(worksheet) = model.workbook.worksheet(sheet as u32) else {
+        return true;
+    };
+    let origin = match worksheet.cell(reference.row as i32 + 1, reference.column as i32 + 1) {
+        Some(Cell::CellFormula {
+            v: FormulaValue::Error { o, .. },
+            ..
+        })
+        | Some(Cell::ArrayFormula {
+            v: FormulaValue::Error { o, .. },
+            ..
+        }) => o,
+        _ => return true,
+    };
+    let Some((origin_sheet, address)) = origin.rsplit_once('!') else {
+        return true;
+    };
+    origin_sheet == worksheet.name
+        && CellRef::parse(address).is_ok_and(|origin| origin == reference)
 }
 
 /// `#NAME?` and `#ERROR!` are what the engine says for a function or syntax

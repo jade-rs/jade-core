@@ -106,7 +106,7 @@ fn template_run_for_edit(runs: &[Run], offset: usize) -> Option<Run> {
     previous.or(next).cloned()
 }
 
-fn create_run_from_template(template: Option<&Run>, text: &str) -> Run {
+pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Run {
     if let Some(source) = template {
         let mut run = source.clone();
         run.text = text.to_string();
@@ -559,6 +559,13 @@ fn run_holds_object(run: &Run) -> bool {
         || run.has_endnote_ref
 }
 
+/// Whether `run` places a text box or references a note.
+fn places_a_story(run: &Run) -> bool {
+    run.text_box.is_some()
+        || !run.footnote_reference_ids.is_empty()
+        || !run.endnote_reference_ids.is_empty()
+}
+
 /// Applies a text edit to the provided run sequence without discarding style
 /// or breaking existing run boundaries more than necessary.
 #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(start, end, insert_len = insert.len())))]
@@ -575,9 +582,12 @@ pub fn apply_text_edit(
         std::mem::swap(&mut start, &mut end);
     }
 
-    // A caret in a tracked deletion must create ordinary text outside that
+    // A caret in a tracked change must create ordinary text outside that
     // revision. Editing the deleted run directly writes into <w:delText>, so
-    // the user's new characters disappear when Word shows final markup.
+    // the user's new characters disappear when Word shows final markup; and
+    // text typed into an insertion would become part of somebody else's
+    // change. With tracking on, the caller marks the new run as an insertion
+    // of its own.
     if start == end && !insert.is_empty() {
         let mut cumulative = 0usize;
         let mut protected_template = None;
@@ -585,9 +595,7 @@ pub fn apply_text_edit(
             let len = run.text.len();
             let run_end = cumulative + len;
             if start < run_end || (start == run_end && len > 0) {
-                if run.revision.as_ref().is_some_and(|mark| {
-                    matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
-                }) {
+                if run.revision.is_some() {
                     protected_template = Some(run.clone());
                 }
                 break;
@@ -597,7 +605,16 @@ pub fn apply_text_edit(
         if let Some(template) = protected_template.as_ref() {
             let mut inserted = create_run_from_template(Some(template), insert);
             inserted.revision = None;
-            let tail = split_runs_at_preserving_source(runs, start, zero_width);
+            let mut tail = split_runs_at_preserving_source(runs, start, zero_width);
+            // At a paragraph's start, typing goes after the text boxes and
+            // note references there, as it does without a revision around.
+            if start == 0 {
+                let leading = tail
+                    .iter()
+                    .take_while(|run| run.text.is_empty() && places_a_story(run))
+                    .count();
+                runs.extend(tail.drain(..leading));
+            }
             runs.push(inserted);
             runs.extend(tail);
             normalize_break_runs(runs);
@@ -636,7 +653,35 @@ pub fn apply_text_edit(
         }
     }
 
+    // Typed text is never part of somebody's tracked change, whichever run
+    // took it (an insertion emptied by a deletion, say); with tracking on,
+    // the caller marks it as an insertion of its own.
+    if !insert.is_empty() {
+        unmark_range(runs, start, start + insert.len(), zero_width);
+    }
+
     normalize_break_runs(runs);
+}
+
+/// Takes the revision off the text in `start..end`, cutting runs there.
+fn unmark_range(runs: &mut Vec<Run>, start: usize, end: usize, zero_width: &ZeroWidthRuns) {
+    let mut offset = 0;
+    let marked = runs.iter().any(|run| {
+        let (from, to) = (offset, offset + run.text.len());
+        offset = to;
+        run.revision.is_some() && from < end && start < to
+    });
+    if !marked {
+        return;
+    }
+    let tail = split_runs_at_preserving_source(runs, end, zero_width);
+    let mut middle = split_runs_at_preserving_source(runs, start, zero_width);
+    for run in middle.iter_mut().filter(|run| !run.text.is_empty()) {
+        run.revision = None;
+        run.revision_node_id = None;
+    }
+    runs.extend(middle);
+    runs.extend(tail);
 }
 
 /// A paragraph's comment anchors, which hold offsets into its text and move

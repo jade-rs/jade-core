@@ -8,6 +8,7 @@
 use crate::SkiaRenderHost;
 use futures::executor::block_on;
 use jade_docx_editor::canvas_renderer::CanvasRenderer;
+pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{CommandContext, CommandExecutor};
 use jade_docx_editor::headless_api::{
@@ -167,6 +168,8 @@ pub struct NativeDocument {
     /// Set to `false` around a bounded repaint, so it does not report the pages
     /// it stopped at as the document's page count.
     pass_covers_whole_document: Rc<std::cell::Cell<bool>>,
+    /// See [`Self::set_dark_paper`].
+    dark_paper: Rc<std::cell::Cell<bool>>,
     options: Options,
     fonts: crate::FontEnvironment,
 }
@@ -212,6 +215,7 @@ impl NativeDocument {
         let pages = host.pages();
         let rendered_pages = host.rendered_pages();
         let pass_covers_whole_document = host.pass_covers_whole_document();
+        let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
         renderer.sync_document_header_footer_stories(&word_document);
@@ -259,6 +263,7 @@ impl NativeDocument {
             pages,
             rendered_pages,
             pass_covers_whole_document,
+            dark_paper,
             options,
             fonts,
         })
@@ -488,6 +493,50 @@ impl NativeDocument {
             return Err(error);
         }
         Ok(started.elapsed())
+    }
+
+    /// Rasterises the pages at `scale` device pixels per CSS pixel — the
+    /// window's backing scale — and repaints if that changed it.
+    ///
+    /// Layout, hit-testing and the caret stay in CSS pixels; only
+    /// [`Self::page_pixels`] grows. Returns whether the pages were repainted.
+    pub fn set_raster_scale(&mut self, scale: f64) -> Result<bool, String> {
+        if !scale.is_finite() || !(0.5..=4.0).contains(&scale) {
+            return Err("raster scale must be finite and between 0.5 and 4".to_string());
+        }
+        let previous = self
+            .renderer
+            .set_raster_scale(scale)
+            .map_err(|_| "raster scale change failed".to_string())?;
+        if previous == scale {
+            return Ok(false);
+        }
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Shows the pages on dark paper, or on the document's own, and repaints if
+    /// that changed anything. Returns whether the pages were repainted.
+    ///
+    /// Only what [`Self::page_pixels`] reads changes: the document keeps its
+    /// colours, and [`Self::export_pdf`] — and so printing — draws them, since
+    /// it paints on surfaces of its own.
+    pub fn set_dark_paper(&mut self, on: bool) -> Result<bool, String> {
+        if self.dark_paper.replace(on) == on {
+            return Ok(false);
+        }
+        // The whole pool, not only the rendered pages: a surface reused when
+        // the document grows must not come back on the other paper.
+        for page in self.pages.borrow().iter() {
+            page.set_dark_paper(on);
+        }
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Whether the pages are shown on dark paper.
+    pub fn dark_paper(&self) -> bool {
+        self.dark_paper.get()
     }
 
     /// Selects from `anchor` to `focus` and repaints so the highlight appears.
@@ -1645,6 +1694,19 @@ impl NativeDocument {
     /// draw it as an overlay, which is what lets it move and blink without
     /// repainting the document.
     pub fn place_caret(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        self.place_caret_with_affinity(paragraph, offset, CaretAffinity::Upstream)
+    }
+
+    /// [`Self::place_caret`], saying which line a caret on a soft wrap is
+    /// drawn on: downstream for a click at a line's start, upstream for one
+    /// past a line's end.
+    pub fn place_caret_with_affinity(
+        &mut self,
+        paragraph: usize,
+        offset: usize,
+        affinity: CaretAffinity,
+    ) -> Option<CaretRect> {
+        self.renderer.set_caret_affinity(affinity);
         let range = SelectionRange::collapsed(TextPosition::new(paragraph, offset));
         self.selection = Some(range);
         self.renderer.set_selection_range(Some(range));

@@ -968,7 +968,7 @@ impl DocumentParser {
                                 note_separator: None,
                                 has_footnote_ref: false,
                                 has_endnote_ref: false,
-                                revision: revision_stack.last().cloned(),
+                                revision: Self::current_revision(&revision_stack),
                             });
                             // `w:pPr/w:rPr` formats the paragraph mark. It is
                             // not a default property set for existing `w:r`
@@ -1096,7 +1096,7 @@ impl DocumentParser {
                                     note_separator: None,
                                     has_footnote_ref: false,
                                     has_endnote_ref: false,
-                                    revision: revision_stack.last().cloned(),
+                                    revision: Self::current_revision(&revision_stack),
                                 });
                             }
                         }
@@ -1814,7 +1814,7 @@ impl DocumentParser {
                                         note_separator: None,
                                         has_footnote_ref: false,
                                         has_endnote_ref: false,
-                                        revision: revision_stack.last().cloned(),
+                                        revision: Self::current_revision(&revision_stack),
                                     });
                                 }
                             }
@@ -3976,7 +3976,7 @@ impl DocumentParser {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     depth += 1;
-                    if e.name().as_ref() == b"w:t" {
+                    if matches!(e.name().as_ref(), b"w:t" | b"w:delText") {
                         text_depth += 1;
                     }
                     writer.write_event(Event::Start(e.to_owned()))?;
@@ -3987,8 +3987,9 @@ impl DocumentParser {
                 Ok(Event::Text(e)) => {
                     if text_depth > 0 {
                         // The document parser applies xml:space after joining
-                        // all text/entity events. Preserve w:t verbatim here;
-                        // trimming early loses note separators and spaces.
+                        // all text/entity events. Preserve w:t (and deleted
+                        // text, w:delText) verbatim here; trimming early
+                        // loses note separators and spaces.
                         writer.write_event(Event::Text(e.to_owned()))?;
                     } else {
                         let raw = std::str::from_utf8(e.as_ref())?;
@@ -4016,7 +4017,7 @@ impl DocumentParser {
                         break;
                     } else {
                         writer.write_event(Event::End(e.to_owned()))?;
-                        if e.name().as_ref() == b"w:t" {
+                        if matches!(e.name().as_ref(), b"w:t" | b"w:delText") {
                             text_depth = text_depth.saturating_sub(1);
                         }
                         depth = depth.saturating_sub(1);
@@ -4592,6 +4593,23 @@ impl DocumentParser {
         }
     }
 
+    /// The revision a run inside the open `w:ins`/`w:del`/move elements
+    /// carries: the innermost one, and for a deletion the insertion around
+    /// it (`<w:ins><w:del>`), which Word writes when someone deletes text
+    /// that is still an insertion.
+    fn current_revision(stack: &[RevisionMark]) -> Option<RevisionMark> {
+        let (innermost, outer) = stack.split_last()?;
+        let mut mark = innermost.clone();
+        if mark.is_deletion() {
+            mark.insertion = outer
+                .iter()
+                .rev()
+                .find(|outer| !outer.is_deletion())
+                .map(|outer| Box::new(outer.clone()));
+        }
+        Some(mark)
+    }
+
     fn build_revision_mark(element: &BytesStart, kind: RevisionKind) -> RevisionMark {
         let mut author: Option<String> = None;
         let mut date: Option<String> = None;
@@ -4620,6 +4638,7 @@ impl DocumentParser {
             author,
             date,
             date_utc,
+            insertion: None,
         }
     }
     fn build_section_ranges(

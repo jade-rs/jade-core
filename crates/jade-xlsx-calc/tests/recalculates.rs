@@ -354,6 +354,105 @@ fn an_unknown_function_is_skipped_rather_than_guessed() {
 }
 
 #[test]
+fn an_unknown_function_with_nothing_cached_shows_name_error() {
+    // A formula just typed has no value Excel computed to keep: a misspelt
+    // function reads `#NAME?`, as in Excel, not an empty cell. It is still
+    // reported, so the file asks Excel to calculate it on load.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1"><f>NOTAFUNCTION.V2(1)</f></c><c r="B1"><f>SUMM(1,2)</f></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let workbook = read_xlsx(&bytes).expect("read");
+    let outcome = evaluate(&workbook).expect("evaluate");
+
+    let name = CellValue::Error("#NAME?".into());
+    assert_eq!(computed(&outcome, 0, "A1"), Some(&name));
+    assert_eq!(computed(&outcome, 0, "B1"), Some(&name));
+    assert_eq!(skipped(&outcome), refs(&["A1", "B1"]));
+}
+
+#[test]
+fn a_name_error_that_shows_reaches_its_dependents() {
+    // B1 last computed 8, but A1 now reads `#NAME?` for real, so B1 does
+    // too; keeping 8 would show a total that no longer adds up.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1"><f>NOTAFUNCTION.V2(1)</f></c><c r="B1"><f>A1+1</f><v>8</v></c><c r="C1"><f>SUM(A1:B1)</f><v>15</v></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let workbook = read_xlsx(&bytes).expect("read");
+    let outcome = evaluate(&workbook).expect("evaluate");
+
+    let name = CellValue::Error("#NAME?".into());
+    assert_eq!(computed(&outcome, 0, "A1"), Some(&name));
+    assert_eq!(computed(&outcome, 0, "B1"), Some(&name));
+    assert_eq!(computed(&outcome, 0, "C1"), Some(&name));
+    // Only the cell whose own formula failed is reported.
+    assert_eq!(skipped(&outcome), refs(&["A1"]));
+}
+
+#[test]
+fn a_skipped_name_error_stays_skipped_while_the_file_awaits_a_full_calculation() {
+    // The `#NAME?` jade wrote into A1's cache last time is jade's, not
+    // Excel's: with the file still asking for a full calculation, A1 stays
+    // skipped and the request stands.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1" t="e"><f>NOTAFUNCTION.V2(1)</f><v>#NAME?</v></c><c r="B1"><f>A1+1</f><v>#NAME?</v></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let mut workbook = read_xlsx(&bytes).expect("read");
+    workbook.full_calculation_on_load = true;
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert_eq!(skipped(&outcome), refs(&["A1"]));
+    assert_eq!(
+        computed(&outcome, 0, "B1"),
+        Some(&CellValue::Error("#NAME?".into()))
+    );
+    // Saved by Excel, with nothing pending, the same cache is Excel's answer.
+    workbook.full_calculation_on_load = false;
+    assert!(evaluate(&workbook).expect("evaluate").skipped.is_empty());
+}
+
+#[test]
+fn an_error_value_reaches_the_cells_that_read_it() {
+    // A cell holding `#N/A` makes a sum over it `#N/A` in Excel, not a sum
+    // that leaves it out.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1" t="e"><v>#N/A</v></c><c r="B1"><v>2</v></c><c r="C1"><f>SUM(A1:B1)</f><v>2</v></c><c r="D1"><f>IFERROR(A1,0)+B1</f><v>2</v></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let workbook = read_xlsx(&bytes).expect("read");
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert_eq!(
+        computed(&outcome, 0, "C1"),
+        Some(&CellValue::Error("#N/A".into()))
+    );
+    assert_eq!(computed(&outcome, 0, "D1"), Some(&CellValue::Number(2.0)));
+}
+
+fn skipped(outcome: &jade_xlsx_calc::Recalculated) -> Vec<CellRef> {
+    outcome.skipped.iter().map(|cell| cell.reference).collect()
+}
+
+fn refs(references: &[&str]) -> Vec<CellRef> {
+    references
+        .iter()
+        .map(|reference| CellRef::parse(reference).expect("reference"))
+        .collect()
+}
+
+#[test]
 fn a_1904_workbook_recalculates_ordinary_arithmetic() {
     let bytes = workbook(
         &sheet(r#"<row r="1"><c r="A1"><f>1+1</f></c></row>"#),
@@ -648,5 +747,60 @@ fn text_carries_rounded_seconds_into_minutes_and_the_next_date() {
             CellValue::Text("30:00:00".into()),
         ],
         false,
+    );
+}
+
+#[test]
+fn structured_references_to_a_table_recalculate() {
+    // `SUBTOTAL(109,Table1[Amount])` in Table1's totals row, as Excel
+    // writes it: it evaluates rather than being skipped, and follows an
+    // edit to the column it reads.
+    let bytes = std::fs::read(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../public/fixtures/objects-workbook.xlsx"),
+    )
+    .expect("fixture");
+    let mut workbook = read_xlsx(&bytes).expect("read");
+    // Typed beside the table: a column, and the totals row's cell.
+    for (reference, formula) in [
+        ("E1", "SUM(Table1[Qty])"),
+        ("E2", "Table1[[#Totals],[Amount]]*2"),
+    ] {
+        let reference = CellRef::parse(reference).expect("reference");
+        workbook.sheets[0]
+            .rows
+            .iter_mut()
+            .find(|row| row.index == reference.row)
+            .expect("row")
+            .cells
+            .push(jade_xlsx_reader::Cell {
+                reference,
+                value: CellValue::Empty,
+                style_index: None,
+                formula: Some(formula.to_string()),
+            });
+    }
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert!(outcome.skipped.is_empty(), "{:?}", outcome.skipped);
+    assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(749.0)));
+    assert_eq!(computed(&outcome, 0, "E1"), Some(&CellValue::Number(6.0)));
+    assert_eq!(
+        computed(&outcome, 0, "E2"),
+        Some(&CellValue::Number(1498.0))
+    );
+
+    let gizmo = CellRef::parse("C4").expect("C4");
+    let cell = workbook.sheets[0]
+        .rows
+        .iter_mut()
+        .flat_map(|row| row.cells.iter_mut())
+        .find(|cell| cell.reference == gizmo)
+        .expect("C4");
+    cell.value = CellValue::Number(199.0);
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(849.0)));
+    assert_eq!(
+        computed(&outcome, 0, "E2"),
+        Some(&CellValue::Number(1698.0))
     );
 }

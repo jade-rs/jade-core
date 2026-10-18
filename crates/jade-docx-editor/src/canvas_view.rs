@@ -8764,6 +8764,9 @@ impl OffscreenDocumentView {
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = false;
                 }
+                renderer
+                    .borrow_mut()
+                    .set_band_redraw_paints_band_page_only(false);
 
                 to_value(&word_doc).map_err(|e| JsValue::from_str(&format!("{e}")))
             }
@@ -8897,6 +8900,9 @@ impl OffscreenDocumentView {
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = true;
                 }
+                renderer
+                    .borrow_mut()
+                    .set_band_redraw_paints_band_page_only(true);
 
                 // Build response object
                 let result = Object::new();
@@ -9116,6 +9122,9 @@ impl OffscreenDocumentView {
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = true;
                 }
+                renderer
+                    .borrow_mut()
+                    .set_band_redraw_paints_band_page_only(true);
 
                 let result = Object::new();
                 if let Some(doc_value) = doc_value {
@@ -16015,6 +16024,9 @@ impl OffscreenDocumentView {
             /// Fallback reason → count. Present so a probe can verify which gate
             /// rejected band mode at each depth.
             fallback: std::collections::BTreeMap<String, u64>,
+            /// Dirty visible pages a lazy band edit left unpainted; their
+            /// pixels are repainted when fetched.
+            skipped_pages: u64,
         }
 
         #[derive(Serialize)]
@@ -16123,6 +16135,7 @@ impl OffscreenDocumentView {
                     .into_iter()
                     .map(|(name, count)| (name.to_string(), count))
                     .collect(),
+                skipped_pages: renderer.band_redraw_skipped_pages(),
             },
             span_seek: SpanSeekStatsView {
                 enabled: renderer.span_seek_enabled(),
@@ -17018,6 +17031,7 @@ impl OffscreenDocumentView {
             let previous_limit = renderer.layout_page_limit();
             let previous_visible = renderer.visible_page_range();
             renderer.replace_render_host(Box::new(host), pageless)?;
+            renderer.set_band_redraw_paints_band_page_only(lazy);
             if lazy {
                 // A lazy session keeps laying out on demand; an eager one was
                 // already complete, so it keeps no limit.

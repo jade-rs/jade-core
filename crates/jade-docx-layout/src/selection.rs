@@ -340,10 +340,23 @@ struct CellSelectionState {
     focus_cell: usize,
 }
 
+/// Which line a caret on a soft wrap is drawn on: the offset that ends one
+/// line also starts the next.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CaretAffinity {
+    /// At the end of the line above — a click past a line's end, or End.
+    #[default]
+    Upstream,
+    /// At the start of the line below — a click at a line's start, Home.
+    Downstream,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
     paragraphs: Vec<ParagraphLayout>,
     selection: Option<SelectionRange>,
+    /// The line a collapsed caret on a soft wrap is drawn on.
+    caret_affinity: CaretAffinity,
     /// Per-line caret origins that differ from the interactive line bounds.
     /// Empty table cells use the full cell for hit testing, while insertion
     /// starts after the resolved cell padding/alignment.
@@ -2895,6 +2908,16 @@ impl SelectionManager {
         None
     }
 
+    /// Sets which line a caret on a soft wrap is drawn on; see
+    /// [`CaretAffinity`].
+    pub fn set_caret_affinity(&mut self, affinity: CaretAffinity) {
+        self.caret_affinity = affinity;
+    }
+
+    pub fn caret_affinity(&self) -> CaretAffinity {
+        self.caret_affinity
+    }
+
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         let range = self.selection?;
         if !range.is_collapsed() {
@@ -2946,6 +2969,27 @@ impl SelectionManager {
                 }
 
                 chosen_line_index = line_index;
+            }
+        }
+        // On a soft wrap — the offset that ends this line starts the next,
+        // with no break character between — downstream means the next line.
+        if self.caret_affinity == CaretAffinity::Downstream {
+            let chosen = &paragraph.lines[chosen_line_index];
+            let wraps_here = !chosen.fragments.is_empty()
+                && chosen.break_range.is_none()
+                && chosen
+                    .logical_source_range()
+                    .is_some_and(|(_, end)| end == position.offset);
+            if wraps_here {
+                if let Some(next) = paragraph.lines.get(chosen_line_index + 1) {
+                    if !next.fragments.is_empty()
+                        && next
+                            .logical_source_range()
+                            .is_some_and(|(start, _)| start == position.offset)
+                    {
+                        chosen_line_index += 1;
+                    }
+                }
             }
         }
         let chosen_line = &paragraph.lines[chosen_line_index];
@@ -4209,6 +4253,46 @@ mod tests {
             "expected caret at {text_end}, got {}",
             metrics.x
         );
+    }
+
+    #[test]
+    fn a_caret_on_a_soft_wrap_is_drawn_on_the_line_its_affinity_names() {
+        // "abc" wraps onto "def": offset 3 ends the first line and starts
+        // the second.
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        manager.append_paragraph_text(0, "abcdef");
+        manager.record_line(0, make_line_with_offset(0, "abc", 0.0, 0.0, 0.0));
+        manager.record_line(0, make_line_with_offset(3, "def", 0.0, 20.0, 20.0));
+        manager.set_selection(Some(SelectionRange::collapsed(TextPosition::new(0, 3))));
+
+        // Upstream, the default: the end of the first line, as before.
+        let upstream = manager.caret_metrics().expect("caret");
+        assert_eq!((upstream.x, upstream.absolute_top), (30.0, 0.0));
+        // Downstream: the start of the second.
+        manager.set_caret_affinity(CaretAffinity::Downstream);
+        let downstream = manager.caret_metrics().expect("caret");
+        assert_eq!((downstream.x, downstream.absolute_top), (0.0, 20.0));
+        // Away from a wrap, affinity changes nothing.
+        manager.set_selection(Some(SelectionRange::collapsed(TextPosition::new(0, 1))));
+        assert_eq!(manager.caret_metrics().expect("caret").absolute_top, 0.0);
+        manager.set_selection(Some(SelectionRange::collapsed(TextPosition::new(0, 6))));
+        assert_eq!(manager.caret_metrics().expect("caret").absolute_top, 20.0);
+    }
+
+    #[test]
+    fn a_hard_break_is_not_a_soft_wrap() {
+        // "abc", a line break (offset 3..4), then "def" from offset 4.
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        manager.append_paragraph_text(0, "abc\ndef");
+        let mut first = make_line_with_offset(0, "abc", 0.0, 0.0, 0.0);
+        first.break_range = Some((3, 4));
+        manager.record_line(0, first);
+        manager.record_line(0, make_line_with_offset(4, "def", 0.0, 20.0, 20.0));
+        manager.set_caret_affinity(CaretAffinity::Downstream);
+        manager.set_selection(Some(SelectionRange::collapsed(TextPosition::new(0, 3))));
+        assert_eq!(manager.caret_metrics().expect("caret").absolute_top, 0.0);
     }
 
     #[test]

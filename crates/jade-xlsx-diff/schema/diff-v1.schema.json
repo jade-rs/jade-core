@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bokuweb/xlsx-diff/raw/main/schema/diff-v1.schema.json",
+  "title": "xlsx-diff report v1",
+  "description": "The version 1 JSON contract emitted by xlsx-diff. Sheet positions, row/column indices, and ranges are one-based.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "coordinate_system",
+    "options",
+    "old_file",
+    "new_file",
+    "summary",
+    "sheets"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "coordinate_system": { "const": "one_based" },
+    "options": { "$ref": "#/$defs/diff_options" },
+    "old_file": { "type": "string" },
+    "new_file": { "type": "string" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "sheets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sheet_diff" }
+    }
+  },
+  "$defs": {
+    "diff_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whitespace",
+        "limits",
+        "min_match_score",
+        "move_match_score",
+        "sheet_rename_score",
+        "ambiguity_margin"
+      ],
+      "properties": {
+        "whitespace": { "enum": ["preserve", "collapse"] },
+        "formula_values": {
+          "enum": ["ignore_when_formulas_equivalent", "compare_cached"]
+        },
+        "limits": { "$ref": "#/$defs/resource_limits" },
+        "min_match_score": { "$ref": "#/$defs/probability" },
+        "move_match_score": { "$ref": "#/$defs/probability" },
+        "sheet_rename_score": { "$ref": "#/$defs/probability" },
+        "ambiguity_margin": { "$ref": "#/$defs/probability" }
+      }
+    },
+    "resource_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_input_bytes",
+        "max_uncompressed_bytes",
+        "max_zip_entries",
+        "max_rows_per_sheet",
+        "max_columns_per_sheet",
+        "max_cells",
+        "max_alignment_pairs"
+      ],
+      "properties": {
+        "max_input_bytes": { "$ref": "#/$defs/non_negative_integer" },
+        "max_uncompressed_bytes": { "$ref": "#/$defs/non_negative_integer" },
+        "max_zip_entries": { "$ref": "#/$defs/non_negative_integer" },
+        "max_rows_per_sheet": { "$ref": "#/$defs/non_negative_integer" },
+        "max_columns_per_sheet": { "$ref": "#/$defs/non_negative_integer" },
+        "max_cells": { "$ref": "#/$defs/non_negative_integer" },
+        "max_alignment_pairs": { "type": "integer", "minimum": 1 },
+        "max_assignment_size": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sheets_added",
+        "sheets_removed",
+        "sheets_renamed",
+        "sheet_order_changes",
+        "table_regions_added",
+        "table_regions_removed",
+        "rows_added",
+        "rows_removed",
+        "rows_moved",
+        "columns_added",
+        "columns_removed",
+        "columns_moved",
+        "cells_changed",
+        "formulas_changed",
+        "cell_styles_changed",
+        "merged_cells_added",
+        "merged_cells_removed"
+      ],
+      "properties": {
+        "sheets_added": { "$ref": "#/$defs/non_negative_integer" },
+        "sheets_removed": { "$ref": "#/$defs/non_negative_integer" },
+        "sheets_renamed": { "$ref": "#/$defs/non_negative_integer" },
+        "sheet_order_changes": { "$ref": "#/$defs/non_negative_integer" },
+        "table_regions_added": { "$ref": "#/$defs/non_negative_integer" },
+        "table_regions_removed": { "$ref": "#/$defs/non_negative_integer" },
+        "rows_added": { "$ref": "#/$defs/non_negative_integer" },
+        "rows_removed": { "$ref": "#/$defs/non_negative_integer" },
+        "rows_moved": { "$ref": "#/$defs/non_negative_integer" },
+        "columns_added": { "$ref": "#/$defs/non_negative_integer" },
+        "columns_removed": { "$ref": "#/$defs/non_negative_integer" },
+        "columns_moved": { "$ref": "#/$defs/non_negative_integer" },
+        "cells_changed": { "$ref": "#/$defs/non_negative_integer" },
+        "formulas_changed": { "$ref": "#/$defs/non_negative_integer" },
+        "cell_styles_changed": { "$ref": "#/$defs/non_negative_integer" },
+        "merged_cells_added": { "$ref": "#/$defs/non_negative_integer" },
+        "merged_cells_removed": { "$ref": "#/$defs/non_negative_integer" }
+      }
+    },
+    "sheet_diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "old_name",
+        "new_name",
+        "status",
+        "old_position",
+        "new_position",
+        "order_changed",
+        "match_confidence",
+        "alignment",
+        "table_regions",
+        "row_changes",
+        "column_changes",
+        "cell_changes",
+        "merge_changes"
+      ],
+      "properties": {
+        "old_name": { "$ref": "#/$defs/nullable_string" },
+        "new_name": { "$ref": "#/$defs/nullable_string" },
+        "status": {
+          "enum": ["added", "removed", "modified", "renamed", "reordered", "unchanged"]
+        },
+        "old_position": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "new_position": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "order_changed": { "type": "boolean" },
+        "match_confidence": { "$ref": "#/$defs/nullable_probability" },
+        "alignment": { "$ref": "#/$defs/alignment_diagnostics" },
+        "table_regions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/table_region_diff" }
+        },
+        "row_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/row_change" }
+        },
+        "column_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/column_change" }
+        },
+        "cell_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cell_change" }
+        },
+        "merge_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/merge_change" }
+        }
+      }
+    },
+    "table_region_diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "old_range",
+        "new_range",
+        "status",
+        "alignment",
+        "row_changes",
+        "column_changes",
+        "cell_changes"
+      ],
+      "properties": {
+        "old_range": { "$ref": "#/$defs/nullable_range" },
+        "new_range": { "$ref": "#/$defs/nullable_range" },
+        "status": { "enum": ["added", "removed", "modified", "unchanged"] },
+        "alignment": { "$ref": "#/$defs/alignment_diagnostics" },
+        "row_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/row_change" }
+        },
+        "column_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/column_change" }
+        },
+        "cell_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cell_change" }
+        }
+      }
+    },
+    "row_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "old_index", "new_index", "preview", "confidence", "ambiguous"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/change_kind" },
+        "old_index": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "new_index": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "preview": { "type": "string" },
+        "confidence": { "$ref": "#/$defs/nullable_probability" },
+        "ambiguous": { "type": "boolean" }
+      }
+    },
+    "column_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "old_index", "new_index", "header", "confidence", "ambiguous"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/change_kind" },
+        "old_index": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "new_index": { "$ref": "#/$defs/nullable_one_based_integer" },
+        "header": { "type": "string" },
+        "confidence": { "$ref": "#/$defs/nullable_probability" },
+        "ambiguous": { "type": "boolean" }
+      }
+    },
+    "cell_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "old_address",
+        "new_address",
+        "kind",
+        "old_value",
+        "new_value",
+        "old_value_kind",
+        "new_value_kind",
+        "old_formula",
+        "new_formula",
+        "style_changed"
+      ],
+      "properties": {
+        "old_address": { "$ref": "#/$defs/nullable_cell_address" },
+        "new_address": { "$ref": "#/$defs/nullable_cell_address" },
+        "kind": {
+          "enum": [
+            "value_changed",
+            "formula_changed",
+            "value_and_formula_changed",
+            "style_changed",
+            "value_added",
+            "value_removed"
+          ]
+        },
+        "old_value": { "$ref": "#/$defs/nullable_string" },
+        "new_value": { "$ref": "#/$defs/nullable_string" },
+        "old_value_kind": { "$ref": "#/$defs/nullable_cell_value_kind" },
+        "new_value_kind": { "$ref": "#/$defs/nullable_cell_value_kind" },
+        "old_formula": { "$ref": "#/$defs/nullable_string" },
+        "new_formula": { "$ref": "#/$defs/nullable_string" },
+        "style_changed": { "type": "boolean" }
+      }
+    },
+    "alignment_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_ambiguous_signature_groups",
+        "column_ambiguous_signature_groups",
+        "low_confidence_row_matches",
+        "low_confidence_column_matches",
+        "minimum_row_confidence",
+        "minimum_column_confidence"
+      ],
+      "properties": {
+        "row_ambiguous_signature_groups": { "$ref": "#/$defs/non_negative_integer" },
+        "column_ambiguous_signature_groups": { "$ref": "#/$defs/non_negative_integer" },
+        "low_confidence_row_matches": { "$ref": "#/$defs/non_negative_integer" },
+        "low_confidence_column_matches": { "$ref": "#/$defs/non_negative_integer" },
+        "minimum_row_confidence": { "$ref": "#/$defs/nullable_probability" },
+        "minimum_column_confidence": { "$ref": "#/$defs/nullable_probability" }
+      }
+    },
+    "merge_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "old_range", "new_range"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/change_kind" },
+        "old_range": { "$ref": "#/$defs/nullable_range" },
+        "new_range": { "$ref": "#/$defs/nullable_range" }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_row", "start_col", "end_row", "end_col"],
+      "properties": {
+        "start_row": { "$ref": "#/$defs/one_based_integer" },
+        "start_col": { "$ref": "#/$defs/one_based_integer" },
+        "end_row": { "$ref": "#/$defs/one_based_integer" },
+        "end_col": { "$ref": "#/$defs/one_based_integer" }
+      }
+    },
+    "change_kind": { "enum": ["added", "removed", "moved"] },
+    "cell_value_kind": {
+      "enum": ["empty", "string", "number", "boolean", "error", "date_time", "duration"]
+    },
+    "nullable_cell_value_kind": {
+      "oneOf": [
+        { "$ref": "#/$defs/cell_value_kind" },
+        { "type": "null" }
+      ]
+    },
+    "nullable_range": {
+      "oneOf": [
+        { "$ref": "#/$defs/range" },
+        { "type": "null" }
+      ]
+    },
+    "nullable_string": { "type": ["string", "null"] },
+    "nullable_cell_address": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[A-Z]+[1-9][0-9]*$" },
+        { "type": "null" }
+      ]
+    },
+    "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "nullable_probability": {
+      "oneOf": [
+        { "$ref": "#/$defs/probability" },
+        { "type": "null" }
+      ]
+    },
+    "non_negative_integer": { "type": "integer", "minimum": 0 },
+    "one_based_integer": { "type": "integer", "minimum": 1 },
+    "nullable_one_based_integer": {
+      "oneOf": [
+        { "$ref": "#/$defs/one_based_integer" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

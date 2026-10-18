@@ -3527,6 +3527,14 @@ impl<'a> Model<'a> {
             .set_row_height(column, height)
     }
 
+    /// Registers an Excel table, so structured references to it
+    /// (`Table1[Amount]`, `Table1[[#Totals],[Qty]]`) parse in formulas set
+    /// after it. Replaces a table of the same name.
+    pub fn add_table(&mut self, table: Table) {
+        self.workbook.tables.insert(table.name.clone(), table);
+        self.parser.set_tables(self.workbook.tables.clone());
+    }
+
     /// Adds a new defined name.
     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
     pub fn new_defined_name(

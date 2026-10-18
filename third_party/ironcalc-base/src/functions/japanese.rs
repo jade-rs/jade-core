@@ -370,6 +370,55 @@ impl<'a> Model<'a> {
         CalcResult::String(slice)
     }
 
+    /// REPLACEB: `new_text` in place of the characters whose bytes start
+    /// inside `start..start + count` (bytes counted from 1).
+    pub(crate) fn dbcs_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(text) => text,
+            Err(error) => return error,
+        };
+        let start = match self.get_number(&args[1], cell) {
+            Ok(value) if value >= 1.0 => value.trunc() as usize,
+            Ok(_) => return CalcResult::new_error(Error::VALUE, cell, "Start below 1".into()),
+            Err(error) => return error,
+        };
+        let count = match self.get_number(&args[2], cell) {
+            Ok(value) if value >= 0.0 => value.trunc() as usize,
+            Ok(_) => return CalcResult::new_error(Error::VALUE, cell, "Negative count".into()),
+            Err(error) => return error,
+        };
+        let new_text = match self.get_string(&args[3], cell) {
+            Ok(text) => text,
+            Err(error) => return error,
+        };
+        let end = start.saturating_add(count);
+        let mut out = String::new();
+        let mut position = 1;
+        let mut inserted = false;
+        for c in text.chars() {
+            if position >= start && position < end {
+                if !inserted {
+                    out.push_str(&new_text);
+                    inserted = true;
+                }
+            } else {
+                if position >= end && !inserted {
+                    out.push_str(&new_text);
+                    inserted = true;
+                }
+                out.push(c);
+            }
+            position += byte_width(c);
+        }
+        if !inserted {
+            out.push_str(&new_text);
+        }
+        CalcResult::String(out)
+    }
+
     /// FINDB, SEARCHB: the character position FIND or SEARCH gives, in
     /// bytes.
     pub(crate) fn dbcs_position(

@@ -30,8 +30,10 @@ pub struct SetParagraphStyleCommand {
     /// Run formatting the style replaced in the saved XML, per paragraph.
     previous_run_xml: Vec<RemovedRunProperties>,
     previous_selection: Option<SelectionRange>,
-    /// Package state before a missing built-in style definition was added.
-    /// Undo restores it whole so the definition leaves with the style.
+    /// Package state before a missing built-in style definition was added,
+    /// or before a note paragraph was restyled. Undo restores it whole so the
+    /// definition leaves with the style, and a note's part comes back as it
+    /// was.
     package_before_style_creation: Option<WordDocumentSnapshot>,
 }
 
@@ -78,6 +80,13 @@ impl Command for SetParagraphStyleCommand {
             return Err(CommandError::ParagraphUnavailable);
         }
         self.package_before_style_creation = None;
+        // A note paragraph's part is re-read on every edit, so the run
+        // properties taken out of it cannot be put back by id: undo restores
+        // the document as it was instead.
+        let note_snapshot = (start..=end)
+            .any(|paragraph_index| ctx.document.is_note_paragraph_surface(paragraph_index))
+            .then(|| ctx.document.snapshot_including_package())
+            .flatten();
         if let Some(requested) = requested_style_id.as_deref() {
             let defined = ctx
                 .document
@@ -94,6 +103,9 @@ impl Command for SetParagraphStyleCommand {
                     self.package_before_style_creation = snapshot;
                 }
             }
+        }
+        if self.package_before_style_creation.is_none() {
+            self.package_before_style_creation = note_snapshot;
         }
         let style_id = requested_style_id.as_ref().map(|requested| {
             ctx.document
@@ -158,10 +170,7 @@ impl Command for SetParagraphStyleCommand {
                 .inherited_paragraph_properties(paragraph_index, style_id.as_deref());
             let declared: Vec<String> = ctx
                 .document
-                .paragraph_declared_property_tags(paragraph_index)
-                .into_iter()
-                .map(str::to_string)
-                .collect();
+                .paragraph_declared_property_tags(paragraph_index);
             let declared_attributes = ctx
                 .document
                 .paragraph_declared_property_attributes(paragraph_index);
@@ -242,10 +251,12 @@ impl Command for SetParagraphStyleCommand {
                             Some(rp) => {
                                 merge_run_properties_override(rp, run_style_props);
                                 forget_direct_fonts_replaced_by(rp, run_style_props);
+                                forget_style_owned_run_properties(rp, run_style_props);
                             }
                             None => {
                                 let mut effective = run_style_props.clone();
                                 effective.direct_font_properties.known = true;
+                                forget_style_owned_run_properties(&mut effective, run_style_props);
                                 run.properties = Some(effective);
                             }
                         }
@@ -328,6 +339,56 @@ fn forget_direct_fonts_replaced_by(run: &mut RunProperties, style: &RunPropertie
     }
     if style.font_family.is_some() || style.fonts.is_some() {
         direct.fonts = None;
+    }
+}
+
+/// Leaves to the style the run properties it defines, other than the font
+/// ones [`forget_direct_fonts_replaced_by`] tracks: their `w:rPr` children
+/// are removed below, and a run without them takes them from its paragraph
+/// style when drawn, as a loaded document's runs do. Keeping the style's
+/// value in the run wrote it into the run's `w:rPr` at its next edit: a
+/// heading's theme colour became a fixed direct colour, and the paragraph an
+/// Enter started after it carried that colour on.
+fn forget_style_owned_run_properties(run: &mut RunProperties, style: &RunProperties) {
+    macro_rules! forget {
+        ($($field:ident),* $(,)?) => {
+            $(
+                if style.$field.is_some() {
+                    run.$field = None;
+                }
+            )*
+        };
+    }
+    forget!(
+        bold,
+        bold_complex,
+        italic,
+        italic_complex,
+        strike,
+        double_strike,
+        caps,
+        small_caps,
+        vanish,
+        spec_vanish,
+        shadow,
+        outline,
+        emboss,
+        imprint,
+        emphasis,
+        effect,
+        baseline,
+        text_position,
+        char_spacing,
+        fit_text,
+        color,
+        highlight,
+        shading,
+        border,
+    );
+    if style.underline.is_some() {
+        run.underline = None;
+        run.underline_kind = None;
+        run.underline_color = None;
     }
 }
 
