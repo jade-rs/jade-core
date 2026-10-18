@@ -38,8 +38,17 @@ use wasm_bindgen::JsValue;
 const PAGE_WIDTH_PX: f64 = 816.0;
 const PAGE_HEIGHT_PX: f64 = 1056.0;
 
-/// Keystrokes typed by the `keystroke` scenario.
+/// Keystrokes typed by the `keystroke` scenario. `JADE_PERF_KEYSTROKES`
+/// overrides it for a sampling profiler that needs a longer run; the workflow
+/// leaves it unset so both sides type the same.
 pub const KEYSTROKES: usize = 20;
+
+fn keystrokes() -> usize {
+    std::env::var("JADE_PERF_KEYSTROKES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(KEYSTROKES)
+}
 
 /// The scenarios, in report order.
 pub const SCENARIOS: &[&str] = &["load", "layout", "repaint", "keystroke", "export"];
@@ -229,8 +238,8 @@ impl CanvasRenderHost for PerfHost {
     }
 }
 
-fn load(bytes: &[u8]) -> Result<WordDocument, String> {
-    block_on(WordDocument::load(bytes, &options())).map_err(|err| format!("load: {err:?}"))
+fn load(bytes: &[u8], options: &Options) -> Result<WordDocument, String> {
+    block_on(WordDocument::load(bytes, options)).map_err(|err| format!("load: {err:?}"))
 }
 
 fn renderer() -> Result<CanvasRenderer<PerfPainter>, String> {
@@ -241,10 +250,11 @@ fn renderer() -> Result<CanvasRenderer<PerfPainter>, String> {
 fn render_cold(
     renderer: &mut CanvasRenderer<PerfPainter>,
     model: &WordDocument,
+    options: &Options,
 ) -> Result<(), String> {
     let document = model.document.as_ref().ok_or("no main document")?;
     renderer
-        .render(document, &options())
+        .render(document, options)
         .map_err(|err| format!("render: {err:?}"))
 }
 
@@ -259,41 +269,44 @@ fn keystroke_paragraph(renderer: &CanvasRenderer<PerfPainter>) -> Option<usize> 
 /// Runs one scenario on `fixture`. Setup happens outside the measured region.
 pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
     let bytes = std::fs::read(fixture).map_err(|err| format!("{}: {err}", fixture.display()))?;
+    // Built once: the editor keeps its options, and building them parses the
+    // shortcut table, which no keystroke pays for.
+    let options = &options();
     match scenario {
         "load" => {
             let mut loaded = None;
-            perf_measured_region(&mut || loaded = Some(load(&bytes)));
+            perf_measured_region(&mut || loaded = Some(load(&bytes, options)));
             loaded.ok_or("load did not run")??;
         }
         "layout" => {
-            let model = load(&bytes)?;
+            let model = load(&bytes, options)?;
             let mut renderer = renderer()?;
             let mut result = Ok(());
-            perf_measured_region(&mut || result = render_cold(&mut renderer, &model));
+            perf_measured_region(&mut || result = render_cold(&mut renderer, &model, options));
             result?;
         }
         "repaint" => {
             // Paint cost with layout already known: a full repaint of a laid
             // out document, which is what a theme or zoom switch runs.
-            let model = load(&bytes)?;
+            let model = load(&bytes, options)?;
             let mut renderer = renderer()?;
-            render_cold(&mut renderer, &model)?;
+            render_cold(&mut renderer, &model, options)?;
             let mut result = Ok(());
             perf_measured_region(&mut || {
                 renderer.mark_full_repaint();
-                result = render_cold(&mut renderer, &model);
+                result = render_cold(&mut renderer, &model, options);
             });
             result?;
         }
         "keystroke" => {
-            let mut model = load(&bytes)?;
+            let mut model = load(&bytes, options)?;
             let mut renderer = renderer()?;
-            render_cold(&mut renderer, &model)?;
+            render_cold(&mut renderer, &model, options)?;
             let paragraph = keystroke_paragraph(&renderer).ok_or("no paragraph on page 1")?;
             let mut result = Ok(());
             perf_measured_region(&mut || {
-                for _ in 0..KEYSTROKES {
-                    result = type_one(&mut renderer, &mut model, paragraph);
+                for _ in 0..keystrokes() {
+                    result = type_one(&mut renderer, &mut model, paragraph, options);
                     if result.is_err() {
                         return;
                     }
@@ -304,7 +317,7 @@ pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
         "export" => {
             // An edited document, so the writer serialises the main part
             // instead of copying it through untouched.
-            let mut model = load(&bytes)?;
+            let mut model = load(&bytes, options)?;
             insert_text(&mut model, 0)?;
             let mut exported = Ok(Vec::new());
             perf_measured_region(&mut || {
@@ -340,8 +353,12 @@ fn type_one(
     renderer: &mut CanvasRenderer<PerfPainter>,
     model: &mut WordDocument,
     paragraph: usize,
+    options: &Options,
 ) -> Result<(), String> {
     const VISIBLE_END_PAGE_1IDX: usize = 1;
+    // As `canvas_view` does before every edit: with the renderer still
+    // holding the document, the edit would deep-clone it to mutate it.
+    renderer.drop_document_cache();
     insert_text(model, paragraph)?;
     let edited = model.document.as_ref().ok_or("no main document")?.clone();
     renderer.prefer_visible_window_seek_once();
@@ -351,7 +368,7 @@ fn type_one(
     let previous_limit = renderer.layout_page_limit();
     renderer.set_layout_page_limit(Some(VISIBLE_END_PAGE_1IDX));
     let result = renderer
-        .render_with_numbering_rc(edited, &options(), None, None, None, None)
+        .render_with_numbering_rc(edited, options, None, None, None, None)
         .map_err(|err| format!("repaint: {err:?}"));
     renderer.set_layout_page_limit(previous_limit);
     result
