@@ -11385,6 +11385,67 @@ mod tests {
     }
 
     #[test]
+    fn typing_in_a_text_box_keeps_inherited_fonts_out_of_its_runs() {
+        // A text box's runs were left out of the pass that records which font
+        // properties a run declares, so every font they inherit counted as
+        // their own and typing in the box wrote it into their `w:rPr`.
+        for deferred in [false, true] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures/textbox.docx"),
+            )
+            .expect("read fixture");
+            let mut word_doc = if deferred {
+                let mut word_doc = executor::block_on(WordDocument::load_for_initial_render(
+                    &bytes,
+                    &Options::default(),
+                ))
+                .expect("load");
+                word_doc.ensure_roundtrip_xml().expect("round-trip XML");
+                word_doc
+            } else {
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load")
+            };
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertText {
+                        // The text box's paragraph, after its host.
+                        paragraph: 1,
+                        offset: 0,
+                        text: "X".to_string(),
+                    }],
+                },
+            )
+            .expect("typing applies");
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            let contents: Vec<&str> = xml
+                .split("<w:txbxContent>")
+                .skip(1)
+                .map(|content| content.split("</w:txbxContent>").next().unwrap_or_default())
+                .collect();
+            assert!(!contents.is_empty());
+            for content in contents {
+                assert!(content.contains("XHello"), "{content}");
+                for inherited in ["<w:rFonts", "<w:sz ", "<w:kern", "<w:w "] {
+                    assert!(
+                        !content.contains(inherited),
+                        "deferred={deferred}: {inherited} written: {content}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
