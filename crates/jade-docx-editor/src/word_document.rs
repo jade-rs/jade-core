@@ -50277,8 +50277,12 @@ mod tests {
                 .iter()
                 .map(|run| run.text.as_str())
                 .collect::<String>();
+            // A footnote the head references is listed right after it.
+            let tail_index = (1..doc.paragraph_count())
+                .find(|&index| doc.is_body_paragraph_surface(index))
+                .unwrap();
             let tail = doc
-                .paragraph(1)
+                .paragraph(tail_index)
                 .unwrap()
                 .runs
                 .iter()
