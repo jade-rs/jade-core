@@ -29754,7 +29754,9 @@ where
         }
     }
 
-    pub(crate) fn set_raster_scale(&mut self, scale: f64) -> Result<f64, JsValue> {
+    /// Changes the host's raster density, keeping layout in CSS pixels, and
+    /// returns the previous one. Everything is repainted on the next render.
+    pub fn set_raster_scale(&mut self, scale: f64) -> Result<f64, JsValue> {
         let previous = self.host.device_pixel_ratio();
         if previous != scale {
             self.restore_band_clip_if_active();
