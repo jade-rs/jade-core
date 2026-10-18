@@ -955,7 +955,7 @@ impl DocumentParser {
                                 note_separator: None,
                                 has_footnote_ref: false,
                                 has_endnote_ref: false,
-                                revision: revision_stack.last().cloned(),
+                                revision: Self::current_revision(&revision_stack),
                             });
                             // `w:pPr/w:rPr` formats the paragraph mark. It is
                             // not a default property set for existing `w:r`
@@ -1076,7 +1076,7 @@ impl DocumentParser {
                                     note_separator: None,
                                     has_footnote_ref: false,
                                     has_endnote_ref: false,
-                                    revision: revision_stack.last().cloned(),
+                                    revision: Self::current_revision(&revision_stack),
                                 });
                             }
                         }
@@ -1794,7 +1794,7 @@ impl DocumentParser {
                                         note_separator: None,
                                         has_footnote_ref: false,
                                         has_endnote_ref: false,
-                                        revision: revision_stack.last().cloned(),
+                                        revision: Self::current_revision(&revision_stack),
                                     });
                                 }
                             }
@@ -4541,6 +4541,23 @@ impl DocumentParser {
         }
     }
 
+    /// The revision a run inside the open `w:ins`/`w:del`/move elements
+    /// carries: the innermost one, and for a deletion the insertion around
+    /// it (`<w:ins><w:del>`), which Word writes when someone deletes text
+    /// that is still an insertion.
+    fn current_revision(stack: &[RevisionMark]) -> Option<RevisionMark> {
+        let (innermost, outer) = stack.split_last()?;
+        let mut mark = innermost.clone();
+        if mark.is_deletion() {
+            mark.insertion = outer
+                .iter()
+                .rev()
+                .find(|outer| !outer.is_deletion())
+                .map(|outer| Box::new(outer.clone()));
+        }
+        Some(mark)
+    }
+
     fn build_revision_mark(element: &BytesStart, kind: RevisionKind) -> RevisionMark {
         let mut author: Option<String> = None;
         let mut date: Option<String> = None;
@@ -4569,6 +4586,7 @@ impl DocumentParser {
             author,
             date,
             date_utc,
+            insertion: None,
         }
     }
     fn build_section_ranges(

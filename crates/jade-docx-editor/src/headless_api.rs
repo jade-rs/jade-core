@@ -6909,6 +6909,7 @@ mod tests {
                                 author: Some("LLM".to_string()),
                                 date: Some("2026-02-25T00:00:00Z".to_string()),
                                 date_utc: None,
+                                insertion: None,
                             }),
                         },
                         Run {
@@ -6934,6 +6935,7 @@ mod tests {
                                 author: Some("LLM".to_string()),
                                 date: Some("2026-02-25T00:00:00Z".to_string()),
                                 date_utc: None,
+                                insertion: None,
                             }),
                         },
                     ],
@@ -6955,6 +6957,7 @@ mod tests {
             author: Some("LLM".to_string()),
             date: Some("2026-08-08T00:00:00Z".to_string()),
             date_utc: None,
+            insertion: None,
         });
 
         let mut word_doc = WordDocument::from_document(Document {
@@ -7000,6 +7003,7 @@ mod tests {
             author: Some("法務".to_string()),
             date: Some("2026-08-01T00:00:00Z".to_string()),
             date_utc: None,
+            insertion: None,
         };
         let run = |text: &str| Run {
             text: text.to_string(),
@@ -7152,6 +7156,7 @@ mod tests {
                 author: Some(author.to_string()),
                 date: Some(date_utc.to_string()),
                 date_utc: Some(date_utc.to_string()),
+                insertion: None,
             })
         };
         WordDocument::from_document(Document {
@@ -8645,6 +8650,7 @@ mod tests {
                 author: Some("Reviewer".to_string()),
                 date: Some("2026-05-30T00:00:00Z".to_string()),
                 date_utc: None,
+                insertion: None,
             }),
         };
         let word_doc = WordDocument::from_document(Document {
@@ -12229,6 +12235,7 @@ mod tests {
                         author: Some("LLM".to_string()),
                         date: Some("2026-08-08T00:00:00Z".to_string()),
                         date_utc: None,
+                        insertion: None,
                     });
                 }
                 runs.push(run);

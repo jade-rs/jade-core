@@ -12958,6 +12958,7 @@ mod tests {
             author: Some("ellisii".into()),
             date: None,
             date_utc: None,
+            insertion: None,
         });
         let paragraph = Paragraph {
             runs: vec![run],
