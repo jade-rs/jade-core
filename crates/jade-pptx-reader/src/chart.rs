@@ -5,7 +5,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
+use crate::slide::{parse_fill, parse_outline};
 use crate::xml_tree::{parse_tree, XmlElement};
+use crate::{Fill, Outline};
 
 /// One series: its name, category labels and values, as cached in the part.
 /// A point missing from the cache is `None` at its index so the values line
@@ -15,6 +17,43 @@ pub struct ChartSeries {
     pub name: Option<String>,
     pub categories: Vec<String>,
     pub values: Vec<Option<f64>>,
+    /// `c:xVal` of a scatter series: each point's x.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub x_values: Vec<Option<f64>>,
+    /// The plot element this series belongs to (`barChart`, `lineChart`, …),
+    /// which differs between the series of a combo chart.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot: Option<String>,
+    /// `c:spPr` fill of the series.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<Fill>,
+    /// `c:spPr/a:ln` of the series: a line chart's stroke.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<Outline>,
+    /// `c:dPt`: per-point fills (a pie's slices), by point index.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub point_fills: Vec<(usize, Fill)>,
+}
+
+/// How a chart arranges and labels its series.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct ChartStyle {
+    /// `c:grouping`: `clustered`, `stacked`, `percentStacked` or `standard`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grouping: Option<String>,
+    /// `c:legend/c:legendPos`: `r`, `l`, `t`, `b` or `tr`; `None` without a
+    /// legend.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<String>,
+    /// `c:holeSize` of a doughnut, as a fraction of the radius.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hole: Option<f64>,
+    /// `c:majorGridlines` on the value axis.
+    #[serde(default)]
+    pub gridlines: bool,
+    /// A value axis that shows its tick labels (present, not `c:delete`d).
+    #[serde(default)]
+    pub value_labels: bool,
 }
 
 /// What the chart part says: the plot kind, the title, the series.
@@ -27,6 +66,8 @@ pub struct ChartContent {
     pub horizontal: bool,
     pub title: Option<String>,
     pub series: Vec<ChartSeries>,
+    #[serde(default)]
+    pub style: ChartStyle,
 }
 
 /// Parses a `c:chartSpace` part.
@@ -50,10 +91,59 @@ pub fn parse_chart_xml(xml: &str) -> Result<ChartContent> {
         .unwrap_or_default();
     let series = plots
         .iter()
-        .flat_map(|plot| plot.children.iter().filter(|child| child.name == "ser"))
-        .map(parse_series)
+        .flat_map(|plot| {
+            plot.children
+                .iter()
+                .filter(|child| child.name == "ser")
+                .map(|ser| {
+                    let mut series = parse_series(ser);
+                    series.plot = Some(plot.name.clone());
+                    series
+                })
+        })
         .collect();
+    let first = plots.first();
+    let style = ChartStyle {
+        grouping: first
+            .and_then(|plot| plot.child("grouping"))
+            .and_then(|g| g.attr("val"))
+            .map(str::to_string),
+        legend: chart.child("legend").map(|legend| {
+            legend
+                .child("legendPos")
+                .and_then(|pos| pos.attr("val"))
+                .unwrap_or("r")
+                .to_string()
+        }),
+        hole: first
+            .and_then(|plot| plot.child("holeSize"))
+            .and_then(|h| h.attr("val"))
+            .and_then(|v| v.parse::<f64>().ok())
+            .map(|v| (v / 100.0).clamp(0.0, 0.9)),
+        gridlines: plot
+            .map(|area| {
+                area.children
+                    .iter()
+                    .filter(|axis| axis.name == "valAx")
+                    .any(|axis| axis.child("majorGridlines").is_some())
+            })
+            .unwrap_or(false),
+        value_labels: plot
+            .map(|area| {
+                area.children
+                    .iter()
+                    .filter(|axis| axis.name == "valAx")
+                    .any(|axis| {
+                        !matches!(
+                            axis.child("delete").and_then(|d| d.attr("val")),
+                            Some("1") | Some("true")
+                        ) && axis.child("tickLblPos").and_then(|p| p.attr("val")) != Some("none")
+                    })
+            })
+            .unwrap_or(false),
+    };
     Ok(ChartContent {
+        style,
         kind: plots.first().map(|plot| plot.name.clone()),
         horizontal: plots
             .first()
@@ -92,6 +182,7 @@ fn parse_series(ser: &XmlElement) -> ChartSeries {
             .unwrap_or_default(),
         values: ser
             .child("val")
+            .or_else(|| ser.child("yVal"))
             .map(|val| {
                 cached_points(val)
                     .into_iter()
@@ -99,6 +190,30 @@ fn parse_series(ser: &XmlElement) -> ChartSeries {
                     .collect()
             })
             .unwrap_or_default(),
+        x_values: ser
+            .child("xVal")
+            .map(|val| {
+                cached_points(val)
+                    .into_iter()
+                    .map(|point| point.and_then(|v| v.trim().parse::<f64>().ok()))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        plot: None,
+        fill: ser.child("spPr").and_then(parse_fill),
+        line: ser
+            .child("spPr")
+            .and_then(|pr| pr.child("ln"))
+            .map(parse_outline),
+        point_fills: ser
+            .children
+            .iter()
+            .filter(|child| child.name == "dPt")
+            .filter_map(|point| {
+                let index = point.child("idx")?.attr("val")?.parse().ok()?;
+                Some((index, point.child("spPr").and_then(parse_fill)?))
+            })
+            .collect(),
     }
 }
 

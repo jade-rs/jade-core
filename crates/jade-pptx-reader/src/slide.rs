@@ -35,6 +35,10 @@ pub struct SlideContent {
     /// `show="0"`: the slide is skipped in a slide show.
     #[serde(default)]
     pub hidden: bool,
+    /// `<p:bg><p:bgRef idx>`: the theme's background fill style at `idx`
+    /// (1001 is the first) in the reference colour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background_ref: Option<(u32, Color)>,
 }
 
 impl SlideContent {
@@ -62,6 +66,7 @@ impl Default for SlideContent {
             use_master_color_map: false,
             text_styles: None,
             hidden: false,
+            background_ref: None,
         }
     }
 }
@@ -116,6 +121,25 @@ pub enum Color {
         shade: Option<f32>,
         tint: Option<f32>,
     },
+    /// A colour whose transforms go beyond `Adjusted`'s (`satMod`, `hueOff`,
+    /// `comp`, `gray`, …): every transform child in document order, the
+    /// order PowerPoint applies them in. Values are fractions of 1 (angles
+    /// in degrees); flag transforms carry `0`.
+    Transformed {
+        base: Box<Color>,
+        ops: Vec<(String, f32)>,
+    },
+}
+
+/// `<a:path>` of a gradient: its kind and the focus rectangle
+/// (`fillToRect`, insets from each edge as fractions of the box).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GradientPath {
+    pub kind: String,
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
 }
 
 /// One `<a:gs>` of a gradient, position in thousandths of a percent.
@@ -134,6 +158,10 @@ pub enum Fill {
     Gradient {
         stops: Vec<GradientStop>,
         angle_deg: Option<f32>,
+        /// `<a:path path="circle|rect|shape">`: the gradient radiates from
+        /// its `fillToRect` instead of running along a line.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<GradientPath>,
     },
     /// `<a:pattFill prst>`: a hatch of `foreground` over `background`.
     Pattern {
@@ -143,6 +171,17 @@ pub enum Fill {
     },
     /// `<a:noFill/>`: explicitly transparent, distinct from "inherit".
     None,
+    /// `<a:grpFill/>`: the enclosing group's fill. Groups resolve it for
+    /// their children while parsing; one left at the top level fills
+    /// nothing.
+    Group,
+    /// `<a:blipFill>` on a background: a picture stretched over the slide.
+    /// `image_part` is filled in by `read_deck`.
+    Picture {
+        rel_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        image_part: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -156,6 +195,22 @@ pub struct Outline {
     /// also stops a style's `lnRef` from supplying one.
     #[serde(default)]
     pub no_fill: bool,
+    /// `<a:headEnd>`: the decoration at the line's start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_end: Option<LineEnd>,
+    /// `<a:tailEnd>`: the decoration at the line's end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tail_end: Option<LineEnd>,
+}
+
+/// `<a:headEnd>` / `<a:tailEnd>`: an arrowhead's kind (`triangle`,
+/// `stealth`, `diamond`, `oval`, `arrow`) and its `w`/`len` (`sm`, `med`,
+/// `lg`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LineEnd {
+    pub kind: String,
+    pub width: String,
+    pub length: String,
 }
 
 /// `<a:custGeom>`: one or more paths in their own coordinate space.
@@ -222,6 +277,9 @@ pub struct ShapeStyle {
     pub line_index: u32,
     pub line_color: Option<Color>,
     pub font_color: Option<Color>,
+    /// `effectRef idx`: 0 is no effect, 1–3 the theme's effect styles.
+    #[serde(default)]
+    pub effect_index: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -255,6 +313,9 @@ pub struct Shape {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_rect: Option<SourceRect>,
     pub text: Option<TextBody>,
+    /// `<a:effectLst><a:outerShdw>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<Shadow>,
 }
 
 /// `<a:srcRect>` offsets in thousandths of a percent; negative is an outset.
@@ -312,6 +373,29 @@ pub struct Picture {
     pub image_part: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_rect: Option<SourceRect>,
+    /// `<a:prstGeom>` the picture is cropped to (rounded, oval, …).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset_geometry: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub adjustments: Vec<(String, i64)>,
+    /// The picture's border.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline: Option<Outline>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<Shadow>,
+    /// `<a:blip><a:alphaModFix amt>`: the picture's opacity, 0..1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alpha: Option<f32>,
+}
+
+/// `<a:outerShdw>`: a soft copy of the shape's silhouette behind it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Shadow {
+    pub color: Color,
+    pub blur_emu: i64,
+    pub distance_emu: i64,
+    /// Direction the shadow falls, clockwise degrees from the +x axis.
+    pub direction_deg: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -350,6 +434,8 @@ pub struct Chart {
     pub horizontal: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub series: Vec<crate::chart::ChartSeries>,
+    #[serde(default)]
+    pub style: crate::chart::ChartStyle,
 }
 
 /// `<p:graphicFrame>` holding an `<a:tbl>`.
@@ -381,6 +467,12 @@ pub struct CellBorders {
     pub right: Option<Outline>,
     pub top: Option<Outline>,
     pub bottom: Option<Outline>,
+    /// `<a:lnTlToBr>`: a diagonal from the top-left to the bottom-right.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_down: Option<Outline>,
+    /// `<a:lnBlToTr>`: a diagonal from the bottom-left to the top-right.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_up: Option<Outline>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -477,6 +569,10 @@ pub struct TextBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub list_style: Option<ListStyle>,
     pub paragraphs: Vec<TextParagraph>,
+    /// `numCol` and `spcCol` (EMU): text flowing through side-by-side
+    /// columns. `None` for a single column.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<(u32, i64)>,
 }
 
 impl Default for TextBody {
@@ -490,6 +586,7 @@ impl Default for TextBody {
             vertical: None,
             list_style: None,
             paragraphs: Vec::new(),
+            columns: None,
         }
     }
 }
@@ -567,6 +664,12 @@ pub struct TextParagraph {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_start: Option<u32>,
     pub runs: Vec<TextRun>,
+    /// `<a:tabLst>` stop positions (EMU from the text's left inset), in
+    /// order, then `defTabSz` stops beyond them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tab_stops_emu: Vec<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_tab_emu: Option<i64>,
 }
 
 /// `<a:hlinkClick r:id>` on a run.
@@ -613,6 +716,29 @@ pub struct TextRun {
     pub italic_stated: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub underline_stated: Option<bool>,
+    /// `baseline`: the run's rise as a fraction of its size (`30000` is
+    /// superscript, `-25000` subscript).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<f32>,
+    /// `<a:highlight>`: the colour behind the run's glyphs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight: Option<Color>,
+    /// `spc`: extra space after each character, in points.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spacing_pt: Option<f32>,
+    /// `u` beyond a plain single line (`dbl`, `heavy`, `dotted`, `dash`,
+    /// `wavy`, …); `None` for `sng` or no underline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
+    /// `strike="dblStrike"`.
+    #[serde(default)]
+    pub double_strike: bool,
+    /// `<a:ln>` in `rPr`: the glyphs' outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline: Option<Outline>,
+    /// `<a:effectLst><a:outerShdw>` in `rPr`: the glyphs' shadow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<Shadow>,
 }
 
 /// The run properties a level style supplies (`<a:defRPr>`), each optional
@@ -691,7 +817,23 @@ pub fn parse_slide_xml(xml: &str) -> Result<SlideContent> {
         background: c_sld
             .and_then(|c_sld| c_sld.child("bg"))
             .and_then(|bg| bg.child("bgPr"))
-            .and_then(parse_fill),
+            .and_then(|bg_pr| match bg_pr.child("blipFill") {
+                Some(blip_fill) => blip_fill
+                    .child("blip")
+                    .and_then(|blip| blip.attr("embed"))
+                    .map(|rel_id| Fill::Picture {
+                        rel_id: rel_id.to_string(),
+                        image_part: None,
+                    }),
+                None => parse_fill(bg_pr),
+            }),
+        background_ref: c_sld
+            .and_then(|c_sld| c_sld.child("bg"))
+            .and_then(|bg| bg.child("bgRef"))
+            .and_then(|bg_ref| {
+                let index = bg_ref.attr("idx")?.parse().ok()?;
+                Some((index, parse_color(bg_ref)?))
+            }),
         shapes,
         show_master_shapes: root.attr("showMasterSp") != Some("0"),
         hidden: matches!(root.attr("show"), Some("0" | "false")),
@@ -736,6 +878,17 @@ pub fn parse_default_text_style(xml: &str) -> Result<ListStyle> {
 
 fn parse_shape_children(parent: &XmlElement, out: &mut Vec<ShapeItem>) {
     for child in &parent.children {
+        // `<p:cNvPr hidden="1">`: the object is in the file but not shown.
+        let hidden = child
+            .children
+            .iter()
+            .find(|nv| nv.name.starts_with("nv"))
+            .and_then(|nv| nv.child("cNvPr"))
+            .and_then(|c_nv_pr| c_nv_pr.attr("hidden"))
+            .is_some_and(|hidden| matches!(hidden, "1" | "true"));
+        if hidden {
+            continue;
+        }
         match child.name.as_str() {
             // A connector carries the same spPr as a shape and draws like one.
             "sp" | "cxnSp" => out.push(ShapeItem::Shape(parse_sp(child))),
@@ -807,11 +960,15 @@ fn parse_sp(sp: &XmlElement) -> Shape {
                     .collect()
             })
             .unwrap_or_default(),
-        custom_geometry: sp_pr
-            .and_then(|pr| pr.child("custGeom"))
-            .map(parse_custom_geometry),
+        custom_geometry: sp_pr.and_then(|pr| pr.child("custGeom")).map(|geom| {
+            let ext = sp_pr
+                .and_then(|pr| pr.child("xfrm"))
+                .map(|xfrm| extent_of(xfrm.child("ext")));
+            parse_custom_geometry(geom, ext)
+        }),
         fill: sp_pr.and_then(parse_fill),
         outline: sp_pr.and_then(|pr| pr.child("ln")).map(parse_outline),
+        shadow: sp_pr.and_then(parse_shadow),
         style: sp.child("style").map(parse_style),
         image_rel_id: sp_pr
             .and_then(|pr| pr.child("blipFill"))
@@ -840,6 +997,7 @@ fn parse_style(style: &XmlElement) -> ShapeStyle {
         line_index: index("lnRef"),
         line_color: style.child("lnRef").and_then(parse_color),
         font_color: style.child("fontRef").and_then(parse_color),
+        effect_index: index("effectRef"),
     }
 }
 
@@ -876,12 +1034,105 @@ fn parse_pic(pic: &XmlElement) -> Picture {
             .map(str::to_string),
         image_part: None,
         source_rect: pic.child("blipFill").and_then(parse_source_rect),
+        preset_geometry: pic
+            .child("spPr")
+            .and_then(|pr| pr.child("prstGeom"))
+            .and_then(|geom| geom.attr("prst"))
+            .map(str::to_string),
+        adjustments: pic
+            .child("spPr")
+            .and_then(|pr| pr.child("prstGeom"))
+            .map(parse_adjustments)
+            .unwrap_or_default(),
+        outline: pic
+            .child("spPr")
+            .and_then(|pr| pr.child("ln"))
+            .map(parse_outline),
+        shadow: pic.child("spPr").and_then(parse_shadow),
+        alpha: pic.child("blipFill").and_then(blip_alpha),
+    }
+}
+
+/// The opacity `<a:alphaModFix amt>` gives a blip, when it is not opaque.
+fn blip_alpha(blip_fill: &XmlElement) -> Option<f32> {
+    fraction(blip_fill.child("blip")?.child("alphaModFix")?.attr("amt"))
+        .map(|amt| amt.clamp(0.0, 1.0))
+        .filter(|amt| *amt < 1.0)
+}
+
+/// `<a:avLst>` overrides of a `<a:prstGeom>`.
+fn parse_adjustments(geom: &XmlElement) -> Vec<(String, i64)> {
+    geom.child("avLst")
+        .map(|av| {
+            av.children
+                .iter()
+                .filter(|gd| gd.name == "gd")
+                .filter_map(|gd| {
+                    let name = gd.attr("name")?;
+                    let value = gd.attr("fmla")?.strip_prefix("val ")?.trim().parse().ok()?;
+                    Some((name.to_string(), value))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The `<a:outerShdw>` of an `spPr`'s `<a:effectLst>`.
+///
+/// An `<a:effectLst>` without one is an explicit "no shadow" that still
+/// overrides a style's `effectRef`: it reads as a fully transparent shadow,
+/// which layout drops.
+pub(crate) fn parse_shadow(sp_pr: &XmlElement) -> Option<Shadow> {
+    let effects = sp_pr.child("effectLst")?;
+    let Some(shadow) = effects.child("outerShdw") else {
+        return Some(Shadow {
+            color: Color::Adjusted {
+                base: Box::new(Color::Srgb("000000".into())),
+                alpha: Some(0.0),
+                lum_mod: None,
+                lum_off: None,
+                shade: None,
+                tint: None,
+            },
+            blur_emu: 0,
+            distance_emu: 0,
+            direction_deg: 0.0,
+        });
+    };
+    let number = |name: &str| {
+        shadow
+            .attr(name)
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(0)
+    };
+    Some(Shadow {
+        color: parse_color(shadow)?,
+        blur_emu: number("blurRad"),
+        distance_emu: number("dist"),
+        direction_deg: number("dir") as f32 / 60_000.0,
+    })
+}
+
+/// Hands a group's own fill to the children that asked for it with
+/// `<a:grpFill/>`, nested groups included.
+fn inherit_group_fill(children: &mut [ShapeItem], fill: &Fill) {
+    for child in children {
+        match child {
+            ShapeItem::Shape(shape) if shape.fill == Some(Fill::Group) => {
+                shape.fill = Some(fill.clone());
+            }
+            ShapeItem::Group(group) => inherit_group_fill(&mut group.children, fill),
+            _ => {}
+        }
     }
 }
 
 fn parse_grp(grp: &XmlElement) -> GroupShape {
     let mut children = Vec::new();
     parse_shape_children(grp, &mut children);
+    if let Some(fill) = grp.child("grpSpPr").and_then(parse_fill) {
+        inherit_group_fill(&mut children, &fill);
+    }
     GroupShape {
         diagram_data_rel_id: None,
         id: non_visual_id(grp),
@@ -919,6 +1170,7 @@ fn parse_graphic_frame(frame: &XmlElement) -> Option<ShapeItem> {
             title: None,
             horizontal: false,
             series: Vec::new(),
+            style: Default::default(),
         }));
     }
     if let Some(rel_ids) = data.child("relIds") {
@@ -936,6 +1188,30 @@ fn parse_graphic_frame(frame: &XmlElement) -> Option<ShapeItem> {
             children: Vec::new(),
             diagram_data_rel_id: rel_ids.attr("dm").map(str::to_string),
         }));
+    }
+    // An embedded object (a workbook, a drawing) shows its cached preview
+    // picture, inside markup compatibility or not.
+    let ole_objects = std::iter::once(data.child("oleObj")).chain(
+        data.children
+            .iter()
+            .filter(|child| child.name == "AlternateContent")
+            .flat_map(|alternate| {
+                alternate
+                    .children
+                    .iter()
+                    .map(|branch| branch.child("oleObj"))
+            }),
+    );
+    for ole in ole_objects.flatten() {
+        if let Some(pic) = ole.child("pic") {
+            let mut picture = parse_pic(pic);
+            picture.id = non_visual_id(frame).or(picture.id);
+            picture.name = non_visual_name(frame);
+            if let Some(xfrm) = frame.child("xfrm") {
+                picture.transform = Some(parse_transform(xfrm));
+            }
+            return Some(ShapeItem::Picture(picture));
+        }
     }
     None
 }
@@ -999,6 +1275,8 @@ fn parse_table_cell(tc: &XmlElement) -> TableCell {
             right: border("lnR"),
             top: border("lnT"),
             bottom: border("lnB"),
+            diagonal_down: border("lnTlToBr"),
+            diagonal_up: border("lnBlToTr"),
         },
         grid_span: span("gridSpan"),
         row_span: span("rowSpan"),
@@ -1016,22 +1294,48 @@ fn parse_table_cell(tc: &XmlElement) -> TableCell {
     }
 }
 
-fn parse_custom_geometry(cust_geom: &XmlElement) -> CustomGeometry {
-    let paths = cust_geom
+fn parse_custom_geometry(cust_geom: &XmlElement, ext: Option<(i64, i64)>) -> CustomGeometry {
+    let path_elements: Vec<&XmlElement> = cust_geom
         .child("pathLst")
-        .map(|list| {
-            list.children
-                .iter()
-                .filter(|child| child.name == "path")
-                .map(parse_geometry_path)
-                .collect()
-        })
+        .map(|list| list.children.iter().filter(|c| c.name == "path").collect())
         .unwrap_or_default();
+    // Guides see the shape's own extent; a path without w/h draws in it.
+    let (w, h) = ext.filter(|(w, h)| *w > 0 && *h > 0).unwrap_or_else(|| {
+        path_elements
+            .first()
+            .map(|p| {
+                let n = |name: &str| p.attr(name).and_then(|v| v.parse().ok()).unwrap_or(0);
+                (n("w"), n("h"))
+            })
+            .unwrap_or((0, 0))
+    });
+    let mut guides = crate::ShapeGuides::new(w as f64, h as f64);
+    for list in ["avLst", "gdLst"] {
+        for gd in cust_geom.child(list).map_or(&[][..], |l| &l.children[..]) {
+            if let (Some(name), Some(fmla)) = (gd.attr("name"), gd.attr("fmla")) {
+                guides.define(name, fmla);
+            }
+        }
+    }
+    let paths = path_elements
+        .into_iter()
+        .map(|path| parse_geometry_path(path, &guides, (w, h)))
+        .collect();
     CustomGeometry { paths }
 }
 
-fn parse_geometry_path(path: &XmlElement) -> GeometryPath {
-    let number = |value: Option<&str>| -> i64 { value.and_then(|v| v.parse().ok()).unwrap_or(0) };
+fn parse_geometry_path(
+    path: &XmlElement,
+    guides: &crate::ShapeGuides,
+    shape_extent: (i64, i64),
+) -> GeometryPath {
+    let value = |v: Option<&str>| -> i64 { v.map_or(0, |v| guides.arg(v).round() as i64) };
+    let point_of = |element: Option<&XmlElement>| -> (i64, i64) {
+        (
+            value(element.and_then(|el| el.attr("x"))),
+            value(element.and_then(|el| el.attr("y"))),
+        )
+    };
     let point = |element: &XmlElement| -> (i64, i64) { point_of(element.child("pt")) };
     let points = |element: &XmlElement| -> Vec<(i64, i64)> {
         element
@@ -1069,18 +1373,28 @@ fn parse_geometry_path(path: &XmlElement) -> GeometryPath {
                 })
             }
             "arcTo" => Some(PathCommand::ArcTo {
-                width_radius: number(command.attr("wR")),
-                height_radius: number(command.attr("hR")),
-                start_60000ths: number(command.attr("stAng")) as i32,
-                sweep_60000ths: number(command.attr("swAng")) as i32,
+                width_radius: value(command.attr("wR")),
+                height_radius: value(command.attr("hR")),
+                start_60000ths: value(command.attr("stAng")) as i32,
+                sweep_60000ths: value(command.attr("swAng")) as i32,
             }),
             "close" => Some(PathCommand::Close),
             _ => None,
         })
         .collect();
+    let number = |name: &str| {
+        path.attr(name)
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(0)
+    };
+    // A path without its own w/h uses the shape's coordinate space.
+    let (width, height) = match (number("w"), number("h")) {
+        (0, 0) => shape_extent,
+        size => size,
+    };
     GeometryPath {
-        width: number(path.attr("w")),
-        height: number(path.attr("h")),
+        width,
+        height,
         filled: path.attr("fill") != Some("none"),
         stroked: !matches!(path.attr("stroke"), Some("0") | Some("false")),
         commands,
@@ -1144,6 +1458,7 @@ pub(crate) fn parse_fill(properties: &XmlElement) -> Option<Fill> {
             "gradFill" => return parse_gradient(child),
             "pattFill" => return parse_pattern(child),
             "noFill" => return Some(Fill::None),
+            "grpFill" => return Some(Fill::Group),
             _ => {}
         }
     }
@@ -1202,7 +1517,22 @@ fn parse_gradient(grad_fill: &XmlElement) -> Option<Fill> {
         .and_then(|ang| ang.parse::<f32>().ok())
         .filter(|ang| ang.is_finite())
         .map(|ang| ang / 60_000.0);
-    Some(Fill::Gradient { stops, angle_deg })
+    let path = grad_fill.child("path").map(|path| {
+        let rect = path.child("fillToRect");
+        let inset = |name: &str| fraction(rect.and_then(|r| r.attr(name))).unwrap_or(0.0);
+        GradientPath {
+            kind: path.attr("path").unwrap_or("circle").to_string(),
+            left: inset("l"),
+            top: inset("t"),
+            right: inset("r"),
+            bottom: inset("b"),
+        }
+    });
+    Some(Fill::Gradient {
+        stops,
+        angle_deg,
+        path,
+    })
 }
 
 /// A thousandths-of-a-percent attribute (`75000` → `0.75`).
@@ -1228,9 +1558,63 @@ pub(crate) fn parse_color(container: &XmlElement) -> Option<Color> {
             "prstClr" => Some(Color::Srgb(
                 preset_color_hex(child.attr("val")?).to_string(),
             )),
+            "scrgbClr" => {
+                // Linear-light percentages; sRGB-encode them.
+                let channel = |name: &str| {
+                    let linear = fraction(child.attr(name)).unwrap_or(0.0).clamp(0.0, 1.0) as f64;
+                    let encoded = if linear <= 0.003_130_8 {
+                        linear * 12.92
+                    } else {
+                        1.055 * linear.powf(1.0 / 2.4) - 0.055
+                    };
+                    (encoded * 255.0).round() as u8
+                };
+                Some(Color::Srgb(format!(
+                    "{:02X}{:02X}{:02X}",
+                    channel("r"),
+                    channel("g"),
+                    channel("b")
+                )))
+            }
+            "hslClr" => {
+                let hue = child
+                    .attr("hue")
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .unwrap_or(0.0)
+                    / 60_000.0;
+                let sat = fraction(child.attr("sat")).unwrap_or(0.0) as f64;
+                let lum = fraction(child.attr("lum")).unwrap_or(0.0) as f64;
+                let (r, g, b) = hsl_to_rgb(hue, sat.clamp(0.0, 1.0), lum.clamp(0.0, 1.0));
+                Some(Color::Srgb(format!("{r:02X}{g:02X}{b:02X}")))
+            }
             _ => None,
         };
         let Some(base) = base else { continue };
+        const LEGACY: [&str; 5] = ["alpha", "lumMod", "lumOff", "shade", "tint"];
+        if child
+            .children
+            .iter()
+            .any(|t| !LEGACY.contains(&t.name.as_str()))
+        {
+            let ops = child
+                .children
+                .iter()
+                .map(|t| {
+                    let value = match t.name.as_str() {
+                        "hue" | "hueOff" => t
+                            .attr("val")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map_or(0.0, |v| v / 60_000.0),
+                        _ => fraction(t.attr("val")).unwrap_or(0.0),
+                    };
+                    (t.name.clone(), value)
+                })
+                .collect();
+            return Some(Color::Transformed {
+                base: Box::new(base),
+                ops,
+            });
+        }
         let transform = |name: &str| fraction(child.child(name).and_then(|el| el.attr("val")));
         let alpha = transform("alpha");
         let lum_mod = transform("lumMod");
@@ -1257,30 +1641,218 @@ pub(crate) fn parse_color(container: &XmlElement) -> Option<Color> {
     None
 }
 
+/// `ST_PresetColorVal`: the CSS colour names in camel case, with `dk`,
+/// `lt` and `med` short for dark, light and medium.
 fn preset_color_hex(name: &str) -> &'static str {
-    match name {
-        "white" => "FFFFFF",
-        "red" => "FF0000",
-        "green" => "008000",
+    let lower = name.to_ascii_lowercase();
+    let full = if let Some(rest) = lower.strip_prefix("dk") {
+        format!("dark{rest}")
+    } else if let Some(rest) = lower.strip_prefix("lt") {
+        format!("light{rest}")
+    } else if let Some(rest) = lower.strip_prefix("med").filter(|r| !r.starts_with("ium")) {
+        format!("medium{rest}")
+    } else {
+        lower
+    };
+    match full.as_str() {
+        "aliceblue" => "F0F8FF",
+        "antiquewhite" => "FAEBD7",
+        "aqua" => "00FFFF",
+        "aquamarine" => "7FFFD4",
+        "azure" => "F0FFFF",
+        "beige" => "F5F5DC",
+        "bisque" => "FFE4C4",
+        "black" => "000000",
+        "blanchedalmond" => "FFEBCD",
         "blue" => "0000FF",
+        "blueviolet" => "8A2BE2",
+        "brown" => "A52A2A",
+        "burlywood" => "DEB887",
+        "cadetblue" => "5F9EA0",
+        "chartreuse" => "7FFF00",
+        "chocolate" => "D2691E",
+        "coral" => "FF7F50",
+        "cornflowerblue" => "6495ED",
+        "cornsilk" => "FFF8DC",
+        "crimson" => "DC143C",
+        "cyan" => "00FFFF",
+        "darkblue" => "00008B",
+        "darkcyan" => "008B8B",
+        "darkgoldenrod" => "B8860B",
+        "darkgray" => "A9A9A9",
+        "darkgrey" => "A9A9A9",
+        "darkgreen" => "006400",
+        "darkkhaki" => "BDB76B",
+        "darkmagenta" => "8B008B",
+        "darkolivegreen" => "556B2F",
+        "darkorange" => "FF8C00",
+        "darkorchid" => "9932CC",
+        "darkred" => "8B0000",
+        "darksalmon" => "E9967A",
+        "darkseagreen" => "8FBC8F",
+        "darkslateblue" => "483D8B",
+        "darkslategray" => "2F4F4F",
+        "darkslategrey" => "2F4F4F",
+        "darkturquoise" => "00CED1",
+        "darkviolet" => "9400D3",
+        "deeppink" => "FF1493",
+        "deepskyblue" => "00BFFF",
+        "dimgray" => "696969",
+        "dimgrey" => "696969",
+        "dodgerblue" => "1E90FF",
+        "firebrick" => "B22222",
+        "floralwhite" => "FFFAF0",
+        "forestgreen" => "228B22",
+        "fuchsia" => "FF00FF",
+        "gainsboro" => "DCDCDC",
+        "ghostwhite" => "F8F8FF",
+        "gold" => "FFD700",
+        "goldenrod" => "DAA520",
+        "gray" => "808080",
+        "grey" => "808080",
+        "green" => "008000",
+        "greenyellow" => "ADFF2F",
+        "honeydew" => "F0FFF0",
+        "hotpink" => "FF69B4",
+        "indianred" => "CD5C5C",
+        "indigo" => "4B0082",
+        "ivory" => "FFFFF0",
+        "khaki" => "F0E68C",
+        "lavender" => "E6E6FA",
+        "lavenderblush" => "FFF0F5",
+        "lawngreen" => "7CFC00",
+        "lemonchiffon" => "FFFACD",
+        "lightblue" => "ADD8E6",
+        "lightcoral" => "F08080",
+        "lightcyan" => "E0FFFF",
+        "lightgoldenrodyellow" => "FAFAD2",
+        "lightgray" => "D3D3D3",
+        "lightgrey" => "D3D3D3",
+        "lightgreen" => "90EE90",
+        "lightpink" => "FFB6C1",
+        "lightsalmon" => "FFA07A",
+        "lightseagreen" => "20B2AA",
+        "lightskyblue" => "87CEFA",
+        "lightslategray" => "778899",
+        "lightslategrey" => "778899",
+        "lightsteelblue" => "B0C4DE",
+        "lightyellow" => "FFFFE0",
+        "lime" => "00FF00",
+        "limegreen" => "32CD32",
+        "linen" => "FAF0E6",
+        "magenta" => "FF00FF",
+        "maroon" => "800000",
+        "mediumaquamarine" => "66CDAA",
+        "mediumblue" => "0000CD",
+        "mediumorchid" => "BA55D3",
+        "mediumpurple" => "9370DB",
+        "mediumseagreen" => "3CB371",
+        "mediumslateblue" => "7B68EE",
+        "mediumspringgreen" => "00FA9A",
+        "mediumturquoise" => "48D1CC",
+        "mediumvioletred" => "C71585",
+        "midnightblue" => "191970",
+        "mintcream" => "F5FFFA",
+        "mistyrose" => "FFE4E1",
+        "moccasin" => "FFE4B5",
+        "navajowhite" => "FFDEAD",
+        "navy" => "000080",
+        "oldlace" => "FDF5E6",
+        "olive" => "808000",
+        "olivedrab" => "6B8E23",
+        "orange" => "FFA500",
+        "orangered" => "FF4500",
+        "orchid" => "DA70D6",
+        "palegoldenrod" => "EEE8AA",
+        "palegreen" => "98FB98",
+        "paleturquoise" => "AFEEEE",
+        "palevioletred" => "DB7093",
+        "papayawhip" => "FFEFD5",
+        "peachpuff" => "FFDAB9",
+        "peru" => "CD853F",
+        "pink" => "FFC0CB",
+        "plum" => "DDA0DD",
+        "powderblue" => "B0E0E6",
+        "purple" => "800080",
+        "red" => "FF0000",
+        "rosybrown" => "BC8F8F",
+        "royalblue" => "4169E1",
+        "saddlebrown" => "8B4513",
+        "salmon" => "FA8072",
+        "sandybrown" => "F4A460",
+        "seagreen" => "2E8B57",
+        "seashell" => "FFF5EE",
+        "sienna" => "A0522D",
+        "silver" => "C0C0C0",
+        "skyblue" => "87CEEB",
+        "slateblue" => "6A5ACD",
+        "slategray" => "708090",
+        "slategrey" => "708090",
+        "snow" => "FFFAFA",
+        "springgreen" => "00FF7F",
+        "steelblue" => "4682B4",
+        "tan" => "D2B48C",
+        "teal" => "008080",
+        "thistle" => "D8BFD8",
+        "tomato" => "FF6347",
+        "turquoise" => "40E0D0",
+        "violet" => "EE82EE",
+        "wheat" => "F5DEB3",
+        "white" => "FFFFFF",
+        "whitesmoke" => "F5F5F5",
         "yellow" => "FFFF00",
-        "gray" | "grey" => "808080",
-        "ltGray" | "lightGray" => "D3D3D3",
-        "dkGray" | "darkGray" => "A9A9A9",
+        "yellowgreen" => "9ACD32",
         _ => "000000",
     }
 }
 
+/// HSL (hue in degrees, saturation and lightness 0..=1) to 8-bit RGB.
+fn hsl_to_rgb(hue: f64, sat: f64, lum: f64) -> (u8, u8, u8) {
+    let c = (1.0 - (2.0 * lum - 1.0).abs()) * sat;
+    let hp = hue.rem_euclid(360.0) / 60.0;
+    let x = c * (1.0 - ((hp % 2.0) - 1.0).abs());
+    let (r, g, b) = match hp as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = lum - c / 2.0;
+    let byte = |v: f64| ((v + m).clamp(0.0, 1.0) * 255.0).round() as u8;
+    (byte(r), byte(g), byte(b))
+}
+
 pub(crate) fn parse_outline(ln: &XmlElement) -> Outline {
     Outline {
-        color: ln.child("solidFill").and_then(parse_color),
+        // A gradient stroke draws in its first stop's colour.
+        color: ln.child("solidFill").and_then(parse_color).or_else(|| {
+            ln.child("gradFill")
+                .and_then(parse_gradient)
+                .and_then(|fill| match fill {
+                    Fill::Gradient { stops, .. } => stops.into_iter().next().map(|s| s.color),
+                    _ => None,
+                })
+        }),
         width_emu: ln.attr("w").and_then(|w| w.parse().ok()),
         dash: ln
             .child("prstDash")
             .and_then(|dash| dash.attr("val"))
             .map(str::to_string),
         no_fill: ln.child("noFill").is_some(),
+        head_end: ln.child("headEnd").and_then(parse_line_end),
+        tail_end: ln.child("tailEnd").and_then(parse_line_end),
     }
+}
+
+fn parse_line_end(end: &XmlElement) -> Option<LineEnd> {
+    let kind = end.attr("type").unwrap_or("none");
+    (kind != "none").then(|| LineEnd {
+        kind: kind.to_string(),
+        width: end.attr("w").unwrap_or("med").to_string(),
+        length: end.attr("len").unwrap_or("med").to_string(),
+    })
 }
 
 fn parse_anchor(anchor: &str) -> Option<TextAnchor> {
@@ -1348,6 +1920,17 @@ fn parse_text_body(tx_body: &XmlElement) -> TextBody {
             .child("lstStyle")
             .map(parse_list_style)
             .filter(|style| !style.is_empty()),
+        columns: body_pr
+            .and_then(|pr| pr.attr("numCol"))
+            .and_then(|n| n.parse::<u32>().ok())
+            .filter(|n| (2..=16).contains(n))
+            .map(|n| {
+                let spacing = body_pr
+                    .and_then(|pr| pr.attr("spcCol"))
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0);
+                (n, spacing)
+            }),
         paragraphs: tx_body
             .children
             .iter()
@@ -1417,7 +2000,30 @@ fn parse_run_props(r_pr: &XmlElement) -> RunProps {
         bold: flag("b"),
         italic: flag("i"),
         underline: r_pr.attr("u").map(|u| u != "none"),
-        color: r_pr.child("solidFill").and_then(parse_color),
+        // Gradient-filled text reads as its first stop, the colour most of
+        // its glyphs show.
+        color: r_pr
+            .child("solidFill")
+            .and_then(parse_color)
+            .or_else(|| {
+                r_pr.child("gradFill")
+                    .and_then(parse_gradient)
+                    .and_then(|fill| match fill {
+                        Fill::Gradient { stops, .. } => stops.into_iter().next().map(|s| s.color),
+                        _ => None,
+                    })
+            })
+            // `<a:noFill/>` glyphs: only their outline, if any, shows.
+            .or_else(|| {
+                r_pr.child("noFill").map(|_| Color::Adjusted {
+                    base: Box::new(Color::Srgb("000000".into())),
+                    alpha: Some(0.0),
+                    lum_mod: None,
+                    lum_off: None,
+                    shade: None,
+                    tint: None,
+                })
+            }),
         font: r_pr
             .child("latin")
             .and_then(|latin| latin.attr("typeface"))
@@ -1506,7 +2112,23 @@ fn parse_paragraph(p: &XmlElement) -> TextParagraph {
         }
     }
     let props = p_pr.map(parse_paragraph_props).unwrap_or_default();
+    let mut tab_stops_emu: Vec<i64> = p_pr
+        .and_then(|pr| pr.child("tabLst"))
+        .map(|list| {
+            list.children
+                .iter()
+                .filter(|tab| tab.name == "tab")
+                .filter_map(|tab| tab.attr("pos")?.parse().ok())
+                .collect()
+        })
+        .unwrap_or_default();
+    tab_stops_emu.sort_unstable();
     TextParagraph {
+        tab_stops_emu,
+        default_tab_emu: p_pr
+            .and_then(|pr| pr.attr("defTabSz"))
+            .and_then(|v| v.parse().ok())
+            .filter(|v: &i64| *v > 0),
         level: p_pr
             .and_then(|pr| pr.attr("lvl"))
             .and_then(|lvl| lvl.parse().ok())
@@ -1553,6 +2175,9 @@ fn parse_bullet(p_pr: &XmlElement) -> Option<Bullet> {
                 });
             }
             "buNone" => return Some(Bullet::None),
+            // A picture bullet reads as the round bullet it usually stands
+            // in for, rather than no bullet at all.
+            "buBlip" => return Some(Bullet::Char("\u{2022}".to_string())),
             _ => {}
         }
     }
@@ -1589,6 +2214,25 @@ fn parse_styled_run(text: String, r_pr: Option<&XmlElement>) -> TextRun {
             r_pr.and_then(|pr| pr.attr("cap")),
             Some("all") | Some("small")
         ),
+        baseline: fraction(r_pr.and_then(|pr| pr.attr("baseline"))).filter(|b| *b != 0.0),
+        highlight: r_pr
+            .and_then(|pr| pr.child("highlight"))
+            .and_then(parse_color),
+        spacing_pt: r_pr
+            .and_then(|pr| pr.attr("spc"))
+            .and_then(|spc| spc.parse::<f32>().ok())
+            .filter(|spc| spc.is_finite() && *spc != 0.0)
+            .map(|spc| spc / 100.0),
+        underline_style: r_pr
+            .and_then(|pr| pr.attr("u"))
+            .filter(|u| !matches!(*u, "sng" | "none" | "words"))
+            .map(str::to_string),
+        double_strike: r_pr.and_then(|pr| pr.attr("strike")) == Some("dblStrike"),
+        outline: r_pr
+            .and_then(|pr| pr.child("ln"))
+            .map(parse_outline)
+            .filter(|ln| !ln.no_fill && ln.color.is_some()),
+        shadow: r_pr.and_then(parse_shadow),
         field: None,
         size_pt: props.size_pt,
         color: props.color,

@@ -33,6 +33,7 @@ fn shape(name: &str, transform: Transform) -> Shape {
         image_part: None,
         source_rect: None,
         text: None,
+        shadow: None,
     }
 }
 
@@ -72,8 +73,10 @@ fn chart(title: Option<&str>) -> Chart {
             name: Some("Revenue".into()),
             categories: vec!["Q1".into(), "Q2".into()],
             values: vec![Some(10.0), Some(12.5)],
+            ..ChartSeries::default()
         }],
         horizontal: false,
+        style: Default::default(),
     }
 }
 

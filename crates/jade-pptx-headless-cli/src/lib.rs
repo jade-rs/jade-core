@@ -198,6 +198,7 @@ pub fn layout_view(deck: &Deck, index: usize) -> Result<SlideLayoutView> {
                     PlacedGeometry::Line => "line",
                     PlacedGeometry::Polygon(_) => "polygon",
                     PlacedGeometry::Path(_) => "path",
+                    PlacedGeometry::Paths(_) => "preset_path",
                 }
                 .to_string(),
                 fill: placed.fill.clone(),
