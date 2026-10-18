@@ -43,9 +43,11 @@ mod filter;
 pub mod filter_state;
 pub mod format_axes;
 pub mod header_footer;
+pub mod merges;
 pub mod notes;
 mod patch;
 mod refresh;
+pub mod sheets;
 pub mod shift;
 pub mod sort;
 pub mod styles;
@@ -55,6 +57,7 @@ pub use calc::{request_full_recalculation, withdraw_full_recalculation};
 pub use drawing::{set_shape_text, shift_chart, shift_comments, shift_drawing, shift_vml};
 pub use format_axes::{format_axes, AxisFormatResult};
 pub use header_footer::set_header_footer;
+pub use merges::set_merges;
 pub use notes::{delete_note, set_note};
 pub use patch::patch_sheet;
 pub use refresh::{refresh_sheet, CachedValue, CachedValueEdit, SheetCachedValues};
@@ -138,6 +141,18 @@ pub enum WriteError {
     /// A comments part without the `<commentList>` a note goes into.
     #[error("the comments part has no commentList")]
     NoCommentList,
+    /// A sheet name Excel would not accept.
+    #[error("`{name}` is not a valid sheet name: {reason}")]
+    InvalidSheetName { name: String, reason: &'static str },
+    /// A sheet name another sheet already has, compared without case.
+    #[error("the workbook already has a sheet called `{0}`")]
+    DuplicateSheetName(String),
+    /// A workbook has to keep at least one visible sheet.
+    #[error("`{0}` is the last visible sheet and cannot be deleted")]
+    LastVisibleSheet(String),
+    /// A sheet position past the end of the tab list.
+    #[error("sheet position {index} is outside the {count} sheets")]
+    SheetPositionOutOfRange { index: usize, count: usize },
 }
 
 pub type Result<T> = std::result::Result<T, WriteError>;

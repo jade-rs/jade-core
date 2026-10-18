@@ -540,3 +540,361 @@ fn column_label(index: u32) -> String {
     }
     label
 }
+
+/// `formula` with every reference qualified by the sheet `from` — `from!A1`,
+/// `'from'!A1:B2`, either end of a 3-D `from:Other!A1` — naming `to`
+/// instead, quoted as `to` needs. This is what Excel does to every formula
+/// and defined name when a sheet is renamed. Sheet names compare without
+/// regard to case; text in string literals (`INDIRECT("Sheet1!A1")`),
+/// error literals (`#REF!`), structured references and references into
+/// other workbooks (`[1]Sheet1!A1`) are left alone.
+pub fn rename_sheet_in_formula(formula: &str, from: &str, to: &str) -> String {
+    rewrite_sheet_qualifiers(
+        formula,
+        |first, last| {
+            let renamed = |name: &str| {
+                if same_sheet_name(name, from) {
+                    to.to_string()
+                } else {
+                    name.to_string()
+                }
+            };
+            if !same_sheet_name(first, from)
+                && !last.is_some_and(|last| same_sheet_name(last, from))
+            {
+                return None;
+            }
+            Some(qualifier(&renamed(first), last.map(renamed).as_deref()))
+        },
+        |_| false,
+    )
+}
+
+/// `formula` with every reference into the deleted sheet written as Excel
+/// writes it: `Sheet2!A1` becomes `#REF!A1`, and a structured reference
+/// into one of the sheet's tables (`deleted_tables`, compared without
+/// case) becomes `#REF!`. A 3-D reference keeps the sheets that remain
+/// between its ends — `Jan:Mar!A1` without `Jan` is `Feb:Mar!A1` — which
+/// is why `sheet_order`, the tab order before the deletion, is needed; a
+/// 3-D reference whose ends are not in it is left as written.
+pub fn delete_sheet_in_formula(
+    formula: &str,
+    deleted: &str,
+    sheet_order: &[&str],
+    deleted_tables: &[String],
+) -> String {
+    rewrite_sheet_qualifiers(
+        formula,
+        |first, last| {
+            let Some(last) = last else {
+                return same_sheet_name(first, deleted).then(|| "#REF!".to_string());
+            };
+            if !same_sheet_name(first, deleted) && !same_sheet_name(last, deleted) {
+                return None;
+            }
+            let position = |name: &str| {
+                sheet_order
+                    .iter()
+                    .position(|sheet| same_sheet_name(sheet, name))
+            };
+            let (Some(a), Some(b)) = (position(first), position(last)) else {
+                return Some("#REF!".to_string());
+            };
+            let remaining: Vec<&str> = sheet_order[a.min(b)..=a.max(b)]
+                .iter()
+                .copied()
+                .filter(|sheet| !same_sheet_name(sheet, deleted))
+                .collect();
+            match remaining.as_slice() {
+                [] => Some("#REF!".to_string()),
+                [only] => Some(qualifier(only, None)),
+                [start, .., end] => Some(qualifier(start, Some(end))),
+            }
+        },
+        |table| {
+            deleted_tables
+                .iter()
+                .any(|deleted| same_sheet_name(deleted, table))
+        },
+    )
+}
+
+/// Whether two sheet names name the same sheet: Excel compares them
+/// without regard to case.
+pub fn same_sheet_name(a: &str, b: &str) -> bool {
+    a == b || a.to_uppercase() == b.to_uppercase()
+}
+
+/// `name` as a formula writes it before `!`: bare when Excel would write it
+/// bare — ASCII letters, digits, `_` and `.`, not starting with a digit or
+/// a period, and not readable as a cell reference, an R1C1 reference or a
+/// boolean — and in apostrophes otherwise, with its own apostrophes
+/// doubled. Quoting a name that did not need it is still valid.
+pub fn quote_sheet_name(name: &str) -> String {
+    let bare = !name.is_empty()
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'.'))
+        && !name.as_bytes()[0].is_ascii_digit()
+        && name.as_bytes()[0] != b'.'
+        && !reads_as_reference(name);
+    if bare {
+        name.to_string()
+    } else {
+        format!("'{}'", name.replace('\'', "''"))
+    }
+}
+
+/// `Sheet!` or `First:Last!`, quoted as the names need.
+fn qualifier(first: &str, last: Option<&str>) -> String {
+    match last {
+        None => format!("{}!", quote_sheet_name(first)),
+        Some(last) => {
+            let first_quoted = quote_sheet_name(first);
+            let last_quoted = quote_sheet_name(last);
+            if first_quoted == first && last_quoted == last {
+                format!("{first}:{last}!")
+            } else {
+                format!(
+                    "'{}:{}'!",
+                    first.replace('\'', "''"),
+                    last.replace('\'', "''")
+                )
+            }
+        }
+    }
+}
+
+/// Whether a bare name would be read as something other than a sheet: a
+/// cell (`A1`, `XFD1048576`), an R1C1 reference (`R`, `C`, `R1C1`, `RC2`)
+/// or a boolean.
+fn reads_as_reference(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    if upper == "TRUE" || upper == "FALSE" {
+        return true;
+    }
+    let letters = upper.bytes().take_while(u8::is_ascii_alphabetic).count();
+    let digits = &upper[letters..];
+    if (1..=3).contains(&letters)
+        && !digits.is_empty()
+        && digits.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return true;
+    }
+    let r1c1 = |text: &str| {
+        let rest = text.strip_prefix('R').map_or(Some(text), |rest| {
+            Some(rest.trim_start_matches(|c: char| c.is_ascii_digit()))
+        });
+        match rest {
+            Some("") => text.starts_with('R'),
+            Some(rest) => rest
+                .strip_prefix('C')
+                .is_some_and(|rest| rest.bytes().all(|byte| byte.is_ascii_digit())),
+            None => false,
+        }
+    };
+    r1c1(&upper)
+}
+
+/// Walks `formula`, offering each sheet qualifier — `Sheet!`, `'Sheet'!`,
+/// `First:Last!` — to `on_qualifier`, which returns the text to write in
+/// its place (its `!` included) or `None` to keep it, and each structured
+/// reference `Name[...]` to `drop_table`, which says whether it becomes
+/// `#REF!`. Strings, error literals and other workbooks' references pass
+/// through untouched.
+fn rewrite_sheet_qualifiers(
+    formula: &str,
+    mut on_qualifier: impl FnMut(&str, Option<&str>) -> Option<String>,
+    mut drop_table: impl FnMut(&str) -> bool,
+) -> String {
+    let bytes = formula.as_bytes();
+    let mut output = String::with_capacity(formula.len());
+    let mut index = 0usize;
+    // A `[1]` workbook index makes the qualifier after it another file's.
+    let mut external = false;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if byte == b'"' {
+            let end = string_end(formula, index);
+            output.push_str(&formula[index..end]);
+            index = end;
+            external = false;
+            continue;
+        }
+        if byte == b'\'' {
+            let end = quoted_end(formula, index);
+            if bytes.get(end) == Some(&b'!') && end >= index + 2 {
+                let inner = formula[index + 1..end - 1].replace("''", "'");
+                let replacement = if external || inner.starts_with('[') {
+                    None
+                } else {
+                    match inner.split_once(':') {
+                        Some((first, last)) => on_qualifier(first, Some(last)),
+                        None => on_qualifier(&inner, None),
+                    }
+                };
+                match replacement {
+                    Some(text) => output.push_str(&text),
+                    None => output.push_str(&formula[index..=end]),
+                }
+                index = end + 1;
+            } else {
+                output.push_str(&formula[index..end]);
+                index = end;
+            }
+            external = false;
+            continue;
+        }
+        if byte == b'[' {
+            // A workbook index, or a structured reference relative to the
+            // formula's own table: neither names a sheet.
+            let end = bracket_end(formula, index);
+            output.push_str(&formula[index..end]);
+            index = end;
+            external = true;
+            continue;
+        }
+        let previous = index.checked_sub(1).map(|at| bytes[at]);
+        if is_name_byte(byte) && !previous.is_some_and(is_name_byte) {
+            let mut end = index;
+            while bytes.get(end).is_some_and(|byte| is_name_byte(*byte)) {
+                end += 1;
+            }
+            let name = &formula[index..end];
+            let error_literal = previous == Some(b'#');
+            match bytes.get(end) {
+                Some(b'!') if !error_literal => {
+                    let replacement = if external {
+                        None
+                    } else {
+                        on_qualifier(name, None)
+                    };
+                    match replacement {
+                        Some(text) => output.push_str(&text),
+                        None => output.push_str(&formula[index..=end]),
+                    }
+                    index = end + 1;
+                    external = false;
+                    continue;
+                }
+                Some(b':') if !error_literal => {
+                    // `First:Last!`, a 3-D reference — or a range such as
+                    // `A1:B2`, which has no `!` after its second end.
+                    let mut last_end = end + 1;
+                    while bytes.get(last_end).is_some_and(|byte| is_name_byte(*byte)) {
+                        last_end += 1;
+                    }
+                    if last_end > end + 1 && bytes.get(last_end) == Some(&b'!') {
+                        let last = &formula[end + 1..last_end];
+                        let replacement = if external {
+                            None
+                        } else {
+                            on_qualifier(name, Some(last))
+                        };
+                        match replacement {
+                            Some(text) => output.push_str(&text),
+                            None => output.push_str(&formula[index..=last_end]),
+                        }
+                        index = last_end + 1;
+                        external = false;
+                        continue;
+                    }
+                }
+                Some(b'[') if !error_literal => {
+                    let close = bracket_end(formula, end);
+                    if drop_table(name) {
+                        output.push_str("#REF!");
+                    } else {
+                        output.push_str(&formula[index..close]);
+                    }
+                    index = close;
+                    external = false;
+                    continue;
+                }
+                _ => {}
+            }
+            output.push_str(name);
+            index = end;
+            external = false;
+            continue;
+        }
+        let character = formula[index..].chars().next().expect("a character");
+        output.push(character);
+        index += character.len_utf8();
+        external = false;
+    }
+    output
+}
+
+/// One past the `]` that closes the bracket opened at `start`, counting
+/// nested brackets and skipping characters escaped with `'`.
+fn bracket_end(formula: &str, start: usize) -> usize {
+    let bytes = formula.as_bytes();
+    let mut depth = 0usize;
+    let mut index = start;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\'' => {
+                index += 1;
+            }
+            b'[' => depth += 1,
+            b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return index + 1;
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    bytes.len()
+}
+
+/// `formula` with what follows each `#REF!` qualifier dropped — `#REF!A1`,
+/// `SUM(#REF!B4:B6)`, `#REF!Rate` become `#REF!`, `SUM(#REF!)` — which is
+/// how Excel evaluates a reference whose sheet was deleted, and a form a
+/// calculation engine can parse. For evaluation only: the file keeps the
+/// formula as Excel writes it.
+pub fn collapse_ref_errors(formula: &str) -> String {
+    const ERROR: &str = "#REF!";
+    let bytes = formula.as_bytes();
+    let mut output = String::with_capacity(formula.len());
+    let mut index = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                let end = string_end(formula, index);
+                output.push_str(&formula[index..end]);
+                index = end;
+                continue;
+            }
+            b'\'' => {
+                let end = quoted_end(formula, index);
+                output.push_str(&formula[index..end]);
+                index = end;
+                continue;
+            }
+            b'#' if formula
+                .get(index..index + ERROR.len())
+                .is_some_and(|text| text.eq_ignore_ascii_case(ERROR)) =>
+            {
+                output.push_str(ERROR);
+                index += ERROR.len();
+                if let Some((end, _)) = parse_reference(formula, index) {
+                    index = end;
+                } else {
+                    while bytes.get(index).is_some_and(|byte| is_name_byte(*byte)) {
+                        index += 1;
+                    }
+                }
+                continue;
+            }
+            _ => {}
+        }
+        let character = formula[index..].chars().next().expect("a character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+    output
+}
