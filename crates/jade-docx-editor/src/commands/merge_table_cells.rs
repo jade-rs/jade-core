@@ -240,6 +240,27 @@ impl MergeTableCellsCommand {
         document: &mut WordDocument,
         plan: &MergePlan,
     ) -> CommandResult<Option<SelectionRange>> {
+        // Each follower (a covered cell below the master, in its column)
+        // keeps one empty paragraph — `<w:tc>` must hold a `<w:p>` — and the
+        // model's paragraph and the XML's share one node id.
+        let followers: Vec<(usize, usize)> = plan
+            .cells
+            .iter()
+            .filter(|cell| {
+                cell.row_index != plan.row_start && cell.column_start == plan.column_start
+            })
+            .map(|cell| (cell.row_index, cell.cell_index))
+            .collect();
+        let follower_paragraph_ids: HashMap<usize, Option<XmlNodeId>> = followers
+            .iter()
+            .map(|(row, _)| {
+                let id = match (document.raw_document.as_mut(), plan.table_node_id) {
+                    (Some(raw), Some(_)) => Some(raw.allocate_node_id()),
+                    _ => None,
+                };
+                (*row, id)
+            })
+            .collect();
         let paragraph_ptr = {
             let table = document
                 .table_mut_by_order(plan.table_order_index)
@@ -307,7 +328,13 @@ impl MergeTableCellsCommand {
                             cell.span = None;
                         }
                         cell.vertical_merge = Some("continue".to_string());
-                        cell.blocks.clear();
+                        cell.blocks = vec![BodyElement::from_paragraph(Paragraph {
+                            runs: Vec::new(),
+                            properties: None,
+                            node_id: follower_paragraph_ids.get(&row_index).copied().flatten(),
+                            comment_ranges: Vec::new(),
+                            comment_markers: Vec::new(),
+                        })];
                     }
                 }
 
@@ -329,7 +356,7 @@ impl MergeTableCellsCommand {
         };
 
         if let Some(raw) = document.raw_document.as_mut() {
-            apply_plan_to_raw(raw, plan)?;
+            apply_plan_to_raw(raw, plan, &follower_paragraph_ids)?;
         }
         document
             .sync_table_cell_widths(plan.table_order_index)
@@ -671,6 +698,7 @@ pub(crate) fn set_vertical_merge(
 fn apply_plan_to_raw(
     raw: &mut crate::docx_xml::DocxXmlDocument,
     plan: &MergePlan,
+    follower_paragraph_ids: &HashMap<usize, Option<XmlNodeId>>,
 ) -> CommandResult<()> {
     let table_id = match plan.table_node_id {
         Some(id) => id,
@@ -768,10 +796,17 @@ fn apply_plan_to_raw(
                     }
                     set_grid_span(cell_element, plan.column_span, &mut reserved_ids);
                     set_vertical_merge(cell_element, Some("continue"), &mut reserved_ids);
+                    let paragraph_id = follower_paragraph_ids
+                        .get(&cell.row_index)
+                        .copied()
+                        .flatten()
+                        .unwrap_or_else(|| {
+                            reserved_ids
+                                .next()
+                                .expect("reserved continuation paragraph id")
+                        });
                     cell_element.children.push(XmlNode::Element(XmlElement {
-                        id: reserved_ids
-                            .next()
-                            .expect("reserved continuation paragraph id"),
+                        id: paragraph_id,
                         name: "w:p".to_string(),
                         attributes: Vec::new(),
                         children: Vec::new(),
@@ -1038,7 +1073,11 @@ mod tests {
         let second = &table.rows[1].cells[0];
         assert_eq!(second.span, Some(2));
         assert_eq!(second.vertical_merge.as_deref(), Some("continue"));
-        assert!(second.blocks.is_empty());
+        assert_eq!(
+            second.blocks.len(),
+            1,
+            "a follower keeps one empty paragraph"
+        );
 
         {
             let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
@@ -1266,12 +1305,12 @@ mod tests {
             table.rows[1].cells[0].vertical_merge.as_deref(),
             Some("continue")
         );
-        assert!(table.rows[1].cells[0].blocks.is_empty());
+        assert_eq!(table.rows[1].cells[0].blocks.len(), 1);
         assert_eq!(
             table.rows[2].cells[0].vertical_merge.as_deref(),
             Some("continue")
         );
-        assert!(table.rows[2].cells[0].blocks.is_empty());
+        assert_eq!(table.rows[2].cells[0].blocks.len(), 1);
     }
 
     #[test]
@@ -1496,10 +1535,11 @@ mod tests {
             )
             .expect("command applies");
         };
-        let bytes = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hello.docx"))
-            .expect("hello.docx");
-        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default()))
-            .expect("loads");
+        let bytes =
+            std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hello.docx"))
+                .expect("hello.docx");
+        let mut doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("loads");
         run(
             &mut doc,
             HeadlessCommand::InsertTable {
@@ -1556,11 +1596,13 @@ mod tests {
             },
         );
         let reopened = reopen(&doc);
-        let text: String = match &reopened.table_by_order(0).expect("table").rows[2].cells[1].blocks[0] {
-            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().map(|r| r.text.as_str()).collect(),
-            _ => String::new(),
-        };
+        let text: String =
+            match &reopened.table_by_order(0).expect("table").rows[2].cells[1].blocks[0] {
+                BodyElement::Paragraph(paragraph) => {
+                    paragraph.runs.iter().map(|r| r.text.as_str()).collect()
+                }
+                _ => String::new(),
+            };
         assert_eq!(text, "freed");
     }
-
 }
