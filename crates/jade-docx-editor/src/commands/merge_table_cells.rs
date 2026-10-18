@@ -1476,4 +1476,91 @@ mod tests {
             );
         }
     }
+
+    /// A vertical merge leaves its follower cells with one empty paragraph —
+    /// in the model as in the XML (`<w:tc>` must hold a `<w:p>`) — so the
+    /// document has the same paragraphs before and after a save, and a
+    /// follower freed by an unmerge takes text that survives the save.
+    #[test]
+    fn followers_keep_a_paragraph_in_memory_as_in_the_xml() {
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{
+            HeadlessCommand, HeadlessEditRequest, HeadlessTableCellSelection,
+        };
+        let run = |doc: &mut WordDocument, command: HeadlessCommand| {
+            apply_headless_commands_to_document(
+                doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("command applies");
+        };
+        let bytes = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hello.docx"))
+            .expect("hello.docx");
+        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("loads");
+        run(
+            &mut doc,
+            HeadlessCommand::InsertTable {
+                after_paragraph: 0,
+                rows: 3,
+                columns: 3,
+                column_widths: Vec::new(),
+                caret_offset: None,
+            },
+        );
+        let cell = |row, column| HeadlessTableCellSelection {
+            row,
+            column,
+            column_span: 1,
+        };
+        run(
+            &mut doc,
+            HeadlessCommand::MergeTableCells {
+                table_order_index: 0,
+                selected_cells: vec![cell(1, 1), cell(1, 2), cell(2, 1), cell(2, 2)],
+            },
+        );
+        let follower = &doc.table_by_order(0).expect("table").rows[2].cells[1];
+        assert_eq!(follower.vertical_merge.as_deref(), Some("continue"));
+        assert_eq!(follower.blocks.len(), 1, "one empty paragraph");
+        let reopen = |doc: &WordDocument| {
+            executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("exports"),
+                &Options::default(),
+            ))
+            .expect("reloads")
+        };
+        assert_eq!(reopen(&doc).paragraph_count(), doc.paragraph_count());
+
+        run(
+            &mut doc,
+            HeadlessCommand::UnmergeTableCells {
+                table_order_index: 0,
+                target_cells: vec![HeadlessTableCellSelection {
+                    row: 1,
+                    column: 1,
+                    column_span: 2,
+                }],
+            },
+        );
+        assert_eq!(reopen(&doc).paragraph_count(), doc.paragraph_count());
+        run(
+            &mut doc,
+            HeadlessCommand::SetTableCellText {
+                table_order_index: 0,
+                row: 2,
+                column: 1,
+                text: "freed".into(),
+            },
+        );
+        let reopened = reopen(&doc);
+        let text: String = match &reopened.table_by_order(0).expect("table").rows[2].cells[1].blocks[0] {
+            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().map(|r| r.text.as_str()).collect(),
+            _ => String::new(),
+        };
+        assert_eq!(text, "freed");
+    }
+
 }
