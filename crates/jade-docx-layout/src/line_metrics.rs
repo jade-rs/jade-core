@@ -1479,9 +1479,10 @@ fn synthetic_bold_descriptor_needs_style_scan(font_descriptor: &str) -> bool {
 
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
-/// Mincho, MS Gothic). Word for Mac 16.113 sets bold 10.5pt `第1条（目的）`
-/// in either face at a 10.71pt pitch and the 16pt title at 16.32pt; Word for
-/// Windows keeps 10.5pt (`wrong-num` Word COM trace), so this is 0 there.
+/// Mincho, MS Gothic, and Century, which Word for Mac ships without one).
+/// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
+/// 10.71pt pitch and the 16pt title at 16.32pt; Word for Windows keeps 10.5pt
+/// (`wrong-num` Word COM trace), so this is 0 there.
 pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return 0.0;
@@ -1525,6 +1526,7 @@ pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
             | "MS P Gothic"
             | "ＭＳＰゴシック"
             | "MS PGothic"
+            | "Century"
     );
     if synthesized {
         f64::from(size_pt) * 96.0 / 72.0 * 0.02
@@ -2949,6 +2951,14 @@ mod tests {
         assert_eq!(
             word_synthetic_bold_extra_advance_px("10.50pt '游明朝'"),
             0.0
+        );
+        // Word for Mac ships Century without a bold face: scroll-offset-repro's
+        // bold 14pt `第12章` digits are 8.07pt apart, 7.79pt + 1/50 em.
+        assert!(
+            (word_synthetic_bold_extra_advance_px("bold 14.00pt 'Century'")
+                - 14.0 * 4.0 / 3.0 * 0.02)
+                .abs()
+                < 1e-9
         );
         // Times New Roman and Yu Gothic have real bold faces.
         assert_eq!(
