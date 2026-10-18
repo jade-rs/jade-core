@@ -355,3 +355,69 @@ proptest! {
         }
     }
 }
+
+fn fixture(name: &str) -> WordDocument {
+    let bytes = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../public/fixtures")
+            .join(name),
+    )
+    .expect("read the fixture");
+    block_on(WordDocument::load(&bytes, &Options::default())).expect("load the fixture")
+}
+
+/// Deciding a move by its target takes its `w:moveFrom` / `w:moveTo` out of
+/// the file too, as for an insertion or a deletion — also once its paragraph
+/// was joined with another.
+#[test]
+fn a_decided_move_leaves_the_file() {
+    for (accept, join) in [(true, false), (false, false), (true, true), (false, true)] {
+        let mut word = fixture("review-kinds.docx");
+        if join {
+            // "moved words stays" + "Target moved words".
+            run(
+                &mut word,
+                vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: 1,
+                    start_offset: 17,
+                    end_paragraph: 2,
+                    end_offset: 0,
+                    text: String::new(),
+                }],
+            );
+        }
+        let mut targets = Vec::new();
+        for paragraph in 0..word.paragraph_count() {
+            let mut offset = 0;
+            for r in &word.paragraph(paragraph).unwrap().runs {
+                let end = offset + r.text.len();
+                if let Some(mark) = r
+                    .revision
+                    .as_ref()
+                    .filter(|m| matches!(m.kind, RevisionKind::MovedFrom | RevisionKind::MovedTo))
+                {
+                    targets.push((paragraph, offset, end, mark.id.clone().unwrap()));
+                }
+                offset = end;
+            }
+        }
+        assert_eq!(targets.len(), 2);
+        run(&mut word, vec![decide(accept, None, Some(targets))]);
+        let expected = (runs(&word, 1), runs(&word, 2));
+        let reloaded = reload(&word);
+        assert_eq!(
+            (runs(&reloaded, 1), runs(&reloaded, 2)),
+            expected,
+            "accept: {accept}, join: {join}"
+        );
+        let moved = if join {
+            vec![expected.0]
+        } else {
+            vec![expected.0, expected.1]
+        };
+        assert!(
+            moved.iter().flatten().all(|r| !r.contains('[')),
+            "{moved:?}"
+        );
+    }
+}

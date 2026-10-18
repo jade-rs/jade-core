@@ -32657,7 +32657,15 @@ impl WordDocument {
                 XmlNode::Element(element) if element.name == "w:r" && !is_ruby_run(&element) => {
                     out.push_back(ChildToken::RunElement(element));
                 }
-                XmlNode::Element(element) if element.name == "w:ins" || element.name == "w:del" => {
+                // Revision wrappers come back from each run's own mark
+                // (`wrap_run_element`); keeping a move's wrapper as written
+                // would keep a decided move in the file.
+                XmlNode::Element(element)
+                    if matches!(
+                        element.name.as_str(),
+                        "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"
+                    ) =>
+                {
                     for child in element.children {
                         flatten_node(child, out);
                     }
