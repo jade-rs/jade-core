@@ -1811,7 +1811,7 @@ where
                 &table_wrap_context,
                 table,
                 &mut column_widths,
-                available_width,
+                word_autofit_width_limit_px(table, available_width),
                 padding_x,
                 &|paragraph| layout_config.line_height_for(paragraph),
                 (self.table_autofit_cache_enabled && table_autofit_cache_supported(table))
@@ -1864,7 +1864,7 @@ where
                 pre_2013_table_text_inset_px(
                     table,
                     self.document_east_asian_rules.compatibility_mode,
-                ),
+                ) - modern_leading_border_half_px(table, layout_config.word_modern_border_insets),
             )
         });
         let left_edge = table_x;
@@ -6136,6 +6136,59 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
         }
 }
 
+/// Word for Mac in compatibility mode 15 measures `w:tblInd` to the outer
+/// edge of the table's leading border, so the cell edge (the border's centre
+/// line) and its text sit half that stroke further in. Default-style tables
+/// with 0.5pt borders print their cell text 0.25pt right of the cell margin
+/// (`footnote-table-each-page`, `table-with-text-direction`). Cell spacing
+/// already carves the stroke out of the cell, and older modes align the text
+/// edge instead (`pre_2013_table_text_inset_px`).
+fn modern_leading_border_half_px(table: &Table, enabled: bool) -> f64 {
+    if !enabled {
+        return 0.0;
+    }
+    let visible_row_count = table
+        .rows
+        .iter()
+        .filter(|row| !table_row_is_hidden(row))
+        .count();
+    let Some(row) = table.rows.iter().find(|row| !table_row_is_hidden(row)) else {
+        return 0.0;
+    };
+    let cell_spacing = resolve_cell_spacing_px(row, table);
+    if row.grid_before.unwrap_or(0) > 0 || cell_spacing > f64::EPSILON {
+        return 0.0;
+    }
+    let Some(cell) = row.cells.first() else {
+        return 0.0;
+    };
+    let total_columns = compute_column_count(table);
+    let spans_row = cell.span.unwrap_or(1).max(1) as usize >= total_columns;
+    let format =
+        table.table_style_cell_format(table_style_cell_position(row, 0, visible_row_count, 0));
+    let (name, side) = if table.bidi_visual {
+        ("right", TableBorderSide::Right)
+    } else {
+        ("left", TableBorderSide::Left)
+    };
+    let (left_col, right_col) = if table.bidi_visual {
+        (spans_row, true)
+    } else {
+        (true, spans_row)
+    };
+    let border = resolve_cell_border_side(
+        cell,
+        row,
+        table,
+        &format,
+        name,
+        side,
+        [true, visible_row_count == 1, left_col, right_col],
+        cell_spacing,
+    );
+    visible_border_width(&border) * 0.5
+}
+
 fn compute_table_x(
     base_left: f64,
     available_width: f64,
@@ -6671,6 +6724,24 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
 ///
 /// This intentionally does not scale down an oversized table; callers layer the
 /// table-layout policy on top via [`apply_table_layout_width_for_table`].
+/// The width an autofit table may not exceed. Word for Mac keeps an absolute
+/// `w:tblW` wider than the text extent and lets the table run past the right
+/// margin: `table-nowrap-autofit` prints its 12000-twip tables with two 300pt
+/// columns on a 496.8pt text width.
+fn word_autofit_width_limit_px(table: &Table, available_width: f64) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+    {
+        return available_width;
+    }
+    table
+        .style
+        .get("width")
+        .filter(|width| !width.trim().ends_with('%'))
+        .and_then(|width| preferred_width_px(width, available_width))
+        .map_or(available_width, |width| width.max(available_width))
+}
+
 fn normalize_column_widths_for_table(column_widths: &mut [f64], available_width: f64) -> f64 {
     let mut table_width: f64 = column_widths.iter().sum();
     if table_width <= 0.0 {
@@ -10014,15 +10085,34 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                                 &paragraph_style,
                                 left_inset,
                             )?;
-                            let trailing_overhang =
-                                paragraph_trailing_overhang(wrap_context, &text, &styled_runs)?;
-                            styled_runs = fit_text_run_ranges(
-                                &text,
-                                &styled_runs,
-                                natural.max_line_width + trailing_overhang,
+                            let target_width =
                                 (available_width - left_inset - paragraph_style.right_indent)
-                                    .max(1.0),
-                            );
+                                    .max(1.0);
+                            styled_runs = if paragraph_style.word_platform
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            {
+                                let border_width = if cell_spacing > f64::EPSILON {
+                                    0.0
+                                } else {
+                                    visible_border_width(&border_left)
+                                        + visible_border_width(&border_right)
+                                };
+                                mac_cell_fit_text_run_ranges(
+                                    &text,
+                                    &styled_runs,
+                                    natural.max_line_width,
+                                    (target_width - border_width).max(1.0),
+                                )
+                            } else {
+                                let trailing_overhang =
+                                    paragraph_trailing_overhang(wrap_context, &text, &styled_runs)?;
+                                fit_text_run_ranges(
+                                    &text,
+                                    &styled_runs,
+                                    natural.max_line_width + trailing_overhang,
+                                    target_width,
+                                )
+                            };
                         } else if let (Some(direction), Some(target_height)) =
                             (cell.text_direction, vertical_fit_target)
                         {
@@ -10626,6 +10716,64 @@ fn fit_text_run_ranges(
         })
         .collect()
 }
+
+/// Word for Mac fits a `w:tcFitText` cell as one run-level `w:fitText` group
+/// over the cell's text width less its side borders: a wider cell spreads
+/// the characters (the final one keeps its advance), a narrower one condenses
+/// by a whole percentage, rounded down. `table-cell-fit-text` prints `WIDE`
+/// with 26.9pt gaps in a 120pt cell with 0.5pt borders, and its 179.2pt mixed
+/// run at 60%, short of the cell's edge.
+fn mac_cell_fit_text_run_ranges(
+    text: &str,
+    styled_runs: &[StyledRunRange],
+    measured_width: f64,
+    target_width: f64,
+) -> Vec<StyledRunRange> {
+    if text.is_empty()
+        || !measured_width.is_finite()
+        || measured_width <= f64::EPSILON
+        || !target_width.is_finite()
+        || target_width <= f64::EPSILON
+    {
+        return styled_runs.to_vec();
+    }
+    let fitted_width = if target_width < measured_width {
+        let percent = (100.0 * target_width / measured_width + 1e-9)
+            .floor()
+            .max(1.0);
+        measured_width * percent / 100.0
+    } else {
+        target_width
+    };
+    let fit = crate::document::RunFitText {
+        // Twentieths of a point; 96 dpi px * 15.
+        val: (fitted_width * 15.0).round().max(1.0) as u32,
+        id: Some(MAC_CELL_FIT_TEXT_GROUP_ID),
+    };
+    let source = if styled_runs.is_empty() {
+        vec![StyledRunRange {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+        }]
+    } else {
+        styled_runs.to_vec()
+    };
+    source
+        .into_iter()
+        .map(|mut run| {
+            let mut properties = run.properties.unwrap_or_default();
+            properties.fit_text = Some(fit.clone());
+            run.properties = Some(properties);
+            run
+        })
+        .collect()
+}
+
+/// Group id shared by every run of a Mac `w:tcFitText` paragraph so the layout
+/// fits them as one group whatever their own formatting.
+const MAC_CELL_FIT_TEXT_GROUP_ID: i32 = i32::MIN;
 
 fn cell_contains_only_hidden_end_marker(cell: &TableCell) -> bool {
     let hide_mark = cell
@@ -13474,6 +13622,50 @@ mod tests {
         assert_eq!(second.italic, Some(true));
         assert!((first.text_scale.expect("first scale") - 49.995).abs() < 0.001);
         assert!((second.text_scale.expect("second scale") - 39.996).abs() < 0.001);
+    }
+
+    #[test]
+    fn mac_cell_fit_text_groups_runs_and_condenses_by_whole_percent() {
+        let styled_runs = vec![
+            StyledRunRange {
+                start: 0,
+                end: 2,
+                properties: Some(RunProperties {
+                    bold: Some(true),
+                    ..RunProperties::default()
+                }),
+                revision: None,
+            },
+            StyledRunRange {
+                start: 2,
+                end: 4,
+                properties: None,
+                revision: None,
+            },
+        ];
+        // 109.2 / 179.17 = 60.9%: Word prints the run at 60%.
+        let condensed = mac_cell_fit_text_run_ranges("abcd", &styled_runs, 179.17, 109.2);
+        let fits: Vec<_> = condensed
+            .iter()
+            .map(|run| run.properties.as_ref().unwrap().fit_text.clone().unwrap())
+            .collect();
+        assert_eq!(fits[0], fits[1], "one shared group");
+        assert_eq!(fits[0].val, (179.17 * 0.6 * 15.0_f64).round() as u32);
+        assert_eq!(condensed[0].properties.as_ref().unwrap().bold, Some(true));
+
+        let expanded = mac_cell_fit_text_run_ranges("WIDE", &[], 36.5, 144.0);
+        assert_eq!(expanded.len(), 1);
+        assert_eq!(
+            expanded[0]
+                .properties
+                .as_ref()
+                .unwrap()
+                .fit_text
+                .as_ref()
+                .unwrap()
+                .val,
+            2160
+        );
     }
 
     #[test]
@@ -16862,6 +17054,71 @@ mod tests {
         // Word for Mac: `tblInd` 0.5pt puts the first cell's text 0.5pt in.
         let x = compute_table_x(100.0, 400.0, 240.0, &table, inset);
         assert!((x + inset - (100.0 + points_to_px(0.5))).abs() < 0.01);
+    }
+
+    #[test]
+    fn mac_autofit_keeps_an_absolute_table_width_past_the_margin() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut table = Table::default();
+        table.style.insert("width".into(), "600pt".into());
+        let text_width = points_to_px(496.8);
+
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac = word_autofit_width_limit_px(&table, text_width);
+        table.style.insert("width".into(), "50%".into());
+        let mac_percent = word_autofit_width_limit_px(&table, text_width);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        table.style.insert("width".into(), "600pt".into());
+        let windows = word_autofit_width_limit_px(&table, text_width);
+        set_word_layout_platform(previous);
+
+        assert!((mac - points_to_px(600.0)).abs() < 1e-9);
+        assert_eq!(mac_percent, text_width);
+        assert_eq!(windows, text_width);
+    }
+
+    #[test]
+    fn modern_mac_tables_put_the_leading_border_outside_the_indent() {
+        use crate::document::{BorderEdge, TableBorders};
+        let edge = BorderEdge {
+            val: Some("single".into()),
+            size_eighths: Some(4),
+            color: Some("000000".into()),
+            ..Default::default()
+        };
+        let mut table = Table {
+            borders: Some(TableBorders {
+                left: Some(edge.clone()),
+                right: Some(edge),
+                ..Default::default()
+            }),
+            rows: vec![TableRow {
+                cells: vec![TableCell::default(), TableCell::default()],
+                ..TableRow::default()
+            }],
+            ..Table::default()
+        };
+        // `footnote-table-textbox-order`: 0.5pt borders, text 0.25pt in.
+        let half = modern_leading_border_half_px(&table, true);
+        assert!((half - points_to_px(0.25)).abs() < 1e-9, "half={half}");
+        assert_eq!(modern_leading_border_half_px(&table, false), 0.0);
+        let x = compute_table_x(100.0, 400.0, 240.0, &table, -half);
+        assert!((x - (100.0 + points_to_px(0.25))).abs() < 1e-9);
+
+        table.cell_spacing = Some(2.0);
+        assert_eq!(modern_leading_border_half_px(&table, true), 0.0);
+        table.cell_spacing = None;
+        table.borders = Some(TableBorders {
+            left: Some(BorderEdge {
+                val: Some("nil".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        assert_eq!(modern_leading_border_half_px(&table, true), 0.0);
     }
 
     #[test]
