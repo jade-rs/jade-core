@@ -208,7 +208,11 @@ fn public_corpus_mutations_have_exact_events_and_stable_diffs() -> Result<()> {
         });
     }
 
-    insta::assert_json_snapshot!("public_corpus_mutation_diffs", snapshots);
+    // `cargo test --workspace` では gpui が serde_json の preserve_order を有効に
+    // するため、Value のキー順が構造体順になる。features に依存しないよう整列する。
+    insta::with_settings!({ sort_maps => true }, {
+        insta::assert_json_snapshot!("public_corpus_mutation_diffs", snapshots);
+    });
     Ok(())
 }
 

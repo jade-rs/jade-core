@@ -75,6 +75,25 @@ fn alignment_benchmark(criterion: &mut Criterion) {
         })
     });
 
+    let edited_old = workbook(256, None);
+    let mut edited_new = edited_old.clone();
+    for row in edited_new.sheets[0].rows.iter_mut().skip(1) {
+        row[2].value.push('0');
+    }
+    criterion.bench_function("align 256 rows with edited values", |bencher| {
+        bencher.iter(|| {
+            black_box(
+                diff_workbooks(
+                    Path::new("old.xlsx"),
+                    Path::new("new.xlsx"),
+                    black_box(&edited_old),
+                    black_box(&edited_new),
+                )
+                .expect("edited benchmark diff should succeed"),
+            )
+        })
+    });
+
     let (wide_old, wide_new) = wide_sparse_workbooks();
     criterion.bench_function("align Excel-max-width sparse column insertion", |bencher| {
         bencher.iter(|| {

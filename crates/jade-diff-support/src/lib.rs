@@ -13,7 +13,7 @@ use diff_align::{lcs_diff, Step};
 
 /// [`diff_align::similarity`] を何度も引く文字列の下ごしらえ。
 ///
-/// 整列済みの文字 bigram と、空白を除いた文字列の長さ・ハッシュを持つ。
+/// 整列済みの文字 bigram とその出現数、空白を除いた文字列の長さ・ハッシュを持つ。
 /// `TextProfile::new(a).similarity(&TextProfile::new(b))` は
 /// `similarity(a, b)` と一致する。
 ///
@@ -25,7 +25,7 @@ use diff_align::{lcs_diff, Step};
 pub struct TextProfile {
     len: usize,
     hash: u64,
-    bigrams: Vec<(char, char)>,
+    bigrams: Vec<((char, char), usize)>,
 }
 
 impl TextProfile {
@@ -45,10 +45,19 @@ impl TextProfile {
             previous = Some(c);
         }
         bigrams.sort_unstable();
+        // Repeated phrases are common in Office documents. Store each bigram
+        // once while retaining its multiplicity for the same Dice score.
+        let mut counts: Vec<((char, char), usize)> = Vec::new();
+        for bigram in bigrams {
+            match counts.last_mut() {
+                Some((previous, count)) if *previous == bigram => *count += 1,
+                _ => counts.push((bigram, 1)),
+            }
+        }
         Self {
             len,
             hash: hasher.finish(),
-            bigrams,
+            bigrams: counts,
         }
     }
 
@@ -74,9 +83,9 @@ impl TextProfile {
         let (left, right) = (&self.bigrams, &other.bigrams);
         let (mut i, mut j, mut common) = (0usize, 0usize, 0usize);
         while i < left.len() && j < right.len() {
-            match left[i].cmp(&right[j]) {
+            match left[i].0.cmp(&right[j].0) {
                 std::cmp::Ordering::Equal => {
-                    common += 1;
+                    common += left[i].1.min(right[j].1);
                     i += 1;
                     j += 1;
                 }
@@ -84,13 +93,13 @@ impl TextProfile {
                 std::cmp::Ordering::Greater => j += 1,
             }
         }
-        2.0 * common as f64 / (left.len() + right.len()) as f64
+        2.0 * common as f64 / (a + b - 2) as f64
     }
 
     /// [`Self::similarity`] の上限。長さだけで決まるので、bigram を
     /// 突き合わせる前に見込みの無い組を捨てられる。
     pub fn similarity_upper_bound(&self, other: &Self) -> f64 {
-        let (a, b) = (self.bigrams.len(), other.bigrams.len());
+        let (a, b) = (self.len.saturating_sub(1), other.len.saturating_sub(1));
         if a == 0 || b == 0 {
             // 1 文字以下は完全一致かどうかだけなので、見積もらずに本計算へ回す。
             return 1.0;
@@ -181,6 +190,11 @@ fn trimmed_lcs_diff_with<T: PartialEq>(old: &[T], new: &[T], max_edits: usize) -
 /// 手順を復元するために、各編集距離 d での到達点 (対角線 -d..=d) を残す。
 /// 溜まる量は D の 2 乗程度で、入力の長さには比例しない。
 fn myers_diff<T: PartialEq>(old: &[T], new: &[T], max_edits: usize) -> Option<Vec<Step>> {
+    // Every surplus element needs at least one edit. Do not allocate the
+    // quadratic traceback for an edit budget that cannot possibly succeed.
+    if old.len().abs_diff(new.len()) > max_edits {
+        return None;
+    }
     let (n, m) = (old.len() as isize, new.len() as isize);
     let limit = max_edits.min(old.len() + new.len()) as isize;
     // v[k] = 対角線 k (= x - y) 上で到達した最も遠い x。k は -limit-1..=limit+1。
@@ -263,6 +277,23 @@ mod tests {
     }
 
     #[test]
+    fn 重複_bigram_を圧縮しても出現数を保つ() {
+        let old = "ab".repeat(10_000);
+        let new = "ab".repeat(3_000) + "ac";
+        let old_profile = TextProfile::new(&old);
+        let new_profile = TextProfile::new(&new);
+        assert_eq!(old_profile.bigrams.len(), 2);
+        assert_eq!(
+            old_profile.similarity(&new_profile),
+            diff_align::similarity(&old, &new)
+        );
+        assert!(
+            old_profile.similarity_upper_bound(&new_profile)
+                >= old_profile.similarity(&new_profile)
+        );
+    }
+
+    #[test]
     fn 上限を超える変更区間は削除と追加にまとめる() {
         let old: Vec<u32> = (0..2_001).collect();
         let new: Vec<u32> = (10_000..12_001).collect();
@@ -292,6 +323,39 @@ mod tests {
     }
 
     proptest! {
+        #[test]
+        fn 大幅に短縮された列でも最長の共通部分と両側の要素を保つ(
+            motif in prop::collection::vec(0u8..8, 1..9),
+            new in prop::collection::vec(0u8..8, 0..13),
+        ) {
+            let old: Vec<_> = motif.iter().copied().cycle().take(2_049).collect();
+            let steps = trimmed_lcs_diff(&old, &new);
+            assert_valid_lcs(&old, &new, &steps)?;
+            let reverse = trimmed_lcs_diff(&new, &old);
+            assert_valid_lcs(&new, &old, &reverse)?;
+        }
+
+        #[test]
+        fn 繰り返しとUnicodeを含む長文でも圧縮類似度は参照実装と一致する(
+            old_motif in text(),
+            new_motif in text(),
+            old_repeat in 0usize..100,
+            new_repeat in 0usize..100,
+            threshold in 0.0f64..=1.0,
+        ) {
+            let old = old_motif.repeat(old_repeat);
+            let new = new_motif.repeat(new_repeat);
+            let before = TextProfile::new(&old);
+            let after = TextProfile::new(&new);
+            let expected = diff_align::similarity(&old, &new);
+            prop_assert_eq!(before.similarity(&after), expected);
+            prop_assert_eq!(after.similarity(&before), expected);
+            prop_assert!(before.similarity_upper_bound(&after) >= expected);
+            let pruned = before.similarity_at_least(&after, threshold);
+            if expected >= threshold { prop_assert_eq!(pruned, expected); }
+            else { prop_assert!(pruned < threshold); }
+        }
+
         #[test]
         fn 下ごしらえした類似度は元の類似度と一致する(
             old in text(),

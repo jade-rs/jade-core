@@ -68,14 +68,17 @@ fn duplicate_heavy_512_row_insertion_is_precise_and_deterministic() -> Result<()
         ChangeKind::Added
     ));
     assert!(first.sheets[0].alignment.row_ambiguous_signature_groups > 0);
-    insta::assert_json_snapshot!(
-        "p3_duplicate_heavy_result",
-        serde_json::json!({
-            "input": config,
-            "summary": first.summary,
-            "sheet": first.sheets[0],
-        })
-    );
+    // gpui が serde_json の preserve_order を有効にしてもキー順が変わらないよう整列する。
+    insta::with_settings!({ sort_maps => true }, {
+        insta::assert_json_snapshot!(
+            "p3_duplicate_heavy_result",
+            serde_json::json!({
+                "input": config,
+                "summary": first.summary,
+                "sheet": first.sheets[0],
+            })
+        );
+    });
     Ok(())
 }
 
@@ -117,14 +120,16 @@ fn excel_max_width_sparse_column_insertion_stays_bounded_and_precise() -> Result
         diff.sheets[0].column_changes[0].new_index,
         Some(config.insert_at_column)
     );
-    insta::assert_json_snapshot!(
-        "p3_wide_sparse_result",
-        serde_json::json!({
-            "input": config,
-            "summary": diff.summary,
-            "sheet": diff.sheets[0],
-        })
-    );
+    insta::with_settings!({ sort_maps => true }, {
+        insta::assert_json_snapshot!(
+            "p3_wide_sparse_result",
+            serde_json::json!({
+                "input": config,
+                "summary": diff.summary,
+                "sheet": diff.sheets[0],
+            })
+        );
+    });
     Ok(())
 }
 
@@ -162,14 +167,16 @@ fn multi_sheet_workbook_isolates_one_structural_change() -> Result<()> {
         .filter(|sheet| !sheet.row_changes.is_empty())
         .collect::<Vec<_>>();
     assert_eq!(changed.len(), 1);
-    insta::assert_json_snapshot!(
-        "p3_multi_sheet_result",
-        serde_json::json!({
-            "input": config,
-            "summary": diff.summary,
-            "changed_sheets": changed,
-        })
-    );
+    insta::with_settings!({ sort_maps => true }, {
+        insta::assert_json_snapshot!(
+            "p3_multi_sheet_result",
+            serde_json::json!({
+                "input": config,
+                "summary": diff.summary,
+                "changed_sheets": changed,
+            })
+        );
+    });
     Ok(())
 }
 

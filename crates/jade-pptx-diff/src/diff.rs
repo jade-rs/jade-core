@@ -840,20 +840,40 @@ fn pair_hunk_by_similarity(
     new_keys: &[String],
     threshold: f64,
 ) -> Vec<(usize, usize)> {
+    pair_hunk_by_profile(
+        removed,
+        added,
+        old_keys,
+        new_keys,
+        threshold,
+        |key| TextProfile::new(key),
+        |old, new| old.similarity_at_least(new, threshold),
+    )
+}
+
+fn pair_hunk_by_profile<T, P>(
+    removed: &[usize],
+    added: &[usize],
+    old_keys: &[T],
+    new_keys: &[T],
+    threshold: f64,
+    profile: impl Fn(&T) -> P,
+    score: impl Fn(&P, &P) -> f64,
+) -> Vec<(usize, usize)> {
     if removed.is_empty() || added.is_empty() {
         return Vec::new();
     }
-    let old: Vec<TextProfile> = removed
+    let old: Vec<P> = removed
         .iter()
-        .map(|&index| TextProfile::new(&old_keys[index]))
+        .map(|&index| profile(&old_keys[index]))
         .collect();
-    let new: Vec<TextProfile> = added
+    let new: Vec<P> = added
         .iter()
-        .map(|&index| TextProfile::new(&new_keys[index]))
+        .map(|&index| profile(&new_keys[index]))
         .collect();
 
     pair_by_score(old.len(), new.len(), threshold, |o, n| {
-        old[o].similarity_at_least(&new[n], threshold)
+        score(&old[o], &new[n])
     })
     .into_iter()
     .filter_map(|pairing| match pairing {
@@ -890,6 +910,61 @@ pub fn segment_text(old: &str, new: &str) -> Vec<Segment> {
 /// 表の列の対応。`(旧の列, 新の列)` で、片側だけの列は追加/削除された列。
 type ColumnPair = (Option<usize>, Option<usize>);
 
+/// Whole-cell overlap remains useful when rows/columns are inserted into a
+/// numeric table: "1\n2" and "1\n9\n2" share cells but no character bigrams.
+struct CellSequenceProfile {
+    text: TextProfile,
+    cells: Vec<(String, usize)>,
+    cell_count: usize,
+}
+
+impl CellSequenceProfile {
+    fn new(cells: &[String]) -> Self {
+        let text = TextProfile::new(&cells.join("\n"));
+        // Sort borrowed values first so repeated cells allocate only once.
+        let mut sorted: Vec<_> = cells.iter().filter(|cell| !cell.is_empty()).collect();
+        sorted.sort_unstable();
+        let cell_count = sorted.len();
+        let mut cells: Vec<(String, usize)> = Vec::new();
+        for cell in sorted {
+            match cells.last_mut() {
+                Some((value, count)) if value == cell => *count += 1,
+                _ => cells.push((cell.clone(), 1)),
+            }
+        }
+        Self {
+            text,
+            cells,
+            cell_count,
+        }
+    }
+
+    fn similarity_at_least(&self, other: &Self, threshold: f64) -> f64 {
+        let (mut i, mut j, mut common) = (0, 0, 0);
+        while i < self.cells.len() && j < other.cells.len() {
+            match self.cells[i].0.cmp(&other.cells[j].0) {
+                std::cmp::Ordering::Equal => {
+                    common += self.cells[i].1.min(other.cells[j].1);
+                    i += 1;
+                    j += 1;
+                }
+                std::cmp::Ordering::Less => i += 1,
+                std::cmp::Ordering::Greater => j += 1,
+            }
+        }
+        let total = self.cell_count + other.cell_count;
+        let cell_score = if total == 0 {
+            0.0
+        } else {
+            2.0 * common as f64 / total as f64
+        };
+        // Scores below the whole-cell score cannot change the final result.
+        self.text
+            .similarity_at_least(&other.text, threshold.max(cell_score))
+            .max(cell_score)
+    }
+}
+
 fn table_width(table: &TableIr) -> usize {
     table.rows.iter().map(Vec::len).max().unwrap_or(0)
 }
@@ -907,15 +982,15 @@ fn align_columns(old: &TableIr, new: &TableIr, threshold: f64) -> Vec<ColumnPair
             .collect();
     }
 
-    let column_keys = |table: &TableIr, width: usize| -> Vec<String> {
+    // Preserve cell boundaries even when cell text contains newlines.
+    let column_keys = |table: &TableIr, width: usize| -> Vec<Vec<String>> {
         (0..width)
             .map(|column| {
-                let cells: Vec<&str> = table
+                table
                     .rows
                     .iter()
-                    .map(|row| row.get(column).map_or("", String::as_str))
-                    .collect();
-                comparison_text(&cells.join("\n"))
+                    .map(|row| comparison_text(row.get(column).map_or("", String::as_str)))
+                    .collect()
             })
             .collect()
     };
@@ -935,8 +1010,15 @@ fn align_columns(old: &TableIr, new: &TableIr, threshold: f64) -> Vec<ColumnPair
                 let end = hunk_end(&steps, index);
                 let hunk = &steps[index..end];
                 let (removed, added) = hunk_sides(hunk);
-                let matched =
-                    pair_hunk_by_similarity(&removed, &added, &old_keys, &new_keys, threshold);
+                let matched = pair_hunk_by_profile(
+                    &removed,
+                    &added,
+                    &old_keys,
+                    &new_keys,
+                    threshold,
+                    |cells| CellSequenceProfile::new(cells),
+                    |old, new| old.similarity_at_least(new, threshold),
+                );
                 out.extend(emit_hunk(hunk, &matched, |change| match change {
                     HunkChange::Changed(o, n) => (Some(o), Some(n)),
                     HunkChange::Removed(o) => (Some(o), None),
@@ -951,27 +1033,26 @@ fn align_columns(old: &TableIr, new: &TableIr, threshold: f64) -> Vec<ColumnPair
 
 /// 行の比較用キー。両側にある列だけを使うので、列の追加/削除だけでは
 /// 行が変わったことにならない。
-fn row_key(row: &[String], columns: &[ColumnPair], old_side: bool) -> String {
-    let cells: Vec<&str> = columns
+fn row_key(row: &[String], columns: &[ColumnPair], old_side: bool) -> Vec<String> {
+    columns
         .iter()
         .filter_map(|&(old, new)| {
             let column = if old_side { old? } else { new? };
             // 片側にしか無い列は比べない。
             old.and(new)?;
-            row.get(column).map(String::as_str)
+            Some(comparison_text(row.get(column).map_or("", String::as_str)))
         })
-        .collect();
-    comparison_text(&cells.join("\t"))
+        .collect()
 }
 
 fn diff_table(old: &TableIr, new: &TableIr, options: &DiffOptions) -> TableDiff {
     let columns = align_columns(old, new, options.text_change_score);
-    let old_keys: Vec<String> = old
+    let old_keys: Vec<Vec<String>> = old
         .rows
         .iter()
         .map(|row| row_key(row, &columns, true))
         .collect();
-    let new_keys: Vec<String> = new
+    let new_keys: Vec<Vec<String>> = new
         .rows
         .iter()
         .map(|row| row_key(row, &columns, false))
@@ -1002,13 +1083,21 @@ fn diff_table(old: &TableIr, new: &TableIr, options: &DiffOptions) -> TableDiff 
                 let end = hunk_end(&steps, index);
                 let hunk = &steps[index..end];
                 let (removed, added) = hunk_sides(hunk);
-                let matched = pair_hunk_by_similarity(
-                    &removed,
-                    &added,
-                    &old_keys,
-                    &new_keys,
-                    options.text_change_score,
-                );
+                // A single row replacement carries positional evidence even
+                // when numeric values have no matching character bigrams.
+                let matched = if removed.len() == 1 && added.len() == 1 {
+                    vec![(removed[0], added[0])]
+                } else {
+                    pair_hunk_by_profile(
+                        &removed,
+                        &added,
+                        &old_keys,
+                        &new_keys,
+                        options.text_change_score,
+                        |cells| CellSequenceProfile::new(cells),
+                        |old, new| old.similarity_at_least(new, options.text_change_score),
+                    )
+                };
                 rows.extend(emit_hunk(hunk, &matched, |change| match change {
                     HunkChange::Changed(o, n) => TableRowChange {
                         kind: ChangeKind::Changed,
@@ -1562,6 +1651,47 @@ mod tests {
     }
 
     #[test]
+    fn 数値行の総取り替えをセル変更として報告する() {
+        let old = table(rows(&[&["金額"], &["100"], &["合計"]]));
+        let new = table(rows(&[&["金額"], &["999"], &["合計"]]));
+        let diff = diff_table(&old, &new, &DiffOptions::default());
+        assert_eq!(diff.rows.len(), 3, "{diff:?}");
+        assert_eq!(diff.rows[1].kind, ChangeKind::Changed);
+        assert_eq!(diff.rows[1].cells[0].kind, ChangeKind::Changed);
+        assert_eq!(diff.rows[1].old_index, Some(2));
+        assert_eq!(diff.rows[1].new_index, Some(2));
+    }
+
+    #[test]
+    fn セル内のタブを列境界と混同せず挿入行を対応付ける() {
+        let old = table(rows(&[&["a\tb", "c"], &["a", "b\tc"]]));
+        let new = table(rows(&[&["a", "b\tc"], &["a\tb", "c"], &["a", "b\tc"]]));
+        let diff = diff_table(&old, &new, &DiffOptions::default());
+        assert_eq!(diff.rows.len(), 3, "{diff:?}");
+        assert_eq!(diff.rows[0].kind, ChangeKind::Added, "{diff:?}");
+        for row in &diff.rows[1..] {
+            assert_eq!(row.kind, ChangeKind::Unchanged, "{diff:?}");
+        }
+    }
+
+    #[test]
+    fn セル内の改行を行境界と混同せず挿入列を対応付ける() {
+        let old = table(rows(&[&["a\nb", "a"], &["c", "b\nc"]]));
+        let new = table(rows(&[&["a", "a\nb", "a"], &["b\nc", "c", "b\nc"]]));
+        let diff = diff_table(&old, &new, &DiffOptions::default());
+        assert_eq!(diff.rows.len(), 2, "{diff:?}");
+        for row in &diff.rows {
+            assert_eq!(row.cells[0].kind, ChangeKind::Added, "{diff:?}");
+            assert!(
+                row.cells[1..]
+                    .iter()
+                    .all(|cell| cell.kind == ChangeKind::Unchanged),
+                "{diff:?}"
+            );
+        }
+    }
+
+    #[test]
     fn 列の挿入では右側の列を変更扱いにしない() {
         let old = table(rows(&[
             &["区分", "金額", "前年比"],
@@ -1680,6 +1810,148 @@ mod tests {
     }
 
     proptest! {
+        #[test]
+        fn 重複セルを圧縮して出現回数を保持する(
+            repeats in 1usize..4096,
+            other_repeats in 1usize..4096,
+        ) {
+            let old = vec!["1".to_string(); repeats];
+            let new = vec!["1".to_string(); other_repeats];
+            let old_profile = CellSequenceProfile::new(&old);
+            let new_profile = CellSequenceProfile::new(&new);
+            prop_assert_eq!(&old_profile.cells, &vec![("1".to_string(), repeats)]);
+            prop_assert_eq!(old_profile.cell_count, repeats);
+            let expected = (2.0 * repeats.min(other_repeats) as f64 / (repeats + other_repeats) as f64)
+                .max(diff_align::similarity(&old.join("\n"), &new.join("\n")));
+            prop_assert_eq!(old_profile.similarity_at_least(&new_profile, 0.0), expected);
+        }
+
+        #[test]
+        fn 数値キーを持つ複数行の値変更をセル変更に保つ(height in 2usize..8) {
+            let old = table((1..=height).map(|id| vec![id.to_string(), "000".to_string()]).collect());
+            let new = table((1..=height).map(|id| vec![id.to_string(), "999".to_string()]).collect());
+            let diff = diff_table(&old, &new, &DiffOptions::default());
+            prop_assert_eq!(diff.rows.len(), height, "{:?}", diff);
+            for (index, row) in diff.rows.iter().enumerate() {
+                prop_assert_eq!(row.old_index, Some(index + 1));
+                prop_assert_eq!(row.new_index, Some(index + 1));
+                prop_assert_eq!(row.cells[0].kind, ChangeKind::Unchanged);
+                prop_assert_eq!(row.cells[1].kind, ChangeKind::Changed);
+            }
+        }
+
+        #[test]
+        fn セル類似度の枝刈りは多重集合の参照スコアを保つ(
+            old in prop::collection::vec(prop_oneof![unicode_text(), Just("1".to_string()), Just("2".to_string())], 0..64),
+            new in prop::collection::vec(prop_oneof![unicode_text(), Just("1".to_string()), Just("2".to_string())], 0..64),
+            threshold in 0.0f64..=1.0,
+        ) {
+            let old_profile = CellSequenceProfile::new(&old);
+            let new_profile = CellSequenceProfile::new(&new);
+            let mut remaining: Vec<_> = new.iter().filter(|cell| !cell.is_empty()).collect();
+            let mut common = 0usize;
+            for cell in old.iter().filter(|cell| !cell.is_empty()) {
+                if let Some(index) = remaining.iter().position(|other| *other == cell) {
+                    remaining.remove(index);
+                    common += 1;
+                }
+            }
+            let total = old.iter().filter(|cell| !cell.is_empty()).count() + new.iter().filter(|cell| !cell.is_empty()).count();
+            let cells = if total == 0 { 0.0 } else { 2.0 * common as f64 / total as f64 };
+            let expected = cells.max(diff_align::similarity(&old.join("\n"), &new.join("\n")));
+            let actual = old_profile.similarity_at_least(&new_profile, threshold);
+            if expected >= threshold { prop_assert_eq!(actual, expected); }
+            else { prop_assert!(actual < threshold); }
+            prop_assert_eq!(old_profile.similarity_at_least(&new_profile, 0.0), new_profile.similarity_at_least(&old_profile, 0.0));
+        }
+
+        #[test]
+        fn 短い数値セルの行列挿入で既存セルを変更しない(
+            width in 1usize..4,
+            height in 1usize..4,
+            row_at in 0usize..4,
+            col_at in 0usize..4,
+        ) {
+            let row_at = row_at.min(height);
+            let col_at = col_at.min(width);
+            let old: Vec<Vec<String>> = (0..height).map(|r|
+                (0..width).map(|c| (r * width + c + 1).to_string()).collect()
+            ).collect();
+            let mut new = old.clone();
+            for (r, row) in new.iter_mut().enumerate() { row.insert(col_at, format!("88{r}")); }
+            new.insert(row_at, (0..=width).map(|c| format!("99{c}")).collect());
+            for (before, after, inserted) in [(&old, &new, true), (&new, &old, false)] {
+                let diff = diff_table(&table(before.clone()), &table(after.clone()), &DiffOptions::default());
+                prop_assert_eq!(diff.rows.len(), height + 1, "{:?}", diff);
+                for row in diff.rows.iter().filter(|r| r.old_index.is_some() && r.new_index.is_some()) {
+                    let changed: Vec<_> = row.cells.iter().filter(|c| c.kind != ChangeKind::Unchanged).collect();
+                    prop_assert_eq!(changed.len(), 1, "{:?}", diff);
+                    prop_assert_eq!(changed[0].kind, if inserted { ChangeKind::Added } else { ChangeKind::Removed });
+                    prop_assert_eq!(if inserted { changed[0].new_column } else { changed[0].old_column }, Some(col_at + 1));
+                }
+                prop_assert_eq!(diff.rows.iter().filter(|r| r.kind == if inserted { ChangeKind::Added } else { ChangeKind::Removed }).count(), 1);
+            }
+        }
+
+        #[test]
+        fn 表の行列挿入と削除は既存セルを変更しない(
+            width in 1usize..6,
+            height in 1usize..7,
+            row_at in 0usize..7,
+            col_at in 0usize..6,
+            text in prop::sample::select(vec!["", "\t", "\n", "\u{1f}", "e\u{301}", "👩‍💻"]),
+        ) {
+            let row_at = row_at.min(height);
+            let col_at = col_at.min(width);
+            let old: Vec<Vec<String>> = (0..height).map(|r|
+                (0..width).map(|c| format!("行{r}列{c}:{text}")).collect()
+            ).collect();
+            let mut new = old.clone();
+            for (r, row) in new.iter_mut().enumerate() {
+                row.insert(col_at, format!("追加列:{r}"));
+            }
+            new.insert(row_at, (0..=width).map(|c| format!("追加行:{c}")).collect());
+            for (before, after, inserted) in [(&old, &new, true), (&new, &old, false)] {
+                let diff = diff_table(&table(before.clone()), &table(after.clone()), &DiffOptions::default());
+                prop_assert_eq!(diff.rows.len(), height + 1);
+                let changed: Vec<_> = diff.rows.iter().filter(|row|
+                    row.kind == if inserted { ChangeKind::Added } else { ChangeKind::Removed }
+                ).collect();
+                prop_assert_eq!(changed.len(), 1, "{:?}", diff);
+                prop_assert_eq!(if inserted { changed[0].new_index } else { changed[0].old_index }, Some(row_at + 1));
+                for row in diff.rows.iter().filter(|row| row.old_index.is_some() && row.new_index.is_some()) {
+                    let cells: Vec<_> = row.cells.iter().filter(|cell| cell.kind != ChangeKind::Unchanged).collect();
+                    prop_assert_eq!(cells.len(), 1, "{:?}", row);
+                    prop_assert_eq!(cells[0].kind, if inserted { ChangeKind::Added } else { ChangeKind::Removed });
+                    prop_assert_eq!(if inserted { cells[0].new_column } else { cells[0].old_column }, Some(col_at + 1));
+                }
+            }
+        }
+
+        #[test]
+        fn 任意のUnicode表の差分は両側のセルを一度ずつ覆う(
+            old in prop::collection::vec(prop::collection::vec(unicode_text(), 0..5), 0..6),
+            new in prop::collection::vec(prop::collection::vec(unicode_text(), 0..5), 0..6),
+        ) {
+            let diff = diff_table(&table(old.clone()), &table(new.clone()), &DiffOptions::default());
+            for (input, old_side) in [(&old, true), (&new, false)] {
+                let mut seen = BTreeSet::new();
+                for row in &diff.rows {
+                    let Some(r) = (if old_side { row.old_index } else { row.new_index }) else { continue };
+                    prop_assert!(seen.insert(r));
+                    let mut seen_cells = BTreeSet::new();
+                    for cell in &row.cells {
+                        let Some(c) = (if old_side { cell.old_column } else { cell.new_column }) else { continue };
+                        prop_assert!(seen_cells.insert(c));
+                        let text = if old_side { cell.old_text.as_ref() } else { cell.new_text.as_ref() };
+                        prop_assert_eq!(text, input[r - 1].get(c - 1));
+                    }
+                    prop_assert_eq!(seen_cells, (1..=input[r-1].len()).collect::<BTreeSet<_>>());
+                }
+                prop_assert_eq!(seen, (1..=input.len()).collect::<BTreeSet<_>>());
+            }
+        }
+
         #[test]
         fn スライドスコアの枝刈りは対応付け結果を変えない(
             old_body in unicode_text(),

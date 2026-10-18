@@ -29,6 +29,27 @@ fn load(name: &str) -> pptx_diff::PresentationIr {
 }
 
 #[test]
+fn drawingml_color_pipeline_matches_literal_goldens_and_distinguishes_base_colors() {
+    let cases: serde_json::Value =
+        serde_json::from_slice(&fixture("color-pipeline-goldens.json")).unwrap();
+    let mut failures = Vec::new();
+    for case in cases.as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let original = load(&format!("colors-pipeline-{name}-transformed.pptx"));
+        for (variant, count) in [("precise", 0), ("base", 2)] {
+            let direct = load(&format!("colors-pipeline-{name}-{variant}.pptx"));
+            let diff =
+                diff_presentations("old", variant, &original, &direct, &DiffOptions::default());
+            if diff.summary.shape_appearances_changed != count || (count == 0 && diff.has_changes())
+            {
+                failures.push(format!("{name}/{variant}: {diff:?}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
 fn reads_slides_shapes_and_geometry() {
     let deck = load("deck-old.pptx");
     assert_eq!(deck.slides.len(), 3);
@@ -264,4 +285,250 @@ fn an_added_slide_is_not_counted_twice() {
         counted < inside,
         "追加スライドの中身まで数えている: {counted} / {inside}"
     );
+}
+
+#[test]
+fn drawingml_tint_and_shade_match_independent_linear_light_swatches() {
+    // LibreOffice 26.8's font-free render gives RGB188 for both transformed
+    // swatches, matching explicit BCBCBC, rather than explicit RGB128.
+    let old = load("colors-transformed.pptx");
+    let rendered = load("colors-linear.pptx");
+    let diff = diff_presentations("old", "rendered", &old, &rendered, &DiffOptions::default());
+    assert!(!diff.has_changes(), "{diff:?}");
+}
+
+#[test]
+fn drawingml_tint_and_shade_do_not_alias_different_srgb_swatches() {
+    let old = load("colors-transformed.pptx");
+    let different = load("colors-wrong-srgb.pptx");
+    let diff = diff_presentations(
+        "old",
+        "different",
+        &old,
+        &different,
+        &DiffOptions::default(),
+    );
+    assert_eq!(diff.summary.shape_appearances_changed, 2, "{diff:?}");
+    assert_eq!(
+        diff.slides[0]
+            .shapes
+            .iter()
+            .filter(|shape| shape.appearance_changed)
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn consecutive_shades_preserve_precision_until_the_final_color() {
+    let original = load("colors-chain-transformed.pptx");
+    let precise = load("colors-chain-precise.pptx");
+    let rounded = load("colors-chain-rounded.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations(
+            "old",
+            "rounded",
+            &original,
+            &rounded,
+            &DiffOptions::default()
+        )
+        .summary
+        .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn consecutive_tints_and_mixed_shade_tint_preserve_precision() {
+    let original = load("colors-chain-tint-transformed.pptx");
+    let precise = load("colors-chain-tint-precise.pptx");
+    let rounded = load("colors-chain-tint-rounded.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations(
+            "old",
+            "rounded",
+            &original,
+            &rounded,
+            &DiffOptions::default()
+        )
+        .summary
+        .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn alpha_modulation_matches_explicit_opacity_and_distinguishes_opaque_shapes() {
+    let original = load("colors-alpha-transformed.pptx");
+    let explicit = load("colors-alpha-explicit.pptx");
+    let opaque = load("colors-alpha-opaque.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "explicit",
+        &original,
+        &explicit,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "opaque", &original, &opaque, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn opacity_between_shades_keeps_color_precision_and_only_the_control_changes() {
+    let original = load("colors-chain-alpha-transformed.pptx");
+    let precise = load("colors-chain-alpha-precise.pptx");
+    let diff = diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default(),
+    );
+    assert_eq!(diff.summary.shape_appearances_changed, 1);
+    assert!(!diff.slides[0].shapes[0].appearance_changed);
+    assert!(!diff.slides[0].shapes[1].appearance_changed);
+    assert!(diff.slides[0].shapes[3].appearance_changed);
+}
+
+#[test]
+fn drawingml_unary_inv_matches_direct_color_and_distinguishes_the_base() {
+    let original = load("colors-unary-inv-transformed.pptx");
+    let precise = load("colors-unary-inv-precise.pptx");
+    let base = load("colors-unary-inv-base.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "base", &original, &base, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn drawingml_unary_comp_matches_direct_color_and_distinguishes_the_base() {
+    let original = load("colors-unary-comp-transformed.pptx");
+    let precise = load("colors-unary-comp-precise.pptx");
+    let base = load("colors-unary-comp-base.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "base", &original, &base, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        1
+    );
+}
+
+#[test]
+fn drawingml_unary_gray_matches_direct_color_and_distinguishes_the_base() {
+    let original = load("colors-unary-gray-transformed.pptx");
+    let precise = load("colors-unary-gray-precise.pptx");
+    let base = load("colors-unary-gray-base.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "base", &original, &base, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        1
+    );
+}
+
+#[test]
+fn drawingml_unary_gamma_matches_direct_color_and_distinguishes_the_base() {
+    let original = load("colors-unary-gamma-transformed.pptx");
+    let precise = load("colors-unary-gamma-precise.pptx");
+    let base = load("colors-unary-gamma-base.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "base", &original, &base, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn drawingml_unary_inverse_gamma_matches_direct_color_and_distinguishes_the_base() {
+    let original = load("colors-unary-invGamma-transformed.pptx");
+    let precise = load("colors-unary-invGamma-precise.pptx");
+    let base = load("colors-unary-invGamma-base.pptx");
+    assert!(!diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default()
+    )
+    .has_changes());
+    assert_eq!(
+        diff_presentations("old", "base", &original, &base, &DiffOptions::default())
+            .summary
+            .shape_appearances_changed,
+        2
+    );
+}
+
+#[test]
+fn ordered_gamma_complement_and_shade_keep_precision_and_opacity() {
+    let original = load("colors-unary-ordered-transformed.pptx");
+    let precise = load("colors-unary-ordered-precise.pptx");
+    let diff = diff_presentations(
+        "old",
+        "precise",
+        &original,
+        &precise,
+        &DiffOptions::default(),
+    );
+    assert_eq!(diff.summary.shape_appearances_changed, 1);
+    assert!(!diff.slides[0].shapes[0].appearance_changed);
+    assert!(!diff.slides[0].shapes[1].appearance_changed);
+    assert!(diff.slides[0].shapes[3].appearance_changed);
 }
