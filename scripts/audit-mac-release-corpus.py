@@ -114,6 +114,36 @@ def structural_sequence(
     return visit(ET.fromstring(xml))
 
 
+# What a run holds besides text: typed beside one of these, text takes a run of
+# its own rather than sharing the object's, as Word does.
+OBJECT_TAGS = {
+    WORD + "drawing", WORD + "pict", WORD + "object", WORD + "footnoteReference",
+    WORD + "endnoteReference", WORD + "footnoteRef", WORD + "endnoteRef",
+    "{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent",
+    "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath",
+}
+
+
+def without_run_typed_beside_object(xml: bytes, typed: str) -> bytes:
+    """`xml` without the one run that holds exactly `typed` right after a run
+    holding an object, the run the edit may add; any other new run is still
+    a structural change."""
+    root = ET.fromstring(xml)
+    for parent in root.iter():
+        children = list(parent)
+        for previous, run in zip(children, children[1:]):
+            if run.tag != WORD + "r" or previous.tag != WORD + "r":
+                continue
+            content = [child for child in run if child.tag != WORD + "rPr"]
+            holds_typed = (
+                len(content) == 1 and content[0].tag == WORD + "t" and content[0].text == typed
+            )
+            if holds_typed and any(element.tag in OBJECT_TAGS for element in previous.iter()):
+                parent.remove(run)
+                return ET.tostring(root)
+    return xml
+
+
 def revision_id_errors(before: bytes, after: bytes) -> list[str]:
     """Revision ids must survive an edit, except that a source which repeats
     one gets the repeats renumbered, and every id in the export is unique."""
@@ -242,9 +272,10 @@ def audit(source: Path, exported: Path) -> list[str]:
             for tag in ("cr", "br", "tab", "ptab", "softHyphen", "noBreakHyphen"):
                 if marker_sequence(before, tag) != marker_sequence(after, tag):
                     failures.append(f"changed {tag} marker sequence or attributes")
-            if Counter(structural_sequence(before)) != Counter(structural_sequence(after)):
+            structure = without_run_typed_beside_object(after, "Z")
+            if Counter(structural_sequence(before)) != Counter(structural_sequence(structure)):
                 failures.append("changed non-text document structure or attributes")
-            if structural_sequence(before, False) != structural_sequence(after, False):
+            if structural_sequence(before, False) != structural_sequence(structure, False):
                 failures.append("changed non-text document order outside run properties")
             failures.extend(revision_id_errors(before, after))
             for attribute in ("rsidR", "rsidRPr", "rsidDel"):

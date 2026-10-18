@@ -17,6 +17,8 @@
 //!   still evaluate against what Excel last computed. A recomputed `#DIV/0!`
 //!   or `#REF!` is a real result and comes through.
 
+pub mod formula_text;
+
 use ironcalc_base::cell::CellValue as EngineValue;
 use ironcalc_base::Model;
 use jade_xlsx_reader::{CellRef, CellValue, DateSystem, Workbook};

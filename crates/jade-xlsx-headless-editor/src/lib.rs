@@ -34,12 +34,13 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
+pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
-    CellInput, CellKind, CellView, CommentView, DataValidationView, DefinedNameSummary,
-    FillSummary, FindHit, FormatSummary, FormulaState, FreezePaneSummary, HeaderFooterChange,
-    HeaderFooterView, HyperlinkView, PageBreaksView, RangeView, RecalculationSummary,
-    SetFormatSummary, ShapeKindView, ShapeView, SheetNoteView, SheetSummary, SheetText,
-    SheetVisibility, SkippedFormula, StructureSummary, TableCellView, TableSummary,
+    CellBorderView, CellInput, CellKind, CellView, CommentView, DataValidationView,
+    DefinedNameSummary, FillSummary, FindHit, FormatSummary, FormulaState, FreezePaneSummary,
+    HeaderFooterChange, HeaderFooterView, HyperlinkView, PageBreaksView, RangeView,
+    RecalculationSummary, SetFormatSummary, ShapeKindView, ShapeView, SheetNoteView, SheetSummary,
+    SheetText, SheetVisibility, SkippedFormula, StructureSummary, TableCellView, TableSummary,
     WorkbookSummary,
 };
 use jade_xlsx_layout::{column_label, number_format};
@@ -47,7 +48,7 @@ use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
 };
-pub use jade_xlsx_writer::FormatChange;
+pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
 };
@@ -806,9 +807,13 @@ impl HeadlessWorkbook {
                         CellInput::Number(number) => NewValue::Number(*number),
                         CellInput::Text(text) => NewValue::Text(text.clone()),
                         CellInput::Bool(flag) => NewValue::Bool(*flag),
-                        CellInput::Formula(formula) => NewValue::Formula(
-                            formula.strip_prefix('=').unwrap_or(formula).to_string(),
-                        ),
+                        // Stored as Excel stores it: `_xlfn.` before the
+                        // newer functions, `_xlpm.` on LET/LAMBDA names.
+                        CellInput::Formula(formula) => {
+                            NewValue::Formula(jade_xlsx_calc::formula_text::to_file_formula(
+                                formula.strip_prefix('=').unwrap_or(formula),
+                            ))
+                        }
                         CellInput::Blank => NewValue::Blank,
                     },
                     style_index: *style_index,
@@ -1167,6 +1172,7 @@ impl HeadlessWorkbook {
                 .map(|rgba| format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]))
         };
         let fill = format.and_then(|format| styles.fill(format));
+        let border = format.and_then(|format| styles.border(format));
         let fill_color = match fill.and_then(|fill| fill.pattern.as_deref()) {
             None | Some("none") => Some(String::new()),
             Some("solid") => fill.and_then(|fill| fill.foreground).and_then(color),
@@ -1189,6 +1195,13 @@ impl HeadlessWorkbook {
             horizontal: Some(alignment.horizontal),
             vertical: Some(alignment.vertical),
             wrap_text: Some(alignment.wrap_text),
+            border_left: Some(border_line(border.and_then(|b| b.left.as_ref()))),
+            border_right: Some(border_line(border.and_then(|b| b.right.as_ref()))),
+            border_top: Some(border_line(border.and_then(|b| b.top.as_ref()))),
+            border_bottom: Some(border_line(border.and_then(|b| b.bottom.as_ref()))),
+            border_diagonal: Some(border_line(border.and_then(|b| b.diagonal.as_ref()))),
+            diagonal_up: Some(border.is_some_and(|b| b.diagonal_up)),
+            diagonal_down: Some(border.is_some_and(|b| b.diagonal_down)),
         })
     }
 
@@ -1777,7 +1790,7 @@ impl HeadlessWorkbook {
                 .iter()
                 .map(|name| DefinedNameSummary {
                     name: name.name.clone(),
-                    formula: name.formula.clone(),
+                    formula: formula_text::to_display_formula(&name.formula),
                     sheet_index: name.local_sheet_index,
                     sheet: name
                         .local_sheet_index
@@ -1916,7 +1929,10 @@ impl HeadlessWorkbook {
                             sheet_index: index,
                             reference: format_reference(cell.reference),
                             display,
-                            formula: cell.formula.clone(),
+                            formula: cell
+                                .formula
+                                .as_deref()
+                                .map(formula_text::to_display_formula),
                         });
                     }
                 }
@@ -1981,7 +1997,12 @@ impl HeadlessWorkbook {
                 self.workbook.date_system,
             )
             .text,
-            formula: cell.and_then(|cell| cell.formula.clone()),
+            // As Excel shows it, without the file's `_xlfn.` prefixes.
+            formula: cell.and_then(|cell| {
+                cell.formula
+                    .as_deref()
+                    .map(jade_xlsx_calc::formula_text::to_display_formula)
+            }),
             formula_state: cell
                 .and_then(|cell| formula_cache_state(cell, self.calculation_is_stale())),
             number_format,
@@ -2027,6 +2048,10 @@ impl HeadlessWorkbook {
                 header: table.header_row() == Some(reference.row),
                 totals: table.totals_row() == Some(reference.row),
             }),
+            border: format
+                .and_then(|format| self.workbook.styles.border(format))
+                .map(border_view)
+                .filter(|view| !view.is_empty()),
         }
     }
 
@@ -2149,6 +2174,44 @@ fn find_cell(row: &jade_xlsx_reader::Row, column: u32) -> Option<&Cell> {
 }
 
 /// `A1`, the way a spreadsheet names a cell.
+/// An edge as `set_format` takes it: no edge is a line of style `none`; the
+/// automatic colour, and one that cannot be resolved without a display
+/// theme, have no colour.
+fn border_line(edge: Option<&jade_xlsx_reader::BorderEdge>) -> BorderLine {
+    let Some(edge) = edge else {
+        return BorderLine::none();
+    };
+    let Some(style) = BorderStyle::parse(&edge.style) else {
+        return BorderLine::none();
+    };
+    let color = edge.color.and_then(|color| match color {
+        jade_xlsx_reader::Color::Auto | jade_xlsx_reader::Color::Indexed(64) => None,
+        color => jade_xlsx_layout::color::rgba(color)
+            .filter(|rgba| rgba[3] == 255)
+            .map(|rgba| format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2])),
+    });
+    BorderLine {
+        style,
+        color: color.filter(|_| style != BorderStyle::None),
+    }
+}
+
+/// The lines a cell's own border entry draws.
+fn border_view(border: &jade_xlsx_reader::Border) -> CellBorderView {
+    let edge = |edge: Option<&jade_xlsx_reader::BorderEdge>| {
+        Some(border_line(edge)).filter(|line| !line.is_none())
+    };
+    CellBorderView {
+        left: edge(border.left.as_ref()),
+        right: edge(border.right.as_ref()),
+        top: edge(border.top.as_ref()),
+        bottom: edge(border.bottom.as_ref()),
+        diagonal: edge(border.diagonal.as_ref()),
+        diagonal_up: border.diagonal_up,
+        diagonal_down: border.diagonal_down,
+    }
+}
+
 pub fn format_reference(reference: CellRef) -> String {
     format!("{}{}", column_label(reference.column), reference.row + 1)
 }

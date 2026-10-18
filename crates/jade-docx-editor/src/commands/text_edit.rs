@@ -527,16 +527,36 @@ fn insert_into_runs(
 
     // Text typed into a run kept for its `w:fldChar` or `w:instrText` would
     // be written into the field's code.
-    if let Some(last) = runs
-        .iter_mut()
-        .rev()
-        .find(|run| !zero_width.protects_field_code(run))
+    if let Some(index) = runs
+        .iter()
+        .rposition(|run| !zero_width.protects_field_code(run))
     {
-        append_text(last, insert);
+        if run_holds_object(&runs[index]) {
+            // Typed into a note reference's or a text box's run, the text
+            // shared it with the object, and the next edit that split the
+            // run copied the object into both halves. It takes a run of
+            // its own after it instead, formatted like it.
+            let run = create_run_from_template(Some(&runs[index]), insert);
+            runs.insert(index + 1, run);
+        } else {
+            append_text(&mut runs[index], insert);
+        }
     } else {
         let run = create_run_from_template(runs.last(), insert);
         runs.push(run);
     }
+}
+
+/// Whether `run` holds an object that is not text: a text box, an image,
+/// an equation, a note reference or a note's own number.
+fn run_holds_object(run: &Run) -> bool {
+    run.text_box.is_some()
+        || run.image.is_some()
+        || run.math.is_some()
+        || !run.footnote_reference_ids.is_empty()
+        || !run.endnote_reference_ids.is_empty()
+        || run.has_footnote_ref
+        || run.has_endnote_ref
 }
 
 /// Applies a text edit to the provided run sequence without discarding style

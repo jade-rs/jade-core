@@ -123,10 +123,8 @@ fn frozen_header_hit_mapping_and_header_numeric_fitting_use_resolved_geometry() 
     let (x, y) =
         layout.sheet_point_in_viewport(button.rect.x + 4.0, button.rect.y + 4.0, 100.0, 100.0);
     assert_eq!(layout.filter_button_at(x, y), Some(button));
-    assert_eq!(
-        layout.cell(CellRef::new(1, 0)).unwrap().text,
-        "123456789012345"
-    );
+    // General: twelve or more integer digits are scientific, as in Excel.
+    assert_eq!(layout.cell(CellRef::new(1, 0)).unwrap().text, "1.23457E+14");
     assert_ne!(
         layout.cell(CellRef::new(1, 0)).unwrap().lines[0],
         "123456789012345"

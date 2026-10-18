@@ -10582,6 +10582,105 @@ mod tests {
     }
 
     #[test]
+    fn typing_after_enter_at_the_start_keeps_the_hyperlink() {
+        // Enter at the start of a paragraph holding a w:hyperlink rebuilds
+        // the link's wrapper; the wrapper renumbered the run inside, so the
+        // next edit found no run in it and dropped it. The saved paragraph
+        // kept the link's text and Hyperlink style but lost the link.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: 0,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 1,
+                        offset: 0,
+                        text: "あいう".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        let link = xml
+            .find("<w:hyperlink")
+            .expect("the hyperlink survives the save");
+        let text = xml.find(">example.com<").expect("the link text is saved");
+        let close = xml.find("</w:hyperlink>").expect("the hyperlink is closed");
+        assert!(
+            link < text && text < close,
+            "the link text sits inside it: {xml}"
+        );
+    }
+
+    #[test]
+    fn a_style_keeps_the_spacing_a_paragraph_does_not_declare() {
+        // A paragraph declaring only `w:spacing w:before` takes its space
+        // after from its style. Applying the heading style kept the declared
+        // spacing as a whole, so the style's space after was lost on screen
+        // while a reload, which merges attribute by attribute, had it: the
+        // table row holding the paragraph was 4pt shorter until reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-nested.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::ToggleParagraphSpaceBefore {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                    },
+                    // `2` is the fixture's heading 2: 8pt before, 4pt after.
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("2".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let spacing = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.spacing.clone())
+        };
+        let live = spacing(&word_doc).expect("spacing");
+        assert_eq!((live.before, live.after), (Some(12.0), Some(4.0)));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(spacing(&reloaded), Some(live));
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the

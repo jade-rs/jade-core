@@ -16155,8 +16155,11 @@ where
                             level,
                         );
 
-                        let paragraph_fallback_run_props =
-                            self.paragraph_numbering_fallback_props(paragraph);
+                        let paragraph_fallback_run_props = self
+                            .paragraph_numbering_fallback_props_for_level(
+                                paragraph,
+                                level_info.as_ref().and_then(|info| info.run_props.as_ref()),
+                            );
 
                         let old_number_text = if should_render_numbering {
                             numbering_counter.initialize_ancestor_levels(
@@ -18441,11 +18444,45 @@ where
         }
     }
 
+    #[cfg(test)]
     fn paragraph_numbering_fallback_props(&self, paragraph: &Paragraph) -> Option<RunProperties> {
+        self.paragraph_numbering_fallback_props_for_level(paragraph, None)
+    }
+
+    /// The paragraph-side formatting a numbering label of `level_props` (the
+    /// level's `w:rPr`) is laid over. When the level has a `w:rFonts`, Word
+    /// replaces the paragraph mark's `w:rFonts` with it as a whole element
+    /// rather than attribute by attribute: a mark naming ＭＳ 明朝 for ASCII
+    /// under a level with only `w:hint="eastAsia"` still sets the `w:suff`
+    /// space in the document's Century (2.92pt at 10.5pt, every such row of
+    /// `scroll-offset-repro` in the Word for Mac corpus), not ＭＳ 明朝's half
+    /// em (jlsi/jade#471). The style chain still supplies what the level's
+    /// `w:rFonts` leaves out.
+    fn paragraph_numbering_fallback_props_for_level(
+        &self,
+        paragraph: &Paragraph,
+        level_props: Option<&RunProperties>,
+    ) -> Option<RunProperties> {
         let mark = paragraph
             .properties
             .as_ref()
             .and_then(|props| props.mark_run_properties.as_ref());
+        let mark_without_fonts;
+        let mark = match mark {
+            Some(mark)
+                if level_props.is_some_and(|level| level.fonts.is_some())
+                    && (mark.fonts.is_some() || mark.font_family.is_some()) =>
+            {
+                let mut stripped = mark.clone();
+                stripped.fonts = None;
+                stripped.font_family = None;
+                stripped.authored_east_asia_font_hint = None;
+                stripped.authored_east_asia_font_name = None;
+                mark_without_fonts = stripped;
+                Some(&mark_without_fonts)
+            }
+            mark => mark,
+        };
         if self.styles_part.is_some() || mark.is_some() {
             let mut props = self.effective_run_properties(paragraph, mark);
             if let (Some(props), Some(theme)) = (props.as_mut(), self.theme_part.as_ref()) {
@@ -24146,7 +24183,11 @@ where
                 let display_text = numbering_part.format_number(num_id, level, numbering_counter);
                 let display_props = Self::merge_numbering_run_props(
                     level_info.run_props.clone(),
-                    self.paragraph_numbering_fallback_props(paragraph).as_ref(),
+                    self.paragraph_numbering_fallback_props_for_level(
+                        paragraph,
+                        level_info.run_props.as_ref(),
+                    )
+                    .as_ref(),
                 );
                 let style = self.apply_run_style(display_props.as_ref())?;
                 let suffix_space = level_info.suffix.as_deref() == Some("space");
@@ -27765,7 +27806,11 @@ where
             next_grapheme_after_segment,
             &mut snap_to_chars_cell_width_cache,
             |step| {
-                self.set_font_if_changed(context, step.font_descriptor);
+                // Advances come from the measurer, which sets its own font, so
+                // an undrawn line (band cull, undrawn page) needs no painter font.
+                if draw_enabled {
+                    self.set_font_if_changed(context, step.font_descriptor);
+                }
                 let leading_advance = step.advance.implicit_latin_gap
                     + step.advance.implicit_numeric_gap
                     + step.advance.kerning_adjustment
@@ -27800,6 +27845,53 @@ where
         )?;
 
         Ok((width, end_state))
+    }
+
+    /// The width [`Self::draw_text_with_spacing`] returns for `text` with no
+    /// neighbouring graphemes, without touching any painter.
+    fn text_width_with_spacing(
+        &self,
+        text: &str,
+        letter_spacing: f64,
+        style: &AppliedRunStyle,
+    ) -> Result<f64, JsValue> {
+        if text.is_empty() {
+            return Ok(0.0);
+        }
+        let resolved_override;
+        let resolved_run_style = if (letter_spacing - style.letter_spacing_px).abs() < f64::EPSILON
+        {
+            self.resolved_run_style(style)
+        } else {
+            resolved_override = {
+                let mut resolved = self.resolved_run_style(style).clone();
+                resolved.letter_spacing_px = letter_spacing;
+                resolved
+            };
+            &resolved_override
+        };
+        let mut width = 0.0;
+        walk_text_advance_steps(
+            self,
+            text,
+            resolved_run_style,
+            None,
+            &TextAdvanceState::default(),
+            None,
+            &mut FxHashMap::default(),
+            |step| {
+                let leading_advance = step.advance.implicit_latin_gap
+                    + step.advance.implicit_numeric_gap
+                    + step.advance.kerning_adjustment
+                    + step.advance.snap_leading;
+                if leading_advance.abs() > f64::EPSILON {
+                    width += leading_advance;
+                }
+                width += step.advance.glyph_box_width;
+                Ok(())
+            },
+        )?;
+        Ok(width)
     }
 
     #[allow(dead_code)]
@@ -28860,6 +28952,17 @@ where
     {
         if symbol.is_empty() {
             return Ok(0.0);
+        }
+        // An undrawn line still needs the mark's width for its line end. The
+        // width depends only on `style`, so skip the painter state the mark
+        // would borrow: the save, colour, font and restore, and the tracker
+        // invalidation they force on the next run.
+        if !self.should_draw_current_page_for_render() {
+            return self.text_width_with_spacing(
+                symbol,
+                style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
+                style,
+            );
         }
 
         context.save();
@@ -38197,6 +38300,71 @@ mod tests {
                 style.resolved.font_descriptor_latin_ascii.as_ref()
             );
         }
+    }
+
+    /// A line the band cull (or an undrawn page) skips still needs its mark's
+    /// width for the line end, but none of the borrowed painter state.
+    #[test]
+    fn an_undrawn_control_mark_reports_its_width_without_touching_the_painter() {
+        use jade_painter::recording::RecordingPainter;
+        let mut renderer = renderer_measuring(&[("\u{00b6}", 8.0)]);
+        let style = test_applied_style(1.0);
+        let drawn = RecordingPainter::new();
+        let drawn_width = renderer
+            .draw_control_mark(&drawn, "\u{00b6}", 10.0, 100.0, &style)
+            .expect("infallible");
+        assert!(!drawn.ops().is_empty());
+
+        // A pageless renderer draws everything; skip a paged one.
+        renderer.pageless_mode = false;
+        renderer.render_skip_draw = true;
+        let skipped = RecordingPainter::new();
+        let skipped_width = renderer
+            .draw_control_mark(&skipped, "\u{00b6}", 10.0, 100.0, &style)
+            .expect("infallible");
+        assert_eq!(skipped_width, drawn_width);
+        assert!(skipped.ops().is_empty(), "{:?}", skipped.ops());
+    }
+
+    /// Undrawn text advances exactly as drawn text does, and sets no font.
+    #[test]
+    fn undrawn_text_advances_like_drawn_text_without_setting_fonts() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        let mut renderer = renderer_measuring(&[("a", 10.0), ("b", 7.0), ("c", 3.0)]);
+        let style = test_applied_style(1.0);
+        let draw = |renderer: &CanvasRenderer, painter: &RecordingPainter| {
+            renderer
+                .draw_text_with_spacing(
+                    painter, "abc", 5.0, 50.0, 1.5, &style, None, None, None, None, None,
+                )
+                .expect("infallible")
+                .0
+        };
+        let drawn = RecordingPainter::new();
+        let drawn_width = draw(&renderer, &drawn);
+        assert!(drawn.count(|op| matches!(op, Op::FillText { .. })) > 0);
+        assert_eq!(
+            renderer
+                .text_width_with_spacing("abc", 1.5, &style)
+                .expect("infallible"),
+            drawn_width
+        );
+
+        // A pageless renderer draws everything; skip a paged one.
+        renderer.pageless_mode = false;
+        renderer.render_skip_draw = true;
+        // Widths now come from the cache, and other drawing has moved the
+        // painter's font since.
+        renderer.invalidate_context_state_tracking();
+        let skipped = RecordingPainter::new();
+        let skipped_width = draw(&renderer, &skipped);
+        assert_eq!(skipped_width, drawn_width);
+        assert_eq!(
+            skipped.count(|op| matches!(op, Op::FillText { .. } | Op::SetFont(_))),
+            0,
+            "{:?}",
+            skipped.ops()
+        );
     }
 
     #[test]
@@ -50693,6 +50861,95 @@ mod tests {
         assert_eq!(fallback.fonts.unwrap().h_ansi.as_deref(), Some("Arial"));
     }
 
+    /// jlsi/jade#471: a level `w:rFonts` (here only `w:hint="eastAsia"`)
+    /// replaces the paragraph mark's `w:rFonts` as a whole, so the label's
+    /// ASCII font (the `w:suff` space) comes from the style chain (Century),
+    /// not from the mark's ＭＳ 明朝.
+    #[test]
+    fn numbering_label_takes_level_rfonts_as_a_whole_element() {
+        let styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:docDefaults><w:rPrDefault><w:rPr>
+                <w:rFonts w:ascii="Century" w:eastAsia="ＭＳ 明朝" w:hAnsi="Century"/>
+                <w:sz w:val="21"/>
+              </w:rPr></w:rPrDefault></w:docDefaults>
+            </w:styles>"#,
+        )
+        .unwrap();
+        let paragraph = Paragraph {
+            properties: Some(ParagraphProperties {
+                mark_run_properties: Some(RunProperties {
+                    color: Some("008800".into()),
+                    fonts: Some(RunFonts {
+                        ascii: Some("ＭＳ 明朝".into()),
+                        h_ansi: Some("ＭＳ 明朝".into()),
+                        ..RunFonts::default()
+                    }),
+                    ..RunProperties::default()
+                }),
+                ..ParagraphProperties::default()
+            }),
+            runs: vec![build_run(None)],
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let (mut renderer, _) = recording_renderer();
+        renderer.set_style_context(Some(Rc::new(styles)), None);
+        let label = |level: RunProperties| {
+            <CanvasRenderer>::merge_numbering_run_props(
+                Some(level.clone()),
+                renderer
+                    .paragraph_numbering_fallback_props_for_level(&paragraph, Some(&level))
+                    .as_ref(),
+            )
+            .unwrap()
+        };
+
+        let hint_only = label(RunProperties {
+            fonts: Some(RunFonts {
+                hint: Some(FontHint::EastAsia),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        });
+        let fonts = hint_only.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("Century"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("Century"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("ＭＳ 明朝"));
+        assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+        // Everything but the fonts still comes from the paragraph mark.
+        assert_eq!(hint_only.color.as_deref(), Some("008800"));
+        assert_eq!(hint_only.font_size, Some(10.5));
+
+        // A level that names its own ASCII font keeps it.
+        let named = label(RunProperties {
+            fonts: Some(RunFonts {
+                ascii: Some("Arial".into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        });
+        assert_eq!(
+            named.fonts.as_ref().unwrap().ascii.as_deref(),
+            Some("Arial")
+        );
+        assert_eq!(
+            named.fonts.as_ref().unwrap().h_ansi.as_deref(),
+            Some("Century")
+        );
+
+        // Without a level w:rFonts the mark's fonts carry over, as before.
+        let no_level_fonts = label(RunProperties {
+            bold: Some(true),
+            ..RunProperties::default()
+        });
+        assert_eq!(
+            no_level_fonts.fonts.as_ref().unwrap().ascii.as_deref(),
+            Some("ＭＳ 明朝")
+        );
+    }
+
     #[test]
     fn paragraph_numbering_fallback_prefers_explicit_font_size() {
         let props_without_size = RunProperties {
@@ -53784,7 +54041,11 @@ mod tests {
             "v"
         );
         // Unknown format falls back to decimal so a marker is never blank.
-        assert_eq!(format_note_marker(2, Some("chicago"), None, true), "2");
+        assert_eq!(
+            format_note_marker(2, Some("unknownformat"), None, true),
+            "2"
+        );
+        assert_eq!(format_note_marker(2, Some("chicago"), None, true), "†");
     }
 
     #[test]
