@@ -6736,6 +6736,12 @@ fn mac_squeeze_admits(
     overflow * stretch <= slack * shrink + WRAP_FIT_TOLERANCE_PX
 }
 
+/// A comma or full stop, the marks Word hangs past the edge as such
+/// (burasage); a closing bracket that may not start a line does not hang.
+fn is_hanging_comma_or_full_stop(text: &str) -> bool {
+    matches!(text, "、" | "。" | "，" | "．" | "､" | "｡" | "," | ".")
+}
+
 /// Word for Mac squeezes justified lines (auto spacing in any document,
 /// punctuation in compressPunctuation ones, [`mac_punctuation_compression_enabled`]).
 fn mac_squeeze_enabled(style: &ParagraphStyle) -> bool {
@@ -6786,17 +6792,15 @@ fn compress_mac_punctuation_on_completed_line(
     // hangs while that covers the overflow, otherwise the line's punctuation
     // takes the whole overflow, then the half hangs and the punctuation takes
     // the rest, and failing that the whole mark hangs.
-    let final_mark_hangs = style.allows_hanging_punctuation_at(line.break_kind)
-        && line
-            .clusters
-            .last()
-            .is_some_and(|last| last.can_hang_line_end);
-    // Hanging is only measured for compressPunctuation documents; elsewhere a
-    // line ending in hanging punctuation keeps its earlier treatment.
-    if !punctuation && final_mark_hangs {
+    // Other documents have no punctuation to narrow. A final comma or full
+    // stop still hangs as before; a closing bracket cannot hang, so the auto
+    // spacing alone takes the overflow (trust page 14 keeps `…含む。）` inside
+    // the edge by narrowing the gaps around `10` and `A`).
+    let final_mark = line.clusters.last().map(|last| last.text.as_str());
+    if !punctuation && final_mark.is_some_and(is_hanging_comma_or_full_stop) {
         return;
     }
-    let hang_unit = if style.allows_hanging_punctuation_at(line.break_kind) {
+    let hang_unit = if punctuation && style.allows_hanging_punctuation_at(line.break_kind) {
         line.clusters
             .last()
             .filter(|last| last.can_hang_line_end && punctuation_blank_after(last.text.as_str()))
@@ -6810,25 +6814,23 @@ fn compress_mac_punctuation_on_completed_line(
     let (terminal_blank, remaining) = if hang_unit <= f64::EPSILON {
         (0.0, overflow)
     } else if overflow <= hang_unit + WRAP_FIT_TOLERANCE_PX {
-        // A soft line is then justified, so the whole half hangs; the
-        // paragraph's last line keeps its natural positions.
-        let hang = if line.break_kind == LineBreakKind::Soft {
-            hang_unit
-        } else {
-            overflow
-        };
-        (hang, 0.0)
+        // The whole half hangs and the line is then justified to the edge,
+        // the paragraph's last line included (scroll-offset-repro page 10:
+        // `…退職とする。` puts the slack into the auto spacing around `60`).
+        (hang_unit, 0.0)
     } else if overflow <= capacity + WRAP_FIT_TOLERANCE_PX {
         (0.0, overflow)
     } else if overflow <= capacity + hang_unit + WRAP_FIT_TOLERANCE_PX {
         (hang_unit, overflow - hang_unit)
-    } else {
+    } else if punctuation {
         let whole = line
             .clusters
             .last()
             .and_then(|last| last.layout.as_ref())
             .map_or(0.0, |layout| layout.glyph_box_width);
         (whole.min(overflow), (overflow - whole).max(0.0))
+    } else {
+        (0.0, overflow)
     };
     if capacity + WRAP_FIT_TOLERANCE_PX < remaining {
         return;
@@ -6873,6 +6875,66 @@ fn compress_mac_punctuation_on_completed_line(
                 layout.leading_advance -= reduction;
             }
         }
+    }
+}
+
+/// Word for Mac fits a justified line whose final comma or full stop would
+/// end past the edge by narrowing the tab before it by the mark's whole
+/// advance; the line is then justified. A tab narrower than that closes and
+/// the mark hangs the rest (probe tabshrink-comma; trust pages 22 and 34).
+/// Only measured for documents without punctuation compression.
+fn shrink_tab_for_final_mark(
+    line: &mut WrappedLine,
+    style: &ParagraphStyle,
+    available: f64,
+    natural: f64,
+) {
+    if line.break_kind != LineBreakKind::Soft
+        || line.tab_stops.is_empty()
+        || style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
+        || mac_punctuation_compression_enabled(style)
+        || !style.allows_hanging_punctuation_at(line.break_kind)
+    {
+        return;
+    }
+    let overflow = natural - trailing_whitespace_width(&line.clusters) - available;
+    let Some(last) = line.clusters.last() else {
+        return;
+    };
+    if overflow <= WRAP_FIT_TOLERANCE_PX
+        || !last.can_hang_line_end
+        || !is_hanging_comma_or_full_stop(last.text.as_str())
+    {
+        return;
+    }
+    let mark = last.width;
+    let Some(tab_index) = line
+        .clusters
+        .iter()
+        .rposition(|cluster| cluster.kind == InlineClusterKind::Tab)
+    else {
+        return;
+    };
+    let tab_start = line.clusters[tab_index].start;
+    let shrink = line.clusters[tab_index].width.min(mark);
+    if shrink <= f64::EPSILON {
+        return;
+    }
+    line.clusters[tab_index].width -= shrink;
+    if let Some(stop) = line
+        .tab_stops
+        .iter_mut()
+        .find(|stop| stop.start_offset == tab_start)
+    {
+        stop.end_x -= shrink;
+    }
+    if let Some(segment) = line
+        .segments
+        .iter_mut()
+        .filter(|segment| segment.start > tab_start)
+        .min_by_key(|segment| segment.start)
+    {
+        segment.leading_width = (segment.leading_width - shrink).max(0.0);
     }
 }
 
@@ -7041,6 +7103,7 @@ fn compress_justified_word_spaces_to_available_width<C: LineWrapContext>(
             } else {
                 natural
             };
+            shrink_tab_for_final_mark(line, paragraph_style, available, natural);
             compress_mac_punctuation_on_completed_line(line, paragraph_style, available, natural);
         }
     }
@@ -13096,6 +13159,98 @@ mod tests {
             14.0
         );
         assert!((inside.clusters.iter().map(|c| c.width).sum::<f64>() - 76.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn paragraph_end_mark_hangs_its_whole_blank_half_like_a_soft_line() {
+        // scroll-offset-repro page 10: `…退職とする。` ends its paragraph 1.2pt
+        // past the edge. Word for Mac hangs the whole blank half of `。` and
+        // justifies the line to the edge, so the paragraph's last line is set
+        // like any other.
+        for break_kind in [LineBreakKind::Soft, LineBreakKind::ParagraphEnd] {
+            let mut line = finished_punctuation_test_line("甲乙。");
+            line.break_kind = break_kind;
+            line.clusters.last_mut().unwrap().can_hang_line_end = true;
+            compress_mac_punctuation_on_completed_lines(
+                std::slice::from_mut(&mut line),
+                &mac_punctuation_test_style(),
+                40.0,
+            );
+            let last = line.clusters.last().unwrap();
+            assert_eq!(last.width, 7.0, "{break_kind:?}");
+            assert_eq!(last.layout.as_ref().unwrap().glyph_box_width, 7.0);
+        }
+    }
+
+    #[test]
+    fn do_not_compress_line_squeezes_auto_spacing_before_hanging_its_final_mark() {
+        // trust-beneficiary-sale-keep-next page 14 (doNotCompress): the line
+        // `…（別紙10の様式別紙Aに…含む。）` would push its final `）` past the
+        // edge. Word for Mac narrows the auto spacing around `10` and `A`
+        // instead, and the bracket stays inside.
+        // Natural 88px, 80px available: an 8px overflow past half the
+        // bracket (7px), within the 9px the auto spacing can give.
+        let mut line = finished_punctuation_test_line("甲1乙。）");
+        for index in [1, 2] {
+            let cluster = &mut line.clusters[index];
+            cluster.auto_space_leading = 9.0;
+            cluster.width += 9.0;
+            cluster.layout.as_mut().unwrap().leading_advance += 9.0;
+        }
+        line.clusters.last_mut().unwrap().can_hang_line_end = true;
+        let mut style = mac_punctuation_test_style();
+        style.east_asian_rules.character_spacing_control = Some("doNotCompress".into());
+        compress_mac_punctuation_on_completed_lines(std::slice::from_mut(&mut line), &style, 80.0);
+        let last = line.clusters.last().unwrap();
+        assert_eq!(last.width, 14.0, "the bracket keeps its whole cell");
+        assert!((line.clusters.iter().map(|c| c.width).sum::<f64>() - 80.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn final_comma_overflow_narrows_the_tab_before_it_by_the_comma() {
+        // Word for Mac 16.114 probe tabshrink-comma (doNotCompress): a
+        // justified line `1．<tab>…、` whose comma would end past the edge
+        // narrows the tab by the comma's whole advance and keeps the comma
+        // inside; a tab narrower than that closes and the comma hangs the
+        // rest (trust page 22).
+        // (default tab interval, available width, tab before, tab after)
+        for (interval, available, tab_before, tab_after) in
+            [(56.0, 100.0, 42.0, 28.0), (20.0, 70.0, 6.0, 0.0)]
+        {
+            let mut style = ParagraphStyle {
+                default_tab_width: interval,
+                ..mac_punctuation_test_style()
+            };
+            style.east_asian_rules.character_spacing_control = Some("doNotCompress".into());
+            let ctx = TestContext::new(14.0);
+            let text = "1\t甲乙丙、";
+            let mut line =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 1000.0)
+                    .unwrap()
+                    .remove(0);
+            line.break_kind = LineBreakKind::Soft;
+            line.clusters.last_mut().unwrap().can_hang_line_end = true;
+            let tab = line
+                .clusters
+                .iter()
+                .position(|c| c.kind == InlineClusterKind::Tab)
+                .unwrap();
+            assert_eq!(line.clusters[tab].width, tab_before);
+            let natural: f64 = line.clusters.iter().map(|c| c.width).sum();
+            shrink_tab_for_final_mark(&mut line, &style, available, natural);
+            assert_eq!(line.clusters[tab].width, tab_after, "available {available}");
+            assert_eq!(
+                line.tab_stops[0].end_x - line.tab_stops[0].start_x,
+                tab_after
+            );
+            let after_tab = line
+                .segments
+                .iter()
+                .find(|s| s.start > line.clusters[tab].start)
+                .unwrap();
+            assert_eq!(after_tab.leading_width, tab_after);
+            assert_eq!(line.clusters.last().unwrap().width, 14.0);
+        }
     }
 
     #[test]

@@ -16985,8 +16985,11 @@ where
             }
             self.ensure_space(required_height)?;
             let top = self.current_y;
-            let (min_top_offset, content_height) =
-                self.empty_paragraph_content_metrics(pending_numbering.as_ref(), line_height)?;
+            let (min_top_offset, content_height) = self.empty_paragraph_content_metrics(
+                pending_numbering.as_ref(),
+                line_height,
+                paragraph_style.word_east_asian_font_line_box,
+            )?;
             let top_leading = match exact_line_baseline_share {
                 Some(share) => line_height * share + min_top_offset,
                 None => (line_height - content_height).max(0.0) * top_leading_share,
@@ -19994,9 +19997,37 @@ where
                                 "center" | "right" | "end"
                             )
                     })
-                    .map(|cluster| cluster.width)
+                    .map(|cluster| {
+                        // On Mac a line with a tab gave the mark's width to the
+                        // tab first (`shrink_tab_for_final_mark`); what still
+                        // overflows hangs and nothing is left to justify
+                        // (trust page 22).
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && !wrapped_line.tab_stops.is_empty()
+                        {
+                            cluster.width.min(line_width - available_for_line)
+                        } else {
+                            cluster.width
+                        }
+                    })
                     .unwrap_or(0.0);
-                let justify_line = justify || hanging_punctuation_width > 0.0;
+                // A final mark that hung its blank half past the edge
+                // (`compress_mac_punctuation_on_completed_line`) leaves the
+                // line justified to the edge, the paragraph's last line too.
+                let hung_terminal_blank = paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && is_justified_alignment(&paragraph_style.alignment)
+                    && paragraph_style.allows_hanging_punctuation_at(break_kind)
+                    && wrapped_line.clusters.last().is_some_and(|cluster| {
+                        cluster.can_hang_line_end
+                            && cluster.layout.as_ref().is_some_and(|layout| {
+                                let hung = layout.adjusted_glyph_width - cluster.width;
+                                hung > 0.01 && line_width + hung > available_for_line + 0.01
+                            })
+                    });
+                let justify_line =
+                    justify || hanging_punctuation_width > 0.0 || hung_terminal_blank;
                 let extra_total = if justify_line {
                     wrapped_line.justification_extra_width_px(
                         available_for_line,
@@ -27971,10 +28002,15 @@ where
         ascent
     }
 
+    /// Content top offset and height of an empty paragraph's line. A numbered
+    /// one holds its label; where text lines take Word's line box per face
+    /// (`word_line_box`), so does the label, over every glyph including its
+    /// spaces.
     fn empty_paragraph_content_metrics(
         &mut self,
         pending_numbering: Option<&PendingNumberingRender>,
         line_height: f64,
+        word_line_box: bool,
     ) -> Result<(f64, f64), JsValue> {
         if let Some(numbering) = pending_numbering {
             let mut metric_text = String::new();
@@ -27985,6 +28021,29 @@ where
 
             if !metric_text.is_empty() {
                 let style = self.apply_run_style(numbering.display_props.as_ref())?;
+                if word_line_box {
+                    let mut extent: Option<(f64, f64)> = None;
+                    for grapheme in metric_text.graphemes(true) {
+                        let script = jade_docx_layout::line_wrap::classify_script(grapheme);
+                        let descriptor = style.resolved.descriptor_for_grapheme(grapheme, script);
+                        let Some((ascent, descent)) =
+                            jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
+                                descriptor,
+                            )
+                        else {
+                            extent = None;
+                            break;
+                        };
+                        extent =
+                            Some(extent.map_or((ascent, descent), |(a, d)| {
+                                (a.max(ascent), d.max(descent))
+                            }));
+                    }
+                    if let Some((ascent, descent)) = extent {
+                        let shift = style.baseline_shift_px;
+                        return Ok((shift - ascent, (ascent + descent).max(1.0)));
+                    }
+                }
                 let metric_text_len = metric_text.len();
                 let segment = TextSegment {
                     text: metric_text,
@@ -36086,11 +36145,64 @@ mod tests {
             renderer.set_auxiliary_story_capture_enabled(false);
             renderer.font_vertical_metrics_cache.borrow_mut().clear();
             let (top, height) = renderer
-                .empty_paragraph_content_metrics(Some(&pending), 16.0)
+                .empty_paragraph_content_metrics(Some(&pending), 16.0, false)
                 .unwrap();
             assert!(top.is_finite() && height > 0.0);
             assert!(!renderer.font_vertical_metrics_cache.borrow().is_empty());
         }
+    }
+
+    /// An empty numbered paragraph's line holds only its label. Where text
+    /// lines take Word's line box per face, the label line does too, over
+    /// every glyph of the label: the ideographic space of `(6)　` brings
+    /// ＭＳ 明朝's box, so the label sits where a text line's baseline would
+    /// (contract-clause-page-top, Word for Mac 16.114).
+    #[test]
+    fn empty_numbered_line_takes_words_line_box_over_the_whole_label() {
+        let (mut renderer, _) = recording_renderer();
+        let pending = PendingNumberingRender {
+            paragraph_index: 0,
+            number_x: 40.0,
+            display_text: "(6)　".into(),
+            display_props: Some(RunProperties {
+                font_size: Some(10.5),
+                fonts: Some(RunFonts {
+                    ascii: Some("Times New Roman".into()),
+                    h_ansi: Some("ＭＳ 明朝".into()),
+                    east_asia: Some("ＭＳ 明朝".into()),
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            }),
+            deleted_text: None,
+            suffix_space: false,
+            following_grapheme: None,
+        };
+        let style = renderer
+            .apply_run_style(pending.display_props.as_ref())
+            .unwrap();
+        let box_of = |grapheme: &str| {
+            let script = jade_docx_layout::line_wrap::classify_script(grapheme);
+            jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
+                style.resolved.descriptor_for_grapheme(grapheme, script),
+            )
+            .unwrap()
+        };
+        let (ascent, descent) = ["(", "6", ")", "　"]
+            .into_iter()
+            .map(box_of)
+            .fold((0.0_f64, 0.0_f64), |(a, d), (ga, gd)| {
+                (a.max(ga), d.max(gd))
+            });
+        assert!(
+            box_of("　") != box_of("6"),
+            "the faces must differ for the test"
+        );
+        let (top, height) = renderer
+            .empty_paragraph_content_metrics(Some(&pending), 24.0, true)
+            .unwrap();
+        assert!((top + ascent).abs() < 1e-9, "{top} vs {ascent}");
+        assert!((height - (ascent + descent)).abs() < 1e-9);
     }
 
     #[test]

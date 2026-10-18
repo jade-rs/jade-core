@@ -26,5 +26,8 @@ are unchanged; these probes are additional observations.
 | `ruby-nogrid`, `ruby-grid`, `ruby-wide-nogrid`, `ruby-wide-grid` | A `w:ruby` is one box as wide as the wider of base and guide. The narrower one spreads over it by `w:rubyAlign`: center splits the slack around it, left and right push it to one side, distributeLetter shares it between characters and distributeSpace around each character. The guide baseline is `w:hpsRaise` above the base in whole points (17 → 8pt, 21 → 10pt), and the line grows to hold the guide. |
 | `eqruby-nogrid`, `eqruby-grid` | Ruby written as an `EQ \o\aX(\s\up N(guide),base)` field with an empty saved result lays out the same way; `\* jc0`–`jc4` select center, distributeLetter, distributeSpace, left and right over the `\aX` switch, and `\up N` raises N points. |
 
-`generators/` holds the scripts that wrote the squeeze, indent, exact and ruby documents;
+| `tab-shrink-kanji`, `tab-shrink-comma` | In a justified doNotCompress line `1．<tab>…`, a final comma that would end past the edge narrows the tab before it by the comma's whole advance, and the line is justified; a final kanji that does not fit wraps and the tab keeps its width. |
+| `inline-image-nogrid`, `inline-image-grid` | An inline picture takes no auto spacing next to kana, Latin letters or digits. |
+
+`generators/` holds the scripts that wrote the squeeze, indent, exact, ruby, tab-shrink and inline-image documents;
 the numbering-label and distribute documents were derived from the indent one.
