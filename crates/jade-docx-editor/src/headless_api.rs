@@ -11018,6 +11018,78 @@ mod tests {
     }
 
     #[test]
+    fn a_text_box_moved_by_a_split_keeps_its_xml() {
+        // Enter before a text box's anchor moves the text box into the new
+        // paragraph. It was rebuilt from the model there: its VML fallback
+        // went, its paragraph lost its style and its runs got their
+        // inherited fonts written in. It now moves as written, and stays
+        // editable in both copies.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text_box_contents = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml.split("<w:txbxContent>")
+                .skip(1)
+                .map(|content| {
+                    content
+                        .split("</w:txbxContent>")
+                        .next()
+                        .unwrap_or_default()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 2,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        let contents = text_box_contents(&word_doc);
+        assert_eq!(contents.len(), 2, "the DrawingML box and its VML fallback");
+        for content in &contents {
+            assert!(content.contains("<w:pStyle w:val=\"本文\"/>"), "{content}");
+            assert!(!content.contains("<w:rFonts"), "{content}");
+        }
+
+        // The text box's paragraph follows its host, now paragraph 1.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph: 2,
+                    offset: 0,
+                    text: "X".to_string(),
+                }],
+            },
+        )
+        .expect("typing applies");
+        let contents = text_box_contents(&word_doc);
+        assert_eq!(contents.len(), 2);
+        for content in &contents {
+            assert!(content.contains("XHello"), "{content}");
+        }
+    }
+
+    #[test]
     fn undoing_paragraph_formatting_in_a_note_or_text_box_restores_its_xml() {
         // Undo puts a paragraph's `w:pPr` back from a snapshot that only
         // reached a body paragraph's own node: a footnote's or a text box's

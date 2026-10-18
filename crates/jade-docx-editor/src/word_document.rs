@@ -28368,11 +28368,13 @@ impl WordDocument {
                         Self::bind_split_tail_runs(&mut paragraph.runs, &tail_run_copies);
                     }
                 }
+                // A split moves drawings without changing them: rewriting
+                // them from the model dropped a text box's VML fallback.
                 if let Some(surface_idx) = self.surface_index_for_body(body_index) {
-                    self.sync_paragraph_text(surface_idx);
+                    self.sync_paragraph_text_preserving_drawings(surface_idx);
                 }
                 if let Some(surface_idx) = self.surface_index_for_body(body_index + 1) {
-                    self.sync_paragraph_text(surface_idx);
+                    self.sync_paragraph_text_preserving_drawings(surface_idx);
                 }
                 true
             }
@@ -29231,7 +29233,7 @@ impl WordDocument {
             source.children = head_children;
         }
         original.children = tail_children;
-        let original_runs = Self::bindable_run_ids(&original.children);
+        let tail = original.clone();
         let insert_index = path
             .as_slice()
             .last()
@@ -29245,17 +29247,26 @@ impl WordDocument {
         if let Some(element) = raw.element_mut(new_node_id) {
             Self::refresh_paragraph_identity(element);
         }
-        // Insertion gives the copy fresh ids and leaves its shape alone.
-        let copies = raw
-            .element(new_node_id)
-            .map(|copy| {
-                original_runs
-                    .into_iter()
-                    .zip(Self::bindable_run_ids(&copy.children))
-                    .collect()
-            })
-            .unwrap_or_default();
+        // Insertion gives the copy fresh ids and leaves its shape alone, so
+        // walking both in step pairs every element with its copy.
+        let mut copies = HashMap::new();
+        if let Some(copy) = raw.element(new_node_id) {
+            Self::pair_copied_element_ids(&tail, copy, &mut copies);
+        }
         Some((new_node_id, copies))
+    }
+
+    fn pair_copied_element_ids(
+        original: &XmlElement,
+        copy: &XmlElement,
+        pairs: &mut HashMap<XmlNodeId, XmlNodeId>,
+    ) {
+        pairs.insert(original.id, copy.id);
+        for (original, copy) in original.children.iter().zip(&copy.children) {
+            if let (XmlNode::Element(original), XmlNode::Element(copy)) = (original, copy) {
+                Self::pair_copied_element_ids(original, copy, pairs);
+            }
+        }
     }
 
     /// Binds the runs a split moved into the new paragraph to the copies of
@@ -29266,17 +29277,50 @@ impl WordDocument {
     /// bookmark around a word collapsed at the end of the paragraph, and a
     /// comment's range ended after its reference mark. A run with no copy
     /// (none was made, or it sits in a container) is still rebuilt, as is a
-    /// text box, whose own paragraphs stay bound to the original XML run,
-    /// and a field result: the split drops a complex field's `w:fldChar`
-    /// runs, and rebuilding the result writes the field back as a simple one.
+    /// field result: the split drops a complex field's `w:fldChar` runs, and
+    /// rebuilding the result writes the field back as a simple one.
+    ///
+    /// A text box moves with its paragraphs, bound to their copies inside
+    /// it. Rebuilt from the model instead, it lost its paragraphs' styles and
+    /// wrote their inherited fonts into its runs.
     fn bind_split_tail_runs(runs: &mut [Run], copies: &HashMap<XmlNodeId, XmlNodeId>) {
         for run in runs {
             run.node_id = match run.node_id {
-                Some(id) if run.text_box.is_none() && run.field.is_none() => {
-                    copies.get(&id).copied()
-                }
+                Some(id) if run.field.is_none() => copies.get(&id).copied(),
                 _ => None,
             };
+            if let Some(text_box) = run.text_box.as_mut() {
+                if run.node_id.is_some() {
+                    Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                }
+            }
+        }
+    }
+
+    fn bind_copied_blocks(blocks: &mut [BodyElement], copies: &HashMap<XmlNodeId, XmlNodeId>) {
+        let copy_of = |id: Option<XmlNodeId>| id.and_then(|id| copies.get(&id).copied());
+        for block in blocks {
+            match block {
+                BodyElement::Paragraph(paragraph) => {
+                    paragraph.node_id = copy_of(paragraph.node_id);
+                    for run in &mut paragraph.runs {
+                        run.node_id = copy_of(run.node_id);
+                        run.text_node_id = copy_of(run.text_node_id);
+                        run.revision_node_id = copy_of(run.revision_node_id);
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for row in &mut table.rows {
+                        for cell in &mut row.cells {
+                            Self::bind_copied_blocks(&mut cell.blocks, copies);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
         }
     }
 
