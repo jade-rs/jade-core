@@ -11929,6 +11929,115 @@ mod tests {
     }
 
     #[test]
+    fn a_comment_ending_inside_a_field_or_link_keeps_its_text_once() {
+        // A comment boundary inside a `w:fldSimple` or `w:hyperlink` put its
+        // markers beside the container while the model put the reference run
+        // among the container's runs. The next edit wrote the container up to
+        // the reference run, closed it, and wrote the rest again outside:
+        // "Jump locally" saved as "Jump locallylly". The comment may also
+        // start outside and end inside, or span paragraphs into a TOC link.
+        let comment = |start_paragraph, start_offset, end_paragraph, end_offset| {
+            HeadlessCommand::AddComment {
+                start_paragraph,
+                start_offset: Some(start_offset),
+                end_paragraph,
+                end_offset: Some(end_offset),
+                text: "note".to_string(),
+                author: Some("test".to_string()),
+                initials: None,
+                date: None,
+            }
+        };
+        let cases = [
+            (
+                "hyperlink-field-edge-cases.docx",
+                vec![
+                    comment(4, 24, 4, 25),
+                    HeadlessCommand::DeleteText {
+                        paragraph: 4,
+                        offset: 1,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 2,
+                    },
+                ],
+            ),
+            (
+                "hyperlink-field-edge-cases.docx",
+                vec![
+                    comment(4, 4, 4, 22),
+                    HeadlessCommand::SetFontSize {
+                        start_paragraph: 4,
+                        start_offset: 2,
+                        end_paragraph: 4,
+                        end_offset: 19,
+                        font_size: 9.0,
+                    },
+                ],
+            ),
+            (
+                "toc.docx",
+                vec![
+                    comment(0, 2, 2, 1),
+                    HeadlessCommand::InsertText {
+                        paragraph: 2,
+                        offset: 1,
+                        text: "あ".to_string(),
+                    },
+                ],
+            ),
+        ];
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .expect("paragraph")
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+        };
+        for (fixture, commands) in cases {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let label = format!("{fixture} {commands:?}");
+            apply_headless_commands_to_document(&mut word_doc, &HeadlessEditRequest { commands })
+                .expect("edits apply");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(texts(&reloaded), texts(&word_doc), "{label}");
+            let comments = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .map(|index| {
+                        word_doc
+                            .paragraph(index)
+                            .expect("paragraph")
+                            .comment_ranges
+                            .iter()
+                            // An empty paragraph inside the range has no
+                            // marker of its own to rebuild it from.
+                            .filter(|range| range.start < range.end)
+                            .map(|range| (range.start, range.end))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(comments(&reloaded), comments(&word_doc), "{label}");
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
