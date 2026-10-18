@@ -1456,6 +1456,13 @@ pub enum HeadlessCommand {
     InsertCoverPage {
         paragraphs: Vec<HeadlessCoverParagraph>,
     },
+    /// Deletes the `text_box`-th text box (in run order) anchored in
+    /// paragraph `paragraph`: the anchoring run's drawing and everything in
+    /// the box. One atomic history operation.
+    DeleteTextBox {
+        paragraph: usize,
+        text_box: usize,
+    },
     /// Inserts a floating WordprocessingShape at an exact current-state UTF-8
     /// boundary. The shape contains one editable text paragraph and is one
     /// atomic history operation.
@@ -1966,6 +1973,7 @@ impl HeadlessCommand {
             HeadlessCommand::InsertBlankPage { .. } => "insert_blank_page",
             HeadlessCommand::InsertCoverPage { .. } => "insert_cover_page",
             HeadlessCommand::InsertShape { .. } => "insert_shape",
+            HeadlessCommand::DeleteTextBox { .. } => "delete_text_box",
             HeadlessCommand::MarkIndexEntry { .. } => "mark_index_entry",
             HeadlessCommand::InsertIndex { .. } => "insert_index",
             HeadlessCommand::UpdateTableOfContents => "update_table_of_contents",
