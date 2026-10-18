@@ -380,15 +380,22 @@ fn deleting_a_sheet_turns_references_to_it_into_ref_errors() {
 fn references_left_broken_by_a_deletion_evaluate_to_ref_errors() {
     let mut workbook = open();
     workbook.delete_sheet(SALES).expect("delete");
-    // Excel evaluates `#REF!B4:B6` — inside a function, through a name —
-    // to #REF!, and so does every formula that reads one.
-    for reference in ["A1", "A2", "A3", "B2"] {
+    // Excel evaluates `#REF!B4:B6`, alone or inside a function, to #REF!,
+    // and so does every formula that reads one.
+    for reference in ["A1", "A2", "A3"] {
         let cell = workbook.cell("Notes", reference).unwrap();
         assert_eq!(cell.kind, CellKind::Error, "{reference}: {cell:?}");
         assert_eq!(cell.display, "#REF!", "{reference}");
     }
-    let status = workbook.calculation_status();
-    assert!(!status.requires_recalculation, "{status:?}");
+    // A defined name that became `#REF!$D$7` is one the engine will not
+    // define, so `Total+1` keeps its cached value — reported stale, with
+    // the file asking Excel to recalculate on open.
+    let b2 = workbook.cell("Notes", "B2").unwrap();
+    assert_eq!(
+        b2.formula_state,
+        Some(jade_xlsx_headless_api::FormulaState::Stale)
+    );
+    assert!(workbook.summary().full_calculation_on_load);
 }
 
 #[test]
