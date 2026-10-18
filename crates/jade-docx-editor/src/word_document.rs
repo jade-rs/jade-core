@@ -33004,6 +33004,14 @@ impl WordDocument {
             match element {
                 BodyElement::Paragraph(paragraph) => {
                     Self::capture_preserved_run_props_in_paragraph(paragraph, raw);
+                    // A text box's runs are bound to its `w:txbxContent` like
+                    // any other: left out, every font they inherit counted as
+                    // their own, and typing in the box wrote it into them.
+                    for run in paragraph.runs.iter_mut() {
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::capture_preserved_run_props(&mut text_box.blocks, raw);
+                        }
+                    }
                 }
                 BodyElement::Table(table) => {
                     for row in table.rows.iter_mut() {
@@ -33062,6 +33070,9 @@ impl WordDocument {
                     for run in paragraph.runs.iter_mut() {
                         if let Some(props) = run.properties.as_mut() {
                             props.capture_direct_font_properties();
+                        }
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::capture_direct_run_fonts(&mut text_box.blocks);
                         }
                     }
                 }
