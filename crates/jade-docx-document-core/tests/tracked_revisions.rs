@@ -492,3 +492,37 @@ fn typing_before_deleted_text_at_a_paragraph_start_goes_after_its_text_box() {
         );
     }
 }
+
+/// Deleted text that ends (or starts) with a space keeps it in the file:
+/// a `w:delText` cut out of a `w:t` that needed no `xml:space` gets one.
+#[test]
+fn deleted_text_keeps_its_edge_spaces_in_the_file() {
+    let mut word = hello();
+    run(&mut word, vec![insert(1, 0, "ab cd ")]);
+    let mut word = reload(&word);
+    assert_eq!(runs(&word, 1), ["ab cd World"]);
+    run(
+        &mut word,
+        vec![track("A"), delete(1, 1, 3), delete(1, 5, 7)],
+    );
+    let expected = ["a", "b [del A]", "cd", " W[del A]", "orld"];
+    assert_eq!(runs(&word, 1), expected);
+    assert_eq!(runs(&reload(&word), 1), expected);
+}
+
+/// The same in a footnote, whose text lives in its own part.
+#[test]
+fn deleted_text_in_a_footnote_keeps_its_edge_spaces_in_the_file() {
+    use jade_docx_document_core::selection::TextPosition;
+    let mut word = fixture("footnote.docx");
+    assert_eq!(runs(&word, 1), [" Hello World"]);
+    let at = |word: &WordDocument, offset| {
+        word.model_to_rendered_text_position(TextPosition::new(1, offset))
+            .offset
+    };
+    let (start, end) = (at(&word, 2), at(&word, 7));
+    run(&mut word, vec![track("A"), delete(1, start, end)]);
+    let expected = [" H", "ello [del A]", "World"];
+    assert_eq!(runs(&word, 1), expected);
+    assert_eq!(runs(&reload(&word), 1), expected);
+}
