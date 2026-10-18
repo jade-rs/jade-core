@@ -14,10 +14,14 @@
 //! difference lands in `w:hanging` / `w:firstLine`. List levels are never
 //! touched by that variant.
 
-use super::paragraph_property_sync::{sync_paragraph_indent_xml, sync_paragraph_numbering_xml};
+use super::paragraph_property_sync::{
+    restore_paragraph_properties_xml, snapshot_paragraph_properties_xml, sync_paragraph_indent_xml,
+    sync_paragraph_numbering_xml,
+};
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{Indent, ParagraphProperties};
 use jade_docx_layout::selection::SelectionRange;
+use jade_docx_reader::docx_xml::XmlElement;
 
 /// One ribbon click's worth of indent, in `w:leftChars` units (100 = 1字).
 const CHAR_STEP: i32 = 100;
@@ -53,6 +57,10 @@ pub struct AdjustParagraphIndentCommand {
     /// example decrease at list level 0) records no history.
     changed: bool,
     previous_properties: Vec<(usize, Option<ParagraphProperties>)>,
+    /// Each paragraph's `w:pPr` before the step. Undo puts it back as it
+    /// was: rewriting it from the model wrote the indent a list item takes
+    /// from its style or numbering into the file as a direct one.
+    previous_raw_properties: Vec<Option<XmlElement>>,
     previous_selection: Option<SelectionRange>,
 }
 
@@ -79,6 +87,7 @@ impl AdjustParagraphIndentCommand {
             target,
             changed: false,
             previous_properties: Vec::new(),
+            previous_raw_properties: Vec::new(),
             previous_selection: None,
         }
     }
@@ -292,6 +301,7 @@ impl Command for AdjustParagraphIndentCommand {
             .unwrap_or(DEFAULT_TAB_STOP_PT);
 
         self.previous_properties.clear();
+        self.previous_raw_properties.clear();
         self.previous_selection = *ctx.selection;
         self.changed = false;
 
@@ -302,6 +312,11 @@ impl Command for AdjustParagraphIndentCommand {
                 .map(|paragraph| paragraph.properties.clone())
                 .ok_or(CommandError::ParagraphUnavailable)?;
             self.previous_properties.push((paragraph_index, previous));
+            self.previous_raw_properties
+                .push(snapshot_paragraph_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                ));
 
             // Word's ribbon promotes/demotes the LIST LEVEL of a numbered or
             // bulleted paragraph instead of moving its left indent (which the
@@ -399,44 +414,16 @@ impl Command for AdjustParagraphIndentCommand {
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        for (paragraph_index, previous) in &self.previous_properties {
-            let restored_indent = {
-                let paragraph = ctx
-                    .document
-                    .paragraph_mut(*paragraph_index)
-                    .ok_or(CommandError::ParagraphUnavailable)?;
-                paragraph.properties = previous.clone();
-                paragraph
-                    .properties
-                    .as_ref()
-                    .and_then(|props| props.indent.clone())
-            };
-            // A list item stepped its `w:ilvl`, not its indent: put the level
-            // back in the file too, or the saved list keeps the undone step.
-            if let Some((num_id, level)) = previous
-                .as_ref()
-                .and_then(|props| props.numbering.as_ref())
-                .and_then(|numbering| {
-                    Some((
-                        numbering.list_id()?.to_string(),
-                        numbering.level.unwrap_or(0),
-                    ))
-                })
-            {
-                sync_paragraph_numbering_xml(
-                    ctx.document,
-                    *paragraph_index,
-                    Some(num_id.as_str()),
-                    Some(level),
-                );
-            }
-            sync_paragraph_indent_xml(
-                ctx.document,
-                *paragraph_index,
-                restored_indent.as_ref(),
-                true,
-                true,
-            );
+        for ((paragraph_index, previous), raw) in self
+            .previous_properties
+            .iter()
+            .zip(&self.previous_raw_properties)
+        {
+            ctx.document
+                .paragraph_mut(*paragraph_index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = previous.clone();
+            restore_paragraph_properties_xml(ctx.document, *paragraph_index, raw.as_ref());
         }
         *ctx.selection = self.previous_selection;
         Ok(())
@@ -569,6 +556,72 @@ mod tests {
             Some(0),
             "decrease indent demotes the list level"
         );
+    }
+
+    /// Undo puts a list item back as it was loaded. Its indent comes from
+    /// its style's numbering, and the model carries it filled in; undo wrote
+    /// that filled indent into the file as a direct `w:ind`, which then beat
+    /// the numbering's indent on reload, while the model kept the stepped
+    /// level's cleared indent.
+    #[test]
+    fn undoing_a_list_level_step_restores_the_paragraph_exactly() {
+        use futures::executor;
+        use std::io::Read;
+
+        let document_xml = |document: &WordDocument| {
+            let bytes = document.export_docx().expect("export");
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package");
+            let mut xml = String::new();
+            archive
+                .by_name("word/document.xml")
+                .expect("document part")
+                .read_to_string(&mut xml)
+                .expect("read part");
+            xml
+        };
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/numbering-by-style.docx"),
+        )
+        .expect("read fixture");
+        let mut document =
+            executor::block_on(WordDocument::load(&bytes, &crate::Options::default()))
+                .expect("load");
+        let original_xml = document_xml(&document);
+        let original: Vec<_> = (1..=3)
+            .map(|index| {
+                format!(
+                    "{:?}",
+                    document.paragraph(index).expect("paragraph").properties
+                )
+            })
+            .collect();
+
+        let mut selection = None;
+        let mut executor = CommandExecutor::new();
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        executor
+            .execute(
+                Box::new(AdjustParagraphIndentCommand::new(
+                    1,
+                    3,
+                    IndentDirection::Increase,
+                )),
+                &mut ctx,
+            )
+            .expect("step");
+        assert!(executor.undo(&mut ctx).expect("undo"));
+
+        let restored: Vec<_> = (1..=3)
+            .map(|index| {
+                format!(
+                    "{:?}",
+                    document.paragraph(index).expect("paragraph").properties
+                )
+            })
+            .collect();
+        assert_eq!(restored, original);
+        assert_eq!(document_xml(&document), original_xml);
     }
 
     #[test]
