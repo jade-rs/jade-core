@@ -3537,7 +3537,10 @@ impl WordDocument {
     /// paragraph that had none is drawn in the renderer's fallback font until
     /// the document has been through a file.
     pub fn apply_run_font_defaults_at(&mut self, paragraph_index: usize) {
-        let Some(styles) = self.styles_part.clone() else {
+        // Taken rather than cloned: this runs on every keystroke, and the
+        // styles part is the document's whole style table. Reaching the
+        // paragraph touches only the document and the paragraph surfaces.
+        let Some(styles) = self.styles_part.take() else {
             return;
         };
         let run_fonts = |paragraph: &Paragraph| {
@@ -3551,17 +3554,19 @@ impl WordDocument {
                 })
                 .collect::<Vec<_>>()
         };
-        let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
-            return;
-        };
-        let before = run_fonts(paragraph);
-        Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        let filled = self
+            .paragraph_mut(paragraph_index)
+            .is_some_and(|paragraph| {
+                let before = run_fonts(paragraph);
+                Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+                run_fonts(paragraph) != before
+            });
+        self.styles_part = Some(styles);
         // The defaults name theme fonts (`w:eastAsiaTheme` and the like),
         // which loading resolves to the theme's faces next. Left unresolved,
         // text typed into an empty paragraph draws in a fallback face. This
         // runs on every keystroke and the theme is parsed from its XML, so
         // only for a run whose fonts the defaults just filled in.
-        let filled = run_fonts(paragraph) != before;
         if !filled {
             return;
         }
