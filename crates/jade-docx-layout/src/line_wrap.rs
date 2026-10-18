@@ -5955,9 +5955,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
                     && paragraph_style.forbids_line_start(grapheme)
+                    // The character before may itself be one that may not
+                    // start a line: Word keeps `…１回）、` with the comma
+                    // hanging after the paren (scroll-offset-repro page 11).
                     && current_line_clusters
                         .last()
-                        .is_some_and(|last| !last.is_whitespace && !last.forbid_line_start)
+                        .is_some_and(|last| !last.is_whitespace)
                     && {
                         let paragraph_end = grapheme_end_abs >= base_offset + text.len();
                         let hangs =
@@ -13245,6 +13248,20 @@ mod tests {
             .iter()
             .map(|c| (c.text.to_string(), c.width))
             .collect()
+    }
+
+    #[test]
+    fn mac_line_end_comma_hangs_after_a_closing_paren() {
+        // scroll-offset-repro page 11 `…ごとに１回）、`: Word for Mac keeps
+        // the closing paren and hangs the comma after it; the paren's own
+        // line-start ban does not stop the comma from hanging. Here the paren
+        // already overflows by 3pt (squeezed in), and the comma then hangs
+        // half and squeezes the rest.
+        let text = "あ、ああああ（あ）、う";
+        let line = mac_kinsoku_first_line(text, 9.0 * 10.5 - 3.0);
+        let texts: Vec<_> = line.iter().map(|(text, _)| text.as_str()).collect();
+        assert_eq!(texts.last(), Some(&"、"), "{texts:?}");
+        assert_eq!(texts.len(), 10, "{texts:?}");
     }
 
     // Word for Mac 16.114 squeeze probe with a comma as the 19th character
