@@ -2157,6 +2157,9 @@ impl WordDocument {
             } else {
                 parser.parse_document_xml(&doc_part.content)?
             };
+            if let Some(body) = parsed_doc.body.as_mut() {
+                Self::capture_direct_run_fonts(&mut body.elements);
+            }
 
             if let Some(raw_xml) = document.raw_document.as_ref() {
                 let _ = attach_document_xml_ids(&mut parsed_doc, raw_xml);
@@ -32993,16 +32996,42 @@ impl WordDocument {
                 continue;
             };
             attach_block_xml_ids(&mut note.body, element, &raw);
+            Self::capture_direct_run_fonts(&mut note.body);
             Self::capture_preserved_run_props(&mut note.body, &raw);
             clear_block_xml_ids(&mut note.body);
         }
     }
 
+    /// Records, for every run, the font properties it has before any are
+    /// filled in from its styles: its own. [`Self::capture_preserved_run_props`]
+    /// then drops those its `w:rPr` does not declare. It has to run before the
+    /// style fill: a load that defers the round-trip XML only reaches that
+    /// pass after the fill, and recorded the inherited fonts as the run's own,
+    /// so the first edit wrote them all into its `w:rPr`.
+    fn capture_direct_run_fonts(elements: &mut [BodyElement]) {
+        for element in elements.iter_mut() {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    for run in paragraph.runs.iter_mut() {
+                        if let Some(props) = run.properties.as_mut() {
+                            props.capture_direct_font_properties();
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for row in table.rows.iter_mut() {
+                        for cell in row.cells.iter_mut() {
+                            Self::capture_direct_run_fonts(&mut cell.blocks);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
     fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
         for run in paragraph.runs.iter_mut() {
-            if let Some(props) = run.properties.as_mut() {
-                props.capture_direct_font_properties();
-            }
             let Some(node_id) = run.node_id else {
                 continue;
             };
