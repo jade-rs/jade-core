@@ -57,6 +57,7 @@ fn laid_out(rows: u32) -> SheetLayout {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     };
     layout_sheet(
         &sheet,
@@ -215,6 +216,7 @@ fn selecting_a_merged_cell_borders_the_whole_merge_and_its_bands() {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     };
     sheet.rows[1].cells.push(Cell {
         reference: CellRef::new(1, 1),
