@@ -390,11 +390,26 @@ fn rebase_run_style_properties(
     new: &RunProperties,
     declared: impl Fn(&str) -> bool,
 ) {
+    // The font properties a load resolves into runs (see
+    // `apply_run_font_defaults_to_paragraph`) move to the new style's.
     macro_rules! rebase {
         ($($field:ident => $direct:expr),* $(,)?) => {
             $(
                 if !$direct && run.$field == old.$field {
                     run.$field = new.$field.clone();
+                }
+            )*
+        };
+    }
+    // The rest a load leaves to the paragraph style, which the renderer
+    // resolves: a value the old style gave goes, rather than turning into the
+    // new style's. Kept, the sync wrote it into the run's `w:rPr` at its next
+    // edit, and a heading's theme colour became a fixed direct one.
+    macro_rules! release {
+        ($($field:ident => $direct:expr),* $(,)?) => {
+            $(
+                if !$direct && run.$field == old.$field {
+                    run.$field = None;
                 }
             )*
         };
@@ -407,7 +422,7 @@ fn rebase_run_style_properties(
             declared(tag)
         }
     };
-    rebase!(
+    release!(
         bold => declared("w:b"),
         bold_complex => declared("w:bCs"),
         italic => declared("w:i"),
@@ -428,13 +443,15 @@ fn rebase_run_style_properties(
         text_position => declared("w:position"),
         char_spacing => declared("w:spacing"),
         fit_text => declared("w:fitText"),
-        font_family => declared("w:rFonts"),
-        language => declared("w:lang"),
-        east_asia_language => declared("w:lang"),
         color => declared("w:color"),
         highlight => declared("w:highlight"),
         shading => declared("w:shd"),
         border => declared("w:bdr"),
+    );
+    rebase!(
+        font_family => declared("w:rFonts"),
+        language => declared("w:lang"),
+        east_asia_language => declared("w:lang"),
         font_size => font_direct(direct.font_size.is_some(), "w:sz"),
         font_size_complex => font_direct(direct.font_size_complex.is_some(), "w:szCs"),
         kerning => font_direct(direct.kerning.is_some(), "w:kern"),
@@ -446,9 +463,9 @@ fn rebase_run_style_properties(
         && (&run.underline, &run.underline_kind, &run.underline_color)
             == (&old.underline, &old.underline_kind, &old.underline_color)
     {
-        run.underline = new.underline;
-        run.underline_kind = new.underline_kind.clone();
-        run.underline_color = new.underline_color.clone();
+        run.underline = None;
+        run.underline_kind = None;
+        run.underline_color = None;
     }
 }
 
