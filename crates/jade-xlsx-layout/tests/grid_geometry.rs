@@ -39,6 +39,7 @@ fn sheet_with(rows: Vec<Row>) -> Sheet {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     }
 }
 
