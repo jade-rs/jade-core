@@ -1,0 +1,28 @@
+[package]
+name = "jade-text-diff"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "形態素で切ってから比べる、文字列の内訳"
+license = "MIT"
+publish = false
+
+[lib]
+name = "text_diff"
+
+[dependencies]
+anyhow = "1"
+diff-align = { package = "jade-diff-align", path = "../jade-diff-align" }
+diff_support = { package = "jade-diff-support", path = "../jade-diff-support" }
+docx_diff = { package = "jade-docx-diff", path = "../jade-docx-diff" }
+delarocha = { git = "https://github.com/bokuweb/delarocha", features = [
+  "vibrato-system",
+] }
+unicode-segmentation = "1"
+unicode-normalization = "0.1"
+quick-xml = "0.39"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"

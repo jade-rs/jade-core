@@ -52,3 +52,34 @@ Jade's date-system scope tests are not ignored. Run the XLSX compatibility and
 schema gates for engine integration in Rust, browser WASM and public React APIs.
 Excel reference captures remain necessary for complete formula parity,
 especially boundary dates and locale-sensitive date text.
+
+Excel parity changes (appended to `jade.patch` as a second set of hunks, to be
+applied after the first), each pinned by a case in
+`crates/jade-xlsx-headless-editor/tests/excel_conformance.rs`:
+
+- ROUND, ROUNDUP and ROUNDDOWN scale at 15 significant digits as Excel does,
+  so `ROUND(1.005,2)` is 1.01.
+- The 1900 date system counts Excel's fictional 29 February 1900: serial 1 is
+  1900-01-01, 59 is 1900-02-28, 60 is the leap day (DAY 29, shown 2/29/1900)
+  and 0 is "January 0". DATE builds January and February 1900 on that
+  calendar; every date→serial conversion goes through one function. IronCalc
+  followed Google Sheets here; its early-date tests now assert Excel's values.
+- AGGREGATE (`functions/aggregate.rs`): all nineteen functions and eight
+  options, reference and array forms. Its name is not in `language.bin`, so
+  `Functions::lookup` falls back to `jade_lookup` for Jade's additions.
+- ROWS and COLUMNS take arrays (constants and dynamic-array results), and a
+  single value counts as one row by one column.
+- `xlsx_function_prefix` exposes which functions an `.xlsx` formula must write
+  with `_xlfn.` / `_xlfn._xlws.`, and DAYS, FORECAST.LINEAR, GAMMA.DIST, GAUSS,
+  IMSECH, NETWORKDAYS.INTL and WORKDAY.INTL gain the prefix upstream omitted.
+- The number formatter (TEXT) reads the Japanese date codes — era `g`/`gg`/
+  `ggg`, era year `e`/`ee` (`formatter/japanese.rs`), weekday `aaa`/`aaaa` —
+  and a bare locale tag such as `[$-411]`, which it used to reject as
+  `#VALUE!`; and fractions (`# ?/?`, `?/??`, `# ?/8`, `formatter/fraction.rs`),
+  which the token parser does not model. Appended to `jade.patch` as a third
+  set of hunks.
+- Japanese Excel (`functions/japanese.rs`; fourth set of hunks in
+  `jade.patch`): ASC converts katakana and JIS (new) converts back; the *B
+  text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too, fifth set of hunks); DATESTRING
+  and NUMBERSTRING (new) write eras and kanji numerals. The new names answer
+  through `jade_lookup`.

@@ -85,6 +85,11 @@ pub struct SkiaRenderHost {
     shared_measure_nanos: Rc<Cell<u128>>,
     page_width: f64,
     page_height: f64,
+    /// Device pixels per CSS pixel for the live raster pages: the window's
+    /// backing scale, so a 2x screen is painted at 2x instead of shown a 1x
+    /// page stretched to fit. Recording hosts ignore it and use their PDF
+    /// options instead.
+    raster_scale: f64,
 }
 
 #[derive(Clone)]
@@ -116,6 +121,7 @@ impl SkiaRenderHost {
             shared_measure_nanos: Rc::new(Cell::new(0)),
             page_width,
             page_height,
+            raster_scale: 1.0,
         })
     }
 
@@ -158,6 +164,7 @@ impl SkiaRenderHost {
             shared_measure_nanos: Rc::new(Cell::new(0)),
             page_width: width,
             page_height: height,
+            raster_scale: 1.0,
         })
     }
 
@@ -194,7 +201,7 @@ impl SkiaRenderHost {
                 PdfRenderingMode::Vector => SkiaPainter::new_recording(width, height)?,
             }
         } else {
-            SkiaPainter::new(width.ceil() as i32, height.ceil() as i32)?
+            SkiaPainter::new_scaled(width, height, self.raster_scale)?
         };
         // Parsed faces, not bytes. A new Skia surface starts with none, and a
         // document that paginates mid-render creates surfaces on the hot path —
@@ -410,15 +417,39 @@ impl CanvasRenderHost for SkiaRenderHost {
     // ---- page geometry -----------------------------------------------------
 
     fn device_pixel_ratio(&self) -> f64 {
-        if self.recording && self.pdf_options.rendering == PdfRenderingMode::Editor {
-            self.pdf_options.scale
+        if self.recording {
+            match self.pdf_options.rendering {
+                PdfRenderingMode::Editor => self.pdf_options.scale,
+                PdfRenderingMode::Vector => 1.0,
+            }
         } else {
-            1.0
+            self.raster_scale
         }
     }
 
     fn update_device_pixel_ratio(&mut self) -> Result<bool, JsValue> {
         Ok(false)
+    }
+
+    fn set_device_pixel_ratio(&mut self, ratio: f64) -> Result<(), JsValue> {
+        // Never `Err`: a `JsValue` cannot be built off the browser. The caller
+        // validates the ratio; a recording host keeps the density its PDF
+        // options chose.
+        if self.recording || !ratio.is_finite() || ratio <= 0.0 || ratio == self.raster_scale {
+            return Ok(());
+        }
+        self.raster_scale = ratio;
+        // Every surface in the pool, not only the rendered ones: a page reused
+        // later must not come back at the old density. The renderer marks a
+        // full repaint after changing the scale, so nothing has to be copied.
+        let surfaces = self
+            .page_sizes
+            .iter()
+            .map(|&(width, height)| self.new_surface(width, height))
+            .collect::<Option<Vec<_>>>()
+            .expect("valid layout page size");
+        *self.pages.borrow_mut() = surfaces;
+        Ok(())
     }
 
     fn device_to_css(&self, value: f64) -> f64 {
@@ -602,6 +633,30 @@ mod tests {
         assert_eq!(host.page_dimensions(1), Some((600.5, 800.25)));
         let (_, w, h) = host.pages.borrow()[1].read_bgra_premultiplied().unwrap();
         assert_eq!((w, h), (601, 801));
+    }
+
+    #[test]
+    fn a_raster_scale_multiplies_the_pixels_and_keeps_css_geometry() {
+        let mut host = SkiaRenderHost::new(600.5, 800.25).unwrap();
+        host.start_new_page(600.5, 800.25, 0.0).unwrap();
+        host.set_device_pixel_ratio(2.0).unwrap();
+        assert_eq!(host.device_pixel_ratio(), 2.0);
+        assert_eq!(host.page_dimensions(1), Some((600.5, 800.25)));
+        for page in host.pages.borrow().iter() {
+            let (_, w, h) = page.read_bgra_premultiplied().unwrap();
+            assert_eq!((w, h), (1201, 1601));
+        }
+        // A page the renderer adds afterwards comes at the same density.
+        host.start_new_page(600.5, 800.25, 0.0).unwrap();
+        let (_, w, h) = host.pages.borrow()[2].read_bgra_premultiplied().unwrap();
+        assert_eq!((w, h), (1201, 1601));
+        // Drawing stays in CSS pixels: a 10px square covers 20 device pixels.
+        use jade_painter::Painter;
+        let painter = host.painter();
+        painter.set_fill_style_str("#000000");
+        painter.fill_rect(0.0, 0.0, 10.0, 10.0);
+        assert_eq!(painter.pixel(19, 19), Some((0, 0, 0, 255)));
+        assert_eq!(painter.pixel(21, 21), Some((255, 255, 255, 255)));
     }
 
     #[test]

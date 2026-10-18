@@ -195,3 +195,44 @@ fn typing_on_a_later_page_matches_a_fresh_render() {
         "the later-page repaint differs from a fresh render"
     );
 }
+
+#[test]
+fn a_raster_scale_paints_more_pixels_without_moving_the_layout() {
+    let mut document = open_contract();
+    let pages = document.page_count();
+    let (page_width, page_height) = document.layout_page_size();
+    let caret_before = document.place_caret(0, 0);
+
+    assert!(document.set_raster_scale(2.0).expect("scale to 2x"));
+    // Setting the same scale again is free.
+    assert!(!document.set_raster_scale(2.0).expect("same scale"));
+
+    assert_eq!(document.page_count(), pages);
+    assert_eq!(document.layout_page_size(), (page_width, page_height));
+    assert_eq!(document.place_caret(0, 0), caret_before);
+    for page in 0..pages {
+        let (pixels, width, height) = document.page_pixels(page).expect("page pixels");
+        assert_eq!(
+            (width, height),
+            (
+                (page_width * 2.0).ceil() as i32,
+                (page_height * 2.0).ceil() as i32
+            )
+        );
+        let inked = pixels
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 || px[1] < 200 || px[2] < 200)
+            .count();
+        assert!(inked > 20_000, "page {page} looks blank at 2x: {inked}");
+    }
+    if let Ok(directory) = std::env::var("JADE_DUMP_PAGE") {
+        let (pixels, width, height) = document.page_pixels(0).unwrap();
+        common::write_bgra_png(&format!("{directory}/page-2x.png"), &pixels, width, height);
+        document.set_raster_scale(1.0).unwrap();
+        let (pixels, width, height) = document.page_pixels(0).unwrap();
+        common::write_bgra_png(&format!("{directory}/page-1x.png"), &pixels, width, height);
+    }
+
+    assert!(document.set_raster_scale(0.0).is_err());
+    assert!(document.set_raster_scale(f64::NAN).is_err());
+}

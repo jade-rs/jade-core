@@ -43,9 +43,12 @@ fn skipped_formulas_are_reported_and_undo_restores_the_original_cache_state() {
     .unwrap();
     let status = book.calculation_status();
     assert_eq!(status.formula_count, 3);
-    assert_eq!(status.uncalculated, 1);
-    assert_eq!(status.stale, 2);
+    // The typed formula shows the engine's `#NAME?` rather than nothing,
+    // held as stale until the full calculation the file now asks for.
+    assert_eq!(status.uncalculated, 0);
+    assert_eq!(status.stale, 3);
     assert!(status.requires_recalculation);
+    assert_eq!(book.cell("Compatibility", "B2").unwrap().display, "#NAME?");
     assert_eq!(
         book.cell("Compatibility", "B2").unwrap().formula_state,
         book.formula_state(0, CellRef::parse("B2").unwrap())

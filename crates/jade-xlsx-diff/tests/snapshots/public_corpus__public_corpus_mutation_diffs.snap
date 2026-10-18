@@ -1,0 +1,1050 @@
+---
+source: crates/xlsx-diff/tests/public_corpus.rs
+expression: snapshots
+---
+[
+  {
+    "id": "ons-compound-row-column-insertion",
+    "expected_events": [
+      "column:added:data:5",
+      "row:added:data:32"
+    ],
+    "observed_events": [
+      "column:added:data:5",
+      "row:added:data:32"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "ons-population-v15.xlsx#mutated",
+      "old_file": "ons-population-v15.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 0.875,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [
+            {
+              "ambiguous": false,
+              "confidence": null,
+              "header": "P3-ONS-COLUMN-R1",
+              "kind": "added",
+              "new_index": 5,
+              "old_index": null
+            }
+          ],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "data",
+          "new_position": 1,
+          "old_name": "data",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [
+            {
+              "ambiguous": false,
+              "confidence": null,
+              "kind": "added",
+              "new_index": 32,
+              "old_index": null,
+              "preview": "P3-ONS-ROW-C1 / P3-ONS-ROW-C2 / P3-ONS-ROW-C3 / P3-ONS-ROW-C4 / P3-ONS-COLUMN-R32"
+            }
+          ],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 0.875,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [
+                {
+                  "ambiguous": false,
+                  "confidence": null,
+                  "header": "P3-ONS-COLUMN-R1",
+                  "kind": "added",
+                  "new_index": 5,
+                  "old_index": null
+                }
+              ],
+              "new_range": {
+                "end_col": 9,
+                "end_row": 62,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 8,
+                "end_row": 61,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [
+                {
+                  "ambiguous": false,
+                  "confidence": null,
+                  "kind": "added",
+                  "new_index": 32,
+                  "old_index": null,
+                  "preview": "P3-ONS-ROW-C1 / P3-ONS-ROW-C2 / P3-ONS-ROW-C3 / P3-ONS-ROW-C4 / P3-ONS-COLUMN-R32"
+                }
+              ],
+              "status": "modified"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 0,
+        "columns_added": 1,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 1,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "corexlsx-date-value-change",
+    "expected_events": [
+      "cell:value_changed:Sheet1:B1->B1"
+    ],
+    "observed_events": [
+      "cell:value_changed:Sheet1:B1->B1"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "corexlsx-dates.xlsx#mutated",
+      "old_file": "corexlsx-dates.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 1,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 0.44999999999999996,
+            "minimum_row_confidence": 1.0,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [
+            {
+              "kind": "value_changed",
+              "new_address": "B1",
+              "new_formula": null,
+              "new_value": "2026-07-20T00:00:00",
+              "new_value_kind": "date_time",
+              "old_address": "B1",
+              "old_formula": null,
+              "old_value": "2019-09-10T00:00:00.000",
+              "old_value_kind": "date_time",
+              "style_changed": false
+            }
+          ],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Sheet1",
+          "new_position": 1,
+          "old_name": "Sheet1",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 1,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 0.44999999999999996,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [
+                {
+                  "kind": "value_changed",
+                  "new_address": "B1",
+                  "new_formula": null,
+                  "new_value": "2026-07-20T00:00:00",
+                  "new_value_kind": "date_time",
+                  "old_address": "B1",
+                  "old_formula": null,
+                  "old_value": "2019-09-10T00:00:00.000",
+                  "old_value_kind": "date_time",
+                  "style_changed": false
+                }
+              ],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 3,
+                "end_row": 1,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 3,
+                "end_row": 1,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "modified"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 1,
+        "columns_added": 0,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "corexlsx-sparse-cell-change",
+    "expected_events": [
+      "cell:value_changed:Sheet 1:B5->B5"
+    ],
+    "observed_events": [
+      "cell:value_changed:Sheet 1:B5->B5"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "corexlsx-categories.xlsx#mutated",
+      "old_file": "corexlsx-categories.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 1,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 0.8416666666666667,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [
+            {
+              "kind": "value_changed",
+              "new_address": "B5",
+              "new_formula": null,
+              "new_value": "P3 Item 1",
+              "new_value_kind": "string",
+              "old_address": "B5",
+              "old_formula": null,
+              "old_value": "Item 1",
+              "old_value_kind": "string",
+              "style_changed": false
+            }
+          ],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Sheet 1",
+          "new_position": 1,
+          "old_name": "Sheet 1",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 1,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 0.7499999999999999,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [
+                {
+                  "kind": "value_changed",
+                  "new_address": "B5",
+                  "new_formula": null,
+                  "new_value": "P3 Item 1",
+                  "new_value_kind": "string",
+                  "old_address": "B5",
+                  "old_formula": null,
+                  "old_value": "Item 1",
+                  "old_value_kind": "string",
+                  "style_changed": false
+                }
+              ],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 3,
+                "end_row": 15,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 3,
+                "end_row": 15,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "modified"
+            },
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 6,
+                "end_row": 15,
+                "start_col": 6,
+                "start_row": 2
+              },
+              "old_range": {
+                "end_col": 6,
+                "end_row": 15,
+                "start_col": 6,
+                "start_row": 2
+              },
+              "row_changes": [],
+              "status": "unchanged"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 1,
+        "columns_added": 0,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "calamine-shared-formula-change",
+    "expected_events": [
+      "cell:formula_changed:Sheet1:B2->B2"
+    ],
+    "observed_events": [
+      "cell:formula_changed:Sheet1:B2->B2"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "calamine-shared-formula.xlsx#mutated",
+      "old_file": "calamine-shared-formula.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 1.0,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [
+            {
+              "kind": "formula_changed",
+              "new_address": "B2",
+              "new_formula": "=A2*3",
+              "new_value": "4",
+              "new_value_kind": "number",
+              "old_address": "B2",
+              "old_formula": "=A2*2",
+              "old_value": "4",
+              "old_value_kind": "number",
+              "style_changed": false
+            }
+          ],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Sheet1",
+          "new_position": 1,
+          "old_name": "Sheet1",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [
+                {
+                  "kind": "formula_changed",
+                  "new_address": "B2",
+                  "new_formula": "=A2*3",
+                  "new_value": "4",
+                  "new_value_kind": "number",
+                  "old_address": "B2",
+                  "old_formula": "=A2*2",
+                  "old_value": "4",
+                  "old_value_kind": "number",
+                  "style_changed": false
+                }
+              ],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "modified"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 1,
+        "columns_added": 0,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 1,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "calamine-merge-addition",
+    "expected_events": [
+      "merge:added:Sheet1:A3:B3"
+    ],
+    "observed_events": [
+      "merge:added:Sheet1:A3:B3"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "calamine-merge-cells.xlsx#mutated",
+      "old_file": "calamine-merge-cells.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 1.0,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [
+            {
+              "kind": "added",
+              "new_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 3
+              },
+              "old_range": null
+            }
+          ],
+          "new_name": "Sheet1",
+          "new_position": 1,
+          "old_name": "Sheet1",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 3,
+                "end_row": 2,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 3,
+                "end_row": 2,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "unchanged"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 0,
+        "columns_added": 0,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 1,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "calamine-inventory-column-insertion",
+    "expected_events": [
+      "column:added:Sheet1:2"
+    ],
+    "observed_events": [
+      "column:added:Sheet1:2"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "calamine-inventory-table.xlsx#mutated",
+      "old_file": "calamine-inventory-table.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 0.925,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [
+            {
+              "ambiguous": false,
+              "confidence": null,
+              "header": "P3-INVENTORY-COLUMN-R1",
+              "kind": "added",
+              "new_index": 2,
+              "old_index": null
+            }
+          ],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Sheet1",
+          "new_position": 1,
+          "old_name": "Sheet1",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "modified",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 0.925,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [
+                {
+                  "ambiguous": false,
+                  "confidence": null,
+                  "header": "P3-INVENTORY-COLUMN-R1",
+                  "kind": "added",
+                  "new_index": 2,
+                  "old_index": null
+                }
+              ],
+              "new_range": {
+                "end_col": 4,
+                "end_row": 5,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 3,
+                "end_row": 5,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "modified"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 0,
+        "columns_added": 1,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 0,
+        "sheets_removed": 0,
+        "sheets_renamed": 0,
+        "table_regions_added": 0,
+        "table_regions_removed": 0
+      }
+    }
+  },
+  {
+    "id": "calamine-multi-sheet-rename-and-addition",
+    "expected_events": [
+      "sheet:added:P3 Added",
+      "sheet:renamed:Visible->Visible 2026"
+    ],
+    "observed_events": [
+      "sheet:added:P3 Added",
+      "sheet:renamed:Visible->Visible 2026"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "diff": {
+      "coordinate_system": "one_based",
+      "new_file": "calamine-any-sheets.xlsx#mutated",
+      "old_file": "calamine-any-sheets.xlsx#baseline",
+      "options": {
+        "ambiguity_margin": 0.03,
+        "formula_values": "ignore_when_formulas_equivalent",
+        "limits": {
+          "max_alignment_pairs": 4000000,
+          "max_assignment_size": 512,
+          "max_cells": 5000000,
+          "max_columns_per_sheet": 16384,
+          "max_input_bytes": 67108864,
+          "max_rows_per_sheet": 100000,
+          "max_uncompressed_bytes": 536870912,
+          "max_zip_entries": 10000
+        },
+        "min_match_score": 0.38,
+        "move_match_score": 0.85,
+        "sheet_rename_score": 0.6,
+        "whitespace": "collapse"
+      },
+      "schema_version": 1,
+      "sheets": [
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": null,
+            "minimum_row_confidence": null,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Hidden",
+          "new_position": 2,
+          "old_name": "Hidden",
+          "old_position": 2,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "unchanged",
+          "table_regions": []
+        },
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": null,
+            "minimum_row_confidence": null,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "VeryHidden",
+          "new_position": 3,
+          "old_name": "VeryHidden",
+          "old_position": 3,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "unchanged",
+          "table_regions": []
+        },
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": null,
+            "minimum_row_confidence": null,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Chart",
+          "new_position": 4,
+          "old_name": "Chart",
+          "old_position": 4,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "unchanged",
+          "table_regions": []
+        },
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": 1.0,
+            "minimum_row_confidence": 1.0,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": 1.0,
+          "merge_changes": [],
+          "new_name": "Visible 2026",
+          "new_position": 1,
+          "old_name": "Visible",
+          "old_position": 1,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "renamed",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "row_changes": [],
+              "status": "unchanged"
+            },
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": 1.0,
+                "minimum_row_confidence": 1.0,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 1,
+                "end_row": 5,
+                "start_col": 1,
+                "start_row": 5
+              },
+              "old_range": {
+                "end_col": 1,
+                "end_row": 5,
+                "start_col": 1,
+                "start_row": 5
+              },
+              "row_changes": [],
+              "status": "unchanged"
+            }
+          ]
+        },
+        {
+          "alignment": {
+            "column_ambiguous_signature_groups": 0,
+            "low_confidence_column_matches": 0,
+            "low_confidence_row_matches": 0,
+            "minimum_column_confidence": null,
+            "minimum_row_confidence": null,
+            "row_ambiguous_signature_groups": 0
+          },
+          "cell_changes": [],
+          "column_changes": [],
+          "match_confidence": null,
+          "merge_changes": [],
+          "new_name": "P3 Added",
+          "new_position": 5,
+          "old_name": null,
+          "old_position": null,
+          "order_changed": false,
+          "row_changes": [],
+          "status": "added",
+          "table_regions": [
+            {
+              "alignment": {
+                "column_ambiguous_signature_groups": 0,
+                "low_confidence_column_matches": 0,
+                "low_confidence_row_matches": 0,
+                "minimum_column_confidence": null,
+                "minimum_row_confidence": null,
+                "row_ambiguous_signature_groups": 0
+              },
+              "cell_changes": [],
+              "column_changes": [],
+              "new_range": {
+                "end_col": 2,
+                "end_row": 3,
+                "start_col": 1,
+                "start_row": 1
+              },
+              "old_range": null,
+              "row_changes": [],
+              "status": "added"
+            }
+          ]
+        }
+      ],
+      "summary": {
+        "cell_styles_changed": 0,
+        "cells_changed": 0,
+        "columns_added": 0,
+        "columns_moved": 0,
+        "columns_removed": 0,
+        "formulas_changed": 0,
+        "merged_cells_added": 0,
+        "merged_cells_removed": 0,
+        "rows_added": 0,
+        "rows_moved": 0,
+        "rows_removed": 0,
+        "sheet_order_changes": 0,
+        "sheets_added": 1,
+        "sheets_removed": 0,
+        "sheets_renamed": 1,
+        "table_regions_added": 1,
+        "table_regions_removed": 0
+      }
+    }
+  }
+]
