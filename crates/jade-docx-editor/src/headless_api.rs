@@ -11796,6 +11796,48 @@ mod tests {
     }
 
     #[test]
+    fn a_paragraph_whose_style_numbering_is_taken_off_keeps_the_styles_indent() {
+        // numbering-by-style.docx's heading 3 numbers its paragraphs and
+        // declares its own indent. Taking the numbering off writes
+        // `w:numId w:val="0"`; the load read that as a list and dropped the
+        // style's indent, so the paragraph moved left when the file was
+        // reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/numbering-by-style.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetNumbering {
+                    start_paragraph: 1,
+                    end_paragraph: 1,
+                    num_id: None,
+                    level: None,
+                }],
+            },
+        )
+        .expect("numbering comes off");
+        let indent = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(1)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.indent.as_ref())
+                .map(|indent| (indent.left, indent.hanging))
+        };
+        assert_eq!(indent(&word_doc), Some((Some(26.25), Some(15.75))));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(indent(&reloaded), indent(&word_doc));
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the

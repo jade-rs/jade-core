@@ -4210,10 +4210,14 @@ impl WordDocument {
         // formatting and the style: a numbered paragraph without its own
         // `w:ind` takes the level's left/hanging indent, not the style's.
         // Only the right indent, which levels do not define, flows through.
+        // `w:numId w:val="0"` is numbering taken off (a style's included),
+        // not a list: the paragraph keeps its style's indent, as the editor
+        // gives it when the numbering is removed.
         let numbered = target
             .numbering
             .as_ref()
-            .is_some_and(|numbering| numbering.id.is_some());
+            .and_then(|numbering| numbering.id.as_deref())
+            .is_some_and(|id| id != "0");
         match (&mut target.indent, fallback.indent.as_ref()) {
             (None, Some(fallback_indent)) => {
                 target.indent = Some(if numbered {
