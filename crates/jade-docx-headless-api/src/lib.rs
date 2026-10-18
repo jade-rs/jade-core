@@ -910,6 +910,17 @@ pub enum HeadlessCommand {
         offset: usize,
         break_type: HeadlessSectionBreakType,
     },
+    /// Inserts `text` at a rendered offset where zero-width runs — text
+    /// boxes and note references — sit, after the first `after_anchors` of
+    /// them (`insert_text` types before them all, or at a paragraph's start
+    /// after them). The text takes a run of its own, formatted like the
+    /// text before it.
+    InsertTextAmongAnchors {
+        paragraph: usize,
+        offset: usize,
+        after_anchors: usize,
+        text: String,
+    },
     /// Inserts a Word endnote reference at the exact current-state body
     /// coordinate and creates the matching package entry.
     InsertEndnote {
@@ -1973,6 +1984,7 @@ impl HeadlessCommand {
             HeadlessCommand::InsertBlankPage { .. } => "insert_blank_page",
             HeadlessCommand::InsertCoverPage { .. } => "insert_cover_page",
             HeadlessCommand::InsertShape { .. } => "insert_shape",
+            HeadlessCommand::InsertTextAmongAnchors { .. } => "insert_text_among_anchors",
             HeadlessCommand::DeleteTextBox { .. } => "delete_text_box",
             HeadlessCommand::MarkIndexEntry { .. } => "mark_index_entry",
             HeadlessCommand::InsertIndex { .. } => "insert_index",

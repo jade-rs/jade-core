@@ -3488,6 +3488,27 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertTextAmongAnchors {
+                paragraph,
+                offset,
+                after_anchors,
+                text,
+            } => {
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
+                let (paragraph, after, text) = (*paragraph, *after_anchors, text.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "insert_text_among_anchors",
+                    EditScope::Document,
+                    move |doc| doc.insert_text_among_anchors(paragraph, model_offset, after, &text),
+                )?;
+            }
             HeadlessCommand::DeleteTextBox {
                 paragraph,
                 text_box,
