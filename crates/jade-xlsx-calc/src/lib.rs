@@ -243,6 +243,16 @@ fn project_with_epoch<'a>(
         }
     }
 
+    // Tables before formulas, so structured references (`Table1[Amount]`)
+    // parse.
+    for sheet in &workbook.sheets {
+        for table in &sheet.tables {
+            if let Some(table) = engine_table(&sheet.name, table) {
+                model.add_table(table);
+            }
+        }
+    }
+
     // Names before formulas, so a projected formula that uses one parses.
     // A name the engine rejects is left out; formulas using it disqualify
     // themselves through the `#NAME?` path.
@@ -293,6 +303,48 @@ fn project_with_epoch<'a>(
     }
     model.evaluate();
     Ok((model, projected, unparsed))
+}
+
+/// A table as the engine holds it: its range in A1 form and its columns.
+fn engine_table(
+    sheet: &str,
+    table: &jade_xlsx_reader::Table,
+) -> Option<ironcalc_base::types::Table> {
+    use ironcalc_base::expressions::utils::number_to_column;
+    let corner = |reference: CellRef| {
+        Some(format!(
+            "{}{}",
+            number_to_column(reference.column as i32 + 1)?,
+            reference.row + 1
+        ))
+    };
+    Some(ironcalc_base::types::Table {
+        name: table.name.clone(),
+        display_name: table.display_name.clone(),
+        sheet_name: sheet.to_string(),
+        reference: format!(
+            "{}:{}",
+            corner(table.reference.start)?,
+            corner(table.reference.end)?
+        ),
+        totals_row_count: table.totals_row_count,
+        header_row_count: table.header_row_count,
+        header_row_dxf_id: None,
+        data_dxf_id: None,
+        totals_row_dxf_id: None,
+        columns: table
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(index, name)| ironcalc_base::types::TableColumn {
+                id: index as u32 + 1,
+                name: name.clone(),
+                ..Default::default()
+            })
+            .collect(),
+        style_info: Default::default(),
+        has_filters: table.auto_filter,
+    })
 }
 
 fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: &CellValue) {
