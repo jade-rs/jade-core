@@ -23,6 +23,57 @@ pub struct FontDeclaration {
     /// `w:panose1` — the ten-byte PANOSE classification, kept verbatim.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub panose: Option<String>,
+    /// `w:embedRegular` / `w:embedBold` / `w:embedItalic` /
+    /// `w:embedBoldItalic`: font files the author embedded for this family
+    /// (see [`crate::embedded_font`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub embedded: Vec<EmbeddedFontReference>,
+}
+
+/// Which face of a family an embedded font file supplies.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
+pub enum EmbeddedFontStyle {
+    Regular,
+    Bold,
+    Italic,
+    BoldItalic,
+}
+
+impl EmbeddedFontStyle {
+    fn from_element(local_name: &[u8]) -> Option<Self> {
+        match local_name {
+            b"embedRegular" => Some(Self::Regular),
+            b"embedBold" => Some(Self::Bold),
+            b"embedItalic" => Some(Self::Italic),
+            b"embedBoldItalic" => Some(Self::BoldItalic),
+            _ => None,
+        }
+    }
+
+    pub fn is_bold(self) -> bool {
+        matches!(self, Self::Bold | Self::BoldItalic)
+    }
+
+    pub fn is_italic(self) -> bool {
+        matches!(self, Self::Italic | Self::BoldItalic)
+    }
+}
+
+/// One `w:embed*` element (ECMA-376 Part 1 §17.8.3.3-6).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EmbeddedFontReference {
+    pub style: EmbeddedFontStyle,
+    /// `r:id`: the font part, relative to the fontTable part's relationships.
+    pub relationship_id: String,
+    /// `w:fontKey`: the GUID that obfuscates the part (§17.8.1). Absent for a
+    /// font stored in the clear.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_key: Option<String>,
+    /// `w:subsetted`: the file only holds the glyphs the document uses.
+    #[serde(default)]
+    pub subsetted: bool,
 }
 
 /// Parsed `word/fontTable.xml`.
@@ -50,8 +101,7 @@ impl FontTablePart {
                             let font_name = attr_value(e, b"w:name");
                             current = font_name.map(|name| FontDeclaration {
                                 name,
-                                alt_name: None,
-                                panose: None,
+                                ..FontDeclaration::default()
                             });
                         }
                         b"altName" => {
@@ -68,7 +118,15 @@ impl FontTablePart {
                                     .filter(|value| !value.is_empty());
                             }
                         }
-                        _ => {}
+                        other => {
+                            if let (Some(current), Some(style)) =
+                                (current.as_mut(), EmbeddedFontStyle::from_element(other))
+                            {
+                                if let Some(reference) = embedded_font_reference(e, style) {
+                                    current.embedded.push(reference);
+                                }
+                            }
+                        }
                     }
                 }
                 Ok(Event::End(ref e)) => {
@@ -113,6 +171,30 @@ fn local_name(name: &[u8]) -> &[u8] {
     }
 }
 
+fn embedded_font_reference(
+    element: &quick_xml::events::BytesStart<'_>,
+    style: EmbeddedFontStyle,
+) -> Option<EmbeddedFontReference> {
+    let mut relationship_id = None;
+    let mut font_key = None;
+    let mut subsetted = false;
+    for attr in element.attributes().flatten() {
+        let value = String::from_utf8_lossy(&attr.value).trim().to_string();
+        match local_name(attr.key.as_ref()) {
+            b"id" if !value.is_empty() => relationship_id = Some(value),
+            b"fontKey" if !value.is_empty() => font_key = Some(value),
+            b"subsetted" => subsetted = !matches!(value.as_str(), "0" | "false" | "off"),
+            _ => {}
+        }
+    }
+    Some(EmbeddedFontReference {
+        style,
+        relationship_id: relationship_id?,
+        font_key,
+        subsetted,
+    })
+}
+
 fn attr_value(element: &quick_xml::events::BytesStart<'_>, name: &[u8]) -> Option<String> {
     element.attributes().flatten().find_map(|attr| {
         (attr.key.as_ref() == name)
@@ -154,6 +236,7 @@ mod tests {
         );
         assert_eq!(part.fonts[2].alt_name, None);
 
+        assert!(part.fonts.iter().all(|font| font.embedded.is_empty()));
         let alt_names: Vec<(&str, &str)> = part.alt_names().collect();
         assert_eq!(
             alt_names,
@@ -163,5 +246,30 @@ mod tests {
             ],
             "fonts without an alt name — and self-referential ones — are skipped"
         );
+    }
+
+    #[test]
+    fn parses_embedded_font_references() {
+        let xml = r#"<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:font w:name="Jade Sans">
+    <w:embedRegular r:id="rId1" w:fontKey="{0EC2A5B4-6A1C-4C5B-9D3E-1F2A3B4C5D6E}"/>
+    <w:embedBold r:id="rId2" w:fontKey="{11111111-2222-3333-4444-555555555555}" w:subsetted="1"/>
+    <w:embedItalic w:fontKey="{11111111-2222-3333-4444-555555555555}"/>
+  </w:font>
+</w:fonts>"#;
+        let part = FontTablePart::from_xml(xml).expect("parse fontTable");
+        let embedded = &part.fonts[0].embedded;
+        assert_eq!(embedded.len(), 2, "an embed without r:id names no part");
+        assert_eq!(embedded[0].style, EmbeddedFontStyle::Regular);
+        assert_eq!(embedded[0].relationship_id, "rId1");
+        assert_eq!(
+            embedded[0].font_key.as_deref(),
+            Some("{0EC2A5B4-6A1C-4C5B-9D3E-1F2A3B4C5D6E}")
+        );
+        assert!(!embedded[0].subsetted);
+        assert_eq!(embedded[1].style, EmbeddedFontStyle::Bold);
+        assert!(embedded[1].subsetted);
+        assert!(embedded[1].style.is_bold() && !embedded[1].style.is_italic());
     }
 }

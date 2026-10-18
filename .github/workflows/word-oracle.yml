@@ -1,0 +1,63 @@
+name: Word oracle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  layout-compare:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Compare all committed Word layout oracles
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force target | Out-Null
+          $traces = Get-ChildItem "tests/word-oracle" -Filter "word-trace.json" -Recurse |
+            Sort-Object FullName
+          if ($traces.Count -eq 0) {
+            throw "No committed Word oracle traces found"
+          }
+          foreach ($trace in $traces) {
+            $fixture = $trace.Directory.Name
+            $input = "public/fixtures/$fixture.docx"
+            if (-not (Test-Path $input)) {
+              throw "Missing DOCX fixture for Word oracle: $input"
+            }
+            $report = "target/$fixture-word-layout-ci-report.json"
+            $cmdOutput = & cargo run -p jade-docx-headless-editor-cli -- layout-compare-word `
+              --input $input `
+              --word-trace $trace.FullName `
+              --output $report `
+              --assert-no-diffs 2>&1
+            $exitCode = $LASTEXITCODE
+            $cmdOutput | ForEach-Object { Write-Host $_ }
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+          }
+
+      - name: Upload Word oracle comparison report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: word-oracle-layout-reports
+          path: target/*-word-layout-ci-report.json
+          if-no-files-found: warn

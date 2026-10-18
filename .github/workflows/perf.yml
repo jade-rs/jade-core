@@ -1,0 +1,118 @@
+name: Perf
+
+# Counts the instructions each `jade-docx-perf` scenario executes, on the pull
+# request's base and head, and comments the difference with the functions
+# that moved. Instruction counts from callgrind are close to deterministic, so
+# unlike wall-clock timings on a shared runner they can be compared run to run.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: perf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  FIXTURES: contract.docx nda.docx yokohama.docx
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  callgrind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: head
+
+      - name: Checkout base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: perf-ci
+          workspaces: |
+            head -> target
+            base -> target
+
+      - name: Install valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends valgrind
+
+      - name: Build head
+        working-directory: head
+        run: cargo build -p jade-docx-perf --profile perf-ci --locked
+
+      # The base is measured with the head's harness so both sides run the
+      # same scenarios. A harness that does not compile against the base
+      # leaves the report head-only rather than failing the job.
+      - name: Build base
+        id: base
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          python3 head/scripts/perf/graft_harness.py head base
+          cd base && cargo build -p jade-docx-perf --profile perf-ci
+
+      - name: Measure
+        run: |
+          head/scripts/perf/run-callgrind.sh head/target/perf-ci/jade-docx-perf perf/head $FIXTURES
+          if [ "${{ steps.base.outcome }}" = "success" ]; then
+            head/scripts/perf/run-callgrind.sh base/target/perf-ci/jade-docx-perf perf/base $FIXTURES
+          fi
+
+      - name: Report
+        run: |
+          python3 head/scripts/perf/compare.py perf/base perf/head \
+            --base-label "base ${BASE_SHA::8}" --head-label "head ${HEAD_SHA::8}" > perf/summary.md
+          cat perf/summary.md >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Upload callgrind outputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: perf-callgrind
+          path: perf/
+          if-no-files-found: warn
+
+      # Forks get a read-only token; their report stays in the job summary.
+      - name: Comment on the pull request
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("perf/summary.md", "utf8");
+            const header = body.split("\n", 1)[0];
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.startsWith(header));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
