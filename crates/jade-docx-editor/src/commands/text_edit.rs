@@ -297,7 +297,7 @@ impl DeletedFields {
 }
 
 fn ruby_of(run: &Run) -> Option<&RubyAnnotation> {
-    run.properties.as_ref()?.ruby.as_ref()
+    run.properties.as_ref()?.ruby.as_deref()
 }
 
 /// For each run, the index of the run that starts the ruby base it belongs
@@ -1194,12 +1194,13 @@ mod tests {
     fn ruby_run(text: &str, continuation: bool) -> Run {
         Run {
             properties: Some(RunProperties {
-                ruby: Some(RubyAnnotation {
+                ruby: Some(Box::new(RubyAnnotation {
                     text: "kana".to_string(),
                     size_pt: None,
                     align: None,
                     continuation,
-                }),
+                    ..RubyAnnotation::default()
+                })),
                 ..RunProperties::default()
             }),
             ..text_run(text)

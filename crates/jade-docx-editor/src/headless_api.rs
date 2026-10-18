@@ -5239,7 +5239,14 @@ fn numbering_texts(word_doc: &WordDocument) -> Vec<Option<String>> {
         let start = numbering_part.start_value(num_id, level);
         let has_start_override = numbering_part.has_start_override(num_id, level);
         counters.initialize_ancestor_levels(Some(numbering_part), num_id, level);
-        counters.increment(num_id, abstract_num_id, level, start, has_start_override);
+        counters.increment_with(
+            Some(numbering_part),
+            num_id,
+            abstract_num_id,
+            level,
+            start,
+            has_start_override,
+        );
         let marker = numbering_part.format_number(num_id, level, &counters);
         if !marker.is_empty() {
             *entry = Some(marker);

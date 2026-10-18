@@ -9,6 +9,9 @@ const WORD_DEFAULT_LINE_SPACING_MULTIPLIER: f32 = 1.15;
 pub struct WordGridLineSizing {
     pitch_pt: f64,
     multiple: f64,
+    /// An atLeast paragraph's value: a line is never shorter, and what it
+    /// adds over the auto grid line sits above the text.
+    at_least_pt: Option<f64>,
 }
 
 impl WordGridLineSizing {
@@ -27,17 +30,43 @@ impl WordGridLineSizing {
             section_content_height_pt,
             base_font_size,
         )?);
-        let multiple = f64::from(proportional_line_multiple(spacing)?);
+        let at_least_pt = spacing
+            .filter(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))
+            .and_then(|spacing| spacing.line)
+            .map(f64::from)
+            .filter(|line| line.is_finite() && *line > 0.0);
+        let multiple = if at_least_pt.is_some() {
+            1.0
+        } else {
+            f64::from(proportional_line_multiple(spacing)?)
+        };
         (pitch_pt.is_finite() && pitch_pt > 0.0 && multiple.is_finite() && multiple > 0.0)
-            .then_some(Self { pitch_pt, multiple })
+            .then_some(Self {
+                pitch_pt,
+                multiple,
+                at_least_pt,
+            })
     }
 
     pub fn line_height_px(self, single_px: Option<f64>, fallback_px: f64) -> f64 {
-        let Some(single_px) = single_px.filter(|px| px.is_finite() && *px > 0.0) else {
+        let Some(grid_line) = self.grid_line_px(single_px) else {
             return fallback_px;
         };
+        grid_line + self.extra_above_px(single_px)
+    }
+
+    /// What an atLeast value adds above the auto grid line's text.
+    pub fn extra_above_px(self, single_px: Option<f64>) -> f64 {
+        match (self.at_least_pt, self.grid_line_px(single_px)) {
+            (Some(at_least), Some(grid_line)) => (at_least * 96.0 / 72.0 - grid_line).max(0.0),
+            _ => 0.0,
+        }
+    }
+
+    fn grid_line_px(self, single_px: Option<f64>) -> Option<f64> {
+        let single_px = single_px.filter(|px| px.is_finite() && *px > 0.0)?;
         let pitch_px = self.pitch_pt * 96.0 / 72.0;
-        ((single_px * self.multiple / pitch_px).ceil().max(1.0)) * pitch_px
+        Some(((single_px * self.multiple / pitch_px).ceil().max(1.0)) * pitch_px)
     }
 }
 /// Each auto-spaced Mac line uses its own known font box. Unknown faces,
@@ -283,6 +312,33 @@ pub fn word_automatic_note_separator_advance_px(
     }
     let (size_pt, _) = split_font_descriptor(font_descriptor)?;
     (size_pt.is_finite() && size_pt > 0.0).then_some(f64::from(size_pt) * 96.0 / 72.0 * 0.5)
+}
+
+/// The face Word for Mac sets a numbering label's `w:suff="space"` in: the
+/// label's descriptor with its family replaced by Arial. Word for Mac 16.114
+/// makes that space 0.278 em of the label size (Arial's and Century's space)
+/// whatever face the label, the paragraph mark, the paragraph style, the
+/// following run or the document defaults name. `None` on Word for Windows,
+/// whose traces were fitted with the label's high-ANSI face.
+pub fn word_numbering_suffix_space_descriptor(label_descriptor: &str) -> Option<String> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    let mut offset = 0;
+    for token in label_descriptor.split_inclusive(char::is_whitespace) {
+        offset += token.len();
+        let trimmed = token.trim_end();
+        if trimmed
+            .strip_suffix("pt")
+            .is_some_and(|size| size.parse::<f32>().is_ok())
+        {
+            return Some(format!(
+                "{}Arial, 'Liberation Sans', sans-serif",
+                &label_descriptor[..offset]
+            ));
+        }
+    }
+    None
 }
 
 /// Whether `compressPunctuation` narrows East Asian punctuation inside a
@@ -1505,9 +1561,10 @@ fn synthetic_bold_descriptor_needs_style_scan(font_descriptor: &str) -> bool {
 
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
-/// Mincho, MS Gothic). Word for Mac 16.113 sets bold 10.5pt `第1条（目的）`
-/// in either face at a 10.71pt pitch and the 16pt title at 16.32pt; Word for
-/// Windows keeps 10.5pt (`wrong-num` Word COM trace), so this is 0 there.
+/// Mincho, MS Gothic, and Century, which Word for Mac ships without one).
+/// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
+/// 10.71pt pitch and the 16pt title at 16.32pt; Word for Windows keeps 10.5pt
+/// (`wrong-num` Word COM trace), so this is 0 there.
 pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return 0.0;
@@ -1551,6 +1608,7 @@ pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
             | "MS P Gothic"
             | "ＭＳＰゴシック"
             | "MS PGothic"
+            | "Century"
     );
     if synthesized {
         f64::from(size_pt) * 96.0 / 72.0 * 0.02
@@ -2145,8 +2203,22 @@ pub fn word_east_asian_font_metrics_apply(
     spacing: Option<&Spacing>,
     document_uses_east_asian_layout: bool,
 ) -> bool {
+    word_east_asian_font_metrics_apply_on_grid(spacing, document_uses_east_asian_layout, false)
+}
+
+/// [`word_east_asian_font_metrics_apply`] for a paragraph whose lines
+/// `grid_centres_text` ([`word_grid_line_centres_text`]): an atLeast line
+/// there is an auto grid line with room added above it, so its text sits in
+/// Word's font box too.
+pub fn word_east_asian_font_metrics_apply_on_grid(
+    spacing: Option<&Spacing>,
+    document_uses_east_asian_layout: bool,
+    grid_centres_text: bool,
+) -> bool {
     word_sizes_east_asian_lines_from_faces(document_uses_east_asian_layout)
-        && proportional_line_multiple(spacing).is_some()
+        && (proportional_line_multiple(spacing).is_some()
+            || (grid_centres_text
+                && spacing.is_some_and(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))))
 }
 
 /// Whether Word centres a line's font line box in its grid pitch: lines
@@ -2330,6 +2402,29 @@ pub fn resolve_line_height_points_with_default_multiplier(
     implicit_line_box_pt: Option<f32>,
     default_line_spacing_multiplier: f32,
 ) -> f32 {
+    // Word for Mac 16.114: under an active line grid an atLeast line is its
+    // value or the auto grid line, whichever is taller, not rounded up to
+    // whole grid steps.
+    if word_layout_platform() == WordLayoutPlatform::Mac
+        && snap_to_grid
+        && doc_grid_has_active_line_grid(doc_grid)
+    {
+        if let Some(at_least) = spacing
+            .filter(|value| value.line_rule.as_deref() == Some("atLeast"))
+            .and_then(|value| value.line)
+        {
+            let auto = resolve_line_height_points_with_default_multiplier(
+                base_font_size,
+                None,
+                doc_grid,
+                snap_to_grid,
+                section_content_height_pt,
+                implicit_line_box_pt,
+                default_line_spacing_multiplier,
+            );
+            return auto.max(at_least);
+        }
+    }
     let mut line_height = base_font_size;
     let mut spacing_explicit = false;
     let single_auto_spacing = spacing.is_some_and(|value| {
@@ -2418,6 +2513,26 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_numbering_suffix_space_is_measured_in_arial_at_the_label_size() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("bold 14.00pt 'ＭＳ 明朝', 'MS Mincho', serif")
+                .as_deref(),
+            Some("bold 14.00pt Arial, 'Liberation Sans', sans-serif")
+        );
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace").as_deref(),
+            Some("10.50pt Arial, 'Liberation Sans', sans-serif")
+        );
+        assert_eq!(word_numbering_suffix_space_descriptor("Courier"), None);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace"),
+            None
+        );
+    }
+
     use super::*;
 
     #[test]
@@ -2644,6 +2759,84 @@ mod tests {
         assert!(WordGridLineSizing::new(None, false, Some(&grid), Some(650.0), 11.0).is_none());
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert!(WordGridLineSizing::new(None, true, Some(&grid), Some(650.0), 11.0).is_none());
+    }
+
+    /// Word for Mac 16.114 atLeast probe (18pt `lines` grid, 10.5pt MS
+    /// Mincho): an atLeast line is as tall as its value or the auto grid line,
+    /// whichever is taller, without rounding up to whole grid steps, and the
+    /// extra sits above an auto line's text.
+    #[test]
+    fn mac_grid_at_least_line_takes_its_value_above_the_auto_grid_line() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let grid = doc_grid("lines", Some(18.0), None);
+        let px = |pt: f64| pt * 96.0 / 72.0;
+        let single =
+            word_east_asian_font_line_height_pt("10.50pt MS Mincho").map(|pt| px(f64::from(pt)));
+        for (value, expected) in [(12.0_f32, 18.0), (20.0, 20.0), (30.0, 30.0)] {
+            let spacing = Spacing {
+                line: Some(value),
+                line_rule: Some("atLeast".into()),
+                ..Spacing::default()
+            };
+            let resolved = resolve_line_height_points(
+                10.5,
+                Some(&spacing),
+                Some(&grid),
+                true,
+                Some(700.0),
+                None,
+            );
+            assert!(
+                (f64::from(resolved) - expected).abs() < 1e-4,
+                "{value}: {resolved}"
+            );
+            let sizing =
+                WordGridLineSizing::new(Some(&spacing), true, Some(&grid), Some(700.0), 10.5)
+                    .expect("atLeast lines are sized on the grid");
+            assert!(
+                (sizing.line_height_px(single, 0.0) - px(expected)).abs() < 1e-4,
+                "{value}"
+            );
+            assert!(
+                (sizing.extra_above_px(single) - px(expected - 18.0)).abs() < 1e-4,
+                "{value}"
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn grid_centred_at_least_line_takes_the_word_font_box() {
+        // The atLeast probe sets a 12pt atLeast line on the same baseline as an
+        // auto one on an 18pt grid: both are centred with Word's font box.
+        let at_least = Spacing {
+            line: Some(12.0),
+            line_rule: Some("atLeast".into()),
+            ..Spacing::default()
+        };
+        let exact = Spacing {
+            line_rule: Some("exact".into()),
+            ..at_least.clone()
+        };
+        assert!(word_east_asian_font_metrics_apply_on_grid(
+            Some(&at_least),
+            true,
+            true
+        ));
+        assert!(!word_east_asian_font_metrics_apply_on_grid(
+            Some(&at_least),
+            true,
+            false
+        ));
+        assert!(!word_east_asian_font_metrics_apply_on_grid(
+            Some(&exact),
+            true,
+            true
+        ));
+        assert_eq!(
+            word_east_asian_font_metrics_apply_on_grid(None, true, false),
+            word_east_asian_font_metrics_apply(None, true)
+        );
     }
 
     fn bordered(space: u32, indent_left: Option<f32>) -> ParagraphProperties {
@@ -2915,6 +3108,14 @@ mod tests {
         assert_eq!(
             word_synthetic_bold_extra_advance_px("10.50pt '游明朝'"),
             0.0
+        );
+        // Word for Mac ships Century without a bold face: scroll-offset-repro's
+        // bold 14pt `第12章` digits are 8.07pt apart, 7.79pt + 1/50 em.
+        assert!(
+            (word_synthetic_bold_extra_advance_px("bold 14.00pt 'Century'")
+                - 14.0 * 4.0 / 3.0 * 0.02)
+                .abs()
+                < 1e-9
         );
         // Times New Roman and Yu Gothic have real bold faces.
         assert_eq!(
