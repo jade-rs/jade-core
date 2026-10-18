@@ -27931,6 +27931,14 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                // The package first, while the paragraph's path still names
+                // it in every `w:txbxContent`.
+                self.edit_text_box_paragraph_structure_xml(
+                    &host_path,
+                    run_index,
+                    &block_path,
+                    None,
+                );
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28252,7 +28260,18 @@ impl WordDocument {
                 }
 
                 Self::refresh_text_box_text(text_box);
+                // The package's paragraph splits too, in the DrawingML box
+                // and its VML fallback; both halves are then written from
+                // the model.
+                self.edit_text_box_paragraph_structure_xml(
+                    &host_path,
+                    run_index,
+                    &block_path,
+                    Some(offset),
+                );
                 self.rebuild_paragraph_surfaces();
+                self.sync_paragraph_text(index);
+                self.sync_paragraph_text(index + 1);
                 true
             }
             ParagraphSurface::Note {
@@ -29766,6 +29785,76 @@ impl WordDocument {
         }
 
         walk(elements, target, &mut Vec::new(), &mut 0)
+    }
+
+    /// Splits the text box paragraph at `block_path` at `offset` (a split's
+    /// head keeps the text before it, as a note's does) or, without an
+    /// offset, removes it — in every `w:txbxContent` of the host run: the
+    /// DrawingML box and its VML fallback. Without this a split or join in a
+    /// text box changed the model only, and the file kept the original
+    /// paragraphs.
+    fn edit_text_box_paragraph_structure_xml(
+        &mut self,
+        host_path: &[PathEntry],
+        run_index: usize,
+        block_path: &[PathEntry],
+        split_offset: Option<usize>,
+    ) {
+        let Some(run_id) = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| Self::locate_paragraph(&body.elements, host_path))
+            .and_then(|paragraph| paragraph.runs.get(run_index))
+            .and_then(|run| run.node_id)
+        else {
+            return;
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return;
+        };
+        let mut content_ids = Vec::new();
+        if let Some(run_element) = raw.element(run_id) {
+            Self::collect_text_box_content_ids(run_element, &mut content_ids);
+        }
+        for content_id in content_ids {
+            let Some(paragraph_id) = raw
+                .element(content_id)
+                .and_then(|content| Self::locate_text_box_paragraph_element(content, block_path))
+                .map(|paragraph| paragraph.id)
+            else {
+                continue;
+            };
+            let (Some(parent), Some(path)) = (raw.parent_id(paragraph_id), raw.path(paragraph_id))
+            else {
+                continue;
+            };
+            match split_offset {
+                Some(offset) => {
+                    let Some(mut tail) = raw.element(paragraph_id).cloned() else {
+                        continue;
+                    };
+                    let (head, rest) =
+                        Self::split_paragraph_anchor_children(&tail.children, offset);
+                    if let Some(element) = raw.element_mut(paragraph_id) {
+                        element.children = head;
+                    }
+                    tail.children = rest;
+                    let index = path.as_slice().last().copied().unwrap_or(0);
+                    if let Ok(Some(new_id)) =
+                        raw.insert_node(parent, index + 1, XmlNode::Element(tail))
+                    {
+                        if let Some(element) = raw.element_mut(new_id) {
+                            Self::refresh_paragraph_identity(element);
+                        }
+                    }
+                }
+                None => {
+                    let _ = raw.remove_node(&path);
+                }
+            }
+            raw.rebuild_index_for_subtree(content_id);
+        }
     }
 
     fn edit_note_paragraph_structure_xml(
