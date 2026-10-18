@@ -16217,6 +16217,20 @@ impl WordDocument {
         Ok(())
     }
 
+    /// A text box's paragraphs are found through the index of the run that
+    /// hosts it, so adding or removing runs before that run (a comment's
+    /// reference, a split at its range) moves it; the surfaces are rebuilt
+    /// whenever the document has text boxes.
+    fn refresh_text_box_surfaces(&mut self) {
+        if self
+            .paragraph_surfaces
+            .iter()
+            .any(|surface| matches!(surface, ParagraphSurface::TextBox { .. }))
+        {
+            self.rebuild_paragraph_surfaces();
+        }
+    }
+
     pub fn add_comment(&mut self, request: AddCommentRequest) -> Result<String, String> {
         let AddCommentRequest {
             start_paragraph,
@@ -16428,6 +16442,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -16659,6 +16674,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -16992,6 +17008,7 @@ impl WordDocument {
             }
             raw.rebuild_index();
         }
+        self.refresh_text_box_surfaces();
 
         Ok(())
     }
@@ -35672,6 +35689,72 @@ mod tests {
         let _ = word_doc.document_mut();
         let after = Rc::as_ptr(word_doc.document.as_ref().unwrap());
         assert_eq!(before, after, "sole owner again must not reallocate");
+    }
+
+    /// A comment on the paragraph that hosts a text box splits and adds runs
+    /// there; the text box's paragraphs, found through the host's runs, must
+    /// still be reachable afterwards, and after the comment is deleted again.
+    #[test]
+    fn comments_on_a_text_box_host_keep_the_text_box_paragraphs_reachable() {
+        let mut word_doc = load_fixture("textbox.docx");
+        let text = |doc: &WordDocument, index: usize| {
+            doc.paragraph(index)
+                .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
+        };
+        let before: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(
+            word_doc.paragraph_story(1),
+            Some(ParagraphStory::TextBox {
+                host: 0,
+                text_box: 0,
+                paragraph: 0
+            })
+        );
+        let id = word_doc
+            .add_comment(AddCommentRequest {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 2,
+                text: "c".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("comment on the host paragraph");
+        let after: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(after, before, "after adding the comment");
+        word_doc
+            .reply_to_comment(ReplyToCommentRequest {
+                parent_comment_id: id.clone(),
+                text: "reply".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("reply");
+        let replied: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(replied, before, "after replying");
+        word_doc.delete_comment(&id).expect("delete the thread");
+        let deleted: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(deleted, before, "after deleting the thread");
+        let reopened = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reopen");
+        let reread: Vec<_> = (0..reopened.paragraph_count())
+            .map(|i| text(&reopened, i))
+            .collect();
+        assert_eq!(reread, before, "after reopening");
     }
 
     #[test]
