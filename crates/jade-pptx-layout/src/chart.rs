@@ -489,6 +489,7 @@ pub(crate) fn plot_chart(
             // One polygon from the lower edge up to the values and back.
             let mut top = Vec::new();
             let mut bottom = Vec::new();
+            #[allow(clippy::needless_range_loop)]
             for c in 0..categories {
                 let v = scaled(c, value_at(s, c).unwrap_or(0.0));
                 let base = if stacked { area_base[c] } else { 0.0 };
