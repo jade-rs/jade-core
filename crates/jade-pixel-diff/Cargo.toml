@@ -1,0 +1,20 @@
+[package]
+name = "jade-pixel-diff"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Region-level pixel diff of two page renders (CIE76 ΔE over 8px cells)"
+publish = false
+
+[lib]
+name = "jade_pixel_diff"
+doctest = false
+
+[[bin]]
+name = "jade-pixel-diff"
+path = "src/bin/jade-pixel-diff.rs"
+
+[dependencies]
+png = "0.17"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
