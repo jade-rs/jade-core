@@ -2201,7 +2201,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             .and_then(|advances| advances.get(&offset).copied())
     });
     let measured_width_is_oracle = oracle_measured_glyph_width.is_some();
-    let synthetic_bold_extra = if measured_width_is_oracle {
+    // A space has no ink to embolden: Word for Mac sets scroll-offset-repro's
+    // bold `第６章　賃金` ideographic space at its plain width. (A bold ASCII
+    // space takes its advance from `word_ascii_metrics` before this.)
+    let synthetic_bold_extra = if measured_width_is_oracle || grapheme.trim().is_empty() {
         0.0
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
@@ -9978,6 +9981,56 @@ mod tests {
                 );
                 assert_eq!(*ctx.pair_measurements.borrow(), 0, "pair {pair:?}");
             }
+        }
+    }
+
+    #[test]
+    fn mac_synthetic_bold_leaves_the_ideographic_space_unwidened() {
+        // scroll-offset-repro's bold 14pt `第６章　賃金`: Word for Mac widens
+        // each emboldened glyph by 1/50 em but sets the ideographic space at
+        // its plain 14pt.
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let ctx = CountingKerningContext::new(false);
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Mac,
+            ..ParagraphStyle::default()
+        };
+        let glyphs = |descriptor: &str| {
+            let style = ResolvedRunStyle::new(
+                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, false, None,
+            );
+            let mut cache = FxHashMap::default();
+            let mut glyphs = Vec::new();
+            walk_text_advance_steps(
+                &ctx,
+                "A\u{3000}A",
+                &style,
+                Some(&paragraph),
+                &TextAdvanceState::default(),
+                None,
+                &mut cache,
+                |step| {
+                    glyphs.push((step.grapheme.to_string(), step.advance.glyph_width));
+                    Ok(())
+                },
+            )
+            .unwrap();
+            glyphs
+        };
+        let bold = glyphs("bold 10.50pt 'MS Mincho', serif");
+        let regular = glyphs("10.50pt 'MS Mincho', serif");
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for ((grapheme, bold), (_, regular)) in bold.into_iter().zip(regular) {
+            let extra = if grapheme.trim().is_empty() {
+                0.0
+            } else {
+                0.28
+            };
+            assert!(
+                (bold - regular - extra).abs() < 1e-9,
+                "{grapheme:?}: {regular} -> {bold}"
+            );
         }
     }
 
