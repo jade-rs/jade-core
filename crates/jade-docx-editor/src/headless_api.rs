@@ -10626,6 +10626,116 @@ mod tests {
     }
 
     #[test]
+    fn enter_and_backspace_inside_a_text_box_are_saved() {
+        // Enter inside a text box split its paragraph on screen only: the
+        // saved box, in its DrawingML and VML copies alike, still held one
+        // paragraph, so reopening the file put the text back together.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .map(|paragraph| {
+                            paragraph.runs.iter().map(|run| run.text.as_str()).collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<String>>()
+        };
+        let boxes = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml.split("<w:txbxContent>")
+                .skip(1)
+                .map(|content| {
+                    let content = content.split("</w:txbxContent>").next().unwrap_or_default();
+                    content
+                        .split("</w:p>")
+                        .filter(|paragraph| paragraph.contains("<w:p"))
+                        .map(|paragraph| {
+                            paragraph
+                                .split("<w:t")
+                                .skip(1)
+                                .filter_map(|text| text.split_once('>'))
+                                .map(|(_, rest)| rest.split('<').next().unwrap_or_default())
+                                .collect::<String>()
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 1,
+                    offset: 2,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        assert_eq!(texts(&word_doc), ["Hello", "He", "llo", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["He", "llo"], vec!["He", "llo"]]);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(texts(&reloaded), ["Hello", "He", "llo", "World"]);
+
+        // Backspace joins them again, in the saved box as well: it kept the
+        // second paragraph, and the file read "Hello", "llo".
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::DeleteText {
+                    paragraph: 2,
+                    offset: 0,
+                    direction: jade_docx_headless_api::HeadlessDeleteDirection::Backward,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("backspace applies");
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["Hello"], vec!["Hello"]]);
+
+        let mut selection = None;
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the join");
+        assert_eq!(boxes(&word_doc), [vec!["He", "llo"], vec!["He", "llo"]]);
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the break");
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["Hello"], vec!["Hello"]]);
+    }
+
+    #[test]
     fn a_style_keeps_the_spacing_a_paragraph_does_not_declare() {
         // A paragraph declaring only `w:spacing w:before` takes its space
         // after from its style. Applying the heading style kept the declared
