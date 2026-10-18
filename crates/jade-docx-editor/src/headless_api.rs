@@ -11018,6 +11018,72 @@ mod tests {
     }
 
     #[test]
+    fn undoing_paragraph_formatting_in_a_note_or_text_box_restores_its_xml() {
+        // Undo puts a paragraph's `w:pPr` back from a snapshot that only
+        // reached a body paragraph's own node: a footnote's or a text box's
+        // paragraph took the edit back on screen and kept it in the file.
+        use crate::commands::{CommandContext, CommandExecutor};
+        for (fixture, paragraph) in [("footnote.docx", 1), ("textbox.docx", 1)] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let formatting = |word_doc: &WordDocument| {
+                let properties = word_doc
+                    .paragraph(paragraph)
+                    .and_then(|paragraph| paragraph.properties.clone())
+                    .unwrap_or_default();
+                (
+                    properties.alignment.map(|alignment| alignment.to_string()),
+                    properties.spacing.and_then(|spacing| spacing.line),
+                )
+            };
+            let before = formatting(&word_doc);
+            let mut command_executor = CommandExecutor::new();
+            apply_headless_commands_with_executor_to_document(
+                &mut word_doc,
+                &mut command_executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::SetParagraphAlignment {
+                            start_paragraph: paragraph,
+                            end_paragraph: paragraph,
+                            alignment: "center".to_string(),
+                        },
+                        HeadlessCommand::SetParagraphLineSpacing {
+                            start_paragraph: paragraph,
+                            end_paragraph: paragraph,
+                            line: Some(Some(2.0)),
+                            line_rule: None,
+                            before: None,
+                            after: None,
+                        },
+                    ],
+                },
+            )
+            .expect("formatting applies");
+            let mut selection = None;
+            for _ in 0..2 {
+                command_executor
+                    .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                    .expect("undo");
+            }
+            assert_eq!(formatting(&word_doc), before, "{fixture}");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(formatting(&reloaded), before, "{fixture}: saved");
+        }
+    }
+
+    #[test]
     fn a_style_applied_in_a_note_or_text_box_is_saved_as_shown() {
         // Applying a paragraph style keeps the formatting the paragraph
         // declares and takes the style's run formatting out of its runs. Both

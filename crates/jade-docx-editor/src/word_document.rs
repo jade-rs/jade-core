@@ -27558,7 +27558,10 @@ impl WordDocument {
         )
     }
 
-    fn note_paragraph_xml(&self, index: usize) -> Option<(String, DocxXmlDocument, XmlNodeId)> {
+    pub(crate) fn note_paragraph_xml(
+        &self,
+        index: usize,
+    ) -> Option<(String, DocxXmlDocument, XmlNodeId)> {
         let ParagraphSurface::Note {
             kind,
             note_id,
