@@ -16753,19 +16753,21 @@ impl WordDocument {
         let comment_id =
             self.append_comment_to_part(&comments_part_path, &text, author, initials, date)?;
 
-        let (reference_run_id, inside_hyperlink) = {
+        let (reference_run_id, inside_container) = {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            // Both ends inside one hyperlink: the markers and the reference run
-            // go inside it too, matching the model, where the reference run
-            // sits among the hyperlink's runs.
-            let (marker_parent_id, inside_hyperlink) =
-                Self::shared_hyperlink_of_runs(raw, paragraph_id, start_run_id, end_run_id)
-                    .map_or((paragraph_id, false), |id| (id, true));
-            let (start_child_index, end_child_index) =
-                Self::locate_run_child_indices(raw, marker_parent_id, start_run_id, end_run_id)?;
+            // A boundary inside a hyperlink or simple field is marked inside
+            // it, and the reference run follows the end marker there: the
+            // model puts the reference run among the container's runs, and a
+            // marker beside the container moved the range's end past the
+            // rest of it.
+            let start_parent_id = Self::run_container(raw, paragraph_id, start_run_id);
+            let end_parent_id = Self::run_container(raw, paragraph_id, end_run_id);
+            let inside_container = end_parent_id != paragraph_id;
+            let start_child_index =
+                Self::locate_single_run_child_index(raw, start_parent_id, start_run_id)?;
 
             let start_marker = raw.create_element(
                 "w:commentRangeStart",
@@ -16776,16 +16778,15 @@ impl WordDocument {
                 Vec::new(),
             );
             raw.insert_node(
-                marker_parent_id,
+                start_parent_id,
                 start_child_index,
                 XmlNode::Element(start_marker),
             )
             .map_err(|err| err.to_string())?;
 
-            let mut end_insert_index = end_child_index.saturating_add(1);
-            if start_child_index <= end_child_index {
-                end_insert_index = end_insert_index.saturating_add(1);
-            }
+            let end_insert_index =
+                Self::locate_single_run_child_index(raw, end_parent_id, end_run_id)?
+                    .saturating_add(1);
             let end_marker = raw.create_element(
                 "w:commentRangeEnd",
                 vec![XmlAttribute {
@@ -16795,7 +16796,7 @@ impl WordDocument {
                 Vec::new(),
             );
             raw.insert_node(
-                marker_parent_id,
+                end_parent_id,
                 end_insert_index,
                 XmlNode::Element(end_marker),
             )
@@ -16813,13 +16814,13 @@ impl WordDocument {
                 raw.create_element("w:r", Vec::new(), vec![XmlNode::Element(comment_reference)]);
             let reference_run_id = raw
                 .insert_node(
-                    marker_parent_id,
+                    end_parent_id,
                     end_insert_index.saturating_add(1),
                     XmlNode::Element(reference_run),
                 )
                 .map_err(|err| err.to_string())?
                 .ok_or_else(|| "failed to insert comment reference run".to_string())?;
-            (reference_run_id, inside_hyperlink)
+            (reference_run_id, inside_container)
         };
 
         {
@@ -16845,13 +16846,18 @@ impl WordDocument {
                 .comment_markers
                 .sort_by_key(|marker| marker.position);
 
-            let hyperlink = if inside_hyperlink {
-                paragraph
-                    .runs
-                    .get(end_run_index_exclusive.saturating_sub(1))
-                    .and_then(|run| run.hyperlink.clone())
-            } else {
-                None
+            // The container's identity, so the sync writes the reference run
+            // in it rather than closing the container before it.
+            let (hyperlink, field) = match inside_container
+                .then(|| {
+                    paragraph
+                        .runs
+                        .get(end_run_index_exclusive.saturating_sub(1))
+                })
+                .flatten()
+            {
+                Some(end_run) => (end_run.hyperlink.clone(), end_run.field.clone()),
+                None => (None, None),
             };
             paragraph.runs.insert(
                 end_run_index_exclusive.min(paragraph.runs.len()),
@@ -16861,7 +16867,7 @@ impl WordDocument {
                     image: None,
                     text_box: None,
                     math: None,
-                    field: None,
+                    field,
                     hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
@@ -16981,17 +16987,26 @@ impl WordDocument {
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            let insert_index = match start_anchor_run_id {
+            // As in a single paragraph, a boundary inside a hyperlink or
+            // simple field is marked inside it.
+            let (start_parent_id, insert_index) = match start_anchor_run_id {
                 Some(run_id) => {
-                    Self::locate_single_run_child_index(raw, start_paragraph_id, run_id)?
+                    let parent = Self::run_container(raw, start_paragraph_id, run_id);
+                    (
+                        parent,
+                        Self::locate_single_run_child_index(raw, parent, run_id)?,
+                    )
                 }
-                None => match Self::paragraph_run_child_bounds(raw, start_paragraph_id) {
-                    Some((_, last)) => last.saturating_add(1),
-                    None => raw
-                        .element(start_paragraph_id)
-                        .map(|element| element.children.len())
-                        .unwrap_or(0),
-                },
+                None => (
+                    start_paragraph_id,
+                    match Self::paragraph_run_child_bounds(raw, start_paragraph_id) {
+                        Some((_, last)) => last.saturating_add(1),
+                        None => raw
+                            .element(start_paragraph_id)
+                            .map(|element| element.children.len())
+                            .unwrap_or(0),
+                    },
+                ),
             };
             let marker = raw.create_element(
                 "w:commentRangeStart",
@@ -17001,26 +17016,34 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(start_paragraph_id, insert_index, XmlNode::Element(marker))
+            raw.insert_node(start_parent_id, insert_index, XmlNode::Element(marker))
                 .map_err(|err| err.to_string())?;
         }
 
         // Insert commentRangeEnd + commentReference run in the end paragraph.
-        let reference_run_id = {
+        let (reference_run_id, inside_container) = {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            let end_index = match end_anchor_run_id {
-                Some(run_id) => Self::locate_single_run_child_index(raw, end_paragraph_id, run_id)?
-                    .saturating_add(1),
-                None => match Self::paragraph_run_child_bounds(raw, end_paragraph_id) {
-                    Some((first, _)) => first,
-                    None => raw
-                        .element(end_paragraph_id)
-                        .map(|element| element.children.len())
-                        .unwrap_or(0),
-                },
+            let (end_parent_id, end_index) = match end_anchor_run_id {
+                Some(run_id) => {
+                    let parent = Self::run_container(raw, end_paragraph_id, run_id);
+                    (
+                        parent,
+                        Self::locate_single_run_child_index(raw, parent, run_id)?.saturating_add(1),
+                    )
+                }
+                None => (
+                    end_paragraph_id,
+                    match Self::paragraph_run_child_bounds(raw, end_paragraph_id) {
+                        Some((first, _)) => first,
+                        None => raw
+                            .element(end_paragraph_id)
+                            .map(|element| element.children.len())
+                            .unwrap_or(0),
+                    },
+                ),
             };
             let end_marker = raw.create_element(
                 "w:commentRangeEnd",
@@ -17030,7 +17053,7 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(end_paragraph_id, end_index, XmlNode::Element(end_marker))
+            raw.insert_node(end_parent_id, end_index, XmlNode::Element(end_marker))
                 .map_err(|err| err.to_string())?;
 
             let comment_reference = raw.create_element(
@@ -17043,13 +17066,15 @@ impl WordDocument {
             );
             let reference_run =
                 raw.create_element("w:r", Vec::new(), vec![XmlNode::Element(comment_reference)]);
-            raw.insert_node(
-                end_paragraph_id,
-                end_index.saturating_add(1),
-                XmlNode::Element(reference_run),
-            )
-            .map_err(|err| err.to_string())?
-            .ok_or_else(|| "failed to insert comment reference run".to_string())?
+            let reference_run_id = raw
+                .insert_node(
+                    end_parent_id,
+                    end_index.saturating_add(1),
+                    XmlNode::Element(reference_run),
+                )
+                .map_err(|err| err.to_string())?
+                .ok_or_else(|| "failed to insert comment reference run".to_string())?;
+            (reference_run_id, end_parent_id != end_paragraph_id)
         };
 
         // Annotate the in-memory model so highlighting / queries are correct
@@ -17085,6 +17110,13 @@ impl WordDocument {
             paragraph
                 .comment_markers
                 .sort_by_key(|marker| marker.position);
+            let (hyperlink, field) = match inside_container
+                .then(|| paragraph.runs.get(end_left_run_count.saturating_sub(1)))
+                .flatten()
+            {
+                Some(end_run) => (end_run.hyperlink.clone(), end_run.field.clone()),
+                None => (None, None),
+            };
             paragraph.runs.insert(
                 end_left_run_count.min(paragraph.runs.len()),
                 Run {
@@ -17093,8 +17125,8 @@ impl WordDocument {
                     image: None,
                     text_box: None,
                     math: None,
-                    field: None,
-                    hyperlink: None,
+                    field,
+                    hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
                     revision_node_id: None,
@@ -27383,27 +27415,30 @@ impl WordDocument {
         }
     }
 
-    /// The `w:hyperlink` directly under `paragraph_id` that holds both runs,
-    /// if they share one.
-    fn shared_hyperlink_of_runs(
+    /// The innermost `w:hyperlink` or `w:fldSimple` under `paragraph_id`
+    /// that holds `run_id`, or the paragraph itself.
+    fn run_container(
         raw: &DocxXmlDocument,
         paragraph_id: XmlNodeId,
-        start_run_id: XmlNodeId,
-        end_run_id: XmlNodeId,
-    ) -> Option<XmlNodeId> {
-        raw.element(paragraph_id)?
-            .children
-            .iter()
-            .find_map(|child| match child {
-                XmlNode::Element(element)
-                    if element.name == "w:hyperlink"
-                        && Self::child_contains_run_id(child, start_run_id)
-                        && Self::child_contains_run_id(child, end_run_id) =>
-                {
-                    Some(element.id)
-                }
-                _ => None,
-            })
+        run_id: XmlNodeId,
+    ) -> XmlNodeId {
+        let mut container = paragraph_id;
+        let Some(mut parent) = raw.element(paragraph_id) else {
+            return container;
+        };
+        while let Some(inner) = parent.children.iter().find_map(|child| match child {
+            XmlNode::Element(element)
+                if matches!(element.name.as_str(), "w:hyperlink" | "w:fldSimple")
+                    && Self::child_contains_run_id(child, run_id) =>
+            {
+                Some(element)
+            }
+            _ => None,
+        }) {
+            container = inner.id;
+            parent = inner;
+        }
+        container
     }
 
     fn locate_run_child_indices(
