@@ -162,6 +162,9 @@ impl Command for SetParagraphStyleCommand {
                 .into_iter()
                 .map(str::to_string)
                 .collect();
+            let declared_attributes = ctx
+                .document
+                .paragraph_declared_property_attributes(paragraph_index);
             // A style's `w:numPr` numbers its paragraphs, which a load
             // resolves into them; switching the style has to take that
             // numbering away again, or a heading turned Normal keeps its
@@ -210,9 +213,28 @@ impl Command for SetParagraphStyleCommand {
                 if let Some(style_props) = style_paragraph_props.as_ref() {
                     let before = props.clone();
                     merge_paragraph_properties_override(props, style_props);
-                    keep_declared_paragraph_properties(props, &before, |tag| {
-                        declared.iter().any(|declared| declared == tag)
-                    });
+                    // What a partly declared `w:spacing` or `w:ind` does not
+                    // declare comes from the new style alone; the merge above
+                    // only overrides, and would keep the old style's value
+                    // wherever the new one is silent.
+                    if let Some(new) = inherited_props.as_ref() {
+                        if declared.iter().any(|tag| tag == "w:spacing") {
+                            props.spacing = new.spacing.clone();
+                        }
+                        if declared.iter().any(|tag| tag == "w:ind") {
+                            props.indent = new.indent.clone();
+                        }
+                    }
+                    keep_declared_paragraph_properties(
+                        props,
+                        &before,
+                        |tag| declared.iter().any(|declared| declared == tag),
+                        |tag, attribute| {
+                            declared_attributes
+                                .iter()
+                                .any(|(declared, name)| declared == tag && name == attribute)
+                        },
+                    );
                 }
                 if let Some(run_style_props) = style_run_props.as_ref() {
                     for run in &mut paragraph.runs {
