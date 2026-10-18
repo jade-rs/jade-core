@@ -33627,7 +33627,23 @@ impl WordDocument {
                             while run_index < runs.len() {
                                 if let Some(run_id) = runs[run_index].node_id {
                                     if !Self::element_contains_run_id(&container, run_id) {
-                                        break;
+                                        let elsewhere = tokens.iter().any(|token| match token {
+                                            ChildToken::RunElement(element) => element.id == run_id,
+                                            ChildToken::NonRun(XmlNode::Element(element)) => {
+                                                Self::element_contains_run_id(element, run_id)
+                                            }
+                                            ChildToken::NonRun(_) => false,
+                                        });
+                                        if elsewhere {
+                                            break;
+                                        }
+                                        // Its element is gone: undoing a deletion
+                                        // puts the run back before its XML. It is a
+                                        // new piece of this container, not the end
+                                        // of it; ending here wrote it and every run
+                                        // after it outside, a field result twice.
+                                        runs[run_index].node_id = None;
+                                        continue;
                                     }
                                     let Some((updated_container, updated_run_id, text_id)) =
                                         Self::update_run_in_container(

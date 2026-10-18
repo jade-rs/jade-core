@@ -11318,6 +11318,73 @@ mod tests {
     }
 
     #[test]
+    fn undoing_a_deletion_in_a_table_of_contents_entry_keeps_its_field() {
+        // A TOC entry is a hyperlink holding the heading's text, a tab and a
+        // PAGEREF field. Undoing a deletion of its tab put the tab's run back
+        // before its XML, and the rebuild took that run for the end of the
+        // hyperlink: it and every run after it were written outside, the
+        // page number twice and the field without its code.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let entry = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("first TOC entry")
+                .runs
+                .iter()
+                .map(|run| run.text.clone())
+                .collect::<String>()
+        };
+        assert_eq!(entry(&word_doc), "Test\t1");
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::DeleteText {
+                    paragraph: 2,
+                    offset: 5,
+                    direction: jade_docx_headless_api::HeadlessDeleteDirection::Backward,
+                    count: 2,
+                }],
+            },
+        )
+        .expect("delete applies");
+        assert_eq!(entry(&word_doc), "Tes1");
+        let mut selection = None;
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo");
+        assert_eq!(entry(&word_doc), "Test\t1");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(entry(&reloaded), "Test\t1");
+        let field_results = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("first TOC entry")
+                .runs
+                .iter()
+                .filter(|run| run.field.is_some())
+                .count()
+        };
+        assert_eq!(
+            field_results(&reloaded),
+            1,
+            "the page number is still a field"
+        );
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
