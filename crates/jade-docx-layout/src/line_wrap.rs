@@ -837,7 +837,10 @@ fn resolve_snap_to_chars_cell_width<C: LineWrapContext>(
         return Ok(Some(*cached));
     }
 
-    let measured = ctx.measure_text("あ", east_asia_font_descriptor)?;
+    let measured = match crate::line_metrics::word_monospace_em_px(east_asia_font_descriptor) {
+        Some(em) => em,
+        None => ctx.measure_text("あ", east_asia_font_descriptor)?,
+    };
     let width = (measured * EAST_ASIA_ADVANCE_SCALE * text_scale_x + char_space_px).max(1.0);
     cache.insert(cache_key, width);
     Ok(Some(width))
@@ -1852,6 +1855,8 @@ struct ComputedTextAdvanceStep<'a> {
     font_descriptor_hash: u64,
     measured_glyph_width: f64,
     measured_width_is_oracle: bool,
+    /// The advance came from a fixed-pitch face's cell, not the host.
+    monospace_cell: bool,
     advance: GraphemeAdvance,
 }
 
@@ -2148,9 +2153,18 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
     };
-    let measured_glyph_width = match oracle_measured_glyph_width {
-        Some(width) => width,
-        None => {
+    // ＭＳ 明朝 / ＭＳ ゴシック set every glyph on a full/half-em grid and have
+    // no kerning, so neither the advance nor pair kerning comes from the
+    // host, whose face may be a substitute (jlsi/jade#469).
+    let monospace_width = if measured_width_is_oracle {
+        None
+    } else {
+        crate::line_metrics::word_monospace_advance_px(font_descriptor, grapheme)
+    };
+    let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
+        (Some(width), _) => width,
+        (None, Some(width)) => width + synthetic_bold_extra,
+        (None, None) => {
             ctx.measure_text_with_font_key(
                 grapheme,
                 font_descriptor,
@@ -2206,6 +2220,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         };
         let raw_adjustment = if let Some(adjustment) = word_pair_adjustment {
             adjustment
+        } else if monospace_width.is_some() {
+            // Word's own punctuation rules above still apply; the host's pair
+            // kerning belongs to whatever face stands in for the fixed one.
+            0.0
         } else {
             let prev_width = state.prev_raw_glyph_width.unwrap_or_default();
             let pair_width = measure_text_pair(
@@ -2276,6 +2294,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         font_descriptor_hash,
         measured_glyph_width,
         measured_width_is_oracle,
+        monospace_cell: monospace_width.is_some(),
         advance,
     })
 }
@@ -5716,8 +5735,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 };
                 let candidate_width =
                     (marker_gap + computed.advance.total_advance + fitted_gap).max(0.0);
-                let trailing_overhang =
-                    ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x;
+                let trailing_overhang = if computed.monospace_cell {
+                    // Fixed-pitch glyphs stay inside their cell.
+                    0.0
+                } else {
+                    ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x
+                };
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 let zero_width_oracle_glyph =
                     computed.measured_width_is_oracle && candidate_width <= f64::EPSILON;
@@ -8973,11 +8996,13 @@ mod tests {
                 0,
             ),
             (
+                // Fixed-pitch faces have no kerning on either platform
+                // (jlsi/jade#469): the stand-in's pair kerning is not Word's.
                 "4.50pt 'MS Mincho', serif",
                 "す。",
                 WordLayoutPlatform::Windows,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'Test', serif",
@@ -8997,15 +9022,15 @@ mod tests {
                 "4.50pt 'MS Mincho', serif",
                 "す\u{3099}。",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
                 "To",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
@@ -9014,20 +9039,20 @@ mod tests {
                 -3.0,
                 0,
             ),
-            // A proportional measured glyph is not a full-em fixed glyph.
+            // The cell, not a narrower stand-in glyph, sets the advance.
             (
                 "10.50pt 'MS Mincho', serif",
                 "す。",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
                 "ｶ､",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
@@ -9225,7 +9250,8 @@ mod tests {
             );
             assert!((advance - 7.28).abs() < 1e-9);
         }
-        assert_eq!(*ctx.pair_measurements.borrow(), 1);
+        // A fixed-pitch face takes no host pair kerning at all.
+        assert_eq!(*ctx.pair_measurements.borrow(), 0);
     }
 
     #[test]
@@ -12426,6 +12452,8 @@ mod tests {
                 properties: Some(Rc::new(RunProperties {
                     fit_text: Some(fit.clone()),
                     char_spacing: Some(5.25),
+                    // The original is 10.5pt: a 14px ＭＳ 明朝 cell.
+                    font_size: Some(10.5),
                     ..RunProperties::default()
                 })),
                 ..make_run("床面")
@@ -12435,6 +12463,7 @@ mod tests {
                 end: 9,
                 properties: Some(Rc::new(RunProperties {
                     fit_text: Some(fit),
+                    font_size: Some(10.5),
                     ..RunProperties::default()
                 })),
                 ..make_run("積")
@@ -14299,6 +14328,59 @@ mod tests {
                 assert!((advance.total_advance - expected - 2.0).abs() < 1e-9);
             }
         }
+    }
+
+    /// ＭＳ 明朝 / ＭＳ ゴシック advances come from their full/half-em cells,
+    /// never from the host's stand-in face (jlsi/jade#469).
+    #[test]
+    fn ms_fixed_pitch_advances_follow_their_cells_without_host_measurement() {
+        let text = "日本ab ｱ。é";
+        let wrap = |family: &str| {
+            let descriptor: Rc<str> = Rc::from(format!("10.50pt '{family}', serif").as_str());
+            let mut ctx = TestContext::new(9.0);
+            ctx.style = ResolvedRunStyle::new(
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor,
+                0.0,
+                1.0,
+                false,
+                None,
+            );
+            let lines = wrap_text_into_lines(
+                &ctx,
+                text,
+                &[make_run(text)],
+                0.0,
+                &ParagraphStyle::default(),
+                0,
+                1000.0,
+            )
+            .unwrap();
+            assert_eq!(lines.len(), 1);
+            let widths: Vec<f64> = lines[0].clusters.iter().map(|c| c.width).collect();
+            (widths, ctx.recorded_measurements())
+        };
+        for family in ["MS Mincho", "ＭＳ ゴシック", "ＭＳ明朝", "MS-Gothic"] {
+            let (widths, measured) = wrap(family);
+            // 10.5pt = 14px: full cells 14, half cells 7; é is not a known
+            // cell and keeps the stand-in's 9px.
+            assert_eq!(
+                widths,
+                vec![14.0, 14.0, 7.0, 7.0, 7.0, 7.0, 14.0, 9.0],
+                "{family}"
+            );
+            for grapheme in ["日", "本", "a", "b", " ", "ｱ", "。"] {
+                assert!(
+                    !measured.iter().any(|text| text == grapheme),
+                    "{family}: {grapheme:?} was measured by the host: {measured:?}"
+                );
+            }
+        }
+        // The proportional siblings keep the host's widths.
+        let (widths, _) = wrap("MS PMincho");
+        assert_eq!(widths, vec![9.0; 8]);
     }
 
     #[test]
@@ -16511,8 +16593,13 @@ mod tests {
         );
     }
 
+    /// The ordinance paragraph is set in ＭＳ 明朝, whose advances follow from
+    /// the characters alone (jlsi/jade#469): whatever widths the host's
+    /// stand-in face reports, the lines do not move. (This simplified wrap
+    /// has no auto-space, so it does not reach Word's `第4号 | までに` break;
+    /// the production path is checked against the Word corpus elsewhere.)
     #[test]
-    fn yokohama_page6_ordinance_line_wraps_before_madeni() {
+    fn yokohama_page6_ordinance_line_does_not_depend_on_host_widths() {
         let (document, settings) =
             load_document_with_settings_and_style_defaults("yokohama_page6.docx")
                 .expect("load fixture");
@@ -16521,38 +16608,20 @@ mod tests {
             "4　法第15条の2第2項及び第3項に規定する条例で定める書類は、",
         )
         .expect("find ordinance paragraph");
-        let mut matched = false;
-        let mut samples = Vec::new();
-        for ascii_step in 50..=90 {
-            let ascii_width = ascii_step as f64 / 10.0;
-            for step in 90..=260 {
-                let cjk_width = step as f64 / 10.0;
-                let ctx = FontAwareVariableWidthContext::new(ascii_width, cjk_width);
-                let lines = wrap_fixture_paragraph_lines(&document, &settings, paragraph, &ctx)
-                    .expect("wrap ordinance line");
-                if samples.len() < 8 && step % 10 == 0 && ascii_step % 10 == 0 {
-                    samples.push(format!(
-                        "ascii={ascii_width:.2},cjk={cjk_width:.2}: {}",
-                        lines.join(" | ")
-                    ));
-                }
-                if lines.windows(2).any(|pair| {
-                    pair[0].ends_with("第2項第2号から第4号")
-                        && pair[1].starts_with("までに掲げる書類")
-                }) {
-                    matched = true;
-                    break;
-                }
-            }
-            if matched {
-                break;
-            }
+        let wrap = |ascii_width: f64, cjk_width: f64| {
+            let ctx = FontAwareVariableWidthContext::new(ascii_width, cjk_width);
+            wrap_fixture_paragraph_lines(&document, &settings, paragraph, &ctx)
+                .expect("wrap ordinance line")
+        };
+        let reference = wrap(6.0, 12.0);
+        assert!(reference.len() > 1, "{reference:?}");
+        for (ascii_width, cjk_width) in [(5.0, 9.0), (9.0, 26.0), (7.3, 15.6), (8.25, 11.0)] {
+            assert_eq!(
+                wrap(ascii_width, cjk_width),
+                reference,
+                "ascii={ascii_width}, cjk={cjk_width}"
+            );
         }
-        assert!(
-            matched,
-            "failed to wrap page6 ordinance line at 第4号/までに boundary; samples={}",
-            samples.join(" || ")
-        );
     }
 
     #[test]
