@@ -1315,6 +1315,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "jade-docx-perf"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "jade-docx-editor",
+ "jade-docx-headless-api",
+ "jade-docx-layout",
+ "jade-painter",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "jade-docx-reader"
 version = "0.1.0"
 dependencies = [

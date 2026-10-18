@@ -1,0 +1,22 @@
+[package]
+name = "jade-docx-perf"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+# Deterministic cost scenarios for the DOCX engine, run under callgrind on every
+# pull request (`.github/workflows/perf.yml`). Painting goes to a recording
+# painter rather than Skia so the workspace build stays light, while text is
+# measured with the same shaping measurer the native renderer uses: layout
+# cost depends on real advances, and fake ones would wrap differently.
+
+[dependencies]
+jade-docx-editor = { path = "../jade-docx-editor" }
+jade-docx-headless-api = { path = "../jade-docx-headless-api" }
+jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping"] }
+jade-painter = { path = "../jade-painter" }
+futures = "0.3"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+web-sys = "0.3"

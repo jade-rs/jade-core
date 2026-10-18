@@ -40,6 +40,7 @@ members = [
   "crates/jade-xlsx-render",
   "crates/jade-plugins/circle-mark-plugin",
   "crates/jade-plugins/diff-highlight-plugin",
+  "crates/jade-docx-perf",
 ]
 # `jade-skia-painter` is an experimental native rasterising backend. It is kept
 # out of the workspace so `cargo test --all --all-features` never pulls Skia's
@@ -99,6 +100,17 @@ opt-level = "s"
 inherits = "release"
 opt-level = 3
 strip = "symbols"
+
+# Callgrind profile for `.github/workflows/perf.yml`: release code generation
+# with symbols kept so the per-function report can name what moved. Thin LTO
+# keeps the two builds a pull request needs (base and head) affordable.
+[profile.perf-ci]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+panic = "unwind"
+strip = "none"
+debug = "line-tables-only"
 
 # Profiling-focused profile for browser/devtools traces.
 # Build with: cargo build --profile profiling
