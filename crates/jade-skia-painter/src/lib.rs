@@ -209,6 +209,27 @@ impl SkiaPainter {
         Some(Self::with_surface(PaintSurface::Raster(surface)))
     }
 
+    /// Creates a surface for a `width` x `height` CSS-pixel page with `scale`
+    /// device pixels per CSS pixel, filled with opaque white.
+    ///
+    /// Drawing stays in CSS pixels: the scale is the canvas's base transform,
+    /// below anything the renderer saves and restores, so a Retina screen gets
+    /// glyphs rasterised at its own density rather than a 1x page stretched
+    /// to fit — which is what makes text look soft.
+    pub fn new_scaled(width: f64, height: f64, scale: f64) -> Option<Self> {
+        if !width.is_finite() || !height.is_finite() || !scale.is_finite() || scale <= 0.0 {
+            return None;
+        }
+        let mut surface = surfaces::raster_n32_premul((
+            (width * scale).ceil() as i32,
+            (height * scale).ceil() as i32,
+        ))?;
+        let canvas = surface.canvas();
+        canvas.clear(Color::WHITE);
+        canvas.scale((scale as f32, scale as f32));
+        Some(Self::with_surface(PaintSurface::Raster(surface)))
+    }
+
     /// Records the same drawing commands without allocating page pixels.
     /// Recorded pages can be sealed into a vector PDF with [`Self::encode_pdf`].
     pub fn new_recording(width: f64, height: f64) -> Option<Self> {
