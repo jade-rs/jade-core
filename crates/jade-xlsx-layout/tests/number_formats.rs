@@ -42,7 +42,8 @@ fn fixed_decimals_round_away_from_zero() {
 fn optional_decimal_places_show_only_significant_fraction_digits() {
     assert_eq!(number(12.345, Some("0.##")), "12.35");
     assert_eq!(number(12.3, Some("0.##")), "12.3");
-    assert_eq!(number(12.0, Some("0.##")), "12");
+    // Excel keeps a written point even with no digits after it.
+    assert_eq!(number(12.0, Some("0.##")), "12.");
     assert_eq!(number(12.3, Some("0.00##")), "12.30");
     assert_eq!(number(1234.5, Some("#,##0.##")), "1,234.5");
 }
@@ -341,10 +342,11 @@ fn a_quoted_letter_is_a_literal_not_a_date_token() {
 }
 
 #[test]
-fn unsupported_codes_show_the_stored_number() {
-    // Unsupported placeholder combinations leave the stored number visible
-    // rather than quietly inventing a representation.
-    assert_eq!(number(1500.5, Some("0 ???")), "1500.5");
+fn literals_among_digit_placeholders_stay_in_place() {
+    // A space between placeholders is a literal: digits fill the
+    // placeholders from the right, as Excel's space-grouping trick shows.
+    assert_eq!(number(1500.5, Some("0 ???")), "1 501");
+    assert_eq!(number(42.0, Some("0 ???")), "0  42");
 }
 
 // ── other values ────────────────────────────────────────────────────────

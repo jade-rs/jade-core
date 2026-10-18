@@ -54,7 +54,9 @@ fn narrow_numbers_use_scientific_rounding_or_hashes_without_changing_values() {
     let (sheet, _, layout) = fixture();
     let large = layout.cell(reference("A6")).unwrap();
     assert_eq!(large.lines, ["1E+14"]);
-    assert_eq!(large.text, "123456789012345");
+    // General writes twelve or more integer digits in scientific notation
+    // whatever the width; the stored value below is untouched.
+    assert_eq!(large.text, "1.23457E+14");
     let fixed = layout.cell(reference("B6")).unwrap();
     assert_eq!(fixed.lines, ["#####"]);
     assert_eq!(fixed.text, "123456789012345.00");
