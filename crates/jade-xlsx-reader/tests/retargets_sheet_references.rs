@@ -7,7 +7,9 @@
 //! `#REF!A1` — and a 3-D reference whose end sheet goes shrinks to the
 //! sheets that remain.
 
-use jade_xlsx_reader::{delete_sheet_in_formula, quote_sheet_name, rename_sheet_in_formula};
+use jade_xlsx_reader::{
+    collapse_ref_errors, delete_sheet_in_formula, quote_sheet_name, rename_sheet_in_formula,
+};
 use proptest::prelude::*;
 
 #[test]
@@ -143,6 +145,19 @@ fn a_deleted_sheets_tables_leave_ref_errors_behind() {
     );
     // A bracket escaped inside a column name does not end the reference.
     assert_eq!(delete("Sales['[Net']]+1"), "#REF!+1");
+}
+
+#[test]
+fn a_ref_error_qualifier_evaluates_as_the_error_alone() {
+    assert_eq!(collapse_ref_errors("#REF!D7*2"), "#REF!*2");
+    assert_eq!(collapse_ref_errors("SUM(#REF!B4:B6)+A1"), "SUM(#REF!)+A1");
+    assert_eq!(collapse_ref_errors("#REF!$D$7"), "#REF!");
+    assert_eq!(collapse_ref_errors("#REF!Rate+#REF!"), "#REF!+#REF!");
+    assert_eq!(
+        collapse_ref_errors(r##""#REF!A1"&'#REF!'!A1"##),
+        r##""#REF!A1"&'#REF!'!A1"##
+    );
+    assert_eq!(collapse_ref_errors("Sheet1!A1"), "Sheet1!A1");
 }
 
 /// A sheet name as a formula writes it.

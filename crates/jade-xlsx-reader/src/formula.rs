@@ -850,3 +850,51 @@ fn bracket_end(formula: &str, start: usize) -> usize {
     }
     bytes.len()
 }
+
+/// `formula` with what follows each `#REF!` qualifier dropped — `#REF!A1`,
+/// `SUM(#REF!B4:B6)`, `#REF!Rate` become `#REF!`, `SUM(#REF!)` — which is
+/// how Excel evaluates a reference whose sheet was deleted, and a form a
+/// calculation engine can parse. For evaluation only: the file keeps the
+/// formula as Excel writes it.
+pub fn collapse_ref_errors(formula: &str) -> String {
+    const ERROR: &str = "#REF!";
+    let bytes = formula.as_bytes();
+    let mut output = String::with_capacity(formula.len());
+    let mut index = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                let end = string_end(formula, index);
+                output.push_str(&formula[index..end]);
+                index = end;
+                continue;
+            }
+            b'\'' => {
+                let end = quoted_end(formula, index);
+                output.push_str(&formula[index..end]);
+                index = end;
+                continue;
+            }
+            b'#' if formula
+                .get(index..index + ERROR.len())
+                .is_some_and(|text| text.eq_ignore_ascii_case(ERROR)) =>
+            {
+                output.push_str(ERROR);
+                index += ERROR.len();
+                if let Some((end, _)) = parse_reference(formula, index) {
+                    index = end;
+                } else {
+                    while bytes.get(index).is_some_and(|byte| is_name_byte(*byte)) {
+                        index += 1;
+                    }
+                }
+                continue;
+            }
+            _ => {}
+        }
+        let character = formula[index..].chars().next().expect("a character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+    output
+}
