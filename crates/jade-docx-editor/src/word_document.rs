@@ -2157,6 +2157,9 @@ impl WordDocument {
             } else {
                 parser.parse_document_xml(&doc_part.content)?
             };
+            if let Some(body) = parsed_doc.body.as_mut() {
+                Self::capture_direct_run_fonts(&mut body.elements);
+            }
 
             if let Some(raw_xml) = document.raw_document.as_ref() {
                 let _ = attach_document_xml_ids(&mut parsed_doc, raw_xml);
@@ -3537,7 +3540,10 @@ impl WordDocument {
     /// paragraph that had none is drawn in the renderer's fallback font until
     /// the document has been through a file.
     pub fn apply_run_font_defaults_at(&mut self, paragraph_index: usize) {
-        let Some(styles) = self.styles_part.clone() else {
+        // Taken rather than cloned: this runs on every keystroke, and the
+        // styles part is the document's whole style table. Reaching the
+        // paragraph touches only the document and the paragraph surfaces.
+        let Some(styles) = self.styles_part.take() else {
             return;
         };
         let run_fonts = |paragraph: &Paragraph| {
@@ -3551,17 +3557,19 @@ impl WordDocument {
                 })
                 .collect::<Vec<_>>()
         };
-        let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
-            return;
-        };
-        let before = run_fonts(paragraph);
-        Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        let filled = self
+            .paragraph_mut(paragraph_index)
+            .is_some_and(|paragraph| {
+                let before = run_fonts(paragraph);
+                Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+                run_fonts(paragraph) != before
+            });
+        self.styles_part = Some(styles);
         // The defaults name theme fonts (`w:eastAsiaTheme` and the like),
         // which loading resolves to the theme's faces next. Left unresolved,
         // text typed into an empty paragraph draws in a fallback face. This
         // runs on every keystroke and the theme is parsed from its XML, so
         // only for a run whose fonts the defaults just filled in.
-        let filled = run_fonts(paragraph) != before;
         if !filled {
             return;
         }
@@ -11223,7 +11231,11 @@ impl WordDocument {
             .cloned();
         let rest = tail.split_off(at);
         runs.append(&mut tail);
-        runs.push(create_run_from_template(template.as_ref(), text));
+        // Formatted like its neighbour, but plain: never part of a tracked
+        // change that neighbour belongs to.
+        let mut typed = create_run_from_template(template.as_ref(), text);
+        typed.revision = None;
+        runs.push(typed);
         runs.extend(rest);
         paragraph.runs = runs;
         self.sync_paragraph_text_preserving_drawings(paragraph_index);
@@ -29479,22 +29491,51 @@ impl WordDocument {
         }
     }
 
-    /// Removes the `w:rPr` children named in `tags` from every run of a body
+    /// Removes the `w:rPr` children named in `tags` from every run of a
     /// paragraph, so those runs inherit them from the paragraph's style again.
     /// Returns what was removed for [`Self::restore_paragraph_run_properties`].
+    ///
+    /// A text box paragraph's runs are changed in each copy of the box, and a
+    /// note paragraph's in its part. The note's change is not returned: its
+    /// part is re-read on every edit, so its ids do not survive to an undo,
+    /// and a caller that changes notes snapshots the document instead.
     pub(crate) fn remove_paragraph_run_properties(
         &mut self,
         paragraph_index: usize,
         tags: &[&str],
     ) -> RemovedRunProperties {
         let mut removed = RemovedRunProperties::default();
-        if tags.is_empty()
-            || !matches!(
-                self.paragraph_surfaces.get(paragraph_index),
-                Some(ParagraphSurface::Body { .. })
-            )
-        {
+        if tags.is_empty() {
             return removed;
+        }
+        match self.paragraph_surfaces.get(paragraph_index) {
+            Some(ParagraphSurface::Body { .. }) => {}
+            Some(ParagraphSurface::TextBox { .. }) => {
+                let targets = self.text_box_paragraph_element_ids(paragraph_index);
+                if let Some(raw) = self.raw_document.as_mut() {
+                    for paragraph_id in targets {
+                        Self::remove_run_properties_in_paragraph_element(
+                            raw,
+                            paragraph_id,
+                            tags,
+                            &mut removed,
+                        );
+                    }
+                }
+                return removed;
+            }
+            Some(ParagraphSurface::Note { .. }) => {
+                let _ = self.update_note_paragraph_xml(paragraph_index, |raw, paragraph_id| {
+                    Self::remove_run_properties_in_paragraph_element(
+                        raw,
+                        paragraph_id,
+                        tags,
+                        &mut RemovedRunProperties::default(),
+                    );
+                });
+                return removed;
+            }
+            _ => return removed,
         }
         let Some(paragraph) = self.paragraph(paragraph_index) else {
             return removed;
@@ -29555,6 +29596,53 @@ impl WordDocument {
             }
         }
         removed
+    }
+
+    /// [`Self::remove_paragraph_run_properties`] for every run in the `w:p`
+    /// at `paragraph_id`, wrappers included, short of a text box inside it.
+    fn remove_run_properties_in_paragraph_element(
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        tags: &[&str],
+        removed: &mut RemovedRunProperties,
+    ) {
+        fn collect(element: &XmlElement, tags: &[&str], out: &mut Vec<(XmlNodeId, Vec<usize>)>) {
+            for child in &element.children {
+                let XmlNode::Element(child) = child else {
+                    continue;
+                };
+                if child.name == "w:txbxContent" {
+                    continue;
+                }
+                if child.name == "w:rPr" && element.name == "w:r" {
+                    let indices: Vec<usize> = child
+                        .children
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, node)| {
+                            matches!(node, XmlNode::Element(node) if tags.contains(&node.name.as_str()))
+                        })
+                        .map(|(index, _)| index)
+                        .collect();
+                    if !indices.is_empty() {
+                        out.push((child.id, indices));
+                    }
+                    continue;
+                }
+                collect(child, tags, out);
+            }
+        }
+        let mut targets = Vec::new();
+        if let Some(paragraph) = raw.element(paragraph_id) {
+            collect(paragraph, tags, &mut targets);
+        }
+        for (properties_id, indices) in targets {
+            if let Ok(nodes) = raw.remove_child_nodes(properties_id, &indices) {
+                removed
+                    .0
+                    .push((properties_id, indices.into_iter().zip(nodes).collect()));
+            }
+        }
     }
 
     /// Puts back what [`Self::remove_paragraph_run_properties`] removed.
@@ -29707,13 +29795,49 @@ impl WordDocument {
         }
     }
 
+    /// `paragraph_index`'s own `w:pPr`, read where its XML lives: a note
+    /// paragraph's part, a text box paragraph's `w:p` through its host run,
+    /// or the paragraph's node. Only the last was read, so a note or text box
+    /// paragraph appeared to declare nothing.
+    fn paragraph_properties_xml(&self, paragraph_index: usize) -> Option<XmlElement> {
+        let properties = |raw: &DocxXmlDocument, paragraph_id: XmlNodeId| {
+            raw.element(paragraph_id)
+                .filter(|node| node.name == "w:p")?
+                .children
+                .iter()
+                .find_map(|child| match child {
+                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child.clone()),
+                    _ => None,
+                })
+        };
+        if self.is_note_paragraph_surface(paragraph_index) {
+            let (_, raw, paragraph_id) = self.note_paragraph_xml(paragraph_index)?;
+            return properties(&raw, paragraph_id);
+        }
+        let paragraph_id = match self.paragraph(paragraph_index)?.node_id {
+            Some(paragraph_id) => paragraph_id,
+            None => *self
+                .text_box_paragraph_element_ids(paragraph_index)
+                .first()?,
+        };
+        properties(self.raw_document.as_ref()?, paragraph_id)
+    }
+
     /// The tags of `paragraph_index`'s `w:pPr`: the paragraph properties it
     /// declares itself rather than takes from its style.
-    pub(crate) fn paragraph_declared_property_tags(&self, paragraph_index: usize) -> Vec<&str> {
-        let node_id = self
-            .paragraph(paragraph_index)
-            .and_then(|paragraph| paragraph.node_id);
-        declared_property_tags(self.raw_document.as_ref(), node_id, "w:p", "w:pPr")
+    pub(crate) fn paragraph_declared_property_tags(&self, paragraph_index: usize) -> Vec<String> {
+        self.paragraph_properties_xml(paragraph_index)
+            .map(|properties| {
+                properties
+                    .children
+                    .iter()
+                    .filter_map(|child| match child {
+                        XmlNode::Element(element) => Some(element.name.clone()),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
@@ -29722,18 +29846,7 @@ impl WordDocument {
         &self,
         paragraph_index: usize,
     ) -> Vec<(String, String)> {
-        let Some(properties) = self
-            .paragraph(paragraph_index)
-            .and_then(|paragraph| paragraph.node_id)
-            .and_then(|id| self.raw_document.as_ref()?.element(id))
-            .filter(|node| node.name == "w:p")
-            .and_then(|node| {
-                node.children.iter().find_map(|child| match child {
-                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
-                    _ => None,
-                })
-            })
-        else {
+        let Some(properties) = self.paragraph_properties_xml(paragraph_index) else {
             return Vec::new();
         };
         properties
@@ -32886,16 +32999,42 @@ impl WordDocument {
                 continue;
             };
             attach_block_xml_ids(&mut note.body, element, &raw);
+            Self::capture_direct_run_fonts(&mut note.body);
             Self::capture_preserved_run_props(&mut note.body, &raw);
             clear_block_xml_ids(&mut note.body);
         }
     }
 
+    /// Records, for every run, the font properties it has before any are
+    /// filled in from its styles: its own. [`Self::capture_preserved_run_props`]
+    /// then drops those its `w:rPr` does not declare. It has to run before the
+    /// style fill: a load that defers the round-trip XML only reaches that
+    /// pass after the fill, and recorded the inherited fonts as the run's own,
+    /// so the first edit wrote them all into its `w:rPr`.
+    fn capture_direct_run_fonts(elements: &mut [BodyElement]) {
+        for element in elements.iter_mut() {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    for run in paragraph.runs.iter_mut() {
+                        if let Some(props) = run.properties.as_mut() {
+                            props.capture_direct_font_properties();
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for row in table.rows.iter_mut() {
+                        for cell in row.cells.iter_mut() {
+                            Self::capture_direct_run_fonts(&mut cell.blocks);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
     fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
         for run in paragraph.runs.iter_mut() {
-            if let Some(props) = run.properties.as_mut() {
-                props.capture_direct_font_properties();
-            }
             let Some(node_id) = run.node_id else {
                 continue;
             };
