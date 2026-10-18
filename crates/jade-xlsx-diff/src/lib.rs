@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs::File;
 use std::io::{Cursor, Read, Seek};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use calamine::{
@@ -2542,11 +2543,13 @@ fn diff_area_internal(
 ) -> Result<AreaDiff> {
     let old_offset = context.old_offset;
     let new_offset = context.new_offset;
+    let old_profiles: Vec<_> = old_rows.iter().map(|row| RowProfile::new(row)).collect();
+    let new_profiles: Vec<_> = new_rows.iter().map(|row| RowProfile::new(row)).collect();
     let row_alignment = align_sequences(
-        old_rows,
-        new_rows,
-        |old_row, new_row| row_similarity(old_row, new_row),
-        |row| exact_row_signature(row),
+        &old_profiles,
+        &new_profiles,
+        |old, new| old.similarity(new),
+        |row| row.signature.as_deref(),
         options,
     )?;
     let row_ambiguous_signature_groups = row_alignment.ambiguous_signature_groups;
@@ -2568,9 +2571,9 @@ fn diff_area_internal(
         added: added_rows,
     } = pair_moves(
         &row_ops,
-        old_rows,
-        new_rows,
-        |old_row, new_row| row_similarity(old_row, new_row),
+        &old_profiles,
+        &new_profiles,
+        |old, new| old.similarity(new),
         options,
     )?;
     let MovePairing {
@@ -2798,28 +2801,29 @@ struct SequenceAlignment {
     ambiguous_signature_groups: usize,
 }
 
-fn align_sequences<T, F, K>(
-    old_items: &[T],
-    new_items: &[T],
+fn align_sequences<'a, T, F, K, S>(
+    old_items: &'a [T],
+    new_items: &'a [T],
     similarity: F,
     exact_key: K,
     options: &DiffOptions,
 ) -> Result<SequenceAlignment>
 where
     F: Fn(&T, &T) -> f64,
-    K: Fn(&T) -> Option<String>,
+    K: Fn(&'a T) -> Option<S>,
+    S: AsRef<str> + PartialEq,
 {
     let old_keys: Vec<_> = old_items.iter().map(&exact_key).collect();
     let new_keys: Vec<_> = new_items.iter().map(&exact_key).collect();
     let mut old_positions: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
     let mut new_positions: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
     for (idx, key) in old_keys.iter().enumerate() {
-        if let Some(key) = key.as_deref() {
+        if let Some(key) = key.as_ref().map(AsRef::as_ref) {
             old_positions.entry(key).or_default().push(idx);
         }
     }
     for (idx, key) in new_keys.iter().enumerate() {
-        if let Some(key) = key.as_deref() {
+        if let Some(key) = key.as_ref().map(AsRef::as_ref) {
             new_positions.entry(key).or_default().push(idx);
         }
     }
@@ -2918,21 +2922,22 @@ fn increasing_anchor_pairs(candidates: &[(usize, usize)]) -> Vec<(usize, usize)>
     result
 }
 
-struct SequenceSegment<'a, T> {
+struct SequenceSegment<'a, T, S> {
     items: &'a [T],
-    keys: &'a [Option<String>],
+    keys: &'a [Option<S>],
     offset: usize,
 }
 
-fn align_segment<T, F>(
-    old: SequenceSegment<'_, T>,
-    new: SequenceSegment<'_, T>,
+fn align_segment<T, F, S>(
+    old: SequenceSegment<'_, T, S>,
+    new: SequenceSegment<'_, T, S>,
     similarity: &F,
     min_match_score: f64,
     remaining_pairs: &mut usize,
 ) -> Result<Vec<MatchOp>>
 where
     F: Fn(&T, &T) -> f64,
+    S: PartialEq,
 {
     let n = old.items.len();
     let m = new.items.len();
@@ -4066,6 +4071,65 @@ fn column_index(column: &str) -> Option<usize> {
     Some(index)
 }
 
+/// Cache row features only when exact anchors cannot settle a pairing. A
+/// changed region may compare each row hundreds of times; rebuilding signatures
+/// and value-count trees for every candidate dominated alignment time.
+struct RowProfile<'a> {
+    row: &'a [CellIr],
+    signature: Option<String>,
+    // Keep exact-anchor rows small; allocate the richer cache only for rows
+    // participating in scored comparisons.
+    features: OnceLock<Box<RowFeatures<'a>>>,
+}
+
+struct RowFeatures<'a> {
+    values: Vec<&'a str>,
+    counts: BTreeMap<&'a str, usize>,
+    key: Option<String>,
+}
+
+impl<'a> RowProfile<'a> {
+    fn new(row: &'a [CellIr]) -> Self {
+        Self {
+            row,
+            signature: exact_row_signature(row),
+            features: OnceLock::new(),
+        }
+    }
+
+    fn features(&self) -> &RowFeatures<'a> {
+        self.features.get_or_init(|| {
+            let values: Vec<_> = self.row.iter().map(cell_signature_text).collect();
+            Box::new(RowFeatures {
+                counts: value_counts(&values),
+                values,
+                key: key_signature(self.row),
+            })
+        })
+    }
+
+    fn similarity(&self, other: &Self) -> f64 {
+        match (&self.signature, &other.signature) {
+            (None, None) => return 1.0,
+            (None, Some(_)) | (Some(_), None) => return 0.0,
+            (Some(old), Some(new)) if old == new => return 1.0,
+            _ => {}
+        }
+        let old = self.features();
+        let new = other.features();
+        let positional = positional_similarity(&old.values, &new.values);
+        let bag = count_similarity(&old.counts, &new.counts);
+        let shape = cell_shape_similarity(self.row, other.row);
+        let key_bonus = if old.key.is_some() && old.key == new.key {
+            0.25
+        } else {
+            0.0
+        };
+        (positional * 0.35 + bag * 0.55 + shape * 0.35 + key_bonus).min(1.0)
+    }
+}
+
+#[cfg(test)]
 fn row_similarity(old_row: &[CellIr], new_row: &[CellIr]) -> f64 {
     match (all_empty_cells(old_row), all_empty_cells(new_row)) {
         (true, true) => return 1.0,
@@ -4079,14 +4143,10 @@ fn row_similarity(old_row: &[CellIr], new_row: &[CellIr]) -> f64 {
         return 1.0;
     }
 
-    let positional = positional_similarity(
-        &old_row.iter().map(cell_signature_text).collect::<Vec<_>>(),
-        &new_row.iter().map(cell_signature_text).collect::<Vec<_>>(),
-    );
-    let bag = bag_similarity(
-        &old_row.iter().map(cell_signature_text).collect::<Vec<_>>(),
-        &new_row.iter().map(cell_signature_text).collect::<Vec<_>>(),
-    );
+    let old_values: Vec<_> = old_row.iter().map(cell_signature_text).collect();
+    let new_values: Vec<_> = new_row.iter().map(cell_signature_text).collect();
+    let positional = positional_similarity(&old_values, &new_values);
+    let bag = bag_similarity(&old_values, &new_values);
     let shape = cell_shape_similarity(old_row, new_row);
     let key_bonus =
         if key_signature(old_row) == key_signature(new_row) && key_signature(old_row).is_some() {
@@ -4121,26 +4181,16 @@ fn column_similarity(old_col: &[&CellIr], new_col: &[&CellIr]) -> f64 {
         return 1.0;
     }
 
-    let positional = positional_similarity(
-        &old_col
-            .iter()
-            .map(|cell| cell_signature_text(cell))
-            .collect::<Vec<_>>(),
-        &new_col
-            .iter()
-            .map(|cell| cell_signature_text(cell))
-            .collect::<Vec<_>>(),
-    );
-    let bag = bag_similarity(
-        &old_col
-            .iter()
-            .map(|cell| cell_signature_text(cell))
-            .collect::<Vec<_>>(),
-        &new_col
-            .iter()
-            .map(|cell| cell_signature_text(cell))
-            .collect::<Vec<_>>(),
-    );
+    let old_values: Vec<_> = old_col
+        .iter()
+        .map(|cell| cell_signature_text(cell))
+        .collect();
+    let new_values: Vec<_> = new_col
+        .iter()
+        .map(|cell| cell_signature_text(cell))
+        .collect();
+    let positional = positional_similarity(&old_values, &new_values);
+    let bag = bag_similarity(&old_values, &new_values);
     let shape = cell_shape_similarity_refs(old_col, new_col);
     let header_bonus = if !old_header.is_empty() && old_header == new_header {
         0.55
@@ -4222,19 +4272,19 @@ fn positional_similarity(old_values: &[&str], new_values: &[&str]) -> f64 {
 fn bag_similarity(old_values: &[&str], new_values: &[&str]) -> f64 {
     let old_counts = value_counts(old_values);
     let new_counts = value_counts(new_values);
-    let union_keys: BTreeSet<_> = old_counts.keys().chain(new_counts.keys()).collect();
-    if union_keys.is_empty() {
-        return 1.0;
-    }
+    count_similarity(&old_counts, &new_counts)
+}
 
-    let mut intersection = 0usize;
-    let mut union = 0usize;
-    for key in union_keys {
-        let old = old_counts.get(key).copied().unwrap_or(0);
-        let new = new_counts.get(key).copied().unwrap_or(0);
-        intersection += old.min(new);
-        union += old.max(new);
-    }
+fn count_similarity(old_counts: &BTreeMap<&str, usize>, new_counts: &BTreeMap<&str, usize>) -> f64 {
+    // Multiset union = total occurrences on both sides - intersection.
+    // Avoid allocating a third tree and looking up every union key twice for
+    // each candidate row/column pair in the alignment matrix.
+    let intersection: usize = old_counts
+        .iter()
+        .map(|(key, old)| (*old).min(new_counts.get(key).copied().unwrap_or(0)))
+        .sum();
+    let union =
+        old_counts.values().sum::<usize>() + new_counts.values().sum::<usize>() - intersection;
     if union == 0 {
         1.0
     } else {
@@ -4242,7 +4292,7 @@ fn bag_similarity(old_values: &[&str], new_values: &[&str]) -> f64 {
     }
 }
 
-fn value_counts<'a>(values: &'a [&'a str]) -> BTreeMap<&'a str, usize> {
+fn value_counts<'a>(values: &[&'a str]) -> BTreeMap<&'a str, usize> {
     let mut counts = BTreeMap::new();
     for value in values {
         if !value.is_empty() {
@@ -4703,6 +4753,7 @@ fn cell_values_equal(old: &CellIr, new: &CellIr) -> bool {
     old.value == new.value && old.value_kind == new.value_kind
 }
 
+#[cfg(test)]
 fn all_empty_cells(cells: &[CellIr]) -> bool {
     cells.iter().all(is_empty_cell)
 }
@@ -6274,6 +6325,35 @@ mod tests {
         ));
         assert_eq!(diff.cell_changes[0].old_address.as_deref(), Some("B2"));
         assert_eq!(diff.cell_changes[0].new_address.as_deref(), Some("B2"));
+        assert_eq!(
+            diff.cell_changes[0].old_value,
+            diff.cell_changes[0].new_value
+        );
+        assert_eq!(diff.cell_changes[0].old_formula.as_deref(), Some("=C2*D2"));
+        assert_eq!(
+            diff.cell_changes[0].new_formula.as_deref(),
+            Some("=ROUND(C2*D2,0)")
+        );
+    }
+
+    #[test]
+    fn detects_formula_added_or_removed_when_cached_value_is_unchanged() {
+        let plain = sheet("数式化", &[&["合計"], &["200"]]);
+        let mut formula = plain.clone();
+        formula.rows[1][0].formula = Some("=SUM(B2:C2)".to_string());
+
+        for (old, new) in [(&plain, &formula), (&formula, &plain)] {
+            let diff = diff_sheets(old, new);
+            assert_eq!(diff.cell_changes.len(), 1);
+            assert!(matches!(
+                diff.cell_changes[0].kind,
+                CellChangeKind::FormulaChanged
+            ));
+            assert_eq!(
+                diff.cell_changes[0].old_value,
+                diff.cell_changes[0].new_value
+            );
+        }
     }
 
     #[test]
@@ -8171,6 +8251,50 @@ mod tests {
     }
 
     proptest! {
+        #[test]
+        fn cached_row_scores_match_uncached_reference(
+            old in prop::collection::vec((
+                prop::sample::select(vec!["", "x", "日本語", "a\tb", "e\u{301}"]),
+                prop::sample::select(vec![CellValueKind::Empty, CellValueKind::String, CellValueKind::Number, CellValueKind::Boolean, CellValueKind::DateTime]),
+                prop::option::of(prop::sample::select(vec!["=A1+1", "=SUM(B2:C2)", ""])),
+            ), 0..12),
+            new in prop::collection::vec((
+                prop::sample::select(vec!["", "x", "日本語", "a\tb", "e\u{301}"]),
+                prop::sample::select(vec![CellValueKind::Empty, CellValueKind::String, CellValueKind::Number, CellValueKind::Boolean, CellValueKind::DateTime]),
+                prop::option::of(prop::sample::select(vec!["=A1+1", "=SUM(B2:C2)", ""])),
+            ), 0..12),
+        ) {
+            let cells = |row: Vec<(&str, CellValueKind, Option<&str>)>| row.into_iter().map(|(value, value_kind, formula)| CellIr {
+                value: value.to_string(), value_kind, formula: formula.map(str::to_string), style_signature: String::new(),
+            }).collect::<Vec<_>>();
+            let old = cells(old);
+            let new = cells(new);
+            let before = RowProfile::new(&old);
+            let after = RowProfile::new(&new);
+            let expected = row_similarity(&old, &new);
+            prop_assert_eq!(before.similarity(&after), expected);
+            // A second lookup exercises cached features.
+            prop_assert_eq!(before.similarity(&after), expected);
+            prop_assert_eq!(after.similarity(&before), row_similarity(&new, &old));
+        }
+
+        #[test]
+        fn bag_similarity_preserves_multiset_overlap(
+            old in prop::collection::vec(prop::sample::select(vec!["", "a", "b", "日本語"]), 0..40),
+            new in prop::collection::vec(prop::sample::select(vec!["", "a", "b", "日本語"]), 0..40),
+        ) {
+            let mut intersection = 0usize;
+            let mut union = 0usize;
+            for value in ["a", "b", "日本語"] {
+                let old_count = old.iter().filter(|&&item| item == value).count();
+                let new_count = new.iter().filter(|&&item| item == value).count();
+                intersection += old_count.min(new_count);
+                union += old_count.max(new_count);
+            }
+            let expected = if union == 0 { 1.0 } else { intersection as f64 / union as f64 };
+            prop_assert_eq!(bag_similarity(&old, &new), expected);
+        }
+
         #[test]
         fn tinted_theme_grays_equal_their_rendered_rgb(
             channel in any::<u8>(),

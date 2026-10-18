@@ -156,6 +156,8 @@ fn resolve_target(base_dir: &str, target: &str) -> String {
 #[derive(Debug, Clone)]
 struct PptxTheme {
     colors: BTreeMap<String, String>,
+    // Preserve precision until all theme and local transforms have been applied.
+    color_channels: BTreeMap<String, [f64; 3]>,
     aliases: BTreeMap<String, String>,
 }
 
@@ -180,6 +182,7 @@ impl Default for PptxTheme {
         .collect();
         Self {
             colors: BTreeMap::new(),
+            color_channels: BTreeMap::new(),
             aliases,
         }
     }
@@ -198,8 +201,17 @@ impl PptxTheme {
             let Some(value) = color.children.first() else {
                 continue;
             };
-            self.colors
-                .insert(color.name.clone(), node_signature(value));
+            let signature = node_signature(value);
+            self.color_channels.remove(&color.name);
+            if drawingml_rendered_signature_rgb(&signature).is_some() {
+                if let Some(channels) = drawingml_node_channels(value) {
+                    self.color_channels.insert(
+                        color.name.clone(),
+                        apply_drawingml_color_transforms(channels, &value.children),
+                    );
+                }
+            }
+            self.colors.insert(color.name.clone(), signature);
         }
     }
 
@@ -217,6 +229,14 @@ impl PptxTheme {
                 self.aliases.insert(name.to_string(), value.to_string());
             }
         }
+    }
+
+    fn resolve_channels(&self, scheme_color: &str) -> Option<[f64; 3]> {
+        let color = self
+            .aliases
+            .get(scheme_color)
+            .map_or(scheme_color, String::as_str);
+        self.color_channels.get(color).copied()
     }
 
     fn resolve(&self, scheme_color: &str) -> Option<&str> {
@@ -1432,7 +1452,7 @@ fn drawingml_color_transform(node: &Node) -> Option<DrawingmlColorTransform> {
                 f64::from(amount) / 100_000.0,
             )
         }),
-        "redMod" | "greenMod" | "blueMod" => value.parse::<u32>().ok().map(|amount| {
+        "redMod" | "greenMod" | "blueMod" => value.parse::<i32>().ok().map(|amount| {
             DrawingmlColorTransform::ChannelModulation(
                 match node.name.as_str() {
                     "redMod" => 0,
@@ -1465,7 +1485,7 @@ fn drawingml_color_transform(node: &Node) -> Option<DrawingmlColorTransform> {
             .parse::<i32>()
             .ok()
             .map(|amount| DrawingmlColorTransform::Luminance(f64::from(amount) / 100_000.0)),
-        "lumMod" => value.parse::<u32>().ok().map(|amount| {
+        "lumMod" => value.parse::<i32>().ok().map(|amount| {
             DrawingmlColorTransform::LuminanceModulation(f64::from(amount) / 100_000.0)
         }),
         "lumOff" => value
@@ -1480,7 +1500,7 @@ fn drawingml_color_transform(node: &Node) -> Option<DrawingmlColorTransform> {
             .parse::<i32>()
             .ok()
             .map(|amount| DrawingmlColorTransform::HueOffset(f64::from(amount) / 21_600_000.0)),
-        "satMod" => value.parse::<u32>().ok().map(|amount| {
+        "satMod" => value.parse::<i32>().ok().map(|amount| {
             DrawingmlColorTransform::SaturationModulation(f64::from(amount) / 100_000.0)
         }),
         "satOff" => value
@@ -1549,76 +1569,53 @@ fn drawingml_hsl_to_rgb(hue: f64, saturation: f64, luminance: f64) -> [f64; 3] {
     ]
 }
 
-fn drawingml_hsl_rgb(hue: &str, saturation: &str, luminance: &str) -> Option<String> {
-    let hue = hue.parse::<u32>().ok()?;
-    let saturation = saturation.parse::<u32>().ok()?;
-    let luminance = luminance.parse::<u32>().ok()?;
-    if hue > 21_600_000 || saturation > 100_000 || luminance > 100_000 {
+fn drawingml_rgb_channels(rgb: &str) -> Option<[f64; 3]> {
+    if rgb.len() != 6 || !rgb.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
     }
-    let channels = drawingml_hsl_to_rgb(
-        (f64::from(hue) / 21_600_000.0).rem_euclid(1.0),
-        f64::from(saturation) / 100_000.0,
-        f64::from(luminance) / 100_000.0,
-    );
-    Some(format!(
-        "{:02X}{:02X}{:02X}",
-        (channels[0] * 255.0 + 1e-9).round() as u8,
-        (channels[1] * 255.0 + 1e-9).round() as u8,
-        (channels[2] * 255.0 + 1e-9).round() as u8,
-    ))
+    Some([
+        f64::from(u8::from_str_radix(&rgb[0..2], 16).ok()?) / 255.0,
+        f64::from(u8::from_str_radix(&rgb[2..4], 16).ok()?) / 255.0,
+        f64::from(u8::from_str_radix(&rgb[4..6], 16).ok()?) / 255.0,
+    ])
 }
 
-fn drawingml_hsl_node_rgb(node: &Node) -> Option<String> {
-    (node.name == "hslClr")
-        .then(|| drawingml_hsl_rgb(node.attr("hue")?, node.attr("sat")?, node.attr("lum")?))
-        .flatten()
+fn drawingml_channels_rgb(channels: [f64; 3]) -> String {
+    let bytes = channels.map(|channel| (channel * 255.0 + 1e-9).round().clamp(0.0, 255.0) as u8);
+    format!("{:02X}{:02X}{:02X}", bytes[0], bytes[1], bytes[2])
 }
 
-fn drawingml_hsl_signature_rgb(signature: &str) -> Option<String> {
-    if !signature.starts_with("hslClr|") || signature.contains('{') {
-        return None;
+fn drawingml_node_channels(node: &Node) -> Option<[f64; 3]> {
+    match node.name.as_str() {
+        "srgbClr" => drawingml_rgb_channels(node.attr("val")?),
+        "sysClr" => drawingml_rgb_channels(node.attr("lastClr")?),
+        "prstClr" => drawingml_rgb_channels(drawingml_preset_node_rgb(node)?),
+        "hslClr" => {
+            let hue = node.attr("hue")?.parse::<u32>().ok()?;
+            let saturation = node.attr("sat")?.parse::<u32>().ok()?;
+            let luminance = node.attr("lum")?.parse::<u32>().ok()?;
+            if hue > 21_600_000 || saturation > 100_000 || luminance > 100_000 {
+                return None;
+            }
+            Some(drawingml_hsl_to_rgb(
+                (f64::from(hue) / 21_600_000.0).rem_euclid(1.0),
+                f64::from(saturation) / 100_000.0,
+                f64::from(luminance) / 100_000.0,
+            ))
+        }
+        "scrgbClr" => {
+            let channels = [
+                node.attr("r")?.parse::<u32>().ok()?,
+                node.attr("g")?.parse::<u32>().ok()?,
+                node.attr("b")?.parse::<u32>().ok()?,
+            ];
+            if channels.iter().any(|channel| *channel > 100_000) {
+                return None;
+            }
+            Some(channels.map(|channel| drawingml_srgb_gamma(f64::from(channel) / 100_000.0)))
+        }
+        _ => None,
     }
-    drawingml_hsl_rgb(
-        color_signature_attribute(signature, "hue")?,
-        color_signature_attribute(signature, "sat")?,
-        color_signature_attribute(signature, "lum")?,
-    )
-}
-
-fn drawingml_scrgb_rgb(red: &str, green: &str, blue: &str) -> Option<String> {
-    let channels = [
-        red.parse::<u32>().ok()?,
-        green.parse::<u32>().ok()?,
-        blue.parse::<u32>().ok()?,
-    ];
-    if channels.iter().any(|channel| *channel > 100_000) {
-        return None;
-    }
-    let channels = channels.map(|channel| drawingml_srgb_gamma(f64::from(channel) / 100_000.0));
-    Some(format!(
-        "{:02X}{:02X}{:02X}",
-        (channels[0] * 255.0 + 1e-9).round() as u8,
-        (channels[1] * 255.0 + 1e-9).round() as u8,
-        (channels[2] * 255.0 + 1e-9).round() as u8,
-    ))
-}
-
-fn drawingml_scrgb_node_rgb(node: &Node) -> Option<String> {
-    (node.name == "scrgbClr")
-        .then(|| drawingml_scrgb_rgb(node.attr("r")?, node.attr("g")?, node.attr("b")?))
-        .flatten()
-}
-
-fn drawingml_scrgb_signature_rgb(signature: &str) -> Option<String> {
-    if !signature.starts_with("scrgbClr|") || signature.contains('{') {
-        return None;
-    }
-    drawingml_scrgb_rgb(
-        color_signature_attribute(signature, "r")?,
-        color_signature_attribute(signature, "g")?,
-        color_signature_attribute(signature, "b")?,
-    )
 }
 
 fn drawingml_preset_rgb(value: &str) -> Option<&'static str> {
@@ -1795,31 +1792,23 @@ fn drawingml_srgb_gray(channels: [f64; 3]) -> f64 {
     drawingml_srgb_gamma(luminance)
 }
 
-fn apply_drawingml_color_transforms(base: &str, transforms: &[Node]) -> Option<String> {
-    if base.len() != 6 || !base.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return None;
-    }
-    let mut channels = [
-        f64::from(u8::from_str_radix(&base[0..2], 16).ok()?) / 255.0,
-        f64::from(u8::from_str_radix(&base[2..4], 16).ok()?) / 255.0,
-        f64::from(u8::from_str_radix(&base[4..6], 16).ok()?) / 255.0,
-    ];
-    let mut applied = false;
+fn apply_drawingml_color_transforms(mut channels: [f64; 3], transforms: &[Node]) -> [f64; 3] {
     for transform in transforms {
         let Some(transform) = drawingml_color_transform(transform) else {
             continue;
         };
-        applied = true;
         match transform {
             DrawingmlColorTransform::Tint(amount) => {
-                for channel in &mut channels {
-                    *channel = *channel * amount + 1.0 - amount;
-                }
+                channels = channels.map(|channel| {
+                    drawingml_srgb_gamma(
+                        drawingml_srgb_inverse_gamma(channel) * amount + 1.0 - amount,
+                    )
+                });
             }
             DrawingmlColorTransform::Shade(amount) => {
-                for channel in &mut channels {
-                    *channel *= amount;
-                }
+                channels = channels.map(|channel| {
+                    drawingml_srgb_gamma(drawingml_srgb_inverse_gamma(channel) * amount)
+                });
             }
             DrawingmlColorTransform::Complement => {
                 let sum = channels.iter().copied().fold(f64::INFINITY, f64::min)
@@ -1830,7 +1819,7 @@ fn apply_drawingml_color_transforms(base: &str, transforms: &[Node]) -> Option<S
             }
             DrawingmlColorTransform::Inverse => {
                 for channel in &mut channels {
-                    *channel = 1.0 - *channel;
+                    *channel = drawingml_srgb_gamma(1.0 - drawingml_srgb_inverse_gamma(*channel));
                 }
             }
             DrawingmlColorTransform::Gray => {
@@ -1843,13 +1832,17 @@ fn apply_drawingml_color_transforms(base: &str, transforms: &[Node]) -> Option<S
                 channels = channels.map(drawingml_srgb_inverse_gamma);
             }
             DrawingmlColorTransform::Channel(channel, amount) => {
-                channels[channel] = amount.clamp(0.0, 1.0);
+                channels[channel] = drawingml_srgb_gamma(amount.clamp(0.0, 1.0));
             }
             DrawingmlColorTransform::ChannelModulation(channel, amount) => {
-                channels[channel] = (channels[channel] * amount).clamp(0.0, 1.0);
+                channels[channel] = drawingml_srgb_gamma(
+                    (drawingml_srgb_inverse_gamma(channels[channel]) * amount).clamp(0.0, 1.0),
+                );
             }
             DrawingmlColorTransform::ChannelOffset(channel, amount) => {
-                channels[channel] = (channels[channel] + amount).clamp(0.0, 1.0);
+                channels[channel] = drawingml_srgb_gamma(
+                    (drawingml_srgb_inverse_gamma(channels[channel]) + amount).clamp(0.0, 1.0),
+                );
             }
             DrawingmlColorTransform::Hue(amount) => {
                 let (_, saturation, luminance) = drawingml_rgb_to_hsl(channels);
@@ -1895,14 +1888,7 @@ fn apply_drawingml_color_transforms(base: &str, transforms: &[Node]) -> Option<S
             }
         }
     }
-    applied.then(|| {
-        format!(
-            "{:02X}{:02X}{:02X}",
-            (channels[0] * 255.0 + 1e-9).round().clamp(0.0, 255.0) as u8,
-            (channels[1] * 255.0 + 1e-9).round().clamp(0.0, 255.0) as u8,
-            (channels[2] * 255.0 + 1e-9).round().clamp(0.0, 255.0) as u8,
-        )
-    })
+    channels
 }
 
 #[derive(Clone, Copy)]
@@ -1970,40 +1956,23 @@ fn node_signature_with_theme(node: &Node, theme: Option<&PptxTheme>) -> String {
     let resolved_opacity = resolved_color
         .filter(|_| resolved_rendered_rgb.is_some())
         .and_then(drawingml_signature_opacity);
-    let system_rgb = (node.name == "sysClr")
-        .then(|| node.attr("lastClr"))
+    let resolved_channels = (node.name == "schemeClr")
+        .then(|| node.attr("val"))
         .flatten()
-        .filter(|value| value.len() == 6 && value.bytes().all(|byte| byte.is_ascii_hexdigit()));
-    let resolved_system_rgb = resolved_color
-        .filter(|signature| signature.starts_with("sysClr|") && !signature.contains('{'))
-        .and_then(color_signature_rgb);
-    let resolved_hsl_rgb = resolved_color.and_then(drawingml_hsl_signature_rgb);
-    let direct_hsl_rgb = drawingml_hsl_node_rgb(node);
-    let resolved_scrgb_rgb = resolved_color.and_then(drawingml_scrgb_signature_rgb);
-    let direct_scrgb_rgb = drawingml_scrgb_node_rgb(node);
-    let direct_preset_rgb = drawingml_preset_node_rgb(node);
-    let base_rgb = resolved_rendered_rgb
-        .or(resolved_hsl_rgb.as_deref())
-        .or(resolved_scrgb_rgb.as_deref())
-        .or(system_rgb)
-        .or(direct_hsl_rgb.as_deref())
-        .or(direct_scrgb_rgb.as_deref())
-        .or(direct_preset_rgb)
-        .or_else(|| (node.name == "srgbClr").then(|| node.attr("val")).flatten());
-    let transformed_color =
-        base_rgb.and_then(|color| apply_drawingml_color_transforms(color, &node.children));
-    let rendered_color = transformed_color.or_else(|| {
-        (resolved_rendered_rgb.is_some()
-            || resolved_system_rgb.is_some()
-            || resolved_hsl_rgb.is_some()
-            || resolved_scrgb_rgb.is_some()
-            || system_rgb.is_some()
-            || direct_hsl_rgb.is_some()
-            || direct_scrgb_rgb.is_some()
-            || direct_preset_rgb.is_some())
-        .then(|| base_rgb.map(str::to_ascii_uppercase))
-        .flatten()
-    });
+        .and_then(|value| theme.and_then(|theme| theme.resolve_channels(value)))
+        .or_else(|| resolved_rendered_rgb.and_then(drawingml_rgb_channels));
+    let base_channels = resolved_channels.or_else(|| drawingml_node_channels(node));
+    let rendered_color = base_channels
+        .filter(|_| {
+            node.name != "srgbClr"
+                || node
+                    .children
+                    .iter()
+                    .any(|child| drawingml_color_transform(child).is_some())
+        })
+        .map(|channels| {
+            drawingml_channels_rgb(apply_drawingml_color_transforms(channels, &node.children))
+        });
     let transformed_alpha =
         apply_drawingml_alpha_transforms(&node.children, resolved_opacity.unwrap_or(100_000));
     let rendered_alpha = transformed_alpha.or(resolved_opacity);
@@ -2328,14 +2297,14 @@ mod tests {
         theme
     }
 
-    fn rendered_hsl_rgb(hue: u32, saturation: u32, luminance: u32) -> String {
+    fn reference_hsl_channels(hue: u32, saturation: u32, luminance: u32) -> [f64; 3] {
         let hue = f64::from(hue) / 21_600_000.0;
         let saturation = f64::from(saturation) / 100_000.0;
         let luminance = f64::from(luminance) / 100_000.0;
         let chroma = (1.0 - (2.0 * luminance - 1.0).abs()) * saturation;
         let sector = hue * 6.0;
         let secondary = chroma * (1.0 - (sector.rem_euclid(2.0) - 1.0).abs());
-        let [red, green, blue] = match sector as usize {
+        let channels = match sector as usize {
             0 => [chroma, secondary, 0.0],
             1 => [secondary, chroma, 0.0],
             2 => [0.0, chroma, secondary],
@@ -2343,46 +2312,71 @@ mod tests {
             4 => [secondary, 0.0, chroma],
             _ => [chroma, 0.0, secondary],
         };
-        let minimum = luminance - chroma / 2.0;
-        let render = |channel: f64| (channel + minimum) * 255.0;
-        format!(
-            "{:02X}{:02X}{:02X}",
-            (render(red) + 1e-9).round() as u8,
-            (render(green) + 1e-9).round() as u8,
-            (render(blue) + 1e-9).round() as u8,
-        )
+        channels.map(|channel| channel + luminance - chroma / 2.0)
     }
 
-    fn rendered_scrgb_rgb(red: u32, green: u32, blue: u32) -> String {
-        let render = |channel: u32| {
+    fn reference_hex(channels: [f64; 3]) -> String {
+        let bytes = channels.map(|channel| (channel * 255.0 + 1e-9).round() as u8);
+        format!("{:02X}{:02X}{:02X}", bytes[0], bytes[1], bytes[2])
+    }
+
+    fn rendered_hsl_rgb(hue: u32, saturation: u32, luminance: u32) -> String {
+        reference_hex(reference_hsl_channels(hue, saturation, luminance))
+    }
+
+    fn reference_scrgb_channels(red: u32, green: u32, blue: u32) -> [f64; 3] {
+        [red, green, blue].map(|channel| {
             let linear = f64::from(channel) / 100_000.0;
-            let encoded = if linear > 0.0031308 {
+            if linear > 0.0031308 {
                 1.055 * linear.powf(1.0 / 2.4) - 0.055
             } else {
                 12.92 * linear
-            };
-            (encoded * 255.0 + 1e-9).round() as u8
+            }
+        })
+    }
+
+    fn rendered_scrgb_rgb(red: u32, green: u32, blue: u32) -> String {
+        reference_hex(reference_scrgb_channels(red, green, blue))
+    }
+
+    // Independent sRGB transfer equations for the test oracle. The real-file
+    // regression above uses independently rendered swatches as fixed evidence.
+    fn reference_srgb_to_linear(channel: f64) -> f64 {
+        let channel = channel / 255.0;
+        if channel <= 0.04045 {
+            channel / 12.92
+        } else {
+            ((channel + 0.055) / 1.055).powf(2.4)
+        }
+    }
+
+    fn reference_linear_to_srgb(channel: f64) -> u8 {
+        let encoded = if channel <= 0.0031308 {
+            channel * 12.92
+        } else {
+            1.055 * channel.powf(1.0 / 2.4) - 0.055
         };
-        format!(
-            "{:02X}{:02X}{:02X}",
-            render(red),
-            render(green),
-            render(blue),
-        )
+        (encoded * 255.0 + 1e-9).round().clamp(0.0, 255.0) as u8
+    }
+
+    fn reference_tint_or_shade(channels: [f64; 3], amount: u32, tint: bool) -> String {
+        let factor = f64::from(amount) / 100_000.0;
+        let bytes = channels.map(|channel| {
+            let linear = reference_srgb_to_linear(channel * 255.0);
+            reference_linear_to_srgb(if tint {
+                linear * factor + 1.0 - factor
+            } else {
+                linear * factor
+            })
+        });
+        format!("{:02X}{:02X}{:02X}", bytes[0], bytes[1], bytes[2])
     }
 
     fn rendered_tint_or_shade(rgb: &str, amount: u32, tint: bool) -> String {
-        let factor = f64::from(amount) / 100_000.0;
-        let render = |offset: usize| {
-            let channel = f64::from(u8::from_str_radix(&rgb[offset..offset + 2], 16).unwrap());
-            let rendered = if tint {
-                channel * factor + 255.0 * (1.0 - factor)
-            } else {
-                channel * factor
-            };
-            (rendered + 1e-9).round() as u8
-        };
-        format!("{:02X}{:02X}{:02X}", render(0), render(2), render(4))
+        let channels = [0, 2, 4].map(|offset| {
+            f64::from(u8::from_str_radix(&rgb[offset..offset + 2], 16).unwrap()) / 255.0
+        });
+        reference_tint_or_shade(channels, amount, tint)
     }
 
     fn themed_text_shape(theme: &PptxTheme, color: &str) -> ShapeIr {
@@ -2969,6 +2963,24 @@ mod tests {
         assert_eq!(paragraphs[1].level, 1);
     }
 
+    fn rendered_theme_tint_or_shade(channels: [u8; 3], amount: u32, tint: bool) -> String {
+        let [red, green, blue] = channels;
+        rendered_tint_or_shade(&format!("{red:02X}{green:02X}{blue:02X}"), amount, tint)
+    }
+
+    #[test]
+    fn theme_tint_reference_uses_linear_light_and_preserves_the_previous_rounding_input() {
+        assert_eq!(
+            rendered_theme_tint_or_shade([0, 0, 5], 54_200, true),
+            "B4B4B4"
+        );
+        assert_eq!(
+            rendered_theme_tint_or_shade([255; 3], 50_000, false),
+            "BCBCBC"
+        );
+        assert_eq!(rendered_theme_tint_or_shade([0; 3], 50_000, true), "BCBCBC");
+    }
+
     proptest! {
         #[test]
         fn arbitrary_drawingml_gamma_transforms_equal_rendered_rgb(
@@ -3273,8 +3285,8 @@ mod tests {
             tint in any::<bool>(),
         ) {
             let transform = if tint { "tint" } else { "shade" };
-            let rendered = rendered_tint_or_shade(
-                &rendered_hsl_rgb(hue, saturation, luminance),
+            let rendered = reference_tint_or_shade(
+                reference_hsl_channels(hue, saturation, luminance),
                 amount,
                 tint,
             );
@@ -3311,8 +3323,8 @@ mod tests {
             tint in any::<bool>(),
         ) {
             let transform = if tint { "tint" } else { "shade" };
-            let rendered = rendered_tint_or_shade(
-                &rendered_scrgb_rgb(red, green, blue),
+            let rendered = reference_tint_or_shade(
+                reference_scrgb_channels(red, green, blue),
                 amount,
                 tint,
             );
@@ -3490,7 +3502,23 @@ mod tests {
         ) {
             let channels = [red, green, blue];
             let rendered = if inverse {
-                channels.map(|channel| 255 - channel)
+                // Invert light intensities, independently applying the standard
+                // sRGB transfer functions before the final RGB8 quantization.
+                channels.map(|channel| {
+                    let encoded = f64::from(channel) / 255.0;
+                    let linear = if encoded <= 0.04045 {
+                        encoded / 12.92
+                    } else {
+                        ((encoded + 0.055) / 1.055).powf(2.4)
+                    };
+                    let inverted = 1.0 - linear;
+                    let rendered = if inverted <= 0.0031308 {
+                        inverted * 12.92
+                    } else {
+                        1.055 * inverted.powf(1.0 / 2.4) - 0.055
+                    };
+                    (rendered * 255.0 + 1e-9).round() as u8
+                })
             } else {
                 let sum = u16::from(channels.iter().copied().min().unwrap())
                     + u16::from(channels.iter().copied().max().unwrap());
@@ -3686,7 +3714,7 @@ mod tests {
             channel in 0usize..3,
             operation in 0usize..3,
             absolute in 0u32..=100_000,
-            modulation in 0u32..=200_000,
+            modulation in -200_000i32..=200_000,
             offset in -100_000i32..=100_000,
         ) {
             let transform_names = [
@@ -3699,16 +3727,16 @@ mod tests {
                 0 => (absolute.to_string(), f64::from(absolute) / 100_000.0),
                 1 => (
                     modulation.to_string(),
-                    f64::from(rendered[channel]) / 255.0
+                    reference_srgb_to_linear(f64::from(rendered[channel]))
                         * f64::from(modulation) / 100_000.0,
                 ),
                 _ => (
                     offset.to_string(),
-                    f64::from(rendered[channel]) / 255.0
+                    reference_srgb_to_linear(f64::from(rendered[channel]))
                         + f64::from(offset) / 100_000.0,
                 ),
             };
-            rendered[channel] = (value.clamp(0.0, 1.0) * 255.0 + 1e-9).round() as u8;
+            rendered[channel] = reference_linear_to_srgb(value.clamp(0.0, 1.0));
             let transform = transform_names[channel][operation];
             let themed_color = format!(
                 r#"<a:schemeClr val="accent1"><a:{transform} val="{amount}"/></a:schemeClr>"#
@@ -3735,16 +3763,16 @@ mod tests {
             green in any::<u8>(),
             blue in any::<u8>(),
             channel in 0usize..3,
-            modulation in 0u32..=200_000,
+            modulation in -200_000i32..=200_000,
             offset in -100_000i32..=100_000,
         ) {
             let names = [["redMod", "redOff"], ["greenMod", "greenOff"], ["blueMod", "blueOff"]];
             let mut rendered = [red, green, blue];
-            let value = (f64::from(rendered[channel]) / 255.0
+            let value = (reference_srgb_to_linear(f64::from(rendered[channel]))
                 * f64::from(modulation) / 100_000.0)
                 .clamp(0.0, 1.0);
             let value = (value + f64::from(offset) / 100_000.0).clamp(0.0, 1.0);
-            rendered[channel] = (value * 255.0 + 1e-9).round() as u8;
+            rendered[channel] = reference_linear_to_srgb(value);
             let themed_color = format!(
                 r#"<a:schemeClr val="accent1"><a:{} val="{modulation}"/><a:{} val="{offset}"/></a:schemeClr>"#,
                 names[channel][0], names[channel][1]
@@ -3926,18 +3954,18 @@ mod tests {
             let apply = |channel: f64, amount: u32, tint: bool| {
                 let factor = f64::from(amount) / 100_000.0;
                 if tint {
-                    channel * factor + 255.0 * (1.0 - factor)
+                    channel * factor + 1.0 - factor
                 } else {
                     channel * factor
                 }
             };
             let render = |channel: u8| {
-                apply(
-                    apply(f64::from(channel), first_amount, tint_first),
+                let value = apply(
+                    apply(reference_srgb_to_linear(f64::from(channel)), first_amount, tint_first),
                     second_amount,
                     !tint_first,
-                )
-                .round() as u8
+                );
+                reference_linear_to_srgb(value)
             };
             let rendered = format!("{:02X}{:02X}{:02X}", render(red), render(green), render(blue));
             let first = if tint_first { "tint" } else { "shade" };
@@ -3966,17 +3994,7 @@ mod tests {
             amount in 0u32..=100_000,
             tint in any::<bool>(),
         ) {
-            let factor = f64::from(amount) / 100_000.0;
-            let render = |channel: u8| {
-                let channel = f64::from(channel);
-                let rendered = if tint {
-                    channel * factor + 255.0 * (1.0 - factor)
-                } else {
-                    channel * factor
-                };
-                rendered.round() as u8
-            };
-            let rendered = format!("{:02X}{:02X}{:02X}", render(red), render(green), render(blue));
+            let rendered = rendered_theme_tint_or_shade([red, green, blue], amount, tint);
             let transform = if tint { "tint" } else { "shade" };
             let themed_color = format!(
                 r#"<a:schemeClr val="accent1"><a:{transform} val="{amount}"/></a:schemeClr>"#
