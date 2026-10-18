@@ -6,3 +6,4 @@ crates/jade-docx-editor/pkg/
 /public/plugins/
 # proptest saves failing seeds here; the cases worth keeping are checked in as tests
 *.proptest-regressions
+__pycache__/

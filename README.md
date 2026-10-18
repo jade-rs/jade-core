@@ -17,6 +17,7 @@ crates/
   # DOCX / XLSX / PPTX
   jade-docx-*/  jade-xlsx-*/  jade-pptx-*/                reader, writer, layout, render, headless-* (the docx editor is the WASM entry point)
   jade-docx-native-render/  jade-xlsx-native-render/      native (Skia) renderers
+  jade-docx-perf/                                         deterministic cost scenarios (see Performance)
 third_party/ironcalc-base/                                vendored formula engine
 fonts/  public/fixtures/  tests/word-oracle/              test data used by the crate tests
 ```
@@ -30,6 +31,20 @@ make plugins-release              # sample decoration plugins -> $(PLUGIN_OUT_DI
 ```
 
 `jade-skia-painter`, `jade-docx-native-render` and `jade-xlsx-native-render` are outside the workspace on purpose (they pull in Skia's prebuilt binaries); build them from their own directories.
+
+## Performance
+
+Every pull request runs `.github/workflows/perf.yml`: each `jade-docx-perf`
+scenario (load, layout, repaint, keystroke, export) on a few fixtures, under
+callgrind, on both the base and the head. It comments the instruction counts,
+which are deterministic to about 0.1%, and for any scenario that moved by
+0.5% or more, the functions that moved. To run one scenario locally:
+
+```sh
+cargo build -p jade-docx-perf --profile perf-ci
+target/perf-ci/jade-docx-perf keystroke contract.docx   # wall time only
+scripts/perf/run-callgrind.sh target/perf-ci/jade-docx-perf out contract.docx   # Linux, needs valgrind
+```
 
 ## License
 
