@@ -562,23 +562,14 @@ fn to_roman(mut num: u32, uppercase: bool) -> String {
     result
 }
 
-fn to_letter(mut num: u32, uppercase: bool) -> String {
-    if num == 0 {
-        num = 1;
+/// Word's lettered lists repeat the letter after `z`: `aa`, `bb`, `cc`, …
+fn to_letter(num: u32, uppercase: bool) -> String {
+    let index = num.max(1) - 1;
+    if index / 26 >= 40 {
+        // A hostile w:start must not turn into a megabyte-long label.
+        return num.to_string();
     }
-
     let base = if uppercase { b'A' } else { b'a' };
-    let mut result = String::new();
-    let mut n = num;
-
-    loop {
-        n -= 1;
-        result.insert(0, (base + (n % 26) as u8) as char);
-        n /= 26;
-        if n == 0 {
-            break;
-        }
-    }
-
-    result
+    let letter = (base + (index % 26) as u8) as char;
+    std::iter::repeat_n(letter, (index / 26 + 1) as usize).collect()
 }

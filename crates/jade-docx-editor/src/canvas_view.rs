@@ -14690,14 +14690,10 @@ impl OffscreenDocumentView {
         let numbering = document
             .note_numbering(is_footnote, section)
             .map_err(|error| JsValue::from_str(&error))?;
-        let format = match numbering.number_format.as_deref().unwrap_or("decimal") {
-            "lowerroman" => "lowerRoman",
-            "upperroman" => "upperRoman",
-            "lowerletter" => "lowerLetter",
-            "upperletter" => "upperLetter",
-            other => other,
-        }
-        .to_string();
+        let format = numbering.number_format.as_deref().unwrap_or("decimal");
+        let format = jade_docx_reader::numbering::canonical_number_format(format)
+            .unwrap_or(format)
+            .to_string();
         let restart = match numbering.number_restart.as_deref().unwrap_or("continuous") {
             "eachsect" => "eachSect",
             "eachpage" => "eachPage",
