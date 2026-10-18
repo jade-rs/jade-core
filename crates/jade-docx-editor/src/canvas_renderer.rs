@@ -16155,11 +16155,8 @@ where
                             level,
                         );
 
-                        let paragraph_fallback_run_props = self
-                            .paragraph_numbering_fallback_props_for_level(
-                                paragraph,
-                                level_info.as_ref().and_then(|info| info.run_props.as_ref()),
-                            );
+                        let paragraph_fallback_run_props =
+                            self.paragraph_numbering_fallback_props(paragraph);
 
                         let old_number_text = if should_render_numbering {
                             numbering_counter.initialize_ancestor_levels(
@@ -18444,45 +18441,16 @@ where
         }
     }
 
-    #[cfg(test)]
+    /// The paragraph-side formatting a numbering label is laid over: the
+    /// paragraph mark's run properties over the style chain. The level's
+    /// `w:rFonts` attributes then replace the mark's one by one; Word for Mac
+    /// 16.114 sets the digits of a level naming only `w:hint="eastAsia"` in
+    /// the mark's ＭＳ 明朝 (probe numbering-label).
     fn paragraph_numbering_fallback_props(&self, paragraph: &Paragraph) -> Option<RunProperties> {
-        self.paragraph_numbering_fallback_props_for_level(paragraph, None)
-    }
-
-    /// The paragraph-side formatting a numbering label of `level_props` (the
-    /// level's `w:rPr`) is laid over. When the level has a `w:rFonts`, Word
-    /// replaces the paragraph mark's `w:rFonts` with it as a whole element
-    /// rather than attribute by attribute: a mark naming ＭＳ 明朝 for ASCII
-    /// under a level with only `w:hint="eastAsia"` still sets the `w:suff`
-    /// space in the document's Century (2.92pt at 10.5pt, every such row of
-    /// `scroll-offset-repro` in the Word for Mac corpus), not ＭＳ 明朝's half
-    /// em (jlsi/jade#471). The style chain still supplies what the level's
-    /// `w:rFonts` leaves out.
-    fn paragraph_numbering_fallback_props_for_level(
-        &self,
-        paragraph: &Paragraph,
-        level_props: Option<&RunProperties>,
-    ) -> Option<RunProperties> {
         let mark = paragraph
             .properties
             .as_ref()
             .and_then(|props| props.mark_run_properties.as_ref());
-        let mark_without_fonts;
-        let mark = match mark {
-            Some(mark)
-                if level_props.is_some_and(|level| level.fonts.is_some())
-                    && (mark.fonts.is_some() || mark.font_family.is_some()) =>
-            {
-                let mut stripped = mark.clone();
-                stripped.fonts = None;
-                stripped.font_family = None;
-                stripped.authored_east_asia_font_hint = None;
-                stripped.authored_east_asia_font_name = None;
-                mark_without_fonts = stripped;
-                Some(&mark_without_fonts)
-            }
-            mark => mark,
-        };
         if self.styles_part.is_some() || mark.is_some() {
             let mut props = self.effective_run_properties(paragraph, mark);
             if let (Some(props), Some(theme)) = (props.as_mut(), self.theme_part.as_ref()) {
@@ -24183,11 +24151,7 @@ where
                 let display_text = numbering_part.format_number(num_id, level, numbering_counter);
                 let display_props = Self::merge_numbering_run_props(
                     level_info.run_props.clone(),
-                    self.paragraph_numbering_fallback_props_for_level(
-                        paragraph,
-                        level_info.run_props.as_ref(),
-                    )
-                    .as_ref(),
+                    self.paragraph_numbering_fallback_props(paragraph).as_ref(),
                 );
                 let style = self.apply_run_style(display_props.as_ref())?;
                 let suffix_space = level_info.suffix.as_deref() == Some("space");
@@ -50861,12 +50825,14 @@ mod tests {
         assert_eq!(fallback.fonts.unwrap().h_ansi.as_deref(), Some("Arial"));
     }
 
-    /// jlsi/jade#471: a level `w:rFonts` (here only `w:hint="eastAsia"`)
-    /// replaces the paragraph mark's `w:rFonts` as a whole, so the label's
-    /// ASCII font (the `w:suff` space) comes from the style chain (Century),
-    /// not from the mark's ＭＳ 明朝.
+    /// A level `w:rFonts` (here only `w:hint="eastAsia"`) lays its attributes
+    /// over the paragraph mark's: Word for Mac 16.114 sets the label digits
+    /// of such a level in the mark's ＭＳ 明朝 (probe numbering-label, "1"
+    /// advances 5.25pt at 10.5pt). The `w:suff` space Word sets at 0.278 em
+    /// on Mac whatever the faces (jlsi/jade#471), so it does not need the
+    /// mark's fonts dropped.
     #[test]
-    fn numbering_label_takes_level_rfonts_as_a_whole_element() {
+    fn numbering_label_lays_level_rfonts_over_the_mark() {
         let styles = StylesPart::from_xml(
             r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:docDefaults><w:rPrDefault><w:rPr>
@@ -50900,7 +50866,7 @@ mod tests {
             <CanvasRenderer>::merge_numbering_run_props(
                 Some(level.clone()),
                 renderer
-                    .paragraph_numbering_fallback_props_for_level(&paragraph, Some(&level))
+                    .paragraph_numbering_fallback_props(&paragraph)
                     .as_ref(),
             )
             .unwrap()
@@ -50914,8 +50880,8 @@ mod tests {
             ..RunProperties::default()
         });
         let fonts = hint_only.fonts.as_ref().unwrap();
-        assert_eq!(fonts.ascii.as_deref(), Some("Century"));
-        assert_eq!(fonts.h_ansi.as_deref(), Some("Century"));
+        assert_eq!(fonts.ascii.as_deref(), Some("ＭＳ 明朝"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("ＭＳ 明朝"));
         assert_eq!(fonts.east_asia.as_deref(), Some("ＭＳ 明朝"));
         assert_eq!(fonts.hint, Some(FontHint::EastAsia));
         // Everything but the fonts still comes from the paragraph mark.
@@ -50936,7 +50902,7 @@ mod tests {
         );
         assert_eq!(
             named.fonts.as_ref().unwrap().h_ansi.as_deref(),
-            Some("Century")
+            Some("ＭＳ 明朝")
         );
 
         // Without a level w:rFonts the mark's fonts carry over, as before.
