@@ -49,6 +49,11 @@ pub enum Token {
     ElapsedMinutePadded, // [mm]
     ElapsedSecondPadded, // [ss]
     AMPM,                // AM/PM (or A/P)
+    // Jade: Japanese dates
+    Era(u8),             // g R, gg 令, ggg 令和
+    EraYear(u8),         // e 6, ee 06
+    JapaneseWeekday(u8), // aaa 月, aaaa 月曜日
+    Locale,              // [$-411], a locale tag with no currency symbol
     ILLEGAL,
     EOF,
 }
@@ -79,6 +84,10 @@ impl Token {
             || self == &Token::MonthLetter
             || self == &Token::YearShort
             || self == &Token::Year
+            || matches!(
+                self,
+                Token::Era(_) | Token::EraYear(_) | Token::JapaneseWeekday(_)
+            )
     }
 }
 
@@ -319,6 +328,19 @@ impl Lexer {
         token
     }
 
+    /// Whether the characters after the current one spell `text`, in any
+    /// case.
+    fn followed_by_ignore_case(&self, text: &str) -> bool {
+        let mut position = self.position;
+        for expected in text.chars() {
+            match self.chars.get(position) {
+                Some(c) if c.eq_ignore_ascii_case(&expected) => position += 1,
+                _ => return false,
+            }
+        }
+        true
+    }
+
     pub fn next_token(&mut self) -> Token {
         let ch = self.read_next_char();
         match ch {
@@ -352,6 +374,17 @@ impl Lexer {
                             //      Like [$$-409] (=1033 for en-US) or
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
+                            // Jade: a bare locale tag (`[$-411]`, `[$-ja-JP]`)
+                            // names no symbol and changes nothing printed.
+                            if Some('-') == self.peek_char() {
+                                while let Some(c) = self.read_next_char() {
+                                    if c == ']' {
+                                        return Token::Locale;
+                                    }
+                                }
+                                self.set_error("Failed to parse locale");
+                                return Token::ILLEGAL;
+                            }
                             if let Some(currency) = self.read_next_char() {
                                 // ignore the locale part for now, just check if it ends with ']'
                                 if Some('-') == self.peek_char() {
@@ -508,6 +541,29 @@ impl Lexer {
                         Token::ILLEGAL
                     }
                 }
+                'A' | 'a' if matches!(self.peek_char(), Some('a') | Some('A')) => {
+                    // Jade: `aaa` / `aaaa`, the Japanese weekday.
+                    let mut run = 1u8;
+                    while let Some('a') | Some('A') = self.peek_char() {
+                        run = run.saturating_add(1);
+                        self.read_next_char();
+                    }
+                    if run >= 3 {
+                        Token::JapaneseWeekday(run)
+                    } else {
+                        self.set_error("Unexpected character after 'a'");
+                        Token::ILLEGAL
+                    }
+                }
+                'e' if !matches!(self.peek_char(), Some('+') | Some('-')) => {
+                    // Jade: the year of a Japanese era.
+                    let mut run = 1u8;
+                    while let Some('e') = self.peek_char() {
+                        run = run.saturating_add(1);
+                        self.read_next_char();
+                    }
+                    Token::EraYear(run)
+                }
                 'A' | 'a' => {
                     if let Some('M') | Some('m') = self.peek_char() {
                         self.read_next_char();
@@ -534,6 +590,15 @@ impl Lexer {
                         return Token::ILLEGAL;
                     }
                     Token::AMPM
+                }
+                'g' | 'G' if !self.followed_by_ignore_case("eneral") => {
+                    // Jade: a Japanese era.
+                    let mut run = 1u8;
+                    while let Some('g') | Some('G') = self.peek_char() {
+                        run = run.saturating_add(1);
+                        self.read_next_char();
+                    }
+                    Token::Era(run)
                 }
                 'g' | 'G' => {
                     for c in "eneral".chars() {

@@ -57,6 +57,14 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
 }
 
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
+    // Jade: fractions (`# ?/?`, `?/8`), which the token parser does not model.
+    if let Some(text) = super::fraction::format_fraction(value_original, format) {
+        return Formatted {
+            text,
+            color: None,
+            error: None,
+        };
+    }
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts;
@@ -275,6 +283,19 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             day = 0;
                         }
                         text = format!("{}{}", text, locale.dates.day_names_short[day]);
+                    }
+                    TextToken::Era(_) | TextToken::EraYear(_) | TextToken::JapaneseWeekday(_) => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
+                        text.push_str(&super::japanese::render(token, date));
                     }
                     TextToken::DayName => {
                         let date = match date {
@@ -661,6 +682,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::DayPadded => {}
                     TextToken::DayNameShort => {}
                     TextToken::DayName => {}
+                    TextToken::Era(_) => {}
+                    TextToken::EraYear(_) => {}
+                    TextToken::JapaneseWeekday(_) => {}
                     TextToken::Month => {}
                     TextToken::MonthPadded => {}
                     TextToken::MonthNameShort => {}

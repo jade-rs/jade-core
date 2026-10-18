@@ -72,3 +72,9 @@ applied after the first), each pinned by a case in
 - `xlsx_function_prefix` exposes which functions an `.xlsx` formula must write
   with `_xlfn.` / `_xlfn._xlws.`, and DAYS, FORECAST.LINEAR, GAMMA.DIST, GAUSS,
   IMSECH, NETWORKDAYS.INTL and WORKDAY.INTL gain the prefix upstream omitted.
+- The number formatter (TEXT) reads the Japanese date codes — era `g`/`gg`/
+  `ggg`, era year `e`/`ee` (`formatter/japanese.rs`), weekday `aaa`/`aaaa` —
+  and a bare locale tag such as `[$-411]`, which it used to reject as
+  `#VALUE!`; and fractions (`# ?/?`, `?/??`, `# ?/8`, `formatter/fraction.rs`),
+  which the token parser does not model. Appended to `jade.patch` as a third
+  set of hunks.
