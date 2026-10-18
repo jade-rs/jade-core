@@ -6142,6 +6142,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
 
     prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
     enforce_line_start_rules(paragraph_style, &mut lines);
+    // The kinsoku repair moves single characters: one that may not start a
+    // line takes the digit before it along and splits the number (`2` |
+    // `0％`, trust-beneficiary-sale-keep-next page 9), so mend words again.
+    prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
     let character_borders = lines.iter().any(line_has_character_border);
     ensure_lines_fit_available_width(
         ctx,
@@ -7420,11 +7424,8 @@ fn prevent_mid_word_breaks(
         let (head, tail) = lines.split_at_mut(idx);
         let prev_line = &mut head[idx - 1];
         let next_line = &mut tail[0];
-        let next_starts_latin_word = next_line
-            .clusters
-            .first()
-            .map(|cluster| is_latin_word_grapheme(&cluster.text))
-            .unwrap_or(false);
+        let next_starts_latin_word =
+            !next_line.clusters.is_empty() && is_latin_word_cluster(&next_line.clusters, 0);
         if !next_starts_latin_word {
             continue;
         }
@@ -7498,10 +7499,12 @@ fn line_break_splits_latin_word(
 }
 
 /// Whether the cluster at `index` belongs to the Latin word around it: a
-/// letter, or a slash right after one (Word keeps `header/footer` whole).
+/// letter or ASCII digit (Word moves `20％` whole), or a slash right after a
+/// letter (Word keeps `header/footer` whole).
 fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
     is_latin_word_grapheme(text)
+        || is_ascii_digit_grapheme(text)
         || (text == "/" && index > 0 && is_latin_word_grapheme(&clusters[index - 1].text))
 }
 
@@ -12261,6 +12264,76 @@ mod tests {
                 .map(|line| line.text.as_str())
                 .collect::<Vec<_>>(),
             ["あああ", "MLPMいい"]
+        );
+    }
+
+    #[test]
+    fn number_after_east_asian_text_moves_as_one_word() {
+        // trust-beneficiary-sale-keep-next page 9: Word ends a line at
+        // `売買代金の` and starts the next with `20％`, not `2` | `0％`.
+        let ctx = TestContext::new(10.0);
+        let text = "あああ20％いい";
+        let paragraph = ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 45.0)
+            .expect("wrap");
+        assert_eq!(
+            collect_line_infos(&lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["あああ", "20％いい"]
+        );
+        // A unit that may not start a line, after a number squeezed onto the
+        // line, takes the whole number along.
+        let lines = wrap_text_into_lines(
+            &ctx,
+            "あああ、20％いい",
+            &[make_run("あああ、20％いい")],
+            0.0,
+            &ParagraphStyle {
+                alignment: "both".to_string(),
+                word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    character_spacing_control: Some("compressPunctuation".into()),
+                    ..paragraph.east_asian_rules.clone()
+                },
+                ..paragraph.clone()
+            },
+            0,
+            60.0,
+        )
+        .expect("wrap");
+        let texts: Vec<_> = collect_line_infos(&lines)
+            .into_iter()
+            .map(|line| line.text)
+            .collect();
+        assert_eq!(
+            texts.last().map(String::as_str),
+            Some("20％いい"),
+            "{texts:?}"
+        );
+        // A justified Mac line that could squeeze the `2` in still moves the
+        // number whole.
+        let justified = ParagraphStyle {
+            alignment: "both".to_string(),
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            ..paragraph
+        };
+        let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &justified, 0, 45.0)
+            .expect("wrap");
+        assert_eq!(
+            collect_line_infos(&lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["あああ", "20％いい"]
         );
     }
 
