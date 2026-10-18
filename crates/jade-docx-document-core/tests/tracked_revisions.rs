@@ -53,33 +53,36 @@ fn insert(paragraph: usize, offset: usize, text: &str) -> HeadlessCommand {
     }
 }
 
-/// `text[kind author]` per run, `in ins author` for a nested insertion.
+/// `text[kind author]` per stretch of text with the same tracked changes,
+/// `in ins author` for a deletion nested in an insertion.
 fn runs(word: &WordDocument, paragraph: usize) -> Vec<String> {
-    word.paragraph(paragraph)
-        .unwrap()
-        .runs
-        .iter()
-        .filter(|r| !r.text.is_empty())
-        .map(|r| match &r.revision {
-            None => r.text.clone(),
-            Some(m) => {
-                let kind = match m.kind {
-                    RevisionKind::Inserted => "ins",
-                    RevisionKind::Deleted => "del",
-                    RevisionKind::MovedFrom => "from",
-                    RevisionKind::MovedTo => "to",
-                };
-                let author = m.author.clone().unwrap_or_default();
-                match &m.insertion {
-                    Some(i) => format!(
-                        "{}[{kind} {author} in ins {}]",
-                        r.text,
-                        i.author.clone().unwrap_or_default()
-                    ),
-                    None => format!("{}[{kind} {author}]", r.text),
-                }
+    let mut stretches: Vec<(Option<String>, String)> = Vec::new();
+    for r in &word.paragraph(paragraph).unwrap().runs {
+        let mark = r.revision.as_ref().map(|m| {
+            let kind = match m.kind {
+                RevisionKind::Inserted => "ins",
+                RevisionKind::Deleted => "del",
+                RevisionKind::MovedFrom => "from",
+                RevisionKind::MovedTo => "to",
+            };
+            let author = m.author.clone().unwrap_or_default();
+            match &m.insertion {
+                Some(i) => format!(
+                    "[{kind} {author} in ins {}]",
+                    i.author.clone().unwrap_or_default()
+                ),
+                None => format!("[{kind} {author}]"),
             }
-        })
+        });
+        match stretches.last_mut() {
+            Some((last, text)) if *last == mark => text.push_str(&r.text),
+            _ => stretches.push((mark, r.text.clone())),
+        }
+    }
+    stretches
+        .into_iter()
+        .filter(|(_, text)| !text.is_empty())
+        .map(|(mark, text)| format!("{text}{}", mark.unwrap_or_default()))
         .collect()
 }
 
