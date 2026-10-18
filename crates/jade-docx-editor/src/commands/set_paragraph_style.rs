@@ -30,8 +30,10 @@ pub struct SetParagraphStyleCommand {
     /// Run formatting the style replaced in the saved XML, per paragraph.
     previous_run_xml: Vec<RemovedRunProperties>,
     previous_selection: Option<SelectionRange>,
-    /// Package state before a missing built-in style definition was added.
-    /// Undo restores it whole so the definition leaves with the style.
+    /// Package state before a missing built-in style definition was added,
+    /// or before a note paragraph was restyled. Undo restores it whole so the
+    /// definition leaves with the style, and a note's part comes back as it
+    /// was.
     package_before_style_creation: Option<WordDocumentSnapshot>,
 }
 
@@ -78,6 +80,13 @@ impl Command for SetParagraphStyleCommand {
             return Err(CommandError::ParagraphUnavailable);
         }
         self.package_before_style_creation = None;
+        // A note paragraph's part is re-read on every edit, so the run
+        // properties taken out of it cannot be put back by id: undo restores
+        // the document as it was instead.
+        let note_snapshot = (start..=end)
+            .any(|paragraph_index| ctx.document.is_note_paragraph_surface(paragraph_index))
+            .then(|| ctx.document.snapshot_including_package())
+            .flatten();
         if let Some(requested) = requested_style_id.as_deref() {
             let defined = ctx
                 .document
@@ -94,6 +103,9 @@ impl Command for SetParagraphStyleCommand {
                     self.package_before_style_creation = snapshot;
                 }
             }
+        }
+        if self.package_before_style_creation.is_none() {
+            self.package_before_style_creation = note_snapshot;
         }
         let style_id = requested_style_id.as_ref().map(|requested| {
             ctx.document
@@ -158,10 +170,7 @@ impl Command for SetParagraphStyleCommand {
                 .inherited_paragraph_properties(paragraph_index, style_id.as_deref());
             let declared: Vec<String> = ctx
                 .document
-                .paragraph_declared_property_tags(paragraph_index)
-                .into_iter()
-                .map(str::to_string)
-                .collect();
+                .paragraph_declared_property_tags(paragraph_index);
             let declared_attributes = ctx
                 .document
                 .paragraph_declared_property_attributes(paragraph_index);
