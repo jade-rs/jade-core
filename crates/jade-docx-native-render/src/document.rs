@@ -490,6 +490,26 @@ impl NativeDocument {
         Ok(started.elapsed())
     }
 
+    /// Rasterises the pages at `scale` device pixels per CSS pixel — the
+    /// window's backing scale — and repaints if that changed it.
+    ///
+    /// Layout, hit-testing and the caret stay in CSS pixels; only
+    /// [`Self::page_pixels`] grows. Returns whether the pages were repainted.
+    pub fn set_raster_scale(&mut self, scale: f64) -> Result<bool, String> {
+        if !scale.is_finite() || !(0.5..=4.0).contains(&scale) {
+            return Err("raster scale must be finite and between 0.5 and 4".to_string());
+        }
+        let previous = self
+            .renderer
+            .set_raster_scale(scale)
+            .map_err(|_| "raster scale change failed".to_string())?;
+        if previous == scale {
+            return Ok(false);
+        }
+        self.repaint_all()?;
+        Ok(true)
+    }
+
     /// Selects from `anchor` to `focus` and repaints so the highlight appears.
     ///
     /// The renderer paints the selection, so this costs a repaint — unlike
