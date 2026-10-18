@@ -230,8 +230,19 @@ impl DocxXmlDocument {
 
     /// 指定 ID の要素を取得する。
     pub fn element(&self, id: XmlNodeId) -> Option<&XmlElement> {
-        let path = self.path(id)?;
-        Self::element_by_path(&self.root, path.as_slice())
+        // The walk that checks the index's path finds the element too; going
+        // through `path` walked it twice. Loading asks this of every run.
+        if let Some(element) = self
+            .indexed_path(id)
+            .and_then(|path| Self::element_by_path(&self.root, path.as_slice()))
+            .filter(|element| element.id == id)
+        {
+            return Some(element);
+        }
+        let mut path = Vec::new();
+        Self::find_path(&self.root, id, &mut path)
+            .then(|| Self::element_by_path(&self.root, &path))
+            .flatten()
     }
 
     /// 指定 ID の要素を可変参照として取得する。
