@@ -12182,6 +12182,66 @@ mod tests {
     }
 
     #[test]
+    fn a_style_that_removes_a_runs_size_leaves_no_complex_script_size_in_charge() {
+        // Applying a style takes the size it defines out of the runs: their
+        // `w:sz` went, their `w:szCs` stayed, and the reader took a lone
+        // `w:szCs` as the run's size, so the text was back at the old size
+        // on reload. Word sizes Latin text by `w:sz` only.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-property-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetFontSize {
+                        start_paragraph: 0,
+                        start_offset: 30,
+                        end_paragraph: 1,
+                        end_offset: 47,
+                        font_size: 14.0,
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 1,
+                        end_paragraph: 3,
+                        style_id: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(1)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.properties.as_ref().and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(sizes(&reloaded), sizes(&word_doc));
+        assert!(
+            sizes(&word_doc).iter().all(|(_, size)| *size == Some(10.5)),
+            "{:?}",
+            sizes(&word_doc)
+        );
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
