@@ -292,9 +292,9 @@ fn reposition_removed(slides: &mut Vec<SlideDiff>) {
     for slide in removed {
         let old_index = slide.old_index.unwrap_or(0);
         while position < kept.len()
-            && !kept[position]
+            && kept[position]
                 .old_index
-                .is_some_and(|index| index > old_index)
+                .is_none_or(|index| index <= old_index)
         {
             position += 1;
         }
