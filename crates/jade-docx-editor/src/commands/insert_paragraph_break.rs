@@ -961,6 +961,77 @@ mod tests {
         cursor.into_inner()
     }
 
+    /// Enter before a complex field moves the whole field into the new
+    /// paragraph with its `fldChar` runs. Its result run used to be rebuilt
+    /// from the model instead, which dropped the `end`: the field stayed open
+    /// on reload and swallowed the text of the paragraphs after it.
+    #[test]
+    fn a_break_before_a_complex_field_keeps_the_field_closed() {
+        for (code, result) in [
+            ("AUTONUMOUT", ""),
+            ("AUTONUMOUT", "<w:r><w:t>78</w:t></w:r>"),
+            ("MERGEFIELD name", "<w:r><w:t>78</w:t></w:r>"),
+        ] {
+            let data = build_docx_with_body(&format!(
+                r#"<w:p><w:r><w:t>mmmm</w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> {code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:r><w:t>次</w:t></w:r></w:p>"#
+            ));
+            // Before the paragraph's text, inside it, at the field, inside
+            // an editable result (the field then spans both paragraphs, as
+            // Word writes it) and after the field.
+            for offset in [0, "mm".len(), "mmmm".len(), "mmmm7".len(), "mmmm78".len()] {
+                let mut doc = executor::block_on(WordDocument::load(&data, &Options::default()))
+                    .expect("load");
+                eprintln!(
+                    "DBG {result:?} {offset} {:?}",
+                    doc.paragraph(0)
+                        .unwrap()
+                        .runs
+                        .iter()
+                        .map(|r| (r.text.clone(), r.node_id, r.field.is_some()))
+                        .collect::<Vec<_>>()
+                );
+                let range = SelectionRange::collapsed(
+                    doc.model_to_rendered_text_position(TextPosition::new(0, offset)),
+                );
+                let mut selection = Some(range);
+                let mut executor = CommandExecutor::new();
+                let mut ctx = CommandContext::new(&mut doc, &mut selection);
+                executor
+                    .execute(Box::new(InsertParagraphBreakCommand::new(range)), &mut ctx)
+                    .expect("break");
+
+                let xml = document_xml(&doc);
+                let kinds: Vec<&str> = xml
+                    .match_indices("w:fldCharType=\"")
+                    .map(|(at, found)| {
+                        let rest = &xml[at + found.len()..];
+                        &rest[..rest.find('"').expect("closing quote")]
+                    })
+                    .collect();
+                assert_eq!(
+                    kinds,
+                    ["begin", "separate", "end"],
+                    "{code} {result:?} at {offset}: {xml}"
+                );
+                let reloaded = executor::block_on(WordDocument::load(
+                    &doc.export_docx().expect("export"),
+                    &Options::default(),
+                ))
+                .expect("reload");
+                assert_eq!(
+                    reloaded.paragraph_count(),
+                    3,
+                    "{code} {result:?} at {offset}"
+                );
+                assert_eq!(
+                    paragraph_text(reloaded.paragraph(2).expect("last paragraph")),
+                    "次",
+                    "{code} {result:?} at {offset}: the paragraph after the field keeps its text"
+                );
+            }
+        }
+    }
+
     /// Undoing Enter gives the paragraph back exactly: its markup, with the
     /// comment and bookmark markers in their places and no formatting run
     /// left in an emptied first half, and its model.

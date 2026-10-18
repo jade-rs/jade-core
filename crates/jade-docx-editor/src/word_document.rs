@@ -1908,6 +1908,15 @@ impl RevisionDecision {
     }
 }
 
+/// What [`WordDocument::split_paragraph_element`] copied into the new
+/// paragraph: each moved XML element mapped to its copy, and each run of a
+/// complex field mapped to the field's `begin` run.
+#[derive(Default)]
+struct SplitTailCopies {
+    copies: HashMap<XmlNodeId, XmlNodeId>,
+    field_begins: HashMap<XmlNodeId, XmlNodeId>,
+}
+
 // Some header/footer editing helpers are consumed only by the visual editor.
 // The headless core intentionally compiles this implementation without those
 // callers, so retain the shared methods without treating them as dead code.
@@ -28638,6 +28647,9 @@ impl WordDocument {
                     _ => return false,
                 };
 
+                // A complex field's code runs are empty in the model; the
+                // split keeps them so the field stays whole on its side.
+                let zero_width = self.zero_width_runs(surface_index);
                 let source_node_id = {
                     let Some(doc) = self.document_mut() else {
                         return false;
@@ -28652,6 +28664,7 @@ impl WordDocument {
                         &mut remaining,
                         offset,
                         true,
+                        &zero_width,
                     );
 
                     let Some(result) = split_result else {
@@ -28670,10 +28683,10 @@ impl WordDocument {
                         (Some(raw), Some(source_node_id)) => {
                             match Self::split_paragraph_element(raw, source_node_id, offset) {
                                 Some((new_node_id, copies)) => (Some(new_node_id), copies),
-                                None => (None, HashMap::new()),
+                                None => (None, SplitTailCopies::default()),
                             }
                         }
-                        _ => (None, HashMap::new()),
+                        _ => (None, SplitTailCopies::default()),
                     };
 
                 if !self.update_paragraph_surfaces_after_body_split(surface_index, &original_path) {
@@ -28722,7 +28735,7 @@ impl WordDocument {
                     .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
                     .and_then(|paragraph| paragraph.runs.get(run_index))
                     .and_then(|run| run.node_id);
-                let mut tail_run_copies = HashMap::new();
+                let mut tail_run_copies = SplitTailCopies::default();
                 if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
                     let mut content_ids = Vec::new();
                     if let Some(run_element) = raw.element(run_id) {
@@ -29114,6 +29127,7 @@ impl WordDocument {
         remaining: &mut usize,
         offset: usize,
         track_body_index: bool,
+        zero_width: &ZeroWidthRuns,
     ) -> Option<SplitInfo> {
         let mut index = 0usize;
         while index < elements.len() {
@@ -29130,7 +29144,11 @@ impl WordDocument {
                         let mut tail_runs = if clamped_offset == 0 {
                             std::mem::take(&mut paragraph.runs)
                         } else {
-                            Self::split_runs_keeping_ids(&mut paragraph.runs, clamped_offset)
+                            split_runs_at_preserving_source(
+                                &mut paragraph.runs,
+                                clamped_offset,
+                                zero_width,
+                            )
                         };
 
                         // Whole runs keep the id of their XML run, for
@@ -29231,9 +29249,12 @@ impl WordDocument {
                     index += 1;
                 }
                 BodyElement::Table(table) => {
-                    if let Some(info) =
-                        Self::split_paragraph_in_table(table.as_mut(), remaining, offset)
-                    {
+                    if let Some(info) = Self::split_paragraph_in_table(
+                        table.as_mut(),
+                        remaining,
+                        offset,
+                        zero_width,
+                    ) {
                         return Some(info);
                     }
                     index += 1;
@@ -29252,12 +29273,17 @@ impl WordDocument {
         table: &mut Table,
         remaining: &mut usize,
         offset: usize,
+        zero_width: &ZeroWidthRuns,
     ) -> Option<SplitInfo> {
         for row in &mut table.rows {
             for cell in &mut row.cells {
-                if let Some(info) =
-                    Self::split_paragraph_in_elements(&mut cell.blocks, remaining, offset, false)
-                {
+                if let Some(info) = Self::split_paragraph_in_elements(
+                    &mut cell.blocks,
+                    remaining,
+                    offset,
+                    false,
+                    zero_width,
+                ) {
                     return Some(info);
                 }
             }
@@ -29539,7 +29565,7 @@ impl WordDocument {
         raw: &mut DocxXmlDocument,
         paragraph_id: XmlNodeId,
         offset: usize,
-    ) -> Option<(XmlNodeId, HashMap<XmlNodeId, XmlNodeId>)> {
+    ) -> Option<(XmlNodeId, SplitTailCopies)> {
         let parent_id = raw.parent_id(paragraph_id)?;
         let path = raw.path(paragraph_id)?;
         let mut original = raw.element(paragraph_id).cloned()?;
@@ -29551,6 +29577,7 @@ impl WordDocument {
         if let Some(source) = raw.element_mut(paragraph_id) {
             source.children = head_children;
         }
+        let field_begins = Self::complex_field_begins(&tail_children);
         original.children = tail_children;
         let tail = original.clone();
         let insert_index = path
@@ -29572,7 +29599,57 @@ impl WordDocument {
         if let Some(copy) = raw.element(new_node_id) {
             Self::pair_copied_element_ids(&tail, copy, &mut copies);
         }
-        Some((new_node_id, copies))
+        Some((
+            new_node_id,
+            SplitTailCopies {
+                copies,
+                field_begins,
+            },
+        ))
+    }
+
+    /// Each run of a complex field among `children`, from its `begin` to its
+    /// `end`, mapped to the outermost field's `begin` run.
+    fn complex_field_begins(children: &[XmlNode]) -> HashMap<XmlNodeId, XmlNodeId> {
+        let mut begins = HashMap::new();
+        let mut open: Vec<XmlNodeId> = Vec::new();
+        for run_id in Self::bindable_run_ids(children) {
+            let Some(XmlNode::Element(run)) = children
+                .iter()
+                .find_map(|child| Self::find_element_node(child, run_id))
+            else {
+                continue;
+            };
+            let fld_char = run.children.iter().find_map(|child| match child {
+                XmlNode::Element(element) if element.name == "w:fldChar" => element
+                    .attributes
+                    .iter()
+                    .find(|attr| attr.name == "w:fldCharType")
+                    .map(|attr| attr.value.as_str()),
+                _ => None,
+            });
+            if fld_char == Some("begin") {
+                open.push(run_id);
+            }
+            if let Some(&outermost) = open.first() {
+                begins.insert(run_id, outermost);
+            }
+            if fld_char == Some("end") {
+                open.pop();
+            }
+        }
+        begins
+    }
+
+    fn find_element_node(node: &XmlNode, id: XmlNodeId) -> Option<&XmlNode> {
+        match node {
+            XmlNode::Element(element) if element.id == id => Some(node),
+            XmlNode::Element(element) => element
+                .children
+                .iter()
+                .find_map(|child| Self::find_element_node(child, id)),
+            _ => None,
+        }
     }
 
     fn pair_copied_element_ids(
@@ -29597,20 +29674,31 @@ impl WordDocument {
     /// comment's range ended after its reference mark. A run with no copy
     /// (none was made, or it sits in a container) is still rebuilt, as is a
     /// field result: the split drops a complex field's `w:fldChar` runs, and
-    /// rebuilding the result writes the field back as a simple one.
+    /// rebuilding the result writes the field back as a simple one. A field
+    /// that moved whole, from its `begin` on, keeps its runs: rebuilt, its
+    /// result run dropped the `end`, and the open field hid the paragraphs
+    /// after it.
     ///
     /// A text box moves with its paragraphs, bound to their copies inside
     /// it. Rebuilt from the model instead, it lost its paragraphs' styles and
     /// wrote their inherited fonts into its runs.
-    fn bind_split_tail_runs(runs: &mut [Run], copies: &HashMap<XmlNodeId, XmlNodeId>) {
+    fn bind_split_tail_runs(runs: &mut [Run], tail: &SplitTailCopies) {
+        let moved: HashSet<XmlNodeId> = runs.iter().filter_map(|run| run.node_id).collect();
+        let field_moved_whole = |id: &XmlNodeId| {
+            tail.field_begins
+                .get(id)
+                .is_some_and(|begin| moved.contains(begin))
+        };
         for run in runs {
             run.node_id = match run.node_id {
-                Some(id) if run.field.is_none() => copies.get(&id).copied(),
+                Some(id) if run.field.is_none() || field_moved_whole(&id) => {
+                    tail.copies.get(&id).copied()
+                }
                 _ => None,
             };
             if let Some(text_box) = run.text_box.as_mut() {
                 if run.node_id.is_some() {
-                    Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                    Self::bind_copied_blocks(&mut text_box.blocks, &tail.copies);
                 }
             }
         }
@@ -48675,9 +48763,8 @@ mod tests {
         }
     }
 
-    /// A field the split moves into the new paragraph stays a field. The
-    /// split drops a complex field's `w:fldChar` runs, so its result run is
-    /// rebuilt as a simple field rather than kept as plain text.
+    /// A field the split moves into the new paragraph stays a field, with
+    /// the `w:fldChar` and `w:instrText` runs it was written with.
     #[test]
     fn split_paragraph_keeps_a_field_it_moves() {
         let data = build_document_docx(
@@ -48689,7 +48776,12 @@ mod tests {
         assert!(word_doc.split_paragraph_at(0, 1));
         let xml = exported_document_xml(&word_doc);
         let tail = &xml[xml.find("</w:p><w:p").expect("two paragraphs")..];
-        assert!(tail.contains(r#"w:instr=" PAGE ""#), "{xml}");
+        assert!(
+            tail.contains(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            ),
+            "{xml}"
+        );
     }
 
     #[test]
