@@ -993,6 +993,14 @@ fn layout_sheet_with_workbook(
             let formatted =
                 number_format::format_value(&cell.value, number_format_code, options.date_system);
             let text = formatted.text;
+            // Without wrap text Excel keeps the cell on one line and shows
+            // its line breaks as nothing.
+            let one_line = if alignment.wrap_text || !text.contains(['\n', '\r']) {
+                None
+            } else {
+                Some(text.replace(['\n', '\r'], ""))
+            };
+            let shown = one_line.as_deref().unwrap_or(&text);
 
             let filter_reserve =
                 filter_button::text_reserve(&filter_definitions, cell.reference, merge, &columns);
@@ -1010,7 +1018,7 @@ fn layout_sheet_with_workbook(
                     &occupied,
                     cell.reference.column,
                     alignment.horizontal,
-                    options.measure.measure(&text, &font),
+                    options.measure.measure(shown, &font),
                     options.cell_padding_px + text_inset_px,
                 )
             } else {
@@ -1020,7 +1028,7 @@ fn layout_sheet_with_workbook(
             if alignment.shrink_to_fit && !alignment.wrap_text && !text.is_empty() {
                 let available =
                     (text_width - options.cell_padding_px * 2.0 - text_inset_px).max(1.0);
-                let measured = options.measure.measure(&text, &font);
+                let measured = options.measure.measure(shown, &font);
                 if measured > available {
                     let scale = (available / measured).clamp(0.0, 1.0) as f32;
                     font.size_points = (font.size_points * scale).max(1.0);
@@ -1042,7 +1050,7 @@ fn layout_sheet_with_workbook(
                         |candidate| options.measure.measure(candidate, &font),
                     )
                 }
-                _ => text.clone(),
+                _ => shown.to_string(),
             };
             let lines = if stacks_text && !text.is_empty() {
                 text.graphemes(true).map(str::to_string).collect()

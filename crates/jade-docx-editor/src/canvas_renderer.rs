@@ -59,6 +59,7 @@ use jade_docx_layout::section_transition::{
     resolve_page_margins, resolve_section_transition, SectionBreakType, SectionTransition,
     DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
 };
+pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
     CaretMetrics, CaretMovement, CellLayout, FragmentLayout as SelectionFragmentLayout, GlyphBox,
     LayoutFragmentDebug, LayoutGlyphDebug, LayoutLineDebug, LineLayout as SelectionLineLayout,
@@ -3590,14 +3591,14 @@ where
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled preceding paragraph (ECMA-376 Part 1 §17.3.1.9). Rebuilt on each
     /// full body render from [`compute_contextual_spacing_suppression`].
-    contextual_suppress_before: HashSet<usize>,
+    contextual_suppress_before: ElementIndexSet,
     /// Body-element indices whose paragraph `w:spacing` after should be
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled following paragraph.
-    contextual_suppress_after: HashSet<usize>,
+    contextual_suppress_after: ElementIndexSet,
     /// Body element indices whose paragraph shares a border box with the next
     /// one (`word_paragraphs_share_border_box`).
-    paragraph_border_box_continues: HashSet<usize>,
+    paragraph_border_box_continues: ElementIndexSet,
     document_east_asian_rules: EastAsianLineBreakingRules,
     /// Tracks the currently set font on the canvas context to avoid redundant
     /// set_font calls (which trigger expensive WASM→JS string decoding).
@@ -3834,6 +3835,17 @@ where
     band_redraw_fallback_multi_column: Cell<u64>,
     band_redraw_fallback_line_height: Cell<u64>,
     band_redraw_fallback_empty_line: Cell<u64>,
+    /// Lazy sessions fetch page pixels on demand: a band render paints only
+    /// the band page (see `should_draw_page_for_current_render`).
+    band_redraw_paints_band_page_only: bool,
+    /// Set by `set_incremental_dirty_from`, which only edits call; taken at
+    /// render entry into `edit_render_this_pass`. A layout-extension seek also
+    /// sets `forced_dirty_from`, so that alone does not identify an edit.
+    edit_render_pending: bool,
+    /// Whether this render paints an edit (see `edit_render_pending`).
+    edit_render_this_pass: bool,
+    /// Dirty visible pages a lazy band edit left unpainted (session lifetime).
+    band_redraw_skipped_pages: Cell<u64>,
     band_redraw_fallback_page_not_dirty: Cell<u64>,
     band_redraw_fallback_no_layout: Cell<u64>,
     band_redraw_fallback_unstable: Cell<u64>,
@@ -5728,6 +5740,7 @@ where
     /// command path to avoid computing hashes for all paragraphs.
     pub fn set_incremental_dirty_from(&mut self, paragraph_index: usize) {
         self.forced_dirty_from = Some(self.keep_next_group_owner(paragraph_index));
+        self.edit_render_pending = true;
         // Skip change detection since we know exactly which paragraph changed.
         self.skip_change_detection = true;
     }
@@ -7889,9 +7902,9 @@ where
             word_oracle_text_advances: RefCell::new(FxHashMap::default()),
             word_oracle_paragraph_advances: RefCell::new(FxHashMap::default()),
             word_oracle_report_x_offsets: RefCell::new(FxHashMap::default()),
-            contextual_suppress_before: HashSet::new(),
-            contextual_suppress_after: HashSet::new(),
-            paragraph_border_box_continues: HashSet::new(),
+            contextual_suppress_before: ElementIndexSet::default(),
+            contextual_suppress_after: ElementIndexSet::default(),
+            paragraph_border_box_continues: ElementIndexSet::default(),
             document_east_asian_rules: EastAsianLineBreakingRules::default(),
             current_font: RefCell::new(None),
             current_fill_color: RefCell::new(None),
@@ -7968,6 +7981,10 @@ where
             band_redraw_fallback_multi_column: Cell::new(0),
             band_redraw_fallback_line_height: Cell::new(0),
             band_redraw_fallback_empty_line: Cell::new(0),
+            band_redraw_paints_band_page_only: false,
+            edit_render_pending: false,
+            edit_render_this_pass: false,
+            band_redraw_skipped_pages: Cell::new(0),
             band_redraw_fallback_page_not_dirty: Cell::new(0),
             band_redraw_fallback_no_layout: Cell::new(0),
             band_redraw_fallback_unstable: Cell::new(0),
@@ -8092,6 +8109,17 @@ where
     ///
     /// Returns `(eligible, taken, fallback_reasons)` where the reasons vector is
     /// `(name, count)` pairs. All counters are monotonic (session lifetime).
+    /// Dirty visible pages lazy band edits left unpainted (session lifetime).
+    pub fn band_redraw_skipped_pages(&self) -> u64 {
+        self.band_redraw_skipped_pages.get()
+    }
+
+    /// Makes band renders paint only the band page. Set for lazy sessions,
+    /// whose page pixels are fetched, and repainted, on demand.
+    pub fn set_band_redraw_paints_band_page_only(&mut self, enabled: bool) {
+        self.band_redraw_paints_band_page_only = enabled;
+    }
+
     #[allow(clippy::type_complexity)]
     pub fn band_redraw_stats(&self) -> (u64, u64, Vec<(&'static str, u64)>) {
         (
@@ -9263,6 +9291,19 @@ where
     #[inline]
     fn should_draw_page_for_current_render(&self, page: usize) -> bool {
         if self.render_skip_draw {
+            return false;
+        }
+        // A lazy band render paints only the band page. Another page cannot
+        // change: pages before the edit precede it, and pages after it keep
+        // their layout because a geometry change escalates to a full repaint
+        // of every visible page. Its pixels from this pass would not be shown
+        // either: the worker invalidates every page's bitmap generation after
+        // the edit and repaints a page when its bitmap is fetched. The band
+        // completion forgets those pages' pixels so no later band builds on them.
+        if self.band_redraw_paints_band_page_only
+            && self.edit_render_this_pass
+            && self.band_redraw_plan.is_some_and(|plan| plan.page != page)
+        {
             return false;
         }
         if self
@@ -12400,6 +12441,7 @@ where
         // mid-render when a seek is active, so it cannot be read at completion.
         self.last_edit_full_page_valid = None;
         self.edit_render_dirty_from = self.forced_dirty_from;
+        self.edit_render_this_pass = std::mem::take(&mut self.edit_render_pending);
         if !self
             .last_document
             .as_ref()
@@ -13375,6 +13417,28 @@ where
         // pixel-identical canvases without another presentation. Unstable bands
         // return through the escalation above and keep all wide dirty regions.
         if let Some(plan) = completed_band_plan {
+            if self.band_redraw_paints_band_page_only && self.edit_render_this_pass {
+                // Pages this pass would have repainted but skipped keep pixels
+                // from an earlier layout generation.
+                let skipped = self
+                    .render_dirty_pages
+                    .iter()
+                    .flatten()
+                    .copied()
+                    .filter(|&dirty| {
+                        dirty != plan.page
+                            && self
+                                .visible_page_range
+                                .as_ref()
+                                .is_none_or(|range| range.contains(&dirty))
+                    })
+                    .collect::<Vec<_>>();
+                for dirty in skipped {
+                    self.host.forget_page_pixels(dirty.saturating_sub(1));
+                    self.band_redraw_skipped_pages
+                        .set(self.band_redraw_skipped_pages.get() + 1);
+                }
+            }
             let page = plan.page.saturating_sub(1);
             let downstream_dirty_regions = self
                 .dirty_regions()
@@ -13430,6 +13494,8 @@ where
         self.clear_shift_replay();
         self.prefix_replay_until = None;
         self.forced_dirty_from = None;
+        self.edit_render_pending = false;
+        self.edit_render_this_pass = false;
         self.forced_seek_snapshot = None;
         self.disable_seek_replay_once = false;
         self.prefer_visible_window_seek_once = false;
@@ -20270,11 +20336,16 @@ where
                 let style = &prepared.style;
                 // Re-apply the cached color. The glyph plan below selects the
                 // actual font for its first glyph, avoiding a redundant Latin
-                // font activation for East Asian and complex-script runs.
-                self.set_fill_style_if_changed(
-                    self.resolve_text_fill_color(style.fill_color.as_ref())
-                        .as_ref(),
-                );
+                // font activation for East Asian and complex-script runs. A
+                // line the band cull skips draws no glyphs, so it needs no
+                // color: this is the same check `draw_planned_text` makes, at
+                // the same `current_y`.
+                if self.should_draw_current_page_for_render() {
+                    self.set_fill_style_if_changed(
+                        self.resolve_text_fill_color(style.fill_color.as_ref())
+                            .as_ref(),
+                    );
+                }
                 let text_style = self.cmd_text_style(prepared.segment.properties.as_deref(), style);
                 let text_y = baseline + style.baseline_shift_px;
                 // Draw highlight background behind the text when present.
@@ -29262,6 +29333,12 @@ where
         self.selection.caret_metrics()
     }
 
+    /// Which line a caret on a soft wrap is drawn on — the end of the line
+    /// above (the default) or the start of the line below.
+    pub fn set_caret_affinity(&mut self, affinity: CaretAffinity) {
+        self.selection.set_caret_affinity(affinity);
+    }
+
     pub fn hit_test_position(&self, x: f64, y: f64) -> Option<TextPosition> {
         self.selection.hit_test(x, y)
     }
@@ -30101,7 +30178,9 @@ where
         }
     }
 
-    pub(crate) fn set_raster_scale(&mut self, scale: f64) -> Result<f64, JsValue> {
+    /// Changes the host's raster density, keeping layout in CSS pixels, and
+    /// returns the previous one. Everything is repainted on the next render.
+    pub fn set_raster_scale(&mut self, scale: f64) -> Result<f64, JsValue> {
         let previous = self.host.device_pixel_ratio();
         if previous != scale {
             self.restore_band_clip_if_active();
@@ -33105,8 +33184,34 @@ fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
 /// `w:pStyle` (two default/`None` paragraphs count as identical).
 /// Body element indices whose paragraph shares a border box with the
 /// paragraph right after it ([`word_paragraphs_share_border_box`]).
-fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> HashSet<usize> {
-    let mut continues = HashSet::new();
+/// Body element indexes flagged by a pairwise scan of adjacent paragraphs.
+///
+/// The scans run on every render and, in a document of one paragraph style,
+/// flag nearly every paragraph, so the indexes are kept densely rather than
+/// hashed into a set.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ElementIndexSet(Vec<bool>);
+
+impl ElementIndexSet {
+    fn insert(&mut self, index: usize) {
+        if index >= self.0.len() {
+            self.0.resize(index + 1, false);
+        }
+        self.0[index] = true;
+    }
+
+    pub(crate) fn contains(&self, index: &usize) -> bool {
+        self.0.get(*index).copied().unwrap_or(false)
+    }
+
+    #[cfg(test)]
+    fn is_empty(&self) -> bool {
+        !self.0.contains(&true)
+    }
+}
+
+fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> ElementIndexSet {
+    let mut continues = ElementIndexSet::default();
     for index in 1..elements.len() {
         let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
             (&elements[index - 1], &elements[index])
@@ -33122,9 +33227,9 @@ fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> HashS
 
 fn compute_contextual_spacing_suppression(
     elements: &[BodyElement],
-) -> (HashSet<usize>, HashSet<usize>) {
-    let mut suppress_before = HashSet::new();
-    let mut suppress_after = HashSet::new();
+) -> (ElementIndexSet, ElementIndexSet) {
+    let mut suppress_before = ElementIndexSet::default();
+    let mut suppress_after = ElementIndexSet::default();
     for index in 1..elements.len() {
         let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
             (&elements[index - 1], &elements[index])
@@ -38378,6 +38483,43 @@ mod tests {
         }
     }
 
+    /// A lazy edit's band render paints the band page alone; any other render,
+    /// or an eager session, keeps painting every dirty visible page.
+    #[test]
+    fn a_lazy_band_edit_paints_only_the_band_page() {
+        let mut renderer = renderer_measuring(&[]);
+        renderer.pageless_mode = false;
+        renderer.render_full_repaint = false;
+        renderer.render_dirty_pages = Some(std::collections::BTreeSet::from([1, 2, 3]));
+        renderer.visible_page_range = Some(1..=3);
+        renderer.band_redraw_plan = Some(BandRedrawPlan {
+            page: 2,
+            local_top: 100.0,
+            local_bottom: 140.0,
+            paint_bottom: 140.0,
+        });
+        let drawn = |renderer: &CanvasRenderer| {
+            (1..=3)
+                .filter(|&page| renderer.should_draw_page_for_current_render(page))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(drawn(&renderer), [1, 2, 3], "eager session");
+        renderer.set_band_redraw_paints_band_page_only(true);
+        assert_eq!(drawn(&renderer), [1, 2, 3], "not an edit render");
+        renderer.edit_render_this_pass = true;
+        assert_eq!(drawn(&renderer), [2]);
+        renderer.band_redraw_plan = None;
+        assert_eq!(drawn(&renderer), [1, 2, 3], "no band");
+    }
+
+    #[test]
+    fn only_an_incremental_edit_marks_the_next_render_as_an_edit() {
+        let mut renderer = renderer_measuring(&[]);
+        assert!(!renderer.edit_render_pending);
+        renderer.set_incremental_dirty_from(0);
+        assert!(renderer.edit_render_pending);
+    }
+
     /// A line the band cull (or an undrawn page) skips still needs its mark's
     /// width for the line end, but none of the borrowed painter state.
     #[test]
@@ -41176,6 +41318,7 @@ mod tests {
             author: None,
             date: None,
             date_utc: None,
+            insertion: None,
         });
         run
     }
@@ -41250,6 +41393,7 @@ mod tests {
                 author: None,
                 date: None,
                 date_utc: None,
+                insertion: None,
             });
             run
         }
@@ -50540,6 +50684,7 @@ mod tests {
             author: None,
             date: None,
             date_utc: None,
+            insertion: None,
         });
         assert_ne!(
             render_after,

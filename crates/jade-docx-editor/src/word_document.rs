@@ -3,8 +3,9 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, normalize_break_runs, rebase_comment_anchors_for_edit, run_carries_content,
-    split_runs_at_preserving_source, FieldChars, ZeroWidthRuns,
+    apply_text_edit, create_run_from_template, normalize_break_runs,
+    rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
+    FieldChars, ZeroWidthRuns,
 };
 use crate::commands::{
     delete_text::{DeleteDirection, DeleteTextCommand},
@@ -391,11 +392,26 @@ fn rebase_run_style_properties(
     new: &RunProperties,
     declared: impl Fn(&str) -> bool,
 ) {
+    // The font properties a load resolves into runs (see
+    // `apply_run_font_defaults_to_paragraph`) move to the new style's.
     macro_rules! rebase {
         ($($field:ident => $direct:expr),* $(,)?) => {
             $(
                 if !$direct && run.$field == old.$field {
                     run.$field = new.$field.clone();
+                }
+            )*
+        };
+    }
+    // The rest a load leaves to the paragraph style, which the renderer
+    // resolves: a value the old style gave goes, rather than turning into the
+    // new style's. Kept, the sync wrote it into the run's `w:rPr` at its next
+    // edit, and a heading's theme colour became a fixed direct one.
+    macro_rules! release {
+        ($($field:ident => $direct:expr),* $(,)?) => {
+            $(
+                if !$direct && run.$field == old.$field {
+                    run.$field = None;
                 }
             )*
         };
@@ -408,7 +424,7 @@ fn rebase_run_style_properties(
             declared(tag)
         }
     };
-    rebase!(
+    release!(
         bold => declared("w:b"),
         bold_complex => declared("w:bCs"),
         italic => declared("w:i"),
@@ -429,13 +445,15 @@ fn rebase_run_style_properties(
         text_position => declared("w:position"),
         char_spacing => declared("w:spacing"),
         fit_text => declared("w:fitText"),
-        font_family => declared("w:rFonts"),
-        language => declared("w:lang"),
-        east_asia_language => declared("w:lang"),
         color => declared("w:color"),
         highlight => declared("w:highlight"),
         shading => declared("w:shd"),
         border => declared("w:bdr"),
+    );
+    rebase!(
+        font_family => declared("w:rFonts"),
+        language => declared("w:lang"),
+        east_asia_language => declared("w:lang"),
         font_size => font_direct(direct.font_size.is_some(), "w:sz"),
         font_size_complex => font_direct(direct.font_size_complex.is_some(), "w:szCs"),
         kerning => font_direct(direct.kerning.is_some(), "w:kern"),
@@ -447,9 +465,9 @@ fn rebase_run_style_properties(
         && (&run.underline, &run.underline_kind, &run.underline_color)
             == (&old.underline, &old.underline_kind, &old.underline_color)
     {
-        run.underline = new.underline;
-        run.underline_kind = new.underline_kind.clone();
-        run.underline_color = new.underline_color.clone();
+        run.underline = None;
+        run.underline_kind = None;
+        run.underline_color = None;
     }
 }
 
@@ -2140,6 +2158,9 @@ impl WordDocument {
             } else {
                 parser.parse_document_xml(&doc_part.content)?
             };
+            if let Some(body) = parsed_doc.body.as_mut() {
+                Self::capture_direct_run_fonts(&mut body.elements);
+            }
 
             if let Some(raw_xml) = document.raw_document.as_ref() {
                 let _ = attach_document_xml_ids(&mut parsed_doc, raw_xml);
@@ -3726,7 +3747,10 @@ impl WordDocument {
     /// paragraph that had none is drawn in the renderer's fallback font until
     /// the document has been through a file.
     pub fn apply_run_font_defaults_at(&mut self, paragraph_index: usize) {
-        let Some(styles) = self.styles_part.clone() else {
+        // Taken rather than cloned: this runs on every keystroke, and the
+        // styles part is the document's whole style table. Reaching the
+        // paragraph touches only the document and the paragraph surfaces.
+        let Some(styles) = self.styles_part.take() else {
             return;
         };
         let run_fonts = |paragraph: &Paragraph| {
@@ -3740,17 +3764,19 @@ impl WordDocument {
                 })
                 .collect::<Vec<_>>()
         };
-        let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
-            return;
-        };
-        let before = run_fonts(paragraph);
-        Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        let filled = self
+            .paragraph_mut(paragraph_index)
+            .is_some_and(|paragraph| {
+                let before = run_fonts(paragraph);
+                Self::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+                run_fonts(paragraph) != before
+            });
+        self.styles_part = Some(styles);
         // The defaults name theme fonts (`w:eastAsiaTheme` and the like),
         // which loading resolves to the theme's faces next. Left unresolved,
         // text typed into an empty paragraph draws in a fallback face. This
         // runs on every keystroke and the theme is parsed from its XML, so
         // only for a run whose fonts the defaults just filled in.
-        let filled = run_fonts(paragraph) != before;
         if !filled {
             return;
         }
@@ -11167,11 +11193,22 @@ impl WordDocument {
         let mut touched_paragraphs = Vec::new();
 
         for paragraph_index in start..=end {
-            let mut paragraph_changed = false;
+            // A target may name part of a run: cut the runs there, so the
+            // decision takes exactly that part.
+            let cuts = targets.map_or_else(Vec::new, |targets| targets.run_cuts(paragraph_index));
+            let mut paragraph_changed = !cuts.is_empty();
+            let zero_width = (!cuts.is_empty()).then(|| self.zero_width_runs(paragraph_index));
             {
                 let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
                     continue;
                 };
+                if let Some(zero_width) = &zero_width {
+                    for cut in cuts.iter().rev() {
+                        let tail =
+                            split_runs_at_preserving_source(&mut paragraph.runs, *cut, zero_width);
+                        paragraph.runs.extend(tail);
+                    }
+                }
                 let mut new_runs = Vec::with_capacity(paragraph.runs.len());
                 let mut original_offset = 0usize;
                 let mut removed_text_ranges = Vec::new();
@@ -11179,30 +11216,32 @@ impl WordDocument {
                     let run_start = original_offset;
                     let run_end = run_start.saturating_add(run.text.len());
                     original_offset = run_end;
-                    let Some(mark) = run.revision.as_ref() else {
+                    let Some(mark) = run.revision.clone() else {
                         new_runs.push(run);
                         continue;
                     };
-                    if kind_filter
-                        .as_ref()
-                        .is_some_and(|filter| filter != &mark.kind)
-                    {
-                        new_runs.push(run);
-                        continue;
-                    }
-                    // An unidentified run can never match a requested id.
-                    if id_filter.is_some_and(|filter| !filter.matches(mark.id.as_deref())) {
-                        new_runs.push(run);
-                        continue;
-                    }
-                    if targets.is_some_and(|targets| {
-                        !targets.contains_run(
-                            paragraph_index,
-                            run_start,
-                            run_end,
-                            mark.id.as_deref(),
-                        )
-                    }) {
+                    let selected = |layer: &&RevisionMark| {
+                        kind_filter
+                            .as_ref()
+                            .is_none_or(|filter| filter == &layer.kind)
+                            // An unidentified run can never match a requested id.
+                            && id_filter.is_none_or(|filter| filter.matches(layer.id.as_deref()))
+                            && targets.is_none_or(|targets| {
+                                targets.contains_run(
+                                    paragraph_index,
+                                    run_start,
+                                    run_end,
+                                    layer.id.as_deref(),
+                                )
+                            })
+                    };
+                    // Deleted text may still be a tracked insertion: the two
+                    // layers are decided apart, the deletion first.
+                    let decide_deletion = Some(&mark)
+                        .filter(|m| m.is_deletion())
+                        .is_some_and(|m| selected(&m));
+                    let decide_insertion = mark.insertion_layer().is_some_and(|m| selected(&m));
+                    if !decide_deletion && !decide_insertion {
                         new_runs.push(run);
                         continue;
                     }
@@ -11212,23 +11251,34 @@ impl WordDocument {
                     // Move-to behaves like an insertion (its content stays at the
                     // new location); move-from behaves like a deletion (its
                     // content leaves the original location).
-                    match (decision, mark.kind.clone()) {
-                        (RevisionDecision::Accept, RevisionKind::Inserted)
-                        | (RevisionDecision::Accept, RevisionKind::MovedTo)
-                        | (RevisionDecision::Reject, RevisionKind::Deleted)
-                        | (RevisionDecision::Reject, RevisionKind::MovedFrom) => {
-                            run.revision = None;
-                            run.revision_node_id = None;
-                            new_runs.push(run);
+                    let mut kept = Some(mark.clone());
+                    let mut removed = false;
+                    if decide_deletion {
+                        match decision {
+                            RevisionDecision::Accept => removed = true,
+                            RevisionDecision::Reject => kept = mark.insertion.as_deref().cloned(),
                         }
-                        (RevisionDecision::Accept, RevisionKind::Deleted)
-                        | (RevisionDecision::Accept, RevisionKind::MovedFrom)
-                        | (RevisionDecision::Reject, RevisionKind::Inserted)
-                        | (RevisionDecision::Reject, RevisionKind::MovedTo) => {
-                            if run_start < run_end {
-                                removed_text_ranges.push((run_start, run_end));
+                    }
+                    if !removed && decide_insertion {
+                        match decision {
+                            RevisionDecision::Accept => {
+                                kept =
+                                    kept.filter(RevisionMark::is_deletion).map(|mut deletion| {
+                                        deletion.insertion = None;
+                                        deletion
+                                    });
                             }
+                            RevisionDecision::Reject => removed = true,
                         }
+                    }
+                    if removed {
+                        if run_start < run_end {
+                            removed_text_ranges.push((run_start, run_end));
+                        }
+                    } else {
+                        run.revision = kept;
+                        run.revision_node_id = None;
+                        new_runs.push(run);
                     }
                 }
 
@@ -11332,6 +11382,72 @@ impl WordDocument {
             self.refresh_revision_counter();
         }
         Ok(changed_runs.saturating_add(paragraph_mark_ids.len()))
+    }
+
+    /// Inserts `text` at model offset `offset` of the paragraph at surface
+    /// `paragraph_index`, after the first `after` of the zero-width runs
+    /// placing text boxes and note references there (typing goes before
+    /// them all). The text takes a run of its own, formatted like the text
+    /// before it (or after it, at the paragraph's start).
+    pub fn insert_text_among_anchors(
+        &mut self,
+        paragraph_index: usize,
+        offset: usize,
+        after: usize,
+        text: &str,
+    ) -> Result<(), String> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        let anchors = |run: &Run| {
+            usize::from(run.text_box.is_some())
+                + run.footnote_reference_ids.len()
+                + run.endnote_reference_ids.len()
+        };
+        let zero_width = self.zero_width_runs(paragraph_index);
+        let paragraph = self
+            .paragraph_mut(paragraph_index)
+            .ok_or_else(|| format!("paragraph {paragraph_index} does not exist"))?;
+        let mut runs = std::mem::take(&mut paragraph.runs);
+        let text_len: usize = runs.iter().map(|run| run.text.len()).sum();
+        let mut tail =
+            split_runs_at_preserving_source(&mut runs, offset.min(text_len), &zero_width);
+        // The zero-width runs at the offset lead the tail.
+        let mut seen = 0usize;
+        let mut at = 0usize;
+        while seen < after {
+            match tail.get(at) {
+                Some(run) if run.text.is_empty() => {
+                    seen += anchors(run);
+                    at += 1;
+                }
+                _ => break,
+            }
+        }
+        if offset > text_len || seen != after {
+            runs.append(&mut tail);
+            paragraph.runs = runs;
+            return Err(format!(
+                "paragraph {paragraph_index} has no run boundary after {after} text boxes or note references at offset {offset}"
+            ));
+        }
+        let template = runs
+            .iter()
+            .rev()
+            .find(|run| !run.text.is_empty())
+            .or_else(|| tail[at..].iter().find(|run| !run.text.is_empty()))
+            .cloned();
+        let rest = tail.split_off(at);
+        runs.append(&mut tail);
+        // Formatted like its neighbour, but plain: never part of a tracked
+        // change that neighbour belongs to.
+        let mut typed = create_run_from_template(template.as_ref(), text);
+        typed.revision = None;
+        runs.push(typed);
+        runs.extend(rest);
+        paragraph.runs = runs;
+        self.sync_paragraph_text_preserving_drawings(paragraph_index);
+        Ok(())
     }
 
     pub fn insert_footnote_at(
@@ -27308,6 +27424,7 @@ impl WordDocument {
             author: session.author.clone(),
             date: session.date.clone(),
             date_utc: session.date_utc.clone(),
+            insertion: None,
         };
 
         // A field's code is not written anew from the model, which cannot
@@ -27387,13 +27504,16 @@ impl WordDocument {
             .and_then(|run| run.revision.as_ref())
             .filter(|mark| matches_session(mark))
             .cloned();
-        let revision_mark = left_mark.or(right_mark).unwrap_or_else(|| RevisionMark {
+        let mut revision_mark = left_mark.or(right_mark).unwrap_or_else(|| RevisionMark {
             kind: RevisionKind::Deleted,
             id: Some(self.allocate_revision_id().to_string()),
             author: session.author.clone(),
             date: session.date.clone(),
             date_utc: session.date_utc.clone(),
+            insertion: None,
         });
+        // The deletion only: each run keeps the insertion it belongs to.
+        revision_mark.insertion = None;
 
         // A deletion can bridge two adjacent deletion wrappers created by
         // separate keystrokes. Give the contiguous right-hand side the chosen
@@ -27402,13 +27522,16 @@ impl WordDocument {
             .iter_mut()
             .take_while(|run| run.revision.as_ref().is_some_and(&matches_session))
         {
-            run.revision = Some(revision_mark.clone());
+            run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.revision_node_id = None;
         }
 
         // As for an insertion: a field's code stays out of the revision.
+        // Text that is still a tracked insertion stays one, inside the
+        // deletion, as Word keeps it: rejecting the deletion gives the
+        // insertion back, and rejecting every change removes the text.
         for run in middle.iter_mut().filter(|run| !zero_width.keeps(run)) {
-            run.revision = Some(revision_mark.clone());
+            run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.node_id = None;
             run.text_node_id = None;
             run.revision_node_id = None;
@@ -27643,7 +27766,10 @@ impl WordDocument {
         )
     }
 
-    fn note_paragraph_xml(&self, index: usize) -> Option<(String, DocxXmlDocument, XmlNodeId)> {
+    pub(crate) fn note_paragraph_xml(
+        &self,
+        index: usize,
+    ) -> Option<(String, DocxXmlDocument, XmlNodeId)> {
         let ParagraphSurface::Note {
             kind,
             note_id,
@@ -28183,6 +28309,10 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                // The paragraph's `w:p` in each copy of the box goes too: the
+                // model alone lost it on screen and saved it, so joining two
+                // paragraphs wrote the second one's text twice.
+                let element_ids = self.text_box_paragraph_element_ids(index);
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28192,6 +28322,13 @@ impl WordDocument {
                 let removed = Self::remove_paragraph_by_path(&mut text_box.blocks, &block_path);
                 if removed.is_some() {
                     Self::refresh_text_box_text(text_box);
+                }
+                if let Some(raw) = self.raw_document.as_mut() {
+                    for element_id in element_ids {
+                        if let Some(node_path) = raw.path(element_id) {
+                            let _ = raw.remove_node(&node_path);
+                        }
+                    }
                 }
                 removed.is_some()
             }
@@ -28417,56 +28554,16 @@ impl WordDocument {
                     result.source_node_id
                 };
 
-                let mut new_node_id_created = None;
-                // Each XML run of the original paragraph to its copy in the
-                // new one.
-                let mut tail_run_copies = HashMap::new();
-
-                if let (Some(raw), Some(source_node_id)) =
-                    (self.raw_document.as_mut(), source_node_id)
-                {
-                    if let (Some(parent_id), Some(path)) =
-                        (raw.parent_id(source_node_id), raw.path(source_node_id))
-                    {
-                        if let Some(mut original) = raw.element(source_node_id).cloned() {
-                            let (mut head_children, tail_children) =
-                                Self::split_paragraph_anchor_children(&original.children, offset);
-                            // The tail keeps the original paragraph mark: its
-                            // section break (see the model split above) and
-                            // its revision.
-                            Self::remove_original_mark_properties_from_paragraph_children(
-                                &mut head_children,
-                            );
-                            if let Some(source) = raw.element_mut(source_node_id) {
-                                source.children = head_children;
-                            }
-                            original.children = tail_children;
-                            let original_runs = Self::bindable_run_ids(&original.children);
-                            let insert_index = path
-                                .as_slice()
-                                .last()
-                                .copied()
-                                .unwrap_or(0)
-                                .saturating_add(1);
-                            if let Ok(Some(new_node_id)) =
-                                raw.insert_node(parent_id, insert_index, XmlNode::Element(original))
-                            {
-                                if let Some(element) = raw.element_mut(new_node_id) {
-                                    Self::refresh_paragraph_identity(element);
-                                }
-                                // Insertion gives the copy fresh ids and
-                                // leaves its shape alone.
-                                if let Some(copy) = raw.element(new_node_id) {
-                                    tail_run_copies = original_runs
-                                        .into_iter()
-                                        .zip(Self::bindable_run_ids(&copy.children))
-                                        .collect();
-                                }
-                                new_node_id_created = Some(new_node_id);
+                let (new_node_id_created, tail_run_copies) =
+                    match (self.raw_document.as_mut(), source_node_id) {
+                        (Some(raw), Some(source_node_id)) => {
+                            match Self::split_paragraph_element(raw, source_node_id, offset) {
+                                Some((new_node_id, copies)) => (Some(new_node_id), copies),
+                                None => (None, HashMap::new()),
                             }
                         }
-                    }
-                }
+                        _ => (None, HashMap::new()),
+                    };
 
                 if !self.update_paragraph_surfaces_after_body_split(surface_index, &original_path) {
                     self.rebuild_paragraph_surfaces();
@@ -28479,11 +28576,13 @@ impl WordDocument {
                         Self::bind_split_tail_runs(&mut paragraph.runs, &tail_run_copies);
                     }
                 }
+                // A split moves drawings without changing them: rewriting
+                // them from the model dropped a text box's VML fallback.
                 if let Some(surface_idx) = self.surface_index_for_body(body_index) {
-                    self.sync_paragraph_text(surface_idx);
+                    self.sync_paragraph_text_preserving_drawings(surface_idx);
                 }
                 if let Some(surface_idx) = self.surface_index_for_body(body_index + 1) {
-                    self.sync_paragraph_text(surface_idx);
+                    self.sync_paragraph_text_preserving_drawings(surface_idx);
                 }
                 true
             }
@@ -28492,6 +28591,53 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                if self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| Self::locate_text_box(doc, &host_path, run_index))
+                    .and_then(|text_box| Self::locate_paragraph(&text_box.blocks, &block_path))
+                    .is_none()
+                {
+                    return false;
+                }
+                // The paragraph's `w:p` in every `w:txbxContent` of the host
+                // run (the DrawingML box and its VML fallback) splits the way
+                // a body paragraph's does. Splitting the model alone showed
+                // the break and saved the paragraph whole.
+                let host_run_id = self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| doc.body.as_ref())
+                    .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
+                    .and_then(|paragraph| paragraph.runs.get(run_index))
+                    .and_then(|run| run.node_id);
+                let mut tail_run_copies = HashMap::new();
+                if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
+                    let mut content_ids = Vec::new();
+                    if let Some(run_element) = raw.element(run_id) {
+                        Self::collect_text_box_content_ids(run_element, &mut content_ids);
+                    }
+                    for (content_index, content_id) in content_ids.into_iter().enumerate() {
+                        let Some(paragraph_id) = raw
+                            .element(content_id)
+                            .and_then(|content| {
+                                Self::locate_text_box_paragraph_element(content, &block_path)
+                            })
+                            .map(|paragraph| paragraph.id)
+                        else {
+                            continue;
+                        };
+                        let split = Self::split_paragraph_element(raw, paragraph_id, offset);
+                        // The model binds to the first box; syncing gives the
+                        // fallback the same runs by position.
+                        if content_index == 0 {
+                            if let Some((_, copies)) = split {
+                                tail_run_copies = copies;
+                            }
+                        }
+                    }
+                }
+
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28504,7 +28650,35 @@ impl WordDocument {
                 }
 
                 Self::refresh_text_box_text(text_box);
+                // Find the halves by story position: relisting can reorder
+                // the surfaces before them.
+                let story = self.paragraph_story(index);
                 self.rebuild_paragraph_surfaces();
+                if let Some(ParagraphStory::TextBox {
+                    host,
+                    text_box,
+                    paragraph: first_paragraph,
+                }) = story
+                {
+                    for paragraph in [first_paragraph, first_paragraph + 1] {
+                        let half = ParagraphStory::TextBox {
+                            host,
+                            text_box,
+                            paragraph,
+                        };
+                        if let Some(surface) = self.paragraph_story_surface(&half) {
+                            if paragraph == first_paragraph + 1 {
+                                if let Some(paragraph) = self.paragraph_mut(surface) {
+                                    Self::bind_split_tail_runs(
+                                        &mut paragraph.runs,
+                                        &tail_run_copies,
+                                    );
+                                }
+                            }
+                            self.sync_paragraph_text(surface);
+                        }
+                    }
+                }
                 true
             }
             ParagraphSurface::Note {
@@ -28577,8 +28751,15 @@ impl WordDocument {
                 }
                 self.upsert_xml_part_content(&part, xml);
                 self.rebuild_paragraph_surfaces();
-                self.sync_paragraph_text(index);
-                self.sync_paragraph_text(index + 1);
+                // Relisting can reorder the surfaces before the note (a body
+                // split lists its new paragraph before the notes the first
+                // half references until then), so find the halves by story.
+                let halves = [ordinal, ordinal + 1].map(|paragraph| {
+                    self.surface_index_for_story(kind.story(), paragraph, None, Some(&note_id))
+                });
+                for surface in halves.into_iter().flatten() {
+                    self.sync_paragraph_text(surface);
+                }
                 true
             }
         }
@@ -29240,6 +29421,62 @@ impl WordDocument {
         ids
     }
 
+    /// Splits the `w:p` at `paragraph_id` at text `offset`: the element keeps
+    /// the head and a copy holding the tail goes right after it. Returns the
+    /// copy's id and each XML run moved to the tail mapped to its copy.
+    fn split_paragraph_element(
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        offset: usize,
+    ) -> Option<(XmlNodeId, HashMap<XmlNodeId, XmlNodeId>)> {
+        let parent_id = raw.parent_id(paragraph_id)?;
+        let path = raw.path(paragraph_id)?;
+        let mut original = raw.element(paragraph_id).cloned()?;
+        let (mut head_children, tail_children) =
+            Self::split_paragraph_anchor_children(&original.children, offset);
+        // The tail keeps the original paragraph mark: its section break (see
+        // the model split) and its revision.
+        Self::remove_original_mark_properties_from_paragraph_children(&mut head_children);
+        if let Some(source) = raw.element_mut(paragraph_id) {
+            source.children = head_children;
+        }
+        original.children = tail_children;
+        let tail = original.clone();
+        let insert_index = path
+            .as_slice()
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(1);
+        let new_node_id = raw
+            .insert_node(parent_id, insert_index, XmlNode::Element(original))
+            .ok()
+            .flatten()?;
+        if let Some(element) = raw.element_mut(new_node_id) {
+            Self::refresh_paragraph_identity(element);
+        }
+        // Insertion gives the copy fresh ids and leaves its shape alone, so
+        // walking both in step pairs every element with its copy.
+        let mut copies = HashMap::new();
+        if let Some(copy) = raw.element(new_node_id) {
+            Self::pair_copied_element_ids(&tail, copy, &mut copies);
+        }
+        Some((new_node_id, copies))
+    }
+
+    fn pair_copied_element_ids(
+        original: &XmlElement,
+        copy: &XmlElement,
+        pairs: &mut HashMap<XmlNodeId, XmlNodeId>,
+    ) {
+        pairs.insert(original.id, copy.id);
+        for (original, copy) in original.children.iter().zip(&copy.children) {
+            if let (XmlNode::Element(original), XmlNode::Element(copy)) = (original, copy) {
+                Self::pair_copied_element_ids(original, copy, pairs);
+            }
+        }
+    }
+
     /// Binds the runs a split moved into the new paragraph to the copies of
     /// their XML runs there, so syncing the paragraph updates each run where
     /// it stands and the markers between them keep their place.
@@ -29248,17 +29485,50 @@ impl WordDocument {
     /// bookmark around a word collapsed at the end of the paragraph, and a
     /// comment's range ended after its reference mark. A run with no copy
     /// (none was made, or it sits in a container) is still rebuilt, as is a
-    /// text box, whose own paragraphs stay bound to the original XML run,
-    /// and a field result: the split drops a complex field's `w:fldChar`
-    /// runs, and rebuilding the result writes the field back as a simple one.
+    /// field result: the split drops a complex field's `w:fldChar` runs, and
+    /// rebuilding the result writes the field back as a simple one.
+    ///
+    /// A text box moves with its paragraphs, bound to their copies inside
+    /// it. Rebuilt from the model instead, it lost its paragraphs' styles and
+    /// wrote their inherited fonts into its runs.
     fn bind_split_tail_runs(runs: &mut [Run], copies: &HashMap<XmlNodeId, XmlNodeId>) {
         for run in runs {
             run.node_id = match run.node_id {
-                Some(id) if run.text_box.is_none() && run.field.is_none() => {
-                    copies.get(&id).copied()
-                }
+                Some(id) if run.field.is_none() => copies.get(&id).copied(),
                 _ => None,
             };
+            if let Some(text_box) = run.text_box.as_mut() {
+                if run.node_id.is_some() {
+                    Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                }
+            }
+        }
+    }
+
+    fn bind_copied_blocks(blocks: &mut [BodyElement], copies: &HashMap<XmlNodeId, XmlNodeId>) {
+        let copy_of = |id: Option<XmlNodeId>| id.and_then(|id| copies.get(&id).copied());
+        for block in blocks {
+            match block {
+                BodyElement::Paragraph(paragraph) => {
+                    paragraph.node_id = copy_of(paragraph.node_id);
+                    for run in &mut paragraph.runs {
+                        run.node_id = copy_of(run.node_id);
+                        run.text_node_id = copy_of(run.text_node_id);
+                        run.revision_node_id = copy_of(run.revision_node_id);
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for row in &mut table.rows {
+                        for cell in &mut row.cells {
+                            Self::bind_copied_blocks(&mut cell.blocks, copies);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
         }
     }
 
@@ -29473,22 +29743,51 @@ impl WordDocument {
         }
     }
 
-    /// Removes the `w:rPr` children named in `tags` from every run of a body
+    /// Removes the `w:rPr` children named in `tags` from every run of a
     /// paragraph, so those runs inherit them from the paragraph's style again.
     /// Returns what was removed for [`Self::restore_paragraph_run_properties`].
+    ///
+    /// A text box paragraph's runs are changed in each copy of the box, and a
+    /// note paragraph's in its part. The note's change is not returned: its
+    /// part is re-read on every edit, so its ids do not survive to an undo,
+    /// and a caller that changes notes snapshots the document instead.
     pub(crate) fn remove_paragraph_run_properties(
         &mut self,
         paragraph_index: usize,
         tags: &[&str],
     ) -> RemovedRunProperties {
         let mut removed = RemovedRunProperties::default();
-        if tags.is_empty()
-            || !matches!(
-                self.paragraph_surfaces.get(paragraph_index),
-                Some(ParagraphSurface::Body { .. })
-            )
-        {
+        if tags.is_empty() {
             return removed;
+        }
+        match self.paragraph_surfaces.get(paragraph_index) {
+            Some(ParagraphSurface::Body { .. }) => {}
+            Some(ParagraphSurface::TextBox { .. }) => {
+                let targets = self.text_box_paragraph_element_ids(paragraph_index);
+                if let Some(raw) = self.raw_document.as_mut() {
+                    for paragraph_id in targets {
+                        Self::remove_run_properties_in_paragraph_element(
+                            raw,
+                            paragraph_id,
+                            tags,
+                            &mut removed,
+                        );
+                    }
+                }
+                return removed;
+            }
+            Some(ParagraphSurface::Note { .. }) => {
+                let _ = self.update_note_paragraph_xml(paragraph_index, |raw, paragraph_id| {
+                    Self::remove_run_properties_in_paragraph_element(
+                        raw,
+                        paragraph_id,
+                        tags,
+                        &mut RemovedRunProperties::default(),
+                    );
+                });
+                return removed;
+            }
+            _ => return removed,
         }
         let Some(paragraph) = self.paragraph(paragraph_index) else {
             return removed;
@@ -29549,6 +29848,53 @@ impl WordDocument {
             }
         }
         removed
+    }
+
+    /// [`Self::remove_paragraph_run_properties`] for every run in the `w:p`
+    /// at `paragraph_id`, wrappers included, short of a text box inside it.
+    fn remove_run_properties_in_paragraph_element(
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        tags: &[&str],
+        removed: &mut RemovedRunProperties,
+    ) {
+        fn collect(element: &XmlElement, tags: &[&str], out: &mut Vec<(XmlNodeId, Vec<usize>)>) {
+            for child in &element.children {
+                let XmlNode::Element(child) = child else {
+                    continue;
+                };
+                if child.name == "w:txbxContent" {
+                    continue;
+                }
+                if child.name == "w:rPr" && element.name == "w:r" {
+                    let indices: Vec<usize> = child
+                        .children
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, node)| {
+                            matches!(node, XmlNode::Element(node) if tags.contains(&node.name.as_str()))
+                        })
+                        .map(|(index, _)| index)
+                        .collect();
+                    if !indices.is_empty() {
+                        out.push((child.id, indices));
+                    }
+                    continue;
+                }
+                collect(child, tags, out);
+            }
+        }
+        let mut targets = Vec::new();
+        if let Some(paragraph) = raw.element(paragraph_id) {
+            collect(paragraph, tags, &mut targets);
+        }
+        for (properties_id, indices) in targets {
+            if let Ok(nodes) = raw.remove_child_nodes(properties_id, &indices) {
+                removed
+                    .0
+                    .push((properties_id, indices.into_iter().zip(nodes).collect()));
+            }
+        }
     }
 
     /// Puts back what [`Self::remove_paragraph_run_properties`] removed.
@@ -29701,13 +30047,49 @@ impl WordDocument {
         }
     }
 
+    /// `paragraph_index`'s own `w:pPr`, read where its XML lives: a note
+    /// paragraph's part, a text box paragraph's `w:p` through its host run,
+    /// or the paragraph's node. Only the last was read, so a note or text box
+    /// paragraph appeared to declare nothing.
+    fn paragraph_properties_xml(&self, paragraph_index: usize) -> Option<XmlElement> {
+        let properties = |raw: &DocxXmlDocument, paragraph_id: XmlNodeId| {
+            raw.element(paragraph_id)
+                .filter(|node| node.name == "w:p")?
+                .children
+                .iter()
+                .find_map(|child| match child {
+                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child.clone()),
+                    _ => None,
+                })
+        };
+        if self.is_note_paragraph_surface(paragraph_index) {
+            let (_, raw, paragraph_id) = self.note_paragraph_xml(paragraph_index)?;
+            return properties(&raw, paragraph_id);
+        }
+        let paragraph_id = match self.paragraph(paragraph_index)?.node_id {
+            Some(paragraph_id) => paragraph_id,
+            None => *self
+                .text_box_paragraph_element_ids(paragraph_index)
+                .first()?,
+        };
+        properties(self.raw_document.as_ref()?, paragraph_id)
+    }
+
     /// The tags of `paragraph_index`'s `w:pPr`: the paragraph properties it
     /// declares itself rather than takes from its style.
-    pub(crate) fn paragraph_declared_property_tags(&self, paragraph_index: usize) -> Vec<&str> {
-        let node_id = self
-            .paragraph(paragraph_index)
-            .and_then(|paragraph| paragraph.node_id);
-        declared_property_tags(self.raw_document.as_ref(), node_id, "w:p", "w:pPr")
+    pub(crate) fn paragraph_declared_property_tags(&self, paragraph_index: usize) -> Vec<String> {
+        self.paragraph_properties_xml(paragraph_index)
+            .map(|properties| {
+                properties
+                    .children
+                    .iter()
+                    .filter_map(|child| match child {
+                        XmlNode::Element(element) => Some(element.name.clone()),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
@@ -29716,18 +30098,7 @@ impl WordDocument {
         &self,
         paragraph_index: usize,
     ) -> Vec<(String, String)> {
-        let Some(properties) = self
-            .paragraph(paragraph_index)
-            .and_then(|paragraph| paragraph.node_id)
-            .and_then(|id| self.raw_document.as_ref()?.element(id))
-            .filter(|node| node.name == "w:p")
-            .and_then(|node| {
-                node.children.iter().find_map(|child| match child {
-                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
-                    _ => None,
-                })
-            })
-        else {
+        let Some(properties) = self.paragraph_properties_xml(paragraph_index) else {
             return Vec::new();
         };
         properties
@@ -31935,6 +32306,23 @@ impl WordDocument {
             .revision
             .as_ref()
             .expect("wrap_run_element called without revision mark");
+        let wrapper = Self::revision_wrapper(doc, mark, XmlNode::Element(run_element));
+        // Deleted text that is still someone's insertion sits inside it, as
+        // Word writes it: `<w:ins><w:del><w:r>`.
+        match mark.insertion.as_deref() {
+            Some(insertion) if mark.is_deletion() => {
+                Self::revision_wrapper(doc, insertion, XmlNode::Element(wrapper))
+            }
+            _ => wrapper,
+        }
+    }
+
+    /// `child` inside the `w:ins` / `w:del` / move element `mark` describes.
+    fn revision_wrapper(
+        doc: &mut DocxXmlDocument,
+        mark: &RevisionMark,
+        child: XmlNode,
+    ) -> XmlElement {
         let wrapper_name = match mark.kind {
             RevisionKind::Inserted => "w:ins",
             RevisionKind::Deleted => "w:del",
@@ -31974,11 +32362,7 @@ impl WordDocument {
         // which left every revision-wrapped run unaddressable — commenting on a
         // paragraph that carried a tracked change failed for exactly that
         // reason.
-        doc.create_element_preserving_child_ids(
-            wrapper_name,
-            attributes,
-            vec![XmlNode::Element(run_element)],
-        )
+        doc.create_element_preserving_child_ids(wrapper_name, attributes, vec![child])
     }
 
     fn sync_run_properties_node(
@@ -32867,16 +33251,42 @@ impl WordDocument {
                 continue;
             };
             attach_block_xml_ids(&mut note.body, element, &raw);
+            Self::capture_direct_run_fonts(&mut note.body);
             Self::capture_preserved_run_props(&mut note.body, &raw);
             clear_block_xml_ids(&mut note.body);
         }
     }
 
+    /// Records, for every run, the font properties it has before any are
+    /// filled in from its styles: its own. [`Self::capture_preserved_run_props`]
+    /// then drops those its `w:rPr` does not declare. It has to run before the
+    /// style fill: a load that defers the round-trip XML only reaches that
+    /// pass after the fill, and recorded the inherited fonts as the run's own,
+    /// so the first edit wrote them all into its `w:rPr`.
+    fn capture_direct_run_fonts(elements: &mut [BodyElement]) {
+        for element in elements.iter_mut() {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    for run in paragraph.runs.iter_mut() {
+                        if let Some(props) = run.properties.as_mut() {
+                            props.capture_direct_font_properties();
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for row in table.rows.iter_mut() {
+                        for cell in row.cells.iter_mut() {
+                            Self::capture_direct_run_fonts(&mut cell.blocks);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
     fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
         for run in paragraph.runs.iter_mut() {
-            if let Some(props) = run.properties.as_mut() {
-                props.capture_direct_font_properties();
-            }
             let Some(node_id) = run.node_id else {
                 continue;
             };
@@ -33167,7 +33577,15 @@ impl WordDocument {
                 XmlNode::Element(element) if element.name == "w:r" && !is_ruby_run(&element) => {
                     out.push_back(ChildToken::RunElement(element));
                 }
-                XmlNode::Element(element) if element.name == "w:ins" || element.name == "w:del" => {
+                // Revision wrappers come back from each run's own mark
+                // (`wrap_run_element`); keeping a move's wrapper as written
+                // would keep a decided move in the file.
+                XmlNode::Element(element)
+                    if matches!(
+                        element.name.as_str(),
+                        "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"
+                    ) =>
+                {
                     for child in element.children {
                         flatten_node(child, out);
                     }
@@ -34517,6 +34935,21 @@ impl RevisionTargets {
         Some((*first, *paragraphs.max()?))
     }
 
+    /// Every offset where a run target of `paragraph` starts or ends, in
+    /// order.
+    fn run_cuts(&self, paragraph: usize) -> Vec<usize> {
+        let mut cuts: Vec<usize> = self
+            .runs
+            .get(&paragraph)
+            .into_iter()
+            .flatten()
+            .flat_map(|(start, end, _)| [*start, *end])
+            .collect();
+        cuts.sort_unstable();
+        cuts.dedup();
+        cuts
+    }
+
     fn has_paragraph_mark(&self, paragraph: usize) -> bool {
         self.marks.contains_key(&paragraph)
     }
@@ -34724,6 +35157,20 @@ fn collect_paragraph_mark_revision_ids(
     }) {
         collect_paragraph_mark_revision_ids(child, decision, kind_filter, id_filter, join, ids);
     }
+}
+
+/// `deletion` laid over a run that carried `previous`: deleted text that is
+/// still a tracked insertion keeps it, inside the deletion.
+fn deleted_over(previous: Option<RevisionMark>, deletion: &RevisionMark) -> RevisionMark {
+    let mut mark = deletion.clone();
+    mark.insertion = previous.and_then(|previous| {
+        if previous.is_deletion() {
+            previous.insertion
+        } else {
+            Some(Box::new(previous))
+        }
+    });
+    mark
 }
 
 fn collect_max_revision_id(element: &XmlElement) -> u32 {

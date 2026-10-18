@@ -298,8 +298,12 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
     if styles.get_style(&next_style).is_none() {
         return;
     }
-    let style_paragraph_props = styles.resolve_paragraph_properties(&next_style);
-    let style_run_props = styles.resolve_run_properties(&next_style);
+    // What the paragraph inherits, docDefaults and table style included, as
+    // a reload resolves it: the style's own properties alone left a style
+    // without spacing of its own with none, where the reload has the
+    // document's default space after.
+    let style_paragraph_props =
+        document.inherited_paragraph_properties(paragraph_index, Some(&next_style));
     // The numbering a style's w:numPr gives is resolved into its paragraphs
     // at load, apart from its other properties.
     let style_numbering = styles
@@ -307,11 +311,7 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
         .filter(|numbering| numbering.id.is_some());
     // The split copied the source's w:pPr, and only w:pStyle changes in it:
     // what it declares stays the paragraph's own, as a reload reads it.
-    let declared: Vec<String> = document
-        .paragraph_declared_property_tags(paragraph_index)
-        .into_iter()
-        .map(str::to_string)
-        .collect();
+    let declared: Vec<String> = document.paragraph_declared_property_tags(paragraph_index);
     let is_declared = |tag: &str| declared.iter().any(|declared| declared == tag);
     let declared_attributes = document.paragraph_declared_property_attributes(paragraph_index);
     let is_declared_attribute = |tag: &str, attribute: &str| {
@@ -330,12 +330,56 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
             style_numbering
         };
         paragraph.properties = Some(props);
+        // The split is at the end, so these runs are empty: the place the
+        // next character goes. It takes the next style's formatting and none
+        // of the source run's, in the package as in the model. The copied
+        // `w:rPr` stayed, so typed text was saved in the source's formatting
+        // (a heading's colour) while it showed in the next style's.
         for run in &mut paragraph.runs {
-            run.properties = style_run_props.clone();
+            run.properties = None;
         }
     }
+    document.remove_paragraph_run_properties(paragraph_index, CHARACTER_FORMATTING_TAGS);
+    document.apply_run_font_defaults_at(paragraph_index);
     sync_paragraph_style_xml(document, paragraph_index, Some(next_style.as_str()));
 }
+
+/// The `w:rPr` children of character formatting, which an Enter at the end of
+/// a paragraph does not carry into the next style's paragraph.
+const CHARACTER_FORMATTING_TAGS: &[&str] = &[
+    "w:rStyle",
+    "w:b",
+    "w:bCs",
+    "w:i",
+    "w:iCs",
+    "w:u",
+    "w:strike",
+    "w:dstrike",
+    "w:caps",
+    "w:smallCaps",
+    "w:vanish",
+    "w:specVanish",
+    "w:shadow",
+    "w:outline",
+    "w:emboss",
+    "w:imprint",
+    "w:em",
+    "w:effect",
+    "w:vertAlign",
+    "w:position",
+    "w:spacing",
+    "w:kern",
+    "w:w",
+    "w:fitText",
+    "w:sz",
+    "w:szCs",
+    "w:rFonts",
+    "w:lang",
+    "w:color",
+    "w:highlight",
+    "w:shd",
+    "w:bdr",
+];
 
 impl Command for InsertParagraphBreaksCommand {
     fn name(&self) -> &'static str {

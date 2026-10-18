@@ -1,0 +1,43 @@
+[package]
+name = "jade-xlsx-diff"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Structure-aware XLSX diff library and CLI with row and column alignment"
+license = "MIT"
+repository = "https://github.com/jade-rs/jade-core"
+publish = false
+readme = "README.md"
+keywords = ["excel", "xlsx", "diff", "spreadsheet", "comparison"]
+categories = ["command-line-utilities", "data-structures", "parsing"]
+exclude = [".github/", "plan.md", "TODO.md"]
+
+[lib]
+name = "xlsx_diff"
+
+[[bin]]
+name = "xlsx-diff"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+calamine = { version = "0.36.0", features = ["dates"] }
+clap = { version = "4.6.1", features = ["derive"] }
+html-escape = "0.2.13"
+quick-xml = "0.39"
+rust_xlsxwriter = "0.94.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+unicode-normalization = "0.1"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+criterion = "0.7.0"
+insta = { version = "1.48.0", features = ["json"] }
+proptest = "1.7.0"
+sha2 = "0.11.0"
+tempfile = "3.27.0"
+
+[[bench]]
+name = "alignment"
+harness = false

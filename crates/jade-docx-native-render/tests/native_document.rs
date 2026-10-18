@@ -195,3 +195,82 @@ fn typing_on_a_later_page_matches_a_fresh_render() {
         "the later-page repaint differs from a fresh render"
     );
 }
+
+#[test]
+fn a_raster_scale_paints_more_pixels_without_moving_the_layout() {
+    let mut document = open_contract();
+    let pages = document.page_count();
+    let (page_width, page_height) = document.layout_page_size();
+    let caret_before = document.place_caret(0, 0);
+
+    assert!(document.set_raster_scale(2.0).expect("scale to 2x"));
+    // Setting the same scale again is free.
+    assert!(!document.set_raster_scale(2.0).expect("same scale"));
+
+    assert_eq!(document.page_count(), pages);
+    assert_eq!(document.layout_page_size(), (page_width, page_height));
+    assert_eq!(document.place_caret(0, 0), caret_before);
+    for page in 0..pages {
+        let (pixels, width, height) = document.page_pixels(page).expect("page pixels");
+        assert_eq!(
+            (width, height),
+            (
+                (page_width * 2.0).ceil() as i32,
+                (page_height * 2.0).ceil() as i32
+            )
+        );
+        let inked = pixels
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 || px[1] < 200 || px[2] < 200)
+            .count();
+        assert!(inked > 20_000, "page {page} looks blank at 2x: {inked}");
+    }
+    if let Ok(directory) = std::env::var("JADE_DUMP_PAGE") {
+        let (pixels, width, height) = document.page_pixels(0).unwrap();
+        common::write_bgra_png(&format!("{directory}/page-2x.png"), &pixels, width, height);
+        document.set_raster_scale(1.0).unwrap();
+        let (pixels, width, height) = document.page_pixels(0).unwrap();
+        common::write_bgra_png(&format!("{directory}/page-1x.png"), &pixels, width, height);
+    }
+
+    assert!(document.set_raster_scale(0.0).is_err());
+    assert!(document.set_raster_scale(f64::NAN).is_err());
+}
+
+#[test]
+fn dark_paper_turns_the_page_over_on_screen_but_not_in_the_pdf() {
+    let mut document = open_contract();
+    let (light, width, _) = document.page_pixels(0).expect("page 1 pixels");
+    let printed = document.export_pdf().expect("export on light paper");
+
+    assert!(document.set_dark_paper(true).expect("switch to dark paper"));
+    assert!(
+        !document.set_dark_paper(true).expect("no-op"),
+        "already dark"
+    );
+    let (dark, _, _) = document.page_pixels(0).expect("page 1 pixels");
+    // BGRA, premultiplied and opaque. The margin is paper, so a dark grey.
+    let corner = &dark[(4 * width as usize + 4) * 4..][..4];
+    assert!(
+        corner[..3]
+            .iter()
+            .all(|&channel| (20..60).contains(&channel)),
+        "{corner:?}"
+    );
+    // The ink went the other way: what was dark text is now light on it.
+    let lit = dark
+        .chunks_exact(4)
+        .filter(|px| px[0] > 150 && px[1] > 150 && px[2] > 150)
+        .count();
+    assert!(lit > 5_000, "no light ink on the dark page: {lit}");
+
+    assert_eq!(
+        document.export_pdf().expect("export on dark paper"),
+        printed,
+        "print and export keep the document's own colours"
+    );
+
+    assert!(document.set_dark_paper(false).expect("back to light paper"));
+    let (back, _, _) = document.page_pixels(0).expect("page 1 pixels");
+    assert!(back == light, "switching back restores the page exactly");
+}

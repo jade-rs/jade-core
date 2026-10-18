@@ -7,6 +7,7 @@ use crate::commands::apply_superscript::ApplySuperscriptCommand;
 use crate::commands::apply_underline::ApplyUnderlineCommand;
 use crate::commands::change_case::ChangeCaseCommand;
 use crate::commands::clear_formatting::ClearFormattingCommand;
+use crate::commands::delete_object::DeleteObjectCommand;
 use crate::commands::delete_table::DeleteTableCommand;
 use crate::commands::delete_text::{DeleteDirection, DeleteTextRunCommand};
 use crate::commands::insert_blank_page::InsertBlankPageCommand;
@@ -74,9 +75,10 @@ use crate::legal_structure::{
 use crate::numbering::{MultilevelListPreset, NumberingCounter, NumberingIndent, NumberingLevel};
 use crate::word_document::{
     AddCommentRequest, BorderEdgeSpec, CitationSourceInfo, CoverPageParagraphSpec,
-    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, PageBorderSpec, PageMarginSpec,
-    ReplyToCommentRequest, RevisionIdFilter, RevisionSession, RevisionTargets, SectionBreakType,
-    ShapeInsertSpec, TableBorderSpec, WordDocument,
+    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, FloatingObjectKind,
+    FloatingObjectTarget, PageBorderSpec, PageMarginSpec, ReplyToCommentRequest, RevisionIdFilter,
+    RevisionSession, RevisionTargets, SectionBreakType, ShapeInsertSpec, TableBorderSpec,
+    WordDocument,
 };
 use jade_docx_headless_api::{
     HeadlessCharacterStyleSnapshot, HeadlessCitationSource, HeadlessCommand, HeadlessCommentAnchor,
@@ -3471,8 +3473,69 @@ pub fn apply_headless_commands_with_executor_to_document(
                     text_italic: None,
                     text_alignment: None,
                 };
+                // The offset is a rendered one, like every text command's:
+                // the shape command counts in the runs' text.
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
                 let command: Box<dyn Command> =
-                    Box::new(InsertShapeCommand::new(*paragraph, *offset, spec));
+                    Box::new(InsertShapeCommand::new(*paragraph, model_offset, spec));
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(PackageSnapshotCommand::wrapping(command)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertTextAmongAnchors {
+                paragraph,
+                offset,
+                after_anchors,
+                text,
+            } => {
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
+                let (paragraph, after, text) = (*paragraph, *after_anchors, text.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "insert_text_among_anchors",
+                    EditScope::Document,
+                    move |doc| doc.insert_text_among_anchors(paragraph, model_offset, after, &text),
+                )?;
+            }
+            HeadlessCommand::DeleteTextBox {
+                paragraph,
+                text_box,
+            } => {
+                let missing = |message: String| HeadlessApiApplyError::Command {
+                    index,
+                    source: CommandError::Custom(message),
+                };
+                let runs = &word_doc
+                    .paragraph(*paragraph)
+                    .ok_or_else(|| missing(format!("paragraph {paragraph} does not exist")))?
+                    .runs;
+                let run_index = runs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, run)| run.text_box.is_some())
+                    .nth(*text_box)
+                    .map(|(run_index, _)| run_index)
+                    .ok_or_else(|| {
+                        missing(format!("paragraph {paragraph} has no text box {text_box}"))
+                    })?;
+                let target = FloatingObjectTarget {
+                    paragraph_index: *paragraph,
+                    run_index,
+                    kind: FloatingObjectKind::TextBox,
+                };
+                let command: Box<dyn Command> = Box::new(DeleteObjectCommand::new(target));
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
@@ -6916,6 +6979,7 @@ mod tests {
                                 author: Some("LLM".to_string()),
                                 date: Some("2026-02-25T00:00:00Z".to_string()),
                                 date_utc: None,
+                                insertion: None,
                             }),
                         },
                         Run {
@@ -6941,6 +7005,7 @@ mod tests {
                                 author: Some("LLM".to_string()),
                                 date: Some("2026-02-25T00:00:00Z".to_string()),
                                 date_utc: None,
+                                insertion: None,
                             }),
                         },
                     ],
@@ -6962,6 +7027,7 @@ mod tests {
             author: Some("LLM".to_string()),
             date: Some("2026-08-08T00:00:00Z".to_string()),
             date_utc: None,
+            insertion: None,
         });
 
         let mut word_doc = WordDocument::from_document(Document {
@@ -7007,6 +7073,7 @@ mod tests {
             author: Some("法務".to_string()),
             date: Some("2026-08-01T00:00:00Z".to_string()),
             date_utc: None,
+            insertion: None,
         };
         let run = |text: &str| Run {
             text: text.to_string(),
@@ -7159,6 +7226,7 @@ mod tests {
                 author: Some(author.to_string()),
                 date: Some(date_utc.to_string()),
                 date_utc: Some(date_utc.to_string()),
+                insertion: None,
             })
         };
         WordDocument::from_document(Document {
@@ -8652,6 +8720,7 @@ mod tests {
                 author: Some("Reviewer".to_string()),
                 date: Some("2026-05-30T00:00:00Z".to_string()),
                 date_utc: None,
+                insertion: None,
             }),
         };
         let word_doc = WordDocument::from_document(Document {
@@ -10633,6 +10702,116 @@ mod tests {
     }
 
     #[test]
+    fn enter_and_backspace_inside_a_text_box_are_saved() {
+        // Enter inside a text box split its paragraph on screen only: the
+        // saved box, in its DrawingML and VML copies alike, still held one
+        // paragraph, so reopening the file put the text back together.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .map(|paragraph| {
+                            paragraph.runs.iter().map(|run| run.text.as_str()).collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<String>>()
+        };
+        let boxes = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml.split("<w:txbxContent>")
+                .skip(1)
+                .map(|content| {
+                    let content = content.split("</w:txbxContent>").next().unwrap_or_default();
+                    content
+                        .split("</w:p>")
+                        .filter(|paragraph| paragraph.contains("<w:p"))
+                        .map(|paragraph| {
+                            paragraph
+                                .split("<w:t")
+                                .skip(1)
+                                .filter_map(|text| text.split_once('>'))
+                                .map(|(_, rest)| rest.split('<').next().unwrap_or_default())
+                                .collect::<String>()
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 1,
+                    offset: 2,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        assert_eq!(texts(&word_doc), ["Hello", "He", "llo", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["He", "llo"], vec!["He", "llo"]]);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(texts(&reloaded), ["Hello", "He", "llo", "World"]);
+
+        // Backspace joins them again, in the saved box as well: it kept the
+        // second paragraph, and the file read "Hello", "llo".
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::DeleteText {
+                    paragraph: 2,
+                    offset: 0,
+                    direction: jade_docx_headless_api::HeadlessDeleteDirection::Backward,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("backspace applies");
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["Hello"], vec!["Hello"]]);
+
+        let mut selection = None;
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the join");
+        assert_eq!(boxes(&word_doc), [vec!["He", "llo"], vec!["He", "llo"]]);
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the break");
+        assert_eq!(texts(&word_doc), ["Hello", "Hello", "World"]);
+        assert_eq!(boxes(&word_doc), [vec!["Hello"], vec!["Hello"]]);
+    }
+
+    #[test]
     fn a_style_keeps_the_spacing_a_paragraph_does_not_declare() {
         // A paragraph declaring only `w:spacing w:before` takes its space
         // after from its style. Applying the heading style kept the declared
@@ -10678,6 +10857,471 @@ mod tests {
         ))
         .expect("reload");
         assert_eq!(spacing(&reloaded), Some(live));
+    }
+
+    fn toc_document_xml(word_doc: &WordDocument) -> String {
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        xml
+    }
+
+    /// `paragraph`'s `w:p` in the saved package.
+    fn saved_paragraph_xml(xml: &str, paragraph: usize) -> &str {
+        let body = &xml[xml.find("<w:body>").expect("body")..];
+        body.split("</w:p>").nth(paragraph).expect("paragraph")
+    }
+
+    #[test]
+    fn a_heading_keeps_its_style_colour_out_of_the_runs() {
+        // toc.docx's heading 1 is the theme colour accent1. Applying it left
+        // that colour in the runs' model properties, and the next edit to the
+        // paragraph wrote it into their `w:rPr` as a fixed direct colour.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("1".to_string()),
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 0,
+                        text: "x".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let xml = toc_document_xml(&word_doc);
+        assert!(
+            !saved_paragraph_xml(&xml, 0).contains("<w:color"),
+            "the heading's colour stays the style's: {}",
+            saved_paragraph_xml(&xml, 0)
+        );
+        let colours = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("heading")
+                .runs
+                .iter()
+                .map(|run| {
+                    run.properties
+                        .as_ref()
+                        .and_then(|props| props.color.clone())
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(colours(&word_doc), colours(&reloaded));
+    }
+
+    #[test]
+    fn enter_after_a_heading_starts_a_paragraph_as_a_reload_reads_it() {
+        // Enter at the end of a heading starts its `w:next` paragraph. It had
+        // only the next style's own spacing, not the document default's 8pt
+        // after, and its run kept the heading run's `w:rPr`: what was typed
+        // there showed in the body style and was saved in the heading colour.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let heading_len = word_doc
+            .paragraph(0)
+            .map(|paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| run.text.len())
+                    .sum::<usize>()
+            })
+            .expect("first paragraph");
+        // The fixture's runs carry no direct colour: give the heading one, so
+        // that a run copied into the next paragraph would show.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("1".to_string()),
+                    },
+                    HeadlessCommand::SetFontColor {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: heading_len,
+                        color: "#C00000".to_string(),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: heading_len,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 1,
+                        offset: 0,
+                        text: "next".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let xml = toc_document_xml(&word_doc);
+        assert!(
+            !saved_paragraph_xml(&xml, 1).contains("<w:color"),
+            "typed text takes the body style: {}",
+            saved_paragraph_xml(&xml, 1)
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let next = |word_doc: &WordDocument| {
+            let paragraph = word_doc.paragraph(1).expect("next paragraph");
+            let properties = paragraph.properties.clone().unwrap_or_default();
+            (
+                properties.style.map(|style| style.to_string()),
+                properties.spacing,
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        run.properties
+                            .as_ref()
+                            .and_then(|props| props.color.clone())
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        };
+        assert_eq!(next(&word_doc), next(&reloaded));
+        assert_eq!(
+            next(&word_doc).1.and_then(|spacing| spacing.after),
+            Some(8.0),
+            "the document default's space after"
+        );
+    }
+
+    #[test]
+    fn a_text_box_moved_by_a_split_keeps_its_xml() {
+        // Enter before a text box's anchor moves the text box into the new
+        // paragraph. It was rebuilt from the model there: its VML fallback
+        // went, its paragraph lost its style and its runs got their
+        // inherited fonts written in. It now moves as written, and stays
+        // editable in both copies.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text_box_contents = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml.split("<w:txbxContent>")
+                .skip(1)
+                .map(|content| {
+                    content
+                        .split("</w:txbxContent>")
+                        .next()
+                        .unwrap_or_default()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 2,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        let contents = text_box_contents(&word_doc);
+        assert_eq!(contents.len(), 2, "the DrawingML box and its VML fallback");
+        for content in &contents {
+            assert!(content.contains("<w:pStyle w:val=\"本文\"/>"), "{content}");
+            assert!(!content.contains("<w:rFonts"), "{content}");
+        }
+
+        // The text box's paragraph follows its host, now paragraph 1.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph: 2,
+                    offset: 0,
+                    text: "X".to_string(),
+                }],
+            },
+        )
+        .expect("typing applies");
+        let contents = text_box_contents(&word_doc);
+        assert_eq!(contents.len(), 2);
+        for content in &contents {
+            assert!(content.contains("XHello"), "{content}");
+        }
+    }
+
+    #[test]
+    fn undoing_paragraph_formatting_in_a_note_or_text_box_restores_its_xml() {
+        // Undo puts a paragraph's `w:pPr` back from a snapshot that only
+        // reached a body paragraph's own node: a footnote's or a text box's
+        // paragraph took the edit back on screen and kept it in the file.
+        use crate::commands::{CommandContext, CommandExecutor};
+        for (fixture, paragraph) in [("footnote.docx", 1), ("textbox.docx", 1)] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let formatting = |word_doc: &WordDocument| {
+                let properties = word_doc
+                    .paragraph(paragraph)
+                    .and_then(|paragraph| paragraph.properties.clone())
+                    .unwrap_or_default();
+                (
+                    properties.alignment.map(|alignment| alignment.to_string()),
+                    properties.spacing.and_then(|spacing| spacing.line),
+                )
+            };
+            let before = formatting(&word_doc);
+            let mut command_executor = CommandExecutor::new();
+            apply_headless_commands_with_executor_to_document(
+                &mut word_doc,
+                &mut command_executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::SetParagraphAlignment {
+                            start_paragraph: paragraph,
+                            end_paragraph: paragraph,
+                            alignment: "center".to_string(),
+                        },
+                        HeadlessCommand::SetParagraphLineSpacing {
+                            start_paragraph: paragraph,
+                            end_paragraph: paragraph,
+                            line: Some(Some(2.0)),
+                            line_rule: None,
+                            before: None,
+                            after: None,
+                        },
+                    ],
+                },
+            )
+            .expect("formatting applies");
+            let mut selection = None;
+            for _ in 0..2 {
+                command_executor
+                    .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                    .expect("undo");
+            }
+            assert_eq!(formatting(&word_doc), before, "{fixture}");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(formatting(&reloaded), before, "{fixture}: saved");
+        }
+    }
+
+    #[test]
+    fn a_style_applied_in_a_note_or_text_box_is_saved_as_shown() {
+        // Applying a paragraph style keeps the formatting the paragraph
+        // declares and takes the style's run formatting out of its runs. Both
+        // read and wrote only a body paragraph's own XML: in a footnote or a
+        // text box the declared alignment was dropped on screen only, and the
+        // runs' direct size stayed in the file.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let digest = |word_doc: &WordDocument, paragraph: usize| {
+            let paragraph = word_doc.paragraph(paragraph).expect("paragraph");
+            let properties = paragraph.properties.clone().unwrap_or_default();
+            (
+                properties.style.map(|style| style.to_string()),
+                properties.alignment.map(|alignment| alignment.to_string()),
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        (
+                            run.text.clone(),
+                            run.properties.as_ref().and_then(|props| props.font_size),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        };
+        for (fixture, paragraph, first) in [
+            (
+                "footnote.docx",
+                1,
+                HeadlessCommand::SetFontSize {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 6,
+                    font_size: 20.0,
+                },
+            ),
+            (
+                "footnote.docx",
+                1,
+                HeadlessCommand::SetParagraphAlignment {
+                    start_paragraph: 1,
+                    end_paragraph: 1,
+                    alignment: "center".to_string(),
+                },
+            ),
+            (
+                "textbox.docx",
+                1,
+                HeadlessCommand::SetFontSize {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 2,
+                    font_size: 20.0,
+                },
+            ),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let mut command_executor = CommandExecutor::new();
+            for command in [
+                first.clone(),
+                HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: paragraph,
+                    end_paragraph: paragraph,
+                    style_id: Some("Heading1".to_string()),
+                },
+            ] {
+                apply_headless_commands_with_executor_to_document(
+                    &mut word_doc,
+                    &mut command_executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .expect("edit applies");
+            }
+            let reload = |word_doc: &WordDocument| {
+                executor::block_on(WordDocument::load(
+                    &word_doc.export_docx().expect("export"),
+                    &Options::default(),
+                ))
+                .expect("reload")
+            };
+            assert_eq!(
+                digest(&word_doc, paragraph),
+                digest(&reload(&word_doc), paragraph),
+                "{fixture} after {first:?}"
+            );
+            let mut selection = None;
+            command_executor
+                .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                .expect("undo the style");
+            assert_eq!(
+                digest(&word_doc, paragraph),
+                digest(&reload(&word_doc), paragraph),
+                "{fixture} after undoing the style"
+            );
+        }
+    }
+
+    #[test]
+    fn a_deferred_load_keeps_inherited_fonts_out_of_edited_runs() {
+        // The editor loads with the round-trip XML deferred to the first edit.
+        // That pass recorded which font properties a run has as its own only
+        // after the styles' fonts had been filled in, and a run it cannot tie
+        // to its `w:r` (one inside a `w:moveTo`) kept them all: editing it
+        // wrote the document's default fonts and size into its `w:rPr`.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/review-kinds.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc = executor::block_on(WordDocument::load_for_initial_render(
+            &bytes,
+            &Options::default(),
+        ))
+        .expect("load");
+        word_doc.ensure_roundtrip_xml().expect("round-trip XML");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetHighlightColor {
+                    // "words" of the moved text, inside its `w:moveTo`.
+                    start_paragraph: 2,
+                    start_offset: 13,
+                    end_paragraph: 2,
+                    end_offset: 18,
+                    color: "yellow".to_string(),
+                }],
+            },
+        )
+        .expect("highlight applies");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        let body = &xml[xml.find("<w:body>").expect("body")..];
+        let target = body.split("</w:p>").nth(2).expect("third paragraph");
+        assert!(
+            target.contains("<w:highlight w:val=\"yellow\"/>"),
+            "{target}"
+        );
+        for inherited in ["<w:rFonts", "<w:sz ", "<w:kern", "<w:w "] {
+            assert!(!target.contains(inherited), "{inherited} written: {target}");
+        }
     }
 
     #[test]
@@ -12126,6 +12770,7 @@ mod tests {
                         author: Some("LLM".to_string()),
                         date: Some("2026-08-08T00:00:00Z".to_string()),
                         date_utc: None,
+                        insertion: None,
                     });
                 }
                 runs.push(run);

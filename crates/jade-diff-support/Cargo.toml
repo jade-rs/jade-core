@@ -1,0 +1,17 @@
+[package]
+name = "jade-diff-support"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "差分エンジン各種で共有する、対応付けと LCS の高速化用の下ごしらえ"
+license = "MIT"
+publish = false
+
+[lib]
+name = "diff_support"
+
+[dependencies]
+diff-align = { package = "jade-diff-align", path = "../jade-diff-align" }
+
+[dev-dependencies]
+proptest = "1"

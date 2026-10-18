@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 53dd0dd4c42e70e780967b51733e87eb2a6fc22853dfe83ff5ca7315149f861f # shrinks to value = 7628, delta = 72
+cc 5cc8f71aed3719aa0b702defa51f12194368e7c90aa3f44eba6276815c234d0d # shrinks to red = 106, green = 0, blue = 0, lowercase_theme = true
+cc 3bec0b1a3675ee0657d960021ad37ffa5fffe7f209402f1519030f809d7b2268 # shrinks to channel = 153, modulation = 166860, offset = -51961
+cc 5f3852adc9abd269f3ee6a304de4787fe1a71b2eb06c690634f806c4a001b4d6 # shrinks to red = 0, green = 0, blue = 0, theme_opacity = 53643, modulation = 186419, offset = -1
