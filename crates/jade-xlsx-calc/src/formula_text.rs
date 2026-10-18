@@ -221,6 +221,44 @@ pub fn to_display_formula(formula: &str) -> String {
         .collect()
 }
 
+/// Whether `formula` — as typed, without its `=` — gives a function more or
+/// fewer arguments than it takes, which Excel refuses as it is entered. The
+/// engine evaluates the formula on its own and says so; a formula it cannot
+/// read for any other reason is not this one's to refuse. An argument a
+/// function never evaluates (`IF(1,2,SUM())`) goes unchecked.
+pub fn wrong_argument_count(formula: &str) -> bool {
+    use ironcalc_base::types::{Cell, FormulaValue};
+    // Far from anything the formula could refer to, so it cannot refer to
+    // itself.
+    const ROW: i32 = 1_000_000;
+    const COLUMN: i32 = 16_000;
+    let Ok(mut model) = ironcalc_base::Model::new_empty("check", "en", "UTC", "en") else {
+        return false;
+    };
+    let typed = format!("={}", to_file_formula(formula));
+    if model
+        .update_cell_with_formula(0, ROW, COLUMN, typed)
+        .is_err()
+    {
+        return false;
+    }
+    model.evaluate();
+    let Ok(sheet) = model.workbook.worksheet(0) else {
+        return false;
+    };
+    let here = format!(
+        "{}!{}{ROW}",
+        sheet.name,
+        ironcalc_base::expressions::utils::number_to_column(COLUMN).unwrap_or_default()
+    );
+    matches!(
+        sheet.cell(ROW, COLUMN),
+        Some(Cell::CellFormula { v: FormulaValue::Error { m, o, .. }, .. })
+            | Some(Cell::ArrayFormula { v: FormulaValue::Error { m, o, .. }, .. })
+            if m == "Wrong number of arguments" && *o == here
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
