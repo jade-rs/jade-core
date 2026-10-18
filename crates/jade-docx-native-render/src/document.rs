@@ -8,6 +8,7 @@
 use crate::SkiaRenderHost;
 use futures::executor::block_on;
 use jade_docx_editor::canvas_renderer::CanvasRenderer;
+pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{CommandContext, CommandExecutor};
 use jade_docx_editor::headless_api::{
@@ -1665,6 +1666,19 @@ impl NativeDocument {
     /// draw it as an overlay, which is what lets it move and blink without
     /// repainting the document.
     pub fn place_caret(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        self.place_caret_with_affinity(paragraph, offset, CaretAffinity::Upstream)
+    }
+
+    /// [`Self::place_caret`], saying which line a caret on a soft wrap is
+    /// drawn on: downstream for a click at a line's start, upstream for one
+    /// past a line's end.
+    pub fn place_caret_with_affinity(
+        &mut self,
+        paragraph: usize,
+        offset: usize,
+        affinity: CaretAffinity,
+    ) -> Option<CaretRect> {
+        self.renderer.set_caret_affinity(affinity);
         let range = SelectionRange::collapsed(TextPosition::new(paragraph, offset));
         self.selection = Some(range);
         self.renderer.set_selection_range(Some(range));

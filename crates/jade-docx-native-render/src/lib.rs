@@ -32,8 +32,8 @@
 
 pub mod document;
 pub use document::{
-    CaretRect, CharacterFormat, FaceSpec, NativeDocument, ObjectHit, PdfExportOptions,
-    PdfRenderingMode, SearchHit, TableCell,
+    CaretAffinity, CaretRect, CharacterFormat, FaceSpec, NativeDocument, ObjectHit,
+    PdfExportOptions, PdfRenderingMode, SearchHit, TableCell,
 };
 
 use jade_docx_editor::render_host::{CanvasRenderHost, ImageCropMapping};
