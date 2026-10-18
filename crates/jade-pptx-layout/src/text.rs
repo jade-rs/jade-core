@@ -404,7 +404,7 @@ fn kanji(n: u32) -> String {
             out.push_str(name);
         }
     }
-    if n % 10 > 0 {
+    if !n.is_multiple_of(10) {
         out.push_str(DIGITS[(n % 10) as usize]);
     }
     out
