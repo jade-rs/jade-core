@@ -5307,6 +5307,172 @@ fn fit_text_adjusted_properties(
     Some(Rc::new(scaled))
 }
 
+/// How a ruby base (`w:ruby`, §17.3.3.25) is spread over its guide's width,
+/// and the ascent its guide needs (`crate::ruby`). Offsets are text-relative
+/// starts of the first and last visible base characters.
+#[derive(Clone, Copy)]
+struct RubyAdjustment {
+    first_visible: usize,
+    last_visible: usize,
+    leading_px: f64,
+    gap_px: f64,
+    trailing_px: f64,
+    ascent_px: Option<f64>,
+}
+
+impl RubyAdjustment {
+    /// Space this base character takes before and after its glyph.
+    fn extra_px(&self, start: usize, visible: bool) -> (f64, f64) {
+        if !visible || start < self.first_visible || start > self.last_visible {
+            return (0.0, 0.0);
+        }
+        let leading = if start == self.first_visible {
+            self.leading_px
+        } else {
+            0.0
+        };
+        let trailing = if start == self.last_visible {
+            self.trailing_px
+        } else {
+            self.gap_px
+        };
+        (leading, trailing)
+    }
+}
+
+/// Measures the ruby that starts at `runs[start]` (its base may span several
+/// runs) and returns the index after its last base run. Word lays the ruby
+/// out as one box as wide as the wider of base and guide.
+fn ruby_group_adjustment<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    runs: &[RunStyle],
+    start: usize,
+    paragraph_style: &ParagraphStyle,
+) -> Result<(usize, Option<RubyAdjustment>), C::Error> {
+    let first = &runs[start];
+    let Some((properties, ruby)) = first
+        .properties
+        .as_deref()
+        .and_then(|properties| Some((properties, properties.ruby.as_ref()?)))
+        .filter(|(_, ruby)| !ruby.continuation && !ruby.text.is_empty())
+        .filter(|_| first.inline_object.is_none())
+    else {
+        return Ok((start + 1, None));
+    };
+    let mut end = start + 1;
+    while let Some(next) = runs.get(end) {
+        let continues = runs[end - 1].end == next.start
+            && next.inline_object.is_none()
+            && next
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.ruby.as_ref())
+                .is_some_and(|next_ruby| next_ruby.continuation);
+        if !continues {
+            break;
+        }
+        end += 1;
+    }
+
+    let mut cache = FxHashMap::default();
+    let mut base_width = 0.0;
+    let mut visible = 0_usize;
+    let mut first_visible = None;
+    let mut last_visible = 0;
+    let mut state = TextAdvanceState::default();
+    let group_end = runs[end - 1].end;
+    for run in &runs[start..end] {
+        let Some(run_text) = text.get(run.start..run.end) else {
+            return Ok((end, None));
+        };
+        let style = ctx.resolve_run_style(run.properties.as_deref())?;
+        let next = text
+            .get(run.end..group_end)
+            .and_then(|rest| rest.graphemes(true).next());
+        state = walk_text_advance_steps(
+            ctx,
+            run_text,
+            &style,
+            Some(paragraph_style),
+            &state,
+            next,
+            &mut cache,
+            |step| {
+                base_width += step.advance.total_advance;
+                if step.advance.adjusted_glyph_width > f64::EPSILON {
+                    visible += 1;
+                    let offset = run.start + step.rel_offset;
+                    first_visible.get_or_insert(offset);
+                    last_visible = offset;
+                }
+                Ok(())
+            },
+        )?;
+    }
+    let Some(first_visible) = first_visible else {
+        return Ok((end, None));
+    };
+
+    let base_size = properties.font_size.unwrap_or(12.0);
+    let guide_properties = crate::ruby::ruby_run_properties(Some(properties), base_size, ruby);
+    let guide_style = ctx.resolve_run_style(Some(&guide_properties))?;
+    let mut guide_width = 0.0;
+    walk_text_advance_steps(
+        ctx,
+        &ruby.text,
+        &guide_style,
+        Some(paragraph_style),
+        &TextAdvanceState::default(),
+        None,
+        &mut cache,
+        |step| {
+            guide_width += step.advance.total_advance;
+            Ok(())
+        },
+    )?;
+    let slack = guide_width - base_width;
+    let (leading_px, gap_px) =
+        crate::ruby::ruby_distribution(ruby.align.as_deref(), visible, slack);
+    let trailing_px = if slack > 0.0 {
+        slack - leading_px - gap_px * (visible - 1) as f64
+    } else {
+        0.0
+    };
+
+    let ascent_px = match ruby.raise_half_points {
+        Some(raise) => {
+            let descriptor = if crate::line_metrics::text_font_slots(&ruby.text).1 {
+                &guide_style.font_descriptor_east_asia
+            } else {
+                &guide_style.font_descriptor_latin_ascii
+            };
+            let metrics = match paragraph_style
+                .word_east_asian_font_line_box
+                .then(|| crate::line_metrics::word_font_vertical_metrics_px(descriptor))
+                .flatten()
+            {
+                Some(metrics) => Some(metrics),
+                None => ctx.measure_font_vertical_metrics(descriptor)?,
+            };
+            metrics.map(|(ascent, _)| points_to_px(crate::ruby::ruby_raise_pt(raise)) + ascent)
+        }
+        None => None,
+    };
+
+    Ok((
+        end,
+        Some(RubyAdjustment {
+            first_visible,
+            last_visible,
+            leading_px,
+            gap_px,
+            trailing_px,
+            ascent_px,
+        }),
+    ))
+}
+
 /// Returns whether a run contains a control that makes `w:fitText` ineligible.
 /// All three controls are single-byte ASCII, so one byte scan is equivalent to
 /// three UTF-8 string searches without invoking the generic substring matcher.
@@ -5501,6 +5667,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     let mut advance_state_across_runs = TextAdvanceState::default();
     let mut fit_group_end = 0;
     let mut fit_group_adjustment = None;
+    let mut ruby_group_end = 0;
+    let mut ruby_group: Option<RubyAdjustment> = None;
     let mut fitted_visual_gaps: smallvec::SmallVec<[FittedVisualGaps; 1]> =
         smallvec::SmallVec::new();
 
@@ -5574,6 +5742,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     });
                 }
             }
+        }
+        if run_index >= ruby_group_end {
+            (ruby_group_end, ruby_group) =
+                ruby_group_adjustment(ctx, text, run_styles, run_index, paragraph_style)?;
         }
         let effective_properties =
             fit_text_adjusted_properties(run_style.properties.as_ref(), fit_group_adjustment);
@@ -5903,8 +6075,18 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     }
                     _ => 0.0,
                 };
-                let candidate_width =
-                    (marker_gap + computed.advance.total_advance + fitted_gap).max(0.0);
+                let (ruby_leading, ruby_trailing) = ruby_group.map_or((0.0, 0.0), |ruby| {
+                    ruby.extra_px(
+                        grapheme_start_abs - base_offset,
+                        computed.advance.adjusted_glyph_width > f64::EPSILON,
+                    )
+                });
+                let candidate_width = (marker_gap
+                    + computed.advance.total_advance
+                    + fitted_gap
+                    + ruby_leading
+                    + ruby_trailing)
+                    .max(0.0);
                 let trailing_overhang =
                     ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x;
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
@@ -6097,12 +6279,19 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leading_advance: computed.advance.implicit_latin_gap
                         + computed.advance.implicit_numeric_gap
                         + computed.advance.kerning_adjustment
-                        + computed.advance.snap_leading,
-                    glyph_box_width: computed.advance.glyph_box_width + fitted_gap,
+                        + computed.advance.snap_leading
+                        + ruby_leading,
+                    glyph_box_width: computed.advance.glyph_box_width + fitted_gap + ruby_trailing,
                     measured_glyph_width: computed.measured_glyph_width,
                     adjusted_glyph_width: computed.advance.adjusted_glyph_width,
                     font_descriptor_hash: computed.font_descriptor_hash,
-                    font_ascent: font_vertical_metrics.map(|metrics| metrics.0 + border_extent_px),
+                    font_ascent: font_vertical_metrics.map(|metrics| {
+                        let ascent = metrics.0 + border_extent_px;
+                        // A ruby guide raises the line above its base.
+                        ruby_group
+                            .and_then(|ruby| ruby.ascent_px)
+                            .map_or(ascent, |guide| ascent.max(guide))
+                    }),
                     font_descent: font_vertical_metrics.map(|metrics| metrics.1 + border_extent_px),
                 };
             };
@@ -13723,6 +13912,174 @@ mod tests {
             .collect();
 
         assert_eq!(segments, vec!["a", "b", "c", "d"]);
+    }
+
+    /// Measures every grapheme one em wide at the descriptor's size, with
+    /// MS Mincho's 0.859/0.141 em ascent and descent.
+    struct EmWidthContext;
+
+    impl EmWidthContext {
+        fn size_px(font_descriptor: &str) -> f64 {
+            font_descriptor
+                .split_whitespace()
+                .find_map(|token| token.strip_suffix("pt")?.parse::<f64>().ok())
+                .map_or(16.0, |pt| pt * 96.0 / 72.0)
+        }
+    }
+
+    impl LineWrapContext for EmWidthContext {
+        type Error = ();
+
+        fn resolve_run_style(
+            &self,
+            properties: Option<&RunProperties>,
+        ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+            Ok(resolve_run_style_for_wrap(properties, None))
+        }
+
+        fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error> {
+            Ok(text.graphemes(true).count() as f64 * Self::size_px(font_descriptor))
+        }
+
+        fn measure_font_vertical_metrics(
+            &self,
+            font_descriptor: &str,
+        ) -> Result<Option<(f64, f64)>, Self::Error> {
+            let size = Self::size_px(font_descriptor);
+            Ok(Some((size * 0.859, size * 0.141)))
+        }
+    }
+
+    fn ruby_runs(
+        text: &str,
+        base: std::ops::Range<usize>,
+        guide: &str,
+        align: &str,
+    ) -> Vec<RunStyle> {
+        let plain = Rc::new(RunProperties {
+            font_size: Some(10.5),
+            ..RunProperties::default()
+        });
+        let annotated = Rc::new(RunProperties {
+            font_size: Some(10.5),
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
+                text: guide.to_string(),
+                size_pt: Some(5.5),
+                align: Some(align.to_string()),
+                raise_half_points: Some(21),
+                ..Default::default()
+            })),
+            ..RunProperties::default()
+        });
+        [
+            (0, base.start, &plain),
+            (base.start, base.end, &annotated),
+            (base.end, text.len(), &plain),
+        ]
+        .into_iter()
+        .map(|(start, end, properties)| RunStyle {
+            start,
+            end,
+            properties: Some(Rc::clone(properties)),
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        })
+        .collect()
+    }
+
+    #[test]
+    fn ruby_widens_its_base_and_raises_the_line_ascent() {
+        // Word for Mac (ruby2 probe): 漢字 under the 33pt guide かんじかんじ
+        // takes the guide's width; distributeSpace gives each base character
+        // 6pt, half of it before the first.
+        let text = "か漢字さ";
+        let runs = ruby_runs(text, 3..9, "かんじかんじ", "distributespace");
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&EmWidthContext, text, &runs, 0.0, &paragraph, 0, 400.0)
+            .expect("wrap");
+        assert_eq!(lines.len(), 1);
+        let pt = |px: f64| px * 72.0 / 96.0;
+        let clusters = &lines[0].clusters;
+        let widths: Vec<f64> = clusters.iter().map(|c| pt(c.width)).collect();
+        let expected = [10.5, 3.0 + 10.5 + 6.0, 10.5 + 3.0, 10.5];
+        for (width, expected) in widths.iter().zip(expected) {
+            assert!((width - expected).abs() < 1e-6, "{widths:?}");
+        }
+        let layout = |index: usize| clusters[index].layout.as_ref().unwrap();
+        assert!((pt(layout(1).leading_advance) - 3.0).abs() < 1e-6);
+        assert!(pt(layout(2).leading_advance).abs() < 1e-6);
+        // The guide baseline is 10pt up (hpsRaise 21) and its 5.5pt face
+        // reaches 0.859 em above that.
+        let ruby_ascent = 10.0 + 5.5 * 0.859;
+        for index in [1, 2] {
+            let ascent = pt(layout(index).font_ascent.unwrap());
+            assert!((ascent - ruby_ascent).abs() < 1e-6, "{ascent}");
+        }
+        assert!((pt(layout(0).font_ascent.unwrap()) - 10.5 * 0.859).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ruby_base_spreads_across_formatting_runs() {
+        // 漢 and 字 are separate runs of one base: the guide's width spreads
+        // over both, as if they were one run.
+        let text = "か漢字さ";
+        let mut runs = ruby_runs(text, 3..9, "かんじかんじ", "distributespace");
+        let mut first = runs[1].properties.as_deref().unwrap().clone();
+        first.bold = Some(true);
+        let mut second = runs[1].properties.as_deref().unwrap().clone();
+        second.ruby.as_mut().unwrap().continuation = true;
+        runs[1].end = 6;
+        runs[1].properties = Some(Rc::new(first));
+        runs.insert(
+            2,
+            RunStyle {
+                start: 6,
+                end: 9,
+                properties: Some(Rc::new(second)),
+                revision: None,
+                hyperlink: None,
+                inline_object: None,
+            },
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&EmWidthContext, text, &runs, 0.0, &paragraph, 0, 400.0)
+            .expect("wrap");
+        let widths: Vec<f64> = lines[0]
+            .clusters
+            .iter()
+            .map(|c| c.width * 72.0 / 96.0)
+            .collect();
+        let expected = [10.5, 3.0 + 10.5 + 6.0, 10.5 + 3.0, 10.5];
+        for (width, expected) in widths.iter().zip(expected) {
+            assert!((width - expected).abs() < 1e-6, "{widths:?}");
+        }
+    }
+
+    #[test]
+    fn ruby_narrower_than_its_base_leaves_the_base_alone() {
+        let text = "か東京都特許さ";
+        let runs = ruby_runs(text, 3..18, "とう", "distributespace");
+        let lines = wrap_text_into_lines(
+            &EmWidthContext,
+            text,
+            &runs,
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            400.0,
+        )
+        .expect("wrap");
+        for cluster in &lines[0].clusters {
+            assert!((cluster.width * 72.0 / 96.0 - 10.5).abs() < 1e-6);
+            assert!(cluster.layout.as_ref().unwrap().leading_advance.abs() < 1e-9);
+        }
     }
 
     #[test]

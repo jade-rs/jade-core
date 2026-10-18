@@ -8997,6 +8997,12 @@ where
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
                     ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                    ruby.align.hash(&mut hasher);
+                    ruby.raise_half_points.hash(&mut hasher);
+                    ruby.fonts
+                        .as_ref()
+                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                        .hash(&mut hasher);
                     ruby.continuation.hash(&mut hasher);
                 }
                 if let Some(border) = props.border.as_ref() {
@@ -10252,6 +10258,12 @@ where
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
                     ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                    ruby.align.hash(&mut hasher);
+                    ruby.raise_half_points.hash(&mut hasher);
+                    ruby.fonts
+                        .as_ref()
+                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                        .hash(&mut hasher);
                     ruby.continuation.hash(&mut hasher);
                 }
                 if let Some(border) = props.border.as_ref() {
@@ -10487,6 +10499,20 @@ where
                         text.hash(&mut hasher);
                         guide.hash(&mut hasher);
                         8
+                    }
+                    RunFieldKind::EqRuby {
+                        text,
+                        guide,
+                        align,
+                        size_half_points,
+                        raise_points,
+                    } => {
+                        text.hash(&mut hasher);
+                        guide.hash(&mut hasher);
+                        align.hash(&mut hasher);
+                        size_half_points.hash(&mut hasher);
+                        raise_points.hash(&mut hasher);
+                        44
                     }
                     RunFieldKind::Hyperlink {
                         target,
@@ -16524,6 +16550,16 @@ where
                         Some(&paragraph_style),
                     )?;
                 }
+                // An `EQ` overstrike ruby lays out like `w:ruby` over its base.
+                if let Some(ruby) = run
+                    .field
+                    .as_ref()
+                    .and_then(|field| field.kind.eq_ruby_annotation())
+                {
+                    effective_props
+                        .get_or_insert_with(RunProperties::default)
+                        .ruby = Some(Box::new(ruby));
+                }
                 // w:smallCaps: split into sub-runs so lowercase-origin characters
                 // render as smaller capitals while uppercase/digits/punctuation
                 // keep full size. Other runs are emitted as a single chunk. The
@@ -20157,7 +20193,9 @@ where
                 })
                 .collect::<Vec<_>>();
             let character_borders = merge_character_border_fragments(&character_border_fragments);
-            for (prepared, start_x) in prepared_segments.iter().zip(positions.iter()) {
+            for (segment_index, (prepared, start_x)) in
+                prepared_segments.iter().zip(positions.iter()).enumerate()
+            {
                 if render_changes {
                     if let Some(revision_mark) = prepared.segment.revision.as_ref() {
                         let fill_color = match revision_mark.kind {
@@ -20398,19 +20436,39 @@ where
                     )
                     .map_err(PainterError::into_js_value)?;
                 }
-                // Ruby guide (`w:ruby`, §17.3.3.25): drawn centered above the
-                // base segment, after the glyphs so it overlays cleanly.
+                // Ruby guide (`w:ruby`, §17.3.3.25): drawn over the whole base,
+                // including the runs that continue it, after the glyphs so it
+                // overlays cleanly.
                 if let Some(ruby) = style.ruby.clone() {
                     let base_color = text_style.fill_color.clone();
-                    self.draw_ruby_text(
+                    let base_end = prepared_segments[segment_index + 1..]
+                        .iter()
+                        .zip(&positions[segment_index + 1..])
+                        .take_while(|(next, _)| {
+                            next.segment
+                                .properties
+                                .as_ref()
+                                .and_then(|properties| properties.ruby.as_ref())
+                                .is_some_and(|next_ruby| next_ruby.continuation)
+                        })
+                        .last()
+                        .map_or(*start_x + width, |(next, next_x)| *next_x + next.width);
+                    let (guide_baseline, guide_glyphs) = self.draw_ruby_text(
                         &ruby,
                         *start_x,
-                        width,
+                        base_end - *start_x,
                         text_y,
                         prepared.top_offset,
                         &base_color,
                         commands_out.as_deref_mut(),
                     )?;
+                    self.capture_ruby_guide(
+                        guide_baseline,
+                        &guide_glyphs,
+                        paragraph_index,
+                        line_index,
+                        &line_layout,
+                    );
                 }
                 // Plugin-driven decoration pass (SlateJS-style overlays).
                 //
@@ -27054,9 +27112,19 @@ where
             // the annotation for editing alone.
             if let Some(annotation) = props.ruby.as_ref() {
                 if !annotation.text.is_empty() && !annotation.continuation {
+                    let properties = jade_docx_layout::ruby::ruby_run_properties(
+                        Some(props),
+                        font_size_pt,
+                        annotation,
+                    );
                     ruby = Some(ResolvedRuby {
                         text: Rc::from(annotation.text.as_str()),
-                        size_pt: ruby_font_size_pt(font_size_pt, annotation.size_pt),
+                        size_pt: properties.font_size.unwrap_or(font_size_pt),
+                        align: annotation.align.as_deref().map(Rc::from),
+                        raise_pt: annotation
+                            .raise_half_points
+                            .map(jade_docx_layout::ruby::ruby_raise_pt),
+                        properties: Rc::new(properties),
                     });
                 }
             }
@@ -27169,6 +27237,12 @@ where
             if let Some(ruby) = props.ruby.as_ref() {
                 ruby.text.hash(&mut hasher);
                 ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                ruby.align.hash(&mut hasher);
+                ruby.raise_half_points.hash(&mut hasher);
+                ruby.fonts
+                    .as_ref()
+                    .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                    .hash(&mut hasher);
                 ruby.continuation.hash(&mut hasher);
             } else {
                 Option::<String>::None.hash(&mut hasher);
@@ -28464,12 +28538,14 @@ where
         Ok(())
     }
 
-    /// Draws the ruby guide text (`w:ruby`, ECMA-376 Part 1 §17.3.3.25) in a
-    /// small font centered above the base run's segment. Visual-only: the
-    /// guide is not selectable content (matching Word) and, in this MVP, the
-    /// line height is not expanded — the guide sits in the line's leading
-    /// band. Emitted both immediately and as a `DrawCommand::Text` so it
-    /// replays through the paragraph draw cache.
+    /// Draws the ruby guide (`w:ruby`, ECMA-376 Part 1 §17.3.3.25) over its
+    /// base segment and returns the guide baseline and characters.
+    /// Shared layout already widened the base to a wider guide
+    /// (`jade_docx_layout::ruby`); a narrower guide spreads over the base by
+    /// `w:rubyAlign`. Its baseline sits `w:hpsRaise` above the base baseline,
+    /// in whole points. Visual-only: the guide is not selectable content
+    /// (matching Word). Emitted both immediately and as `DrawCommand::Text`s so
+    /// it replays through the paragraph draw cache.
     #[allow(clippy::too_many_arguments)]
     fn draw_ruby_text(
         &self,
@@ -28480,47 +28556,141 @@ where
         top_offset: f64,
         base_color: &str,
         commands_out: Option<&mut Vec<DrawCommand>>,
-    ) -> Result<(), JsValue> {
+    ) -> Result<(f64, Vec<RubyGuideGlyph>), JsValue> {
         if ruby.text.is_empty() {
-            return Ok(());
+            return Ok((baseline_y, Vec::new()));
         }
         let props = Some(RunProperties {
-            font_size: Some(ruby.size_pt),
             color: Some(base_color.to_string().into()),
-            ..RunProperties::default()
+            ..(*ruby.properties).clone()
         });
         let style = self.apply_run_style(props.as_ref())?;
-        let ruby_width = self.measure_text_with_spacing(&ruby.text, &style, None)?;
-        let x = ruby_draw_x(segment_x, segment_width, ruby_width);
-        // The guide baseline sits just above the base glyph-box top; the gap
-        // leaves room for the guide's own descenders.
-        let guide_px = points_to_px(ruby.size_pt);
-        let gap = (guide_px * 0.2).max(1.0);
-        let y = baseline_y + top_offset - gap;
-        let context = self.host.painter();
-        self.draw_text_with_spacing(
-            &context,
-            &ruby.text,
-            x,
-            y,
-            style.letter_spacing_px,
-            &style,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )?;
-        if let Some(buf) = commands_out {
-            let text_style = self.cmd_text_style(props.as_ref(), &style);
-            buf.push(DrawCommand::Text {
-                text: ruby.text.clone(),
-                x,
-                y,
-                style: text_style,
+        let mut glyphs = Vec::new();
+        for grapheme in ruby.text.graphemes(true) {
+            let width = self.measure_text_with_spacing(grapheme, &style, None)?;
+            glyphs.push(RubyGuideGlyph {
+                text: grapheme.to_string(),
+                x: 0.0,
+                width,
             });
         }
-        Ok(())
+        let guide_width: f64 = glyphs.iter().map(|glyph| glyph.width).sum();
+        let (leading, gap) = jade_docx_layout::ruby::ruby_distribution(
+            ruby.align.as_deref(),
+            glyphs.len(),
+            segment_width - guide_width,
+        );
+        let mut x = segment_x + leading;
+        for glyph in &mut glyphs {
+            glyph.x = x;
+            x += glyph.width + gap;
+        }
+        let y = match ruby.raise_pt {
+            Some(raise) => baseline_y - points_to_px(raise),
+            None => {
+                // Without `w:hpsRaise` the guide baseline sits just above the
+                // base glyph-box top, leaving room for its own descenders.
+                let guide_px = points_to_px(ruby.size_pt);
+                baseline_y + top_offset - (guide_px * 0.2).max(1.0)
+            }
+        };
+        let context = self.host.painter();
+        let text_style = self.cmd_text_style(props.as_ref(), &style);
+        let mut commands_out = commands_out;
+        for RubyGuideGlyph { text, x, .. } in &glyphs {
+            self.draw_text_with_spacing(
+                &context,
+                text,
+                *x,
+                y,
+                style.letter_spacing_px,
+                &style,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )?;
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::Text {
+                    text: Rc::from(text.as_str()),
+                    x: *x,
+                    y,
+                    style: text_style.clone(),
+                });
+            }
+        }
+        Ok((y, glyphs))
+    }
+
+    /// Records a drawn ruby guide for full-layout captures, like tab leaders:
+    /// it paints outside editable text offsets.
+    fn capture_ruby_guide(
+        &mut self,
+        baseline: f64,
+        glyphs: &[RubyGuideGlyph],
+        paragraph: usize,
+        line_index: usize,
+        line: &SelectionLineLayout,
+    ) {
+        if !self.auxiliary_story_capture_mode.enabled()
+            || !self.should_draw_current_page_for_render()
+            || glyphs.is_empty()
+        {
+            return;
+        }
+        let start_x = glyphs[0].x;
+        let end_x = glyphs.last().map_or(start_x, |glyph| glyph.x + glyph.width);
+        let mut text = String::new();
+        let mut debug_glyphs = Vec::with_capacity(glyphs.len());
+        for glyph in glyphs {
+            let start = text.len();
+            text.push_str(&glyph.text);
+            debug_glyphs.push(LayoutGlyphDebug {
+                start,
+                end: text.len(),
+                text: glyph.text.clone(),
+                x: glyph.x - start_x,
+                width: glyph.width,
+            });
+        }
+        let page = self.current_page_number.saturating_sub(1);
+        self.auxiliary_story_debug_lines
+            .push(AuxiliaryStoryLineDebug {
+                story: "ruby",
+                page,
+                line: LayoutLineDebug {
+                    paragraph,
+                    line: line_index,
+                    page,
+                    column_index: line.column_index,
+                    vertical: line.vertical,
+                    start: 0,
+                    end: text.len(),
+                    top: line.content_top,
+                    absolute_top: line.absolute_content_top,
+                    height: line.content_height,
+                    baseline,
+                    absolute_baseline: baseline + line.absolute_top - line.top,
+                    report_x_offset: 0.0,
+                    start_x,
+                    end_x,
+                    cursor_end_x: end_x,
+                    visual_end_x: end_x,
+                    allowed_trailing_overflow_width: 0.0,
+                    fragments: vec![LayoutFragmentDebug {
+                        start: 0,
+                        end: text.len(),
+                        x: start_x,
+                        width: end_x - start_x,
+                        baseline,
+                        glyphs: debug_glyphs,
+                    }],
+                    text,
+                    tab_leaders: Vec::new(),
+                    tab_stops: Vec::new(),
+                },
+            });
     }
 
     /// Draws `w:u` (ECMA-376 Part 1 §17.3.2.40) in the current text colour.
@@ -31826,7 +31996,9 @@ where
             RunFieldKind::Ref { .. } | RunFieldKind::Seq { .. } | RunFieldKind::AutoNum { .. } => {
                 field.resolved_value.clone()
             }
-            RunFieldKind::EqDistributed { text, .. } => Some(text.clone()),
+            RunFieldKind::EqDistributed { text, .. } | RunFieldKind::EqRuby { text, .. } => {
+                Some(text.clone())
+            }
             RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
@@ -32189,25 +32361,6 @@ fn emphasis_mark_radius(font_size_pt: f32) -> f64 {
     (points_to_px(font_size_pt) * 0.09).max(1.0)
 }
 
-/// Resolves the ruby guide font size (`w:ruby`, §17.3.3.25): the explicit size
-/// from the `w:rt` run / `w:rubyPr/w:hps` wins; otherwise Word's default of
-/// half the base run size applies. Non-positive/non-finite explicit sizes fall
-/// back to the default, and the result is floored at 1 pt so the guide never
-/// degenerates to an invisible font.
-fn ruby_font_size_pt(base_font_size_pt: f32, explicit_pt: Option<f32>) -> f32 {
-    explicit_pt
-        .filter(|size| size.is_finite() && *size > 0.0)
-        .unwrap_or(base_font_size_pt * 0.5)
-        .max(1.0)
-}
-
-/// X origin for the ruby guide text: centered over the base segment, clamped
-/// to the segment start when the guide is wider than the base (Word lets a
-/// wide guide overhang to the right rather than shifting it left of the base).
-fn ruby_draw_x(segment_x: f64, segment_width: f64, ruby_width: f64) -> f64 {
-    segment_x + ((segment_width - ruby_width) / 2.0).max(0.0)
-}
-
 /// Computes the horizontal center offsets (relative to the segment start) of
 /// the emphasis mark for each non-blank glyph. `glyphs` is a slice of
 /// `(x_offset, is_blank)`; blank glyphs (whitespace) are skipped so spaces do
@@ -32295,10 +32448,23 @@ fn underline_spans_for_planned_glyphs(
 /// Resolved ruby (phonetic guide) annotation ready for drawing: the guide
 /// text plus its resolved size in points (explicit `w:rt` size / `w:hps`, or
 /// half the base run size when unspecified — Word's default).
+/// One drawn ruby guide character: its text, x and advance.
+struct RubyGuideGlyph {
+    text: String,
+    x: f64,
+    width: f64,
+}
+
 #[derive(Clone, PartialEq)]
 struct ResolvedRuby {
     text: Rc<str>,
     size_pt: f32,
+    /// `w:rubyAlign`, lowercased.
+    align: Option<Rc<str>>,
+    /// Guide baseline above the base baseline (`w:hpsRaise`, whole points).
+    raise_pt: Option<f32>,
+    /// The guide's faces and size (`jade_docx_layout::ruby::ruby_run_properties`).
+    properties: Rc<RunProperties>,
 }
 
 fn eq_distributed_text_scale_percent(
@@ -37855,6 +38021,52 @@ mod tests {
         assert_eq!(cached.count(|op| matches!(op, Op::MeasureText(..))), 0);
     }
 
+    /// A ruby base may span several runs (`w:rubyBase` with a formatting
+    /// change). The guide spreads over the whole base, not just its first
+    /// run, and sits `w:hpsRaise` above the base baseline in whole points.
+    #[test]
+    fn ruby_guide_spreads_over_a_base_that_spans_runs() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>前</w:t></w:r><w:r><w:ruby><w:rubyPr><w:rubyAlign w:val="center"/><w:hps w:val="10"/><w:hpsRaise w:val="21"/><w:hpsBaseText w:val="20"/></w:rubyPr><w:rt><w:r><w:t>か</w:t></w:r></w:rt><w:rubyBase><w:r><w:rPr><w:b/></w:rPr><w:t>漢</w:t></w:r><w:r><w:t>字</w:t></w:r></w:rubyBase></w:ruby></w:r><w:r><w:t>後</w:t></w:r></w:p></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.render(&document, &Options::default()).unwrap();
+        let snapshot = renderer.capture_full_layout_debug().unwrap();
+        let guides = snapshot
+            .auxiliary_lines
+            .iter()
+            .filter(|entry| entry.story == "ruby")
+            .collect::<Vec<_>>();
+        assert_eq!(guides.len(), 1, "the guide is drawn once per base");
+        let guide = &guides[0].line;
+        let body = &snapshot.body_lines[0];
+        let glyph_x = |text: &str| {
+            body.fragments
+                .iter()
+                .flat_map(|fragment| {
+                    fragment
+                        .glyphs
+                        .iter()
+                        .map(move |glyph| (fragment.x + glyph.x, glyph))
+                })
+                .find(|(_, glyph)| glyph.text == text)
+                .map(|(x, glyph)| (x, glyph.width))
+                .unwrap()
+        };
+        let (base_start, _) = glyph_x("漢");
+        let (last_x, last_width) = glyph_x("字");
+        let base_end = last_x + last_width;
+        let fragment = &guide.fragments[0];
+        let guide_start = fragment.x + fragment.glyphs[0].x;
+        let guide_width = fragment.glyphs[0].width;
+        assert!(
+            (guide_start - (base_start + (base_end - base_start - guide_width) / 2.0)).abs() < 1e-6,
+            "guide {guide_start} must be centred over {base_start}..{base_end}"
+        );
+        assert!((body.baseline - guide.baseline - points_to_px(10.0)).abs() < 1e-6);
+    }
+
     #[test]
     fn full_capture_records_painted_tab_leaders_without_changing_source_tabs() {
         use jade_painter::recording::Op;
@@ -39976,40 +40188,18 @@ mod tests {
     /// the run property is `Some(true)`, and `cmd_text_style` threads it into the
     /// draw command so the executor strokes hollow glyphs.
     #[test]
-    fn ruby_font_size_pt_prefers_explicit_size_and_defaults_to_half_base() {
-        // Explicit `w:rt` / `w:hps` size wins.
-        assert_eq!(ruby_font_size_pt(12.0, Some(7.0)), 7.0);
-        // Word's default: half the base run size.
-        assert_eq!(ruby_font_size_pt(12.0, None), 6.0);
-        // Degenerate explicit sizes fall back to the default.
-        assert_eq!(ruby_font_size_pt(12.0, Some(0.0)), 6.0);
-        assert_eq!(ruby_font_size_pt(12.0, Some(f32::NAN)), 6.0);
-        // 1pt floor keeps the guide visible for tiny base sizes.
-        assert_eq!(ruby_font_size_pt(1.0, None), 1.0);
-    }
-
-    #[test]
-    fn ruby_draw_x_centers_over_base_and_clamps_to_segment_start() {
-        // Guide narrower than the base: centered.
-        assert_eq!(ruby_draw_x(100.0, 40.0, 20.0), 110.0);
-        // Same width: flush with the base.
-        assert_eq!(ruby_draw_x(100.0, 40.0, 40.0), 100.0);
-        // Wider guide: clamp to the base start (overhang to the right).
-        assert_eq!(ruby_draw_x(100.0, 40.0, 60.0), 100.0);
-    }
-
-    #[test]
     fn ruby_annotation_resolves_into_applied_style() {
         let renderer = test_renderer();
 
         let annotated = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "かんじ".to_string(),
                 size_pt: None,
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(annotated.as_ref());
@@ -40022,24 +40212,26 @@ mod tests {
 
         let explicit = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "よみ".to_string(),
                 size_pt: Some(6.0),
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(explicit.as_ref());
         assert_eq!(style.ruby.as_ref().map(|r| r.size_pt), Some(6.0));
 
         let empty_guide = Some(RunProperties {
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: String::new(),
                 size_pt: Some(6.0),
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(empty_guide.as_ref());
@@ -40056,12 +40248,13 @@ mod tests {
         // guide is drawn once, by the run that starts the base.
         let continuation = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "かんじ".to_string(),
                 size_pt: None,
                 align: None,
                 continuation: true,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(continuation.as_ref());

@@ -91,6 +91,10 @@ struct PendingRuby {
     size_pt: Option<f32>,
     /// `w:rubyPr/w:rubyAlign` token, lowercased.
     align: Option<String>,
+    /// `w:rubyPr/w:hpsRaise` in half-points.
+    raise_half_points: Option<u32>,
+    /// The guide run's own `w:rFonts`.
+    fonts: Option<RunFonts>,
 }
 
 mod diagram;
@@ -1002,21 +1006,28 @@ impl DocumentParser {
                                 text: String::new(),
                                 size_pt: None,
                                 align: None,
+                                raise_half_points: None,
+                                fonts: None,
                             });
                         }
                         b"w:rubyPr" => {
-                            let (hps_pt, align) = Self::parse_ruby_properties(reader)?;
+                            let (hps_pt, align, raise_half_points) =
+                                Self::parse_ruby_properties(reader)?;
                             if let Some(pending) = pending_ruby.as_mut() {
                                 if pending.size_pt.is_none() {
                                     pending.size_pt = hps_pt;
                                 }
                                 pending.align = align;
+                                pending.raise_half_points = raise_half_points;
                             }
                         }
                         b"w:rt" => {
-                            let (text, size_pt) = Self::parse_ruby_text(reader)?;
+                            let (text, size_pt, fonts) = Self::parse_ruby_text(reader)?;
                             if let Some(pending) = pending_ruby.as_mut() {
                                 pending.text.push_str(&text);
+                                if fonts.is_some() {
+                                    pending.fonts = fonts;
+                                }
                                 // The rt run's own `w:sz` wins over the
                                 // `w:rubyPr/w:hps` fallback.
                                 if size_pt.is_some() {
@@ -3598,12 +3609,14 @@ impl DocumentParser {
                                 for (index, run) in base_runs.iter_mut().enumerate() {
                                     let props =
                                         run.properties.get_or_insert_with(RunProperties::default);
-                                    props.ruby = Some(RubyAnnotation {
+                                    props.ruby = Some(Box::new(RubyAnnotation {
                                         text: pending.text.clone(),
                                         size_pt: pending.size_pt,
                                         align: pending.align.clone(),
+                                        raise_half_points: pending.raise_half_points,
+                                        fonts: pending.fonts.clone(),
                                         continuation: index > 0,
-                                    });
+                                    }));
                                 }
                             }
                         }
@@ -4399,13 +4412,16 @@ impl DocumentParser {
     }
 
     /// Consumes a `w:rubyPr` subtree (ECMA-376 Part 1 §17.3.3.26) and returns
-    /// `(hps_pt, align)` — the guide text size from `w:hps` (half-points → pt)
-    /// and the lowercased `w:rubyAlign` token.
+    /// `(hps_pt, align, raise_half_points)` — the guide text size from `w:hps`
+    /// (half-points → pt), the lowercased `w:rubyAlign` token and the
+    /// `w:hpsRaise` half-points.
+    #[allow(clippy::type_complexity)]
     fn parse_ruby_properties(
         reader: &mut dyn XmlEventSource,
-    ) -> Result<(Option<f32>, Option<String>), Box<dyn std::error::Error>> {
+    ) -> Result<(Option<f32>, Option<String>, Option<u32>), Box<dyn std::error::Error>> {
         let mut hps_pt = None;
         let mut align = None;
+        let mut raise_half_points = None;
         let mut buf = Vec::new();
 
         let mut assign = |name: &[u8], attrs: Attributes<'_>| {
@@ -4427,6 +4443,9 @@ impl DocumentParser {
                     if !val.is_empty() {
                         align = Some(val.to_lowercase());
                     }
+                }
+                b"w:hpsRaise" => {
+                    raise_half_points = val.parse::<u32>().ok();
                 }
                 _ => {}
             }
@@ -4452,19 +4471,39 @@ impl DocumentParser {
             buf.clear();
         }
 
-        Ok((hps_pt, align))
+        Ok((hps_pt, align, raise_half_points))
     }
 
     /// Consumes a `w:rt` subtree (ruby guide text, ECMA-376 Part 1 §17.3.3.24)
-    /// and returns `(text, size_pt)` — the concatenated `w:t` contents and the
-    /// guide run's `w:sz` (half-points → pt). The guide runs are intentionally
-    /// not turned into body runs: Word draws them above the base text, so
-    /// letting them flow inline would corrupt the body text and offsets.
+    /// and returns `(text, size_pt, fonts)` — the concatenated `w:t` contents,
+    /// the guide run's `w:sz` (half-points → pt) and its `w:rFonts`. The guide
+    /// runs are intentionally not turned into body runs: Word draws them above
+    /// the base text, so letting them flow inline would corrupt the body text
+    /// and offsets.
+    #[allow(clippy::type_complexity)]
     fn parse_ruby_text(
         reader: &mut dyn XmlEventSource,
-    ) -> Result<(String, Option<f32>), Box<dyn std::error::Error>> {
+    ) -> Result<(String, Option<f32>, Option<RunFonts>), Box<dyn std::error::Error>> {
         let mut text = String::new();
         let mut size_pt = None;
+        let mut fonts: Option<RunFonts> = None;
+        let read_fonts = |attrs: Attributes<'_>, fonts: &mut Option<RunFonts>| {
+            for attr in attrs.flatten() {
+                let value = Some(Rc::from(String::from_utf8_lossy(&attr.value).as_ref()));
+                let target = fonts.get_or_insert_with(RunFonts::default);
+                match attr.key.as_ref() {
+                    b"w:ascii" => target.ascii = value,
+                    b"w:hAnsi" => target.h_ansi = value,
+                    b"w:eastAsia" => target.east_asia = value,
+                    b"w:cs" => target.complex = value,
+                    b"w:asciiTheme" => target.ascii_theme = value,
+                    b"w:hAnsiTheme" => target.h_ansi_theme = value,
+                    b"w:eastAsiaTheme" => target.east_asia_theme = value,
+                    b"w:cstheme" => target.complex_theme = value,
+                    _ => {}
+                }
+            }
+        };
         let mut in_text = false;
         let mut buf = Vec::new();
 
@@ -4496,15 +4535,18 @@ impl DocumentParser {
                             size_pt = Some(size);
                         }
                     }
+                    b"w:rFonts" => read_fonts(e.attributes(), &mut fonts),
                     _ => {}
                 },
-                Ok(Event::Empty(ref e)) => {
-                    if e.name().as_ref() == b"w:sz" {
+                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                    b"w:sz" => {
                         if let Some(size) = read_size(e.attributes()) {
                             size_pt = Some(size);
                         }
                     }
-                }
+                    b"w:rFonts" => read_fonts(e.attributes(), &mut fonts),
+                    _ => {}
+                },
                 Ok(Event::Text(ref t)) => {
                     if in_text {
                         if let Some(text_owned) = text_event_to_string(t) {
@@ -4519,7 +4561,7 @@ impl DocumentParser {
             buf.clear();
         }
 
-        Ok((text, size_pt))
+        Ok((text, size_pt, fonts))
     }
 
     fn parse_doc_grid_attributes(attributes: Attributes<'_>, doc_grid: &mut DocGrid) {
@@ -9543,8 +9585,10 @@ impl DocumentParser {
             "HYPERLINK" => Self::parse_hyperlink_field(&raw_tokens, name_idx),
             "MACROBUTTON" => Self::parse_macrobutton_field(&raw_tokens, name_idx),
             "GOTOBUTTON" => Self::parse_gotobutton_field(&raw_tokens, name_idx),
-            "EQ" => parse_eq_distributed_field(normalized)
-                .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide }),
+            "EQ" => parse_eq_ruby_field(normalized).or_else(|| {
+                parse_eq_distributed_field(normalized)
+                    .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
+            }),
             "PRIVATE" | "ADDIN" | "XE" | "TA" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
@@ -10166,6 +10210,86 @@ fn parse_eq_distributed_field(instr: &str) -> Option<(String, String)> {
     let args = &normalized[args_start..];
     let args_end = find_matching_field_paren(args)?;
     split_eq_distributed_args(&args[..args_end])
+}
+
+/// Extracts ruby written as an `EQ` overstrike: `EQ [\* jcN] [\* hpsN]
+/// \o\aX(\s\upN(guide),base)`. Word writes this shape for phonetic guides
+/// (ECMA-376 §17.16.5.22); the `\* jc` values follow `w:rubyAlign`'s order.
+fn parse_eq_ruby_field(instr: &str) -> Option<RunFieldKind> {
+    let trimmed = instr.trim();
+    let (name, rest) = trimmed.split_once(char::is_whitespace)?;
+    if !name.eq_ignore_ascii_case("EQ") {
+        return None;
+    }
+    let lower = rest.to_ascii_lowercase();
+    let overstrike = lower.find("\\o")?;
+    let switches = &lower[..overstrike];
+    let switch_value = |key: &str| {
+        let at = switches.find(key)? + key.len();
+        let digits: String = switches[at..]
+            .trim_start()
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .collect();
+        digits.parse::<u32>().ok()
+    };
+    let jc_align = switch_value("\\* jc").and_then(|jc| {
+        [
+            "center",
+            "distributeletter",
+            "distributespace",
+            "left",
+            "right",
+        ]
+        .get(jc as usize)
+        .map(|align| align.to_string())
+    });
+    let size_half_points = switch_value("\\* hps");
+
+    let after_o = &lower[overstrike + 2..];
+    let (switch_align, open) = match after_o.strip_prefix("\\a") {
+        Some(aligned) => {
+            let align = match aligned.chars().next()? {
+                'c' => "center",
+                'd' => "distributespace",
+                'l' => "left",
+                'r' => "right",
+                _ => return None,
+            };
+            (Some(align.to_string()), overstrike + 2 + 3)
+        }
+        None => (None, overstrike + 2),
+    };
+    let args = rest.get(open..)?.trim_start().strip_prefix('(')?;
+    let guide_args = args.trim_start();
+    if !guide_args.get(..2)?.eq_ignore_ascii_case("\\s") {
+        return None;
+    }
+    let raised = guide_args[2..].trim_start();
+    if !raised.get(..3)?.eq_ignore_ascii_case("\\up") {
+        return None;
+    }
+    let raised = raised[3..].trim_start();
+    let digits_end = raised
+        .find(|ch: char| !ch.is_ascii_digit())
+        .unwrap_or(raised.len());
+    let raise_points = raised[..digits_end].parse::<u32>().ok()?;
+    let guide_open = raised[digits_end..].trim_start().strip_prefix('(')?;
+    let guide_end = find_matching_field_paren(guide_open)?;
+    let guide = clean_eq_distributed_arg(&guide_open[..guide_end]);
+    let base_args = guide_open[guide_end + 1..].trim_start().strip_prefix(',')?;
+    let base_end = find_matching_field_paren(base_args)?;
+    let text = clean_eq_distributed_arg(&base_args[..base_end]);
+    if guide.is_empty() || text.is_empty() {
+        return None;
+    }
+    Some(RunFieldKind::EqRuby {
+        text,
+        guide,
+        align: jc_align.or(switch_align),
+        size_half_points,
+        raise_points,
+    })
 }
 
 fn find_matching_field_paren(text: &str) -> Option<usize> {
@@ -13007,6 +13131,52 @@ mod tests {
             None,
             "runs after the ruby must stay unannotated",
         );
+    }
+
+    #[test]
+    fn parses_ruby_raise_and_guide_fonts() {
+        // `w:hpsRaise` (§17.3.3.12) places the guide above the base, and the
+        // guide run's own `w:rFonts` names the face it is drawn in.
+        let body = r#"
+    <w:p>
+      <w:r>
+        <w:ruby>
+          <w:rubyPr>
+            <w:rubyAlign w:val="center"/>
+            <w:hps w:val="11"/>
+            <w:hpsRaise w:val="21"/>
+            <w:hpsBaseText w:val="21"/>
+          </w:rubyPr>
+          <w:rt>
+            <w:r>
+              <w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Noto Sans JP"/></w:rPr>
+              <w:t>じゆん</w:t>
+            </w:r>
+          </w:rt>
+          <w:rubyBase>
+            <w:r><w:t>閏</w:t></w:r>
+          </w:rubyBase>
+        </w:ruby>
+      </w:r>
+    </w:p>
+"#;
+
+        let document = parse_document_from_body(body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let ruby = paragraph.runs[0]
+            .properties
+            .as_ref()
+            .and_then(|p| p.ruby.as_ref())
+            .expect("base run must carry the ruby annotation");
+        assert_eq!(ruby.size_pt, Some(5.5));
+        assert_eq!(ruby.raise_half_points, Some(21));
+        let fonts = ruby.fonts.as_ref().expect("guide fonts");
+        assert_eq!(fonts.ascii.as_deref(), Some("Arial"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("Noto Sans JP"));
+        assert_eq!(fonts.h_ansi, None);
     }
 
     #[test]
@@ -20205,6 +20375,60 @@ mod tests {
             }
         );
         assert_eq!(field.cached_text.as_deref(), Some("契約"));
+    }
+
+    #[test]
+    fn parses_eq_overstrike_ruby_field() {
+        // Older Word documents carry ruby as an `EQ` field (§17.16.5.22): the
+        // guide raised by `\s\up` over the base inside an `\o` overstrike,
+        // with the alignment (`\* jc`) and guide size (`\* hps`) as switches.
+        // Word computes the result itself, so the saved result is empty.
+        let body = r#"
+            <w:p>
+              <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+              <w:r><w:instrText xml:space="preserve"> EQ \* jc2 \* "Font:Times-Roman" \* hps11 \o\ad(\s\up11(じゆん),閏)</w:instrText></w:r>
+              <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+              <w:r><w:fldChar w:fldCharType="end"/></w:r>
+            </w:p>
+        "#;
+        let doc = parse_document_from_body(body);
+        let field = doc
+            .body
+            .as_ref()
+            .and_then(|b| b.elements.first())
+            .and_then(BodyElement::as_paragraph)
+            .and_then(|p| p.runs.iter().find_map(|r| r.field.as_ref()))
+            .expect("EQ ruby field");
+        assert_eq!(
+            field.kind,
+            RunFieldKind::EqRuby {
+                text: "閏".to_string(),
+                guide: "じゆん".to_string(),
+                align: Some("distributespace".to_string()),
+                size_half_points: Some(11),
+                raise_points: 11,
+            }
+        );
+        let ruby = field.kind.eq_ruby_annotation().expect("ruby");
+        assert_eq!(ruby.text, "じゆん");
+        assert_eq!(ruby.size_pt, Some(5.5));
+        assert_eq!(ruby.raise_half_points, Some(22));
+    }
+
+    #[test]
+    fn eq_ruby_alignment_follows_the_overstrike_switch_without_jc() {
+        assert_eq!(
+            parse_eq_ruby_field(r"EQ \o\al(\s\up 9(かな),仮名)"),
+            Some(RunFieldKind::EqRuby {
+                text: "仮名".to_string(),
+                guide: "かな".to_string(),
+                align: Some("left".to_string()),
+                size_half_points: None,
+                raise_points: 9,
+            })
+        );
+        // `\o\ad("契約","　　")` is distributed text, not ruby.
+        assert_eq!(parse_eq_ruby_field(r#"EQ \o\ad("契約","　　")"#), None);
     }
 
     #[test]

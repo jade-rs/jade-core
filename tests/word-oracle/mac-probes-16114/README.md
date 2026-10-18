@@ -23,6 +23,8 @@ are unchanged; these probes are additional observations.
 | `numbering-label`, `numbering-label-faces` | The label takes the paragraph mark's faces and size; the space after it is 0.278 em of the label size whatever the faces. |
 | `distribute-single` | A lone `A`, `も` or `あ` (before a trailing space) on a distributed line is centred. |
 | `exact-nogrid`, `exact-grid` | An exact-height line (12, 17.5, 24, 36pt) puts its baseline 0.8 of the height below its top, whatever the face (MS Mincho, MS Gothic, Century), size (10.5–20pt) or line grid. |
+| `ruby-nogrid`, `ruby-grid`, `ruby-wide-nogrid`, `ruby-wide-grid` | A `w:ruby` is one box as wide as the wider of base and guide. The narrower one spreads over it by `w:rubyAlign`: center splits the slack around it, left and right push it to one side, distributeLetter shares it between characters and distributeSpace around each character. The guide baseline is `w:hpsRaise` above the base in whole points (17 → 8pt, 21 → 10pt), and the line grows to hold the guide. |
+| `eqruby-nogrid`, `eqruby-grid` | Ruby written as an `EQ \o\aX(\s\up N(guide),base)` field with an empty saved result lays out the same way; `\* jc0`–`jc4` select center, distributeLetter, distributeSpace, left and right over the `\aX` switch, and `\up N` raises N points. |
 
-`generators/` holds the scripts that wrote the squeeze, indent and exact documents;
+`generators/` holds the scripts that wrote the squeeze, indent, exact and ruby documents;
 the numbering-label and distribute documents were derived from the indent one.

@@ -11,6 +11,7 @@ pub mod math_layout;
 pub mod measure_backend;
 pub mod note_area;
 pub mod paragraph_frame;
+pub mod ruby;
 pub mod section_transition;
 pub mod selection;
 #[cfg(feature = "native-shaping")]
