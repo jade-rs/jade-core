@@ -6948,7 +6948,8 @@ impl WordDocument {
                                 emitted_field_text = true;
                             }
                         }
-                        crate::document::RunFieldKind::EqDistributed { text, .. } => {
+                        crate::document::RunFieldKind::EqDistributed { text, .. }
+                        | crate::document::RunFieldKind::EqRuby { text, .. } => {
                             Self::push_header_text(
                                 &mut segments[idx],
                                 &mut rich_segments[idx],
