@@ -761,6 +761,17 @@ pub struct StructureSummary {
     pub inserted: bool,
 }
 
+/// What merging a range did.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeSummary {
+    pub sheet: String,
+    /// The merged range, top-left first, as `B2:C3`.
+    pub range: String,
+    /// The cells whose value or formula the merge discarded — every cell of
+    /// the range but the top-left one that held something — in row order.
+    pub cleared: Vec<String>,
+}
+
 /// A value to put in a cell.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind", content = "value")]
