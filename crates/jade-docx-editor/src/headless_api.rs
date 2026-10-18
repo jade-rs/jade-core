@@ -7,6 +7,7 @@ use crate::commands::apply_superscript::ApplySuperscriptCommand;
 use crate::commands::apply_underline::ApplyUnderlineCommand;
 use crate::commands::change_case::ChangeCaseCommand;
 use crate::commands::clear_formatting::ClearFormattingCommand;
+use crate::commands::delete_object::DeleteObjectCommand;
 use crate::commands::delete_table::DeleteTableCommand;
 use crate::commands::delete_text::{DeleteDirection, DeleteTextRunCommand};
 use crate::commands::insert_blank_page::InsertBlankPageCommand;
@@ -74,9 +75,10 @@ use crate::legal_structure::{
 use crate::numbering::{MultilevelListPreset, NumberingCounter, NumberingIndent, NumberingLevel};
 use crate::word_document::{
     AddCommentRequest, BorderEdgeSpec, CitationSourceInfo, CoverPageParagraphSpec,
-    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, PageBorderSpec, PageMarginSpec,
-    ReplyToCommentRequest, RevisionIdFilter, RevisionSession, RevisionTargets, SectionBreakType,
-    ShapeInsertSpec, TableBorderSpec, WordDocument,
+    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, FloatingObjectKind,
+    FloatingObjectTarget, PageBorderSpec, PageMarginSpec, ReplyToCommentRequest, RevisionIdFilter,
+    RevisionSession, RevisionTargets, SectionBreakType, ShapeInsertSpec, TableBorderSpec,
+    WordDocument,
 };
 use jade_docx_headless_api::{
     HeadlessCharacterStyleSnapshot, HeadlessCitationSource, HeadlessCommand, HeadlessCommentAnchor,
@@ -3473,6 +3475,41 @@ pub fn apply_headless_commands_with_executor_to_document(
                 };
                 let command: Box<dyn Command> =
                     Box::new(InsertShapeCommand::new(*paragraph, *offset, spec));
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(PackageSnapshotCommand::wrapping(command)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::DeleteTextBox {
+                paragraph,
+                text_box,
+            } => {
+                let missing = |message: String| HeadlessApiApplyError::Command {
+                    index,
+                    source: CommandError::Custom(message),
+                };
+                let runs = &word_doc
+                    .paragraph(*paragraph)
+                    .ok_or_else(|| missing(format!("paragraph {paragraph} does not exist")))?
+                    .runs;
+                let run_index = runs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, run)| run.text_box.is_some())
+                    .nth(*text_box)
+                    .map(|(run_index, _)| run_index)
+                    .ok_or_else(|| {
+                        missing(format!("paragraph {paragraph} has no text box {text_box}"))
+                    })?;
+                let target = FloatingObjectTarget {
+                    paragraph_index: *paragraph,
+                    run_index,
+                    kind: FloatingObjectKind::TextBox,
+                };
+                let command: Box<dyn Command> = Box::new(DeleteObjectCommand::new(target));
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(

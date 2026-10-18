@@ -2559,6 +2559,14 @@ const COMMANDS: &[Variant] = &[
         )],
     ),
     variant(
+        "delete_text_box",
+        "Delete a text box (its drawing and everything in it), named by the paragraph that anchors it and its place among that paragraph's text boxes.",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based index of the paragraph anchoring the text box."),
+            req("text_box", ArgType::Index, "Zero-based index among that paragraph's text boxes, in run order."),
+        ],
+    ),
+    variant(
         "insert_shape",
         "Insert an editable floating Word preset shape or stroke-only connector at a UTF-8 text boundary.",
         &[
