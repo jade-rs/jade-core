@@ -804,3 +804,66 @@ fn structured_references_to_a_table_recalculate() {
         Some(&CellValue::Number(1698.0))
     );
 }
+
+#[test]
+fn a_dynamic_array_from_excel_keeps_its_spill() {
+    // As Excel saves `=SEQUENCE(3)` in A1: the anchor carries the formula
+    // and the range it spills to; A2 and A3 hold the spilled values, and a
+    // SUM reads all three.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1" cm="1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>SUM(A1:A3)</f><v>6</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let workbook = read_xlsx(&bytes).expect("read");
+    assert_eq!(workbook.sheets[0].array_formulas.len(), 1);
+    let outcome = evaluate(&workbook).expect("evaluate");
+    // Not #SPILL!: the spilled values are the formula's own, not a wall.
+    assert_eq!(computed(&outcome, 0, "A1"), Some(&CellValue::Number(1.0)));
+    assert_eq!(computed(&outcome, 0, "B1"), Some(&CellValue::Number(6.0)));
+    assert!(outcome.skipped.is_empty(), "{:?}", outcome.skipped);
+    let spilled: Vec<_> = outcome
+        .spilled
+        .iter()
+        .map(|cell| (cell.reference, cell.value.clone()))
+        .collect();
+    assert_eq!(
+        spilled,
+        [
+            (CellRef::parse("A2").unwrap(), CellValue::Number(2.0)),
+            (CellRef::parse("A3").unwrap(), CellValue::Number(3.0)),
+        ]
+    );
+}
+
+#[test]
+fn a_spill_follows_its_inputs_and_a_typed_one_spills_too() {
+    // C1 says how many; the anchor has no array range in the file, as when
+    // the formula was just typed.
+    let bytes = workbook(
+        &sheet(
+            r#"<row r="1"><c r="A1"><f>_xlfn.SEQUENCE(C1,1,10)</f></c><c r="C1"><v>4</v></c><c r="D1"><f>SUM(A1#)</f></c></row>"#,
+        ),
+        None,
+        false,
+    );
+    let workbook = read_xlsx(&bytes).expect("read");
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert_eq!(computed(&outcome, 0, "A1"), Some(&CellValue::Number(10.0)));
+    assert_eq!(computed(&outcome, 0, "D1"), Some(&CellValue::Number(46.0)));
+    let spilled: Vec<_> = outcome
+        .spilled
+        .iter()
+        .map(|cell| (cell.reference, cell.value.clone()))
+        .collect();
+    assert_eq!(
+        spilled,
+        [
+            (CellRef::parse("A2").unwrap(), CellValue::Number(11.0)),
+            (CellRef::parse("A3").unwrap(), CellValue::Number(12.0)),
+            (CellRef::parse("A4").unwrap(), CellValue::Number(13.0)),
+        ]
+    );
+}

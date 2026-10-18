@@ -69,6 +69,9 @@ pub struct Recalculated {
     /// Every formula cell the engine evaluated, cached-equal results included.
     pub cells: Vec<ComputedCell>,
     pub skipped: Vec<SkippedCell>,
+    /// What array formulas spilled into the cells beside their anchors, in
+    /// document order: plain cells in the file, but the formula's values.
+    pub spilled: Vec<ComputedCell>,
 }
 
 /// Evaluates every formula in the workbook.
@@ -175,7 +178,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
         let (model, projected, unparsed) = project(workbook, &skipped, time_zone)?;
         let round = read_back(&model, workbook, &projected)?;
 
-        let Some(first) = round.disqualified.into_iter().next() else {
+        let Some(first) = round.disqualified.first().cloned() else {
             let mut cells = round.cells;
             // A skipped cell with nothing cached shows the engine's answer.
             for cell in &reasons {
@@ -192,6 +195,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
             return Ok(Recalculated {
                 cells,
                 skipped: reasons,
+                spilled: round.spilled,
             });
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
@@ -272,6 +276,17 @@ fn project_with_epoch<'a>(
             let engine_row = row.index as i32 + 1;
             for cell in &row.cells {
                 let engine_column = cell.reference.column as i32 + 1;
+                // An array formula's output, stored beside its anchor: the
+                // engine spills it again, and a literal there would block
+                // the spill (`#SPILL!`).
+                if cell.formula.is_none()
+                    && sheet
+                        .array_formulas
+                        .iter()
+                        .any(|array| array.outputs_to(cell.reference))
+                {
+                    continue;
+                }
                 let held = skipped.get(&(index, cell.reference));
                 if let (Some(formula), None) = (&cell.formula, held) {
                     if model
@@ -367,6 +382,7 @@ fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: 
 struct Round {
     cells: Vec<ComputedCell>,
     disqualified: Vec<SkippedCell>,
+    spilled: Vec<ComputedCell>,
 }
 
 fn read_back(
@@ -376,7 +392,9 @@ fn read_back(
 ) -> Result<Round> {
     let mut cells = Vec::new();
     let mut disqualified = Vec::new();
+    let mut spilled = Vec::new();
     for (sheet_index, reference) in projected {
+        spilled.extend(spill_of(model, *sheet_index, *reference)?);
         let value = model
             .get_cell_value_by_index(
                 *sheet_index as u32,
@@ -412,7 +430,40 @@ fn read_back(
     Ok(Round {
         cells,
         disqualified,
+        spilled,
     })
+}
+
+/// The values an array formula at `anchor` spilled beside it, if it spilled.
+fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Vec<ComputedCell>> {
+    use ironcalc_base::types::Cell;
+    let Ok(worksheet) = model.workbook.worksheet(sheet as u32) else {
+        return Ok(Vec::new());
+    };
+    let (row, column) = (anchor.row as i32 + 1, anchor.column as i32 + 1);
+    let Some(Cell::ArrayFormula {
+        r: (width, height), ..
+    }) = worksheet.cell(row, column)
+    else {
+        return Ok(Vec::new());
+    };
+    let mut values = Vec::new();
+    for down in 0..*height {
+        for across in 0..*width {
+            if (down, across) == (0, 0) {
+                continue;
+            }
+            let value = model
+                .get_cell_value_by_index(sheet as u32, row + down, column + across)
+                .map_err(CalcError::Engine)?;
+            values.push(ComputedCell {
+                sheet,
+                reference: CellRef::new(anchor.column + across as u32, anchor.row + down as u32),
+                value: to_cell_value(value),
+            });
+        }
+    }
+    Ok(values)
 }
 
 fn cached_value(workbook: &Workbook, sheet: usize, reference: CellRef) -> CellValue {

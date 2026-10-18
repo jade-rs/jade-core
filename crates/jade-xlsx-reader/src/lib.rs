@@ -51,11 +51,11 @@ pub use formula::{
 };
 pub use jade_opc::OpcPackage;
 pub use model::{
-    builtin_number_format, Alignment, Border, BorderEdge, CalculationMode, Cell, CellComment,
-    CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation, DateSystem,
-    DefinedName, Fill, Font, FreezePane, HeaderFooter, HorizontalAlignment, Hyperlink, PageBreak,
-    Row, Shape, ShapeKind, Sheet, SheetVisibility, StyleTable, Table, VerticalAlignment, Workbook,
-    EMU_PER_PX,
+    builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
+    CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
+    DateSystem, DefinedName, Fill, Font, FreezePane, HeaderFooter, HorizontalAlignment, Hyperlink,
+    PageBreak, Row, Shape, ShapeKind, Sheet, SheetVisibility, StyleTable, Table, VerticalAlignment,
+    Workbook, EMU_PER_PX,
 };
 pub use sheet::translate_formula;
 pub use workbook_part::{SheetEntry, WorkbookPart};
