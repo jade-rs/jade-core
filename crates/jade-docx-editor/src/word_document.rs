@@ -29014,6 +29014,23 @@ impl WordDocument {
         // paragraph instead dropped the notes, which follow the last one, when
         // the last paragraph was split: the paragraph count then disagreed
         // with the next full rebuild and a later join failed half-applied.
+        let mut original_text_boxes = Vec::new();
+        let original_host_path = original_path.to_vec();
+        Self::enumerate_paragraph_text_boxes(
+            original_paragraph,
+            &original_host_path,
+            &mut original_text_boxes,
+        );
+        // An equation in a text box is listed as a math surface, which names
+        // no host: the patch below cannot tell it from what follows the
+        // paragraph, kept it, and listed it twice.
+        if original_text_boxes
+            .iter()
+            .any(|surface| matches!(surface, ParagraphSurface::Math))
+        {
+            return false;
+        }
+
         let next_body_index = self.paragraph_surfaces[surface_index + 1..]
             .iter()
             .position(|surface| {
@@ -29026,13 +29043,6 @@ impl WordDocument {
         let mut updated = Vec::with_capacity(self.paragraph_surfaces.len() + 1);
         updated.extend_from_slice(&self.paragraph_surfaces[..=surface_index]);
 
-        let mut original_text_boxes = Vec::new();
-        let original_host_path = original_path.to_vec();
-        Self::enumerate_paragraph_text_boxes(
-            original_paragraph,
-            &original_host_path,
-            &mut original_text_boxes,
-        );
         updated.extend(original_text_boxes);
 
         updated.push(ParagraphSurface::Body {
