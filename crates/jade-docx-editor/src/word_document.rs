@@ -29912,16 +29912,29 @@ impl WordDocument {
     }
 
     /// Puts back what [`Self::remove_paragraph_run_properties`] removed.
-    pub(crate) fn restore_paragraph_run_properties(&mut self, removed: RemovedRunProperties) {
+    /// Returns whether everything went back: a `w:rPr` rebuilt since is gone,
+    /// and what came out of it with it.
+    pub(crate) fn restore_paragraph_run_properties(
+        &mut self,
+        removed: RemovedRunProperties,
+    ) -> bool {
         let Some(raw) = self.raw_document.as_mut() else {
-            return;
+            return removed.0.is_empty();
         };
+        let mut restored = true;
         for (properties_id, nodes) in removed.0 {
+            if raw.element(properties_id).is_none() {
+                restored = false;
+                continue;
+            }
             // Ascending, so each node lands back at its original position.
             for (index, node) in nodes {
-                let _ = raw.insert_node_preserving_ids(properties_id, index, node);
+                restored &= raw
+                    .insert_node_preserving_ids(properties_id, index, node)
+                    .is_ok();
             }
         }
+        restored
     }
 
     /// Gives the runs at `runs` of `paragraph_index`, which were styled by
