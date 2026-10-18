@@ -163,7 +163,7 @@ fn overlaps_single_cells_and_tables_are_refused_without_writing() {
     // A table's cells cannot be merged, inside it or across its edge.
     let mut tables = HeadlessWorkbook::open(&fixture("grid-operations-workbook.xlsx")).unwrap();
     let before = tables.bytes().to_vec();
-    for range in ["B2:C3", "C3:D5", "A1:F10"] {
+    for range in ["B2:C3", "C3:D5", "A2:D10"] {
         let error = tables.merge_cells("Operations", range).expect_err(range);
         assert!(
             matches!(&error, HeadlessError::MergeInTable { table, .. } if table == "OperationsTable"),
