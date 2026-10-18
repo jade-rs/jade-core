@@ -83,3 +83,10 @@ applied after the first), each pinned by a case in
   text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too, fifth set of hunks); DATESTRING
   and NUMBERSTRING (new) write eras and kanji numerals. The new names answer
   through `jade_lookup`.
+- Tables (sixth set of hunks in `jade.patch`): `Model::add_table` registers
+  an Excel table and `Parser::set_tables` hands the parser the new list, so
+  structured references (`Table1[Amount]`, `Table1[[#Totals],[Qty]]`) parse
+  in formulas set afterwards. The parser used to keep the table list it was
+  built with, so a table added later never resolved and the formula read
+  `#ERROR!`. Pinned by `structured_references_to_a_table_recalculate` in
+  `crates/jade-xlsx-calc/tests/recalculates.rs`.

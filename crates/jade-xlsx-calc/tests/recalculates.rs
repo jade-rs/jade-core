@@ -749,3 +749,58 @@ fn text_carries_rounded_seconds_into_minutes_and_the_next_date() {
         false,
     );
 }
+
+#[test]
+fn structured_references_to_a_table_recalculate() {
+    // `SUBTOTAL(109,Table1[Amount])` in Table1's totals row, as Excel
+    // writes it: it evaluates rather than being skipped, and follows an
+    // edit to the column it reads.
+    let bytes = std::fs::read(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../public/fixtures/objects-workbook.xlsx"),
+    )
+    .expect("fixture");
+    let mut workbook = read_xlsx(&bytes).expect("read");
+    // Typed beside the table: a column, and the totals row's cell.
+    for (reference, formula) in [
+        ("E1", "SUM(Table1[Qty])"),
+        ("E2", "Table1[[#Totals],[Amount]]*2"),
+    ] {
+        let reference = CellRef::parse(reference).expect("reference");
+        workbook.sheets[0]
+            .rows
+            .iter_mut()
+            .find(|row| row.index == reference.row)
+            .expect("row")
+            .cells
+            .push(jade_xlsx_reader::Cell {
+                reference,
+                value: CellValue::Empty,
+                style_index: None,
+                formula: Some(formula.to_string()),
+            });
+    }
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert!(outcome.skipped.is_empty(), "{:?}", outcome.skipped);
+    assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(749.0)));
+    assert_eq!(computed(&outcome, 0, "E1"), Some(&CellValue::Number(6.0)));
+    assert_eq!(
+        computed(&outcome, 0, "E2"),
+        Some(&CellValue::Number(1498.0))
+    );
+
+    let gizmo = CellRef::parse("C4").expect("C4");
+    let cell = workbook.sheets[0]
+        .rows
+        .iter_mut()
+        .flat_map(|row| row.cells.iter_mut())
+        .find(|cell| cell.reference == gizmo)
+        .expect("C4");
+    cell.value = CellValue::Number(199.0);
+    let outcome = evaluate(&workbook).expect("evaluate");
+    assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(849.0)));
+    assert_eq!(
+        computed(&outcome, 0, "E2"),
+        Some(&CellValue::Number(1698.0))
+    );
+}
