@@ -568,6 +568,347 @@ pub struct ConditionalFormattingIssue {
     pub reason: String,
 }
 
+/// One conditional formatting rule of a sheet, as
+/// `HeadlessWorkbook::conditional_formats` lists them: in priority order,
+/// the rule Excel evaluates first coming first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ConditionalFormatView {
+    /// The ranges it applies to (`B2:B10`, `D4`), as the file lists them.
+    pub ranges: Vec<String>,
+    /// The file's `priority` (smaller is evaluated first).
+    pub priority: u32,
+    /// The file's rule type (`cellIs`, `expression`, `colorScale`, …).
+    pub rule_type: String,
+    /// The rule, when it is one jade writes — `None` for kinds it only
+    /// keeps (icon sets, top-ten, text rules…) and for rules whose style it
+    /// cannot express.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule: Option<ConditionalRuleSpec>,
+    /// `false` for a rule with Excel 2010 extensions (an `x14` data bar or
+    /// a rule kept only in the extension list): it can be moved in the
+    /// priority order but not edited, re-ranged or deleted.
+    pub editable: bool,
+}
+
+/// A conditional formatting rule jade writes. Formulas are written without
+/// their `=` and are relative to the top-left cell of the rule's first
+/// range, as Excel stores them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ConditionalRuleSpec {
+    /// "Format only cells that contain": the value compared with one
+    /// formula, or two for `between` / `not_between`.
+    CellIs {
+        operator: ConditionalOperator,
+        formulas: Vec<String>,
+        #[serde(default, skip_serializing_if = "ConditionalStyle::is_empty")]
+        style: ConditionalStyle,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        stop_if_true: bool,
+    },
+    /// "Use a formula to determine which cells to format".
+    Expression {
+        formula: String,
+        #[serde(default, skip_serializing_if = "ConditionalStyle::is_empty")]
+        style: ConditionalStyle,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        stop_if_true: bool,
+    },
+    /// A two- or three-colour scale.
+    ColorScale { points: Vec<ColorScalePoint> },
+    /// A solid data bar from `min` to `max`.
+    DataBar {
+        min: ConditionalThresholdSpec,
+        max: ConditionalThresholdSpec,
+        color: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConditionalOperator {
+    Between,
+    NotBetween,
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+}
+
+impl ConditionalOperator {
+    pub const ALL: [ConditionalOperator; 8] = [
+        Self::Between,
+        Self::NotBetween,
+        Self::Equal,
+        Self::NotEqual,
+        Self::GreaterThan,
+        Self::LessThan,
+        Self::GreaterThanOrEqual,
+        Self::LessThanOrEqual,
+    ];
+
+    /// As SpreadsheetML spells it (`greaterThanOrEqual`).
+    pub fn xml_name(self) -> &'static str {
+        match self {
+            Self::Between => "between",
+            Self::NotBetween => "notBetween",
+            Self::Equal => "equal",
+            Self::NotEqual => "notEqual",
+            Self::GreaterThan => "greaterThan",
+            Self::LessThan => "lessThan",
+            Self::GreaterThanOrEqual => "greaterThanOrEqual",
+            Self::LessThanOrEqual => "lessThanOrEqual",
+        }
+    }
+
+    pub fn from_xml_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|op| op.xml_name() == name)
+    }
+
+    /// How many formulas the comparison takes.
+    pub fn operands(self) -> usize {
+        match self {
+            Self::Between | Self::NotBetween => 2,
+            _ => 1,
+        }
+    }
+}
+
+/// What a matching cell takes on top of its own format. `None` keeps the
+/// cell's. Colours are `RRGGBB`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConditionalStyle {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bold: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underline: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strike: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_format: Option<String>,
+}
+
+impl ConditionalStyle {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+/// Where a colour scale point or a data bar end sits.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConditionalThresholdSpec {
+    pub kind: ThresholdKind,
+    /// The number, percent, percentile or formula; none for `min` / `max`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThresholdKind {
+    Min,
+    Max,
+    Num,
+    Percent,
+    Percentile,
+    Formula,
+}
+
+impl ThresholdKind {
+    pub const ALL: [ThresholdKind; 6] = [
+        Self::Min,
+        Self::Max,
+        Self::Num,
+        Self::Percent,
+        Self::Percentile,
+        Self::Formula,
+    ];
+
+    pub fn xml_name(self) -> &'static str {
+        match self {
+            Self::Min => "min",
+            Self::Max => "max",
+            Self::Num => "num",
+            Self::Percent => "percent",
+            Self::Percentile => "percentile",
+            Self::Formula => "formula",
+        }
+    }
+
+    pub fn from_xml_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|kind| kind.xml_name() == name)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorScalePoint {
+    pub kind: ThresholdKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    pub color: String,
+}
+
+impl ConditionalRuleSpec {
+    /// The rule as jade reads it back — formulas without `=`, colours as
+    /// upper-case `RRGGBB`, `General` for an empty number format — or why
+    /// jade refuses to write it. Callers that must agree with jade on what
+    /// it accepts (a collaboration model) call this too.
+    pub fn canonical(&self) -> Result<Self, String> {
+        let formula = |text: &str| -> Result<String, String> {
+            let text = text.trim();
+            let text = text.strip_prefix('=').unwrap_or(text).trim();
+            if text.is_empty() {
+                return Err("a conditional format formula cannot be empty".into());
+            }
+            if text.chars().any(|c| c.is_control()) {
+                return Err("a conditional format formula cannot hold control characters".into());
+            }
+            Ok(text.to_string())
+        };
+        let threshold = |kind: ThresholdKind, value: &Option<String>| -> Result<_, String> {
+            Ok(match kind {
+                ThresholdKind::Min | ThresholdKind::Max => {
+                    if value.is_some() {
+                        return Err(format!("a {} point takes no value", kind.xml_name()));
+                    }
+                    None
+                }
+                ThresholdKind::Formula => Some(formula(
+                    value
+                        .as_deref()
+                        .ok_or("a formula point needs its formula")?,
+                )?),
+                _ => {
+                    let text = value
+                        .as_deref()
+                        .ok_or_else(|| format!("a {} point needs a number", kind.xml_name()))?
+                        .trim();
+                    let number: f64 = text
+                        .parse()
+                        .map_err(|_| format!("{text:?} is not a number"))?;
+                    if !number.is_finite()
+                        || (matches!(kind, ThresholdKind::Percent | ThresholdKind::Percentile)
+                            && !(0.0..=100.0).contains(&number))
+                    {
+                        return Err(format!("{text:?} is out of range"));
+                    }
+                    Some(text.to_string())
+                }
+            })
+        };
+        Ok(match self {
+            Self::CellIs {
+                operator,
+                formulas,
+                style,
+                stop_if_true,
+            } => {
+                if formulas.len() != operator.operands() {
+                    return Err(format!(
+                        "{} takes {} formula(s)",
+                        operator.xml_name(),
+                        operator.operands()
+                    ));
+                }
+                Self::CellIs {
+                    operator: *operator,
+                    formulas: formulas
+                        .iter()
+                        .map(|f| formula(f))
+                        .collect::<Result<_, _>>()?,
+                    style: style.canonical()?,
+                    stop_if_true: *stop_if_true,
+                }
+            }
+            Self::Expression {
+                formula: text,
+                style,
+                stop_if_true,
+            } => Self::Expression {
+                formula: formula(text)?,
+                style: style.canonical()?,
+                stop_if_true: *stop_if_true,
+            },
+            Self::ColorScale { points } => {
+                if !(2..=3).contains(&points.len()) {
+                    return Err("a colour scale has two or three points".into());
+                }
+                Self::ColorScale {
+                    points: points
+                        .iter()
+                        .map(|point| {
+                            Ok(ColorScalePoint {
+                                kind: point.kind,
+                                value: threshold(point.kind, &point.value)?,
+                                color: rgb(&point.color)?,
+                            })
+                        })
+                        .collect::<Result<_, String>>()?,
+                }
+            }
+            Self::DataBar { min, max, color } => Self::DataBar {
+                min: ConditionalThresholdSpec {
+                    kind: min.kind,
+                    value: threshold(min.kind, &min.value)?,
+                },
+                max: ConditionalThresholdSpec {
+                    kind: max.kind,
+                    value: threshold(max.kind, &max.value)?,
+                },
+                color: rgb(color)?,
+            },
+        })
+    }
+
+    /// The formulas a structural change rewrites (`<formula>` elements).
+    pub fn formulas_mut(&mut self) -> Vec<&mut String> {
+        match self {
+            Self::CellIs { formulas, .. } => formulas.iter_mut().collect(),
+            Self::Expression { formula, .. } => vec![formula],
+            Self::ColorScale { .. } | Self::DataBar { .. } => Vec::new(),
+        }
+    }
+}
+
+impl ConditionalStyle {
+    fn canonical(&self) -> Result<Self, String> {
+        let mut style = self.clone();
+        for color in [&mut style.font_color, &mut style.fill_color]
+            .into_iter()
+            .flatten()
+        {
+            *color = rgb(color)?;
+        }
+        if let Some(code) = &mut style.number_format {
+            if code.is_empty() || code.eq_ignore_ascii_case("General") {
+                *code = "General".to_string();
+            }
+        }
+        Ok(style)
+    }
+}
+
+/// `RRGGBB`, upper-case, from `RRGGBB` or `#rrggbb`.
+fn rgb(text: &str) -> Result<String, String> {
+    let hex = text.strip_prefix('#').unwrap_or(text);
+    if hex.len() == 6 && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        Ok(hex.to_ascii_uppercase())
+    } else {
+        Err(format!("{text:?} is not an RRGGBB colour"))
+    }
+}
+
 /// A worksheet hyperlink applying to a cell. External links use `target`;
 /// jumps within the workbook use `location`. OOXML permits both together.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
