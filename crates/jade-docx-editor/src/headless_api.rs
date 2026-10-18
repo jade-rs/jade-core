@@ -11714,6 +11714,88 @@ mod tests {
     }
 
     #[test]
+    fn restyled_runs_take_the_new_styles_theme_fonts() {
+        // A load resolves the theme's fonts into the runs (comment.docx's
+        // headings are 游ゴシック Light, its body 游明朝). A heading turned body
+        // text kept the heading's fonts, compared unresolved with the old
+        // style's, and a style applied again left the runs with the style's
+        // unresolved theme keys: no font at all until the file was reopened.
+        use crate::commands::CommandExecutor;
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/comment.docx"),
+        )
+        .expect("read fixture");
+        let fonts = |word_doc: &WordDocument, paragraph: usize| {
+            word_doc
+                .paragraph(paragraph)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    let fonts = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.fonts.as_ref());
+                    (
+                        fonts.and_then(|fonts| fonts.ascii.as_deref().map(str::to_string)),
+                        fonts.and_then(|fonts| fonts.east_asia.as_deref().map(str::to_string)),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        for second_style in [None, Some("Heading2")] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let mut command_executor = CommandExecutor::new();
+            for command in [
+                HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 0,
+                    end_paragraph: 0,
+                    style_id: Some("Heading2".to_string()),
+                },
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 4,
+                    count: 1,
+                },
+                HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 1,
+                    end_paragraph: 1,
+                    style_id: second_style.map(str::to_string),
+                },
+            ] {
+                apply_headless_commands_with_executor_to_document(
+                    &mut word_doc,
+                    &mut command_executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .expect("edit applies");
+            }
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            let live = fonts(&word_doc, 1);
+            assert_eq!(live, fonts(&reloaded, 1), "then {second_style:?}");
+            let expected = if second_style.is_some() {
+                "游ゴシック Light"
+            } else {
+                "游明朝"
+            };
+            assert_eq!(
+                live[0].1.as_deref(),
+                Some(expected),
+                "then {second_style:?}"
+            );
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
