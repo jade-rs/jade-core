@@ -24,7 +24,6 @@ use jade_docx_editor::word_document::WordDocument;
 use jade_docx_editor::Options;
 use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
 use jade_docx_layout::font_measurer::RegisteredFontStyle;
-use jade_docx_layout::layout_cache::TextMeasurer;
 use jade_docx_layout::shaping_measurer::{ShapingMeasurer, ShapingOptions};
 use jade_painter::{Painter, TextMetrics};
 
@@ -78,7 +77,6 @@ fn options() -> Options {
 /// handles belong to the browser and are never reached.
 pub struct PerfHost {
     painter: PerfPainter,
-    measurer: Rc<ShapingMeasurer>,
     pages: Rc<Cell<usize>>,
 }
 
@@ -105,8 +103,7 @@ impl PerfHost {
             }
         }
         Ok(Self {
-            painter: PerfPainter::default(),
-            measurer: Rc::new(measurer),
+            painter: PerfPainter::new(Rc::new(measurer)),
             pages: Rc::new(Cell::new(1)),
         })
     }
@@ -137,29 +134,13 @@ impl CanvasRenderHost for PerfHost {
     }
 
     fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
-        Ok(self
-            .painter
-            .with_font(|font| self.measurer.measure_text(text, font))
-            .unwrap_or(0.0))
+        Ok(self.painter.measure_text_width(text).unwrap_or(0.0))
     }
 
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, JsValue> {
-        let width = self.measure_text_width(text)?;
-        let (font_ascent, font_descent, ink_ascent, ink_descent) = self.painter.with_font(|font| {
-            let (ascent, descent) = self.measurer.font_bounding_box(font).unwrap_or((0.0, 0.0));
-            let (ink_ascent, ink_descent) = self
-                .measurer
-                .measure_font_vertical_metrics(font)
-                .unwrap_or((ascent, descent));
-            (ascent, descent, ink_ascent, ink_descent)
-        });
-        Ok(TextMetrics {
-            width,
-            font_bounding_box_ascent: font_ascent,
-            font_bounding_box_descent: font_descent,
-            actual_bounding_box_ascent: ink_ascent,
-            actual_bounding_box_descent: ink_descent,
-            actual_bounding_box_right: width,
+        Ok(match self.painter.measure_text_metrics(text) {
+            Ok(metrics) => metrics,
+            Err(never) => match never {},
         })
     }
 
