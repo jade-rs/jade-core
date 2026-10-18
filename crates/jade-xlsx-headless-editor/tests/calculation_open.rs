@@ -95,10 +95,12 @@ fn automatic_open_refreshes_missing_results_and_preserves_unsupported_results_an
     assert_eq!(summary.skipped.len(), 2);
     assert_eq!(book.cell("Operations", "C2").unwrap().display, "20");
     assert_eq!(book.cell("Operations", "D2").unwrap().display, "21");
-    assert_eq!(
-        book.cell("Operations", "E2").unwrap().formula_state,
-        Some(FormulaState::Uncalculated)
-    );
+    // Nothing was cached for E2: it shows the engine's `#NAME?`, as a
+    // misspelt function does in Excel, held only until the full
+    // calculation the file now asks for.
+    let e2 = book.cell("Operations", "E2").unwrap();
+    assert_eq!(e2.display, "#NAME?");
+    assert_eq!(e2.formula_state, Some(FormulaState::Stale));
     assert!(book.calculation_status().requires_recalculation);
     assert!(!book.can_undo());
     assert_eq!(
