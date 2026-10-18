@@ -12,9 +12,13 @@ use std::path::PathBuf;
 use jade_pptx_writer::{editable_shapes, notes_text, shape_text, EditSession};
 
 fn fixtures() -> Vec<(String, Vec<u8>)> {
-    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
-    let mut fixtures: Vec<_> = std::fs::read_dir(&directory)
-        .expect("fixtures")
+    // The shared corpus, and the files another crate's tests keep.
+    let mut fixtures: Vec<_> = ["../../public/fixtures", "../jade-pptx-diff/tests/fixtures"]
+        .iter()
+        .flat_map(|directory| {
+            std::fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(directory))
+                .expect("fixtures")
+        })
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| {
@@ -165,7 +169,7 @@ fn check(name: &str, original: &[u8]) -> Vec<String> {
 #[test]
 fn every_deck_saves_an_edit_without_losing_anything() {
     let fixtures = fixtures();
-    assert!(!fixtures.is_empty(), "the corpus is missing");
+    assert!(fixtures.len() >= 80, "the corpus is missing");
     let problems: Vec<String> = fixtures
         .iter()
         .flat_map(|(name, bytes)| check(name, bytes))
