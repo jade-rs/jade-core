@@ -3473,8 +3473,13 @@ pub fn apply_headless_commands_with_executor_to_document(
                     text_italic: None,
                     text_alignment: None,
                 };
+                // The offset is a rendered one, like every text command's:
+                // the shape command counts in the runs' text.
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
                 let command: Box<dyn Command> =
-                    Box::new(InsertShapeCommand::new(*paragraph, *offset, spec));
+                    Box::new(InsertShapeCommand::new(*paragraph, model_offset, spec));
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
