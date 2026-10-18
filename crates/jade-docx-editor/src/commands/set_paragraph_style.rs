@@ -192,6 +192,16 @@ impl Command for SetParagraphStyleCommand {
                 )
             });
             let run_count = previous_run_props.len();
+            // Each run's character style, which outranks the paragraph style
+            // for what both define.
+            let character_style_props: Vec<Option<RunProperties>> = previous_run_props
+                .iter()
+                .map(|props| {
+                    let styles = ctx.document.styles_part.as_ref()?;
+                    let id = props.as_ref()?.style.as_deref()?;
+                    styles.resolve_character_run_properties(id)
+                })
+                .collect();
             self.previous_properties
                 .push((paragraph_index, previous_props));
             self.previous_runs
@@ -246,10 +256,13 @@ impl Command for SetParagraphStyleCommand {
                     );
                 }
                 if let Some(run_style_props) = style_run_props.as_ref() {
-                    for run in &mut paragraph.runs {
+                    for (run, character) in paragraph.runs.iter_mut().zip(&character_style_props) {
                         match run.properties.as_mut() {
                             Some(rp) => {
                                 merge_run_properties_override(rp, run_style_props);
+                                if let Some(character) = character {
+                                    keep_character_style_fonts(rp, run_style_props, character);
+                                }
                                 forget_direct_fonts_replaced_by(rp, run_style_props);
                                 forget_style_owned_run_properties(rp, run_style_props);
                             }
@@ -341,6 +354,37 @@ impl Command for SetParagraphStyleCommand {
 /// style replaced. The writer re-emits `w:sz` / `w:kern` / `w:w` / `w:rFonts`
 /// from these whenever it rebuilds the run (typing into it, say), which would
 /// otherwise bring the replaced size back into the saved file.
+/// Puts back the font properties the run's character style gives it where
+/// the paragraph style's were just merged over them: a load resolves the
+/// character style above the paragraph style. Without this a run in a
+/// character style took the heading's size when the heading was applied
+/// again, and went back to its character style's on reload.
+fn keep_character_style_fonts(
+    run: &mut RunProperties,
+    paragraph_style: &RunProperties,
+    character_style: &RunProperties,
+) {
+    macro_rules! keep {
+        ($($field:ident),* $(,)?) => {
+            $(
+                if paragraph_style.$field.is_some() && character_style.$field.is_some() {
+                    run.$field = character_style.$field.clone();
+                }
+            )*
+        };
+    }
+    keep!(
+        font_size,
+        font_size_complex,
+        kerning,
+        text_scale,
+        font_family,
+        fonts,
+        language,
+        east_asia_language,
+    );
+}
+
 fn forget_direct_fonts_replaced_by(run: &mut RunProperties, style: &RunProperties) {
     let direct = &mut run.direct_font_properties;
     if style.font_size.is_some() {
