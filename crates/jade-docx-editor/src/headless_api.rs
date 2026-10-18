@@ -12051,6 +12051,63 @@ mod tests {
     }
 
     #[test]
+    fn a_style_applied_again_leaves_a_character_styles_size() {
+        // comment.docx's comment references are in the character style "aa"
+        // (9pt). Applying Heading 1 merged the heading's 16pt over every
+        // run; a change of style rebased that away, but applying the same
+        // style again skips the rebase, so the runs, and text typed into
+        // them, showed 16pt and went back to 9pt on reload.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/comment.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let heading = || HeadlessCommand::SetParagraphStyle {
+            start_paragraph: 0,
+            end_paragraph: 0,
+            style_id: Some("Heading1".to_string()),
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![heading(), heading()],
+            },
+        )
+        .expect("edits apply");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    let props = run.properties.as_ref();
+                    (
+                        run.text.clone(),
+                        props.and_then(|props| props.style.as_deref().map(str::to_string)),
+                        props.and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let live = sizes(&word_doc);
+        assert!(
+            live.iter()
+                .filter(|(_, style, _)| style.as_deref() == Some("aa"))
+                .all(|(_, _, size)| *size == Some(9.0)),
+            "{live:?}"
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(sizes(&reloaded), live);
+    }
+
+    #[test]
     fn a_font_the_run_names_wins_over_its_styles_theme_font() {
         // numbering-restart.docx sets "AAAAA" in ＭＳ 明朝 under Heading 2,
         // whose w:asciiTheme is the theme's major font. Filling the run's
