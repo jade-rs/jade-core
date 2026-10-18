@@ -201,6 +201,16 @@ impl FormatChange {
             || self.font_name.is_some()
     }
 
+    fn touches_border(&self) -> bool {
+        self.border_left.is_some()
+            || self.border_right.is_some()
+            || self.border_top.is_some()
+            || self.border_bottom.is_some()
+            || self.border_diagonal.is_some()
+            || self.diagonal_up.is_some()
+            || self.diagonal_down.is_some()
+    }
+
     fn touches_alignment(&self) -> bool {
         self.horizontal.is_some() || self.vertical.is_some() || self.wrap_text.is_some()
     }
@@ -233,6 +243,8 @@ struct Layout {
     cell_xfs: List,
     /// Where `<fonts>` starts, for a `<numFmts>` that has to be created.
     fonts_at: Option<usize>,
+    /// Where the fill list ends, for a `<borders>` that has to be created.
+    fills_end: Option<usize>,
     prefix: String,
 }
 
@@ -310,6 +322,44 @@ pub fn add_cell_format(
         set_attribute(&mut xf_attributes, "applyFill", "1");
     }
 
+    // ── border ──────────────────────────────────────────────────────
+    if change.touches_border() {
+        let border_index = attribute_number(&xf_attributes, "borderId").unwrap_or(0) as usize;
+        let base_border = layout
+            .borders
+            .entries
+            .get(border_index)
+            .map(|found| &styles_xml[found.start..found.end]);
+        let border_text = derive_border(base_border, change, &layout.prefix)?;
+        let index = if layout.borders.open.is_some() {
+            match find_entry(styles_xml, &layout.borders, &border_text) {
+                Some(index) => index,
+                None => append_entry(styles_xml, &layout.borders, &border_text, &mut splices)?,
+            }
+        } else {
+            // No border list at all: create one in schema order, right
+            // after the fills, with the "no border" every other xf means.
+            let at = layout.fills_end.ok_or(WriteError::NoStyleTables)?;
+            let none = derive_border(None, &FormatChange::default(), &layout.prefix)?;
+            let (entries, count, index) = if squeeze(&border_text) == squeeze(&none) {
+                (none, 1, 0)
+            } else {
+                (format!("{none}{border_text}"), 2, 1)
+            };
+            splices.push(Splice {
+                start: at,
+                end: at,
+                text: format!(
+                    "<{p}borders count=\"{count}\">{entries}</{p}borders>",
+                    p = layout.prefix
+                ),
+            });
+            index
+        };
+        set_attribute(&mut xf_attributes, "borderId", &index.to_string());
+        set_attribute(&mut xf_attributes, "applyBorder", "1");
+    }
+
     // ── number format ───────────────────────────────────────────────
     if let Some(code) = &change.number_format {
         let id = number_format_id(styles_xml, &layout, code, &mut splices)?;
@@ -385,7 +435,9 @@ pub fn add_cell_format(
     }
 
     if let Some(index) = find_entry(styles_xml, &layout.cell_xfs, &xf_text) {
-        return Ok((styles_xml.to_string(), index));
+        // Usually nothing is pending then; a border list just created can
+        // still be, when an xf already pointed past the missing list.
+        return Ok((apply(styles_xml, splices), index));
     }
     let index = append_entry(styles_xml, &layout.cell_xfs, &xf_text, &mut splices)?;
     Ok((apply(styles_xml, splices), index))
@@ -637,7 +689,9 @@ fn scan(xml: &str) -> Result<Layout> {
                     }
                     (None, b"fills") => {
                         layout.fills.open = Some(Found { start, end, empty });
-                        if !empty {
+                        if empty {
+                            layout.fills_end = Some(end);
+                        } else {
                             section = Some("fills");
                         }
                     }
@@ -696,6 +750,7 @@ fn scan(xml: &str) -> Result<Layout> {
                     }
                     (Some("fills"), b"fills") => {
                         layout.fills.close_at = Some(start);
+                        layout.fills_end = Some(reader.buffer_position() as usize);
                         section = None;
                     }
                     (Some("borders"), b"borders") => {
@@ -869,6 +924,102 @@ fn derive_font(base_font: &str, change: &FormatChange, prefix: &str) -> Result<S
         out.push_str(&child);
     }
     out.push_str(&format!("</{prefix}font>"));
+    Ok(out)
+}
+
+/// `base_border` (`None`: no border at all) with the edges and diagonal
+/// directions `change` names replaced. Edges it does not name — their
+/// colours (theme or indexed) included — and anything else the entry holds
+/// are kept as written, so a change that alters nothing gives back an entry
+/// [`find_entry`] recognises. A removed edge is written `<left/>`, as Excel
+/// writes every unset edge.
+fn derive_border(base_border: Option<&str>, change: &FormatChange, prefix: &str) -> Result<String> {
+    let base = base_border.unwrap_or("<border/>");
+    let mut attributes = attributes_of(base)?;
+    let mut edges: [(&str, Option<String>); 9] = [
+        ("start", None),
+        ("end", None),
+        ("left", None),
+        ("right", None),
+        ("top", None),
+        ("bottom", None),
+        ("diagonal", None),
+        ("vertical", None),
+        ("horizontal", None),
+    ];
+    let mut rest = Vec::new();
+    for child in children_except(base, &[])? {
+        match edges
+            .iter_mut()
+            .find(|(name, _)| *name == element_local_name(&child))
+        {
+            Some((_, slot)) => *slot = Some(child),
+            None => rest.push(child),
+        }
+    }
+    if base_border.is_none() {
+        for (name, slot) in edges.iter_mut().take(7).skip(2) {
+            *slot = Some(format!("<{prefix}{name}/>"));
+        }
+    }
+    let wanted = [
+        ("left", "start", &change.border_left),
+        ("right", "end", &change.border_right),
+        ("top", "", &change.border_top),
+        ("bottom", "", &change.border_bottom),
+        ("diagonal", "", &change.border_diagonal),
+    ];
+    for (name, alias, line) in wanted {
+        let Some(line) = line else {
+            continue;
+        };
+        let text = if line.is_none() {
+            format!("<{prefix}{name}/>")
+        } else {
+            let style = line.style.as_str();
+            match &line.color {
+                Some(rgb) => format!(
+                    "<{prefix}{name} style=\"{style}\"><{prefix}color rgb=\"FF{}\"/></{prefix}{name}>",
+                    parse_rgb(rgb)?
+                ),
+                None => format!("<{prefix}{name} style=\"{style}\"/>"),
+            }
+        };
+        for (slot_name, slot) in edges.iter_mut() {
+            if *slot_name == name {
+                *slot = Some(text.clone());
+            } else if *slot_name == alias {
+                // `start`/`end` are the bidi spellings of left/right.
+                *slot = None;
+            }
+        }
+    }
+    for (key, wanted) in [
+        ("diagonalUp", change.diagonal_up),
+        ("diagonalDown", change.diagonal_down),
+    ] {
+        match wanted {
+            Some(true) => set_attribute(&mut attributes, key, "1"),
+            Some(false) => attributes.retain(|(existing, _)| existing != key),
+            None => {}
+        }
+    }
+    let mut out = format!("<{prefix}border");
+    for (key, value) in &attributes {
+        out.push_str(&format!(" {key}=\"{}\"", escape(value)));
+    }
+    let children: String = edges
+        .into_iter()
+        .filter_map(|(_, child)| child)
+        .chain(rest)
+        .collect();
+    if children.is_empty() {
+        out.push_str("/>");
+    } else {
+        out.push('>');
+        out.push_str(&children);
+        out.push_str(&format!("</{prefix}border>"));
+    }
     Ok(out)
 }
 

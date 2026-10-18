@@ -407,6 +407,13 @@ impl Server {
                 "horizontal",
                 "vertical",
                 "wrap_text",
+                "border_left",
+                "border_right",
+                "border_top",
+                "border_bottom",
+                "border_diagonal",
+                "diagonal_up",
+                "diagonal_down",
             ],
         )?;
         let sheet = text(arguments, "sheet")?;
@@ -739,6 +746,20 @@ fn tool_catalogue() -> Vec<Value> {
         "type": "string",
         "description": "A sheet name, or its index from 0 when no sheet has that name."
     });
+    let border_styles: Vec<&str> = jade_xlsx_headless_api::BorderStyle::ALL
+        .iter()
+        .map(|style| style.as_str())
+        .collect();
+    let border_line = json!({
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One edge. Style none removes the line; without a color the line is Excel's automatic colour.",
+        "properties": {
+            "style": { "type": "string", "enum": border_styles },
+            "color": { "type": "string", "description": "RRGGBB." }
+        },
+        "required": ["style"]
+    });
     let incompatible_write_modes = json!({
         "required": ["as_text", "as_formula"],
         "properties": {
@@ -997,7 +1018,7 @@ fn tool_catalogue() -> Vec<Value> {
         json!({
             "name": "set_format",
             "title": "Change how cells look",
-            "description": "Formats the cells of `range`: bold, italic, underline, strike, font colour/size/name, a solid fill colour, a number format code, horizontal/vertical alignment, wrapping. Only what is given changes; everything else each cell has — its border, its number format when only bold is asked for — is kept. Values and formulas stay. New looks are added to the file's style table and reused when they exist already. One atomic write, undoable. Answers the cells written and how many styles were added.",
+            "description": "Formats the cells of `range`: bold, italic, underline, strike, font colour/size/name, a solid fill colour, a number format code, horizontal/vertical alignment, wrapping, and border lines per edge (left/right/top/bottom, and the diagonal with its directions). Every cell of the range gets the edges given — for a box around a range, give the top edge to its first row, and so on. Only what is given changes; everything else each cell has — its other edges, its number format when only bold is asked for — is kept. Values and formulas stay. New looks are added to the file's style table and reused when they exist already. One atomic write, undoable. Answers the cells written and how many styles were added.",
             "annotations": { "readOnlyHint": false, "destructiveHint": true },
             "inputSchema": {
                 "type": "object",
@@ -1017,7 +1038,14 @@ fn tool_catalogue() -> Vec<Value> {
                     "number_format": { "type": "string", "description": "A format code such as 0.00, #,##0, 0.0%, yyyy/mm/dd; General or the empty string for General." },
                     "horizontal": { "type": "string", "enum": ["general", "left", "center", "right"] },
                     "vertical": { "type": "string", "enum": ["top", "center", "bottom"] },
-                    "wrap_text": { "type": "boolean" }
+                    "wrap_text": { "type": "boolean" },
+                    "border_left": border_line,
+                    "border_right": border_line,
+                    "border_top": border_line,
+                    "border_bottom": border_line,
+                    "border_diagonal": border_line,
+                    "diagonal_up": { "type": "boolean", "description": "Draw the diagonal line from bottom-left to top-right." },
+                    "diagonal_down": { "type": "boolean", "description": "Draw the diagonal line from top-left to bottom-right." }
                 },
                 "required": ["session_id", "sheet", "range"]
             }

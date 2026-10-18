@@ -209,7 +209,7 @@ fn a_styles_part_without_borders_gets_a_border_list() {
     let table = parse_styles_xml(&xml).expect("parse");
     // The default "no border" first, as every xf without one points at it,
     // then the new one.
-    assert_eq!(table.borders.len(), 2);
+    assert_eq!(table.borders.len(), 2, "{xml}");
     assert_eq!(table.borders[0], Border::default());
     assert_eq!(table.cell_formats[index as usize].border_index, Some(1));
     assert!(xml.contains(r#"<borders count="2">"#), "{xml}");

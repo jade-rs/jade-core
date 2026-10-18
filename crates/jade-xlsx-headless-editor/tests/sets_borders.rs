@@ -92,13 +92,30 @@ fn borders_round_trip_through_a_saved_file_and_touch_only_styles_and_the_sheet()
         })
     );
 
-    // Only the styles part and the sheet written to changed.
+    // Only the styles part and the sheet written to changed — and the
+    // workbook's calculation flag, which every write sets.
+    let without_calc = |bytes: &[u8]| {
+        let xml = String::from_utf8(bytes.to_vec()).expect("utf-8");
+        match (
+            xml.find("<calcPr"),
+            xml.find("<calcPr").and_then(|at| xml[at..].find("/>")),
+        ) {
+            (Some(start), Some(length)) => {
+                format!("{}{}", &xml[..start], &xml[start + length + 2..])
+            }
+            _ => xml,
+        }
+    };
     let changed: Vec<String> = parts(&original)
         .into_iter()
         .zip(parts(&saved))
         .filter(|(before, after)| {
             assert_eq!(before.0, after.0);
-            before.1 != after.1
+            if before.0 == "xl/workbook.xml" {
+                without_calc(&before.1) != without_calc(&after.1)
+            } else {
+                before.1 != after.1
+            }
         })
         .map(|(before, _)| before.0)
         .collect();
