@@ -183,6 +183,9 @@ struct SharedSurface {
     images: RefCell<HashMap<String, skia_safe::Image>>,
     fill_text_calls: std::cell::Cell<u64>,
     effect_text: RefCell<Vec<pdf_text::RecordedText>>,
+    /// Whether colours are mapped onto a dark page as they are drawn. See
+    /// [`SkiaPainter::set_dark_paper`].
+    dark_paper: std::cell::Cell<bool>,
 }
 
 enum PaintSurface {
@@ -207,6 +210,64 @@ impl SkiaPainter {
         let mut surface = surfaces::raster_n32_premul((width, height))?;
         surface.canvas().clear(Color::WHITE);
         Some(Self::with_surface(PaintSurface::Raster(surface)))
+    }
+
+    /// Creates a surface for a `width` x `height` CSS-pixel page with `scale`
+    /// device pixels per CSS pixel, filled with opaque white.
+    ///
+    /// Drawing stays in CSS pixels: the scale is the canvas's base transform,
+    /// below anything the renderer saves and restores, so a Retina screen gets
+    /// glyphs rasterised at its own density rather than a 1x page stretched
+    /// to fit — which is what makes text look soft.
+    pub fn new_scaled(width: f64, height: f64, scale: f64) -> Option<Self> {
+        if !width.is_finite() || !height.is_finite() || !scale.is_finite() || scale <= 0.0 {
+            return None;
+        }
+        let mut surface = surfaces::raster_n32_premul((
+            (width * scale).ceil() as i32,
+            (height * scale).ceil() as i32,
+        ))?;
+        let canvas = surface.canvas();
+        canvas.clear(Color::WHITE);
+        canvas.scale((scale as f32, scale as f32));
+        Some(Self::with_surface(PaintSurface::Raster(surface)))
+    }
+
+    /// Shows the page dark for reading on screen, or as the document has it.
+    ///
+    /// Every colour drawn from then on goes through
+    /// [`jade_painter::paper::to_dark_paper`], and clearing paints the dark
+    /// paper rather than white; images are drawn as they are. The surface is
+    /// cleared to the new paper, so the caller repaints after changing it. A
+    /// surface for print or export is never switched, which is what keeps the
+    /// author's colours there.
+    pub fn set_dark_paper(&self, on: bool) {
+        if self.shared.dark_paper.replace(on) == on {
+            return;
+        }
+        let paper = self.paper();
+        self.with_canvas(|canvas| {
+            canvas.clear(paper.to_color());
+        });
+    }
+
+    /// The colour a cleared page shows.
+    fn paper(&self) -> Color4f {
+        if self.shared.dark_paper.get() {
+            let [r, g, b] = jade_painter::paper::dark_paper();
+            Color4f::new(r, g, b, 1.0)
+        } else {
+            Color4f::new(1.0, 1.0, 1.0, 1.0)
+        }
+    }
+
+    /// `color` as it is drawn on this page.
+    fn on_paper(&self, color: Color4f) -> Color4f {
+        if !self.shared.dark_paper.get() {
+            return color;
+        }
+        let [r, g, b] = jade_painter::paper::to_dark_paper([color.r, color.g, color.b]);
+        Color4f::new(r, g, b, color.a)
     }
 
     /// Records the same drawing commands without allocating page pixels.
@@ -266,6 +327,7 @@ impl SkiaPainter {
                 images: RefCell::new(HashMap::new()),
                 fill_text_calls: std::cell::Cell::new(0),
                 effect_text: RefCell::new(Vec::new()),
+                dark_paper: std::cell::Cell::new(false),
             }),
         }
     }
@@ -869,7 +931,7 @@ impl SkiaPainter {
 
     fn fill_paint(&self) -> Paint {
         let style = self.shared.style.borrow();
-        let mut color = style.fill;
+        let mut color = self.on_paper(style.fill);
         color.a *= style.global_alpha;
         let mut paint = Paint::new(color, None);
         paint.set_anti_alias(true);
@@ -914,7 +976,7 @@ impl SkiaPainter {
 
     fn stroke_paint(&self) -> Paint {
         let style = self.shared.style.borrow();
-        let mut color = style.stroke;
+        let mut color = self.on_paper(style.stroke);
         color.a *= style.global_alpha;
         let mut paint = Paint::new(color, None);
         paint.set_anti_alias(true);
@@ -1328,8 +1390,14 @@ impl Painter for SkiaPainter {
         if rect.width <= 0.0 || rect.height <= 0.0 {
             return Ok(());
         }
-        let colors = [start, end]
-            .map(|color| skia_safe::Color::from_argb(color[3], color[0], color[1], color[2]));
+        let colors = [start, end].map(|color| {
+            let [r, g, b] = if self.shared.dark_paper.get() {
+                jade_painter::paper::to_dark_paper_u8([color[0], color[1], color[2]])
+            } else {
+                [color[0], color[1], color[2]]
+            };
+            skia_safe::Color::from_argb(color[3], r, g, b)
+        });
         if let Some(shader) = skia_safe::Shader::linear_gradient(
             (
                 (rect.x as f32, rect.y as f32),
@@ -1360,7 +1428,7 @@ impl Painter for SkiaPainter {
     }
 
     fn clear_rect(&self, x: f64, y: f64, width: f64, height: f64) {
-        let mut paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
+        let mut paint = Paint::new(self.paper(), None);
         paint.set_blend_mode(skia_safe::BlendMode::Src);
         self.with_canvas(|canvas| {
             canvas.draw_rect(
@@ -1470,12 +1538,22 @@ impl Painter for SkiaPainter {
         } else if !anticlockwise && sweep < 0.0 {
             sweep += 360.0;
         }
-        self.shared.path.borrow_mut().arc_to(
-            oval,
-            start_angle.to_degrees() as f32,
-            sweep as f32,
-            /* force_move_to */ false,
-        );
+        // Skia's arcTo reduces a full turn to nothing, so a whole ellipse
+        // goes in as two halves.
+        let mut path = self.shared.path.borrow_mut();
+        if sweep.abs() >= 360.0 {
+            let half = (sweep / 2.0) as f32;
+            let start = start_angle.to_degrees() as f32;
+            path.arc_to(oval, start, half, false);
+            path.arc_to(oval, start + half, half, false);
+        } else {
+            path.arc_to(
+                oval,
+                start_angle.to_degrees() as f32,
+                sweep as f32,
+                /* force_move_to */ false,
+            );
+        }
         Ok(())
     }
 
