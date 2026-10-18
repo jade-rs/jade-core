@@ -534,6 +534,14 @@
       "docx_sha256": "73b9dab957089873b302ecff98217e60a58fe8c540a66267ebd3f46d4b27e673"
     },
     {
+      "fixture": "word-mac-probe-inline-image-grid",
+      "docx_sha256": "9d74fec414a4a29ab88dd5ff89a2dbba98fdf1302172852b1ef6584dce6a2d72"
+    },
+    {
+      "fixture": "word-mac-probe-inline-image-nogrid",
+      "docx_sha256": "9bfa8fb91b96b39ef334ecc3fdaa4c4b3c8914186fe1246c56cb2132296971c9"
+    },
+    {
       "fixture": "word-mac-probe-numbering-label",
       "docx_sha256": "092e1785ebcd50c0ddb085f1e7b6f20a0e4895b617ac2f6623c72b02e5110ba8"
     },
@@ -584,6 +592,14 @@
     {
       "fixture": "word-mac-probe-squeeze-plain",
       "docx_sha256": "926bb6a1e119ab1f4e8019297df6130ed96ae74bafdf69dec171ce450daf7ff0"
+    },
+    {
+      "fixture": "word-mac-probe-tab-shrink-comma",
+      "docx_sha256": "b2a89a7118a4cb181a68ec8748f567b4d7f787eaaa909c068f1dc5f5d02b5ab9"
+    },
+    {
+      "fixture": "word-mac-probe-tab-shrink-kanji",
+      "docx_sha256": "cdf94d1c874a5b2b90c0dc5af2b0a8a1f0569949e9108f3a43d502861498dbfc"
     },
     {
       "fixture": "wrong-num",
