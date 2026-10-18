@@ -60,6 +60,7 @@ use jade_docx_layout::section_transition::{
     resolve_page_margins, resolve_section_transition, SectionBreakType, SectionTransition,
     DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
 };
+pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
     CaretMetrics, CaretMovement, CellLayout, FragmentLayout as SelectionFragmentLayout, GlyphBox,
     LayoutFragmentDebug, LayoutGlyphDebug, LayoutLineDebug, LineLayout as SelectionLineLayout,
@@ -28978,6 +28979,12 @@ where
 
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         self.selection.caret_metrics()
+    }
+
+    /// Which line a caret on a soft wrap is drawn on — the end of the line
+    /// above (the default) or the start of the line below.
+    pub fn set_caret_affinity(&mut self, affinity: CaretAffinity) {
+        self.selection.set_caret_affinity(affinity);
     }
 
     pub fn hit_test_position(&self, x: f64, y: f64) -> Option<TextPosition> {
