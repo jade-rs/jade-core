@@ -1116,7 +1116,11 @@ impl LayoutConfig {
                     &mut left_inset,
                     &mut style,
                     indent,
-                    properties.numbering.is_some(),
+                    properties
+                        .numbering
+                        .as_ref()
+                        .and_then(Numbering::list_id)
+                        .is_some(),
                     char_unit,
                 );
             }

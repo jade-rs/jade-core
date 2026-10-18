@@ -930,7 +930,11 @@ fn build_paragraph_input<C: LineWrapContext>(
                 &mut base_x,
                 &mut paragraph_style,
                 indent,
-                props.numbering.is_some(),
+                props
+                    .numbering
+                    .as_ref()
+                    .and_then(jade_docx_reader::document::Numbering::list_id)
+                    .is_some(),
                 char_unit_pt,
             );
             let offsets = word_oracle_non_numbered_left_indent_report_offsets(document, paragraph);
