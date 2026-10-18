@@ -421,3 +421,74 @@ fn a_decided_move_leaves_the_file() {
         );
     }
 }
+
+/// `textbox.docx` with its first paragraph rewritten as the text box
+/// followed by deleted text: `[box]<w:del>a</w:del>`.
+fn text_box_then_deletion() -> WordDocument {
+    use std::io::{Read, Write};
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/textbox.docx");
+    let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+    let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).unwrap();
+        let mut bytes = Vec::new();
+        entry.read_to_end(&mut bytes).unwrap();
+        if entry.name() == "word/document.xml" {
+            let xml = String::from_utf8(bytes).unwrap();
+            let hello_start = xml.find("<w:r><w:rPr><w:rtl").unwrap();
+            let hello_end =
+                xml[hello_start..].find("</w:r>").unwrap() + hello_start + "</w:r>".len();
+            let xml = format!("{}{}", &xml[..hello_start], &xml[hello_end..]);
+            let box_end = xml.find("</mc:AlternateContent></w:r>").unwrap()
+                + "</mc:AlternateContent></w:r>".len();
+            let deleted = r#"<w:del w:id="90" w:author="A" w:date="2026-10-18T00:00:00Z"><w:r><w:delText>a</w:delText></w:r></w:del>"#;
+            bytes = format!("{}{deleted}{}", &xml[..box_end], &xml[box_end..]).into_bytes();
+        }
+        out.start_file(entry.name(), zip::write::SimpleFileOptions::default())
+            .unwrap();
+        out.write_all(&bytes).unwrap();
+    }
+    let bytes = out.finish().unwrap().into_inner();
+    block_on(WordDocument::load(&bytes, &Options::default())).unwrap()
+}
+
+/// What paragraph 0 holds, in order: `[text box]` and run texts.
+fn order(word: &WordDocument) -> Vec<String> {
+    word.paragraph(0)
+        .unwrap()
+        .runs
+        .iter()
+        .filter(|r| r.text_box.is_some() || !r.text.is_empty())
+        .map(|r| {
+            if r.text_box.is_some() {
+                "[text box]".to_string()
+            } else {
+                r.text.clone()
+            }
+        })
+        .collect()
+}
+
+/// Typing at the start of a paragraph that begins with a text box goes
+/// after the text box, as everywhere else — also when deleted text follows
+/// it, where jade starts a run of its own rather than write into the
+/// deletion.
+#[test]
+fn typing_before_deleted_text_at_a_paragraph_start_goes_after_its_text_box() {
+    assert_eq!(order(&text_box_then_deletion()), ["[text box]", "a"]);
+    for tracked in [false, true] {
+        let mut word = text_box_then_deletion();
+        let typing = if tracked {
+            track("B")
+        } else {
+            HeadlessCommand::StopChangeTracking
+        };
+        run(&mut word, vec![typing, insert(0, 0, "xy")]);
+        assert_eq!(
+            order(&word),
+            ["[text box]", "xy", "a"],
+            "tracked: {tracked}"
+        );
+    }
+}
