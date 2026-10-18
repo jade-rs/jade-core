@@ -11982,6 +11982,75 @@ mod tests {
     }
 
     #[test]
+    fn a_comment_inside_a_hyperlink_keeps_the_links_text_once() {
+        // The comment's markers and reference run went beside the w:hyperlink
+        // while the model put the reference run among the link's runs. The
+        // next edit wrote the link up to the reference run, closed it, and
+        // wrote the rest again outside: "example.com" saved as
+        // "exあample.commple.com".
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 0,
+                        start_offset: Some(7),
+                        end_paragraph: 0,
+                        end_offset: Some(8),
+                        text: "note".to_string(),
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 7,
+                        text: "あ".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.clone())
+                .collect::<String>()
+        };
+        assert!(text(&word_doc).starts_with("Visitexあample.comto"));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(text(&reloaded), text(&word_doc));
+        let paragraph = reloaded.paragraph(0).expect("paragraph");
+        let comment = paragraph.comment_ranges.first().expect("comment survives");
+        assert_eq!(
+            &text(&reloaded)[comment.start..comment.end],
+            "a",
+            "the comment still covers only the letter it was added on"
+        );
+        let link: String = paragraph
+            .runs
+            .iter()
+            .filter(|run| run.hyperlink.is_some())
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(link, "exあample.com");
+    }
+
+    #[test]
     fn a_font_the_run_names_wins_over_its_styles_theme_font() {
         // numbering-restart.docx sets "AAAAA" in ＭＳ 明朝 under Heading 2,
         // whose w:asciiTheme is the theme's major font. Filling the run's
