@@ -6342,7 +6342,11 @@ impl WordDocument {
     fn load_part(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(package) = &self.package {
             if let Some(data) = package.get(path) {
-                let content = String::from_utf8_lossy(data).to_string();
+                // `from_utf8` validates far faster than `from_utf8_lossy`,
+                // which a multi-megabyte `document.xml` felt on every load.
+                let content = String::from_utf8(data.to_vec()).unwrap_or_else(|invalid| {
+                    String::from_utf8_lossy(invalid.as_bytes()).into_owned()
+                });
 
                 // Parse relationships for this part
                 let rels_path = self.get_relationships_path(path);
@@ -33663,6 +33667,11 @@ impl WordDocument {
         raw: &DocxXmlDocument,
     ) {
         for run in paragraph.runs.iter_mut() {
+            // Only the parser's page-break character is hidden; a run without
+            // one has nothing to look up.
+            if !run.text.contains(PAGE_BREAK_CHAR) {
+                continue;
+            }
             let Some(node_id) = run.node_id else {
                 continue;
             };
