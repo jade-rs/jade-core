@@ -8913,14 +8913,11 @@ impl WordDocument {
             .and_then(|properties| properties.page_number_type.clone())
             .unwrap_or_default();
         let format = settings.format.as_deref().unwrap_or("decimal");
-        settings.format = Some(match format.to_ascii_lowercase().as_str() {
-            "lowerroman" => "lowerRoman".to_string(),
-            "upperroman" => "upperRoman".to_string(),
-            "lowerletter" => "lowerLetter".to_string(),
-            "upperletter" => "upperLetter".to_string(),
-            "decimal" => "decimal".to_string(),
-            _ => format.to_string(),
-        });
+        settings.format = Some(
+            jade_docx_reader::numbering::canonical_number_format(format)
+                .unwrap_or(format)
+                .to_string(),
+        );
         settings
     }
 
@@ -8934,16 +8931,8 @@ impl WordDocument {
         start: Option<u32>,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        const FORMATS: &[&str] = &[
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ];
-        if !FORMATS.contains(&format) {
-            return Err(format!("unsupported page-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported page-number format: {format}"))?;
         if start == Some(0) {
             return Err("page-number start must be at least 1".to_string());
         }
@@ -9119,17 +9108,8 @@ impl WordDocument {
         restart: &str,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        if ![
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ]
-        .contains(&format)
-        {
-            return Err(format!("unsupported note-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported note-number format: {format}"))?;
         if start == 0 {
             return Err("note-number start must be at least 1".into());
         }
