@@ -7871,13 +7871,21 @@ fn line_break_splits_latin_word(
 }
 
 /// Whether the cluster at `index` belongs to the Latin word around it: a
-/// letter or ASCII digit (Word moves `20％` whole), or a slash right after a
-/// letter (Word keeps `header/footer` whole).
+/// letter or ASCII digit (Word moves `20％` whole), a slash right after a
+/// letter (Word keeps `header/footer` whole), or a period between letters
+/// (Word keeps `settings.xml` whole, UAX #14 LB29). A period ending the
+/// clusters belongs to the word its caller has found after it.
 fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
+    let follows_letter = index > 0 && is_latin_word_grapheme(&clusters[index - 1].text);
     is_latin_word_grapheme(text)
         || is_ascii_digit_grapheme(text)
-        || (text == "/" && index > 0 && is_latin_word_grapheme(&clusters[index - 1].text))
+        || (text == "/" && follows_letter)
+        || (text == "."
+            && follows_letter
+            && clusters
+                .get(index + 1)
+                .is_none_or(|next| is_latin_word_grapheme(&next.text)))
 }
 
 /// Whether the Latin word ending `line` starts right after East Asian text.
@@ -18020,6 +18028,31 @@ mod tests {
             Some("Hello World ")
         );
         assert_eq!(infos.get(1).map(|line| line.text.as_str()), Some("Hello"));
+    }
+
+    #[test]
+    fn a_period_between_latin_letters_does_not_split_the_word() {
+        // `document-variable-fields`: Word moves `settings.xml` whole instead
+        // of ending a line with `settings.` (UAX #14 LB29).
+        let ctx = TestContext::new(10.0);
+        let text = "from settings.xml now";
+        for style in [
+            ParagraphStyle::default(),
+            ParagraphStyle {
+                enable_line_break_rules: true,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    use_east_asian_layout: true,
+                    ..Default::default()
+                },
+                ..ParagraphStyle::default()
+            },
+        ] {
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 145.0).unwrap();
+            let infos = collect_line_infos(&lines);
+            assert_eq!(infos[0].text, "from ");
+            assert_eq!(infos[1].text, "settings.xml ");
+        }
     }
 
     #[test]

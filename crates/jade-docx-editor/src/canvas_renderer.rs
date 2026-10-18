@@ -32128,6 +32128,21 @@ where
             // Section storage is zero-based internally; Word's SECTION field
             // is explicitly 1-based.
             RunFieldKind::SectionNumber => Some((self.active_section_index + 1).to_string()),
+            // Word for Mac re-evaluates these when it lays out a header or
+            // footer, but prints a body, table or text box field's saved
+            // result: `document-property-fields`, `document-variable-fields`
+            // and `if-compare-field-edge-cases` show the stale body caches
+            // beside live header and footer values. A body IF is evaluated.
+            RunFieldKind::DocumentProperty { .. }
+            | RunFieldKind::DocumentVariable { .. }
+            | RunFieldKind::Compare { .. }
+                if !self.rendering_header_footer_story
+                    && jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && field.cached_text.is_some() =>
+            {
+                field.cached_text.clone()
+            }
             RunFieldKind::DocumentProperty { .. }
             | RunFieldKind::DocumentVariable { .. }
             | RunFieldKind::NumWords
