@@ -471,6 +471,56 @@ fn rebase_run_style_properties(
     }
 }
 
+/// Clears the font properties a run is known to inherit, so the paragraph's
+/// new style fills them in again as a load does. Matching them against the
+/// old style's to tell inherited from direct fails where a load filled the
+/// fonts slot by slot from more than one source (a style's East Asian font
+/// and the document default's ASCII one): such a run kept the old style's
+/// fonts on screen only. Runs whose direct fonts are not known keep the
+/// comparison.
+fn release_inherited_fonts(run: &mut RunProperties, declared: impl Fn(&str) -> bool) {
+    let direct = run.direct_font_properties.clone();
+    if !direct.known {
+        return;
+    }
+    // A `w:rFonts` carrying only `w:hint` names no font: what the run names
+    // itself is the test, not the tag. Its hint stays, and the fonts are
+    // filled in around it.
+    let names_a_font = |fonts: &RunFonts| {
+        fonts.ascii.is_some()
+            || fonts.h_ansi.is_some()
+            || fonts.east_asia.is_some()
+            || fonts.complex.is_some()
+            || fonts.ascii_theme.is_some()
+            || fonts.h_ansi_theme.is_some()
+            || fonts.east_asia_theme.is_some()
+            || fonts.complex_theme.is_some()
+    };
+    if !direct.fonts.as_ref().is_some_and(names_a_font) {
+        run.fonts = direct.fonts.as_ref().map(|fonts| RunFonts {
+            hint: fonts.hint.clone(),
+            ..RunFonts::default()
+        });
+        run.font_family = None;
+    }
+    if direct.font_size.is_none() {
+        run.font_size = None;
+    }
+    if direct.font_size_complex.is_none() {
+        run.font_size_complex = None;
+    }
+    if direct.kerning.is_none() {
+        run.kerning = None;
+    }
+    if direct.text_scale.is_none() {
+        run.text_scale = None;
+    }
+    if !declared("w:lang") {
+        run.language = None;
+        run.east_asia_language = None;
+    }
+}
+
 /// A cell a table edit creates at `(row, cell)` and the cell it is formatted
 /// like, by XML id.
 struct CellTemplate {
@@ -30003,6 +30053,7 @@ impl WordDocument {
             let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
+            release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
             restyled.push((index, props));
         }
         let restyled_any = !restyled.is_empty();
@@ -30012,6 +30063,9 @@ impl WordDocument {
             }
         }
         if restyled_any {
+            // What the runs inherit is filled in again from the new style,
+            // the way a load fills it.
+            self.apply_run_font_defaults_at(paragraph_index);
             if let Some(theme) = theme.as_ref() {
                 self.apply_theme_fonts_at(paragraph_index, theme);
             }
