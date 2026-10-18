@@ -2912,3 +2912,35 @@
      }
  
      pub(crate) fn fn_rightb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+--- a/src/expressions/parser/mod.rs
++++ b/src/expressions/parser/mod.rs
+@@ -337,6 +337,12 @@ impl<'a> Parser<'a> {
+         self.defined_names = defined_names;
+     }
+ 
++    /// Replaces the tables structured references (`Table1[Amount]`) resolve
++    /// against.
++    pub fn set_tables(&mut self, tables: HashMap<String, Table>) {
++        self.tables = tables;
++    }
++
+     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+         self.lexer.set_formula(formula);
+         self.context = context.clone();
+--- a/src/model.rs
++++ b/src/model.rs
+@@ -3527,6 +3527,14 @@ impl<'a> Model<'a> {
+             .set_row_height(column, height)
+     }
+ 
++    /// Registers an Excel table, so structured references to it
++    /// (`Table1[Amount]`, `Table1[[#Totals],[Qty]]`) parse in formulas set
++    /// after it. Replaces a table of the same name.
++    pub fn add_table(&mut self, table: Table) {
++        self.workbook.tables.insert(table.name.clone(), table);
++        self.parser.set_tables(self.workbook.tables.clone());
++    }
++
+     /// Adds a new defined name.
+     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
+     pub fn new_defined_name(
