@@ -1,0 +1,32 @@
+[package]
+name = "jade-pptx-diff"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "Structure-aware PPTX diff library with slide and shape alignment"
+license = "MIT"
+publish = false
+readme = "README.md"
+
+[lib]
+name = "pptx_diff"
+
+[[bin]]
+name = "pptx-diff"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+diff-align = { package = "jade-diff-align", path = "../jade-diff-align" }
+diff_support = { package = "jade-diff-support", path = "../jade-diff-support" }
+base64 = "0.22"
+quick-xml = "0.39"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-segmentation = "1"
+unicode-normalization = "0.1"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
