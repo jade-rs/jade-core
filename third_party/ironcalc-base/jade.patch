@@ -908,3 +908,892 @@
          let fraction = local.num_seconds_from_midnight() as f64 / (60.0 * 60.0 * 24.0);
          days as f64 + fraction
      })
+--- a/src/expressions/parser/static_analysis.rs
++++ b/src/expressions/parser/static_analysis.rs
+@@ -850,6 +850,18 @@ fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
+     result
+ }
+ 
++/// AGGREGATE: the function and options numbers, then references or one
++/// array and its k.
++fn args_signature_aggregate(arg_count: usize) -> Vec<Signature> {
++    if arg_count < 3 {
++        return vec![Signature::Error; arg_count];
++    }
++    let mut result = vec![Signature::Vector; arg_count];
++    result[0] = Signature::Scalar;
++    result[1] = Signature::Scalar;
++    result
++}
++
+ fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
+     if arg_count > 2 {
+         vec![Signature::Error; arg_count]
+@@ -1259,6 +1271,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
+         Function::Delta => args_signature_scalars(arg_count, 1, 1),
+         Function::Gestep => args_signature_scalars(arg_count, 1, 1),
+         Function::Subtotal => args_signature_npv(arg_count),
++        Function::Aggregate => args_signature_aggregate(arg_count),
+         Function::Rand => args_signature_no_args(arg_count),
+         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
+         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
+@@ -1930,6 +1943,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
+         Function::Delta => not_implemented(args),
+         Function::Gestep => not_implemented(args),
+         Function::Subtotal => not_implemented(args),
++        Function::Aggregate => not_implemented(args),
+         Function::Rand => not_implemented(args),
+         Function::Randbetween => scalar_arguments(args),
+         Function::Eomonth => scalar_arguments(args),
+--- a/src/formatter/dates.rs
++++ b/src/formatter/dates.rs
+@@ -10,9 +10,18 @@ use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
+ 
+ pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
+ 
++/// Excel counts a 29 February 1900 that never was (the "1900 leap-year bug",
++/// kept for Lotus 1-2-3), so in the 1900 system every date before 1 March 1900
++/// is one serial lower than the calendar says: 1900-01-01 is 1, 1900-02-28 is
++/// 59, 60 is the fictional leap day and 1900-03-01 is 61.
++fn before_leap_day_1900(date: NaiveDate) -> bool {
++    !crate::date_system::is_1904() && (date.year(), date.month()) < (1900, 3)
++}
++
++/// The date's serial number, as Excel counts it.
+ #[inline]
+-fn convert_to_serial_number(date: NaiveDate) -> i32 {
+-    date.num_days_from_ce() - crate::date_system::base()
++pub(crate) fn convert_to_serial_number(date: NaiveDate) -> i32 {
++    date.num_days_from_ce() - crate::date_system::base() - i32::from(before_leap_day_1900(date))
+ }
+ 
+ fn is_date_within_range(date: NaiveDate) -> bool {
+@@ -31,6 +40,12 @@ pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
+     };
+     #[allow(clippy::expect_used)]
+     let dt = NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate");
++    if !crate::date_system::is_1904() && days < 61 {
++        // Before Excel's fictional leap day serial N is 1 January plus N - 1
++        // days. Serial 60 itself has no calendar date; it reads as the 28th,
++        // and DAY/MONTH/YEAR answer 29 February through `excel_serial_to_ymd`.
++        return Ok(dt + Duration::days(days.min(59) - 1));
++    }
+     Ok(dt
+         + Duration::days(
+             days - 2
+@@ -62,6 +77,18 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
+     if !crate::date_system::is_1904() && year == 1899 && month == 12 && day == 31 {
+         return Ok(MINIMUM_DATE_SERIAL_NUMBER);
+     }
++    // January and February 1900 are counted on Excel's calendar, which has a
++    // 29 February: DATE(1900,2,29) is 60 and DATE(1900,1,61) is 1 March (61),
++    // so a day past the month's end counts the fictional day too.
++    let months = i64::from(year) * 12 + i64::from(month) - 1;
++    if !crate::date_system::is_1904() && months.div_euclid(12) == 1900 && months.rem_euclid(12) < 2
++    {
++        let serial = if months.rem_euclid(12) == 0 { 0 } else { 31 } + i64::from(day);
++        if serial < 0 || serial > i64::from(crate::date_system::maximum_serial()) {
++            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
++        }
++        return Ok(serial as i32);
++    }
+     let Some(mut date) = NaiveDate::from_ymd_opt(year, 1, 1) else {
+         return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+     };
+--- a/src/formatter/format.rs
++++ b/src/formatter/format.rs
+@@ -192,12 +192,15 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
+                         | TextToken::ElapsedSecondPadded
+                 )
+             });
+-            let date = from_excel_date(if has_clock {
++            let serial = if has_clock {
+                 total_seconds.div_euclid(86400)
+             } else {
+                 value as i64
+-            })
+-            .ok();
++            };
++            let date = from_excel_date(serial).ok();
++            // Excel's fictional 29 February 1900 reads as the 28th's month
++            // and year, and as the 29th.
++            let leap_day_1900 = serial == 60 && !crate::date_system::is_1904();
+             for token in tokens {
+                 match token {
+                     TextToken::Literal(c) => {
+@@ -223,7 +226,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
+                     TextToken::Period => {}
+                     TextToken::Day => match date {
+                         Some(date) => {
+-                            let day = date.day() as usize;
++                            let day = if leap_day_1900 {
++                                29
++                            } else {
++                                date.day() as usize
++                            };
+                             text = format!("{text}{day}");
+                         }
+                         None => {
+@@ -245,7 +252,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
+                                 }
+                             }
+                         };
+-                        let day = date.day() as usize;
++                        let day = if leap_day_1900 {
++                            29
++                        } else {
++                            date.day() as usize
++                        };
+                         text = format!("{text}{day:02}");
+                     }
+                     TextToken::DayNameShort => {
+--- /dev/null
++++ b/src/functions/aggregate.rs
+@@ -0,0 +1,370 @@
++//! AGGREGATE (Jade addition): one of nineteen aggregates over references or
++//! an array, leaving out what its `options` say — nested SUBTOTAL and
++//! AGGREGATE results, hidden rows, error values.
++//!
++//! ```text
++//! AGGREGATE(function_num, options, ref1, [ref2], …)   function_num 1–13
++//! AGGREGATE(function_num, options, array, k)          function_num 14–19
++//! ```
++
++use crate::{
++    calc_result::CalcResult,
++    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
++    functions::Function,
++    model::Model,
++};
++
++/// What `options` leaves out.
++#[derive(Clone, Copy)]
++struct Skip {
++    nested: bool,
++    hidden: bool,
++    errors: bool,
++}
++
++impl Skip {
++    fn of(options: i32) -> Option<Skip> {
++        let (nested, hidden, errors) = match options {
++            0 => (true, false, false),
++            1 => (true, true, false),
++            2 => (true, false, true),
++            3 => (true, true, true),
++            4 => (false, false, false),
++            5 => (false, true, false),
++            6 => (false, false, true),
++            7 => (false, true, true),
++            _ => return None,
++        };
++        Some(Skip {
++            nested,
++            hidden,
++            errors,
++        })
++    }
++}
++
++/// The values gathered: numbers, and how many other non-empty values there
++/// were (which only COUNTA counts).
++#[derive(Default)]
++struct Gathered {
++    numbers: Vec<f64>,
++    others: usize,
++}
++
++fn is_nested_aggregate(node: &Node) -> bool {
++    matches!(
++        node,
++        Node::FunctionKind {
++            kind: Function::Subtotal | Function::Aggregate,
++            ..
++        }
++    )
++}
++
++impl<'a> Model<'a> {
++    /// Whether the cell's formula is a SUBTOTAL or an AGGREGATE.
++    fn cell_is_aggregate(&self, sheet: u32, row: i32, column: i32) -> bool {
++        let Some(cell) = self
++            .workbook
++            .worksheets
++            .get(sheet as usize)
++            .and_then(|worksheet| worksheet.sheet_data.get(&row))
++            .and_then(|row| row.get(&column))
++        else {
++            return false;
++        };
++        cell.get_formula().is_some_and(|formula| {
++            self.parsed_formulas
++                .get(sheet as usize)
++                .and_then(|formulas| formulas.get(formula as usize))
++                .is_some_and(|parsed| is_nested_aggregate(&parsed.0))
++        })
++    }
++
++    /// Adds one value to `gathered`, or fails with it when it is an error
++    /// the options do not skip.
++    fn aggregate_take(
++        value: CalcResult,
++        skip: Skip,
++        gathered: &mut Gathered,
++    ) -> Result<(), CalcResult> {
++        match value {
++            CalcResult::Number(number) => gathered.numbers.push(number),
++            CalcResult::String(_) | CalcResult::Boolean(_) => gathered.others += 1,
++            error @ CalcResult::Error { .. } => {
++                if !skip.errors {
++                    return Err(error);
++                }
++            }
++            _ => {}
++        }
++        Ok(())
++    }
++
++    fn aggregate_gather(
++        &mut self,
++        args: &[Node],
++        cell: CellReferenceIndex,
++        skip: Skip,
++    ) -> Result<Gathered, CalcResult> {
++        let mut gathered = Gathered::default();
++        for arg in args {
++            if skip.nested && is_nested_aggregate(arg) {
++                continue;
++            }
++            match self.evaluate_node_in_context(arg, cell) {
++                CalcResult::Range { left, right } => {
++                    if left.sheet != right.sheet {
++                        return Err(CalcResult::new_error(
++                            Error::VALUE,
++                            cell,
++                            "Ranges are in different sheets".to_string(),
++                        ));
++                    }
++                    for row in left.row..=right.row {
++                        if skip.hidden
++                            && self.is_row_hidden(left.sheet, row).map_err(|message| {
++                                CalcResult::new_error(Error::ERROR, cell, message)
++                            })?
++                        {
++                            continue;
++                        }
++                        for column in left.column..=right.column {
++                            if skip.nested && self.cell_is_aggregate(left.sheet, row, column) {
++                                continue;
++                            }
++                            let value = self.evaluate_cell(CellReferenceIndex {
++                                sheet: left.sheet,
++                                row,
++                                column,
++                            });
++                            Self::aggregate_take(value, skip, &mut gathered)?;
++                        }
++                    }
++                }
++                CalcResult::Array(rows) => {
++                    for value in rows.into_iter().flatten() {
++                        let value = match value {
++                            crate::expressions::parser::ArrayNode::Number(number) => {
++                                CalcResult::Number(number)
++                            }
++                            crate::expressions::parser::ArrayNode::Boolean(value) => {
++                                CalcResult::Boolean(value)
++                            }
++                            crate::expressions::parser::ArrayNode::String(text) => {
++                                CalcResult::String(text)
++                            }
++                            crate::expressions::parser::ArrayNode::Error(error) => {
++                                CalcResult::new_error(error, cell, String::new())
++                            }
++                            _ => continue,
++                        };
++                        Self::aggregate_take(value, skip, &mut gathered)?;
++                    }
++                }
++                CalcResult::Lambda(_) => {
++                    return Err(CalcResult::new_error(
++                        Error::VALUE,
++                        cell,
++                        "A function is not a value".to_string(),
++                    ))
++                }
++                value => Self::aggregate_take(value, skip, &mut gathered)?,
++            }
++        }
++        Ok(gathered)
++    }
++
++    pub(crate) fn fn_aggregate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if args.len() < 3 {
++            return CalcResult::new_args_number_error(cell);
++        }
++        let function = match self.get_number(&args[0], cell) {
++            Ok(value) => value.trunc() as i32,
++            Err(error) => return error,
++        };
++        let Some(skip) = (match self.get_number(&args[1], cell) {
++            Ok(value) => Skip::of(value.trunc() as i32),
++            Err(error) => return error,
++        }) else {
++            return CalcResult::new_error(Error::VALUE, cell, "Invalid AGGREGATE options".into());
++        };
++        let invalid =
++            || CalcResult::new_error(Error::VALUE, cell, "Invalid AGGREGATE function".into());
++        let div0 = || CalcResult::new_error(Error::DIV, cell, "Division by 0!".to_string());
++        let num = || CalcResult::new_error(Error::NUM, cell, "Out of range".to_string());
++
++        if (14..=19).contains(&function) {
++            if args.len() != 4 {
++                return CalcResult::new_args_number_error(cell);
++            }
++            let k = match self.get_number(&args[3], cell) {
++                Ok(k) => k,
++                Err(error) => return error,
++            };
++            let mut values = match self.aggregate_gather(&args[2..3], cell, skip) {
++                Ok(gathered) => gathered.numbers,
++                Err(error) => return error,
++            };
++            values.sort_by(|a, b| a.total_cmp(b));
++            let result = match function {
++                14 | 15 => {
++                    let k = k.trunc();
++                    if k < 1.0 || k as usize > values.len() {
++                        return num();
++                    }
++                    let index = k as usize - 1;
++                    if function == 14 {
++                        values[values.len() - 1 - index]
++                    } else {
++                        values[index]
++                    }
++                }
++                16 => match percentile_inc(&values, k) {
++                    Some(value) => value,
++                    None => return num(),
++                },
++                17 => {
++                    let quart = k.trunc();
++                    if !(0.0..=4.0).contains(&quart) {
++                        return num();
++                    }
++                    match percentile_inc(&values, quart / 4.0) {
++                        Some(value) => value,
++                        None => return num(),
++                    }
++                }
++                18 => match percentile_exc(&values, k) {
++                    Some(value) => value,
++                    None => return num(),
++                },
++                _ => {
++                    let quart = k.trunc();
++                    if !(1.0..=3.0).contains(&quart) {
++                        return num();
++                    }
++                    match percentile_exc(&values, quart / 4.0) {
++                        Some(value) => value,
++                        None => return num(),
++                    }
++                }
++            };
++            return CalcResult::Number(result);
++        }
++        if !(1..=13).contains(&function) {
++            return invalid();
++        }
++
++        let gathered = match self.aggregate_gather(&args[2..], cell, skip) {
++            Ok(gathered) => gathered,
++            Err(error) => return error,
++        };
++        let values = gathered.numbers;
++        let count = values.len() as f64;
++        let sum: f64 = values.iter().sum();
++        let variance = |sample: bool| -> Option<f64> {
++            let divisor = if sample { count - 1.0 } else { count };
++            if divisor <= 0.0 {
++                return None;
++            }
++            let mean = sum / count;
++            Some(
++                values
++                    .iter()
++                    .map(|value| (value - mean).powi(2))
++                    .sum::<f64>()
++                    / divisor,
++            )
++        };
++        let result = match function {
++            1 => {
++                if values.is_empty() {
++                    return div0();
++                }
++                sum / count
++            }
++            2 => count,
++            3 => count + gathered.others as f64,
++            4 => values.iter().copied().reduce(f64::max).unwrap_or(0.0),
++            5 => values.iter().copied().reduce(f64::min).unwrap_or(0.0),
++            6 => {
++                if values.is_empty() {
++                    0.0
++                } else {
++                    values.iter().product()
++                }
++            }
++            7 => match variance(true) {
++                Some(variance) => variance.sqrt(),
++                None => return div0(),
++            },
++            8 => match variance(false) {
++                Some(variance) => variance.sqrt(),
++                None => return div0(),
++            },
++            9 => sum,
++            10 => match variance(true) {
++                Some(variance) => variance,
++                None => return div0(),
++            },
++            11 => match variance(false) {
++                Some(variance) => variance,
++                None => return div0(),
++            },
++            12 => {
++                if values.is_empty() {
++                    return num();
++                }
++                let mut sorted = values.clone();
++                sorted.sort_by(|a, b| a.total_cmp(b));
++                let middle = sorted.len() / 2;
++                if sorted.len() % 2 == 0 {
++                    (sorted[middle - 1] + sorted[middle]) / 2.0
++                } else {
++                    sorted[middle]
++                }
++            }
++            _ => {
++                // MODE.SNGL: the most frequent value, the first to reach that
++                // count when several tie; none repeated is #N/A.
++                let mut best: Option<(f64, usize)> = None;
++                for value in &values {
++                    let frequency = values.iter().filter(|other| *other == value).count();
++                    if frequency > 1 && best.is_none_or(|(_, most)| frequency > most) {
++                        best = Some((*value, frequency));
++                    }
++                }
++                match best {
++                    Some((value, _)) => value,
++                    None => {
++                        return CalcResult::new_error(Error::NA, cell, "No repeated value".into())
++                    }
++                }
++            }
++        };
++        CalcResult::Number(result)
++    }
++}
++
++/// PERCENTILE.INC over sorted `values`.
++fn percentile_inc(values: &[f64], k: f64) -> Option<f64> {
++    if values.is_empty() || !(0.0..=1.0).contains(&k) {
++        return None;
++    }
++    let position = k * (values.len() - 1) as f64;
++    let below = position.floor() as usize;
++    let above = position.ceil() as usize;
++    Some(values[below] + (position - below as f64) * (values[above] - values[below]))
++}
++
++/// PERCENTILE.EXC over sorted `values`.
++fn percentile_exc(values: &[f64], k: f64) -> Option<f64> {
++    let n = values.len() as f64;
++    let rank = k * (n + 1.0);
++    if values.is_empty() || k <= 0.0 || k >= 1.0 || rank < 1.0 || rank > n {
++        return None;
++    }
++    let below = rank.floor() as usize;
++    let above = rank.ceil() as usize;
++    Some(values[below - 1] + (rank - below as f64) * (values[above - 1] - values[below - 1]))
++}
+--- a/src/functions/date_and_time.rs
++++ b/src/functions/date_and_time.rs
+@@ -139,22 +139,20 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
+ // Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
+ // NaiveDate and return the requested component as a number.
+ macro_rules! date_part_fn {
+-    ($name:ident, $method:ident) => {
++    ($name:ident, $part:tt) => {
+         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+             if args.len() != 1 {
+                 return CalcResult::new_args_number_error(cell);
+             }
+-            // Convert the serial number to a NaiveDate and return the requested
+-            // component. Broadcasts element-wise over ranges/arrays. Uses the free
+-            // function from_excel_date to avoid borrowing self in the closure.
+-            self.apply_number_unary(
+-                &args[0],
+-                cell,
+-                |f| match from_excel_date(f.floor() as i64) {
+-                    Ok(date) => Ok(date.$method() as f64),
+-                    Err(_) => Err(Error::NUM),
+-                },
+-            )
++            // Read the serial as Excel does — 0 is 0 January 1900 and 60 the
++            // fictional 29 February — and return the requested component.
++            // Broadcasts element-wise over ranges/arrays.
++            self.apply_number_unary(&args[0], cell, |f| {
++                match excel_serial_to_ymd(f.floor() as i64) {
++                    Some(ymd) => Ok(ymd.$part as f64),
++                    None => Err(Error::NUM),
++                }
++            })
+         }
+     };
+ }
+@@ -621,9 +619,9 @@ impl<'a> Model<'a> {
+     // -----------------------------------------------------------------------
+     // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
+     // -----------------------------------------------------------------------
+-    date_part_fn!(fn_day, day);
+-    date_part_fn!(fn_month, month);
+-    date_part_fn!(fn_year, year);
++    date_part_fn!(fn_day, 2);
++    date_part_fn!(fn_month, 1);
++    date_part_fn!(fn_year, 0);
+ 
+     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         let args_count = args.len();
+@@ -828,7 +826,7 @@ impl<'a> Model<'a> {
+             date - Months::new(months_abs)
+         };
+ 
+-        let serial_number = native_date.num_days_from_ce() - crate::date_system::base();
++        let serial_number = crate::formatter::dates::convert_to_serial_number(native_date);
+         if serial_number < crate::date_system::minimum_serial() {
+             return CalcResult::Error {
+                 error: Error::NUM,
+@@ -1639,7 +1637,7 @@ impl<'a> Model<'a> {
+                 }
+             }
+         }
+-        let serial = date.num_days_from_ce() - crate::date_system::base();
++        let serial = crate::formatter::dates::convert_to_serial_number(date);
+         CalcResult::Number(serial as f64)
+     }
+ 
+@@ -1720,7 +1718,7 @@ impl<'a> Model<'a> {
+                 }
+             }
+         }
+-        let serial = date.num_days_from_ce() - crate::date_system::base();
++        let serial = crate::formatter::dates::convert_to_serial_number(date);
+         CalcResult::Number(serial as f64)
+     }
+ 
+--- a/src/functions/financial/financial_bonds.rs
++++ b/src/functions/financial/financial_bonds.rs
+@@ -12,7 +12,7 @@ use crate::{
+ // ============================================================
+ 
+ fn naivedate_to_serial(d: NaiveDate) -> i64 {
+-    (d.num_days_from_ce() - crate::date_system::base()) as i64
++    crate::formatter::dates::convert_to_serial_number(d) as i64
+ }
+ 
+ fn last_day_of_feb(year: i32) -> u32 {
+--- a/src/functions/lookup_and_reference/mod.rs
++++ b/src/functions/lookup_and_reference/mod.rs
+@@ -717,7 +717,31 @@ impl<'a> Model<'a> {
+         }
+         match self.get_reference(&args[0], cell) {
+             Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
+-            Err(s) => s,
++            Err(s) => self.array_extent(&args[0], cell, s, |rows, _| rows),
++        }
++    }
++
++    /// ROWS and COLUMNS of something that is not a reference (Jade): an array
++    /// constant or a dynamic array's result has its own shape, and a single
++    /// value is one row by one column. `not_a_reference` is returned when the
++    /// argument is neither.
++    fn array_extent(
++        &mut self,
++        node: &Node,
++        cell: CellReferenceIndex,
++        not_a_reference: CalcResult,
++        pick: fn(usize, usize) -> usize,
++    ) -> CalcResult {
++        match self.evaluate_node_in_context(node, cell) {
++            CalcResult::Array(rows) => {
++                let columns = rows.first().map_or(0, |row| row.len());
++                CalcResult::Number(pick(rows.len(), columns) as f64)
++            }
++            CalcResult::Number(_) | CalcResult::String(_) | CalcResult::Boolean(_) => {
++                CalcResult::Number(1.0)
++            }
++            error @ CalcResult::Error { .. } => error,
++            _ => not_a_reference,
+         }
+     }
+ 
+@@ -820,7 +844,7 @@ impl<'a> Model<'a> {
+         }
+         match self.get_reference(&args[0], cell) {
+             Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
+-            Err(s) => s,
++            Err(s) => self.array_extent(&args[0], cell, s, |_, columns| columns),
+         }
+     }
+ 
+--- a/src/functions/math_and_trigonometry/mathematical.rs
++++ b/src/functions/math_and_trigonometry/mathematical.rs
+@@ -640,7 +640,9 @@ impl<'a> Model<'a> {
+             Err(s) => return s,
+         };
+         let scale = 10.0_f64.powf(number_of_digits);
+-        CalcResult::Number((value * scale).round() / scale)
++        // Excel scales at 15 significant digits too: 1.005 is stored as
++        // 1.00499…, and ROUND(1.005, 2) is still 1.01.
++        CalcResult::Number(to_precision(value * scale, 15).round() / scale)
+     }
+ 
+     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+@@ -662,10 +664,11 @@ impl<'a> Model<'a> {
+             Err(s) => return s,
+         };
+         let scale = 10.0_f64.powf(number_of_digits);
++        let scaled = to_precision(value * scale, 15);
+         if value > 0.0 {
+-            CalcResult::Number((value * scale).ceil() / scale)
++            CalcResult::Number(scaled.ceil() / scale)
+         } else {
+-            CalcResult::Number((value * scale).floor() / scale)
++            CalcResult::Number(scaled.floor() / scale)
+         }
+     }
+ 
+@@ -688,10 +691,11 @@ impl<'a> Model<'a> {
+             Err(s) => return s,
+         };
+         let scale = 10.0_f64.powf(number_of_digits);
++        let scaled = to_precision(value * scale, 15);
+         if value > 0.0 {
+-            CalcResult::Number((value * scale).floor() / scale)
++            CalcResult::Number(scaled.floor() / scale)
+         } else {
+-            CalcResult::Number((value * scale).ceil() / scale)
++            CalcResult::Number(scaled.ceil() / scale)
+         }
+     }
+ 
+--- a/src/functions/mod.rs
++++ b/src/functions/mod.rs
+@@ -7,6 +7,7 @@ use crate::{
+     model::Model,
+ };
+ 
++mod aggregate;
+ pub(crate) mod binary_search;
+ mod database;
+ pub(crate) mod date_and_time;
+@@ -537,6 +538,8 @@ pub enum Function {
+     Delta,
+     Gestep,
+     Subtotal,
++    /// Jade addition, not in the upstream language tables.
++    Aggregate,
+ 
+     // Database
+     Daverage,
+@@ -559,6 +562,16 @@ pub enum Function {
+     Steyx,
+ }
+ 
++/// Functions Jade adds to the engine. Their names are not in the bundled
++/// language tables (`language.bin`), so they answer to their English names in
++/// every language.
++fn jade_lookup(key: &str) -> Option<Function> {
++    match key {
++        "AGGREGATE" => Some(Function::Aggregate),
++        _ => None,
++    }
++}
++
+ macro_rules! impl_function_lookup {
+     ($($field:ident => $variant:ident),+ $(,)?) => {
+         impl Functions {
+@@ -569,7 +582,7 @@ macro_rules! impl_function_lookup {
+                         return Some(Function::$variant);
+                     }
+                 )*
+-                None
++                jade_lookup(&key)
+             }
+         }
+     }
+@@ -1565,6 +1578,7 @@ impl Function {
+             Function::Delta => functions.delta.clone(),
+             Function::Gestep => functions.gestep.clone(),
+             Function::Subtotal => functions.subtotal.clone(),
++            Function::Aggregate => "AGGREGATE".to_string(),
+             Function::Daverage => functions.daverage.clone(),
+             Function::Dcount => functions.dcount.clone(),
+             Function::Dget => functions.dget.clone(),
+@@ -1608,7 +1622,7 @@ impl Function {
+         }
+     }
+ 
+-    pub fn into_iter() -> IntoIter<Function, 494> {
++    pub fn into_iter() -> IntoIter<Function, 495> {
+         [
+             Function::And,
+             Function::False,
+@@ -1942,6 +1956,7 @@ impl Function {
+             Function::Delta,
+             Function::Gestep,
+             Function::Subtotal,
++            Function::Aggregate,
+             Function::Roman,
+             Function::Arabic,
+             Function::Combin,
+@@ -2109,6 +2124,29 @@ impl Function {
+     }
+ }
+ 
++/// The prefix an `.xlsx` formula needs before the function `name` (any case,
++/// with or without a prefix already) so Excel reads it: `_xlfn.` for the
++/// functions newer than the 2007 file format, `_xlfn._xlws.` for the
++/// worksheet-only ones, and `None` for the rest (Jade addition).
++pub fn xlsx_function_prefix(name: &str) -> Option<&'static str> {
++    let bare = name
++        .trim_start_matches("_xlfn._xlws.")
++        .trim_start_matches("_xlfn.")
++        .to_uppercase();
++    let function = crate::language::get_language("en")
++        .ok()?
++        .functions
++        .lookup(&bare)?;
++    let stored = function.to_xlsx_string();
++    if stored.starts_with("_xlfn._xlws.") {
++        Some("_xlfn._xlws.")
++    } else if stored.starts_with("_xlfn.") {
++        Some("_xlfn.")
++    } else {
++        None
++    }
++}
++
+ impl Function {
+     /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`. (known as "future functions")
+     /// FILTER and SORT are stringified as `_xlfn._xlws.FILTER`. (known as "worksheet only functions")
+@@ -2116,6 +2154,15 @@ impl Function {
+     pub fn to_xlsx_string(&self) -> String {
+         match self {
+             Function::Concat => "_xlfn.CONCAT".to_string(),
++            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
++            // Jade: future functions upstream writes without their prefix.
++            Function::Days => "_xlfn.DAYS".to_string(),
++            Function::ForecastLinear => "_xlfn.FORECAST.LINEAR".to_string(),
++            Function::GammaDist => "_xlfn.GAMMA.DIST".to_string(),
++            Function::Gauss => "_xlfn.GAUSS".to_string(),
++            Function::Imsech => "_xlfn.IMSECH".to_string(),
++            Function::NetworkdaysIntl => "_xlfn.NETWORKDAYS.INTL".to_string(),
++            Function::WorkdayIntl => "_xlfn.WORKDAY.INTL".to_string(),
+             Function::Ifna => "_xlfn.IFNA".to_string(),
+             Function::Ifs => "_xlfn.IFS".to_string(),
+             Function::Lambda => "_xlfn.LAMBDA".to_string(),
+@@ -2600,6 +2647,7 @@ impl<'a> Model<'a> {
+             Function::Delta => self.fn_delta(args, cell),
+             Function::Gestep => self.fn_gestep(args, cell),
+             Function::Subtotal => self.fn_subtotal(args, cell),
++            Function::Aggregate => self.fn_aggregate(args, cell),
+             Function::Acot => self.fn_acot(args, cell),
+             Function::Acoth => self.fn_acoth(args, cell),
+             Function::Cot => self.fn_cot(args, cell),
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -70,6 +70,7 @@ mod test;
+ #[cfg(any(test, feature = "mock_time"))]
+ pub mod mock_time;
+ 
++pub use functions::xlsx_function_prefix;
+ pub use locale::get_supported_locales;
+ pub use model::get_milliseconds_since_epoch;
+ pub use model::FmtSettings;
+--- a/src/test/test_date_and_time.rs
++++ b/src/test/test_date_and_time.rs
+@@ -137,9 +137,10 @@ fn test_day_small_serial() {
+     model.evaluate();
+ 
+     assert_eq!(model._get_text("A1"), *"#NUM!");
+-    assert_eq!(model._get_text("A2"), *"#NUM!");
+-    // Excel thinks is Feb 29, 1900
+-    assert_eq!(model._get_text("A3"), *"28");
++    // Serial 0 is 0 January 1900, as Excel has it.
++    assert_eq!(model._get_text("A2"), *"0");
++    // Excel's fictional Feb 29, 1900
++    assert_eq!(model._get_text("A3"), *"29");
+ 
+     // From now on everyone agrees
+     assert_eq!(model._get_text("A4"), *"1");
+@@ -157,7 +158,8 @@ fn test_month_small_serial() {
+     model.evaluate();
+ 
+     assert_eq!(model._get_text("A1"), *"#NUM!");
+-    assert_eq!(model._get_text("A2"), *"#NUM!");
++    // Serial 0 is 0 January 1900, as Excel has it.
++    assert_eq!(model._get_text("A2"), *"1");
+     // We agree with Excel here (We are both in Feb)
+     assert_eq!(model._get_text("A3"), *"2");
+ 
+@@ -177,7 +179,8 @@ fn test_year_small_serial() {
+     model.evaluate();
+ 
+     assert_eq!(model._get_text("A1"), *"#NUM!");
+-    assert_eq!(model._get_text("A2"), *"#NUM!");
++    // Serial 0 is 0 January 1900, as Excel has it.
++    assert_eq!(model._get_text("A2"), *"1900");
+ 
+     assert_eq!(model._get_text("A3"), *"1900");
+ 
+@@ -195,24 +198,27 @@ fn test_date_early_dates() {
+ 
+     model.evaluate();
+ 
+-    // This is 1 in Excel, we agree with Google Docs
++    // Excel counts 1900-01-01 as 1 …
+     assert_eq!(model._get_text("A1"), *"1/1/1900");
+     assert_eq!(
+         model.get_cell_value_by_ref("Sheet1!A1"),
+-        Ok(CellValue::Number(2.0))
++        Ok(CellValue::Number(1.0))
+     );
+ 
+-    // 1900 was not a leap year, this is a bug in EXCEL
+-    // This would be 60 in Excel
++    // … and so 1900-02-28 as 59, because it also counts a 29 February 1900
++    // that never was (Lotus 1-2-3's leap-year bug, kept for compatibility).
+     assert_eq!(model._get_text("A2"), *"2/28/1900");
+     assert_eq!(
+         model.get_cell_value_by_ref("Sheet1!A2"),
+-        Ok(CellValue::Number(60.0))
++        Ok(CellValue::Number(59.0))
+     );
+ 
+-    // This does not agree with Excel, instead of mistakenly allowing
+-    // for Feb 29, it will auto-wrap to the next day after Feb 28.
+-    assert_eq!(model._get_text("B2"), *"3/1/1900");
++    // That fictional day is serial 60.
++    assert_eq!(model._get_text("B2"), *"2/29/1900");
++    assert_eq!(
++        model.get_cell_value_by_ref("Sheet1!B2"),
++        Ok(CellValue::Number(60.0))
++    );
+ 
+     // This agrees with Excel from he onward
+     assert_eq!(model._get_text("A3"), *"3/1/1900");

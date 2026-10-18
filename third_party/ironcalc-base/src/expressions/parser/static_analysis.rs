@@ -850,6 +850,18 @@ fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+/// AGGREGATE: the function and options numbers, then references or one
+/// array and its k.
+fn args_signature_aggregate(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 3 {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Vector; arg_count];
+    result[0] = Signature::Scalar;
+    result[1] = Signature::Scalar;
+    result
+}
+
 fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
     if arg_count > 2 {
         vec![Signature::Error; arg_count]
@@ -1259,6 +1271,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Delta => args_signature_scalars(arg_count, 1, 1),
         Function::Gestep => args_signature_scalars(arg_count, 1, 1),
         Function::Subtotal => args_signature_npv(arg_count),
+        Function::Aggregate => args_signature_aggregate(arg_count),
         Function::Rand => args_signature_no_args(arg_count),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
@@ -1930,6 +1943,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Delta => not_implemented(args),
         Function::Gestep => not_implemented(args),
         Function::Subtotal => not_implemented(args),
+        Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),

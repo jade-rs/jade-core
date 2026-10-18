@@ -192,12 +192,15 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         | TextToken::ElapsedSecondPadded
                 )
             });
-            let date = from_excel_date(if has_clock {
+            let serial = if has_clock {
                 total_seconds.div_euclid(86400)
             } else {
                 value as i64
-            })
-            .ok();
+            };
+            let date = from_excel_date(serial).ok();
+            // Excel's fictional 29 February 1900 reads as the 28th's month
+            // and year, and as the 29th.
+            let leap_day_1900 = serial == 60 && !crate::date_system::is_1904();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -223,7 +226,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::Period => {}
                     TextToken::Day => match date {
                         Some(date) => {
-                            let day = date.day() as usize;
+                            let day = if leap_day_1900 {
+                                29
+                            } else {
+                                date.day() as usize
+                            };
                             text = format!("{text}{day}");
                         }
                         None => {
@@ -245,7 +252,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                 }
                             }
                         };
-                        let day = date.day() as usize;
+                        let day = if leap_day_1900 {
+                            29
+                        } else {
+                            date.day() as usize
+                        };
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
