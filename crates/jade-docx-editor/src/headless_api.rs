@@ -11018,6 +11018,116 @@ mod tests {
     }
 
     #[test]
+    fn a_style_applied_in_a_note_or_text_box_is_saved_as_shown() {
+        // Applying a paragraph style keeps the formatting the paragraph
+        // declares and takes the style's run formatting out of its runs. Both
+        // read and wrote only a body paragraph's own XML: in a footnote or a
+        // text box the declared alignment was dropped on screen only, and the
+        // runs' direct size stayed in the file.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let digest = |word_doc: &WordDocument, paragraph: usize| {
+            let paragraph = word_doc.paragraph(paragraph).expect("paragraph");
+            let properties = paragraph.properties.clone().unwrap_or_default();
+            (
+                properties.style.map(|style| style.to_string()),
+                properties.alignment.map(|alignment| alignment.to_string()),
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        (
+                            run.text.clone(),
+                            run.properties.as_ref().and_then(|props| props.font_size),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        };
+        for (fixture, paragraph, first) in [
+            (
+                "footnote.docx",
+                1,
+                HeadlessCommand::SetFontSize {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 6,
+                    font_size: 20.0,
+                },
+            ),
+            (
+                "footnote.docx",
+                1,
+                HeadlessCommand::SetParagraphAlignment {
+                    start_paragraph: 1,
+                    end_paragraph: 1,
+                    alignment: "center".to_string(),
+                },
+            ),
+            (
+                "textbox.docx",
+                1,
+                HeadlessCommand::SetFontSize {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 2,
+                    font_size: 20.0,
+                },
+            ),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let mut command_executor = CommandExecutor::new();
+            for command in [
+                first.clone(),
+                HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: paragraph,
+                    end_paragraph: paragraph,
+                    style_id: Some("Heading1".to_string()),
+                },
+            ] {
+                apply_headless_commands_with_executor_to_document(
+                    &mut word_doc,
+                    &mut command_executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .expect("edit applies");
+            }
+            let reload = |word_doc: &WordDocument| {
+                executor::block_on(WordDocument::load(
+                    &word_doc.export_docx().expect("export"),
+                    &Options::default(),
+                ))
+                .expect("reload")
+            };
+            assert_eq!(
+                digest(&word_doc, paragraph),
+                digest(&reload(&word_doc), paragraph),
+                "{fixture} after {first:?}"
+            );
+            let mut selection = None;
+            command_executor
+                .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                .expect("undo the style");
+            assert_eq!(
+                digest(&word_doc, paragraph),
+                digest(&reload(&word_doc), paragraph),
+                "{fixture} after undoing the style"
+            );
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
