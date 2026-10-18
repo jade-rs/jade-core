@@ -18885,11 +18885,10 @@ where
                 let mut opportunities = BumpVec::new_in(&render_pass_arena);
                 for (segment_index, prepared) in prepared_segments.iter().enumerate() {
                     for (glyph_index, step) in prepared.glyph_steps.iter().enumerate() {
-                        if step
-                            .text(&prepared.segment.text)
-                            .chars()
-                            .all(char::is_whitespace)
-                        {
+                        if jade_docx_layout::line_wrap::is_justification_space(
+                            step.text(&prepared.segment.text),
+                            paragraph_style.word_platform,
+                        ) {
                             opportunities.push((segment_index, glyph_index));
                         }
                     }

@@ -1668,6 +1668,19 @@ pub fn east_asian_justification_gap(prev: &str, next: &str) -> Option<EastAsianJ
         .then_some(EastAsianJustificationGap::InterCharacter)
 }
 
+/// Whether justification widens `grapheme` as a word space. Word for Mac
+/// sets the ideographic space as a full-width character: scroll-offset-repro's
+/// justified `　　勤続6ヵ月…` keeps its two leading U+3000 at 10.5pt and puts
+/// the slack into the auto-space gaps around `6`.
+pub fn is_justification_space(
+    grapheme: &str,
+    platform: crate::line_metrics::WordLayoutPlatform,
+) -> bool {
+    !grapheme.is_empty()
+        && grapheme.chars().all(char::is_whitespace)
+        && !(platform == crate::line_metrics::WordLayoutPlatform::Mac && grapheme == "\u{3000}")
+}
+
 /// Splits `extra` over the gaps of an East Asian line the way Word does:
 /// auto-space boundaries first, each up to its auto-space width
 /// (`em_share × em`), then the remainder evenly over the inter-character gaps.
@@ -12485,6 +12498,19 @@ mod tests {
             "{:?}",
             first.layout
         );
+    }
+
+    #[test]
+    fn mac_justification_leaves_the_ideographic_space_unstretched() {
+        use crate::line_metrics::WordLayoutPlatform;
+        assert!(is_justification_space(" ", WordLayoutPlatform::Mac));
+        assert!(!is_justification_space("\u{3000}", WordLayoutPlatform::Mac));
+        assert!(is_justification_space(
+            "\u{3000}",
+            WordLayoutPlatform::Windows
+        ));
+        assert!(!is_justification_space("あ", WordLayoutPlatform::Mac));
+        assert!(!is_justification_space("", WordLayoutPlatform::Mac));
     }
 
     #[test]
