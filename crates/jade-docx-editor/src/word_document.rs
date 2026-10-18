@@ -16694,13 +16694,19 @@ impl WordDocument {
         let comment_id =
             self.append_comment_to_part(&comments_part_path, &text, author, initials, date)?;
 
-        let reference_run_id = {
+        let (reference_run_id, inside_hyperlink) = {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+            // Both ends inside one hyperlink: the markers and the reference run
+            // go inside it too, matching the model, where the reference run
+            // sits among the hyperlink's runs.
+            let (marker_parent_id, inside_hyperlink) =
+                Self::shared_hyperlink_of_runs(raw, paragraph_id, start_run_id, end_run_id)
+                    .map_or((paragraph_id, false), |id| (id, true));
             let (start_child_index, end_child_index) =
-                Self::locate_run_child_indices(raw, paragraph_id, start_run_id, end_run_id)?;
+                Self::locate_run_child_indices(raw, marker_parent_id, start_run_id, end_run_id)?;
 
             let start_marker = raw.create_element(
                 "w:commentRangeStart",
@@ -16711,7 +16717,7 @@ impl WordDocument {
                 Vec::new(),
             );
             raw.insert_node(
-                paragraph_id,
+                marker_parent_id,
                 start_child_index,
                 XmlNode::Element(start_marker),
             )
@@ -16729,8 +16735,12 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(paragraph_id, end_insert_index, XmlNode::Element(end_marker))
-                .map_err(|err| err.to_string())?;
+            raw.insert_node(
+                marker_parent_id,
+                end_insert_index,
+                XmlNode::Element(end_marker),
+            )
+            .map_err(|err| err.to_string())?;
 
             let comment_reference = raw.create_element(
                 "w:commentReference",
@@ -16742,13 +16752,15 @@ impl WordDocument {
             );
             let reference_run =
                 raw.create_element("w:r", Vec::new(), vec![XmlNode::Element(comment_reference)]);
-            raw.insert_node(
-                paragraph_id,
-                end_insert_index.saturating_add(1),
-                XmlNode::Element(reference_run),
-            )
-            .map_err(|err| err.to_string())?
-            .ok_or_else(|| "failed to insert comment reference run".to_string())?
+            let reference_run_id = raw
+                .insert_node(
+                    marker_parent_id,
+                    end_insert_index.saturating_add(1),
+                    XmlNode::Element(reference_run),
+                )
+                .map_err(|err| err.to_string())?
+                .ok_or_else(|| "failed to insert comment reference run".to_string())?;
+            (reference_run_id, inside_hyperlink)
         };
 
         {
@@ -16774,6 +16786,14 @@ impl WordDocument {
                 .comment_markers
                 .sort_by_key(|marker| marker.position);
 
+            let hyperlink = if inside_hyperlink {
+                paragraph
+                    .runs
+                    .get(end_run_index_exclusive.saturating_sub(1))
+                    .and_then(|run| run.hyperlink.clone())
+            } else {
+                None
+            };
             paragraph.runs.insert(
                 end_run_index_exclusive.min(paragraph.runs.len()),
                 Run {
@@ -16783,7 +16803,7 @@ impl WordDocument {
                     text_box: None,
                     math: None,
                     field: None,
-                    hyperlink: None,
+                    hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
                     revision_node_id: None,
@@ -27302,6 +27322,29 @@ impl WordDocument {
             }
             _ => false,
         }
+    }
+
+    /// The `w:hyperlink` directly under `paragraph_id` that holds both runs,
+    /// if they share one.
+    fn shared_hyperlink_of_runs(
+        raw: &DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        start_run_id: XmlNodeId,
+        end_run_id: XmlNodeId,
+    ) -> Option<XmlNodeId> {
+        raw.element(paragraph_id)?
+            .children
+            .iter()
+            .find_map(|child| match child {
+                XmlNode::Element(element)
+                    if element.name == "w:hyperlink"
+                        && Self::child_contains_run_id(child, start_run_id)
+                        && Self::child_contains_run_id(child, end_run_id) =>
+                {
+                    Some(element.id)
+                }
+                _ => None,
+            })
     }
 
     fn locate_run_child_indices(
