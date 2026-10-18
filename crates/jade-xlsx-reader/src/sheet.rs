@@ -8,8 +8,8 @@ use quick_xml::Reader;
 
 use crate::error::Result;
 use crate::model::{
-    Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter, Hyperlink,
-    PageBreak, Row, Sheet, SheetVisibility,
+    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
+    Hyperlink, PageBreak, Row, Sheet, SheetVisibility,
 };
 use jade_opc::{local_name, Relationships};
 
@@ -93,6 +93,7 @@ pub fn parse_sheet_with_relationships(
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     };
 
     let mut row: Option<Row> = None;
@@ -227,7 +228,17 @@ pub fn parse_sheet_with_relationships(
                         raw_value = Some(String::new());
                     }
                     b"f" => {
-                        if attribute_value(element, b"t")?.as_deref() == Some("shared") {
+                        let kind = attribute_value(element, b"t")?;
+                        if kind.as_deref() == Some("array") {
+                            if let (Some(anchor), Some(range)) = (
+                                cell.as_ref().map(|cell| cell.reference),
+                                attribute_value(element, b"ref")?
+                                    .and_then(|range| CellRange::parse(&range).ok()),
+                            ) {
+                                sheet.array_formulas.push(ArrayFormula { anchor, range });
+                            }
+                        }
+                        if kind.as_deref() == Some("shared") {
                             shared_formula_index = attribute_value(element, b"si")?
                                 .and_then(|value| value.parse().ok());
                         }
