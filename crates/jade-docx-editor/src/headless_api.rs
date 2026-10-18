@@ -11555,6 +11555,113 @@ mod tests {
     }
 
     #[test]
+    fn undoing_a_style_after_other_undone_edits_restores_the_run_formatting() {
+        // Applying a style takes the style's run formatting out of the runs'
+        // `w:rPr`, and its undo puts it back by the parent's id. Edits made
+        // and undone in between rebuild those elements, so the 9pt size given
+        // before the style came back on screen and was lost from the file.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/2col.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let mut command_executor = CommandExecutor::new();
+        let mut selection = None;
+        let apply = |word_doc: &mut WordDocument,
+                     command_executor: &mut CommandExecutor,
+                     command: HeadlessCommand| {
+            apply_headless_commands_with_executor_to_document(
+                word_doc,
+                command_executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("edit applies");
+        };
+        apply(
+            &mut word_doc,
+            &mut command_executor,
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 0,
+                start_offset: 855,
+                end_paragraph: 0,
+                end_offset: 2348,
+                font_size: 9.0,
+            },
+        );
+        apply(
+            &mut word_doc,
+            &mut command_executor,
+            HeadlessCommand::SetParagraphStyle {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                style_id: Some("1".to_string()),
+            },
+        );
+        apply(
+            &mut word_doc,
+            &mut command_executor,
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 0,
+                offset: 1272,
+                count: 1,
+            },
+        );
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the break");
+        apply(
+            &mut word_doc,
+            &mut command_executor,
+            HeadlessCommand::DeleteText {
+                paragraph: 0,
+                offset: 1987,
+                direction: jade_docx_headless_api::HeadlessDeleteDirection::Backward,
+                count: 1,
+            },
+        );
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the deletion");
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo the style");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .flat_map(|run| {
+                    let size = run.properties.as_ref().and_then(|props| props.font_size);
+                    run.text.chars().map(move |_| size)
+                })
+                .collect::<Vec<_>>()
+        };
+        let live = sizes(&word_doc);
+        assert_eq!(live[900], Some(9.0), "the size given before the style");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let at_nine =
+            |sizes: &[Option<f32>]| sizes.iter().filter(|size| **size == Some(9.0)).count();
+        let saved = sizes(&reloaded);
+        assert!(
+            saved == live,
+            "{} characters at 9pt on screen, {} saved",
+            at_nine(&live),
+            at_nine(&saved)
+        );
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
