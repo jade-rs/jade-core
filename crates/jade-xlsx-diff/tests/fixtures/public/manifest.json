@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "retrieved_at": "2026-07-20",
+  "fixtures": [
+    {
+      "id": "ons-population-v15",
+      "file": "ons-population-v15.xlsx",
+      "source_url": "https://www.ons.gov.uk/file?uri=%2Fpeoplepopulationandcommunity%2Fpopulationandmigration%2Fpopulationestimates%2Fdatasets%2Fpopulationestimatestimeseriesdataset%2Fcurrent%2Fprevious%2Fv15%2Fpop.xlsx",
+      "source_page": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/populationestimatestimeseriesdataset/current",
+      "revision": "v15 (superseded 2025-11-27)",
+      "license": "Open Government Licence v3.0",
+      "license_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "attribution": "Source: Office for National Statistics licensed under the Open Government Licence v3.0.",
+      "sha256": "ae6eb26559d2aa5e985e2a4de78ced7d3b6774f3166b59b9539d782cf85563e3",
+      "bytes": 7133,
+      "tags": ["government", "real-world", "time-series", "numbers"]
+    },
+    {
+      "id": "corexlsx-dates",
+      "file": "corexlsx-dates.xlsx",
+      "source_url": "https://raw.githubusercontent.com/CoreOffice/CoreXLSX/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/Tests/CoreXLSXTests/Fixtures/Dates.xlsx",
+      "source_page": "https://github.com/CoreOffice/CoreXLSX/blob/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/Tests/CoreXLSXTests/Fixtures/Dates.xlsx",
+      "revision": "1391f3832ea2eeee5186ea8abb81ea49ed0609cc",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CoreOffice/CoreXLSX/blob/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/LICENSE.md",
+      "license_file": "LICENSE-APACHE-2.0.txt",
+      "attribution": "Copyright CoreXLSX contributors; fixture redistributed under Apache-2.0.",
+      "sha256": "e3bfb6d49d8429ed53a2d675e86c8ed17db9310d1609d835e8bcaffc62519afb",
+      "bytes": 7745,
+      "tags": ["dates", "typed-values", "styles"]
+    },
+    {
+      "id": "corexlsx-categories",
+      "file": "corexlsx-categories.xlsx",
+      "source_url": "https://raw.githubusercontent.com/CoreOffice/CoreXLSX/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/Tests/CoreXLSXTests/Fixtures/categories.xlsx",
+      "source_page": "https://github.com/CoreOffice/CoreXLSX/blob/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/Tests/CoreXLSXTests/Fixtures/categories.xlsx",
+      "revision": "1391f3832ea2eeee5186ea8abb81ea49ed0609cc",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CoreOffice/CoreXLSX/blob/1391f3832ea2eeee5186ea8abb81ea49ed0609cc/LICENSE.md",
+      "license_file": "LICENSE-APACHE-2.0.txt",
+      "attribution": "Copyright CoreXLSX contributors; fixture redistributed under Apache-2.0.",
+      "sha256": "0d82f7c2e64cd2ef1226ca9ddc362ac82cf5940828026daf2cf79eb625580b72",
+      "bytes": 6549,
+      "tags": ["categories", "strings", "numbers"]
+    },
+    {
+      "id": "calamine-shared-formula",
+      "file": "calamine-shared-formula.xlsx",
+      "source_url": "https://raw.githubusercontent.com/tafia/calamine/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/shared_formula_simple.xlsx",
+      "source_page": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/shared_formula_simple.xlsx",
+      "revision": "c53aff3d81a7ae0838fb975374afde6aa6743552",
+      "license": "MIT",
+      "license_url": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/LICENSE-MIT.md",
+      "license_file": "LICENSE-CALAMINE-MIT.txt",
+      "attribution": "Copyright (c) 2016 Johann Tuffe and calamine contributors; fixture redistributed under MIT.",
+      "sha256": "aa951fd8c55f7a9104515736e497e2dd393daec1077cf9401162070555ee6fe4",
+      "bytes": 10178,
+      "tags": ["formulas", "shared-formulas"]
+    },
+    {
+      "id": "calamine-merge-cells",
+      "file": "calamine-merge-cells.xlsx",
+      "source_url": "https://raw.githubusercontent.com/tafia/calamine/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/merge_cells.xlsx",
+      "source_page": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/merge_cells.xlsx",
+      "revision": "c53aff3d81a7ae0838fb975374afde6aa6743552",
+      "license": "MIT",
+      "license_url": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/LICENSE-MIT.md",
+      "license_file": "LICENSE-CALAMINE-MIT.txt",
+      "attribution": "Copyright (c) 2016 Johann Tuffe and calamine contributors; fixture redistributed under MIT.",
+      "sha256": "34f6b2779f49991859045791d8be0c5027e09b395f067c4363e38813d1e6431c",
+      "bytes": 8948,
+      "tags": ["merged-cells", "multiple-sheets"]
+    },
+    {
+      "id": "calamine-inventory-table",
+      "file": "calamine-inventory-table.xlsx",
+      "source_url": "https://raw.githubusercontent.com/tafia/calamine/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/inventory-table.xlsx",
+      "source_page": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/inventory-table.xlsx",
+      "revision": "c53aff3d81a7ae0838fb975374afde6aa6743552",
+      "license": "MIT",
+      "license_url": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/LICENSE-MIT.md",
+      "license_file": "LICENSE-CALAMINE-MIT.txt",
+      "attribution": "Copyright (c) 2016 Johann Tuffe and calamine contributors; fixture redistributed under MIT.",
+      "sha256": "d63fa89e938aad9635cd556f683b901cc1c118bf11b494b1156c4711e5329631",
+      "bytes": 8347,
+      "tags": ["table", "inventory", "formulas", "typed-values"]
+    },
+    {
+      "id": "calamine-any-sheets",
+      "file": "calamine-any-sheets.xlsx",
+      "source_url": "https://raw.githubusercontent.com/tafia/calamine/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/any_sheets.xlsx",
+      "source_page": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/tests/any_sheets.xlsx",
+      "revision": "c53aff3d81a7ae0838fb975374afde6aa6743552",
+      "license": "MIT",
+      "license_url": "https://github.com/tafia/calamine/blob/c53aff3d81a7ae0838fb975374afde6aa6743552/LICENSE-MIT.md",
+      "license_file": "LICENSE-CALAMINE-MIT.txt",
+      "attribution": "Copyright (c) 2016 Johann Tuffe and calamine contributors; fixture redistributed under MIT.",
+      "sha256": "fba48e0141f847d80738a4417f0a336cba92e4ac692d8dd7516eac41e32c9e4f",
+      "bytes": 14804,
+      "tags": ["multiple-sheets", "hidden-sheet", "empty-sheet"]
+    }
+  ]
+}

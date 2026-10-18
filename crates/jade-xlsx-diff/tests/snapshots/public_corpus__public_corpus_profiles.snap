@@ -1,0 +1,250 @@
+---
+source: tests/public_corpus.rs
+expression: profiles
+---
+[
+  {
+    "id": "ons-population-v15",
+    "bytes": 7133,
+    "sheets": [
+      {
+        "name": "data",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 61,
+        "columns": 8,
+        "non_empty_cells": 488,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      }
+    ],
+    "cells": 488,
+    "non_empty_cells": 488,
+    "formula_cells": 0,
+    "merged_ranges": 0,
+    "value_kinds": [
+      [
+        "number",
+        378
+      ],
+      [
+        "string",
+        110
+      ]
+    ]
+  },
+  {
+    "id": "corexlsx-dates",
+    "bytes": 7745,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 1,
+        "columns": 3,
+        "non_empty_cells": 3,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      }
+    ],
+    "cells": 3,
+    "non_empty_cells": 3,
+    "formula_cells": 0,
+    "merged_ranges": 0,
+    "value_kinds": [
+      [
+        "date_time",
+        2
+      ],
+      [
+        "string",
+        1
+      ]
+    ]
+  },
+  {
+    "id": "corexlsx-categories",
+    "bytes": 6549,
+    "sheets": [
+      {
+        "name": "Sheet 1",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 15,
+        "columns": 6,
+        "non_empty_cells": 40,
+        "formula_cells": 2,
+        "merged_ranges": 1
+      }
+    ],
+    "cells": 90,
+    "non_empty_cells": 40,
+    "formula_cells": 2,
+    "merged_ranges": 1,
+    "value_kinds": [
+      [
+        "empty",
+        50
+      ],
+      [
+        "number",
+        12
+      ],
+      [
+        "string",
+        28
+      ]
+    ]
+  },
+  {
+    "id": "calamine-shared-formula",
+    "bytes": 10178,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 3,
+        "columns": 2,
+        "non_empty_cells": 6,
+        "formula_cells": 3,
+        "merged_ranges": 0
+      }
+    ],
+    "cells": 6,
+    "non_empty_cells": 6,
+    "formula_cells": 3,
+    "merged_ranges": 0,
+    "value_kinds": [
+      [
+        "number",
+        6
+      ]
+    ]
+  },
+  {
+    "id": "calamine-merge-cells",
+    "bytes": 8948,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 2,
+        "columns": 3,
+        "non_empty_cells": 4,
+        "formula_cells": 0,
+        "merged_ranges": 3
+      }
+    ],
+    "cells": 6,
+    "non_empty_cells": 4,
+    "formula_cells": 0,
+    "merged_ranges": 3,
+    "value_kinds": [
+      [
+        "empty",
+        2
+      ],
+      [
+        "string",
+        4
+      ]
+    ]
+  },
+  {
+    "id": "calamine-inventory-table",
+    "bytes": 8347,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 5,
+        "columns": 3,
+        "non_empty_cells": 15,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      }
+    ],
+    "cells": 15,
+    "non_empty_cells": 15,
+    "formula_cells": 0,
+    "merged_ranges": 0,
+    "value_kinds": [
+      [
+        "number",
+        8
+      ],
+      [
+        "string",
+        7
+      ]
+    ]
+  },
+  {
+    "id": "calamine-any-sheets",
+    "bytes": 14804,
+    "sheets": [
+      {
+        "name": "Visible",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 5,
+        "columns": 2,
+        "non_empty_cells": 7,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      },
+      {
+        "name": "Hidden",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 0,
+        "columns": 0,
+        "non_empty_cells": 0,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      },
+      {
+        "name": "VeryHidden",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 0,
+        "columns": 0,
+        "non_empty_cells": 0,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      },
+      {
+        "name": "Chart",
+        "start_row": 1,
+        "start_col": 1,
+        "rows": 0,
+        "columns": 0,
+        "non_empty_cells": 0,
+        "formula_cells": 0,
+        "merged_ranges": 0
+      }
+    ],
+    "cells": 10,
+    "non_empty_cells": 7,
+    "formula_cells": 0,
+    "merged_ranges": 0,
+    "value_kinds": [
+      [
+        "empty",
+        3
+      ],
+      [
+        "number",
+        6
+      ],
+      [
+        "string",
+        1
+      ]
+    ]
+  }
+]

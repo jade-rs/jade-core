@@ -1,0 +1,134 @@
+---
+source: crates/xlsx-diff/tests/stress.rs
+expression: "serde_json::json!({\n    \"input\": config, \"summary\": diff.summary, \"sheet\": diff.sheets[0],\n})"
+---
+{
+  "input": {
+    "insert_at_column": 8192,
+    "old_column_count": 16383
+  },
+  "sheet": {
+    "alignment": {
+      "column_ambiguous_signature_groups": 0,
+      "low_confidence_column_matches": 0,
+      "low_confidence_row_matches": 2,
+      "minimum_column_confidence": 1.0,
+      "minimum_row_confidence": 0.7041880289713542,
+      "row_ambiguous_signature_groups": 0
+    },
+    "cell_changes": [],
+    "column_changes": [
+      {
+        "ambiguous": false,
+        "confidence": null,
+        "header": "inserted-header",
+        "kind": "added",
+        "new_index": 8192,
+        "old_index": null
+      }
+    ],
+    "match_confidence": 1.0,
+    "merge_changes": [],
+    "new_name": "wide-sparse",
+    "new_position": 1,
+    "old_name": "wide-sparse",
+    "old_position": 1,
+    "order_changed": false,
+    "row_changes": [],
+    "status": "modified",
+    "table_regions": [
+      {
+        "alignment": {
+          "column_ambiguous_signature_groups": 0,
+          "low_confidence_column_matches": 0,
+          "low_confidence_row_matches": 0,
+          "minimum_column_confidence": 1.0,
+          "minimum_row_confidence": 1.0,
+          "row_ambiguous_signature_groups": 0
+        },
+        "cell_changes": [],
+        "column_changes": [],
+        "new_range": {
+          "end_col": 1,
+          "end_row": 2,
+          "start_col": 1,
+          "start_row": 1
+        },
+        "old_range": {
+          "end_col": 1,
+          "end_row": 2,
+          "start_col": 1,
+          "start_row": 1
+        },
+        "row_changes": [],
+        "status": "unchanged"
+      },
+      {
+        "alignment": {
+          "column_ambiguous_signature_groups": 0,
+          "low_confidence_column_matches": 0,
+          "low_confidence_row_matches": 0,
+          "minimum_column_confidence": null,
+          "minimum_row_confidence": null,
+          "row_ambiguous_signature_groups": 0
+        },
+        "cell_changes": [],
+        "column_changes": [],
+        "new_range": {
+          "end_col": 8192,
+          "end_row": 2,
+          "start_col": 8192,
+          "start_row": 1
+        },
+        "old_range": null,
+        "row_changes": [],
+        "status": "added"
+      },
+      {
+        "alignment": {
+          "column_ambiguous_signature_groups": 0,
+          "low_confidence_column_matches": 0,
+          "low_confidence_row_matches": 0,
+          "minimum_column_confidence": 1.0,
+          "minimum_row_confidence": 1.0,
+          "row_ambiguous_signature_groups": 0
+        },
+        "cell_changes": [],
+        "column_changes": [],
+        "new_range": {
+          "end_col": 16384,
+          "end_row": 2,
+          "start_col": 16384,
+          "start_row": 1
+        },
+        "old_range": {
+          "end_col": 16383,
+          "end_row": 2,
+          "start_col": 16383,
+          "start_row": 1
+        },
+        "row_changes": [],
+        "status": "unchanged"
+      }
+    ]
+  },
+  "summary": {
+    "cell_styles_changed": 0,
+    "cells_changed": 0,
+    "columns_added": 1,
+    "columns_moved": 0,
+    "columns_removed": 0,
+    "formulas_changed": 0,
+    "merged_cells_added": 0,
+    "merged_cells_removed": 0,
+    "rows_added": 0,
+    "rows_moved": 0,
+    "rows_removed": 0,
+    "sheet_order_changes": 0,
+    "sheets_added": 0,
+    "sheets_removed": 0,
+    "sheets_renamed": 0,
+    "table_regions_added": 1,
+    "table_regions_removed": 0
+  }
+}

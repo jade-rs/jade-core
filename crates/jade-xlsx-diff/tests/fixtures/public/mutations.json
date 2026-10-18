@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "ons-compound-row-column-insertion",
+      "fixture": "ons-population-v15.xlsx",
+      "operations": [
+        { "kind": "insert_generated_row", "sheet": "data", "at": 32, "prefix": "P3-ONS-ROW" },
+        { "kind": "insert_generated_column", "sheet": "data", "at": 5, "prefix": "P3-ONS-COLUMN" }
+      ],
+      "expected_events": [
+        "column:added:data:5",
+        "row:added:data:32"
+      ]
+    },
+    {
+      "id": "corexlsx-date-value-change",
+      "fixture": "corexlsx-dates.xlsx",
+      "operations": [
+        { "kind": "set_cell_value", "sheet": "Sheet1", "row": 1, "column": 2, "value": "2026-07-20T00:00:00" }
+      ],
+      "expected_events": [
+        "cell:value_changed:Sheet1:B1->B1"
+      ]
+    },
+    {
+      "id": "corexlsx-sparse-cell-change",
+      "fixture": "corexlsx-categories.xlsx",
+      "operations": [
+        { "kind": "set_cell_value", "sheet": "Sheet 1", "row": 5, "column": 2, "value": "P3 Item 1" }
+      ],
+      "expected_events": [
+        "cell:value_changed:Sheet 1:B5->B5"
+      ]
+    },
+    {
+      "id": "calamine-shared-formula-change",
+      "fixture": "calamine-shared-formula.xlsx",
+      "operations": [
+        { "kind": "set_cell_formula", "sheet": "Sheet1", "row": 2, "column": 2, "formula": "=A2*3" }
+      ],
+      "expected_events": [
+        "cell:formula_changed:Sheet1:B2->B2"
+      ]
+    },
+    {
+      "id": "calamine-merge-addition",
+      "fixture": "calamine-merge-cells.xlsx",
+      "operations": [
+        { "kind": "add_merge", "sheet": "Sheet1", "start_row": 3, "start_column": 1, "end_row": 3, "end_column": 2 }
+      ],
+      "expected_events": [
+        "merge:added:Sheet1:A3:B3"
+      ]
+    },
+    {
+      "id": "calamine-inventory-column-insertion",
+      "fixture": "calamine-inventory-table.xlsx",
+      "operations": [
+        { "kind": "insert_generated_column", "sheet": "Sheet1", "at": 2, "prefix": "P3-INVENTORY-COLUMN" }
+      ],
+      "expected_events": [
+        "column:added:Sheet1:2"
+      ]
+    },
+    {
+      "id": "calamine-multi-sheet-rename-and-addition",
+      "fixture": "calamine-any-sheets.xlsx",
+      "operations": [
+        { "kind": "rename_sheet", "from": "Visible", "to": "Visible 2026" },
+        { "kind": "add_generated_sheet", "name": "P3 Added", "rows": 3, "columns": 2, "prefix": "P3-SHEET" }
+      ],
+      "expected_events": [
+        "sheet:added:P3 Added",
+        "sheet:renamed:Visible->Visible 2026"
+      ]
+    }
+  ]
+}
