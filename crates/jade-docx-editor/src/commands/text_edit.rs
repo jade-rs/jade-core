@@ -633,7 +633,35 @@ pub fn apply_text_edit(
         }
     }
 
+    // Typed text is never part of somebody's tracked change, whichever run
+    // took it (an insertion emptied by a deletion, say); with tracking on,
+    // the caller marks it as an insertion of its own.
+    if !insert.is_empty() {
+        unmark_range(runs, start, start + insert.len(), zero_width);
+    }
+
     normalize_break_runs(runs);
+}
+
+/// Takes the revision off the text in `start..end`, cutting runs there.
+fn unmark_range(runs: &mut Vec<Run>, start: usize, end: usize, zero_width: &ZeroWidthRuns) {
+    let mut offset = 0;
+    let marked = runs.iter().any(|run| {
+        let (from, to) = (offset, offset + run.text.len());
+        offset = to;
+        run.revision.is_some() && from < end && start < to
+    });
+    if !marked {
+        return;
+    }
+    let tail = split_runs_at_preserving_source(runs, end, zero_width);
+    let mut middle = split_runs_at_preserving_source(runs, start, zero_width);
+    for run in middle.iter_mut().filter(|run| !run.text.is_empty()) {
+        run.revision = None;
+        run.revision_node_id = None;
+    }
+    runs.extend(middle);
+    runs.extend(tail);
 }
 
 /// A paragraph's comment anchors, which hold offsets into its text and move
