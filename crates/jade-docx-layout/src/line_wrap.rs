@@ -6146,6 +6146,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     // line takes the digit before it along and splits the number (`2` |
     // `0％`, trust-beneficiary-sale-keep-next page 9), so mend words again.
     prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
+    drop_line_start_auto_space(&mut lines);
     let character_borders = lines.iter().any(line_has_character_border);
     ensure_lines_fit_available_width(
         ctx,
@@ -6160,6 +6161,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     // next line. Reapply kinsoku after that movement so a non-hanging character
     // does not leave its matching opening punctuation at the previous line end.
     enforce_line_start_rules(paragraph_style, &mut lines);
+    drop_line_start_auto_space(&mut lines);
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
     // avoid another full segment walk (and one more during justification).
@@ -7404,6 +7406,27 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
     }
 
     lines.retain(|line| !line.clusters.is_empty() || line.break_range.is_some());
+}
+
+/// A wrapped line's first character has no East Asian neighbour before it:
+/// a cluster moved there by a repair drops the auto spacing it was measured
+/// with at the end of the line above. Word starts trust-beneficiary-sale-
+/// keep-next's wrapped `MLPM`, `V` and `20％` lines at the edge.
+fn drop_line_start_auto_space(lines: &mut [WrappedLine]) {
+    for line in lines.iter_mut().skip(1) {
+        let Some(first) = line.clusters.first_mut() else {
+            continue;
+        };
+        let gap = first.auto_space_leading;
+        if gap <= 0.0 {
+            continue;
+        }
+        if let Some(layout) = first.layout.as_mut() {
+            layout.leading_advance -= gap;
+        }
+        first.width -= gap;
+        first.auto_space_leading = 0.0;
+    }
 }
 
 fn prevent_mid_word_breaks(
@@ -12334,6 +12357,42 @@ mod tests {
                 .map(|line| line.text.as_str())
                 .collect::<Vec<_>>(),
             ["あああ", "20％いい"]
+        );
+    }
+
+    #[test]
+    fn wrapped_line_starting_with_latin_drops_the_auto_space_before_it() {
+        // trust-beneficiary-sale-keep-next pages 5, 8 and 9: Word starts a
+        // wrapped line's `MLPM`, `V` or `20％` at the line's edge; the auto
+        // spacing belongs to the East Asian character left on the line above.
+        let ctx = TestContext::new(10.0);
+        let text = "あああMLPMいい";
+        let paragraph = ParagraphStyle {
+            enable_line_break_rules: true,
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 65.0)
+                .expect("wrap");
+        assert_eq!(
+            collect_line_infos(&lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["あああ", "MLPMいい"]
+        );
+        let first = &lines[1].clusters[0];
+        assert_eq!(first.text, "M");
+        assert_eq!(first.auto_space_leading, 0.0);
+        assert!(
+            first.layout.as_ref().unwrap().leading_advance.abs() < 1e-9,
+            "{:?}",
+            first.layout
         );
     }
 
