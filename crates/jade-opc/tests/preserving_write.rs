@@ -10,7 +10,7 @@ fn archive(method: zip::CompressionMethod) -> Vec<u8> {
     writer.write_all(b"<text>original</text>").unwrap();
     writer.start_file("media.bin", options).unwrap();
     writer.write_all(&vec![17; 512 * 1024]).unwrap();
-    writer.set_comment("archive comment");
+    writer.set_comment("archive comment").unwrap();
     writer.finish().unwrap().into_inner()
 }
 fn raw(

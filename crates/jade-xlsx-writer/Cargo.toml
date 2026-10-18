@@ -6,6 +6,7 @@ license = "MIT"
 
 [dependencies]
 jade-opc = { path = "../jade-opc" }
+jade-xlsx-headless-api = { path = "../jade-xlsx-headless-api" }
 jade-xlsx-reader = { path = "../jade-xlsx-reader" }
 jade-xlsx-layout = { path = "../jade-xlsx-layout" }
 quick-xml = "0.39"

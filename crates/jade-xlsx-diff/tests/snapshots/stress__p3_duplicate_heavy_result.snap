@@ -1,0 +1,96 @@
+---
+source: crates/xlsx-diff/tests/stress.rs
+expression: "serde_json::json!({\n    \"input\": config, \"summary\": first.summary, \"sheet\": first.sheets[0],\n})"
+---
+{
+  "input": {
+    "insert_at_row": 258,
+    "row_count": 512
+  },
+  "sheet": {
+    "alignment": {
+      "column_ambiguous_signature_groups": 0,
+      "low_confidence_column_matches": 0,
+      "low_confidence_row_matches": 0,
+      "minimum_column_confidence": 1.0,
+      "minimum_row_confidence": 1.0,
+      "row_ambiguous_signature_groups": 1
+    },
+    "cell_changes": [],
+    "column_changes": [],
+    "match_confidence": 1.0,
+    "merge_changes": [],
+    "new_name": "duplicates",
+    "new_position": 1,
+    "old_name": "duplicates",
+    "old_position": 1,
+    "order_changed": false,
+    "row_changes": [
+      {
+        "ambiguous": false,
+        "confidence": null,
+        "kind": "added",
+        "new_index": 258,
+        "old_index": null,
+        "preview": "P3-UNIQUE / inserted"
+      }
+    ],
+    "status": "modified",
+    "table_regions": [
+      {
+        "alignment": {
+          "column_ambiguous_signature_groups": 0,
+          "low_confidence_column_matches": 0,
+          "low_confidence_row_matches": 0,
+          "minimum_column_confidence": 1.0,
+          "minimum_row_confidence": 1.0,
+          "row_ambiguous_signature_groups": 1
+        },
+        "cell_changes": [],
+        "column_changes": [],
+        "new_range": {
+          "end_col": 2,
+          "end_row": 514,
+          "start_col": 1,
+          "start_row": 1
+        },
+        "old_range": {
+          "end_col": 2,
+          "end_row": 513,
+          "start_col": 1,
+          "start_row": 1
+        },
+        "row_changes": [
+          {
+            "ambiguous": false,
+            "confidence": null,
+            "kind": "added",
+            "new_index": 258,
+            "old_index": null,
+            "preview": "P3-UNIQUE / inserted"
+          }
+        ],
+        "status": "modified"
+      }
+    ]
+  },
+  "summary": {
+    "cell_styles_changed": 0,
+    "cells_changed": 0,
+    "columns_added": 0,
+    "columns_moved": 0,
+    "columns_removed": 0,
+    "formulas_changed": 0,
+    "merged_cells_added": 0,
+    "merged_cells_removed": 0,
+    "rows_added": 1,
+    "rows_moved": 0,
+    "rows_removed": 0,
+    "sheet_order_changes": 0,
+    "sheets_added": 0,
+    "sheets_removed": 0,
+    "sheets_renamed": 0,
+    "table_regions_added": 0,
+    "table_regions_removed": 0
+  }
+}

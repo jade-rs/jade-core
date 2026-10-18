@@ -40,6 +40,10 @@ pub enum TextToken {
     ElapsedSecond,
     ElapsedSecondPadded,
     AMPM,
+    // Jade: Japanese dates
+    Era(u8),
+    EraYear(u8),
+    JapaneseWeekday(u8),
 }
 pub struct NumberPart {
     pub color: Option<i32>,
@@ -350,6 +354,19 @@ impl Parser {
                     scientific_minus = true;
                 }
                 Token::Separator => {}
+                Token::Locale => {}
+                Token::Era(width) => {
+                    is_date = true;
+                    tokens.push(TextToken::Era(width));
+                }
+                Token::EraYear(width) => {
+                    is_date = true;
+                    tokens.push(TextToken::EraYear(width));
+                }
+                Token::JapaneseWeekday(width) => {
+                    is_date = true;
+                    tokens.push(TextToken::JapaneseWeekday(width));
+                }
                 Token::Raw => {
                     tokens.push(TextToken::Raw);
                 }

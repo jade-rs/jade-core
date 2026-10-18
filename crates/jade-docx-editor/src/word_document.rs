@@ -296,10 +296,17 @@ pub(crate) fn rebase_paragraph_style_properties(
 /// `w:pPr` (`declared`), from `before`, after a style was merged over them:
 /// applying a paragraph style keeps direct paragraph formatting, as in Word,
 /// and the saved `w:pPr` keeps it too.
+///
+/// `w:spacing` and `w:ind` are inherited attribute by attribute: a paragraph
+/// declaring only `w:before` still takes its space after from the style, as a
+/// reload reads it. Only the attributes it declares (`declared_attribute`)
+/// come back from `before`; putting the whole element back dropped the
+/// style's other spacing, and the paragraph sat higher than after a reload.
 pub(crate) fn keep_declared_paragraph_properties(
     props: &mut ParagraphProperties,
     before: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! keep {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -313,8 +320,6 @@ pub(crate) fn keep_declared_paragraph_properties(
     keep!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -332,6 +337,48 @@ pub(crate) fn keep_declared_paragraph_properties(
         numbering => "w:numPr",
         contextual_spacing => "w:contextualSpacing",
     );
+    macro_rules! keep_attributes {
+        ($target:expr, $source:expr, $tag:literal, $($field:ident => [$($attribute:literal),+]),* $(,)?) => {
+            $(
+                if $(declared_attribute($tag, $attribute))||+ {
+                    $target.$field = $source.$field.clone();
+                }
+            )*
+        };
+    }
+    if declared("w:spacing") {
+        let mut spacing = props.spacing.clone().unwrap_or_default();
+        let direct = before.spacing.clone().unwrap_or_default();
+        keep_attributes!(spacing, direct, "w:spacing",
+            before => ["w:before"],
+            after => ["w:after"],
+            before_lines => ["w:beforeLines"],
+            after_lines => ["w:afterLines"],
+            line => ["w:line"],
+            // The reader gives a `w:line` without a rule the rule "auto".
+            line_rule => ["w:line", "w:lineRule"],
+        );
+        props.spacing = (spacing != Spacing::default()).then_some(spacing);
+    }
+    if declared("w:ind") {
+        let mut indent = props.indent.clone().unwrap_or_default();
+        let direct = before.indent.clone().unwrap_or_default();
+        keep_attributes!(indent, direct, "w:ind",
+            left => ["w:left"],
+            right => ["w:right"],
+            start => ["w:start"],
+            end => ["w:end"],
+            first_line => ["w:firstLine"],
+            hanging => ["w:hanging"],
+            left_chars => ["w:leftChars"],
+            right_chars => ["w:rightChars"],
+            start_chars => ["w:startChars"],
+            end_chars => ["w:endChars"],
+            first_line_chars => ["w:firstLineChars"],
+            hanging_chars => ["w:hangingChars"],
+        );
+        props.indent = (indent != Indent::default()).then_some(indent);
+    }
 }
 
 /// Replaces the run properties `old` resolves to with what `new` resolves to,
@@ -8867,14 +8914,11 @@ impl WordDocument {
             .and_then(|properties| properties.page_number_type.clone())
             .unwrap_or_default();
         let format = settings.format.as_deref().unwrap_or("decimal");
-        settings.format = Some(match format.to_ascii_lowercase().as_str() {
-            "lowerroman" => "lowerRoman".to_string(),
-            "upperroman" => "upperRoman".to_string(),
-            "lowerletter" => "lowerLetter".to_string(),
-            "upperletter" => "upperLetter".to_string(),
-            "decimal" => "decimal".to_string(),
-            _ => format.to_string(),
-        });
+        settings.format = Some(
+            jade_docx_reader::numbering::canonical_number_format(format)
+                .unwrap_or(format)
+                .to_string(),
+        );
         settings
     }
 
@@ -8888,16 +8932,8 @@ impl WordDocument {
         start: Option<u32>,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        const FORMATS: &[&str] = &[
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ];
-        if !FORMATS.contains(&format) {
-            return Err(format!("unsupported page-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported page-number format: {format}"))?;
         if start == Some(0) {
             return Err("page-number start must be at least 1".to_string());
         }
@@ -9073,17 +9109,8 @@ impl WordDocument {
         restart: &str,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        if ![
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ]
-        .contains(&format)
-        {
-            return Err(format!("unsupported note-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported note-number format: {format}"))?;
         if start == 0 {
             return Err("note-number start must be at least 1".into());
         }
@@ -16280,6 +16307,20 @@ impl WordDocument {
         Ok(())
     }
 
+    /// A text box's paragraphs are found through the index of the run that
+    /// hosts it, so adding or removing runs before that run (a comment's
+    /// reference, a split at its range) moves it; the surfaces are rebuilt
+    /// whenever the document has text boxes.
+    fn refresh_text_box_surfaces(&mut self) {
+        if self
+            .paragraph_surfaces
+            .iter()
+            .any(|surface| matches!(surface, ParagraphSurface::TextBox { .. }))
+        {
+            self.rebuild_paragraph_surfaces();
+        }
+    }
+
     pub fn add_comment(&mut self, request: AddCommentRequest) -> Result<String, String> {
         let AddCommentRequest {
             start_paragraph,
@@ -16491,6 +16532,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -16722,6 +16764,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -17055,6 +17098,7 @@ impl WordDocument {
             }
             raw.rebuild_index();
         }
+        self.refresh_text_box_surfaces();
 
         Ok(())
     }
@@ -27994,14 +28038,10 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
-                // The package first, while the paragraph's path still names
-                // it in every `w:txbxContent`.
-                self.edit_text_box_paragraph_structure_xml(
-                    &host_path,
-                    run_index,
-                    &block_path,
-                    None,
-                );
+                // The paragraph's `w:p` in each copy of the box goes too: the
+                // model alone lost it on screen and saved it, so joining two
+                // paragraphs wrote the second one's text twice.
+                let element_ids = self.text_box_paragraph_element_ids(index);
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28011,6 +28051,13 @@ impl WordDocument {
                 let removed = Self::remove_paragraph_by_path(&mut text_box.blocks, &block_path);
                 if removed.is_some() {
                     Self::refresh_text_box_text(text_box);
+                }
+                if let Some(raw) = self.raw_document.as_mut() {
+                    for element_id in element_ids {
+                        if let Some(node_path) = raw.path(element_id) {
+                            let _ = raw.remove_node(&node_path);
+                        }
+                    }
                 }
                 removed.is_some()
             }
@@ -28236,56 +28283,16 @@ impl WordDocument {
                     result.source_node_id
                 };
 
-                let mut new_node_id_created = None;
-                // Each XML run of the original paragraph to its copy in the
-                // new one.
-                let mut tail_run_copies = HashMap::new();
-
-                if let (Some(raw), Some(source_node_id)) =
-                    (self.raw_document.as_mut(), source_node_id)
-                {
-                    if let (Some(parent_id), Some(path)) =
-                        (raw.parent_id(source_node_id), raw.path(source_node_id))
-                    {
-                        if let Some(mut original) = raw.element(source_node_id).cloned() {
-                            let (mut head_children, tail_children) =
-                                Self::split_paragraph_anchor_children(&original.children, offset);
-                            // The tail keeps the original paragraph mark: its
-                            // section break (see the model split above) and
-                            // its revision.
-                            Self::remove_original_mark_properties_from_paragraph_children(
-                                &mut head_children,
-                            );
-                            if let Some(source) = raw.element_mut(source_node_id) {
-                                source.children = head_children;
-                            }
-                            original.children = tail_children;
-                            let original_runs = Self::bindable_run_ids(&original.children);
-                            let insert_index = path
-                                .as_slice()
-                                .last()
-                                .copied()
-                                .unwrap_or(0)
-                                .saturating_add(1);
-                            if let Ok(Some(new_node_id)) =
-                                raw.insert_node(parent_id, insert_index, XmlNode::Element(original))
-                            {
-                                if let Some(element) = raw.element_mut(new_node_id) {
-                                    Self::refresh_paragraph_identity(element);
-                                }
-                                // Insertion gives the copy fresh ids and
-                                // leaves its shape alone.
-                                if let Some(copy) = raw.element(new_node_id) {
-                                    tail_run_copies = original_runs
-                                        .into_iter()
-                                        .zip(Self::bindable_run_ids(&copy.children))
-                                        .collect();
-                                }
-                                new_node_id_created = Some(new_node_id);
+                let (new_node_id_created, tail_run_copies) =
+                    match (self.raw_document.as_mut(), source_node_id) {
+                        (Some(raw), Some(source_node_id)) => {
+                            match Self::split_paragraph_element(raw, source_node_id, offset) {
+                                Some((new_node_id, copies)) => (Some(new_node_id), copies),
+                                None => (None, HashMap::new()),
                             }
                         }
-                    }
-                }
+                        _ => (None, HashMap::new()),
+                    };
 
                 if !self.update_paragraph_surfaces_after_body_split(surface_index, &original_path) {
                     self.rebuild_paragraph_surfaces();
@@ -28311,6 +28318,53 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                if self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| Self::locate_text_box(doc, &host_path, run_index))
+                    .and_then(|text_box| Self::locate_paragraph(&text_box.blocks, &block_path))
+                    .is_none()
+                {
+                    return false;
+                }
+                // The paragraph's `w:p` in every `w:txbxContent` of the host
+                // run (the DrawingML box and its VML fallback) splits the way
+                // a body paragraph's does. Splitting the model alone showed
+                // the break and saved the paragraph whole.
+                let host_run_id = self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| doc.body.as_ref())
+                    .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
+                    .and_then(|paragraph| paragraph.runs.get(run_index))
+                    .and_then(|run| run.node_id);
+                let mut tail_run_copies = HashMap::new();
+                if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
+                    let mut content_ids = Vec::new();
+                    if let Some(run_element) = raw.element(run_id) {
+                        Self::collect_text_box_content_ids(run_element, &mut content_ids);
+                    }
+                    for (content_index, content_id) in content_ids.into_iter().enumerate() {
+                        let Some(paragraph_id) = raw
+                            .element(content_id)
+                            .and_then(|content| {
+                                Self::locate_text_box_paragraph_element(content, &block_path)
+                            })
+                            .map(|paragraph| paragraph.id)
+                        else {
+                            continue;
+                        };
+                        let split = Self::split_paragraph_element(raw, paragraph_id, offset);
+                        // The model binds to the first box; syncing gives the
+                        // fallback the same runs by position.
+                        if content_index == 0 {
+                            if let Some((_, copies)) = split {
+                                tail_run_copies = copies;
+                            }
+                        }
+                    }
+                }
+
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28323,15 +28377,6 @@ impl WordDocument {
                 }
 
                 Self::refresh_text_box_text(text_box);
-                // The package's paragraph splits too, in the DrawingML box
-                // and its VML fallback; both halves are then written from
-                // the model.
-                self.edit_text_box_paragraph_structure_xml(
-                    &host_path,
-                    run_index,
-                    &block_path,
-                    Some(offset),
-                );
                 // Find the halves by story position: relisting can reorder
                 // the surfaces before them.
                 let story = self.paragraph_story(index);
@@ -28339,16 +28384,24 @@ impl WordDocument {
                 if let Some(ParagraphStory::TextBox {
                     host,
                     text_box,
-                    paragraph,
+                    paragraph: first_paragraph,
                 }) = story
                 {
-                    for paragraph in [paragraph, paragraph + 1] {
+                    for paragraph in [first_paragraph, first_paragraph + 1] {
                         let half = ParagraphStory::TextBox {
                             host,
                             text_box,
                             paragraph,
                         };
                         if let Some(surface) = self.paragraph_story_surface(&half) {
+                            if paragraph == first_paragraph + 1 {
+                                if let Some(paragraph) = self.paragraph_mut(surface) {
+                                    Self::bind_split_tail_runs(
+                                        &mut paragraph.runs,
+                                        &tail_run_copies,
+                                    );
+                                }
+                            }
                             self.sync_paragraph_text(surface);
                         }
                     }
@@ -29095,6 +29148,53 @@ impl WordDocument {
         ids
     }
 
+    /// Splits the `w:p` at `paragraph_id` at text `offset`: the element keeps
+    /// the head and a copy holding the tail goes right after it. Returns the
+    /// copy's id and each XML run moved to the tail mapped to its copy.
+    fn split_paragraph_element(
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        offset: usize,
+    ) -> Option<(XmlNodeId, HashMap<XmlNodeId, XmlNodeId>)> {
+        let parent_id = raw.parent_id(paragraph_id)?;
+        let path = raw.path(paragraph_id)?;
+        let mut original = raw.element(paragraph_id).cloned()?;
+        let (mut head_children, tail_children) =
+            Self::split_paragraph_anchor_children(&original.children, offset);
+        // The tail keeps the original paragraph mark: its section break (see
+        // the model split) and its revision.
+        Self::remove_original_mark_properties_from_paragraph_children(&mut head_children);
+        if let Some(source) = raw.element_mut(paragraph_id) {
+            source.children = head_children;
+        }
+        original.children = tail_children;
+        let original_runs = Self::bindable_run_ids(&original.children);
+        let insert_index = path
+            .as_slice()
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(1);
+        let new_node_id = raw
+            .insert_node(parent_id, insert_index, XmlNode::Element(original))
+            .ok()
+            .flatten()?;
+        if let Some(element) = raw.element_mut(new_node_id) {
+            Self::refresh_paragraph_identity(element);
+        }
+        // Insertion gives the copy fresh ids and leaves its shape alone.
+        let copies = raw
+            .element(new_node_id)
+            .map(|copy| {
+                original_runs
+                    .into_iter()
+                    .zip(Self::bindable_run_ids(&copy.children))
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some((new_node_id, copies))
+    }
+
     /// Binds the runs a split moved into the new paragraph to the copies of
     /// their XML runs there, so syncing the paragraph updates each run where
     /// it stands and the markers between them keep their place.
@@ -29565,6 +29665,42 @@ impl WordDocument {
         declared_property_tags(self.raw_document.as_ref(), node_id, "w:p", "w:pPr")
     }
 
+    /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
+    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    pub(crate) fn paragraph_declared_property_attributes(
+        &self,
+        paragraph_index: usize,
+    ) -> Vec<(String, String)> {
+        let Some(properties) = self
+            .paragraph(paragraph_index)
+            .and_then(|paragraph| paragraph.node_id)
+            .and_then(|id| self.raw_document.as_ref()?.element(id))
+            .filter(|node| node.name == "w:p")
+            .and_then(|node| {
+                node.children.iter().find_map(|child| match child {
+                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
+                    _ => None,
+                })
+            })
+        else {
+            return Vec::new();
+        };
+        properties
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => Some(element),
+                _ => None,
+            })
+            .flat_map(|element| {
+                element
+                    .attributes
+                    .iter()
+                    .map(|attribute| (element.name.clone(), attribute.name.clone()))
+            })
+            .collect()
+    }
+
     fn sync_paragraph_text_with_options(
         &mut self,
         paragraph_index: usize,
@@ -29873,76 +30009,6 @@ impl WordDocument {
         }
 
         walk(elements, target, &mut Vec::new(), &mut 0)
-    }
-
-    /// Splits the text box paragraph at `block_path` at `offset` (a split's
-    /// head keeps the text before it, as a note's does) or, without an
-    /// offset, removes it — in every `w:txbxContent` of the host run: the
-    /// DrawingML box and its VML fallback. Without this a split or join in a
-    /// text box changed the model only, and the file kept the original
-    /// paragraphs.
-    fn edit_text_box_paragraph_structure_xml(
-        &mut self,
-        host_path: &[PathEntry],
-        run_index: usize,
-        block_path: &[PathEntry],
-        split_offset: Option<usize>,
-    ) {
-        let Some(run_id) = self
-            .document
-            .as_ref()
-            .and_then(|document| document.body.as_ref())
-            .and_then(|body| Self::locate_paragraph(&body.elements, host_path))
-            .and_then(|paragraph| paragraph.runs.get(run_index))
-            .and_then(|run| run.node_id)
-        else {
-            return;
-        };
-        let Some(raw) = self.raw_document.as_mut() else {
-            return;
-        };
-        let mut content_ids = Vec::new();
-        if let Some(run_element) = raw.element(run_id) {
-            Self::collect_text_box_content_ids(run_element, &mut content_ids);
-        }
-        for content_id in content_ids {
-            let Some(paragraph_id) = raw
-                .element(content_id)
-                .and_then(|content| Self::locate_text_box_paragraph_element(content, block_path))
-                .map(|paragraph| paragraph.id)
-            else {
-                continue;
-            };
-            let (Some(parent), Some(path)) = (raw.parent_id(paragraph_id), raw.path(paragraph_id))
-            else {
-                continue;
-            };
-            match split_offset {
-                Some(offset) => {
-                    let Some(mut tail) = raw.element(paragraph_id).cloned() else {
-                        continue;
-                    };
-                    let (head, rest) =
-                        Self::split_paragraph_anchor_children(&tail.children, offset);
-                    if let Some(element) = raw.element_mut(paragraph_id) {
-                        element.children = head;
-                    }
-                    tail.children = rest;
-                    let index = path.as_slice().last().copied().unwrap_or(0);
-                    if let Ok(Some(new_id)) =
-                        raw.insert_node(parent, index + 1, XmlNode::Element(tail))
-                    {
-                        if let Some(element) = raw.element_mut(new_id) {
-                            Self::refresh_paragraph_identity(element);
-                        }
-                    }
-                }
-                None => {
-                    let _ = raw.remove_node(&path);
-                }
-            }
-            raw.rebuild_index_for_subtree(content_id);
-        }
     }
 
     fn edit_note_paragraph_structure_xml(
@@ -35849,6 +35915,72 @@ mod tests {
         let _ = word_doc.document_mut();
         let after = Rc::as_ptr(word_doc.document.as_ref().unwrap());
         assert_eq!(before, after, "sole owner again must not reallocate");
+    }
+
+    /// A comment on the paragraph that hosts a text box splits and adds runs
+    /// there; the text box's paragraphs, found through the host's runs, must
+    /// still be reachable afterwards, and after the comment is deleted again.
+    #[test]
+    fn comments_on_a_text_box_host_keep_the_text_box_paragraphs_reachable() {
+        let mut word_doc = load_fixture("textbox.docx");
+        let text = |doc: &WordDocument, index: usize| {
+            doc.paragraph(index)
+                .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
+        };
+        let before: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(
+            word_doc.paragraph_story(1),
+            Some(ParagraphStory::TextBox {
+                host: 0,
+                text_box: 0,
+                paragraph: 0
+            })
+        );
+        let id = word_doc
+            .add_comment(AddCommentRequest {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 2,
+                text: "c".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("comment on the host paragraph");
+        let after: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(after, before, "after adding the comment");
+        word_doc
+            .reply_to_comment(ReplyToCommentRequest {
+                parent_comment_id: id.clone(),
+                text: "reply".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("reply");
+        let replied: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(replied, before, "after replying");
+        word_doc.delete_comment(&id).expect("delete the thread");
+        let deleted: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(deleted, before, "after deleting the thread");
+        let reopened = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reopen");
+        let reread: Vec<_> = (0..reopened.paragraph_count())
+            .map(|i| text(&reopened, i))
+            .collect();
+        assert_eq!(reread, before, "after reopening");
     }
 
     #[test]

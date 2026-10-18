@@ -1,4 +1,4 @@
-use jade_xlsx_headless_editor::{FormatChange, HeadlessWorkbook};
+use jade_xlsx_headless_editor::{BorderLine, BorderStyle, FormatChange, HeadlessWorkbook};
 use jade_xlsx_reader::{HorizontalAlignment, OpcPackage, VerticalAlignment};
 const SOURCE: &[u8] = include_bytes!("../../../public/fixtures/grid-operations-workbook.xlsx");
 
@@ -24,6 +24,25 @@ fn source_format_query_resolves_axis_defaults_and_history_without_writing() {
         horizontal: Some(HorizontalAlignment::Center),
         vertical: Some(VerticalAlignment::Top),
         wrap_text: Some(true),
+        border_left: Some(BorderLine {
+            style: BorderStyle::Thin,
+            color: Some("FF0000".into()),
+        }),
+        border_right: Some(BorderLine {
+            style: BorderStyle::MediumDashed,
+            color: None,
+        }),
+        border_top: Some(BorderLine::none()),
+        border_bottom: Some(BorderLine {
+            style: BorderStyle::Double,
+            color: Some("0070C0".into()),
+        }),
+        border_diagonal: Some(BorderLine {
+            style: BorderStyle::Hair,
+            color: Some("00B050".into()),
+        }),
+        diagonal_up: Some(true),
+        diagonal_down: Some(false),
     };
     book.set_format("Operations", "B:B", &change).unwrap();
     assert_eq!(book.format_at("Operations", "B100").unwrap(), change);
