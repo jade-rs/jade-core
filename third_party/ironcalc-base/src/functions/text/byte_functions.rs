@@ -1,8 +1,8 @@
 // FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB, SEARCHB
 //
-// IronCalc does not implement DBCS (Double Byte Character Set) locales.
-// For non-DBCS locales all *B functions behave identically to their non-B
-// counterparts, so we simply delegate.
+// Jade: these count bytes as a Japanese (DBCS) Excel does — Shift_JIS, one
+// byte for ASCII and half-width katakana, two for the rest
+// (`functions/japanese.rs`).
 
 use crate::{
     calc_result::CalcResult,
@@ -12,30 +12,32 @@ use crate::{
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_findb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_find(args, cell)
+        let found = self.fn_find(args, cell);
+        self.dbcs_position(found, args, cell)
     }
 
     pub(crate) fn fn_leftb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_left(args, cell)
+        self.dbcs_slice(args, cell, 'L')
     }
 
     pub(crate) fn fn_lenb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_len(args, cell)
+        self.dbcs_lenb(args, cell)
     }
 
     pub(crate) fn fn_midb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_mid(args, cell)
+        self.dbcs_slice(args, cell, 'M')
     }
 
     pub(crate) fn fn_replaceb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_replace(args, cell)
+        self.dbcs_replace(args, cell)
     }
 
     pub(crate) fn fn_rightb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_right(args, cell)
+        self.dbcs_slice(args, cell, 'R')
     }
 
     pub(crate) fn fn_searchb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_search(args, cell)
+        let found = self.fn_search(args, cell);
+        self.dbcs_position(found, args, cell)
     }
 }

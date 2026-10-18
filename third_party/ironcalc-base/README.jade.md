@@ -78,3 +78,8 @@ applied after the first), each pinned by a case in
   `#VALUE!`; and fractions (`# ?/?`, `?/??`, `# ?/8`, `formatter/fraction.rs`),
   which the token parser does not model. Appended to `jade.patch` as a third
   set of hunks.
+- Japanese Excel (`functions/japanese.rs`; fourth set of hunks in
+  `jade.patch`): ASC converts katakana and JIS (new) converts back; the *B
+  text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too, fifth set of hunks); DATESTRING
+  and NUMBERSTRING (new) write eras and kanji numerals. The new names answer
+  through `jade_lookup`.
