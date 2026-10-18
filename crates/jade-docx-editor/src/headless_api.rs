@@ -11446,6 +11446,108 @@ mod tests {
     }
 
     #[test]
+    fn joining_a_paragraph_that_hosts_a_text_box_keeps_both() {
+        // Removing the joined paragraph also removes its text box's
+        // paragraphs from the paragraph order, which the join's check did not
+        // allow for: Backspace at the start of a paragraph hosting a text box
+        // failed after taking the paragraph's runs, and its text and the text
+        // box were gone. Delete at the end of the paragraph before it is the
+        // same join from the other side.
+        use crate::commands::{CommandContext, CommandExecutor};
+        use jade_docx_headless_api::HeadlessDeleteDirection;
+        for (paragraph, offset, direction) in [
+            (1, 0, HeadlessDeleteDirection::Backward),
+            (0, 2, HeadlessDeleteDirection::Forward),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures/textbox.docx"),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let texts = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .map(|index| {
+                        word_doc
+                            .paragraph(index)
+                            .map(|paragraph| {
+                                paragraph.runs.iter().map(|run| run.text.as_str()).collect()
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect::<Vec<String>>()
+            };
+            let mut command_executor = CommandExecutor::new();
+            let mut apply = |word_doc: &mut WordDocument, command: HeadlessCommand| {
+                apply_headless_commands_with_executor_to_document(
+                    word_doc,
+                    &mut command_executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .expect("edit applies");
+            };
+            // "He" | "llo" + the text box's anchor.
+            apply(
+                &mut word_doc,
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 2,
+                    count: 1,
+                },
+            );
+            assert_eq!(texts(&word_doc), ["He", "llo", "Hello", "World"]);
+            apply(
+                &mut word_doc,
+                HeadlessCommand::DeleteText {
+                    paragraph,
+                    offset,
+                    direction,
+                    count: 1,
+                },
+            );
+            assert_eq!(
+                texts(&word_doc),
+                ["Hello", "Hello", "World"],
+                "{direction:?}"
+            );
+            // The text box is still there, and still editable.
+            apply(
+                &mut word_doc,
+                HeadlessCommand::InsertText {
+                    paragraph: 1,
+                    offset: 0,
+                    text: "X".to_string(),
+                },
+            );
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                texts(&reloaded),
+                ["Hello", "XHello", "World"],
+                "{direction:?}"
+            );
+            let mut selection = None;
+            for _ in 0..2 {
+                command_executor
+                    .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                    .expect("undo");
+            }
+            assert_eq!(
+                texts(&word_doc),
+                ["He", "llo", "Hello", "World"],
+                "{direction:?}"
+            );
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the

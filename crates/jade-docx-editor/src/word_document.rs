@@ -28061,6 +28061,20 @@ impl WordDocument {
         }
     }
 
+    /// How many text box paragraphs body paragraph `index` hosts: removing
+    /// it takes their surfaces too.
+    pub(crate) fn hosted_text_box_surface_count(&self, index: usize) -> usize {
+        let Some(ParagraphSurface::Body { path }) = self.paragraph_surfaces.get(index) else {
+            return 0;
+        };
+        self.paragraph_surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(surface, ParagraphSurface::TextBox { host_path, .. } if host_path == path)
+            })
+            .count()
+    }
+
     pub fn remove_paragraph_at(&mut self, index: usize) -> bool {
         let surface = match self.paragraph_surfaces.get(index).cloned() {
             Some(surface) => surface,
