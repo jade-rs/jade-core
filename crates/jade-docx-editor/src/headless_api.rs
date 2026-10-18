@@ -7,6 +7,7 @@ use crate::commands::apply_superscript::ApplySuperscriptCommand;
 use crate::commands::apply_underline::ApplyUnderlineCommand;
 use crate::commands::change_case::ChangeCaseCommand;
 use crate::commands::clear_formatting::ClearFormattingCommand;
+use crate::commands::delete_object::DeleteObjectCommand;
 use crate::commands::delete_table::DeleteTableCommand;
 use crate::commands::delete_text::{DeleteDirection, DeleteTextRunCommand};
 use crate::commands::insert_blank_page::InsertBlankPageCommand;
@@ -74,9 +75,10 @@ use crate::legal_structure::{
 use crate::numbering::{MultilevelListPreset, NumberingCounter, NumberingIndent, NumberingLevel};
 use crate::word_document::{
     AddCommentRequest, BorderEdgeSpec, CitationSourceInfo, CoverPageParagraphSpec,
-    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, PageBorderSpec, PageMarginSpec,
-    ReplyToCommentRequest, RevisionIdFilter, RevisionSession, RevisionTargets, SectionBreakType,
-    ShapeInsertSpec, TableBorderSpec, WordDocument,
+    DocumentProtectionInfo, DocumentThemeSpec, EquationPlacement, FloatingObjectKind,
+    FloatingObjectTarget, PageBorderSpec, PageMarginSpec, ReplyToCommentRequest, RevisionIdFilter,
+    RevisionSession, RevisionTargets, SectionBreakType, ShapeInsertSpec, TableBorderSpec,
+    WordDocument,
 };
 use jade_docx_headless_api::{
     HeadlessCharacterStyleSnapshot, HeadlessCitationSource, HeadlessCommand, HeadlessCommentAnchor,
@@ -3471,8 +3473,69 @@ pub fn apply_headless_commands_with_executor_to_document(
                     text_italic: None,
                     text_alignment: None,
                 };
+                // The offset is a rendered one, like every text command's:
+                // the shape command counts in the runs' text.
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
                 let command: Box<dyn Command> =
-                    Box::new(InsertShapeCommand::new(*paragraph, *offset, spec));
+                    Box::new(InsertShapeCommand::new(*paragraph, model_offset, spec));
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(PackageSnapshotCommand::wrapping(command)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertTextAmongAnchors {
+                paragraph,
+                offset,
+                after_anchors,
+                text,
+            } => {
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let model_offset = word_doc
+                    .rendered_to_model_text_position(TextPosition::new(*paragraph, *offset))
+                    .offset;
+                let (paragraph, after, text) = (*paragraph, *after_anchors, text.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "insert_text_among_anchors",
+                    EditScope::Document,
+                    move |doc| doc.insert_text_among_anchors(paragraph, model_offset, after, &text),
+                )?;
+            }
+            HeadlessCommand::DeleteTextBox {
+                paragraph,
+                text_box,
+            } => {
+                let missing = |message: String| HeadlessApiApplyError::Command {
+                    index,
+                    source: CommandError::Custom(message),
+                };
+                let runs = &word_doc
+                    .paragraph(*paragraph)
+                    .ok_or_else(|| missing(format!("paragraph {paragraph} does not exist")))?
+                    .runs;
+                let run_index = runs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, run)| run.text_box.is_some())
+                    .nth(*text_box)
+                    .map(|(run_index, _)| run_index)
+                    .ok_or_else(|| {
+                        missing(format!("paragraph {paragraph} has no text box {text_box}"))
+                    })?;
+                let target = FloatingObjectTarget {
+                    paragraph_index: *paragraph,
+                    run_index,
+                    kind: FloatingObjectKind::TextBox,
+                };
+                let command: Box<dyn Command> = Box::new(DeleteObjectCommand::new(target));
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(

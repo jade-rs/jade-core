@@ -3,8 +3,9 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, normalize_break_runs, rebase_comment_anchors_for_edit, run_carries_content,
-    split_runs_at_preserving_source, FieldChars, ZeroWidthRuns,
+    apply_text_edit, create_run_from_template, normalize_break_runs,
+    rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
+    FieldChars, ZeroWidthRuns,
 };
 use crate::commands::{
     delete_text::{DeleteDirection, DeleteTextCommand},
@@ -11097,6 +11098,68 @@ impl WordDocument {
             self.refresh_revision_counter();
         }
         Ok(changed_runs.saturating_add(paragraph_mark_ids.len()))
+    }
+
+    /// Inserts `text` at model offset `offset` of the paragraph at surface
+    /// `paragraph_index`, after the first `after` of the zero-width runs
+    /// placing text boxes and note references there (typing goes before
+    /// them all). The text takes a run of its own, formatted like the text
+    /// before it (or after it, at the paragraph's start).
+    pub fn insert_text_among_anchors(
+        &mut self,
+        paragraph_index: usize,
+        offset: usize,
+        after: usize,
+        text: &str,
+    ) -> Result<(), String> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        let anchors = |run: &Run| {
+            usize::from(run.text_box.is_some())
+                + run.footnote_reference_ids.len()
+                + run.endnote_reference_ids.len()
+        };
+        let zero_width = self.zero_width_runs(paragraph_index);
+        let paragraph = self
+            .paragraph_mut(paragraph_index)
+            .ok_or_else(|| format!("paragraph {paragraph_index} does not exist"))?;
+        let mut runs = std::mem::take(&mut paragraph.runs);
+        let text_len: usize = runs.iter().map(|run| run.text.len()).sum();
+        let mut tail =
+            split_runs_at_preserving_source(&mut runs, offset.min(text_len), &zero_width);
+        // The zero-width runs at the offset lead the tail.
+        let mut seen = 0usize;
+        let mut at = 0usize;
+        while seen < after {
+            match tail.get(at) {
+                Some(run) if run.text.is_empty() => {
+                    seen += anchors(run);
+                    at += 1;
+                }
+                _ => break,
+            }
+        }
+        if offset > text_len || seen != after {
+            runs.append(&mut tail);
+            paragraph.runs = runs;
+            return Err(format!(
+                "paragraph {paragraph_index} has no run boundary after {after} text boxes or note references at offset {offset}"
+            ));
+        }
+        let template = runs
+            .iter()
+            .rev()
+            .find(|run| !run.text.is_empty())
+            .or_else(|| tail[at..].iter().find(|run| !run.text.is_empty()))
+            .cloned();
+        let rest = tail.split_off(at);
+        runs.append(&mut tail);
+        runs.push(create_run_from_template(template.as_ref(), text));
+        runs.extend(rest);
+        paragraph.runs = runs;
+        self.sync_paragraph_text_preserving_drawings(paragraph_index);
+        Ok(())
     }
 
     pub fn insert_footnote_at(
@@ -27931,6 +27994,14 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                // The package first, while the paragraph's path still names
+                // it in every `w:txbxContent`.
+                self.edit_text_box_paragraph_structure_xml(
+                    &host_path,
+                    run_index,
+                    &block_path,
+                    None,
+                );
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28252,7 +28323,36 @@ impl WordDocument {
                 }
 
                 Self::refresh_text_box_text(text_box);
+                // The package's paragraph splits too, in the DrawingML box
+                // and its VML fallback; both halves are then written from
+                // the model.
+                self.edit_text_box_paragraph_structure_xml(
+                    &host_path,
+                    run_index,
+                    &block_path,
+                    Some(offset),
+                );
+                // Find the halves by story position: relisting can reorder
+                // the surfaces before them.
+                let story = self.paragraph_story(index);
                 self.rebuild_paragraph_surfaces();
+                if let Some(ParagraphStory::TextBox {
+                    host,
+                    text_box,
+                    paragraph,
+                }) = story
+                {
+                    for paragraph in [paragraph, paragraph + 1] {
+                        let half = ParagraphStory::TextBox {
+                            host,
+                            text_box,
+                            paragraph,
+                        };
+                        if let Some(surface) = self.paragraph_story_surface(&half) {
+                            self.sync_paragraph_text(surface);
+                        }
+                    }
+                }
                 true
             }
             ParagraphSurface::Note {
@@ -28325,8 +28425,15 @@ impl WordDocument {
                 }
                 self.upsert_xml_part_content(&part, xml);
                 self.rebuild_paragraph_surfaces();
-                self.sync_paragraph_text(index);
-                self.sync_paragraph_text(index + 1);
+                // Relisting can reorder the surfaces before the note (a body
+                // split lists its new paragraph before the notes the first
+                // half references until then), so find the halves by story.
+                let halves = [ordinal, ordinal + 1].map(|paragraph| {
+                    self.surface_index_for_story(kind.story(), paragraph, None, Some(&note_id))
+                });
+                for surface in halves.into_iter().flatten() {
+                    self.sync_paragraph_text(surface);
+                }
                 true
             }
         }
@@ -29766,6 +29873,76 @@ impl WordDocument {
         }
 
         walk(elements, target, &mut Vec::new(), &mut 0)
+    }
+
+    /// Splits the text box paragraph at `block_path` at `offset` (a split's
+    /// head keeps the text before it, as a note's does) or, without an
+    /// offset, removes it — in every `w:txbxContent` of the host run: the
+    /// DrawingML box and its VML fallback. Without this a split or join in a
+    /// text box changed the model only, and the file kept the original
+    /// paragraphs.
+    fn edit_text_box_paragraph_structure_xml(
+        &mut self,
+        host_path: &[PathEntry],
+        run_index: usize,
+        block_path: &[PathEntry],
+        split_offset: Option<usize>,
+    ) {
+        let Some(run_id) = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| Self::locate_paragraph(&body.elements, host_path))
+            .and_then(|paragraph| paragraph.runs.get(run_index))
+            .and_then(|run| run.node_id)
+        else {
+            return;
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return;
+        };
+        let mut content_ids = Vec::new();
+        if let Some(run_element) = raw.element(run_id) {
+            Self::collect_text_box_content_ids(run_element, &mut content_ids);
+        }
+        for content_id in content_ids {
+            let Some(paragraph_id) = raw
+                .element(content_id)
+                .and_then(|content| Self::locate_text_box_paragraph_element(content, block_path))
+                .map(|paragraph| paragraph.id)
+            else {
+                continue;
+            };
+            let (Some(parent), Some(path)) = (raw.parent_id(paragraph_id), raw.path(paragraph_id))
+            else {
+                continue;
+            };
+            match split_offset {
+                Some(offset) => {
+                    let Some(mut tail) = raw.element(paragraph_id).cloned() else {
+                        continue;
+                    };
+                    let (head, rest) =
+                        Self::split_paragraph_anchor_children(&tail.children, offset);
+                    if let Some(element) = raw.element_mut(paragraph_id) {
+                        element.children = head;
+                    }
+                    tail.children = rest;
+                    let index = path.as_slice().last().copied().unwrap_or(0);
+                    if let Ok(Some(new_id)) =
+                        raw.insert_node(parent, index + 1, XmlNode::Element(tail))
+                    {
+                        if let Some(element) = raw.element_mut(new_id) {
+                            Self::refresh_paragraph_identity(element);
+                        }
+                    }
+                }
+                None => {
+                    let _ = raw.remove_node(&path);
+                }
+            }
+            raw.rebuild_index_for_subtree(content_id);
+        }
     }
 
     fn edit_note_paragraph_structure_xml(
