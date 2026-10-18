@@ -6845,19 +6845,25 @@ fn find_next_tab_stop(
 ) -> (f64, TabAlignment, TabLeader) {
     // ECMA-376 §17.3.1.38: a hanging indent implicitly creates a custom tab
     // stop at the left indent. `base_x` is that left-indent position; the
-    // first line begins before it by `first_line_indent`.
-    if paragraph_style.use_hanging_indent_tab_stop
+    // first line begins before it by `first_line_indent`. A declared stop
+    // nearer the cursor comes first (trust-beneficiary-sale-keep-next's
+    // 600-twip stop under a 630-twip indent).
+    let hanging_stop = (paragraph_style.use_hanging_indent_tab_stop
         && paragraph_style.first_line_indent < -0.5
-        && base_x > cursor_x + 0.5
-    {
-        return (base_x, TabAlignment::Left, TabLeader::None);
-    }
+        && base_x > cursor_x + 0.5)
+        .then_some((base_x, TabAlignment::Left, TabLeader::None));
     let tab_origin_x = base_x + paragraph_style.tab_origin_offset;
     for stop in &paragraph_style.tab_stops {
         let position_px = tab_origin_x + points_to_px(stop.position_pt);
         if position_px > cursor_x + 0.5 {
-            return (position_px, stop.alignment, stop.leader);
+            return match hanging_stop {
+                Some(hanging) if hanging.0 < position_px => hanging,
+                _ => (position_px, stop.alignment, stop.leader),
+            };
         }
+    }
+    if let Some(hanging) = hanging_stop {
+        return hanging;
     }
     let interval = paragraph_style.default_tab_width.max(1.0);
     let offset = (cursor_x - tab_origin_x).max(0.0);
@@ -14497,6 +14503,42 @@ mod tests {
         assert_eq!(lines[0].segments[0].text, "1．");
         assert_eq!(lines[0].segments[1].text, "本文");
         assert!((lines[0].segments[1].leading_width - (points_to_px(31.45) - 20.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn custom_tab_stop_before_the_hanging_indent_wins() {
+        // trust-beneficiary-sale-keep-next `2．<TAB>信託不動産…`: w:ind left 630
+        // hanging 629 with a left tab at 600; Word starts the text at the
+        // 600 stop, 1.5pt before the indent's implicit stop.
+        let ctx = TestContext::new(10.0);
+        let text = "1．\t本文";
+        let paragraph = ParagraphStyle {
+            first_line_indent: -points_to_px(31.45),
+            tab_origin_offset: -points_to_px(31.5),
+            tab_stops: resolve_tab_stops(&[TabStop {
+                kind: Some("left".to_string()),
+                position: Some(30.0),
+                leader: None,
+            }]),
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            points_to_px(31.5),
+            &paragraph,
+            0,
+            700.0,
+        )
+        .expect("wrap hanging-indent paragraph");
+        // The line starts 0.05pt from the margin; the stop is 30pt from it.
+        assert!(
+            (lines[0].segments[1].leading_width - (points_to_px(30.0 - 0.05) - 20.0)).abs()
+                < 1e-3,
+            "{}",
+            lines[0].segments[1].leading_width
+        );
     }
 
     #[test]
