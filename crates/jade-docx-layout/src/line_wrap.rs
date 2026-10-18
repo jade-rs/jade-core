@@ -6125,7 +6125,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         }
     }
 
-    prevent_mid_word_breaks(text, paragraph_style, &mut lines);
+    prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
     enforce_line_start_rules(paragraph_style, &mut lines);
     let character_borders = lines.iter().any(line_has_character_border);
     ensure_lines_fit_available_width(
@@ -7390,6 +7390,7 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
 fn prevent_mid_word_breaks(
     text: &str,
     paragraph_style: &ParagraphStyle,
+    base_available: f64,
     lines: &mut [WrappedLine],
 ) {
     if lines.len() < 2 {
@@ -7415,7 +7416,16 @@ fn prevent_mid_word_breaks(
         if !line_break_splits_latin_word(text, prev_line, next_line) {
             continue;
         }
-        if allow_mid_word_break && !has_preceding_latin_break_opportunity(prev_line) {
+        // East Asian text right before the word also ends a line there, when
+        // the whole word then fits the next one: Word sets `新規` | `MLPM契約`
+        // (trust-beneficiary-sale-keep-next page 8).
+        if allow_mid_word_break
+            && !has_preceding_latin_break_opportunity(prev_line)
+            && !(follows_east_asian_text(prev_line)
+                && split_latin_word_width(prev_line, next_line)
+                    <= paragraph_style.available_width_for_line(base_available, idx)
+                        + WRAP_FIT_TOLERANCE_PX)
+        {
             continue;
         }
 
@@ -7478,6 +7488,33 @@ fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
     is_latin_word_grapheme(text)
         || (text == "/" && index > 0 && is_latin_word_grapheme(&clusters[index - 1].text))
+}
+
+/// Whether the Latin word ending `line` starts right after East Asian text.
+fn follows_east_asian_text(line: &WrappedLine) -> bool {
+    line.clusters
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(index, _)| !is_latin_word_cluster(&line.clusters, *index))
+        .is_some_and(|(_, cluster)| {
+            !cluster.forbid_line_end && is_non_whitespace_east_asian_grapheme(&cluster.text)
+        })
+}
+
+/// The width of a Latin word split between the end of `prev` and the start
+/// of `next`.
+fn split_latin_word_width(prev: &WrappedLine, next: &WrappedLine) -> f64 {
+    let head: f64 = (0..prev.clusters.len())
+        .rev()
+        .take_while(|index| is_latin_word_cluster(&prev.clusters, *index))
+        .map(|index| prev.clusters[index].width)
+        .sum();
+    let tail: f64 = (0..next.clusters.len())
+        .take_while(|index| is_latin_word_cluster(&next.clusters, *index))
+        .map(|index| next.clusters[index].width)
+        .sum();
+    head + tail
 }
 
 fn has_preceding_latin_break_opportunity(line: &WrappedLine) -> bool {
@@ -12184,6 +12221,32 @@ mod tests {
         let infos = collect_line_infos(&lines);
         assert_eq!(infos.first().map(|line| line.text.as_str()), Some("abc "));
         assert_eq!(infos.get(1).map(|line| line.text.as_str()), Some("d"));
+    }
+
+    #[test]
+    fn latin_word_after_east_asian_text_moves_as_one_word() {
+        // trust-beneficiary-sale-keep-next page 8: Word ends a line at `新規`
+        // and starts the next with `MLPM`; the boundary with East Asian text
+        // is the word's break opportunity, not a split after its first `M`.
+        let ctx = TestContext::new(10.0);
+        let text = "あああMLPMいい";
+        let paragraph = ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 65.0)
+            .expect("wrap");
+        assert_eq!(
+            collect_line_infos(&lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["あああ", "MLPMいい"]
+        );
     }
 
     #[test]
