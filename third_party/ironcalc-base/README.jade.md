@@ -80,6 +80,6 @@ applied after the first), each pinned by a case in
   set of hunks.
 - Japanese Excel (`functions/japanese.rs`; fourth set of hunks in
   `jade.patch`): ASC converts katakana and JIS (new) converts back; the *B
-  text functions count Shift_JIS bytes as a Japanese Excel does; DATESTRING
+  text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too, fifth set of hunks); DATESTRING
   and NUMBERSTRING (new) write eras and kanji numerals. The new names answer
   through `jade_lookup`.
