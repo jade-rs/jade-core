@@ -514,6 +514,14 @@
       "docx_sha256": "c026d03f510c5485ad260675a3c7d64a61d5688976e94e00054029f73d9d38db"
     },
     {
+      "fixture": "word-mac-probe-exact-grid",
+      "docx_sha256": "de22684e8336b303741c28a5c5c497899bafd568f4aa7021b40c257fba90c739"
+    },
+    {
+      "fixture": "word-mac-probe-exact-nogrid",
+      "docx_sha256": "8152adf61e993ec685190633998da25b03b5353bafcf43e50f5349144ac90134"
+    },
+    {
       "fixture": "word-mac-probe-indent",
       "docx_sha256": "73b9dab957089873b302ecff98217e60a58fe8c540a66267ebd3f46d4b27e673"
     },

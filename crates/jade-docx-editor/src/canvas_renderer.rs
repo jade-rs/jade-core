@@ -16062,6 +16062,19 @@ where
         } else {
             text_alignment_top_leading_share(text_alignment)
         };
+        // Word for Mac sets an exact-height line's baseline 0.8 of the height
+        // below its top, whatever the face, size or grid (exact-20261018).
+        let exact_line_baseline_share =
+            (matches!(text_alignment, None | Some("auto" | "baseline"))
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.spacing.as_ref())
+                    .and_then(|spacing| spacing.line_rule.as_deref())
+                    == Some("exact"))
+            .then_some(0.8);
         // Capture a "paragraph start" seek snapshot at the actual paragraph top (after spacing-before).
         // This is used as an anchor for starting re-layout from a dirty paragraph without scanning
         // the prefix paragraphs.
@@ -16846,6 +16859,7 @@ where
                     keep_lines_enabled,
                     keep_next_enabled,
                     top_leading_share,
+                    exact_line_baseline_share,
                     if numbering_consumed || resuming {
                         None
                     } else {
@@ -16937,7 +16951,10 @@ where
             let top = self.current_y;
             let (min_top_offset, content_height) =
                 self.empty_paragraph_content_metrics(pending_numbering.as_ref(), line_height)?;
-            let top_leading = (line_height - content_height).max(0.0) * top_leading_share;
+            let top_leading = match exact_line_baseline_share {
+                Some(share) => line_height * share + min_top_offset,
+                None => (line_height - content_height).max(0.0) * top_leading_share,
+            };
             self.current_y += line_height;
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
@@ -18650,6 +18667,7 @@ where
         keep_lines_enabled: bool,
         keep_next_enabled: bool,
         top_leading_share: f64,
+        exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading_color: Option<Rc<str>>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
@@ -19301,8 +19319,13 @@ where
             let extra_above = paragraph_style
                 .word_grid_line_sizing
                 .map_or(0.0, |grid| grid.extra_above_px(Some(content_height)));
-            let top_leading = extra_above
-                + (line_height - extra_above - content_height).max(0.0) * top_leading_share;
+            let top_leading = match exact_line_baseline_share {
+                Some(share) => line_height * share + min_top_offset,
+                None => {
+                    extra_above
+                        + (line_height - extra_above - content_height).max(0.0) * top_leading_share
+                }
+            };
             // jade-docx-layout planned this line on the band of the previous
             // one (text continues past a `bothSides` float): reuse its top.
             let continued_band = float_band
@@ -53085,11 +53108,14 @@ mod tests {
                 .into_iter()
                 .find(|line| line.text == "Following")
                 .unwrap();
-            outcomes.push((columns, line.page, line.start_x, line.top));
+            outcomes.push((columns, line.page, line.start_x, line.baseline));
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        for (columns, page, x, y) in outcomes {
+        for (columns, page, x, baseline) in outcomes {
             assert_eq!(page, if columns == 1 { 1 } else { 0 });
+            // The 10pt exact line starts at the top: its baseline is 0.8 of
+            // the line below it (`mac_exact_line_puts_its_baseline_at_four_fifths`).
+            let y = baseline - 10.0 * 0.8 * 96.0 / 72.0;
             assert!(y.abs() < 0.001, "{columns} columns: paragraph top {y}");
             if columns == 2 {
                 assert!(x > 100.0);
@@ -54395,6 +54421,58 @@ mod tests {
             level: Some(0),
         })));
         assert_eq!(switched_off, plain);
+    }
+
+    /// Word for Mac 16.114 sets an exact-height line's baseline 0.8 of the
+    /// height below its top, whatever the face, size or line grid
+    /// (exact-20261018 probe: 9.6, 14.0, 19.2 and 28.8pt for 12, 17.5, 24
+    /// and 36pt lines; scroll-offset-repro's 17.5pt `２前項の場合…`).
+    #[test]
+    fn mac_exact_line_puts_its_baseline_at_four_fifths() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::Spacing;
+        for (exact, size, grid) in [(17.5, 11.0, true), (24.0, 10.5, false), (12.0, 20.0, true)] {
+            set_word_layout_platform(WordLayoutPlatform::Mac);
+            let mut document = doc_with_paragraph_texts(&["あ亜Ag"]);
+            if grid {
+                document.default_section = Some(SectionProperties {
+                    doc_grid: Some(DocGrid {
+                        grid_type: Some("lines".into()),
+                        line_pitch: Some(18.0),
+                        char_space: None,
+                    }),
+                    ..Default::default()
+                });
+            }
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_family: Some("MS Mincho".into()),
+                font_size: Some(size),
+                ..Default::default()
+            });
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    line: Some(exact),
+                    line_rule: Some("exact".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            let (mut renderer, _) = recording_renderer();
+            renderer.render(&document, &Options::default()).unwrap();
+            let line = renderer.layout_debug_lines()[0].clone();
+            let line_top = renderer.margin_top;
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert!(
+                (line.baseline - line_top - f64::from(exact) * 0.8 * 96.0 / 72.0).abs() < 1e-4,
+                "{exact}pt/{size}pt grid {grid}: baseline {} line top {line_top}",
+                line.baseline,
+            );
+        }
     }
 
     /// Word for Mac centres a line's text in the grid pitches it takes, and
