@@ -69,9 +69,20 @@ pub struct Recalculated {
     /// Every formula cell the engine evaluated, cached-equal results included.
     pub cells: Vec<ComputedCell>,
     pub skipped: Vec<SkippedCell>,
-    /// What array formulas spilled into the cells beside their anchors, in
-    /// document order: plain cells in the file, but the formula's values.
-    pub spilled: Vec<ComputedCell>,
+    /// The array formulas that spilled beyond their anchor cell, in document
+    /// order: plain cells in the file, but the formula's values.
+    pub spills: Vec<Spill>,
+}
+
+/// What one array formula spilled.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Spill {
+    pub sheet: usize,
+    pub anchor: CellRef,
+    /// The anchor and every cell the formula filled.
+    pub range: jade_xlsx_reader::CellRange,
+    /// The cells beside the anchor, row by row, with their values.
+    pub cells: Vec<ComputedCell>,
 }
 
 /// Evaluates every formula in the workbook.
@@ -195,7 +206,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
             return Ok(Recalculated {
                 cells,
                 skipped: reasons,
-                spilled: round.spilled,
+                spills: round.spills,
             });
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
@@ -382,7 +393,7 @@ fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: 
 struct Round {
     cells: Vec<ComputedCell>,
     disqualified: Vec<SkippedCell>,
-    spilled: Vec<ComputedCell>,
+    spills: Vec<Spill>,
 }
 
 fn read_back(
@@ -392,9 +403,9 @@ fn read_back(
 ) -> Result<Round> {
     let mut cells = Vec::new();
     let mut disqualified = Vec::new();
-    let mut spilled = Vec::new();
+    let mut spills = Vec::new();
     for (sheet_index, reference) in projected {
-        spilled.extend(spill_of(model, *sheet_index, *reference)?);
+        spills.extend(spill_of(model, *sheet_index, *reference)?);
         let value = model
             .get_cell_value_by_index(
                 *sheet_index as u32,
@@ -430,23 +441,26 @@ fn read_back(
     Ok(Round {
         cells,
         disqualified,
-        spilled,
+        spills,
     })
 }
 
-/// The values an array formula at `anchor` spilled beside it, if it spilled.
-fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Vec<ComputedCell>> {
+/// What an array formula at `anchor` spilled beside it, if it spilled.
+fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Option<Spill>> {
     use ironcalc_base::types::Cell;
     let Ok(worksheet) = model.workbook.worksheet(sheet as u32) else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
     let (row, column) = (anchor.row as i32 + 1, anchor.column as i32 + 1);
     let Some(Cell::ArrayFormula {
         r: (width, height), ..
     }) = worksheet.cell(row, column)
     else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
+    if *width <= 1 && *height <= 1 {
+        return Ok(None);
+    }
     let mut values = Vec::new();
     for down in 0..*height {
         for across in 0..*width {
@@ -463,7 +477,18 @@ fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Vec<Comp
             });
         }
     }
-    Ok(values)
+    Ok(Some(Spill {
+        sheet,
+        anchor,
+        range: jade_xlsx_reader::CellRange {
+            start: anchor,
+            end: CellRef::new(
+                anchor.column + (*width as u32).saturating_sub(1),
+                anchor.row + (*height as u32).saturating_sub(1),
+            ),
+        },
+        cells: values,
+    }))
 }
 
 fn cached_value(workbook: &Workbook, sheet: usize, reference: CellRef) -> CellValue {

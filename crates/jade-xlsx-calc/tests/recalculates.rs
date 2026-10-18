@@ -824,8 +824,11 @@ fn a_dynamic_array_from_excel_keeps_its_spill() {
     assert_eq!(computed(&outcome, 0, "A1"), Some(&CellValue::Number(1.0)));
     assert_eq!(computed(&outcome, 0, "B1"), Some(&CellValue::Number(6.0)));
     assert!(outcome.skipped.is_empty(), "{:?}", outcome.skipped);
-    let spilled: Vec<_> = outcome
-        .spilled
+    assert_eq!(outcome.spills.len(), 1);
+    let spill = &outcome.spills[0];
+    assert_eq!(spill.anchor, CellRef::parse("A1").unwrap());
+    let spilled: Vec<_> = spill
+        .cells
         .iter()
         .map(|cell| (cell.reference, cell.value.clone()))
         .collect();
@@ -835,6 +838,10 @@ fn a_dynamic_array_from_excel_keeps_its_spill() {
             (CellRef::parse("A2").unwrap(), CellValue::Number(2.0)),
             (CellRef::parse("A3").unwrap(), CellValue::Number(3.0)),
         ]
+    );
+    assert_eq!(
+        spill.range,
+        jade_xlsx_reader::CellRange::parse("A1:A3").unwrap()
     );
 }
 
@@ -853,8 +860,11 @@ fn a_spill_follows_its_inputs_and_a_typed_one_spills_too() {
     let outcome = evaluate(&workbook).expect("evaluate");
     assert_eq!(computed(&outcome, 0, "A1"), Some(&CellValue::Number(10.0)));
     assert_eq!(computed(&outcome, 0, "D1"), Some(&CellValue::Number(46.0)));
-    let spilled: Vec<_> = outcome
-        .spilled
+    assert_eq!(outcome.spills.len(), 1);
+    let spill = &outcome.spills[0];
+    assert_eq!(spill.anchor, CellRef::parse("A1").unwrap());
+    let spilled: Vec<_> = spill
+        .cells
         .iter()
         .map(|cell| (cell.reference, cell.value.clone()))
         .collect();
@@ -865,5 +875,9 @@ fn a_spill_follows_its_inputs_and_a_typed_one_spills_too() {
             (CellRef::parse("A3").unwrap(), CellValue::Number(12.0)),
             (CellRef::parse("A4").unwrap(), CellValue::Number(13.0)),
         ]
+    );
+    assert_eq!(
+        spill.range,
+        jade_xlsx_reader::CellRange::parse("A1:A4").unwrap()
     );
 }
