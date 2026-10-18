@@ -3954,7 +3954,7 @@ impl DocumentParser {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     depth += 1;
-                    if e.name().as_ref() == b"w:t" {
+                    if matches!(e.name().as_ref(), b"w:t" | b"w:delText") {
                         text_depth += 1;
                     }
                     writer.write_event(Event::Start(e.to_owned()))?;
@@ -3965,8 +3965,9 @@ impl DocumentParser {
                 Ok(Event::Text(e)) => {
                     if text_depth > 0 {
                         // The document parser applies xml:space after joining
-                        // all text/entity events. Preserve w:t verbatim here;
-                        // trimming early loses note separators and spaces.
+                        // all text/entity events. Preserve w:t (and deleted
+                        // text, w:delText) verbatim here; trimming early
+                        // loses note separators and spaces.
                         writer.write_event(Event::Text(e.to_owned()))?;
                     } else {
                         let raw = std::str::from_utf8(e.as_ref())?;
@@ -3994,7 +3995,7 @@ impl DocumentParser {
                         break;
                     } else {
                         writer.write_event(Event::End(e.to_owned()))?;
-                        if e.name().as_ref() == b"w:t" {
+                        if matches!(e.name().as_ref(), b"w:t" | b"w:delText") {
                             text_depth = text_depth.saturating_sub(1);
                         }
                         depth = depth.saturating_sub(1);
