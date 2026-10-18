@@ -28332,9 +28332,27 @@ impl WordDocument {
                     &block_path,
                     Some(offset),
                 );
+                // Find the halves by story position: relisting can reorder
+                // the surfaces before them.
+                let story = self.paragraph_story(index);
                 self.rebuild_paragraph_surfaces();
-                self.sync_paragraph_text(index);
-                self.sync_paragraph_text(index + 1);
+                if let Some(ParagraphStory::TextBox {
+                    host,
+                    text_box,
+                    paragraph,
+                }) = story
+                {
+                    for paragraph in [paragraph, paragraph + 1] {
+                        let half = ParagraphStory::TextBox {
+                            host,
+                            text_box,
+                            paragraph,
+                        };
+                        if let Some(surface) = self.paragraph_story_surface(&half) {
+                            self.sync_paragraph_text(surface);
+                        }
+                    }
+                }
                 true
             }
             ParagraphSurface::Note {
@@ -28407,8 +28425,15 @@ impl WordDocument {
                 }
                 self.upsert_xml_part_content(&part, xml);
                 self.rebuild_paragraph_surfaces();
-                self.sync_paragraph_text(index);
-                self.sync_paragraph_text(index + 1);
+                // Relisting can reorder the surfaces before the note (a body
+                // split lists its new paragraph before the notes the first
+                // half references until then), so find the halves by story.
+                let halves = [ordinal, ordinal + 1].map(|paragraph| {
+                    self.surface_index_for_story(kind.story(), paragraph, None, Some(&note_id))
+                });
+                for surface in halves.into_iter().flatten() {
+                    self.sync_paragraph_text(surface);
+                }
                 true
             }
         }
