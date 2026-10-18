@@ -377,6 +377,21 @@ fn deleting_a_sheet_turns_references_to_it_into_ref_errors() {
 }
 
 #[test]
+fn references_left_broken_by_a_deletion_evaluate_to_ref_errors() {
+    let mut workbook = open();
+    workbook.delete_sheet(SALES).expect("delete");
+    // Excel evaluates `#REF!B4:B6` — inside a function, through a name —
+    // to #REF!, and so does every formula that reads one.
+    for reference in ["A1", "A2", "A3", "B2"] {
+        let cell = workbook.cell("Notes", reference).unwrap();
+        assert_eq!(cell.kind, CellKind::Error, "{reference}: {cell:?}");
+        assert_eq!(cell.display, "#REF!", "{reference}");
+    }
+    let status = workbook.calculation_status();
+    assert!(!status.requires_recalculation, "{status:?}");
+}
+
+#[test]
 fn deleting_the_active_sheet_moves_the_active_tab_and_its_names_go() {
     let mut workbook = open();
     workbook.delete_sheet("Notes").expect("delete");
