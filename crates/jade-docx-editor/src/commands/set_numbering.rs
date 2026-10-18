@@ -15,7 +15,7 @@ use jade_docx_layout::selection::SelectionRange;
 use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
 
 /// `w:numId` value that turns numbering off.
-const NUMBERING_OFF: &str = "0";
+pub(crate) const NUMBERING_OFF: &str = "0";
 
 /// Whether the paragraph style (or a style it is based on) numbers its
 /// paragraphs.
@@ -30,7 +30,7 @@ fn style_supplies_numbering(document: &crate::word_document::WordDocument, style
 /// Whether the paragraph's tracked property change (`w:pPrChange`) holds a
 /// list. The reader numbers such a paragraph by it while the change is
 /// pending, so taking its numbering off needs an explicit `w:numId="0"`.
-fn tracked_change_supplies_numbering(properties: Option<&XmlElement>) -> bool {
+pub(crate) fn tracked_change_supplies_numbering(properties: Option<&XmlElement>) -> bool {
     fn holds_num_id(element: &XmlElement) -> bool {
         element.children.iter().any(|child| match child {
             XmlNode::Element(child) => {

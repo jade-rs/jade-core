@@ -1,8 +1,11 @@
-use super::paragraph_property_sync::sync_paragraph_style_xml;
+use super::paragraph_property_sync::{
+    snapshot_paragraph_properties_xml, sync_paragraph_numbering_xml, sync_paragraph_style_xml,
+};
 use super::raw_xml_undo::RawXmlUndo;
+use super::set_numbering::{tracked_change_supplies_numbering, NUMBERING_OFF};
 use super::text_edit::append_runs;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::Paragraph;
+use crate::document::{Numbering, Paragraph};
 use crate::word_document::{keep_declared_paragraph_properties, WordDocument};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
@@ -350,6 +353,14 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
             .iter()
             .any(|(declared, name)| declared == tag && name == attribute)
     };
+    // The new paragraph has the source's mark, with any pending property
+    // change on it. The reader numbers a paragraph by the list such a change
+    // records, so a next style without numbering has to turn it off.
+    let tracked_numbering = !is_declared("w:numPr")
+        && style_numbering.is_none()
+        && tracked_change_supplies_numbering(
+            snapshot_paragraph_properties_xml(document, paragraph_index).as_ref(),
+        );
     if let Some(paragraph) = document.paragraph_mut(paragraph_index) {
         let before = paragraph.properties.clone().unwrap_or_default();
         let mut props = style_paragraph_props.unwrap_or_default();
@@ -357,6 +368,11 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
         keep_declared_paragraph_properties(&mut props, &before, is_declared, is_declared_attribute);
         props.numbering = if is_declared("w:numPr") {
             before.numbering
+        } else if tracked_numbering {
+            Some(Numbering {
+                id: Some(NUMBERING_OFF.to_string()),
+                level: None,
+            })
         } else {
             style_numbering
         };
@@ -373,6 +389,9 @@ fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
     document.remove_paragraph_run_properties(paragraph_index, CHARACTER_FORMATTING_TAGS);
     document.apply_run_font_defaults_at(paragraph_index);
     sync_paragraph_style_xml(document, paragraph_index, Some(next_style.as_str()));
+    if tracked_numbering {
+        sync_paragraph_numbering_xml(document, paragraph_index, Some(NUMBERING_OFF), None);
+    }
 }
 
 /// The `w:rPr` children of character formatting, which an Enter at the end of
