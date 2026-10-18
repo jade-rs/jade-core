@@ -45297,6 +45297,7 @@ mod tests {
         let mut styled_size = None;
         let mut doc_default_size = None;
         let mut explicit_size = None;
+        let mut explicit_complex_size = None;
 
         for element in &body.elements {
             if let Some(paragraph) = element.as_paragraph() {
@@ -45314,11 +45315,12 @@ mod tests {
                         .and_then(|run| run.properties.as_ref())
                         .and_then(|props| props.font_size);
                 } else if text.contains("Explicit") {
-                    explicit_size = paragraph
+                    let props = paragraph
                         .runs
                         .first()
-                        .and_then(|run| run.properties.as_ref())
-                        .and_then(|props| props.font_size);
+                        .and_then(|run| run.properties.as_ref());
+                    explicit_size = props.and_then(|props| props.font_size);
+                    explicit_complex_size = props.and_then(|props| props.font_size_complex);
                 }
             }
         }
@@ -45333,11 +45335,15 @@ mod tests {
             Some(11.0),
             "paragraphs without run or style overrides should inherit doc defaults"
         );
+        // `w:szCs` sizes complex-script text only. Word for Mac draws a run
+        // that declares `w:szCs` alone at the inherited `w:sz`, Latin and
+        // Japanese text alike.
         assert_eq!(
             explicit_size,
-            Some(15.0),
-            "direct szCs declarations should still win over style/doc defaults"
+            Some(11.0),
+            "a direct szCs alone leaves the run's size to the doc defaults"
         );
+        assert_eq!(explicit_complex_size, Some(15.0));
     }
 
     #[test]

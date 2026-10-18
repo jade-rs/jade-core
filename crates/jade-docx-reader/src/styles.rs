@@ -1380,17 +1380,11 @@ impl StylesPart {
                         if let Some(style) = current_style.as_mut() {
                             if let Some(run_props) = style.run_properties.as_mut() {
                                 run_props.font_size_complex = Some(size);
-                                if run_props.font_size.is_none() {
-                                    run_props.font_size = Some(size);
-                                }
                             }
                         }
                     } else if state.in_doc_default_run_properties {
                         if let Some(defaults) = self.doc_default_run_properties.as_mut() {
                             defaults.font_size_complex = Some(size);
-                            if defaults.font_size.is_none() {
-                                defaults.font_size = Some(size);
-                            }
                         }
                     }
                 }
@@ -2609,6 +2603,25 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `w:szCs` sizes complex-script text only: Word for Mac draws Latin and
+    /// Japanese text in a style that declares `w:szCs` alone at the size it
+    /// inherits, so the style must not take it as its `w:sz`.
+    #[test]
+    fn complex_script_size_alone_leaves_the_size_inherited() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr><w:szCs w:val="40"/></w:rPr></w:rPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:sz w:val="20"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Cs"><w:basedOn w:val="Normal"/><w:rPr><w:szCs w:val="40"/></w:rPr></w:style>
+</w:styles>"#;
+        let styles = StylesPart::from_xml(xml).expect("styles");
+        let defaults = styles.doc_default_run_properties().expect("defaults");
+        assert_eq!(defaults.font_size, None);
+        assert_eq!(defaults.font_size_complex, Some(20.0));
+        let resolved = styles.resolve_run_properties("Cs").expect("style");
+        assert_eq!(resolved.font_size, Some(10.0));
+        assert_eq!(resolved.font_size_complex, Some(20.0));
+    }
 
     #[test]
     fn style_run_properties_read_character_spacing() {
