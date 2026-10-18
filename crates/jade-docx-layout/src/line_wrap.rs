@@ -935,6 +935,9 @@ pub struct GraphemeAdvanceContext<'a> {
     /// [`crate::line_metrics::WordAutoSpace`] of the previous grapheme, when
     /// it is a digit set in a face with known metrics.
     pub prev_auto_space: Option<crate::line_metrics::WordAutoSpace>,
+    /// The run's letter spacing, even where `extra_spacing` is zero for its
+    /// last glyph: a character grid's auto spacing follows the tracked pitch.
+    pub run_letter_spacing: f64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -1044,6 +1047,7 @@ fn compute_grapheme_advance_with_ascii_width(
         snap_cell_width,
         font_descriptor,
         prev_auto_space,
+        run_letter_spacing,
     } = context;
 
     // Width classification and font-slot classification are independent:
@@ -1191,6 +1195,33 @@ fn compute_grapheme_advance_with_ascii_width(
             })
             .unwrap_or(0.0)
     };
+    // On a Word for Mac character grid the auto spacing is a quarter of the
+    // East Asian pitch rather than of the face's em: each boundary also takes
+    // a quarter of what the grid and the tracking (twice per full cell) add to
+    // it. indent-with-grid's 12pt text on 20pt cells is 5pt apart from its
+    // digits; numbering-restart's 11pt + 3pt − 2 × 1pt pitch, 3pt.
+    let grid_auto_space = if measured_width_is_oracle {
+        0.0
+    } else {
+        paragraph_style
+            .filter(|style| {
+                style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                    && !style.doc_grid_snap_to_chars
+            })
+            .and_then(|style| style.doc_grid_char_space_px)
+            .filter(|space| *space > 0.0)
+            .map_or(0.0, |space| (space + 2.0 * run_letter_spacing) * 0.25)
+    };
+    let widen = |gap: f64| {
+        if gap > 0.0 {
+            gap + grid_auto_space
+        } else {
+            gap
+        }
+    };
+    let implicit_latin_gap = widen(implicit_latin_gap);
+    let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
+    let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
         .map(|cell_width| {
             snap_to_chars_cell_span_adjustment(grapheme, script, core_advance, cell_width)
@@ -2275,6 +2306,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             snap_cell_width,
             font_descriptor: Some(font_descriptor),
             prev_auto_space: state.prev_auto_space,
+            run_letter_spacing: style.letter_spacing_px,
         },
         style,
         automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor),
@@ -9440,6 +9472,7 @@ mod tests {
             snap_cell_width,
             font_descriptor: None,
             prev_auto_space: None,
+            run_letter_spacing: 0.0,
         });
         Ok(OwnedTextAdvanceStep {
             rel_offset: 0,
@@ -12382,9 +12415,8 @@ mod tests {
             },
             ..ParagraphStyle::default()
         };
-        let lines =
-            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 65.0)
-                .expect("wrap");
+        let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 65.0)
+            .expect("wrap");
         assert_eq!(
             collect_line_infos(&lines)
                 .iter()
@@ -14534,8 +14566,7 @@ mod tests {
         .expect("wrap hanging-indent paragraph");
         // The line starts 0.05pt from the margin; the stop is 30pt from it.
         assert!(
-            (lines[0].segments[1].leading_width - (points_to_px(30.0 - 0.05) - 20.0)).abs()
-                < 1e-3,
+            (lines[0].segments[1].leading_width - (points_to_px(30.0 - 0.05) - 20.0)).abs() < 1e-3,
             "{}",
             lines[0].segments[1].leading_width
         );
@@ -14945,6 +14976,7 @@ mod tests {
                     snap_cell_width,
                     font_descriptor: None,
                     prev_auto_space: None,
+                    run_letter_spacing: 0.0,
                 });
                 width += advance.total_advance;
                 char_index_in_run += 1;
@@ -15739,6 +15771,7 @@ mod tests {
                     snap_cell_width: None,
                     font_descriptor: Some(descriptor),
                     prev_auto_space: None,
+                    run_letter_spacing: 0.0,
                 });
                 let expected = if use_word_metrics && font_units > 0.0 {
                     14.0 * (font_units / 2048.0
@@ -15822,6 +15855,7 @@ mod tests {
                     snap_cell_width: None,
                     font_descriptor: Some(descriptor),
                     prev_auto_space: None,
+                    run_letter_spacing: 0.0,
                 });
                 assert!(
                     (advance.glyph_width - expected).abs() < 1e-9,
@@ -15829,6 +15863,64 @@ mod tests {
                 );
                 assert!((advance.total_advance - expected - 2.0).abs() < 1e-9);
             }
+        }
+    }
+
+    #[test]
+    fn mac_character_grid_widens_auto_spacing_by_a_quarter_of_its_extra_space() {
+        // indent-with-grid (linesAndChars, 12pt MS Mincho on 20pt cells):
+        // Word for Mac 16.113 sets `げ2` 25pt apart and `2文` 15pt, a quarter
+        // of the 20pt cell (5pt) at each boundary instead of 3pt.
+        let px = |pt: f64| pt * 96.0 / 72.0;
+        let advance = |grid: Option<f64>, tracking: f64, grapheme: &str, prev: &str, next: &str| {
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: true,
+                word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+                doc_grid_char_space_px: grid,
+                ..ParagraphStyle::default()
+            };
+            let script = classify_script(grapheme);
+            compute_grapheme_advance(GraphemeAdvanceContext {
+                paragraph_style: Some(&paragraph),
+                grapheme,
+                script,
+                measured_glyph_width: if script == ScriptCategory::EastAsia {
+                    px(12.0)
+                } else {
+                    px(6.0)
+                },
+                measured_width_is_oracle: false,
+                text_scale_x: 1.0,
+                extra_spacing: 0.0,
+                kerning_adjustment: 0.0,
+                is_line_start: false,
+                prev_prev_grapheme: None,
+                prev_grapheme: Some(prev),
+                next_grapheme: Some(next),
+                prev_glyph_width: Some(px(12.0)),
+                snap_cell_width: None,
+                font_descriptor: Some("12.00pt 'MS Mincho'"),
+                prev_auto_space: None,
+                run_letter_spacing: tracking,
+            })
+        };
+        let gap =
+            |advance: GraphemeAdvance| advance.implicit_latin_gap + advance.implicit_numeric_gap;
+        for (grapheme, prev, next) in [("2", "げ", "文"), ("文", "2", "字")] {
+            let plain = gap(advance(None, 0.0, grapheme, prev, next));
+            let grid = gap(advance(Some(px(8.0)), 0.0, grapheme, prev, next));
+            assert!(plain > 0.0, "{grapheme}");
+            assert!(
+                (grid - plain - px(2.0)).abs() < 1e-6,
+                "{grapheme}: {plain} -> {grid}"
+            );
+            // 3pt of grid space with −1pt tracking: (3 − 2) / 4.
+            let tracked = gap(advance(Some(px(3.0)), px(-1.0), grapheme, prev, next));
+            let untracked = gap(advance(None, px(-1.0), grapheme, prev, next));
+            assert!(
+                (tracked - untracked - px(0.25)).abs() < 1e-6,
+                "{grapheme}: {untracked} -> {tracked}"
+            );
         }
     }
 
@@ -15857,6 +15949,7 @@ mod tests {
             snap_cell_width: None,
             font_descriptor: None,
             prev_auto_space: None,
+            run_letter_spacing: 0.0,
         });
         let (ratio, min_px) = numeric_auto_spacing_params(paragraph.east_asian_rules.auto_space_dn);
         let expected_gap =
@@ -15897,6 +15990,7 @@ mod tests {
             snap_cell_width: None,
             font_descriptor: None,
             prev_auto_space: None,
+            run_letter_spacing: 0.0,
         });
         let expected_glyph_width =
             adjusted_glyph_advance_width(ScriptCategory::EastAsia, 10.0, 1.0);
@@ -15937,6 +16031,7 @@ mod tests {
             snap_cell_width: None,
             font_descriptor: None,
             prev_auto_space: None,
+            run_letter_spacing: 0.0,
         });
 
         // TRACE evidence: COM glyph advances in `tests/word-oracle/tabs`
@@ -15968,6 +16063,7 @@ mod tests {
             snap_cell_width: None,
             font_descriptor: None,
             prev_auto_space: None,
+            run_letter_spacing: 0.0,
         });
 
         // TRACE evidence: `tests/word-oracle/yokohama_mini/word-trace.json`
@@ -19319,6 +19415,7 @@ mod tests {
                 snap_cell_width: None,
                 font_descriptor: Some(descriptor),
                 prev_auto_space: None,
+                run_letter_spacing: 0.0,
             })
         };
         for descriptor in [
