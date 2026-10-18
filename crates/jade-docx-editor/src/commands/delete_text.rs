@@ -198,6 +198,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(prev_index);
         }
+        show_moved_text_boxes(ctx, prev_index);
 
         self.paragraph_index = prev_index;
         Ok(TextPosition::new(prev_index, prev_len))
@@ -269,6 +270,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(paragraph_index);
         }
+        show_moved_text_boxes(ctx, paragraph_index);
 
         self.paragraph_index = paragraph_index;
         Ok(TextPosition::new(paragraph_index, caret_offset))
@@ -1018,6 +1020,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(start.paragraph);
         }
+        show_moved_text_boxes(ctx, start.paragraph);
 
         let new_focus = TextPosition::new(start.paragraph, start_offset);
         self.previous_selection = previous_selection;
@@ -1206,6 +1209,20 @@ pub(super) fn capture_paragraph_range(
     Ok(paragraphs)
 }
 
+/// Gives the text boxes runs brought into `paragraph_index` their surfaces
+/// back: removing the paragraph they came from took its text boxes'
+/// paragraphs out of the paragraph order, and joining does not add a box, so
+/// nothing else rebuilds them.
+fn show_moved_text_boxes(ctx: &mut CommandContext<'_>, paragraph_index: usize) {
+    let hosts_text_box = ctx
+        .document
+        .paragraph(paragraph_index)
+        .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.text_box.is_some()));
+    if hosts_text_box && ctx.document.hosted_text_box_surface_count(paragraph_index) == 0 {
+        ctx.document.rebuild_paragraph_surfaces();
+    }
+}
+
 fn remove_paragraph_at_checked(
     ctx: &mut CommandContext<'_>,
     paragraph_index: usize,
@@ -1215,6 +1232,11 @@ fn remove_paragraph_at_checked(
         return Err(CommandError::ParagraphUnavailable);
     }
 
+    // A paragraph hosting a text box takes the box's paragraphs with it. The
+    // check counted one paragraph only, failed after the paragraph and its
+    // runs were gone, and Backspace at the start of such a paragraph lost
+    // its text and the text box.
+    let hosted = ctx.document.hosted_text_box_surface_count(paragraph_index);
     let removed = ctx.document.remove_paragraph_at(paragraph_index);
     if !removed {
         // remove_paragraph_at() can return false when removed paragraph has no node_id.
@@ -1222,7 +1244,7 @@ fn remove_paragraph_at_checked(
     }
 
     let after_count = ctx.document.paragraph_count();
-    if before_count != after_count.saturating_add(1) {
+    if before_count != after_count.saturating_add(1 + hosted) {
         return Err(CommandError::ParagraphUnavailable);
     }
 
