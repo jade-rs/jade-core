@@ -10736,6 +10736,54 @@ mod tests {
     }
 
     #[test]
+    fn a_style_keeps_the_spacing_a_paragraph_does_not_declare() {
+        // A paragraph declaring only `w:spacing w:before` takes its space
+        // after from its style. Applying the heading style kept the declared
+        // spacing as a whole, so the style's space after was lost on screen
+        // while a reload, which merges attribute by attribute, had it: the
+        // table row holding the paragraph was 4pt shorter until reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-nested.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::ToggleParagraphSpaceBefore {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                    },
+                    // `2` is the fixture's heading 2: 8pt before, 4pt after.
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("2".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let spacing = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.spacing.clone())
+        };
+        let live = spacing(&word_doc).expect("spacing");
+        assert_eq!((live.before, live.after), (Some(12.0), Some(4.0)));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(spacing(&reloaded), Some(live));
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the

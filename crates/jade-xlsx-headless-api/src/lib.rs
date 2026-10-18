@@ -615,6 +615,126 @@ pub struct DataValidationView {
     pub formula2: Option<String>,
 }
 
+/// How one edge of a cell is drawn, by its OOXML name (`thin`, `mediumDashed`,
+/// …). `None` is no line at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BorderStyle {
+    None,
+    Thin,
+    Medium,
+    Thick,
+    Dashed,
+    Dotted,
+    Double,
+    Hair,
+    MediumDashed,
+    DashDot,
+    MediumDashDot,
+    DashDotDot,
+    MediumDashDotDot,
+    SlantDashDot,
+}
+
+impl BorderStyle {
+    pub const ALL: [BorderStyle; 14] = [
+        BorderStyle::None,
+        BorderStyle::Thin,
+        BorderStyle::Medium,
+        BorderStyle::Thick,
+        BorderStyle::Dashed,
+        BorderStyle::Dotted,
+        BorderStyle::Double,
+        BorderStyle::Hair,
+        BorderStyle::MediumDashed,
+        BorderStyle::DashDot,
+        BorderStyle::MediumDashDot,
+        BorderStyle::DashDotDot,
+        BorderStyle::MediumDashDotDot,
+        BorderStyle::SlantDashDot,
+    ];
+
+    /// The `style` attribute value, as the file writes it.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BorderStyle::None => "none",
+            BorderStyle::Thin => "thin",
+            BorderStyle::Medium => "medium",
+            BorderStyle::Thick => "thick",
+            BorderStyle::Dashed => "dashed",
+            BorderStyle::Dotted => "dotted",
+            BorderStyle::Double => "double",
+            BorderStyle::Hair => "hair",
+            BorderStyle::MediumDashed => "mediumDashed",
+            BorderStyle::DashDot => "dashDot",
+            BorderStyle::MediumDashDot => "mediumDashDot",
+            BorderStyle::DashDotDot => "dashDotDot",
+            BorderStyle::MediumDashDotDot => "mediumDashDotDot",
+            BorderStyle::SlantDashDot => "slantDashDot",
+        }
+    }
+
+    /// The style a `style` attribute names; `None` for a name OOXML does not
+    /// define.
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|style| style.as_str() == name)
+    }
+}
+
+/// One edge: its style and colour.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BorderLine {
+    pub style: BorderStyle,
+    /// `RRGGBB`; absent for Excel's automatic colour (and for no line).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
+impl BorderLine {
+    /// No line.
+    pub fn none() -> Self {
+        Self {
+            style: BorderStyle::None,
+            color: None,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.style == BorderStyle::None
+    }
+}
+
+/// The lines drawn around (and across) one cell. An edge that is absent has
+/// no line.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CellBorderView {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub left: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bottom: Option<BorderLine>,
+    /// The line shared by both diagonals; drawn only in the directions
+    /// `diagonal_up` / `diagonal_down` turn on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal: Option<BorderLine>,
+    /// Bottom-left to top-right.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub diagonal_up: bool,
+    /// Top-left to bottom-right.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub diagonal_down: bool,
+}
+
+impl CellBorderView {
+    pub fn is_empty(&self) -> bool {
+        *self == CellBorderView::default()
+    }
+}
+
 /// One cell, as a caller without a screen needs it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CellView {
@@ -658,6 +778,10 @@ pub struct CellView {
     /// The Excel table this cell is part of, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub table: Option<TableCellView>,
+    /// The cell's own border lines, when it has any (a merged region's
+    /// outline is drawn from the edges of the cells along it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<CellBorderView>,
 }
 
 /// A rectangle of cells, in row-major order. Cells the file does not write are

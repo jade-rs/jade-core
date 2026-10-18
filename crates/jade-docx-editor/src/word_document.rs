@@ -295,10 +295,17 @@ pub(crate) fn rebase_paragraph_style_properties(
 /// `w:pPr` (`declared`), from `before`, after a style was merged over them:
 /// applying a paragraph style keeps direct paragraph formatting, as in Word,
 /// and the saved `w:pPr` keeps it too.
+///
+/// `w:spacing` and `w:ind` are inherited attribute by attribute: a paragraph
+/// declaring only `w:before` still takes its space after from the style, as a
+/// reload reads it. Only the attributes it declares (`declared_attribute`)
+/// come back from `before`; putting the whole element back dropped the
+/// style's other spacing, and the paragraph sat higher than after a reload.
 pub(crate) fn keep_declared_paragraph_properties(
     props: &mut ParagraphProperties,
     before: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! keep {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -312,8 +319,6 @@ pub(crate) fn keep_declared_paragraph_properties(
     keep!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -331,6 +336,48 @@ pub(crate) fn keep_declared_paragraph_properties(
         numbering => "w:numPr",
         contextual_spacing => "w:contextualSpacing",
     );
+    macro_rules! keep_attributes {
+        ($target:expr, $source:expr, $tag:literal, $($field:ident => [$($attribute:literal),+]),* $(,)?) => {
+            $(
+                if $(declared_attribute($tag, $attribute))||+ {
+                    $target.$field = $source.$field.clone();
+                }
+            )*
+        };
+    }
+    if declared("w:spacing") {
+        let mut spacing = props.spacing.clone().unwrap_or_default();
+        let direct = before.spacing.clone().unwrap_or_default();
+        keep_attributes!(spacing, direct, "w:spacing",
+            before => ["w:before"],
+            after => ["w:after"],
+            before_lines => ["w:beforeLines"],
+            after_lines => ["w:afterLines"],
+            line => ["w:line"],
+            // The reader gives a `w:line` without a rule the rule "auto".
+            line_rule => ["w:line", "w:lineRule"],
+        );
+        props.spacing = (spacing != Spacing::default()).then_some(spacing);
+    }
+    if declared("w:ind") {
+        let mut indent = props.indent.clone().unwrap_or_default();
+        let direct = before.indent.clone().unwrap_or_default();
+        keep_attributes!(indent, direct, "w:ind",
+            left => ["w:left"],
+            right => ["w:right"],
+            start => ["w:start"],
+            end => ["w:end"],
+            first_line => ["w:firstLine"],
+            hanging => ["w:hanging"],
+            left_chars => ["w:leftChars"],
+            right_chars => ["w:rightChars"],
+            start_chars => ["w:startChars"],
+            end_chars => ["w:endChars"],
+            first_line_chars => ["w:firstLineChars"],
+            hanging_chars => ["w:hangingChars"],
+        );
+        props.indent = (indent != Indent::default()).then_some(indent);
+    }
 }
 
 /// Replaces the run properties `old` resolves to with what `new` resolves to,
@@ -29526,6 +29573,42 @@ impl WordDocument {
             .paragraph(paragraph_index)
             .and_then(|paragraph| paragraph.node_id);
         declared_property_tags(self.raw_document.as_ref(), node_id, "w:p", "w:pPr")
+    }
+
+    /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
+    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    pub(crate) fn paragraph_declared_property_attributes(
+        &self,
+        paragraph_index: usize,
+    ) -> Vec<(String, String)> {
+        let Some(properties) = self
+            .paragraph(paragraph_index)
+            .and_then(|paragraph| paragraph.node_id)
+            .and_then(|id| self.raw_document.as_ref()?.element(id))
+            .filter(|node| node.name == "w:p")
+            .and_then(|node| {
+                node.children.iter().find_map(|child| match child {
+                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
+                    _ => None,
+                })
+            })
+        else {
+            return Vec::new();
+        };
+        properties
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => Some(element),
+                _ => None,
+            })
+            .flat_map(|element| {
+                element
+                    .attributes
+                    .iter()
+                    .map(|attribute| (element.name.clone(), attribute.name.clone()))
+            })
+            .collect()
     }
 
     fn sync_paragraph_text_with_options(

@@ -62,7 +62,7 @@ pub use notes::{delete_note, set_note};
 pub use patch::patch_sheet;
 pub use refresh::{refresh_sheet, CachedValue, CachedValueEdit, SheetCachedValues};
 pub use shift::{restructure, shift_defined_names, shift_sheet};
-pub use styles::{add_cell_format, FormatChange};
+pub use styles::{add_cell_format, BorderLine, BorderStyle, FormatChange};
 pub use table::{
     fresh_column_name, remove_table_parts, rename_table_column, shift_table, unique_column_name,
     ShiftedTable,

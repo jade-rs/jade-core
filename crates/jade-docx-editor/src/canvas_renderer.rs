@@ -27597,7 +27597,11 @@ where
             next_grapheme_after_segment,
             &mut snap_to_chars_cell_width_cache,
             |step| {
-                self.set_font_if_changed(context, step.font_descriptor);
+                // Advances come from the measurer, which sets its own font, so
+                // an undrawn line (band cull, undrawn page) needs no painter font.
+                if draw_enabled {
+                    self.set_font_if_changed(context, step.font_descriptor);
+                }
                 let leading_advance = step.advance.implicit_latin_gap
                     + step.advance.implicit_numeric_gap
                     + step.advance.kerning_adjustment
@@ -27632,6 +27636,53 @@ where
         )?;
 
         Ok((width, end_state))
+    }
+
+    /// The width [`Self::draw_text_with_spacing`] returns for `text` with no
+    /// neighbouring graphemes, without touching any painter.
+    fn text_width_with_spacing(
+        &self,
+        text: &str,
+        letter_spacing: f64,
+        style: &AppliedRunStyle,
+    ) -> Result<f64, JsValue> {
+        if text.is_empty() {
+            return Ok(0.0);
+        }
+        let resolved_override;
+        let resolved_run_style = if (letter_spacing - style.letter_spacing_px).abs() < f64::EPSILON
+        {
+            self.resolved_run_style(style)
+        } else {
+            resolved_override = {
+                let mut resolved = self.resolved_run_style(style).clone();
+                resolved.letter_spacing_px = letter_spacing;
+                resolved
+            };
+            &resolved_override
+        };
+        let mut width = 0.0;
+        walk_text_advance_steps(
+            self,
+            text,
+            resolved_run_style,
+            None,
+            &TextAdvanceState::default(),
+            None,
+            &mut FxHashMap::default(),
+            |step| {
+                let leading_advance = step.advance.implicit_latin_gap
+                    + step.advance.implicit_numeric_gap
+                    + step.advance.kerning_adjustment
+                    + step.advance.snap_leading;
+                if leading_advance.abs() > f64::EPSILON {
+                    width += leading_advance;
+                }
+                width += step.advance.glyph_box_width;
+                Ok(())
+            },
+        )?;
+        Ok(width)
     }
 
     #[allow(dead_code)]
@@ -28577,6 +28628,17 @@ where
     {
         if symbol.is_empty() {
             return Ok(0.0);
+        }
+        // An undrawn line still needs the mark's width for its line end. The
+        // width depends only on `style`, so skip the painter state the mark
+        // would borrow: the save, colour, font and restore, and the tracker
+        // invalidation they force on the next run.
+        if !self.should_draw_current_page_for_render() {
+            return self.text_width_with_spacing(
+                symbol,
+                style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
+                style,
+            );
         }
 
         context.save();
@@ -37886,6 +37948,71 @@ mod tests {
                 style.resolved.font_descriptor_latin_ascii.as_ref()
             );
         }
+    }
+
+    /// A line the band cull (or an undrawn page) skips still needs its mark's
+    /// width for the line end, but none of the borrowed painter state.
+    #[test]
+    fn an_undrawn_control_mark_reports_its_width_without_touching_the_painter() {
+        use jade_painter::recording::RecordingPainter;
+        let mut renderer = renderer_measuring(&[("\u{00b6}", 8.0)]);
+        let style = test_applied_style(1.0);
+        let drawn = RecordingPainter::new();
+        let drawn_width = renderer
+            .draw_control_mark(&drawn, "\u{00b6}", 10.0, 100.0, &style)
+            .expect("infallible");
+        assert!(!drawn.ops().is_empty());
+
+        // A pageless renderer draws everything; skip a paged one.
+        renderer.pageless_mode = false;
+        renderer.render_skip_draw = true;
+        let skipped = RecordingPainter::new();
+        let skipped_width = renderer
+            .draw_control_mark(&skipped, "\u{00b6}", 10.0, 100.0, &style)
+            .expect("infallible");
+        assert_eq!(skipped_width, drawn_width);
+        assert!(skipped.ops().is_empty(), "{:?}", skipped.ops());
+    }
+
+    /// Undrawn text advances exactly as drawn text does, and sets no font.
+    #[test]
+    fn undrawn_text_advances_like_drawn_text_without_setting_fonts() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        let mut renderer = renderer_measuring(&[("a", 10.0), ("b", 7.0), ("c", 3.0)]);
+        let style = test_applied_style(1.0);
+        let draw = |renderer: &CanvasRenderer, painter: &RecordingPainter| {
+            renderer
+                .draw_text_with_spacing(
+                    painter, "abc", 5.0, 50.0, 1.5, &style, None, None, None, None, None,
+                )
+                .expect("infallible")
+                .0
+        };
+        let drawn = RecordingPainter::new();
+        let drawn_width = draw(&renderer, &drawn);
+        assert!(drawn.count(|op| matches!(op, Op::FillText { .. })) > 0);
+        assert_eq!(
+            renderer
+                .text_width_with_spacing("abc", 1.5, &style)
+                .expect("infallible"),
+            drawn_width
+        );
+
+        // A pageless renderer draws everything; skip a paged one.
+        renderer.pageless_mode = false;
+        renderer.render_skip_draw = true;
+        // Widths now come from the cache, and other drawing has moved the
+        // painter's font since.
+        renderer.invalidate_context_state_tracking();
+        let skipped = RecordingPainter::new();
+        let skipped_width = draw(&renderer, &skipped);
+        assert_eq!(skipped_width, drawn_width);
+        assert_eq!(
+            skipped.count(|op| matches!(op, Op::FillText { .. } | Op::SetFont(_))),
+            0,
+            "{:?}",
+            skipped.ops()
+        );
     }
 
     #[test]
