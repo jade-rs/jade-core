@@ -139,22 +139,20 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
 // Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
 // NaiveDate and return the requested component as a number.
 macro_rules! date_part_fn {
-    ($name:ident, $method:ident) => {
+    ($name:ident, $part:tt) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Convert the serial number to a NaiveDate and return the requested
-            // component. Broadcasts element-wise over ranges/arrays. Uses the free
-            // function from_excel_date to avoid borrowing self in the closure.
-            self.apply_number_unary(
-                &args[0],
-                cell,
-                |f| match from_excel_date(f.floor() as i64) {
-                    Ok(date) => Ok(date.$method() as f64),
-                    Err(_) => Err(Error::NUM),
-                },
-            )
+            // Read the serial as Excel does — 0 is 0 January 1900 and 60 the
+            // fictional 29 February — and return the requested component.
+            // Broadcasts element-wise over ranges/arrays.
+            self.apply_number_unary(&args[0], cell, |f| {
+                match excel_serial_to_ymd(f.floor() as i64) {
+                    Some(ymd) => Ok(ymd.$part as f64),
+                    None => Err(Error::NUM),
+                }
+            })
         }
     };
 }
@@ -621,9 +619,9 @@ impl<'a> Model<'a> {
     // -----------------------------------------------------------------------
     // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
     // -----------------------------------------------------------------------
-    date_part_fn!(fn_day, day);
-    date_part_fn!(fn_month, month);
-    date_part_fn!(fn_year, year);
+    date_part_fn!(fn_day, 2);
+    date_part_fn!(fn_month, 1);
+    date_part_fn!(fn_year, 0);
 
     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
@@ -828,7 +826,7 @@ impl<'a> Model<'a> {
             date - Months::new(months_abs)
         };
 
-        let serial_number = native_date.num_days_from_ce() - crate::date_system::base();
+        let serial_number = crate::formatter::dates::convert_to_serial_number(native_date);
         if serial_number < crate::date_system::minimum_serial() {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -1639,7 +1637,7 @@ impl<'a> Model<'a> {
                 }
             }
         }
-        let serial = date.num_days_from_ce() - crate::date_system::base();
+        let serial = crate::formatter::dates::convert_to_serial_number(date);
         CalcResult::Number(serial as f64)
     }
 
@@ -1720,7 +1718,7 @@ impl<'a> Model<'a> {
                 }
             }
         }
-        let serial = date.num_days_from_ce() - crate::date_system::base();
+        let serial = crate::formatter::dates::convert_to_serial_number(date);
         CalcResult::Number(serial as f64)
     }
 

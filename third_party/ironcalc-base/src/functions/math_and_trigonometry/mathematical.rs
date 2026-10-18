@@ -640,7 +640,9 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let scale = 10.0_f64.powf(number_of_digits);
-        CalcResult::Number((value * scale).round() / scale)
+        // Excel scales at 15 significant digits too: 1.005 is stored as
+        // 1.00499…, and ROUND(1.005, 2) is still 1.01.
+        CalcResult::Number(to_precision(value * scale, 15).round() / scale)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -662,10 +664,11 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let scale = 10.0_f64.powf(number_of_digits);
+        let scaled = to_precision(value * scale, 15);
         if value > 0.0 {
-            CalcResult::Number((value * scale).ceil() / scale)
+            CalcResult::Number(scaled.ceil() / scale)
         } else {
-            CalcResult::Number((value * scale).floor() / scale)
+            CalcResult::Number(scaled.floor() / scale)
         }
     }
 
@@ -688,10 +691,11 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let scale = 10.0_f64.powf(number_of_digits);
+        let scaled = to_precision(value * scale, 15);
         if value > 0.0 {
-            CalcResult::Number((value * scale).floor() / scale)
+            CalcResult::Number(scaled.floor() / scale)
         } else {
-            CalcResult::Number((value * scale).ceil() / scale)
+            CalcResult::Number(scaled.ceil() / scale)
         }
     }
 

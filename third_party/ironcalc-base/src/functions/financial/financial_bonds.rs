@@ -12,7 +12,7 @@ use crate::{
 // ============================================================
 
 fn naivedate_to_serial(d: NaiveDate) -> i64 {
-    (d.num_days_from_ce() - crate::date_system::base()) as i64
+    crate::formatter::dates::convert_to_serial_number(d) as i64
 }
 
 fn last_day_of_feb(year: i32) -> u32 {

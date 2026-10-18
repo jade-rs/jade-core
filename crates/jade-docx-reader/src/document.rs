@@ -3540,6 +3540,29 @@ pub struct RevisionMark {
     pub date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_utc: Option<String>,
+    /// For deleted text: the tracked insertion it belongs to
+    /// (`<w:ins><w:del>…</w:del></w:ins>`), as Word writes when someone
+    /// deletes text that is still an insertion. Rejecting the deletion
+    /// brings the insertion back; rejecting the insertion removes the text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insertion: Option<Box<RevisionMark>>,
+}
+
+impl RevisionMark {
+    /// Whether this mark removes its text (a deletion or a move away).
+    pub fn is_deletion(&self) -> bool {
+        matches!(self.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
+    }
+
+    /// The insertion layer of a run carrying this mark: the mark itself for
+    /// an insertion (or a move here), the insertion a deletion sits in.
+    pub fn insertion_layer(&self) -> Option<&RevisionMark> {
+        if self.is_deletion() {
+            self.insertion.as_deref()
+        } else {
+            Some(self)
+        }
+    }
 }
 
 /// Enumerates the supported revision kinds emitted by Word.
@@ -3694,7 +3717,9 @@ mod tests {
         use super::{Run, RunField, RunFieldKind};
         assert_eq!(std::mem::size_of::<RunFieldKind>(), 104);
         assert_eq!(std::mem::size_of::<RunField>(), 160);
-        assert_eq!(std::mem::size_of::<Run>(), 3064);
+        // 8 bytes of it: the insertion a tracked deletion sits in
+        // (`RevisionMark::insertion`).
+        assert_eq!(std::mem::size_of::<Run>(), 3072);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
