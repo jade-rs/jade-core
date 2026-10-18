@@ -268,6 +268,13 @@ impl Command for SetParagraphStyleCommand {
                 0..run_count,
                 previous_style.as_deref(),
             );
+            // The style's fonts name the theme's by key; a load resolves them
+            // into the runs, so the runs given them here need the same. Left
+            // to the restyle above, a style applied again (which it skips)
+            // left them unresolved, and the runs fell back to no font at all.
+            if let Some(theme) = ctx.document.loaded_theme_part() {
+                ctx.document.apply_theme_fonts_at(paragraph_index, &theme);
+            }
             sync_paragraph_style_xml(ctx.document, paragraph_index, style_id.as_deref());
             if let Some(run_style_props) = style_run_props.as_ref() {
                 let removed = ctx.document.remove_paragraph_run_properties(
