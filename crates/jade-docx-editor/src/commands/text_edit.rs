@@ -559,6 +559,13 @@ fn run_holds_object(run: &Run) -> bool {
         || run.has_endnote_ref
 }
 
+/// Whether `run` places a text box or references a note.
+fn places_a_story(run: &Run) -> bool {
+    run.text_box.is_some()
+        || !run.footnote_reference_ids.is_empty()
+        || !run.endnote_reference_ids.is_empty()
+}
+
 /// Applies a text edit to the provided run sequence without discarding style
 /// or breaking existing run boundaries more than necessary.
 #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(start, end, insert_len = insert.len())))]
@@ -598,7 +605,16 @@ pub fn apply_text_edit(
         if let Some(template) = protected_template.as_ref() {
             let mut inserted = create_run_from_template(Some(template), insert);
             inserted.revision = None;
-            let tail = split_runs_at_preserving_source(runs, start, zero_width);
+            let mut tail = split_runs_at_preserving_source(runs, start, zero_width);
+            // At a paragraph's start, typing goes after the text boxes and
+            // note references there, as it does without a revision around.
+            if start == 0 {
+                let leading = tail
+                    .iter()
+                    .take_while(|run| run.text.is_empty() && places_a_story(run))
+                    .count();
+                runs.extend(tail.drain(..leading));
+            }
             runs.push(inserted);
             runs.extend(tail);
             normalize_break_runs(runs);
