@@ -12038,6 +12038,73 @@ mod tests {
     }
 
     #[test]
+    fn joining_a_paragraph_that_references_a_note_keeps_the_note_after_it() {
+        // A footnote is listed right after the paragraph that references it.
+        // Backspace into the paragraph before took the reference out of the
+        // joined paragraph before the list was rebuilt, so the footnote went
+        // behind the separator notes: every note paragraph's index changed
+        // until the document was reopened.
+        for fixture in ["footnote.docx", "endnote.docx"] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::InsertParagraphBreak {
+                            paragraph: 0,
+                            offset: 3,
+                            count: 1,
+                        },
+                        HeadlessCommand::InsertParagraphBreak {
+                            paragraph: 1,
+                            offset: 2,
+                            count: 1,
+                        },
+                        HeadlessCommand::DeleteText {
+                            paragraph: 2,
+                            offset: 0,
+                            direction: HeadlessDeleteDirection::Backward,
+                            count: 1,
+                        },
+                    ],
+                },
+            )
+            .expect("edits apply");
+            let paragraphs = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .map(|index| {
+                        let paragraph = word_doc.paragraph(index).expect("paragraph");
+                        (
+                            paragraph
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.style.as_deref().map(str::to_string)),
+                            paragraph
+                                .runs
+                                .iter()
+                                .map(|run| run.text.as_str())
+                                .collect::<String>(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(paragraphs(&word_doc), paragraphs(&reloaded), "{fixture}");
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
