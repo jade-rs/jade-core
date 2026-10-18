@@ -90,6 +90,11 @@ pub struct SkiaRenderHost {
     /// page stretched to fit. Recording hosts ignore it and use their PDF
     /// options instead.
     raster_scale: f64,
+    /// Whether the live raster pages show the document on a dark page. Shared
+    /// so the document can switch it after the renderer has taken the host;
+    /// recording hosts never set it, so print and export keep the document's
+    /// own colours.
+    dark_paper: Rc<Cell<bool>>,
 }
 
 #[derive(Clone)]
@@ -122,6 +127,7 @@ impl SkiaRenderHost {
             page_width,
             page_height,
             raster_scale: 1.0,
+            dark_paper: Rc::new(Cell::new(false)),
         })
     }
 
@@ -165,6 +171,7 @@ impl SkiaRenderHost {
             page_width: width,
             page_height: height,
             raster_scale: 1.0,
+            dark_paper: Rc::new(Cell::new(false)),
         })
     }
 
@@ -192,6 +199,12 @@ impl SkiaRenderHost {
         Rc::clone(&self.pass_covers_whole_document)
     }
 
+    /// Whether the live pages are drawn on dark paper. Read when a surface is
+    /// made, so a page added later matches the ones already there.
+    pub fn dark_paper(&self) -> Rc<Cell<bool>> {
+        Rc::clone(&self.dark_paper)
+    }
+
     fn new_surface(&self, width: f64, height: f64) -> Option<SkiaPainter> {
         let surface = if self.recording {
             match self.pdf_options.rendering {
@@ -201,7 +214,9 @@ impl SkiaRenderHost {
                 PdfRenderingMode::Vector => SkiaPainter::new_recording(width, height)?,
             }
         } else {
-            SkiaPainter::new_scaled(width, height, self.raster_scale)?
+            let surface = SkiaPainter::new_scaled(width, height, self.raster_scale)?;
+            surface.set_dark_paper(self.dark_paper.get());
+            surface
         };
         // Parsed faces, not bytes. A new Skia surface starts with none, and a
         // document that paginates mid-render creates surfaces on the hot path —
