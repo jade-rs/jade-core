@@ -29954,6 +29954,11 @@ impl WordDocument {
         runs: std::ops::Range<usize>,
         previous_style: Option<&str>,
     ) {
+        // A run's fonts hold the theme's font names, resolved at load; the
+        // styles name the theme's fonts by key. Compared unresolved, a run's
+        // fonts never matched the old style's, so a heading turned body text
+        // kept the heading's fonts on screen only.
+        let theme = self.loaded_theme_part();
         let Some(styles) = self.styles_part.as_ref() else {
             return;
         };
@@ -29981,12 +29986,16 @@ impl WordDocument {
                 style: props.style.clone(),
                 ..Default::default()
             };
-            let old = styles
+            let mut old = styles
                 .resolve_effective_run_properties(previous_style, Some(&character))
                 .unwrap_or_default();
-            let new = styles
+            let mut new = styles
                 .resolve_effective_run_properties(style, Some(&character))
                 .unwrap_or_default();
+            if let Some(theme) = theme.as_ref() {
+                Self::apply_theme_fonts_to_run_props(&mut old, theme);
+                Self::apply_theme_fonts_to_run_props(&mut new, theme);
+            }
             let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
@@ -29999,8 +30008,8 @@ impl WordDocument {
             }
         }
         if restyled_any {
-            if let Some(theme) = self.loaded_theme_part() {
-                self.apply_theme_fonts_at(paragraph_index, &theme);
+            if let Some(theme) = theme.as_ref() {
+                self.apply_theme_fonts_at(paragraph_index, theme);
             }
         }
     }
