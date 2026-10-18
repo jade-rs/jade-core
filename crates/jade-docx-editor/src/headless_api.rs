@@ -12171,6 +12171,52 @@ mod tests {
     }
 
     #[test]
+    fn enter_in_a_paragraph_whose_text_box_holds_an_equation_lists_it_once() {
+        // math.docx's paragraph 19 hosts a text box with an equation, which
+        // the paragraph order lists as a math surface after the paragraph.
+        // Enter in the paragraph patched the order in place, could not tell
+        // that surface from the ones after the paragraph, and listed it twice:
+        // one paragraph more than a reload, and every later index off by one.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/math.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 19,
+                    offset: 84,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        let surfaces = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc.paragraph(index).map(|paragraph| {
+                        paragraph
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>()
+                    })
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(surfaces(&word_doc), surfaces(&reloaded));
+    }
+
+    #[test]
     fn joining_a_paragraph_that_references_a_note_keeps_the_note_after_it() {
         // A footnote is listed right after the paragraph that references it.
         // Backspace into the paragraph before took the reference out of the
