@@ -180,3 +180,41 @@ fn delete_text_box_has_a_wire_format() {
     );
     assert_eq!(command.name(), "delete_text_box");
 }
+
+/// `insert_shape` takes a rendered offset, like every text command: a note
+/// reference before it counts its mark. It once used the number as an
+/// offset into the runs' text, so a shape after a reference landed one
+/// character too far on per reference.
+#[test]
+fn insert_shape_offsets_are_rendered_offsets() {
+    let mut word = load("footnote.docx");
+    apply(
+        &mut word,
+        HeadlessCommand::InsertFootnote {
+            paragraph: 0,
+            offset: 2,
+            text: String::new(),
+        },
+    )
+    .unwrap();
+    // "He" ² "llo" ¹: rendered "He2llo1"; offset 4 is after "He2l".
+    apply(
+        &mut word,
+        HeadlessCommand::InsertShape {
+            paragraph: 0,
+            offset: 4,
+            shape: HeadlessShapeKind::Rectangle,
+            width_px: 120.0,
+            height_px: 60.0,
+            fill_color: None,
+            border_color: None,
+            border_width_px: 1.0,
+            text: "boxed".into(),
+        },
+    )
+    .unwrap();
+    let anchors: Vec<String> = listing(&word)[0].2.clone();
+    assert_eq!(anchors, ["2 footnote 2", "3 box", "5 footnote 1"]);
+    let expected = listing(&word);
+    assert_eq!(listing(&reload(&word)), expected);
+}
