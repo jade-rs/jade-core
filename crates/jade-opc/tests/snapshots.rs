@@ -13,7 +13,7 @@ fn archive(payload: &[u8], edit: usize, deflated: bool) -> Vec<u8> {
     write!(writer, "<text>{edit}</text>").unwrap();
     writer.start_file("media.bin", options).unwrap();
     writer.write_all(payload).unwrap();
-    writer.set_comment(format!("comment {edit}"));
+    writer.set_comment(format!("comment {edit}")).unwrap();
     writer.finish().unwrap().into_inner()
 }
 

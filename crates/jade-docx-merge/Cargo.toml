@@ -1,0 +1,21 @@
+[package]
+name = "jade-docx-merge"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "旧と新の docx を、変更履歴付きの 1 つの docx に合成する"
+license = "MIT"
+publish = false
+
+[lib]
+name = "docx_merge"
+
+[dependencies]
+anyhow = "1"
+docx_diff = { package = "jade-docx-diff", path = "../jade-docx-diff" }
+quick-xml = "0.39"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile = "3"
+zip = { version = "8", default-features = false, features = ["deflate"] }
