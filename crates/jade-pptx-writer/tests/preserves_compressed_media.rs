@@ -16,7 +16,7 @@ fn stored_media_deck() -> Vec<u8> {
         writer.start_file(name, options).unwrap();
         writer.write_all(package.part(name).unwrap()).unwrap();
     }
-    writer.set_comment("preserved PPTX comment");
+    writer.set_comment("preserved PPTX comment").unwrap();
     writer.finish().unwrap().into_inner()
 }
 fn raw_media(bytes: &[u8]) -> Vec<(String, Vec<u8>, zip::CompressionMethod)> {
