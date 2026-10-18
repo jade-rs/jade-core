@@ -3824,6 +3824,17 @@ where
     band_redraw_fallback_multi_column: Cell<u64>,
     band_redraw_fallback_line_height: Cell<u64>,
     band_redraw_fallback_empty_line: Cell<u64>,
+    /// Lazy sessions fetch page pixels on demand: a band render paints only
+    /// the band page (see `should_draw_page_for_current_render`).
+    band_redraw_paints_band_page_only: bool,
+    /// Set by `set_incremental_dirty_from`, which only edits call; taken at
+    /// render entry into `edit_render_this_pass`. A layout-extension seek also
+    /// sets `forced_dirty_from`, so that alone does not identify an edit.
+    edit_render_pending: bool,
+    /// Whether this render paints an edit (see `edit_render_pending`).
+    edit_render_this_pass: bool,
+    /// Dirty visible pages a lazy band edit left unpainted (session lifetime).
+    band_redraw_skipped_pages: Cell<u64>,
     band_redraw_fallback_page_not_dirty: Cell<u64>,
     band_redraw_fallback_no_layout: Cell<u64>,
     band_redraw_fallback_unstable: Cell<u64>,
@@ -5718,6 +5729,7 @@ where
     /// command path to avoid computing hashes for all paragraphs.
     pub fn set_incremental_dirty_from(&mut self, paragraph_index: usize) {
         self.forced_dirty_from = Some(self.keep_next_group_owner(paragraph_index));
+        self.edit_render_pending = true;
         // Skip change detection since we know exactly which paragraph changed.
         self.skip_change_detection = true;
     }
@@ -7955,6 +7967,10 @@ where
             band_redraw_fallback_multi_column: Cell::new(0),
             band_redraw_fallback_line_height: Cell::new(0),
             band_redraw_fallback_empty_line: Cell::new(0),
+            band_redraw_paints_band_page_only: false,
+            edit_render_pending: false,
+            edit_render_this_pass: false,
+            band_redraw_skipped_pages: Cell::new(0),
             band_redraw_fallback_page_not_dirty: Cell::new(0),
             band_redraw_fallback_no_layout: Cell::new(0),
             band_redraw_fallback_unstable: Cell::new(0),
@@ -8079,6 +8095,17 @@ where
     ///
     /// Returns `(eligible, taken, fallback_reasons)` where the reasons vector is
     /// `(name, count)` pairs. All counters are monotonic (session lifetime).
+    /// Dirty visible pages lazy band edits left unpainted (session lifetime).
+    pub fn band_redraw_skipped_pages(&self) -> u64 {
+        self.band_redraw_skipped_pages.get()
+    }
+
+    /// Makes band renders paint only the band page. Set for lazy sessions,
+    /// whose page pixels are fetched, and repainted, on demand.
+    pub fn set_band_redraw_paints_band_page_only(&mut self, enabled: bool) {
+        self.band_redraw_paints_band_page_only = enabled;
+    }
+
     #[allow(clippy::type_complexity)]
     pub fn band_redraw_stats(&self) -> (u64, u64, Vec<(&'static str, u64)>) {
         (
@@ -9244,6 +9271,19 @@ where
     #[inline]
     fn should_draw_page_for_current_render(&self, page: usize) -> bool {
         if self.render_skip_draw {
+            return false;
+        }
+        // A lazy band render paints only the band page. Another page cannot
+        // change: pages before the edit precede it, and pages after it keep
+        // their layout because a geometry change escalates to a full repaint
+        // of every visible page. Its pixels from this pass would not be shown
+        // either: the worker invalidates every page's bitmap generation after
+        // the edit and repaints a page when its bitmap is fetched. The band
+        // completion forgets those pages' pixels so no later band builds on them.
+        if self.band_redraw_paints_band_page_only
+            && self.edit_render_this_pass
+            && self.band_redraw_plan.is_some_and(|plan| plan.page != page)
+        {
             return false;
         }
         if self
@@ -12361,6 +12401,7 @@ where
         // mid-render when a seek is active, so it cannot be read at completion.
         self.last_edit_full_page_valid = None;
         self.edit_render_dirty_from = self.forced_dirty_from;
+        self.edit_render_this_pass = std::mem::take(&mut self.edit_render_pending);
         if !self
             .last_document
             .as_ref()
@@ -13336,6 +13377,28 @@ where
         // pixel-identical canvases without another presentation. Unstable bands
         // return through the escalation above and keep all wide dirty regions.
         if let Some(plan) = completed_band_plan {
+            if self.band_redraw_paints_band_page_only && self.edit_render_this_pass {
+                // Pages this pass would have repainted but skipped keep pixels
+                // from an earlier layout generation.
+                let skipped = self
+                    .render_dirty_pages
+                    .iter()
+                    .flatten()
+                    .copied()
+                    .filter(|&dirty| {
+                        dirty != plan.page
+                            && self
+                                .visible_page_range
+                                .as_ref()
+                                .is_none_or(|range| range.contains(&dirty))
+                    })
+                    .collect::<Vec<_>>();
+                for dirty in skipped {
+                    self.host.forget_page_pixels(dirty.saturating_sub(1));
+                    self.band_redraw_skipped_pages
+                        .set(self.band_redraw_skipped_pages.get() + 1);
+                }
+            }
             let page = plan.page.saturating_sub(1);
             let downstream_dirty_regions = self
                 .dirty_regions()
@@ -13391,6 +13454,8 @@ where
         self.clear_shift_replay();
         self.prefix_replay_until = None;
         self.forced_dirty_from = None;
+        self.edit_render_pending = false;
+        self.edit_render_this_pass = false;
         self.forced_seek_snapshot = None;
         self.disable_seek_replay_once = false;
         self.prefer_visible_window_seek_once = false;
@@ -37950,6 +38015,43 @@ mod tests {
                 style.resolved.font_descriptor_latin_ascii.as_ref()
             );
         }
+    }
+
+    /// A lazy edit's band render paints the band page alone; any other render,
+    /// or an eager session, keeps painting every dirty visible page.
+    #[test]
+    fn a_lazy_band_edit_paints_only_the_band_page() {
+        let mut renderer = renderer_measuring(&[]);
+        renderer.pageless_mode = false;
+        renderer.render_full_repaint = false;
+        renderer.render_dirty_pages = Some(std::collections::BTreeSet::from([1, 2, 3]));
+        renderer.visible_page_range = Some(1..=3);
+        renderer.band_redraw_plan = Some(BandRedrawPlan {
+            page: 2,
+            local_top: 100.0,
+            local_bottom: 140.0,
+            paint_bottom: 140.0,
+        });
+        let drawn = |renderer: &CanvasRenderer| {
+            (1..=3)
+                .filter(|&page| renderer.should_draw_page_for_current_render(page))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(drawn(&renderer), [1, 2, 3], "eager session");
+        renderer.set_band_redraw_paints_band_page_only(true);
+        assert_eq!(drawn(&renderer), [1, 2, 3], "not an edit render");
+        renderer.edit_render_this_pass = true;
+        assert_eq!(drawn(&renderer), [2]);
+        renderer.band_redraw_plan = None;
+        assert_eq!(drawn(&renderer), [1, 2, 3], "no band");
+    }
+
+    #[test]
+    fn only_an_incremental_edit_marks_the_next_render_as_an_edit() {
+        let mut renderer = renderer_measuring(&[]);
+        assert!(!renderer.edit_render_pending);
+        renderer.set_incremental_dirty_from(0);
+        assert!(renderer.edit_render_pending);
     }
 
     /// A line the band cull (or an undrawn page) skips still needs its mark's
