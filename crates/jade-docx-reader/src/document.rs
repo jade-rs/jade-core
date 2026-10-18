@@ -4845,6 +4845,10 @@ pub struct EastAsianLineBreakingSettings {
     /// `no_line_break_after` is a Japanese custom set (ECMA-376 §17.15.1.58).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub no_line_break_after_replaces_default: bool,
+    /// `w:strictFirstAndLastChars`: the strict Japanese set, which adds the
+    /// small kana and `ー` to the characters that may not start a line.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub strict_first_and_last_chars: bool,
     /// `w:compat/w:compatSetting[@w:name="compatibilityMode"]`: the Word
     /// version whose layout rules the document asks for (12 = Word 2007,
     /// 14 = Word 2010, 15 = Word 2013 and later). `None` when absent.
