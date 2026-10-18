@@ -22,6 +22,7 @@ are unchanged; these probes are additional observations.
 | `indent` | Paragraph indents over a numbering level `w:left="533" w:hanging="113"`: a character-unit left indent keeps the first line there and hangs the rest past it; a paragraph first-line indent cancels the level's hanging. |
 | `numbering-label`, `numbering-label-faces` | The label takes the paragraph mark's faces and size; the space after it is 0.278 em of the label size whatever the faces. |
 | `distribute-single` | A lone `A`, `も` or `あ` (before a trailing space) on a distributed line is centred. |
+| `exact-nogrid`, `exact-grid` | An exact-height line (12, 17.5, 24, 36pt) puts its baseline 0.8 of the height below its top, whatever the face (MS Mincho, MS Gothic, Century), size (10.5–20pt) or line grid. |
 
-`generators/` holds the scripts that wrote the squeeze and indent documents;
+`generators/` holds the scripts that wrote the squeeze, indent and exact documents;
 the numbering-label and distribute documents were derived from the indent one.
