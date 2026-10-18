@@ -2,7 +2,7 @@
 //
 // Jade: these count bytes as a Japanese (DBCS) Excel does — Shift_JIS, one
 // byte for ASCII and half-width katakana, two for the rest
-// (`functions/japanese.rs`). REPLACEB still delegates to REPLACE.
+// (`functions/japanese.rs`).
 
 use crate::{
     calc_result::CalcResult,
@@ -29,7 +29,7 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_replaceb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.fn_replace(args, cell)
+        self.dbcs_replace(args, cell)
     }
 
     pub(crate) fn fn_rightb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
