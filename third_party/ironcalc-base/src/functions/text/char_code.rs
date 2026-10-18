@@ -156,24 +156,7 @@ impl<'a> Model<'a> {
             Ok(s) => s,
             Err(e) => return e,
         };
-        CalcResult::String(asc_convert(&s))
+        // Jade: katakana too, as a Japanese Excel converts it.
+        CalcResult::String(crate::functions::japanese::to_halfwidth(&s))
     }
-}
-
-/// Converts full-width Unicode characters to their ASCII half-width equivalents.
-/// Full-width Latin/ASCII: U+FF01–U+FF5E → U+0021–U+007E
-/// Full-width space: U+3000 → U+0020
-fn asc_convert(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            let cp = c as u32;
-            if cp == 0x3000 {
-                ' '
-            } else if (0xFF01..=0xFF5E).contains(&cp) {
-                char::from_u32(cp - 0xFF01 + 0x0021).unwrap_or(c)
-            } else {
-                c
-            }
-        })
-        .collect()
 }

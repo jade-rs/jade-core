@@ -14,6 +14,7 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
+pub(crate) mod japanese;
 mod logical;
 mod lookup_and_reference;
 mod macros;
@@ -540,6 +541,10 @@ pub enum Function {
     Subtotal,
     /// Jade addition, not in the upstream language tables.
     Aggregate,
+    /// Jade additions: Japanese Excel.
+    Jis,
+    Datestring,
+    Numberstring,
 
     // Database
     Daverage,
@@ -568,6 +573,9 @@ pub enum Function {
 fn jade_lookup(key: &str) -> Option<Function> {
     match key {
         "AGGREGATE" => Some(Function::Aggregate),
+        "JIS" => Some(Function::Jis),
+        "DATESTRING" => Some(Function::Datestring),
+        "NUMBERSTRING" => Some(Function::Numberstring),
         _ => None,
     }
 }
@@ -1579,6 +1587,9 @@ impl Function {
             Function::Gestep => functions.gestep.clone(),
             Function::Subtotal => functions.subtotal.clone(),
             Function::Aggregate => "AGGREGATE".to_string(),
+            Function::Jis => "JIS".to_string(),
+            Function::Datestring => "DATESTRING".to_string(),
+            Function::Numberstring => "NUMBERSTRING".to_string(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1622,7 +1633,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 495> {
+    pub fn into_iter() -> IntoIter<Function, 498> {
         [
             Function::And,
             Function::False,
@@ -1957,6 +1968,9 @@ impl Function {
             Function::Gestep,
             Function::Subtotal,
             Function::Aggregate,
+            Function::Jis,
+            Function::Datestring,
+            Function::Numberstring,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2648,6 +2662,9 @@ impl<'a> Model<'a> {
             Function::Gestep => self.fn_gestep(args, cell),
             Function::Subtotal => self.fn_subtotal(args, cell),
             Function::Aggregate => self.fn_aggregate(args, cell),
+            Function::Jis => self.fn_jis(args, cell),
+            Function::Datestring => self.fn_datestring(args, cell),
+            Function::Numberstring => self.fn_numberstring(args, cell),
             Function::Acot => self.fn_acot(args, cell),
             Function::Acoth => self.fn_acoth(args, cell),
             Function::Cot => self.fn_cot(args, cell),
