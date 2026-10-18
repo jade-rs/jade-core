@@ -167,6 +167,8 @@ pub struct NativeDocument {
     /// Set to `false` around a bounded repaint, so it does not report the pages
     /// it stopped at as the document's page count.
     pass_covers_whole_document: Rc<std::cell::Cell<bool>>,
+    /// See [`Self::set_dark_paper`].
+    dark_paper: Rc<std::cell::Cell<bool>>,
     options: Options,
     fonts: crate::FontEnvironment,
 }
@@ -212,6 +214,7 @@ impl NativeDocument {
         let pages = host.pages();
         let rendered_pages = host.rendered_pages();
         let pass_covers_whole_document = host.pass_covers_whole_document();
+        let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
         renderer.sync_document_header_footer_stories(&word_document);
@@ -259,6 +262,7 @@ impl NativeDocument {
             pages,
             rendered_pages,
             pass_covers_whole_document,
+            dark_paper,
             options,
             fonts,
         })
@@ -508,6 +512,30 @@ impl NativeDocument {
         }
         self.repaint_all()?;
         Ok(true)
+    }
+
+    /// Shows the pages on dark paper, or on the document's own, and repaints if
+    /// that changed anything. Returns whether the pages were repainted.
+    ///
+    /// Only what [`Self::page_pixels`] reads changes: the document keeps its
+    /// colours, and [`Self::export_pdf`] — and so printing — draws them, since
+    /// it paints on surfaces of its own.
+    pub fn set_dark_paper(&mut self, on: bool) -> Result<bool, String> {
+        if self.dark_paper.replace(on) == on {
+            return Ok(false);
+        }
+        // The whole pool, not only the rendered pages: a surface reused when
+        // the document grows must not come back on the other paper.
+        for page in self.pages.borrow().iter() {
+            page.set_dark_paper(on);
+        }
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Whether the pages are shown on dark paper.
+    pub fn dark_paper(&self) -> bool {
+        self.dark_paper.get()
     }
 
     /// Selects from `anchor` to `focus` and repaints so the highlight appears.
