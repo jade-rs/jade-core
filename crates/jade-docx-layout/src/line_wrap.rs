@@ -837,7 +837,10 @@ fn resolve_snap_to_chars_cell_width<C: LineWrapContext>(
         return Ok(Some(*cached));
     }
 
-    let measured = ctx.measure_text("あ", east_asia_font_descriptor)?;
+    let measured = match crate::line_metrics::word_monospace_em_px(east_asia_font_descriptor) {
+        Some(em) => em,
+        None => ctx.measure_text("あ", east_asia_font_descriptor)?,
+    };
     let width = (measured * EAST_ASIA_ADVANCE_SCALE * text_scale_x + char_space_px).max(1.0);
     cache.insert(cache_key, width);
     Ok(Some(width))
@@ -1852,6 +1855,8 @@ struct ComputedTextAdvanceStep<'a> {
     font_descriptor_hash: u64,
     measured_glyph_width: f64,
     measured_width_is_oracle: bool,
+    /// The advance came from a fixed-pitch face's cell, not the host.
+    monospace_cell: bool,
     advance: GraphemeAdvance,
 }
 
@@ -2085,34 +2090,44 @@ fn pair_has_fixed_cjk_advances(
 fn mac_fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
-    style: &ResolvedRunStyle,
+    font_descriptor: &str,
+    font_descriptor_hash: u64,
     state: &TextAdvanceState,
     measured_width: f64,
     paragraph_style: Option<&ParagraphStyle>,
 ) -> Option<f64> {
+    let paragraph_style = paragraph_style?;
     if script != ScriptCategory::EastAsia
-        || paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |p| {
-            p.word_platform
-        }) != crate::line_metrics::WordLayoutPlatform::Mac
+        || paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
+        || !matches!(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+            Some("compressPunctuation" | "compressPunctuationAndJapaneseKana")
+        )
+        || state.prev_font_descriptor_hash != Some(font_descriptor_hash)
     {
         return None;
     }
     let previous = state.prev_grapheme.as_deref()?;
-    if !punctuation_blank_before(grapheme)
-        || !punctuation_blank_after(previous)
-        || matches!(previous, "。" | "．")
-    {
+    let closes_on = punctuation_blank_after(grapheme)
+        || (punctuation_blank_before(grapheme) && !matches!(previous, "。" | "．"));
+    if !punctuation_blank_after(previous) || !closes_on {
         return None;
     }
-    let em = style.fixed_east_asia_em_px()?;
+    let em = crate::line_metrics::word_fixed_east_asian_em_px(font_descriptor)?;
     let previous_width = state.prev_raw_glyph_width?;
     let tolerance = fixed_cjk_metric_tolerance_px(em);
     if (measured_width - em).abs() > tolerance || (previous_width - em).abs() > tolerance {
         return None;
     }
-    // JLREQ adjacent closing/comma→opening punctuation shares one half-em
-    // blank. Original Word MS Mincho rows retain this with enabled kerning;
-    // a stand-in with no such pair must not replace it with two full cells.
+    // `w:characterSpacingControl="compressPunctuation"`: a closing bracket,
+    // comma or full stop followed by another one or by an opening bracket
+    // gives up its half-em blank. Word for Mac's MS Mincho rows in `math` and
+    // `scroll-offset-repro` set `）」` `、「` `）（` `。）` `）。` `）、` that
+    // way, and the `doNotCompress` documents (trust, nda, contract) keep
+    // full cells whether or not kerning is on.
     Some(-0.5 * em)
 }
 
@@ -2148,9 +2163,18 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
     };
-    let measured_glyph_width = match oracle_measured_glyph_width {
-        Some(width) => width,
-        None => {
+    // ＭＳ 明朝 / ＭＳ ゴシック set every glyph on a full/half-em grid and have
+    // no kerning, so neither the advance nor pair kerning comes from the
+    // host, whose face may be a substitute (jlsi/jade#469).
+    let monospace_width = if measured_width_is_oracle {
+        None
+    } else {
+        crate::line_metrics::word_monospace_advance_px(font_descriptor, grapheme)
+    };
+    let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
+        (Some(width), _) => width,
+        (None, Some(width)) => width + synthetic_bold_extra,
+        (None, None) => {
             ctx.measure_text_with_font_key(
                 grapheme,
                 font_descriptor,
@@ -2167,7 +2191,22 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     } else {
         0.0
     };
-    let kerning_adjustment = if !measured_width_is_oracle
+    let punctuation_adjustment = if measured_width_is_oracle {
+        None
+    } else {
+        mac_fixed_punctuation_pair_adjustment(
+            grapheme,
+            script,
+            font_descriptor,
+            font_descriptor_hash,
+            state,
+            measured_glyph_width,
+            paragraph_style,
+        )
+    };
+    let kerning_adjustment = if let Some(adjustment) = punctuation_adjustment {
+        adjustment * style.text_scale_x.max(0.01)
+    } else if !measured_width_is_oracle
         && style.enable_pair_kerning
         && state.prev_grapheme.is_some()
         && state.prev_font_descriptor_hash == Some(font_descriptor_hash)
@@ -2179,19 +2218,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             state,
             measured_glyph_width,
             paragraph_style,
-        ) {
+        )
+    {
         let prev_grapheme = state.prev_grapheme.as_deref().unwrap_or_default();
-        let punctuation_adjustment = mac_fixed_punctuation_pair_adjustment(
-            grapheme,
-            script,
-            style,
-            state,
-            measured_glyph_width,
-            paragraph_style,
-        );
-        let word_pair_adjustment = if punctuation_adjustment.is_some() {
-            punctuation_adjustment
-        } else if prev_grapheme.len() == 1
+        let word_pair_adjustment = if prev_grapheme.len() == 1
             && grapheme.len() == 1
             && prev_grapheme.is_ascii()
             && grapheme.is_ascii()
@@ -2206,6 +2236,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         };
         let raw_adjustment = if let Some(adjustment) = word_pair_adjustment {
             adjustment
+        } else if monospace_width.is_some() {
+            // Word's own punctuation rules above still apply; the host's pair
+            // kerning belongs to whatever face stands in for the fixed one.
+            0.0
         } else {
             let prev_width = state.prev_raw_glyph_width.unwrap_or_default();
             let pair_width = measure_text_pair(
@@ -2276,6 +2310,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         font_descriptor_hash,
         measured_glyph_width,
         measured_width_is_oracle,
+        monospace_cell: monospace_width.is_some(),
         advance,
     })
 }
@@ -5716,8 +5751,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 };
                 let candidate_width =
                     (marker_gap + computed.advance.total_advance + fitted_gap).max(0.0);
-                let trailing_overhang =
-                    ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x;
+                let trailing_overhang = if computed.monospace_cell {
+                    // Fixed-pitch glyphs stay inside their cell.
+                    0.0
+                } else {
+                    ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x
+                };
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 let zero_width_oracle_glyph =
                     computed.measured_width_is_oracle && candidate_width <= f64::EPSILON;
@@ -8920,22 +8959,26 @@ mod tests {
     #[test]
     fn mac_fixed_punctuation_pairs_do_not_depend_on_standin_kerning() {
         use crate::line_metrics::WordLayoutPlatform;
-        for host_adjustment in [0.0, -1.0, -3.0] {
-            let mut ctx = CountingKerningContext::new(true);
+        let kern = |text: &str, control: Option<&str>, kerning: bool, host_adjustment: f64| {
+            let mut ctx = CountingKerningContext::new(kerning);
             ctx.pair_adjustment = host_adjustment;
             let descriptor = "4.50pt 'MS Mincho', serif";
             let style = ResolvedRunStyle::new(
-                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, true, None,
+                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, kerning, None,
             );
             let paragraph = ParagraphStyle {
                 word_platform: WordLayoutPlatform::Mac,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    character_spacing_control: control.map(str::to_string),
+                    ..EastAsianLineBreakingRules::default()
+                },
                 ..ParagraphStyle::default()
             };
             let mut cache = FxHashMap::default();
             let mut kern = 0.0;
             walk_text_advance_steps(
                 &ctx,
-                "、「",
+                text,
                 &style,
                 Some(&paragraph),
                 &TextAdvanceState::default(),
@@ -8947,8 +8990,35 @@ mod tests {
                 },
             )
             .unwrap();
-            assert_eq!(kern, -3.0);
-            assert_eq!(*ctx.pair_measurements.borrow(), 0);
+            assert_eq!(*ctx.pair_measurements.borrow(), 0, "{text}");
+            kern
+        };
+        // compressPunctuation: a closing bracket, comma or full stop gives up
+        // its half-em blank before another one or an opening bracket, with or
+        // without kerning, whatever the stand-in face's pair kerning says.
+        for text in ["、「", "）」", "）（", "。）", "）。", "）、"] {
+            for host_adjustment in [0.0, -1.0, -3.0] {
+                for kerning in [true, false] {
+                    assert_eq!(
+                        kern(text, Some("compressPunctuation"), kerning, host_adjustment),
+                        -3.0,
+                        "{text} kerning={kerning}"
+                    );
+                }
+            }
+        }
+        // Not between an opening bracket and what follows, nor after a full
+        // stop before an opening bracket.
+        for text in ["「（", "「あ", "。「"] {
+            assert_eq!(
+                kern(text, Some("compressPunctuation"), true, -1.0),
+                0.0,
+                "{text}"
+            );
+        }
+        // doNotCompress documents keep full cells even with kerning on.
+        for control in [Some("doNotCompress"), None] {
+            assert_eq!(kern("、「", control, true, -1.0), 0.0, "{control:?}");
         }
     }
 
@@ -8973,11 +9043,13 @@ mod tests {
                 0,
             ),
             (
+                // Fixed-pitch faces have no kerning on either platform
+                // (jlsi/jade#469): the stand-in's pair kerning is not Word's.
                 "4.50pt 'MS Mincho', serif",
                 "す。",
                 WordLayoutPlatform::Windows,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'Test', serif",
@@ -8997,37 +9069,39 @@ mod tests {
                 "4.50pt 'MS Mincho', serif",
                 "す\u{3099}。",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
                 "To",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
+                // Punctuation compression needs compressPunctuation (see
+                // mac_fixed_punctuation_pairs_do_not_depend_on_standin_kerning).
                 "4.50pt 'MS Mincho', serif",
                 "、「",
                 WordLayoutPlatform::Mac,
-                -3.0,
+                0.0,
                 0,
             ),
-            // A proportional measured glyph is not a full-em fixed glyph.
+            // The cell, not a narrower stand-in glyph, sets the advance.
             (
                 "10.50pt 'MS Mincho', serif",
                 "す。",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
                 "ｶ､",
                 WordLayoutPlatform::Mac,
-                -1.0,
-                1,
+                0.0,
+                0,
             ),
             (
                 "4.50pt 'MS Mincho', serif",
@@ -9225,7 +9299,8 @@ mod tests {
             );
             assert!((advance - 7.28).abs() < 1e-9);
         }
-        assert_eq!(*ctx.pair_measurements.borrow(), 1);
+        // A fixed-pitch face takes no host pair kerning at all.
+        assert_eq!(*ctx.pair_measurements.borrow(), 0);
     }
 
     #[test]
@@ -12426,6 +12501,8 @@ mod tests {
                 properties: Some(Rc::new(RunProperties {
                     fit_text: Some(fit.clone()),
                     char_spacing: Some(5.25),
+                    // The original is 10.5pt: a 14px ＭＳ 明朝 cell.
+                    font_size: Some(10.5),
                     ..RunProperties::default()
                 })),
                 ..make_run("床面")
@@ -12435,6 +12512,7 @@ mod tests {
                 end: 9,
                 properties: Some(Rc::new(RunProperties {
                     fit_text: Some(fit),
+                    font_size: Some(10.5),
                     ..RunProperties::default()
                 })),
                 ..make_run("積")
@@ -14299,6 +14377,59 @@ mod tests {
                 assert!((advance.total_advance - expected - 2.0).abs() < 1e-9);
             }
         }
+    }
+
+    /// ＭＳ 明朝 / ＭＳ ゴシック advances come from their full/half-em cells,
+    /// never from the host's stand-in face (jlsi/jade#469).
+    #[test]
+    fn ms_fixed_pitch_advances_follow_their_cells_without_host_measurement() {
+        let text = "日本ab ｱ。é";
+        let wrap = |family: &str| {
+            let descriptor: Rc<str> = Rc::from(format!("10.50pt '{family}', serif").as_str());
+            let mut ctx = TestContext::new(9.0);
+            ctx.style = ResolvedRunStyle::new(
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor,
+                0.0,
+                1.0,
+                false,
+                None,
+            );
+            let lines = wrap_text_into_lines(
+                &ctx,
+                text,
+                &[make_run(text)],
+                0.0,
+                &ParagraphStyle::default(),
+                0,
+                1000.0,
+            )
+            .unwrap();
+            assert_eq!(lines.len(), 1);
+            let widths: Vec<f64> = lines[0].clusters.iter().map(|c| c.width).collect();
+            (widths, ctx.recorded_measurements())
+        };
+        for family in ["MS Mincho", "ＭＳ ゴシック", "ＭＳ明朝", "MS-Gothic"] {
+            let (widths, measured) = wrap(family);
+            // 10.5pt = 14px: full cells 14, half cells 7; é is not a known
+            // cell and keeps the stand-in's 9px.
+            assert_eq!(
+                widths,
+                vec![14.0, 14.0, 7.0, 7.0, 7.0, 7.0, 14.0, 9.0],
+                "{family}"
+            );
+            for grapheme in ["日", "本", "a", "b", " ", "ｱ", "。"] {
+                assert!(
+                    !measured.iter().any(|text| text == grapheme),
+                    "{family}: {grapheme:?} was measured by the host: {measured:?}"
+                );
+            }
+        }
+        // The proportional siblings keep the host's widths.
+        let (widths, _) = wrap("MS PMincho");
+        assert_eq!(widths, vec![9.0; 8]);
     }
 
     #[test]
@@ -16511,8 +16642,13 @@ mod tests {
         );
     }
 
+    /// The ordinance paragraph is set in ＭＳ 明朝, whose advances follow from
+    /// the characters alone (jlsi/jade#469): whatever widths the host's
+    /// stand-in face reports, the lines do not move. (This simplified wrap
+    /// has no auto-space, so it does not reach Word's `第4号 | までに` break;
+    /// the production path is checked against the Word corpus elsewhere.)
     #[test]
-    fn yokohama_page6_ordinance_line_wraps_before_madeni() {
+    fn yokohama_page6_ordinance_line_does_not_depend_on_host_widths() {
         let (document, settings) =
             load_document_with_settings_and_style_defaults("yokohama_page6.docx")
                 .expect("load fixture");
@@ -16521,38 +16657,20 @@ mod tests {
             "4　法第15条の2第2項及び第3項に規定する条例で定める書類は、",
         )
         .expect("find ordinance paragraph");
-        let mut matched = false;
-        let mut samples = Vec::new();
-        for ascii_step in 50..=90 {
-            let ascii_width = ascii_step as f64 / 10.0;
-            for step in 90..=260 {
-                let cjk_width = step as f64 / 10.0;
-                let ctx = FontAwareVariableWidthContext::new(ascii_width, cjk_width);
-                let lines = wrap_fixture_paragraph_lines(&document, &settings, paragraph, &ctx)
-                    .expect("wrap ordinance line");
-                if samples.len() < 8 && step % 10 == 0 && ascii_step % 10 == 0 {
-                    samples.push(format!(
-                        "ascii={ascii_width:.2},cjk={cjk_width:.2}: {}",
-                        lines.join(" | ")
-                    ));
-                }
-                if lines.windows(2).any(|pair| {
-                    pair[0].ends_with("第2項第2号から第4号")
-                        && pair[1].starts_with("までに掲げる書類")
-                }) {
-                    matched = true;
-                    break;
-                }
-            }
-            if matched {
-                break;
-            }
+        let wrap = |ascii_width: f64, cjk_width: f64| {
+            let ctx = FontAwareVariableWidthContext::new(ascii_width, cjk_width);
+            wrap_fixture_paragraph_lines(&document, &settings, paragraph, &ctx)
+                .expect("wrap ordinance line")
+        };
+        let reference = wrap(6.0, 12.0);
+        assert!(reference.len() > 1, "{reference:?}");
+        for (ascii_width, cjk_width) in [(5.0, 9.0), (9.0, 26.0), (7.3, 15.6), (8.25, 11.0)] {
+            assert_eq!(
+                wrap(ascii_width, cjk_width),
+                reference,
+                "ascii={ascii_width}, cjk={cjk_width}"
+            );
         }
-        assert!(
-            matched,
-            "failed to wrap page6 ordinance line at 第4号/までに boundary; samples={}",
-            samples.join(" || ")
-        );
     }
 
     #[test]
