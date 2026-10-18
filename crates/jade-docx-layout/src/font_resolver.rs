@@ -232,6 +232,24 @@ impl ResolvedFontFamilies {
         font_size_pt: f32,
         complex_font_size_pt: f32,
     ) -> FontDescriptorSet {
+        self.to_descriptor_set_with_styles(
+            style_prefix,
+            style_prefix,
+            font_size_pt,
+            complex_font_size_pt,
+        )
+    }
+
+    /// Builds the per-script descriptors with the complex-script face styled
+    /// on its own: `w:bCs`/`w:iCs` bold and italicize only complex-script
+    /// glyphs, `w:b`/`w:i` the others (ECMA-376 Part 1 §17.3.2.2, §17.3.2.6).
+    pub fn to_descriptor_set_with_styles(
+        &self,
+        style_prefix: &str,
+        complex_style_prefix: &str,
+        font_size_pt: f32,
+        complex_font_size_pt: f32,
+    ) -> FontDescriptorSet {
         FontDescriptorSet {
             latin_ascii: Rc::from(format!(
                 "{}{:0.2}pt {}",
@@ -247,7 +265,7 @@ impl ResolvedFontFamilies {
             )),
             complex: Rc::from(format!(
                 "{}{:0.2}pt {}",
-                style_prefix, complex_font_size_pt, self.complex
+                complex_style_prefix, complex_font_size_pt, self.complex
             )),
         }
     }
@@ -743,6 +761,7 @@ fn resolve_run_style_for_wrap_uncached(
     doc_grid_char_spacing_px: Option<f64>,
 ) -> ResolvedRunStyle {
     let mut font_style = String::new();
+    let mut complex_font_style = String::new();
     let mut font_size_pt = 12.0_f32;
     let mut font_size_complex_pt: Option<f32> = None;
     let mut letter_spacing_px = 0.0_f64;
@@ -753,9 +772,15 @@ fn resolve_run_style_for_wrap_uncached(
         if props.bold.unwrap_or(false) {
             font_style.push_str("bold ");
         }
+        if props.bold_complex.unwrap_or(false) {
+            complex_font_style.push_str("bold ");
+        }
 
         if props.italic.unwrap_or(false) {
             font_style.push_str("italic ");
+        }
+        if props.italic_complex.unwrap_or(false) {
+            complex_font_style.push_str("italic ");
         }
 
         if let Some(size) = props.font_size {
@@ -805,8 +830,9 @@ fn resolve_run_style_for_wrap_uncached(
     }
 
     let families = resolve_font_families(properties);
-    let descriptors = families.to_descriptor_set_with_sizes(
+    let descriptors = families.to_descriptor_set_with_styles(
         &font_style,
+        &complex_font_style,
         font_size_pt,
         font_size_complex_pt.unwrap_or(font_size_pt),
     );
