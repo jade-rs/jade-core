@@ -6289,10 +6289,15 @@ impl WordDocument {
     }
 
     #[allow(clippy::ptr_arg)]
+    /// Splits the paragraph at `path` in `elements` at `offset`. With
+    /// `zero_width`, the halves keep a complex field's code runs and whole
+    /// runs keep their XML ids, as a body paragraph's split does, for the
+    /// caller to bind them to the split XML; without, every run is rebuilt.
     fn split_paragraph_by_path(
         elements: &mut Vec<BodyElement>,
         path: &[PathEntry],
         offset: usize,
+        zero_width: Option<&ZeroWidthRuns>,
     ) -> bool {
         let (container, index) = match Self::locate_paragraph_container_mut(elements, path) {
             Some(value) => value,
@@ -6309,15 +6314,36 @@ impl WordDocument {
         let formatting_carrier =
             Self::formatting_carrier_run_near_offset(paragraph, clamped_offset);
 
-        let tail_runs = if clamped_offset == 0 {
-            let mut taken = std::mem::take(&mut paragraph.runs);
-            for run in &mut taken {
-                run.node_id = None;
-                run.text_node_id = None;
+        let tail_runs = match zero_width {
+            Some(zero_width) => {
+                let mut tail_runs = if clamped_offset == 0 {
+                    std::mem::take(&mut paragraph.runs)
+                } else {
+                    split_runs_at_preserving_source(&mut paragraph.runs, clamped_offset, zero_width)
+                };
+                let head_run_ids: HashSet<XmlNodeId> = paragraph
+                    .runs
+                    .iter()
+                    .filter_map(|run| run.node_id)
+                    .collect();
+                for run in &mut tail_runs {
+                    run.text_node_id = None;
+                    run.revision_node_id = None;
+                    if run.node_id.is_some_and(|id| head_run_ids.contains(&id)) {
+                        run.node_id = None;
+                    }
+                }
+                tail_runs
             }
-            taken
-        } else {
-            Self::split_runs(&mut paragraph.runs, clamped_offset)
+            None if clamped_offset == 0 => {
+                let mut taken = std::mem::take(&mut paragraph.runs);
+                for run in &mut taken {
+                    run.node_id = None;
+                    run.text_node_id = None;
+                }
+                taken
+            }
+            None => Self::split_runs(&mut paragraph.runs, clamped_offset),
         };
         Self::ensure_formatting_carrier_run(&mut paragraph.runs, formatting_carrier.as_ref());
 
@@ -28779,6 +28805,9 @@ impl WordDocument {
                     .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
                     .and_then(|paragraph| paragraph.runs.get(run_index))
                     .and_then(|run| run.node_id);
+                // A field's code runs are empty in the model; read which
+                // before the split, as a body paragraph's does.
+                let zero_width = self.zero_width_runs(index);
                 let mut tail_run_copies = SplitTailCopies::default();
                 if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
                     let mut content_ids = Vec::new();
@@ -28813,7 +28842,12 @@ impl WordDocument {
                     return false;
                 };
 
-                if !Self::split_paragraph_by_path(&mut text_box.blocks, &block_path, offset) {
+                if !Self::split_paragraph_by_path(
+                    &mut text_box.blocks,
+                    &block_path,
+                    offset,
+                    Some(&zero_width),
+                ) {
                     return false;
                 }
 
@@ -28892,7 +28926,7 @@ impl WordDocument {
                         marker.has_endnote_ref = kind == NoteKind::Endnote;
                         marker
                     });
-                if !Self::split_paragraph_by_path(&mut note.body, &path, offset) {
+                if !Self::split_paragraph_by_path(&mut note.body, &path, offset, None) {
                     return false;
                 }
                 if let Some(marker) = marker {

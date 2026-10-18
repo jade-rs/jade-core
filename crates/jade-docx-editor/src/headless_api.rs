@@ -12298,6 +12298,65 @@ mod tests {
     }
 
     #[test]
+    fn enter_in_a_text_box_keeps_its_complex_field() {
+        // document-variable-fields.docx's VML text box reads
+        // "Textbox channel: " and a DOCVARIABLE field. Enter in that paragraph
+        // rebuilt every run of both halves from the model, which knows the
+        // field's code runs only as empty runs and dropped them: the field's
+        // stale result was saved as plain text.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .expect("paragraph")
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+        };
+        for offset in [4, "Textbox channel:".len(), "Textbox channel: ".len()] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            assert!(!word_doc.is_body_paragraph_surface(5));
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 5,
+                        offset,
+                        count: 1,
+                    }],
+                },
+            )
+            .expect("break applies");
+            let exported = word_doc.export_docx().expect("export succeeds");
+            let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+                .expect("reload");
+            assert_eq!(texts(&reloaded), texts(&word_doc), "at {offset}");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            assert!(
+                xml.contains(r#"IABLE "Release Channel" "#),
+                "at {offset}: {xml}"
+            );
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
