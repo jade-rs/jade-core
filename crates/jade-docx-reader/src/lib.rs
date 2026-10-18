@@ -21,7 +21,7 @@ pub use docx_xml::{
     DocxXmlDocument, DocxXmlError, DocxXmlTreeBuilder, XmlAttribute, XmlEditJournal, XmlElement,
     XmlNode, XmlNodeId, XmlNodePath,
 };
-pub use embedded_font::{package_embedded_fonts, EmbeddedFont};
+pub use embedded_font::{docx_embedded_fonts, package_embedded_fonts, EmbeddedFont};
 pub use font_table::{EmbeddedFontReference, EmbeddedFontStyle, FontTablePart};
 pub use numbering::NumberingPart;
 pub use parser::{DocumentParser, RawTreeTeeReader, XmlEventSource};

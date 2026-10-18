@@ -10,7 +10,7 @@
 //! original TrueType/OpenType file. The package part itself is never rewritten:
 //! saving round-trips the obfuscated bytes untouched.
 
-use crate::common::{OpenXmlPackage, RelationshipTypes};
+use crate::common::OpenXmlPackage;
 use crate::font_table::{EmbeddedFontStyle, FontTablePart};
 
 /// Number of leading font bytes the obfuscation covers (§17.8.1).
@@ -181,13 +181,22 @@ pub fn embedded_fonts(
     font_table_path: &str,
     font_table: &FontTablePart,
 ) -> Vec<EmbeddedFont> {
+    embedded_fonts_from_parts(
+        |name| package.get(name).cloned(),
+        font_table_path,
+        font_table,
+    )
+}
+
+fn embedded_fonts_from_parts(
+    mut read_part: impl FnMut(&str) -> Option<Vec<u8>>,
+    font_table_path: &str,
+    font_table: &FontTablePart,
+) -> Vec<EmbeddedFont> {
     if font_table.fonts.iter().all(|font| font.embedded.is_empty()) {
         return Vec::new();
     }
-    let Some(relationships) = package
-        .get(&jade_opc::rels_part_name(font_table_path))
-        .and_then(|bytes| jade_opc::parse_relationships(&String::from_utf8_lossy(bytes)).ok())
-    else {
+    let Some(relationships) = read_relationships(&mut read_part, font_table_path) else {
         return Vec::new();
     };
     let mut fonts = Vec::new();
@@ -200,10 +209,10 @@ pub fn embedded_fonts(
                 continue;
             }
             let part_name = jade_opc::resolve_target(font_table_path, &relationship.target);
-            let Some(part) = package.get(&part_name) else {
+            let Some(part) = read_part(&part_name) else {
                 continue;
             };
-            if let Ok(data) = decode_embedded_font(part, reference.font_key.as_deref()) {
+            if let Ok(data) = decode_embedded_font(&part, reference.font_key.as_deref()) {
                 fonts.push(EmbeddedFont {
                     family: declaration.name.clone(),
                     style: reference.style,
@@ -216,37 +225,66 @@ pub fn embedded_fonts(
     fonts
 }
 
-/// [`embedded_fonts`] for a whole package: follows the main document part's
-/// fontTable relationship. Cheap for a document without embedded fonts — only
-/// the fontTable part is parsed.
+/// Follows `_rels/.rels` → main document → fontTable and returns the usable
+/// embedded fonts. Reads only those parts and the font parts themselves.
+fn embedded_fonts_from_package_parts(
+    mut read_part: impl FnMut(&str) -> Option<Vec<u8>>,
+) -> Vec<EmbeddedFont> {
+    let Some(document_path) = read_relationships(&mut read_part, "")
+        .and_then(|rels| {
+            rels.by_type_suffix("/officeDocument")
+                .first()
+                .map(|rel| rel.target.clone())
+        })
+        .map(|target| jade_opc::resolve_target("", &target))
+    else {
+        return Vec::new();
+    };
+    let Some(font_table_path) = read_relationships(&mut read_part, &document_path)
+        .and_then(|rels| rels.target_by_type_suffix("/fontTable").map(str::to_string))
+        .map(|target| jade_opc::resolve_target(&document_path, &target))
+    else {
+        return Vec::new();
+    };
+    let Some(font_table) = read_part(&font_table_path)
+        .and_then(|bytes| FontTablePart::from_xml(&String::from_utf8_lossy(&bytes)).ok())
+    else {
+        return Vec::new();
+    };
+    embedded_fonts_from_parts(read_part, &font_table_path, &font_table)
+}
+
+/// The relationships of `part_name` (`""` for the package relationships).
+fn read_relationships(
+    read_part: &mut impl FnMut(&str) -> Option<Vec<u8>>,
+    part_name: &str,
+) -> Option<jade_opc::Relationships> {
+    let rels_name = if part_name.is_empty() {
+        "_rels/.rels".to_string()
+    } else {
+        jade_opc::rels_part_name(part_name)
+    };
+    let bytes = read_part(&rels_name)?;
+    jade_opc::parse_relationships(&String::from_utf8_lossy(&bytes)).ok()
+}
+
+/// [`embedded_fonts`] for an already loaded package.
 pub fn package_embedded_fonts(package: &OpenXmlPackage) -> Vec<EmbeddedFont> {
-    let Some(document_path) = package
-        .relationships
-        .iter()
-        .find(|rel| rel.r#type == RelationshipTypes::OfficeDocument.as_str())
-        .map(|rel| jade_opc::resolve_target("", &rel.target))
-    else {
-        return Vec::new();
-    };
-    let Some(document_relationships) = package
-        .get(&jade_opc::rels_part_name(&document_path))
-        .and_then(|bytes| jade_opc::parse_relationships(&String::from_utf8_lossy(bytes)).ok())
-    else {
-        return Vec::new();
-    };
-    let Some(font_table_path) = document_relationships
-        .target_by_type_suffix("/fontTable")
-        .map(|target| jade_opc::resolve_target(&document_path, target))
-    else {
-        return Vec::new();
-    };
-    let Some(font_table) = package
-        .get(&font_table_path)
-        .and_then(|bytes| FontTablePart::from_xml(&String::from_utf8_lossy(bytes)).ok())
-    else {
-        return Vec::new();
-    };
-    embedded_fonts(package, &font_table_path, &font_table)
+    embedded_fonts_from_package_parts(|name| package.get(name).cloned())
+}
+
+/// [`embedded_fonts`] straight from DOCX bytes, for a host that registers the
+/// fonts before it loads the document. Only the relationship parts, the
+/// fontTable and the font parts are inflated, within the default package
+/// limits, so a document without embedded fonts costs a few small reads.
+pub fn docx_embedded_fonts(data: &[u8]) -> Result<Vec<EmbeddedFont>, Box<dyn std::error::Error>> {
+    let limits = crate::package_limits::PackageLoadLimits::default();
+    let mut archive = crate::package_limits::open_checked_archive(data, limits)?;
+    let mut total = 0u64;
+    Ok(embedded_fonts_from_package_parts(|name| {
+        let entry = archive.by_name(name).ok()?;
+        crate::package_limits::read_part(entry, limits, &mut total).ok()
+    }))
 }
 
 fn read_u16(bytes: &[u8], offset: usize) -> Option<u16> {
@@ -342,65 +380,113 @@ mod tests {
         assert!(decode_embedded_font(&tiny_font(0), None).is_ok());
     }
 
-    #[test]
-    fn package_embedded_fonts_follow_the_font_table_relationships() {
-        let regular = tiny_font(0x0008);
-        let restricted = tiny_font(0x0002);
-        let mut files: HashMap<String, Vec<u8>> = HashMap::new();
-        files.insert(
-            "word/_rels/document.xml.rels".into(),
-            br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    /// A package whose "Jade Sans" declares an editable regular, a restricted
+    /// bold and an italic whose part is missing.
+    fn embedded_font_parts(regular: &[u8], restricted: &[u8]) -> Vec<(String, Vec<u8>)> {
+        vec![
+            (
+                "_rels/.rels".into(),
+                br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"#
+                    .to_vec(),
+            ),
+            ("word/document.xml".into(), b"<w:document/>".to_vec()),
+            (
+                "word/_rels/document.xml.rels".into(),
+                br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
 </Relationships>"#
-                .to_vec(),
-        );
-        files.insert(
-            "word/fontTable.xml".into(),
-            format!(
-                r#"<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                    .to_vec(),
+            ),
+            (
+                "word/fontTable.xml".into(),
+                format!(
+                    r#"<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:font w:name="Jade Sans"><w:embedRegular r:id="rId1" w:fontKey="{KEY}"/><w:embedBold r:id="rId2" w:fontKey="{KEY}"/><w:embedItalic r:id="rId404" w:fontKey="{KEY}"/></w:font>
   <w:font w:name="Century"/>
 </w:fonts>"#
-            )
-            .into_bytes(),
-        );
-        files.insert(
-            "word/_rels/fontTable.xml.rels".into(),
-            br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                )
+                .into_bytes(),
+            ),
+            (
+                "word/_rels/fontTable.xml.rels".into(),
+                br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.odttf"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font2.odttf"/>
 </Relationships>"#
-                .to_vec(),
-        );
-        files.insert(
-            "word/fonts/font1.odttf".into(),
-            deobfuscate_font(&regular, KEY).unwrap(),
-        );
-        files.insert(
-            "word/fonts/font2.odttf".into(),
-            deobfuscate_font(&restricted, KEY).unwrap(),
-        );
+                    .to_vec(),
+            ),
+            (
+                "word/fonts/font1.odttf".into(),
+                deobfuscate_font(regular, KEY).unwrap(),
+            ),
+            (
+                "word/fonts/font2.odttf".into(),
+                deobfuscate_font(restricted, KEY).unwrap(),
+            ),
+        ]
+    }
+
+    fn zip(parts: &[(String, Vec<u8>)]) -> Vec<u8> {
+        use std::io::Write;
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, bytes) in parts {
+            zip.start_file(name.as_str(), zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        zip.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn embedded_fonts_follow_the_font_table_relationships() {
+        let regular = tiny_font(0x0008);
+        let restricted = tiny_font(0x0002);
+        let parts = embedded_font_parts(&regular, &restricted);
+        let expected = vec![EmbeddedFont {
+            family: "Jade Sans".into(),
+            style: EmbeddedFontStyle::Regular,
+            subsetted: false,
+            data: regular.clone(),
+        }];
+
         let package = OpenXmlPackage {
-            files,
-            relationships: vec![crate::common::Relationship {
-                id: "rId1".into(),
-                r#type: RelationshipTypes::OfficeDocument.as_str().into(),
-                target: "word/document.xml".into(),
-                target_mode: None,
-            }],
+            files: parts.iter().cloned().collect::<HashMap<_, _>>(),
+            relationships: Vec::new(),
             original_size_bytes: None,
         };
-
-        let fonts = package_embedded_fonts(&package);
         assert_eq!(
-            fonts,
-            vec![EmbeddedFont {
-                family: "Jade Sans".into(),
-                style: EmbeddedFontStyle::Regular,
-                subsetted: false,
-                data: regular,
-            }],
+            package_embedded_fonts(&package),
+            expected,
             "the restricted bold and the missing italic part are skipped"
         );
+        assert_eq!(docx_embedded_fonts(&zip(&parts)).unwrap(), expected);
+    }
+
+    #[test]
+    fn a_document_without_embedded_fonts_reads_only_the_manifest_parts() {
+        let mut parts = embedded_font_parts(&tiny_font(0), &tiny_font(0));
+        for (name, bytes) in &mut parts {
+            if name == "word/fontTable.xml" {
+                *bytes = br#"<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:font w:name="Century"/></w:fonts>"#.to_vec();
+            }
+        }
+        let files: HashMap<_, _> = parts.into_iter().collect();
+        let mut read = Vec::new();
+        let fonts = embedded_fonts_from_package_parts(|name| {
+            read.push(name.to_string());
+            files.get(name).cloned()
+        });
+        assert!(fonts.is_empty());
+        assert_eq!(
+            read,
+            [
+                "_rels/.rels",
+                "word/_rels/document.xml.rels",
+                "word/fontTable.xml"
+            ]
+        );
+        assert!(docx_embedded_fonts(b"not a zip").is_err());
     }
 }
