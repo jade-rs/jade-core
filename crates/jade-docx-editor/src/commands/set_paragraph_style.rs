@@ -242,10 +242,12 @@ impl Command for SetParagraphStyleCommand {
                             Some(rp) => {
                                 merge_run_properties_override(rp, run_style_props);
                                 forget_direct_fonts_replaced_by(rp, run_style_props);
+                                forget_style_owned_run_properties(rp, run_style_props);
                             }
                             None => {
                                 let mut effective = run_style_props.clone();
                                 effective.direct_font_properties.known = true;
+                                forget_style_owned_run_properties(&mut effective, run_style_props);
                                 run.properties = Some(effective);
                             }
                         }
@@ -328,6 +330,56 @@ fn forget_direct_fonts_replaced_by(run: &mut RunProperties, style: &RunPropertie
     }
     if style.font_family.is_some() || style.fonts.is_some() {
         direct.fonts = None;
+    }
+}
+
+/// Leaves to the style the run properties it defines, other than the font
+/// ones [`forget_direct_fonts_replaced_by`] tracks: their `w:rPr` children
+/// are removed below, and a run without them takes them from its paragraph
+/// style when drawn, as a loaded document's runs do. Keeping the style's
+/// value in the run wrote it into the run's `w:rPr` at its next edit: a
+/// heading's theme colour became a fixed direct colour, and the paragraph an
+/// Enter started after it carried that colour on.
+fn forget_style_owned_run_properties(run: &mut RunProperties, style: &RunProperties) {
+    macro_rules! forget {
+        ($($field:ident),* $(,)?) => {
+            $(
+                if style.$field.is_some() {
+                    run.$field = None;
+                }
+            )*
+        };
+    }
+    forget!(
+        bold,
+        bold_complex,
+        italic,
+        italic_complex,
+        strike,
+        double_strike,
+        caps,
+        small_caps,
+        vanish,
+        spec_vanish,
+        shadow,
+        outline,
+        emboss,
+        imprint,
+        emphasis,
+        effect,
+        baseline,
+        text_position,
+        char_spacing,
+        fit_text,
+        color,
+        highlight,
+        shading,
+        border,
+    );
+    if style.underline.is_some() {
+        run.underline = None;
+        run.underline_kind = None;
+        run.underline_color = None;
     }
 }
 

@@ -10852,6 +10852,171 @@ mod tests {
         assert_eq!(spacing(&reloaded), Some(live));
     }
 
+    fn toc_document_xml(word_doc: &WordDocument) -> String {
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        xml
+    }
+
+    /// `paragraph`'s `w:p` in the saved package.
+    fn saved_paragraph_xml(xml: &str, paragraph: usize) -> &str {
+        let body = &xml[xml.find("<w:body>").expect("body")..];
+        body.split("</w:p>").nth(paragraph).expect("paragraph")
+    }
+
+    #[test]
+    fn a_heading_keeps_its_style_colour_out_of_the_runs() {
+        // toc.docx's heading 1 is the theme colour accent1. Applying it left
+        // that colour in the runs' model properties, and the next edit to the
+        // paragraph wrote it into their `w:rPr` as a fixed direct colour.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("1".to_string()),
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 0,
+                        text: "x".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let xml = toc_document_xml(&word_doc);
+        assert!(
+            !saved_paragraph_xml(&xml, 0).contains("<w:color"),
+            "the heading's colour stays the style's: {}",
+            saved_paragraph_xml(&xml, 0)
+        );
+        let colours = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("heading")
+                .runs
+                .iter()
+                .map(|run| {
+                    run.properties
+                        .as_ref()
+                        .and_then(|props| props.color.clone())
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(colours(&word_doc), colours(&reloaded));
+    }
+
+    #[test]
+    fn enter_after_a_heading_starts_a_paragraph_as_a_reload_reads_it() {
+        // Enter at the end of a heading starts its `w:next` paragraph. It had
+        // only the next style's own spacing, not the document default's 8pt
+        // after, and its run kept the heading run's `w:rPr`: what was typed
+        // there showed in the body style and was saved in the heading colour.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let heading_len = word_doc
+            .paragraph(0)
+            .map(|paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| run.text.len())
+                    .sum::<usize>()
+            })
+            .expect("first paragraph");
+        // The fixture's runs carry no direct colour: give the heading one, so
+        // that a run copied into the next paragraph would show.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("1".to_string()),
+                    },
+                    HeadlessCommand::SetFontColor {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: heading_len,
+                        color: "#C00000".to_string(),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: heading_len,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 1,
+                        offset: 0,
+                        text: "next".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let xml = toc_document_xml(&word_doc);
+        assert!(
+            !saved_paragraph_xml(&xml, 1).contains("<w:color"),
+            "typed text takes the body style: {}",
+            saved_paragraph_xml(&xml, 1)
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let next = |word_doc: &WordDocument| {
+            let paragraph = word_doc.paragraph(1).expect("next paragraph");
+            let properties = paragraph.properties.clone().unwrap_or_default();
+            (
+                properties.style.map(|style| style.to_string()),
+                properties.spacing,
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        run.properties
+                            .as_ref()
+                            .and_then(|props| props.color.clone())
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        };
+        assert_eq!(next(&word_doc), next(&reloaded));
+        assert_eq!(
+            next(&word_doc).1.and_then(|spacing| spacing.after),
+            Some(8.0),
+            "the document default's space after"
+        );
+    }
+
     #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
