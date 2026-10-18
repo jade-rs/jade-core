@@ -219,22 +219,20 @@ pub(super) fn schema_order(element: &XmlElement, parent: Option<&str>) -> Option
     let sequence = sequence(&element.name, parent)?;
     // A child the table does not place sorts right after the sibling it
     // follows; one that leads the list sorts first.
-    let mut keys = Vec::with_capacity(element.children.len());
-    let mut previous = 0u16;
-    let mut sorted = true;
-    for child in &element.children {
+    let keys = element.children.iter().scan(0u16, |previous, child| {
         let rank = match child {
             XmlNode::Element(child) => sequence.rank(&child.name),
             _ => None,
         };
-        let key = rank.unwrap_or(previous);
-        sorted &= key >= previous;
-        previous = key;
-        keys.push(key);
-    }
-    if sorted {
+        *previous = rank.unwrap_or(*previous);
+        Some(*previous)
+    });
+    // Nearly every element is in order already: find that out before
+    // allocating, since export asks this of every element it writes.
+    if keys.clone().is_sorted() {
         return None;
     }
+    let keys: Vec<u16> = keys.collect();
     let mut order: Vec<usize> = (0..keys.len()).collect();
     order.sort_by_key(|&index| keys[index]);
     Some(order)
