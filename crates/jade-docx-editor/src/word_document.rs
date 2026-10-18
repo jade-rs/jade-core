@@ -1198,6 +1198,65 @@ pub struct NoteInfo {
 /// Endnote-era name of [`NoteInfo`], kept for existing callers.
 pub type EndnoteInfo = NoteInfo;
 
+/// The story a paragraph surface belongs to, and its place in that story.
+///
+/// Paragraph surfaces interleave stories: a text box's paragraphs follow the
+/// body paragraph that anchors the box, a footnote's follow the body
+/// paragraph that first references it, the other footnotes and then the
+/// endnotes come last. A story position names a surface independently of
+/// that interleaving; [`WordDocument::paragraph_story`] and
+/// [`WordDocument::paragraph_story_surface`] convert between the two.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(tag = "story", rename_all = "snake_case")]
+pub enum ParagraphStory {
+    /// The `index`-th body paragraph, table cells included, in surface order
+    /// (the surfaces [`WordDocument::is_body_paragraph_surface`] accepts).
+    Body { index: usize },
+    /// Paragraph `paragraph` (table cells included, in surface order) of the
+    /// `text_box`-th text box, in run order, anchored in body paragraph
+    /// `host` (a [`ParagraphStory::Body`] index).
+    TextBox {
+        host: usize,
+        text_box: usize,
+        paragraph: usize,
+    },
+    /// Paragraph `paragraph` of footnote `note_id` (its `w:id`).
+    Footnote { note_id: String, paragraph: usize },
+    /// Paragraph `paragraph` of endnote `note_id` (its `w:id`).
+    Endnote { note_id: String, paragraph: usize },
+}
+
+/// A zero-width run of a paragraph that places another story: a text box or
+/// a footnote or endnote reference.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParagraphAnchor {
+    /// The offset in the runs' text (model offset) the run starts at.
+    pub offset: usize,
+    /// How many bytes the rendered text shows for it: a body paragraph's
+    /// note reference renders its number; a text box, and a reference inside
+    /// a text box (Word ignores those), render nothing.
+    pub rendered_len: usize,
+    pub kind: ParagraphAnchorKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ParagraphAnchorKind {
+    /// A text box listing `paragraphs` paragraph surfaces (table cells
+    /// included) after its host paragraph; only a body paragraph's text
+    /// boxes are listed.
+    TextBox {
+        paragraphs: usize,
+    },
+    Footnote {
+        note_id: String,
+    },
+    Endnote {
+        note_id: String,
+    },
+}
+
 /// A body reference's rendered byte range, including references in table cells.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -5624,6 +5683,213 @@ impl WordDocument {
                     anchor_paragraph: None,
                     note_id: Some(note_id.clone()),
                 })
+            }
+        }
+    }
+
+    /// The story paragraph surface `surface` belongs to; `None` for an
+    /// equation outside any paragraph and past the last surface.
+    pub fn paragraph_story(&self, surface: usize) -> Option<ParagraphStory> {
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Math => None,
+            ParagraphSurface::Body { .. } => Some(ParagraphStory::Body {
+                index: self.body_index_for_surface(surface)?,
+            }),
+            ParagraphSurface::TextBox {
+                host_path,
+                run_index,
+                ..
+            } => {
+                let host_surface = self.paragraph_surfaces.iter().position(
+                    |candidate| matches!(candidate, ParagraphSurface::Body { path } if path == host_path),
+                )?;
+                let text_box = self
+                    .paragraph(host_surface)?
+                    .runs
+                    .get(..*run_index)?
+                    .iter()
+                    .filter(|run| run.text_box.is_some())
+                    .count();
+                let paragraph = self.paragraph_surfaces[..surface]
+                    .iter()
+                    .filter(|candidate| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::TextBox {
+                                host_path: candidate_host,
+                                run_index: candidate_run,
+                                ..
+                            } if candidate_host == host_path && candidate_run == run_index
+                        )
+                    })
+                    .count();
+                Some(ParagraphStory::TextBox {
+                    host: self.body_index_for_surface(host_surface)?,
+                    text_box,
+                    paragraph,
+                })
+            }
+            ParagraphSurface::Note { kind, note_id, .. } => {
+                let paragraph = self.paragraph_surfaces[..surface]
+                    .iter()
+                    .filter(|candidate| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::Note {
+                                kind: candidate_kind,
+                                note_id: candidate_id,
+                                ..
+                            } if candidate_kind == kind && candidate_id == note_id
+                        )
+                    })
+                    .count();
+                let note_id = note_id.clone();
+                Some(match kind {
+                    NoteKind::Footnote => ParagraphStory::Footnote { note_id, paragraph },
+                    NoteKind::Endnote => ParagraphStory::Endnote { note_id, paragraph },
+                })
+            }
+        }
+    }
+
+    /// The paragraph surface `story` names, if there is one.
+    pub fn paragraph_story_surface(&self, story: &ParagraphStory) -> Option<usize> {
+        match story {
+            ParagraphStory::Body { index } => self.surface_index_for_body(*index),
+            ParagraphStory::TextBox {
+                host,
+                text_box,
+                paragraph,
+            } => {
+                let host_surface = self.surface_index_for_body(*host)?;
+                let ParagraphSurface::Body { path: host_path } =
+                    self.paragraph_surfaces.get(host_surface)?
+                else {
+                    return None;
+                };
+                let run_index = self
+                    .paragraph(host_surface)?
+                    .runs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, run)| run.text_box.is_some())
+                    .nth(*text_box)?
+                    .0;
+                self.paragraph_surfaces
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, candidate)| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::TextBox {
+                                host_path: candidate_host,
+                                run_index: candidate_run,
+                                ..
+                            } if candidate_host == host_path && *candidate_run == run_index
+                        )
+                    })
+                    .nth(*paragraph)
+                    .map(|(surface, _)| surface)
+            }
+            ParagraphStory::Footnote { note_id, paragraph }
+            | ParagraphStory::Endnote { note_id, paragraph } => {
+                let kind = match story {
+                    ParagraphStory::Footnote { .. } => NoteKind::Footnote,
+                    _ => NoteKind::Endnote,
+                };
+                self.paragraph_surfaces
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, candidate)| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::Note {
+                                kind: candidate_kind,
+                                note_id: candidate_id,
+                                ..
+                            } if *candidate_kind == kind && candidate_id == note_id
+                        )
+                    })
+                    .nth(*paragraph)
+                    .map(|(surface, _)| surface)
+            }
+        }
+    }
+
+    /// The text boxes and note references of the paragraph at `surface`, in
+    /// run order (within one run: its text box, then its footnote and its
+    /// endnote references). Empty past the last surface and for equations.
+    pub fn paragraph_anchors(&self, surface: usize) -> Vec<ParagraphAnchor> {
+        let Some(paragraph) = self.paragraph(surface) else {
+            return Vec::new();
+        };
+        let body = self.is_body_paragraph_surface(surface);
+        let mut marks = self.reference_marker_spans(surface).into_iter();
+        let mut anchors = Vec::new();
+        let mut offset = 0usize;
+        for run in &paragraph.runs {
+            if let Some(text_box) = run.text_box.as_ref() {
+                let mut paragraphs = 0;
+                if body {
+                    Self::count_text_box_paragraphs(&text_box.blocks, &mut paragraphs);
+                }
+                anchors.push(ParagraphAnchor {
+                    offset,
+                    rendered_len: 0,
+                    kind: ParagraphAnchorKind::TextBox { paragraphs },
+                });
+            }
+            for (ids, footnote) in [
+                (&run.footnote_reference_ids, true),
+                (&run.endnote_reference_ids, false),
+            ] {
+                for note_id in ids {
+                    // The rendered marks come in the same run order; a
+                    // reference jade draws no mark for has none.
+                    let rendered_len = marks
+                        .clone()
+                        .next()
+                        .filter(|mark| {
+                            mark.model_offset == offset
+                                && mark.is_footnote == footnote
+                                && mark.note_id == *note_id
+                        })
+                        .map(|mark| {
+                            marks.next();
+                            mark.rendered_len
+                        })
+                        .unwrap_or(0);
+                    let note_id = note_id.clone();
+                    anchors.push(ParagraphAnchor {
+                        offset,
+                        rendered_len,
+                        kind: if footnote {
+                            ParagraphAnchorKind::Footnote { note_id }
+                        } else {
+                            ParagraphAnchorKind::Endnote { note_id }
+                        },
+                    });
+                }
+            }
+            offset += run.text.len();
+        }
+        anchors
+    }
+
+    /// The paragraph surfaces a text box's blocks list (see
+    /// `enumerate_text_box_surfaces`): paragraphs, table cells' included.
+    fn count_text_box_paragraphs(elements: &[BodyElement], count: &mut usize) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(_) => *count += 1,
+                BodyElement::Table(table) => {
+                    for row in &table.rows {
+                        for cell in &row.cells {
+                            Self::count_text_box_paragraphs(&cell.blocks, count);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
             }
         }
     }
