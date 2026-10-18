@@ -61,7 +61,10 @@ mod tests {
         assert_eq!(format_number(12, Some("decimalfullwidth")), "１２");
         assert_eq!(format_number(2, Some("aiueofullwidth")), "イ");
         assert_eq!(format_number(28, Some("lowerletter")), "bb");
-        assert_eq!(format_note_marker(3, Some("decimalenclosedcircle"), None, true), "③");
+        assert_eq!(
+            format_note_marker(3, Some("decimalenclosedcircle"), None, true),
+            "③"
+        );
         // Chicago Manual of Style footnote symbols, doubled after the fourth.
         assert_eq!(format_note_marker(1, Some("chicago"), None, true), "*");
         assert_eq!(format_note_marker(6, Some("chicago"), None, true), "††");

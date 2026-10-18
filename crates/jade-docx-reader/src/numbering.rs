@@ -2008,7 +2008,11 @@ mod additional_word_number_format_tests {
             (100_000, "十万"),
             (100_000_001, "一亿〇一"),
         ] {
-            assert_eq!(format_at_start("chineseCounting", value), expected, "{value}");
+            assert_eq!(
+                format_at_start("chineseCounting", value),
+                expected,
+                "{value}"
+            );
         }
         assert_eq!(format_at_start("chineseLegalSimplified", 10), "壹拾");
         assert_eq!(format_at_start("chineseLegalSimplified", 102), "壹佰零贰");

@@ -53342,7 +53342,10 @@ mod tests {
             "v"
         );
         // Unknown format falls back to decimal so a marker is never blank.
-        assert_eq!(format_note_marker(2, Some("unknownformat"), None, true), "2");
+        assert_eq!(
+            format_note_marker(2, Some("unknownformat"), None, true),
+            "2"
+        );
         assert_eq!(format_note_marker(2, Some("chicago"), None, true), "†");
     }
 
