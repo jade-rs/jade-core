@@ -2559,6 +2559,16 @@ const COMMANDS: &[Variant] = &[
         )],
     ),
     variant(
+        "insert_text_among_anchors",
+        "Insert text where text boxes or note references sit at one offset, after the first `after_anchors` of them (insert_text types before them all).",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based paragraph index."),
+            req("offset", ArgType::Index, "UTF-8 byte offset where the text boxes or note references sit."),
+            req("after_anchors", ArgType::Index, "How many of the text boxes and note references at the offset come before the text."),
+            req("text", ArgType::Text, "Text to insert."),
+        ],
+    ),
+    variant(
         "delete_text_box",
         "Delete a text box (its drawing and everything in it), named by the paragraph that anchors it and its place among that paragraph's text boxes.",
         &[

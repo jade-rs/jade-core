@@ -106,7 +106,7 @@ fn template_run_for_edit(runs: &[Run], offset: usize) -> Option<Run> {
     previous.or(next).cloned()
 }
 
-fn create_run_from_template(template: Option<&Run>, text: &str) -> Run {
+pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Run {
     if let Some(source) = template {
         let mut run = source.clone();
         run.text = text.to_string();

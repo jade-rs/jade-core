@@ -3,8 +3,9 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, normalize_break_runs, rebase_comment_anchors_for_edit, run_carries_content,
-    split_runs_at_preserving_source, FieldChars, ZeroWidthRuns,
+    apply_text_edit, create_run_from_template, normalize_break_runs,
+    rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
+    FieldChars, ZeroWidthRuns,
 };
 use crate::commands::{
     delete_text::{DeleteDirection, DeleteTextCommand},
@@ -11097,6 +11098,68 @@ impl WordDocument {
             self.refresh_revision_counter();
         }
         Ok(changed_runs.saturating_add(paragraph_mark_ids.len()))
+    }
+
+    /// Inserts `text` at model offset `offset` of the paragraph at surface
+    /// `paragraph_index`, after the first `after` of the zero-width runs
+    /// placing text boxes and note references there (typing goes before
+    /// them all). The text takes a run of its own, formatted like the text
+    /// before it (or after it, at the paragraph's start).
+    pub fn insert_text_among_anchors(
+        &mut self,
+        paragraph_index: usize,
+        offset: usize,
+        after: usize,
+        text: &str,
+    ) -> Result<(), String> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        let anchors = |run: &Run| {
+            usize::from(run.text_box.is_some())
+                + run.footnote_reference_ids.len()
+                + run.endnote_reference_ids.len()
+        };
+        let zero_width = self.zero_width_runs(paragraph_index);
+        let paragraph = self
+            .paragraph_mut(paragraph_index)
+            .ok_or_else(|| format!("paragraph {paragraph_index} does not exist"))?;
+        let mut runs = std::mem::take(&mut paragraph.runs);
+        let text_len: usize = runs.iter().map(|run| run.text.len()).sum();
+        let mut tail =
+            split_runs_at_preserving_source(&mut runs, offset.min(text_len), &zero_width);
+        // The zero-width runs at the offset lead the tail.
+        let mut seen = 0usize;
+        let mut at = 0usize;
+        while seen < after {
+            match tail.get(at) {
+                Some(run) if run.text.is_empty() => {
+                    seen += anchors(run);
+                    at += 1;
+                }
+                _ => break,
+            }
+        }
+        if offset > text_len || seen != after {
+            runs.append(&mut tail);
+            paragraph.runs = runs;
+            return Err(format!(
+                "paragraph {paragraph_index} has no run boundary after {after} text boxes or note references at offset {offset}"
+            ));
+        }
+        let template = runs
+            .iter()
+            .rev()
+            .find(|run| !run.text.is_empty())
+            .or_else(|| tail[at..].iter().find(|run| !run.text.is_empty()))
+            .cloned();
+        let rest = tail.split_off(at);
+        runs.append(&mut tail);
+        runs.push(create_run_from_template(template.as_ref(), text));
+        runs.extend(rest);
+        paragraph.runs = runs;
+        self.sync_paragraph_text_preserving_drawings(paragraph_index);
+        Ok(())
     }
 
     pub fn insert_footnote_at(
