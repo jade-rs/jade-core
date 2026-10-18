@@ -12235,6 +12235,62 @@ mod tests {
     }
 
     #[test]
+    fn the_next_style_turns_off_a_list_a_pending_change_records() {
+        // numbering-del.docx's second paragraph had its list taken off with
+        // tracking on; its `w:pPrChange` keeps the list, by which the reader
+        // numbers it. Enter at the end of it, once it is a heading, starts a
+        // Normal paragraph that keeps that mark and its change: unnumbered on
+        // screen, numbered again on reload.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/numbering-del.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 1,
+                        end_paragraph: 1,
+                        style_id: Some("Heading1".to_string()),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 1,
+                        offset: "World".len(),
+                        count: 1,
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let lists = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    let props = word_doc
+                        .paragraph(index)
+                        .and_then(|p| p.properties.as_ref());
+                    (
+                        props.and_then(|props| props.style.as_deref().map(str::to_string)),
+                        props
+                            .and_then(|props| props.numbering.as_ref())
+                            .and_then(|numbering| numbering.list_id().map(str::to_string)),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(lists(&reloaded), lists(&word_doc));
+        assert_eq!(lists(&word_doc)[2].1, None, "{:?}", lists(&word_doc));
+    }
+
+    #[test]
     fn a_comment_inside_a_hyperlink_keeps_the_links_text_once() {
         // The comment's markers and reference run went beside the w:hyperlink
         // while the model put the reference run among the link's runs. The
