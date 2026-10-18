@@ -18,6 +18,7 @@ mod auto_filter;
 mod current_region;
 pub mod fill;
 mod merge;
+mod sheets;
 mod sort;
 
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
@@ -122,6 +123,10 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::NoSuchSheet(_)
                         | jade_xlsx_writer::WriteError::EmptyStructureChange
                         | jade_xlsx_writer::WriteError::StructureOutOfBounds { .. }
+                        | jade_xlsx_writer::WriteError::InvalidSheetName { .. }
+                        | jade_xlsx_writer::WriteError::DuplicateSheetName(_)
+                        | jade_xlsx_writer::WriteError::LastVisibleSheet(_)
+                        | jade_xlsx_writer::WriteError::SheetPositionOutOfRange { .. }
                 )
                 | HeadlessError::RangeTooLarge { .. }
                 | HeadlessError::MergeTooSmall(_)

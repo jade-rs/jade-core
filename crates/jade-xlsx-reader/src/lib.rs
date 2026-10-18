@@ -45,7 +45,10 @@ pub mod workbook_part;
 pub mod xstring;
 
 pub use error::{Result, XlsxError};
-pub use formula::{move_formula, shift_formula, Axis, StructureChange};
+pub use formula::{
+    delete_sheet_in_formula, move_formula, quote_sheet_name, rename_sheet_in_formula,
+    shift_formula, Axis, StructureChange,
+};
 pub use jade_opc::OpcPackage;
 pub use model::{
     builtin_number_format, Alignment, Border, BorderEdge, CalculationMode, Cell, CellComment,
