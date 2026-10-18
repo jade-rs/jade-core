@@ -11796,6 +11796,83 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_in_a_text_box_keeps_its_complex_field() {
+        // document-variable-fields.docx's VML text box holds a DOCVARIABLE
+        // field. Formatting, a comment or italics anywhere in that paragraph
+        // dropped the field's code runs, which the model knows only as empty
+        // runs, and saved its stale result as plain text.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(5)
+                .expect("text box paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>()
+        };
+        for command in [
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 5,
+                start_offset: 8,
+                end_paragraph: 5,
+                end_offset: 12,
+                font_size: 14.0,
+            },
+            HeadlessCommand::AddComment {
+                start_paragraph: 5,
+                start_offset: Some(9),
+                end_paragraph: 5,
+                end_offset: Some(12),
+                text: "note".to_string(),
+                author: Some("test".to_string()),
+                initials: None,
+                date: None,
+            },
+            HeadlessCommand::ApplyItalic {
+                start_paragraph: 5,
+                start_offset: 5,
+                end_paragraph: 5,
+                end_offset: 7,
+                enabled: true,
+            },
+        ] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            assert!(!word_doc.is_body_paragraph_surface(5));
+            let label = format!("{command:?}");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("edit applies");
+            let exported = word_doc.export_docx().expect("export succeeds");
+            let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+                .expect("reload");
+            assert_eq!(text(&reloaded), text(&word_doc), "{label}");
+            assert_eq!(text(&word_doc), "Textbox channel: ", "{label}");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            assert!(
+                xml.contains(r#"IABLE "Release Channel" "#),
+                "{label}: {xml}"
+            );
+        }
+    }
+
+    #[test]
     fn a_paragraph_whose_style_numbering_is_taken_off_keeps_the_styles_indent() {
         // numbering-by-style.docx's heading 3 numbers its paragraphs and
         // declares its own indent. Taking the numbering off writes
