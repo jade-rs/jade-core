@@ -555,9 +555,12 @@ pub fn apply_text_edit(
         std::mem::swap(&mut start, &mut end);
     }
 
-    // A caret in a tracked deletion must create ordinary text outside that
+    // A caret in a tracked change must create ordinary text outside that
     // revision. Editing the deleted run directly writes into <w:delText>, so
-    // the user's new characters disappear when Word shows final markup.
+    // the user's new characters disappear when Word shows final markup; and
+    // text typed into an insertion would become part of somebody else's
+    // change. With tracking on, the caller marks the new run as an insertion
+    // of its own.
     if start == end && !insert.is_empty() {
         let mut cumulative = 0usize;
         let mut protected_template = None;
@@ -565,9 +568,7 @@ pub fn apply_text_edit(
             let len = run.text.len();
             let run_end = cumulative + len;
             if start < run_end || (start == run_end && len > 0) {
-                if run.revision.as_ref().is_some_and(|mark| {
-                    matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
-                }) {
+                if run.revision.is_some() {
                     protected_template = Some(run.clone());
                 }
                 break;
