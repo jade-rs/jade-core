@@ -53,6 +53,38 @@ class CorpusAuditTests(unittest.TestCase):
             audit.structural_sequence(document("B", "A"), False),
         )
 
+    def test_text_typed_beside_an_object_may_take_its_own_run(self) -> None:
+        def document(runs: str) -> bytes:
+            return (
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"<w:body><w:p>{runs}</w:p></w:body></w:document>"
+            ).encode()
+
+        properties = '<w:rPr><w:noProof/><w:kern w:val="0"/></w:rPr>'
+        text_box = f'<w:r>{properties}<w:pict/></w:r>'
+        before = document(text_box)
+        typed = document(text_box + f'<w:r>{properties}<w:t>Z</w:t></w:r>')
+        self.assertNotEqual(audit.structural_sequence(before), audit.structural_sequence(typed))
+        self.assertEqual(
+            audit.structural_sequence(before),
+            audit.structural_sequence(audit.without_run_typed_beside_object(typed, "Z")),
+        )
+
+    def test_a_new_run_beside_text_is_still_a_structural_change(self) -> None:
+        def document(runs: str) -> bytes:
+            return (
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"<w:body><w:p>{runs}</w:p></w:body></w:document>"
+            ).encode()
+
+        properties = '<w:rPr><w:b/></w:rPr>'
+        before = document(f'<w:r>{properties}<w:t>A</w:t></w:r>')
+        split = document(f'<w:r>{properties}<w:t>A</w:t></w:r><w:r>{properties}<w:t>Z</w:t></w:r>')
+        self.assertNotEqual(
+            audit.structural_sequence(before),
+            audit.structural_sequence(audit.without_run_typed_beside_object(split, "Z")),
+        )
+
     def test_repeated_revision_ids_may_be_renumbered_but_unique_ones_must_stay(self) -> None:
         def document(*ids: str) -> bytes:
             body = "".join(f'<w:ins w:id="{value}" w:author="A"/>' for value in ids)
