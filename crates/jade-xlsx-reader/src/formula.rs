@@ -540,3 +540,30 @@ fn column_label(index: u32) -> String {
     }
     label
 }
+
+/// `formula` with every reference qualified by the sheet `from` — `from!A1`,
+/// `'from'!A1:B2`, either end of a 3-D `from:Other!A1` — naming `to`
+/// instead, quoted as `to` needs. Sheet names compare without regard to
+/// case; text in string literals and references into other workbooks are
+/// left alone.
+pub fn rename_sheet_in_formula(formula: &str, from: &str, to: &str) -> String {
+    let _ = (from, to);
+    todo!("rename_sheet_in_formula {formula}")
+}
+
+/// `formula` with every reference into the deleted sheet `deleted` written
+/// as `#REF!`, as Excel writes it.
+pub fn delete_sheet_in_formula(
+    formula: &str,
+    deleted: &str,
+    sheet_order: &[&str],
+    deleted_tables: &[String],
+) -> String {
+    let _ = (deleted, sheet_order, deleted_tables);
+    todo!("delete_sheet_in_formula {formula}")
+}
+
+/// `name` as a formula writes it before `!`.
+pub fn quote_sheet_name(name: &str) -> String {
+    todo!("quote_sheet_name {name}")
+}
