@@ -48,7 +48,7 @@ use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
 };
-pub use jade_xlsx_writer::FormatChange;
+pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
 };
@@ -1194,6 +1194,7 @@ impl HeadlessWorkbook {
             horizontal: Some(alignment.horizontal),
             vertical: Some(alignment.vertical),
             wrap_text: Some(alignment.wrap_text),
+            ..FormatChange::default()
         })
     }
 
@@ -2040,6 +2041,7 @@ impl HeadlessWorkbook {
                 header: table.header_row() == Some(reference.row),
                 totals: table.totals_row() == Some(reference.row),
             }),
+            border: None,
         }
     }
 

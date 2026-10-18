@@ -16,6 +16,7 @@ use quick_xml::name::QName;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
+pub use jade_xlsx_headless_api::{BorderLine, BorderStyle};
 use jade_xlsx_reader::{builtin_number_format, HorizontalAlignment, VerticalAlignment};
 
 use crate::patch::{
@@ -163,6 +164,25 @@ pub struct FormatChange {
     pub vertical: Option<VerticalAlignment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wrap_text: Option<bool>,
+    /// The left edge; a line of style `none` removes it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_left: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_right: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_top: Option<BorderLine>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_bottom: Option<BorderLine>,
+    /// The line both diagonals share. It shows only in the directions
+    /// `diagonal_up` / `diagonal_down` turn on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_diagonal: Option<BorderLine>,
+    /// Bottom-left to top-right.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_up: Option<bool>,
+    /// Top-left to bottom-right.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_down: Option<bool>,
 }
 
 impl FormatChange {
