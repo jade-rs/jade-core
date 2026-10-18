@@ -28963,6 +28963,17 @@ impl WordDocument {
             Some(paragraph) => paragraph,
             None => return false,
         };
+        // A footnote is listed after the paragraph that references it, which
+        // after the split may be either half; the full rebuild places it.
+        // Kept where it was, a footnote the first half references went after
+        // the second half, and every note paragraph's index differed from a
+        // reload.
+        if [original_paragraph, new_paragraph]
+            .iter()
+            .any(|paragraph| !Self::paragraph_footnote_reference_ids(paragraph).is_empty())
+        {
+            return false;
+        }
 
         // The split paragraph's own text boxes follow it and are enumerated
         // again below; everything after them stays. Looking for the next body
@@ -50281,8 +50292,12 @@ mod tests {
                 .iter()
                 .map(|run| run.text.as_str())
                 .collect::<String>();
+            // A footnote the head references is listed right after it.
+            let tail_index = (1..doc.paragraph_count())
+                .find(|&index| doc.is_body_paragraph_surface(index))
+                .unwrap();
             let tail = doc
-                .paragraph(1)
+                .paragraph(tail_index)
                 .unwrap()
                 .runs
                 .iter()

@@ -11915,6 +11915,62 @@ mod tests {
     }
 
     #[test]
+    fn a_footnote_stays_after_the_half_that_references_it() {
+        // A footnote is listed right after the paragraph that references it.
+        // Enter after the reference kept the footnote where it was, after the
+        // new second half, so the note paragraphs' indices differed from a
+        // reload until the document was reopened.
+        for (fixture, paragraph, offset) in [
+            ("footnote.docx", 0, "Hello".len()),
+            ("footnote-table-textbox-order.docx", 9, 10),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertParagraphBreak {
+                        paragraph,
+                        offset,
+                        count: 1,
+                    }],
+                },
+            )
+            .expect("break applies");
+            let paragraphs = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .map(|index| {
+                        let paragraph = word_doc.paragraph(index).expect("paragraph");
+                        (
+                            paragraph
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.style.as_deref().map(str::to_string)),
+                            paragraph
+                                .runs
+                                .iter()
+                                .map(|run| run.text.as_str())
+                                .collect::<String>(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(paragraphs(&word_doc), paragraphs(&reloaded), "{fixture}");
+        }
+    }
+
+    #[test]
     fn runs_moved_to_another_style_take_its_fonts_as_a_load_does() {
         // A load fills a run's fonts slot by slot, from its paragraph style
         // and the document defaults. A style change told inherited from
