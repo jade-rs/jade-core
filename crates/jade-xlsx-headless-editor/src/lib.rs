@@ -17,6 +17,7 @@
 mod auto_filter;
 mod current_region;
 pub mod fill;
+mod merge;
 mod sort;
 
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
@@ -88,6 +89,18 @@ pub enum HeadlessError {
     Package(#[from] jade_opc::OpcError),
     #[error("filter: {0}")]
     AutoFilter(String),
+    /// A merge of one cell: there is nothing to merge it with.
+    #[error("`{0}` is a single cell; a merge needs at least two")]
+    MergeTooSmall(String),
+    /// A merge that would overlap one the sheet already has.
+    #[error("`{range}` overlaps the merged range `{existing}`")]
+    MergeOverlaps { range: String, existing: String },
+    /// Excel does not merge cells inside a table.
+    #[error("`{range}` overlaps the table `{table}`, whose cells cannot be merged")]
+    MergeInTable { range: String, table: String },
+    /// An unmerge whose range touches no merged cell.
+    #[error("`{0}` contains no merged cells")]
+    NoSuchMerge(String),
 }
 
 impl HeadlessError {
@@ -111,6 +124,10 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::StructureOutOfBounds { .. }
                 )
                 | HeadlessError::RangeTooLarge { .. }
+                | HeadlessError::MergeTooSmall(_)
+                | HeadlessError::MergeOverlaps { .. }
+                | HeadlessError::MergeInTable { .. }
+                | HeadlessError::NoSuchMerge(_)
                 | HeadlessError::EmptyHeaderFooterChange
                 | HeadlessError::NoSuchShape(_)
                 | HeadlessError::ShapeHasNoText(_)
