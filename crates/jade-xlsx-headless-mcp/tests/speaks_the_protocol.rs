@@ -1214,6 +1214,55 @@ fn set_format_changes_the_look_and_only_the_look() {
 }
 
 #[test]
+fn set_format_draws_borders_and_read_cell_reports_them() {
+    let mut server = Server::new();
+    let session = open(&mut server, "sample-workbook.xlsx");
+
+    let formatted = call(
+        &mut server,
+        "set_format",
+        json!({
+            "session_id": session, "sheet": "売上サマリ", "range": "F2:G3",
+            "border_top": { "style": "thick", "color": "C00000" },
+            "border_bottom": { "style": "mediumDashed" },
+            "border_diagonal": { "style": "thin", "color": "#00b050" },
+            "diagonal_down": true
+        }),
+    );
+    assert_eq!(
+        structured(&formatted)["cells"],
+        json!(["F2", "G2", "F3", "G3"])
+    );
+
+    let read = call(
+        &mut server,
+        "read_cell",
+        json!({ "session_id": session, "sheet": "売上サマリ", "reference": "G3" }),
+    );
+    assert_eq!(
+        structured(&read)["border"],
+        json!({
+            "top": { "style": "thick", "color": "C00000" },
+            "bottom": { "style": "mediumDashed" },
+            "diagonal": { "style": "thin", "color": "00B050" },
+            "diagonal_down": true
+        })
+    );
+
+    // A style OOXML does not have is refused.
+    let refused = send(
+        &mut server,
+        json!({ "jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {
+            "name": "set_format", "arguments": {
+                "session_id": session, "sheet": "売上サマリ", "range": "B4",
+                "border_left": { "style": "wavy" }
+            }
+        } }),
+    );
+    assert_eq!(refused["error"]["code"], -32602, "{refused}");
+}
+
+#[test]
 fn rows_and_columns_move_through_the_protocol() {
     let mut server = Server::new();
     let session = open(&mut server, "sample-workbook.xlsx");

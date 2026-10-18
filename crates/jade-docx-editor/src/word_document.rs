@@ -296,10 +296,17 @@ pub(crate) fn rebase_paragraph_style_properties(
 /// `w:pPr` (`declared`), from `before`, after a style was merged over them:
 /// applying a paragraph style keeps direct paragraph formatting, as in Word,
 /// and the saved `w:pPr` keeps it too.
+///
+/// `w:spacing` and `w:ind` are inherited attribute by attribute: a paragraph
+/// declaring only `w:before` still takes its space after from the style, as a
+/// reload reads it. Only the attributes it declares (`declared_attribute`)
+/// come back from `before`; putting the whole element back dropped the
+/// style's other spacing, and the paragraph sat higher than after a reload.
 pub(crate) fn keep_declared_paragraph_properties(
     props: &mut ParagraphProperties,
     before: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! keep {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -313,8 +320,6 @@ pub(crate) fn keep_declared_paragraph_properties(
     keep!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -332,6 +337,48 @@ pub(crate) fn keep_declared_paragraph_properties(
         numbering => "w:numPr",
         contextual_spacing => "w:contextualSpacing",
     );
+    macro_rules! keep_attributes {
+        ($target:expr, $source:expr, $tag:literal, $($field:ident => [$($attribute:literal),+]),* $(,)?) => {
+            $(
+                if $(declared_attribute($tag, $attribute))||+ {
+                    $target.$field = $source.$field.clone();
+                }
+            )*
+        };
+    }
+    if declared("w:spacing") {
+        let mut spacing = props.spacing.clone().unwrap_or_default();
+        let direct = before.spacing.clone().unwrap_or_default();
+        keep_attributes!(spacing, direct, "w:spacing",
+            before => ["w:before"],
+            after => ["w:after"],
+            before_lines => ["w:beforeLines"],
+            after_lines => ["w:afterLines"],
+            line => ["w:line"],
+            // The reader gives a `w:line` without a rule the rule "auto".
+            line_rule => ["w:line", "w:lineRule"],
+        );
+        props.spacing = (spacing != Spacing::default()).then_some(spacing);
+    }
+    if declared("w:ind") {
+        let mut indent = props.indent.clone().unwrap_or_default();
+        let direct = before.indent.clone().unwrap_or_default();
+        keep_attributes!(indent, direct, "w:ind",
+            left => ["w:left"],
+            right => ["w:right"],
+            start => ["w:start"],
+            end => ["w:end"],
+            first_line => ["w:firstLine"],
+            hanging => ["w:hanging"],
+            left_chars => ["w:leftChars"],
+            right_chars => ["w:rightChars"],
+            start_chars => ["w:startChars"],
+            end_chars => ["w:endChars"],
+            first_line_chars => ["w:firstLineChars"],
+            hanging_chars => ["w:hangingChars"],
+        );
+        props.indent = (indent != Indent::default()).then_some(indent);
+    }
 }
 
 /// Replaces the run properties `old` resolves to with what `new` resolves to,
@@ -1198,6 +1245,65 @@ pub struct NoteInfo {
 
 /// Endnote-era name of [`NoteInfo`], kept for existing callers.
 pub type EndnoteInfo = NoteInfo;
+
+/// The story a paragraph surface belongs to, and its place in that story.
+///
+/// Paragraph surfaces interleave stories: a text box's paragraphs follow the
+/// body paragraph that anchors the box, a footnote's follow the body
+/// paragraph that first references it, the other footnotes and then the
+/// endnotes come last. A story position names a surface independently of
+/// that interleaving; [`WordDocument::paragraph_story`] and
+/// [`WordDocument::paragraph_story_surface`] convert between the two.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(tag = "story", rename_all = "snake_case")]
+pub enum ParagraphStory {
+    /// The `index`-th body paragraph, table cells included, in surface order
+    /// (the surfaces [`WordDocument::is_body_paragraph_surface`] accepts).
+    Body { index: usize },
+    /// Paragraph `paragraph` (table cells included, in surface order) of the
+    /// `text_box`-th text box, in run order, anchored in body paragraph
+    /// `host` (a [`ParagraphStory::Body`] index).
+    TextBox {
+        host: usize,
+        text_box: usize,
+        paragraph: usize,
+    },
+    /// Paragraph `paragraph` of footnote `note_id` (its `w:id`).
+    Footnote { note_id: String, paragraph: usize },
+    /// Paragraph `paragraph` of endnote `note_id` (its `w:id`).
+    Endnote { note_id: String, paragraph: usize },
+}
+
+/// A zero-width run of a paragraph that places another story: a text box or
+/// a footnote or endnote reference.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParagraphAnchor {
+    /// The offset in the runs' text (model offset) the run starts at.
+    pub offset: usize,
+    /// How many bytes the rendered text shows for it: a body paragraph's
+    /// note reference renders its number; a text box, and a reference inside
+    /// a text box (Word ignores those), render nothing.
+    pub rendered_len: usize,
+    pub kind: ParagraphAnchorKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ParagraphAnchorKind {
+    /// A text box listing `paragraphs` paragraph surfaces (table cells
+    /// included) after its host paragraph; only a body paragraph's text
+    /// boxes are listed.
+    TextBox {
+        paragraphs: usize,
+    },
+    Footnote {
+        note_id: String,
+    },
+    Endnote {
+        note_id: String,
+    },
+}
 
 /// A body reference's rendered byte range, including references in table cells.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -5835,6 +5941,213 @@ impl WordDocument {
         }
     }
 
+    /// The story paragraph surface `surface` belongs to; `None` for an
+    /// equation outside any paragraph and past the last surface.
+    pub fn paragraph_story(&self, surface: usize) -> Option<ParagraphStory> {
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Math => None,
+            ParagraphSurface::Body { .. } => Some(ParagraphStory::Body {
+                index: self.body_index_for_surface(surface)?,
+            }),
+            ParagraphSurface::TextBox {
+                host_path,
+                run_index,
+                ..
+            } => {
+                let host_surface = self.paragraph_surfaces.iter().position(
+                    |candidate| matches!(candidate, ParagraphSurface::Body { path } if path == host_path),
+                )?;
+                let text_box = self
+                    .paragraph(host_surface)?
+                    .runs
+                    .get(..*run_index)?
+                    .iter()
+                    .filter(|run| run.text_box.is_some())
+                    .count();
+                let paragraph = self.paragraph_surfaces[..surface]
+                    .iter()
+                    .filter(|candidate| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::TextBox {
+                                host_path: candidate_host,
+                                run_index: candidate_run,
+                                ..
+                            } if candidate_host == host_path && candidate_run == run_index
+                        )
+                    })
+                    .count();
+                Some(ParagraphStory::TextBox {
+                    host: self.body_index_for_surface(host_surface)?,
+                    text_box,
+                    paragraph,
+                })
+            }
+            ParagraphSurface::Note { kind, note_id, .. } => {
+                let paragraph = self.paragraph_surfaces[..surface]
+                    .iter()
+                    .filter(|candidate| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::Note {
+                                kind: candidate_kind,
+                                note_id: candidate_id,
+                                ..
+                            } if candidate_kind == kind && candidate_id == note_id
+                        )
+                    })
+                    .count();
+                let note_id = note_id.clone();
+                Some(match kind {
+                    NoteKind::Footnote => ParagraphStory::Footnote { note_id, paragraph },
+                    NoteKind::Endnote => ParagraphStory::Endnote { note_id, paragraph },
+                })
+            }
+        }
+    }
+
+    /// The paragraph surface `story` names, if there is one.
+    pub fn paragraph_story_surface(&self, story: &ParagraphStory) -> Option<usize> {
+        match story {
+            ParagraphStory::Body { index } => self.surface_index_for_body(*index),
+            ParagraphStory::TextBox {
+                host,
+                text_box,
+                paragraph,
+            } => {
+                let host_surface = self.surface_index_for_body(*host)?;
+                let ParagraphSurface::Body { path: host_path } =
+                    self.paragraph_surfaces.get(host_surface)?
+                else {
+                    return None;
+                };
+                let run_index = self
+                    .paragraph(host_surface)?
+                    .runs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, run)| run.text_box.is_some())
+                    .nth(*text_box)?
+                    .0;
+                self.paragraph_surfaces
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, candidate)| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::TextBox {
+                                host_path: candidate_host,
+                                run_index: candidate_run,
+                                ..
+                            } if candidate_host == host_path && *candidate_run == run_index
+                        )
+                    })
+                    .nth(*paragraph)
+                    .map(|(surface, _)| surface)
+            }
+            ParagraphStory::Footnote { note_id, paragraph }
+            | ParagraphStory::Endnote { note_id, paragraph } => {
+                let kind = match story {
+                    ParagraphStory::Footnote { .. } => NoteKind::Footnote,
+                    _ => NoteKind::Endnote,
+                };
+                self.paragraph_surfaces
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, candidate)| {
+                        matches!(
+                            candidate,
+                            ParagraphSurface::Note {
+                                kind: candidate_kind,
+                                note_id: candidate_id,
+                                ..
+                            } if *candidate_kind == kind && candidate_id == note_id
+                        )
+                    })
+                    .nth(*paragraph)
+                    .map(|(surface, _)| surface)
+            }
+        }
+    }
+
+    /// The text boxes and note references of the paragraph at `surface`, in
+    /// run order (within one run: its text box, then its footnote and its
+    /// endnote references). Empty past the last surface and for equations.
+    pub fn paragraph_anchors(&self, surface: usize) -> Vec<ParagraphAnchor> {
+        let Some(paragraph) = self.paragraph(surface) else {
+            return Vec::new();
+        };
+        let body = self.is_body_paragraph_surface(surface);
+        let mut marks = self.reference_marker_spans(surface).into_iter();
+        let mut anchors = Vec::new();
+        let mut offset = 0usize;
+        for run in &paragraph.runs {
+            if let Some(text_box) = run.text_box.as_ref() {
+                let mut paragraphs = 0;
+                if body {
+                    Self::count_text_box_paragraphs(&text_box.blocks, &mut paragraphs);
+                }
+                anchors.push(ParagraphAnchor {
+                    offset,
+                    rendered_len: 0,
+                    kind: ParagraphAnchorKind::TextBox { paragraphs },
+                });
+            }
+            for (ids, footnote) in [
+                (&run.footnote_reference_ids, true),
+                (&run.endnote_reference_ids, false),
+            ] {
+                for note_id in ids {
+                    // The rendered marks come in the same run order; a
+                    // reference jade draws no mark for has none.
+                    let rendered_len = marks
+                        .clone()
+                        .next()
+                        .filter(|mark| {
+                            mark.model_offset == offset
+                                && mark.is_footnote == footnote
+                                && mark.note_id == *note_id
+                        })
+                        .map(|mark| {
+                            marks.next();
+                            mark.rendered_len
+                        })
+                        .unwrap_or(0);
+                    let note_id = note_id.clone();
+                    anchors.push(ParagraphAnchor {
+                        offset,
+                        rendered_len,
+                        kind: if footnote {
+                            ParagraphAnchorKind::Footnote { note_id }
+                        } else {
+                            ParagraphAnchorKind::Endnote { note_id }
+                        },
+                    });
+                }
+            }
+            offset += run.text.len();
+        }
+        anchors
+    }
+
+    /// The paragraph surfaces a text box's blocks list (see
+    /// `enumerate_text_box_surfaces`): paragraphs, table cells' included.
+    fn count_text_box_paragraphs(elements: &[BodyElement], count: &mut usize) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(_) => *count += 1,
+                BodyElement::Table(table) => {
+                    for row in &table.rows {
+                        for cell in &row.cells {
+                            Self::count_text_box_paragraphs(&cell.blocks, count);
+                        }
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
     pub(crate) fn surface_index_for_body(&self, body_index: usize) -> Option<usize> {
         let mut current = 0usize;
         for (idx, surface) in self.paragraph_surfaces.iter().enumerate() {
@@ -8808,14 +9121,11 @@ impl WordDocument {
             .and_then(|properties| properties.page_number_type.clone())
             .unwrap_or_default();
         let format = settings.format.as_deref().unwrap_or("decimal");
-        settings.format = Some(match format.to_ascii_lowercase().as_str() {
-            "lowerroman" => "lowerRoman".to_string(),
-            "upperroman" => "upperRoman".to_string(),
-            "lowerletter" => "lowerLetter".to_string(),
-            "upperletter" => "upperLetter".to_string(),
-            "decimal" => "decimal".to_string(),
-            _ => format.to_string(),
-        });
+        settings.format = Some(
+            jade_docx_reader::numbering::canonical_number_format(format)
+                .unwrap_or(format)
+                .to_string(),
+        );
         settings
     }
 
@@ -8829,16 +9139,8 @@ impl WordDocument {
         start: Option<u32>,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        const FORMATS: &[&str] = &[
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ];
-        if !FORMATS.contains(&format) {
-            return Err(format!("unsupported page-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported page-number format: {format}"))?;
         if start == Some(0) {
             return Err("page-number start must be at least 1".to_string());
         }
@@ -9014,17 +9316,8 @@ impl WordDocument {
         restart: &str,
         section: Option<usize>,
     ) -> Result<bool, String> {
-        if ![
-            "decimal",
-            "lowerRoman",
-            "upperRoman",
-            "lowerLetter",
-            "upperLetter",
-        ]
-        .contains(&format)
-        {
-            return Err(format!("unsupported note-number format: {format}"));
-        }
+        let format = crate::number_format::authorable_number_format(format)
+            .ok_or_else(|| format!("unsupported note-number format: {format}"))?;
         if start == 0 {
             return Err("note-number start must be at least 1".into());
         }
@@ -16159,6 +16452,20 @@ impl WordDocument {
         Ok(())
     }
 
+    /// A text box's paragraphs are found through the index of the run that
+    /// hosts it, so adding or removing runs before that run (a comment's
+    /// reference, a split at its range) moves it; the surfaces are rebuilt
+    /// whenever the document has text boxes.
+    fn refresh_text_box_surfaces(&mut self) {
+        if self
+            .paragraph_surfaces
+            .iter()
+            .any(|surface| matches!(surface, ParagraphSurface::TextBox { .. }))
+        {
+            self.rebuild_paragraph_surfaces();
+        }
+    }
+
     pub fn add_comment(&mut self, request: AddCommentRequest) -> Result<String, String> {
         let AddCommentRequest {
             start_paragraph,
@@ -16370,6 +16677,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -16601,6 +16909,7 @@ impl WordDocument {
                 },
             );
         }
+        self.refresh_text_box_surfaces();
 
         Ok(comment_id)
     }
@@ -16934,6 +17243,7 @@ impl WordDocument {
             }
             raw.rebuild_index();
         }
+        self.refresh_text_box_surfaces();
 
         Ok(())
     }
@@ -29400,6 +29710,42 @@ impl WordDocument {
         declared_property_tags(self.raw_document.as_ref(), node_id, "w:p", "w:pPr")
     }
 
+    /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
+    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    pub(crate) fn paragraph_declared_property_attributes(
+        &self,
+        paragraph_index: usize,
+    ) -> Vec<(String, String)> {
+        let Some(properties) = self
+            .paragraph(paragraph_index)
+            .and_then(|paragraph| paragraph.node_id)
+            .and_then(|id| self.raw_document.as_ref()?.element(id))
+            .filter(|node| node.name == "w:p")
+            .and_then(|node| {
+                node.children.iter().find_map(|child| match child {
+                    XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
+                    _ => None,
+                })
+            })
+        else {
+            return Vec::new();
+        };
+        properties
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => Some(element),
+                _ => None,
+            })
+            .flat_map(|element| {
+                element
+                    .attributes
+                    .iter()
+                    .map(|attribute| (element.name.clone(), attribute.name.clone()))
+            })
+            .collect()
+    }
+
     fn sync_paragraph_text_with_options(
         &mut self,
         paragraph_index: usize,
@@ -33493,7 +33839,10 @@ impl WordDocument {
                 });
             }
         }
-        doc.create_element("w:hyperlink", attributes, children)
+        // The runs inside were just created and their ids recorded on the
+        // model runs. `create_element` would renumber them, and the next edit,
+        // finding no run in the wrapper, dropped it with the link.
+        doc.create_element_preserving_child_ids("w:hyperlink", attributes, children)
     }
 
     fn create_authored_field_element(
@@ -35611,6 +35960,72 @@ mod tests {
         let _ = word_doc.document_mut();
         let after = Rc::as_ptr(word_doc.document.as_ref().unwrap());
         assert_eq!(before, after, "sole owner again must not reallocate");
+    }
+
+    /// A comment on the paragraph that hosts a text box splits and adds runs
+    /// there; the text box's paragraphs, found through the host's runs, must
+    /// still be reachable afterwards, and after the comment is deleted again.
+    #[test]
+    fn comments_on_a_text_box_host_keep_the_text_box_paragraphs_reachable() {
+        let mut word_doc = load_fixture("textbox.docx");
+        let text = |doc: &WordDocument, index: usize| {
+            doc.paragraph(index)
+                .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
+        };
+        let before: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(
+            word_doc.paragraph_story(1),
+            Some(ParagraphStory::TextBox {
+                host: 0,
+                text_box: 0,
+                paragraph: 0
+            })
+        );
+        let id = word_doc
+            .add_comment(AddCommentRequest {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 2,
+                text: "c".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("comment on the host paragraph");
+        let after: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(after, before, "after adding the comment");
+        word_doc
+            .reply_to_comment(ReplyToCommentRequest {
+                parent_comment_id: id.clone(),
+                text: "reply".into(),
+                author: None,
+                initials: None,
+                date: None,
+            })
+            .expect("reply");
+        let replied: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(replied, before, "after replying");
+        word_doc.delete_comment(&id).expect("delete the thread");
+        let deleted: Vec<_> = (0..word_doc.paragraph_count())
+            .map(|i| text(&word_doc, i))
+            .collect();
+        assert_eq!(deleted, before, "after deleting the thread");
+        let reopened = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reopen");
+        let reread: Vec<_> = (0..reopened.paragraph_count())
+            .map(|i| text(&reopened, i))
+            .collect();
+        assert_eq!(reread, before, "after reopening");
     }
 
     #[test]

@@ -7,12 +7,14 @@ use crate::{
     model::Model,
 };
 
+mod aggregate;
 pub(crate) mod binary_search;
 mod database;
 pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
+pub(crate) mod japanese;
 mod logical;
 mod lookup_and_reference;
 mod macros;
@@ -537,6 +539,12 @@ pub enum Function {
     Delta,
     Gestep,
     Subtotal,
+    /// Jade addition, not in the upstream language tables.
+    Aggregate,
+    /// Jade additions: Japanese Excel.
+    Jis,
+    Datestring,
+    Numberstring,
 
     // Database
     Daverage,
@@ -559,6 +567,19 @@ pub enum Function {
     Steyx,
 }
 
+/// Functions Jade adds to the engine. Their names are not in the bundled
+/// language tables (`language.bin`), so they answer to their English names in
+/// every language.
+fn jade_lookup(key: &str) -> Option<Function> {
+    match key {
+        "AGGREGATE" => Some(Function::Aggregate),
+        "JIS" => Some(Function::Jis),
+        "DATESTRING" => Some(Function::Datestring),
+        "NUMBERSTRING" => Some(Function::Numberstring),
+        _ => None,
+    }
+}
+
 macro_rules! impl_function_lookup {
     ($($field:ident => $variant:ident),+ $(,)?) => {
         impl Functions {
@@ -569,7 +590,7 @@ macro_rules! impl_function_lookup {
                         return Some(Function::$variant);
                     }
                 )*
-                None
+                jade_lookup(&key)
             }
         }
     }
@@ -1565,6 +1586,10 @@ impl Function {
             Function::Delta => functions.delta.clone(),
             Function::Gestep => functions.gestep.clone(),
             Function::Subtotal => functions.subtotal.clone(),
+            Function::Aggregate => "AGGREGATE".to_string(),
+            Function::Jis => "JIS".to_string(),
+            Function::Datestring => "DATESTRING".to_string(),
+            Function::Numberstring => "NUMBERSTRING".to_string(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1608,7 +1633,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 494> {
+    pub fn into_iter() -> IntoIter<Function, 498> {
         [
             Function::And,
             Function::False,
@@ -1942,6 +1967,10 @@ impl Function {
             Function::Delta,
             Function::Gestep,
             Function::Subtotal,
+            Function::Aggregate,
+            Function::Jis,
+            Function::Datestring,
+            Function::Numberstring,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2109,6 +2138,29 @@ impl Function {
     }
 }
 
+/// The prefix an `.xlsx` formula needs before the function `name` (any case,
+/// with or without a prefix already) so Excel reads it: `_xlfn.` for the
+/// functions newer than the 2007 file format, `_xlfn._xlws.` for the
+/// worksheet-only ones, and `None` for the rest (Jade addition).
+pub fn xlsx_function_prefix(name: &str) -> Option<&'static str> {
+    let bare = name
+        .trim_start_matches("_xlfn._xlws.")
+        .trim_start_matches("_xlfn.")
+        .to_uppercase();
+    let function = crate::language::get_language("en")
+        .ok()?
+        .functions
+        .lookup(&bare)?;
+    let stored = function.to_xlsx_string();
+    if stored.starts_with("_xlfn._xlws.") {
+        Some("_xlfn._xlws.")
+    } else if stored.starts_with("_xlfn.") {
+        Some("_xlfn.")
+    } else {
+        None
+    }
+}
+
 impl Function {
     /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`. (known as "future functions")
     /// FILTER and SORT are stringified as `_xlfn._xlws.FILTER`. (known as "worksheet only functions")
@@ -2116,6 +2168,15 @@ impl Function {
     pub fn to_xlsx_string(&self) -> String {
         match self {
             Function::Concat => "_xlfn.CONCAT".to_string(),
+            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
+            // Jade: future functions upstream writes without their prefix.
+            Function::Days => "_xlfn.DAYS".to_string(),
+            Function::ForecastLinear => "_xlfn.FORECAST.LINEAR".to_string(),
+            Function::GammaDist => "_xlfn.GAMMA.DIST".to_string(),
+            Function::Gauss => "_xlfn.GAUSS".to_string(),
+            Function::Imsech => "_xlfn.IMSECH".to_string(),
+            Function::NetworkdaysIntl => "_xlfn.NETWORKDAYS.INTL".to_string(),
+            Function::WorkdayIntl => "_xlfn.WORKDAY.INTL".to_string(),
             Function::Ifna => "_xlfn.IFNA".to_string(),
             Function::Ifs => "_xlfn.IFS".to_string(),
             Function::Lambda => "_xlfn.LAMBDA".to_string(),
@@ -2600,6 +2661,10 @@ impl<'a> Model<'a> {
             Function::Delta => self.fn_delta(args, cell),
             Function::Gestep => self.fn_gestep(args, cell),
             Function::Subtotal => self.fn_subtotal(args, cell),
+            Function::Aggregate => self.fn_aggregate(args, cell),
+            Function::Jis => self.fn_jis(args, cell),
+            Function::Datestring => self.fn_datestring(args, cell),
+            Function::Numberstring => self.fn_numberstring(args, cell),
             Function::Acot => self.fn_acot(args, cell),
             Function::Acoth => self.fn_acoth(args, cell),
             Function::Cot => self.fn_cot(args, cell),

@@ -5,10 +5,9 @@
 //! of digit placeholders or date tokens. This implements the numeric and
 //! date/time halves of it, which is what a business workbook uses.
 //!
-//! Not implemented, and falling through to the general form rather than
-//! guessing: fractions (`# ??/??`) and Japanese era codes (`ggge`). Month and
-//! day names are English, which is Excel's `en-US` default; a locale-aware
-//! build would take them from the `[$-411]`-style locale tag this ignores.
+//! Month and day names are English, which is Excel's `en-US` default; the
+//! Japanese codes — era `g`/`e` and weekday `aaa` — are Japanese whatever the
+//! locale tag says, since no other locale has them.
 
 use jade_xlsx_reader::{CellValue, DateSystem};
 
@@ -460,15 +459,66 @@ fn take_color(section: &str) -> (Option<FormatColor>, String) {
 
 // ── general ─────────────────────────────────────────────────────────────
 
-/// Excel's General: up to 11 significant digits, no trailing zeros, and no
-/// thousands separator.
+/// Excel's General, as a standard-width column shows it: at most eleven
+/// characters, no thousands separator, no trailing zeros. An integer shows
+/// whole below 10^11; anything that would need more characters is rounded to
+/// fit, or written in scientific notation (`1.23457E+12`, at most six
+/// significant digits) when that keeps more of it.
 fn general(value: f64) -> String {
-    if value == value.trunc() && value.abs() < 1e15 {
-        return format!("{}", value as i64);
+    if !value.is_finite() {
+        return value.to_string();
     }
-    let text = format!("{value:.10}");
-    let text = text.trim_end_matches('0').trim_end_matches('.');
-    text.to_string()
+    if value == 0.0 {
+        return "0".to_string();
+    }
+    const WIDTH: i32 = 11;
+    let sign = if value < 0.0 { "-" } else { "" };
+    let magnitude = value.abs();
+    let available = WIDTH - sign.len() as i32;
+    let order = magnitude.log10().floor() as i32;
+    if magnitude >= 1e11 {
+        return format!("{sign}{}", scientific(magnitude));
+    }
+    if value == value.trunc() {
+        return format!("{sign}{}", magnitude as i64);
+    }
+    // Digits the decimal form has room for after the point.
+    let decimals = if order >= 0 {
+        available - (order + 1) - 1
+    } else {
+        available - 2
+    };
+    // A small number keeps fewer significant digits as decimals than as
+    // scientific; below that point Excel switches.
+    let significant_as_decimals = decimals + order + 1;
+    if order < 0 && significant_as_decimals < 6.min(significant_digits(magnitude)) {
+        return format!("{sign}{}", scientific(magnitude));
+    }
+    let decimals = decimals.max(0) as usize;
+    let text = format!("{magnitude:.decimals$}");
+    let text = if text.contains('.') {
+        text.trim_end_matches('0').trim_end_matches('.')
+    } else {
+        &text
+    };
+    format!("{sign}{text}")
+}
+
+/// The significant digits `magnitude` has, at Excel's fifteen.
+fn significant_digits(magnitude: f64) -> i32 {
+    let text = format!("{:.14e}", magnitude);
+    let mantissa = text.split('e').next().unwrap_or_default();
+    mantissa.trim_end_matches('0').replace('.', "").len() as i32
+}
+
+/// General's scientific form: six significant digits at most, trailing
+/// zeros dropped, a signed two-digit exponent.
+fn scientific(magnitude: f64) -> String {
+    let text = format!("{magnitude:.5E}");
+    let (mantissa, exponent) = text.split_once('E').unwrap_or((&text, "0"));
+    let mantissa = mantissa.trim_end_matches('0').trim_end_matches('.');
+    let exponent: i32 = exponent.parse().unwrap_or(0);
+    format!("{mantissa}E{exponent:+03}")
 }
 
 /// Numeric drawing must not expose a clipped suffix as a different value.
@@ -525,10 +575,25 @@ pub(crate) fn fit_number(
 
 // ── numeric ─────────────────────────────────────────────────────────────
 
+/// One position of a number's integer part, left to right.
+#[derive(Debug, Clone, PartialEq)]
+enum IntegerPart {
+    /// `0` (zero-padded), `#` (nothing when absent) or `?` (a space).
+    Digit(char),
+    /// Text written between the placeholders, as in `000-0000`.
+    Literal(String),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct NumericFormat {
     prefix: String,
     suffix: String,
+    /// The integer placeholders and the literals among them.
+    integer: Vec<IntegerPart>,
+    /// The placeholders after the point.
+    decimals: Vec<char>,
+    /// Whether the section writes a point: `0.##` shows `1.` for one.
+    has_point: bool,
     minimum_decimals: usize,
     maximum_decimals: usize,
     thousands: bool,
@@ -550,6 +615,9 @@ struct ScientificFormat {
 fn parse_numeric(section: &str) -> Option<NumericFormat> {
     let mut prefix = String::new();
     let mut suffix = String::new();
+    let mut integer = Vec::new();
+    let mut decimals = Vec::new();
+    let mut has_point = false;
     let mut minimum_decimals = 0usize;
     let mut maximum_decimals = 0usize;
     let mut thousands = false;
@@ -559,34 +627,42 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
     let mut seen_digit_placeholder = false;
     let mut integer_digits = 0usize;
     let mut after_point = false;
+    // Literal text after an integer placeholder: between placeholders it
+    // stays in place (`000-0000`); after the last it is the suffix.
+    let mut pending = String::new();
+
+    // Where literal text goes, given what has been read so far.
+    macro_rules! literal {
+        ($text:expr) => {{
+            let text: &str = $text;
+            if !seen_digit_placeholder {
+                prefix.push_str(text);
+            } else if after_point || scientific.is_some() {
+                suffix.push_str(text);
+            } else {
+                pending.push_str(text);
+            }
+        }};
+    }
 
     let mut chars = section.chars().peekable();
     while let Some(c) = chars.next() {
         match c {
             '"' => {
-                let mut literal = String::new();
+                let mut quoted = String::new();
                 for c in chars.by_ref() {
                     if c == '"' {
                         break;
                     }
-                    literal.push(c);
+                    quoted.push(c);
                 }
-                if seen_digit_placeholder {
-                    suffix.push_str(&literal);
-                } else {
-                    prefix.push_str(&literal);
-                }
+                literal!(&quoted);
             }
             '\\' => {
                 if let Some(escaped) = chars.next() {
-                    if seen_digit_placeholder {
-                        suffix.push(escaped);
-                    } else {
-                        prefix.push(escaped);
-                    }
+                    literal!(&escaped.to_string());
                 }
             }
-            '?' => return None,
             '/' if seen_digit_placeholder => return None,
             'E' | 'e' => {
                 // `0.00E+00`: the exponent's own placeholders are consumed
@@ -607,6 +683,7 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
                 if exponent_digits == 0 {
                     return None;
                 }
+                suffix.push_str(&std::mem::take(&mut pending));
                 scientific = Some(ScientificFormat {
                     marker,
                     positive_sign,
@@ -614,20 +691,33 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
                     integer_digits: integer_digits.max(1),
                 });
             }
-            '0' | '#' => {
+            '0' | '#' | '?' => {
                 seen_digit_placeholder = true;
                 if after_point {
+                    decimals.push(c);
                     maximum_decimals += 1;
                     if c == '0' {
                         minimum_decimals += 1;
                     }
                 } else {
+                    if !pending.is_empty() {
+                        integer.push(IntegerPart::Literal(std::mem::take(&mut pending)));
+                    }
+                    integer.push(IntegerPart::Digit(c));
                     integer_digits += 1;
                 }
             }
-            '.' => after_point = true,
+            '.' if !after_point => {
+                if !pending.is_empty() {
+                    integer.push(IntegerPart::Literal(std::mem::take(&mut pending)));
+                }
+                after_point = true;
+                has_point = true;
+            }
             ',' => {
-                if seen_digit_placeholder && matches!(chars.peek(), Some('0') | Some('#')) {
+                if seen_digit_placeholder
+                    && matches!(chars.peek(), Some('0') | Some('#') | Some('?'))
+                {
                     thousands = true;
                 } else if seen_digit_placeholder {
                     scale_thousands += 1;
@@ -635,39 +725,29 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
             }
             '%' => {
                 percent = true;
-                if seen_digit_placeholder {
-                    suffix.push('%');
-                } else {
-                    prefix.push('%');
-                }
+                literal!("%");
             }
             '_' => {
                 // `_)` reserves the width of a character; a space is what it
                 // renders as.
                 chars.next();
-                if seen_digit_placeholder {
-                    suffix.push(' ');
-                } else {
-                    prefix.push(' ');
-                }
+                literal!(" ");
             }
             '*' => {
                 chars.next();
             }
             '@' => return None,
-            other => {
-                if seen_digit_placeholder {
-                    suffix.push(other);
-                } else {
-                    prefix.push(other);
-                }
-            }
+            other => literal!(&other.to_string()),
         }
     }
+    suffix.insert_str(0, &pending);
 
     seen_digit_placeholder.then_some(NumericFormat {
         prefix,
         suffix,
+        integer,
+        decimals,
+        has_point,
         minimum_decimals,
         maximum_decimals,
         thousands,
@@ -724,21 +804,9 @@ fn apply(value: f64, format: &NumericFormat) -> String {
     let factor = 10f64.powi(format.maximum_decimals as i32);
     let magnitude = (scaled.abs() * factor).round() / factor;
     let rounded = format!("{:.*}", format.maximum_decimals, magnitude);
-    let (integer, fraction) = match rounded.split_once('.') {
-        Some((integer, fraction)) => {
-            let keep = fraction
-                .trim_end_matches('0')
-                .len()
-                .max(format.minimum_decimals);
-            (integer.to_string(), Some(fraction[..keep].to_string()))
-        }
-        None => (rounded, None),
-    };
-    let integer = if format.thousands {
-        group_thousands(&integer)
-    } else {
-        integer
-    };
+    let (whole, fraction) = rounded.split_once('.').unwrap_or((&rounded, ""));
+    let integer = render_integer(whole, format);
+    let fraction = render_decimals(fraction, &format.decimals);
 
     let mut out = String::new();
     if scaled < 0.0 {
@@ -746,11 +814,80 @@ fn apply(value: f64, format: &NumericFormat) -> String {
     }
     out.push_str(&format.prefix);
     out.push_str(&integer);
-    if let Some(fraction) = fraction.filter(|fraction| !fraction.is_empty()) {
+    if format.has_point {
         out.push('.');
         out.push_str(&fraction);
     }
     out.push_str(&format.suffix);
+    out
+}
+
+/// The integer digits laid into the section's placeholders from the right:
+/// `0` pads with a zero, `?` with a space, `#` with nothing; digits beyond
+/// the placeholders go before the first; literals stay where they were
+/// written. A zero integer part shows only through `0` placeholders, so `#`
+/// shows nothing for zero and `#.##` shows `.5` for a half.
+fn render_integer(whole: &str, format: &NumericFormat) -> String {
+    let has_zero = format.integer.contains(&IntegerPart::Digit('0'));
+    let digits: Vec<char> = if whole == "0" && !has_zero {
+        Vec::new()
+    } else {
+        whole.chars().collect()
+    };
+    if format.thousands {
+        // Grouped: pad to the zero placeholders, then group; literals among
+        // grouped digits are not a thing workbooks write.
+        let zeros = format
+            .integer
+            .iter()
+            .filter(|part| **part == IntegerPart::Digit('0'))
+            .count();
+        let mut padded: String = digits.iter().collect();
+        while padded.len() < zeros {
+            padded.insert(0, '0');
+        }
+        return group_thousands(&padded);
+    }
+    let mut remaining = digits.len();
+    let mut pieces: Vec<String> = Vec::new();
+    for part in format.integer.iter().rev() {
+        match part {
+            IntegerPart::Literal(text) => pieces.push(text.clone()),
+            IntegerPart::Digit(placeholder) => {
+                if remaining > 0 {
+                    remaining -= 1;
+                    pieces.push(digits[remaining].to_string());
+                } else {
+                    match placeholder {
+                        '0' => pieces.push("0".to_string()),
+                        '?' => pieces.push(" ".to_string()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    let mut out: String = digits[..remaining].iter().collect();
+    for piece in pieces.into_iter().rev() {
+        out.push_str(&piece);
+    }
+    out
+}
+
+/// The decimal digits under the placeholders after the point: trailing
+/// zeros drop under `#`, turn into spaces under `?`, and stay under `0`.
+fn render_decimals(fraction: &str, placeholders: &[char]) -> String {
+    let digits: Vec<char> = fraction.chars().collect();
+    let mut keep = digits.len().min(placeholders.len());
+    while keep > 0 && digits[keep - 1] == '0' && placeholders[keep - 1] != '0' {
+        keep -= 1;
+    }
+    let mut out: String = digits[..keep].iter().collect();
+    for placeholder in &placeholders[keep..] {
+        if *placeholder == '?' {
+            out.push(' ');
+        }
+    }
     out
 }
 
@@ -789,15 +926,28 @@ fn group_thousands(digits: &str) -> String {
 fn is_date_pattern(pattern: &str) -> bool {
     let mut in_quotes = false;
     let mut escaped = false;
+    // A run of three or more `a` is the Japanese weekday.
+    let mut a_run = 0usize;
     for c in pattern.chars() {
         if escaped {
             escaped = false;
             continue;
         }
+        if !in_quotes && c.eq_ignore_ascii_case(&'a') {
+            a_run += 1;
+            if a_run >= 3 {
+                return true;
+            }
+        } else {
+            a_run = 0;
+        }
         match c {
             '\\' => escaped = true,
             '"' => in_quotes = !in_quotes,
-            c if !in_quotes && matches!(c.to_ascii_lowercase(), 'y' | 'm' | 'd' | 'h' | 's') => {
+            // `g` is the Japanese era, which only dates have.
+            c if !in_quotes
+                && matches!(c.to_ascii_lowercase(), 'y' | 'm' | 'd' | 'h' | 's' | 'g') =>
+            {
                 return true
             }
             _ => {}
@@ -835,7 +985,36 @@ enum DateToken {
     Meridiem {
         long: bool,
     },
+    /// Japanese era: `g` R, `gg` 令, `ggg` 令和.
+    Era(usize),
+    /// Year of the era: `e` 6, `ee` 06.
+    EraYear(usize),
+    /// Japanese weekday: `aaa` 月, `aaaa` 月曜日.
+    JapaneseWeekday(usize),
     Literal(String),
+}
+
+/// A Japanese era: its first day, Latin initial, short and full names.
+type Era = ((i64, u32, u32), &'static str, &'static str, &'static str);
+
+/// The Japanese eras a 1900-based serial can reach.
+const ERAS: [Era; 5] = [
+    ((1868, 1, 1), "M", "明", "明治"),
+    ((1912, 7, 30), "T", "大", "大正"),
+    ((1926, 12, 25), "S", "昭", "昭和"),
+    ((1989, 1, 8), "H", "平", "平成"),
+    ((2019, 5, 1), "R", "令", "令和"),
+];
+
+const JAPANESE_DAY_NAMES: [&str; 7] = ["日", "月", "火", "水", "木", "金", "土"];
+
+/// The era a date falls in, and its year within it (the first is 1).
+fn japanese_era(year: i64, month: u32, day: u32) -> (usize, i64) {
+    let index = ERAS
+        .iter()
+        .rposition(|(start, ..)| (year, month, day) >= *start)
+        .unwrap_or(0);
+    (index, year - ERAS[index].0 .0 + 1)
 }
 
 const MONTH_NAMES: [&str; 12] = [
@@ -986,6 +1165,29 @@ fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<Stri
                     (false, false) => "P",
                 });
             }
+            DateToken::Era(width) => {
+                let (era, _) = japanese_era(year, month, day);
+                let (_, latin, short, full) = ERAS[era];
+                out.push_str(match width {
+                    1 => latin,
+                    2 => short,
+                    _ => full,
+                });
+            }
+            DateToken::EraYear(width) => {
+                let (_, era_year) = japanese_era(year, month, day);
+                if *width >= 2 {
+                    out.push_str(&format!("{era_year:02}"));
+                } else {
+                    out.push_str(&era_year.to_string());
+                }
+            }
+            DateToken::JapaneseWeekday(width) => {
+                out.push_str(JAPANESE_DAY_NAMES[weekday as usize]);
+                if *width >= 4 {
+                    out.push_str("曜日");
+                }
+            }
             DateToken::Literal(text) => out.push_str(text),
         }
     }
@@ -1047,9 +1249,28 @@ fn tokenize_date(pattern: &str) -> Vec<DateToken> {
                     index += 1;
                 }
             }
+            'g' | 'e' => {
+                let mut width = 0usize;
+                while index < chars.len() && chars[index].to_ascii_lowercase() == lower {
+                    width += 1;
+                    index += 1;
+                }
+                tokens.push(if lower == 'g' {
+                    DateToken::Era(width)
+                } else {
+                    DateToken::EraYear(width)
+                });
+            }
             'a' | 'p' => {
                 let rest: String = chars[index..].iter().collect::<String>().to_lowercase();
-                if rest.starts_with("am/pm") {
+                let run = chars[index..]
+                    .iter()
+                    .take_while(|c| c.eq_ignore_ascii_case(&'a'))
+                    .count();
+                if run >= 3 {
+                    tokens.push(DateToken::JapaneseWeekday(run));
+                    index += run;
+                } else if rest.starts_with("am/pm") {
                     tokens.push(DateToken::Meridiem { long: true });
                     index += 5;
                 } else if rest.starts_with("a/p") {

@@ -717,7 +717,31 @@ impl<'a> Model<'a> {
         }
         match self.get_reference(&args[0], cell) {
             Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
-            Err(s) => s,
+            Err(s) => self.array_extent(&args[0], cell, s, |rows, _| rows),
+        }
+    }
+
+    /// ROWS and COLUMNS of something that is not a reference (Jade): an array
+    /// constant or a dynamic array's result has its own shape, and a single
+    /// value is one row by one column. `not_a_reference` is returned when the
+    /// argument is neither.
+    fn array_extent(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        not_a_reference: CalcResult,
+        pick: fn(usize, usize) -> usize,
+    ) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Array(rows) => {
+                let columns = rows.first().map_or(0, |row| row.len());
+                CalcResult::Number(pick(rows.len(), columns) as f64)
+            }
+            CalcResult::Number(_) | CalcResult::String(_) | CalcResult::Boolean(_) => {
+                CalcResult::Number(1.0)
+            }
+            error @ CalcResult::Error { .. } => error,
+            _ => not_a_reference,
         }
     }
 
@@ -820,7 +844,7 @@ impl<'a> Model<'a> {
         }
         match self.get_reference(&args[0], cell) {
             Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
-            Err(s) => s,
+            Err(s) => self.array_extent(&args[0], cell, s, |_, columns| columns),
         }
     }
 

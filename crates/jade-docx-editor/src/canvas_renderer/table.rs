@@ -10572,6 +10572,11 @@ fn paragraph_trailing_overhang<C: LineWrapContext>(
         .and_then(|run| run.properties.as_deref());
     let style = context.resolve_run_style(properties)?;
     let descriptor = style.descriptor_for_grapheme(grapheme, classify_script(grapheme));
+    // A fixed-pitch ＭＳ 明朝 / ＭＳ ゴシック glyph stays inside its cell,
+    // whatever face the host substitutes for it.
+    if jade_docx_layout::line_metrics::word_monospace_advance_px(descriptor, grapheme).is_some() {
+        return Ok(0.0);
+    }
     Ok(context.measure_trailing_overhang(grapheme, descriptor)? * style.text_scale_x.max(0.01))
 }
 

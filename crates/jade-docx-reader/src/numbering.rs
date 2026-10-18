@@ -866,72 +866,440 @@ impl NumberingPart {
             .get_level_info(num_id, level)
             .and_then(|info| info.language.as_deref());
 
-        match format.as_str() {
-            "decimal" => value.to_string(),
-            "upperRoman" => to_roman(value, true),
-            "lowerRoman" => to_roman(value, false),
-            "upperLetter" => to_letter(value, true),
-            "lowerLetter" => to_letter(value, false),
-            "ordinal" if language.is_some_and(is_english_language) => to_english_ordinal(value),
-            "cardinalText" if language.is_some_and(is_english_language) => {
-                to_english_cardinal(value)
+        format_number_value(&format, value, language)
+    }
+}
+
+/// Formats `value` with an `ST_NumberFormat` token (ECMA-376 Part 1
+/// §17.18.59). List levels, page numbers (`w:pgNumType/@w:fmt`) and note
+/// markers (`w:numFmt` in `w:footnotePr`/`w:endnotePr`) all name their counter
+/// style with this one simple type, so they share this formatter. Tokens match
+/// case-insensitively: section and note formats are kept lowercased by the
+/// parser. Unknown tokens fall back to decimal.
+///
+/// Zero has no representation in most systems; it stays a decimal `0` here
+/// and list levels clamp to one before calling.
+pub fn format_number_value(format: &str, value: u32, language: Option<&str>) -> String {
+    let format = canonical_number_format(format).unwrap_or(format);
+    if value == 0
+        && !matches!(
+            format,
+            "decimal"
+                | "decimalHalfWidth"
+                | "decimalFullWidth"
+                | "decimalFullWidth2"
+                | "decimalZero"
+                | "hindiNumbers"
+                | "thaiNumbers"
+                | "numberInDash"
+                | "hex"
+                | "none"
+                | "bullet"
+        )
+    {
+        return value.to_string();
+    }
+    match format {
+        "decimal" => value.to_string(),
+        "upperRoman" => to_roman(value, true),
+        "lowerRoman" => to_roman(value, false),
+        "upperLetter" => to_letter(value, true),
+        "lowerLetter" => to_letter(value, false),
+        "ordinal" if language.is_some_and(is_english_language) => to_english_ordinal(value),
+        "cardinalText" if language.is_some_and(is_english_language) => to_english_cardinal(value),
+        "ordinalText" if language.is_some_and(is_english_language) => {
+            to_english_ordinal_text(value)
+        }
+        "hex" => to_hex(value),
+        // `target/contract-numbering-word-trace.json` records Word COM
+        // `ListString` as `第１条　` for a `decimalFullWidth` heading.
+        // Keeping this formatter explicit lets TRACE reports distinguish
+        // true numbering interpretation bugs from later layout/metric drift.
+        "decimalFullWidth" | "decimalFullWidth2" => to_full_width_decimal(value),
+        // Keep this token explicit even though Rust's decimal output is
+        // already single-byte ASCII. Otherwise a future generic fallback
+        // could silently change a format whose width is layout-significant.
+        "decimalHalfWidth" => value.to_string(),
+        // `decimalZero` is a *minimum* width of two, not a fixed-width
+        // counter: Word emits 01..09 and then continues with 10, 11, ... .
+        // This distinction affects the numbering label advance and thus the
+        // first-line text origin for single-digit list items.
+        "decimalZero" => format!("{value:02}"),
+        // Word follows the ST_NumberFormat examples: the unsuffixed token
+        // uses half-width Katakana and the FullWidth token uses ordinary
+        // full-width Katakana. This intentionally follows observed Word
+        // interoperability rather than the contradictory "Hiragana" label
+        // attached to aiueo in the schema prose.
+        "aiueo" => to_kana_sequence(value, AIUEO_KATAKANA_HALF_WIDTH),
+        "aiueoFullWidth" => to_kana_sequence(value, AIUEO_KATAKANA_FULL_WIDTH),
+        "iroha" => to_kana_sequence(value, IROHA_KATAKANA_HALF_WIDTH),
+        "irohaFullWidth" => to_kana_sequence(value, IROHA_KATAKANA_FULL_WIDTH),
+        // Both formats are positional digit sequences (10 -> 一〇), unlike
+        // japaneseCounting (10 -> 十). Microsoft notes that Word does not
+        // apply the circle suggested by old ideographDigital prose.
+        "japaneseDigitalTenThousand" | "ideographDigital" => to_japanese_positional_digits(value),
+        "japaneseCounting" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
+        "chineseCountingThousand" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
+        "japaneseLegal" => to_japanese_counting(value, JapaneseKanjiStyle::Legal),
+        // ST_NumberFormat defines dedicated Unicode enclosed glyphs only
+        // through 20 (or 10 for the Chinese circle variant). Word permits
+        // ordinary decimal output after that range, which is preferable to
+        // synthesizing a visually different combining enclosure.
+        "decimalEnclosedCircle" => to_enclosed_decimal(value, '①', 20),
+        "decimalEnclosedFullstop" => to_enclosed_decimal(value, '⒈', 20),
+        "decimalEnclosedParen" => to_enclosed_decimal(value, '⑴', 20),
+        "decimalEnclosedCircleChinese" => to_enclosed_decimal(value, '①', 10),
+        "ideographEnclosedCircle" => to_enclosed_ideograph(value),
+        // These OOXML formats preserve the decimal place-value system and
+        // replace each ASCII digit with the corresponding native digit.
+        // Formatting the whole value first also handles embedded zeroes.
+        "hindiNumbers" => to_decimal_digit_set(value, '०'),
+        "thaiNumbers" => to_decimal_digit_set(value, '๐'),
+        "numberInDash" => format!("- {value} -"),
+        "chicago" => to_chicago_symbols(value),
+        // Ten heavenly stems, twelve earthly branches and their sixty-term
+        // sexagenary cycle. These are closed sets; Word wraps round them.
+        "ideographTraditional" => cycle_char(value, HEAVENLY_STEMS),
+        "ideographZodiac" => cycle_char(value, EARTHLY_BRANCHES),
+        "ideographZodiacTraditional" => to_sexagenary(value),
+        "taiwaneseDigital" => to_japanese_positional_digits(value),
+        "chineseCounting" | "taiwaneseCounting" | "taiwaneseCountingThousand" => {
+            to_chinese_counting(value, ChineseNumerals::COUNTING)
+        }
+        "chineseLegalSimplified" => to_chinese_counting(value, ChineseNumerals::LEGAL_SIMPLIFIED),
+        "ideographLegalTraditional" => {
+            to_chinese_counting(value, ChineseNumerals::LEGAL_TRADITIONAL)
+        }
+        "koreanDigital" => to_decimal_digits(value, KOREAN_DIGITS),
+        "koreanCounting" => to_korean_counting(value),
+        "koreanLegal" => to_korean_native(value),
+        "ganada" => cycle_char(value, GANADA),
+        "chosung" => cycle_char(value, CHOSUNG),
+        "russianLower" => to_repeated_letter(value, RUSSIAN_LOWER),
+        "russianUpper" => to_repeated_letter(value, RUSSIAN_UPPER),
+        "hebrew1" => to_hebrew_numeral(value),
+        "hebrew2" => to_repeated_letter(value, HEBREW_ALPHABET),
+        "arabicAlpha" => to_repeated_letter(value, ARABIC_ALPHA),
+        "arabicAbjad" => to_repeated_letter(value, ARABIC_ABJAD),
+        "none" => String::new(),
+        "bullet" => "•".to_string(),
+        _ => value.to_string(),
+    }
+}
+
+/// Every `ST_NumberFormat` token this module formats, in schema spelling.
+const NUMBER_FORMAT_TOKENS: &[&str] = &[
+    "decimal",
+    "upperRoman",
+    "lowerRoman",
+    "upperLetter",
+    "lowerLetter",
+    "ordinal",
+    "cardinalText",
+    "ordinalText",
+    "hex",
+    "chicago",
+    "ideographDigital",
+    "japaneseCounting",
+    "aiueo",
+    "iroha",
+    "decimalFullWidth",
+    "decimalHalfWidth",
+    "japaneseLegal",
+    "japaneseDigitalTenThousand",
+    "decimalEnclosedCircle",
+    "decimalFullWidth2",
+    "aiueoFullWidth",
+    "irohaFullWidth",
+    "decimalZero",
+    "bullet",
+    "ganada",
+    "chosung",
+    "decimalEnclosedFullstop",
+    "decimalEnclosedParen",
+    "decimalEnclosedCircleChinese",
+    "ideographEnclosedCircle",
+    "ideographTraditional",
+    "ideographZodiac",
+    "ideographZodiacTraditional",
+    "taiwaneseCounting",
+    "ideographLegalTraditional",
+    "taiwaneseCountingThousand",
+    "taiwaneseDigital",
+    "chineseCounting",
+    "chineseLegalSimplified",
+    "chineseCountingThousand",
+    "koreanDigital",
+    "koreanCounting",
+    "koreanLegal",
+    "russianLower",
+    "russianUpper",
+    "none",
+    "numberInDash",
+    "hebrew1",
+    "hebrew2",
+    "arabicAlpha",
+    "arabicAbjad",
+    "hindiNumbers",
+    "thaiNumbers",
+];
+
+/// The schema spelling of an `ST_NumberFormat` token this module formats,
+/// matched case-insensitively (`"upperroman"` → `"upperRoman"`).
+pub fn canonical_number_format(format: &str) -> Option<&'static str> {
+    NUMBER_FORMAT_TOKENS
+        .iter()
+        .find(|token| token.eq_ignore_ascii_case(format))
+        .copied()
+}
+
+/// Chicago Manual of Style note symbols: `*`, `†`, `‡`, `§`, then the same
+/// four doubled, tripled, and so on.
+fn to_chicago_symbols(value: u32) -> String {
+    const SYMBOLS: [char; 4] = ['*', '†', '‡', '§'];
+    to_repeated_symbol(value, &SYMBOLS)
+}
+
+const HEAVENLY_STEMS: &str = "甲乙丙丁戊己庚辛壬癸";
+const EARTHLY_BRANCHES: &str = "子丑寅卯辰巳午未申酉戌亥";
+
+/// Korean consonant-plus-a syllables, the order Hangul dictionaries use.
+const GANADA: &str = "가나다라마바사아자차카타파하";
+/// The fourteen basic initial consonants (jamo) in the same order.
+const CHOSUNG: &str = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ";
+
+/// The Russian alphabet without ё, й, ъ, ы and ь, which are not used as
+/// list labels.
+const RUSSIAN_LOWER: &[char] = &[
+    'а', 'б', 'в', 'г', 'д', 'е', 'ж', 'з', 'и', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у',
+    'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я',
+];
+const RUSSIAN_UPPER: &[char] = &[
+    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У',
+    'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Э', 'Ю', 'Я',
+];
+const HEBREW_ALPHABET: &[char] = &[
+    'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ', 'ק',
+    'ר', 'ש', 'ת',
+];
+/// Hijāʾī order (letters grouped by shape).
+const ARABIC_ALPHA: &[char] = &[
+    'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ',
+    'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي',
+];
+/// Abjadī order (the letters' traditional numeric values 1, 2, 3, …).
+const ARABIC_ABJAD: &[char] = &[
+    'أ', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق',
+    'ر', 'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ',
+];
+const KOREAN_DIGITS: [char; 10] = ['영', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+
+fn cycle_char(value: u32, alphabet: &str) -> String {
+    let len = alphabet.chars().count() as u32;
+    alphabet
+        .chars()
+        .nth(((value.max(1) - 1) % len) as usize)
+        .map(String::from)
+        .unwrap_or_default()
+}
+
+/// `甲子`, `乙丑`, … `癸亥`: the stem and branch advance together, so the
+/// cycle repeats after sixty terms.
+fn to_sexagenary(value: u32) -> String {
+    let index = (value.max(1) - 1) % 60;
+    let mut label = cycle_char(index % 10 + 1, HEAVENLY_STEMS);
+    label.push_str(&cycle_char(index % 12 + 1, EARTHLY_BRANCHES));
+    label
+}
+
+/// Longest label the repeating formats build before falling back to decimal;
+/// Word's own lettered lists stop well short of this.
+const MAX_REPEATED_LABEL: u32 = 40;
+
+/// Word's alphabetic rollover: after the last letter the first comes back
+/// doubled, then the second doubled (`z`, `aa`, `bb`, …), not the
+/// spreadsheet-style `aa`, `ab`.
+fn to_repeated_letter(value: u32, alphabet: &[char]) -> String {
+    to_repeated_symbol(value, alphabet)
+}
+
+fn to_repeated_symbol(value: u32, alphabet: &[char]) -> String {
+    let len = alphabet.len() as u32;
+    let index = value.max(1) - 1;
+    let times = index / len + 1;
+    if times > MAX_REPEATED_LABEL {
+        return value.to_string();
+    }
+    std::iter::repeat_n(alphabet[(index % len) as usize], times as usize).collect()
+}
+
+fn to_decimal_digits(value: u32, digits: [char; 10]) -> String {
+    value
+        .to_string()
+        .bytes()
+        .map(|digit| digits[(digit - b'0') as usize])
+        .collect()
+}
+
+/// Digits, small units and large units of one Chinese counting style.
+struct ChineseNumerals {
+    /// Index 0 is the zero written between non-zero places (一百〇一).
+    digits: [char; 10],
+    /// 十, 百, 千 (or their financial forms).
+    small_units: [char; 3],
+    /// Units for the 10⁴ and 10⁸ groups.
+    large_units: [&'static str; 2],
+    /// Everyday counting writes 10–19 as 十, 十一, …; the legal (financial)
+    /// styles always keep the digit: 壹拾.
+    omit_leading_one_before_ten: bool,
+}
+
+impl ChineseNumerals {
+    const COUNTING: Self = Self {
+        digits: ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'],
+        small_units: ['十', '百', '千'],
+        large_units: ["万", "亿"],
+        omit_leading_one_before_ten: true,
+    };
+    const LEGAL_SIMPLIFIED: Self = Self {
+        digits: ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'],
+        small_units: ['拾', '佰', '仟'],
+        large_units: ["万", "亿"],
+        omit_leading_one_before_ten: false,
+    };
+    const LEGAL_TRADITIONAL: Self = Self {
+        digits: ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖'],
+        small_units: ['拾', '佰', '仟'],
+        large_units: ["萬", "億"],
+        omit_leading_one_before_ten: false,
+    };
+}
+
+/// Chinese place-value counting. Unlike Japanese counting, the digit one is
+/// kept before 百 and 千 (一百, 一千), and a run of empty places between
+/// non-zero ones is written as a single zero (一百〇一, 一万〇一).
+fn to_chinese_counting(value: u32, numerals: ChineseNumerals) -> String {
+    let groups = [value / 100_000_000, value / 10_000 % 10_000, value % 10_000];
+    let mut result = String::new();
+    let mut gap = false;
+    for (index, &group) in groups.iter().enumerate() {
+        if group == 0 {
+            gap |= !result.is_empty();
+            continue;
+        }
+        if !result.is_empty() && (gap || group < 1_000) {
+            result.push(numerals.digits[0]);
+        }
+        gap = false;
+        push_chinese_group(&mut result, group, &numerals);
+        result.push_str(match index {
+            0 => numerals.large_units[1],
+            1 => numerals.large_units[0],
+            _ => "",
+        });
+    }
+    result
+}
+
+fn push_chinese_group(result: &mut String, group: u32, numerals: &ChineseNumerals) {
+    let leading = result.is_empty();
+    let places = [group / 1_000, group / 100 % 10, group / 10 % 10, group % 10];
+    let units = [
+        Some(numerals.small_units[2]),
+        Some(numerals.small_units[1]),
+        Some(numerals.small_units[0]),
+        None,
+    ];
+    let mut started = false;
+    let mut zero_run = false;
+    for (place, (&digit, unit)) in places.iter().zip(units).enumerate() {
+        if digit == 0 {
+            zero_run |= started;
+            continue;
+        }
+        if zero_run {
+            result.push(numerals.digits[0]);
+            zero_run = false;
+        }
+        let bare_ten =
+            numerals.omit_leading_one_before_ten && leading && !started && place == 2 && digit == 1;
+        if !bare_ten {
+            result.push(numerals.digits[digit as usize]);
+        }
+        if let Some(unit) = unit {
+            result.push(unit);
+        }
+        started = true;
+    }
+}
+
+/// Sino-Korean numerals in Hangul: 일, 이, … 십, 십일, … 백, 천, 만. As in
+/// Japanese counting the digit one is dropped before a unit, and Korean
+/// writes no zero for empty places.
+fn to_korean_counting(value: u32) -> String {
+    const UNITS: [&str; 4] = ["천", "백", "십", ""];
+    const LARGE: [&str; 3] = ["억", "만", ""];
+    let groups = [value / 100_000_000, value / 10_000 % 10_000, value % 10_000];
+    let mut result = String::new();
+    for (index, &group) in groups.iter().enumerate() {
+        if group == 0 {
+            continue;
+        }
+        if !(group == 1 && index == 1) {
+            let places = [group / 1_000, group / 100 % 10, group / 10 % 10, group % 10];
+            for (place, &digit) in places.iter().enumerate() {
+                if digit == 0 {
+                    continue;
+                }
+                if digit != 1 || place == 3 {
+                    result.push(KOREAN_DIGITS[digit as usize]);
+                }
+                result.push_str(UNITS[place]);
             }
-            "ordinalText" if language.is_some_and(is_english_language) => {
-                to_english_ordinal_text(value)
-            }
-            "hex" => to_hex(value),
-            // `target/contract-numbering-word-trace.json` records Word COM
-            // `ListString` as `第１条　` for a `decimalFullWidth` heading.
-            // Keeping this formatter explicit lets TRACE reports distinguish
-            // true numbering interpretation bugs from later layout/metric drift.
-            "decimalFullWidth" | "decimalFullWidth2" => to_full_width_decimal(value),
-            // Keep this token explicit even though Rust's decimal output is
-            // already single-byte ASCII. Otherwise a future generic fallback
-            // could silently change a format whose width is layout-significant.
-            "decimalHalfWidth" => value.to_string(),
-            // `decimalZero` is a *minimum* width of two, not a fixed-width
-            // counter: Word emits 01..09 and then continues with 10, 11, ... .
-            // This distinction affects the numbering label advance and thus the
-            // first-line text origin for single-digit list items.
-            "decimalZero" => format!("{value:02}"),
-            // Word follows the ST_NumberFormat examples: the unsuffixed token
-            // uses half-width Katakana and the FullWidth token uses ordinary
-            // full-width Katakana. This intentionally follows observed Word
-            // interoperability rather than the contradictory "Hiragana" label
-            // attached to aiueo in the schema prose.
-            "aiueo" => to_kana_sequence(value, AIUEO_KATAKANA_HALF_WIDTH),
-            "aiueoFullWidth" => to_kana_sequence(value, AIUEO_KATAKANA_FULL_WIDTH),
-            "iroha" => to_kana_sequence(value, IROHA_KATAKANA_HALF_WIDTH),
-            "irohaFullWidth" => to_kana_sequence(value, IROHA_KATAKANA_FULL_WIDTH),
-            // Both formats are positional digit sequences (10 -> 一〇), unlike
-            // japaneseCounting (10 -> 十). Microsoft notes that Word does not
-            // apply the circle suggested by old ideographDigital prose.
-            "japaneseDigitalTenThousand" | "ideographDigital" => {
-                to_japanese_positional_digits(value)
-            }
-            "japaneseCounting" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
-            "chineseCountingThousand" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
-            "japaneseLegal" => to_japanese_counting(value, JapaneseKanjiStyle::Legal),
-            // ST_NumberFormat defines dedicated Unicode enclosed glyphs only
-            // through 20 (or 10 for the Chinese circle variant). Word permits
-            // ordinary decimal output after that range, which is preferable to
-            // synthesizing a visually different combining enclosure.
-            "decimalEnclosedCircle" => to_enclosed_decimal(value, '①', 20),
-            "decimalEnclosedFullstop" => to_enclosed_decimal(value, '⒈', 20),
-            "decimalEnclosedParen" => to_enclosed_decimal(value, '⑴', 20),
-            "decimalEnclosedCircleChinese" => to_enclosed_decimal(value, '①', 10),
-            "ideographEnclosedCircle" => to_enclosed_ideograph(value),
-            // These OOXML formats preserve the decimal place-value system and
-            // replace each ASCII digit with the corresponding native digit.
-            // Formatting the whole value first also handles embedded zeroes.
-            "hindiNumbers" => to_decimal_digit_set(value, '०'),
-            "thaiNumbers" => to_decimal_digit_set(value, '๐'),
-            "numberInDash" => format!("- {value} -"),
-            "none" => String::new(),
-            "bullet" => "•".to_string(),
-            _ => value.to_string(),
+        }
+        result.push_str(LARGE[index]);
+    }
+    result
+}
+
+/// Native Korean numerals (하나, 둘, … 아흔아홉). They stop at 99; larger
+/// values are written in decimal.
+fn to_korean_native(value: u32) -> String {
+    const TENS: [&str; 10] = [
+        "", "열", "스물", "서른", "마흔", "쉰", "예순", "일흔", "여든", "아흔",
+    ];
+    const ONES: [&str; 10] = [
+        "", "하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉",
+    ];
+    if value > 99 {
+        return value.to_string();
+    }
+    format!(
+        "{}{}",
+        TENS[(value / 10) as usize],
+        ONES[(value % 10) as usize]
+    )
+}
+
+/// Hebrew alphabetic numerals (gematria) for 1–999. 15 and 16 are written
+/// טו and טז rather than spelling a divine name. Larger values stay decimal.
+fn to_hebrew_numeral(value: u32) -> String {
+    const ONES: [&str; 10] = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
+    const TENS: [&str; 10] = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
+    const HUNDREDS: [&str; 10] = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "תת", "תתק"];
+    if value > 999 {
+        return value.to_string();
+    }
+    let mut result = String::from(HUNDREDS[(value / 100) as usize]);
+    match value % 100 {
+        15 => result.push_str("טו"),
+        16 => result.push_str("טז"),
+        rest => {
+            result.push_str(TENS[(rest / 10) as usize]);
+            result.push_str(ONES[(rest % 10) as usize]);
         }
     }
+    result
 }
 
 fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel> {
@@ -1037,20 +1405,16 @@ pub(crate) fn to_roman(num: u32, uppercase: bool) -> String {
 }
 
 pub(crate) fn to_letter(num: u32, uppercase: bool) -> String {
-    let base = if uppercase { b'A' } else { b'a' };
-    let mut result = String::new();
-    let mut n = num;
-
-    loop {
-        n -= 1;
-        result.insert(0, (base + (n % 26) as u8) as char);
-        n /= 26;
-        if n == 0 {
-            break;
-        }
+    const UPPER: [char; 26] = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    ];
+    let label = to_repeated_letter(num, &UPPER);
+    if uppercase {
+        label
+    } else {
+        label.to_ascii_lowercase()
     }
-
-    result
 }
 
 pub(crate) fn to_hex(num: u32) -> String {
@@ -1656,6 +2020,102 @@ mod additional_word_number_format_tests {
         let mut counter = NumberingCounter::new();
         counter.increment("401", "401", 0, numbering.start_value("401", 0), false);
         numbering.format_number("401", 0, &counter)
+    }
+
+    #[test]
+    fn letters_roll_over_by_repeating_like_word() {
+        assert_eq!(format_at_start("upperLetter", 26), "Z");
+        assert_eq!(format_at_start("upperLetter", 27), "AA");
+        assert_eq!(format_at_start("upperLetter", 28), "BB");
+        assert_eq!(format_at_start("lowerLetter", 53), "aaa");
+        assert_eq!(format_at_start("russianLower", 29), "аа");
+        assert_eq!(format_at_start("russianUpper", 3), "В");
+    }
+
+    #[test]
+    fn chicago_doubles_its_four_symbols() {
+        let labels: Vec<_> = (1..=6).map(|n| format_at_start("chicago", n)).collect();
+        assert_eq!(labels, ["*", "†", "‡", "§", "**", "††"]);
+    }
+
+    #[test]
+    fn stems_branches_and_the_sexagenary_cycle() {
+        assert_eq!(format_at_start("ideographTraditional", 1), "甲");
+        assert_eq!(format_at_start("ideographTraditional", 10), "癸");
+        assert_eq!(format_at_start("ideographTraditional", 11), "甲");
+        assert_eq!(format_at_start("ideographZodiac", 12), "亥");
+        assert_eq!(format_at_start("ideographZodiacTraditional", 1), "甲子");
+        assert_eq!(format_at_start("ideographZodiacTraditional", 11), "甲戌");
+        assert_eq!(format_at_start("ideographZodiacTraditional", 60), "癸亥");
+        assert_eq!(format_at_start("ideographZodiacTraditional", 61), "甲子");
+    }
+
+    #[test]
+    fn chinese_counting_keeps_one_before_hundreds_and_marks_gaps_with_zero() {
+        for (value, expected) in [
+            (1, "一"),
+            (10, "十"),
+            (11, "十一"),
+            (20, "二十"),
+            (100, "一百"),
+            (101, "一百〇一"),
+            (110, "一百一十"),
+            (1_001, "一千〇一"),
+            (10_000, "一万"),
+            (10_001, "一万〇一"),
+            (100_000, "十万"),
+            (100_000_001, "一亿〇一"),
+        ] {
+            assert_eq!(
+                format_at_start("chineseCounting", value),
+                expected,
+                "{value}"
+            );
+        }
+        assert_eq!(format_at_start("chineseLegalSimplified", 10), "壹拾");
+        assert_eq!(format_at_start("chineseLegalSimplified", 102), "壹佰零贰");
+        assert_eq!(format_at_start("ideographLegalTraditional", 30_000), "參萬");
+        assert_eq!(format_at_start("taiwaneseDigital", 105), "一〇五");
+    }
+
+    #[test]
+    fn korean_formats() {
+        assert_eq!(format_at_start("ganada", 1), "가");
+        assert_eq!(format_at_start("ganada", 14), "하");
+        assert_eq!(format_at_start("chosung", 2), "ㄴ");
+        assert_eq!(format_at_start("koreanDigital", 10), "일영");
+        assert_eq!(format_at_start("koreanCounting", 1), "일");
+        assert_eq!(format_at_start("koreanCounting", 11), "십일");
+        assert_eq!(format_at_start("koreanCounting", 215), "이백십오");
+        assert_eq!(format_at_start("koreanCounting", 10_000), "만");
+        assert_eq!(format_at_start("koreanLegal", 1), "하나");
+        assert_eq!(format_at_start("koreanLegal", 21), "스물하나");
+        assert_eq!(format_at_start("koreanLegal", 100), "100");
+    }
+
+    #[test]
+    fn hebrew_and_arabic_formats() {
+        assert_eq!(format_at_start("hebrew1", 1), "א");
+        assert_eq!(format_at_start("hebrew1", 15), "טו");
+        assert_eq!(format_at_start("hebrew1", 16), "טז");
+        assert_eq!(format_at_start("hebrew1", 115), "קטו");
+        assert_eq!(format_at_start("hebrew1", 742), "תשמב");
+        assert_eq!(format_at_start("hebrew2", 22), "ת");
+        assert_eq!(format_at_start("arabicAlpha", 3), "ت");
+        assert_eq!(format_at_start("arabicAbjad", 3), "ج");
+    }
+
+    #[test]
+    fn shared_formatter_accepts_lowercased_section_tokens() {
+        use super::format_number_value;
+        assert_eq!(format_number_value("upperroman", 4, None), "IV");
+        assert_eq!(format_number_value("decimalfullwidth", 12, None), "１２");
+        assert_eq!(format_number_value("japanesecounting", 21, None), "二十一");
+        assert_eq!(format_number_value("decimalenclosedcircle", 3, None), "③");
+        // Zero has no letter or Roman form; it stays visible as a number.
+        assert_eq!(format_number_value("lowerroman", 0, None), "0");
+        assert_eq!(format_number_value("upperletter", 0, None), "0");
+        assert_eq!(format_number_value("decimalZero", 0, None), "00");
     }
 
     #[test]
