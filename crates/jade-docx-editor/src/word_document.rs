@@ -11223,7 +11223,11 @@ impl WordDocument {
             .cloned();
         let rest = tail.split_off(at);
         runs.append(&mut tail);
-        runs.push(create_run_from_template(template.as_ref(), text));
+        // Formatted like its neighbour, but plain: never part of a tracked
+        // change that neighbour belongs to.
+        let mut typed = create_run_from_template(template.as_ref(), text);
+        typed.revision = None;
+        runs.push(typed);
         runs.extend(rest);
         paragraph.runs = runs;
         self.sync_paragraph_text_preserving_drawings(paragraph_index);
