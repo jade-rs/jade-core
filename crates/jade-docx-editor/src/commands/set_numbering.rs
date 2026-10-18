@@ -5,10 +5,14 @@
 //! `Some(id)` the paragraph is associated with the given numbering definition at
 //! the specified level.
 
-use super::paragraph_property_sync::sync_paragraph_numbering_xml;
+use super::paragraph_property_sync::{
+    restore_paragraph_properties_xml, snapshot_paragraph_properties_xml,
+    sync_paragraph_numbering_xml,
+};
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{Numbering, ParagraphProperties};
 use jade_docx_layout::selection::SelectionRange;
+use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
 
 /// `w:numId` value that turns numbering off.
 const NUMBERING_OFF: &str = "0";
@@ -23,6 +27,30 @@ fn style_supplies_numbering(document: &crate::word_document::WordDocument, style
         .is_some_and(|numbering| numbering.list_id().is_some())
 }
 
+/// Whether the paragraph's tracked property change (`w:pPrChange`) holds a
+/// list. The reader numbers such a paragraph by it while the change is
+/// pending, so taking its numbering off needs an explicit `w:numId="0"`.
+fn tracked_change_supplies_numbering(properties: Option<&XmlElement>) -> bool {
+    fn holds_num_id(element: &XmlElement) -> bool {
+        element.children.iter().any(|child| match child {
+            XmlNode::Element(child) => {
+                (child.name == "w:numId"
+                    && child
+                        .attributes
+                        .iter()
+                        .any(|attr| attr.name == "w:val" && attr.value != NUMBERING_OFF))
+                    || holds_num_id(child)
+            }
+            _ => false,
+        })
+    }
+    properties.is_some_and(|properties| {
+        properties.children.iter().any(|child| {
+            matches!(child, XmlNode::Element(change) if change.name == "w:pPrChange" && holds_num_id(change))
+        })
+    })
+}
+
 /// Sets paragraph numbering for a contiguous paragraph range.
 pub struct SetNumberingCommand {
     start_paragraph: usize,
@@ -30,6 +58,9 @@ pub struct SetNumberingCommand {
     num_id: Option<String>,
     level: Option<u32>,
     previous_properties: Vec<(usize, Option<ParagraphProperties>)>,
+    /// Each paragraph's `w:pPr` before the edit, which undo puts back as it
+    /// was rather than rewriting its numbering from the model.
+    previous_raw_properties: Vec<Option<XmlElement>>,
     previous_selection: Option<SelectionRange>,
 }
 
@@ -46,6 +77,7 @@ impl SetNumberingCommand {
             num_id,
             level,
             previous_properties: Vec::new(),
+            previous_raw_properties: Vec::new(),
             previous_selection: None,
         }
     }
@@ -72,6 +104,7 @@ impl Command for SetNumberingCommand {
         }
 
         self.previous_properties.clear();
+        self.previous_raw_properties.clear();
         self.previous_selection = *ctx.selection;
 
         for paragraph_index in start..=end {
@@ -80,15 +113,19 @@ impl Command for SetNumberingCommand {
                 .paragraph(paragraph_index)
                 .map(|p| p.properties.clone())
                 .ok_or(CommandError::ParagraphUnavailable)?;
+            let raw = snapshot_paragraph_properties_xml(ctx.document, paragraph_index);
             // Word removes numbering a paragraph style supplies with an
             // explicit `<w:numId w:val="0"/>`. Dropping `w:numPr` instead
-            // would let the style number the paragraph again on open.
+            // would let the style number the paragraph again on open, and so
+            // would the list a pending property change records.
             let style_numbered = self.num_id.is_none()
-                && previous
+                && (previous
                     .as_ref()
                     .and_then(|props| props.style.as_deref())
-                    .is_some_and(|style| style_supplies_numbering(ctx.document, style));
+                    .is_some_and(|style| style_supplies_numbering(ctx.document, style))
+                    || tracked_change_supplies_numbering(raw.as_ref()));
             self.previous_properties.push((paragraph_index, previous));
+            self.previous_raw_properties.push(raw);
             let (num_id, level) = if style_numbered {
                 (Some(NUMBERING_OFF.to_string()), None)
             } else {
@@ -113,28 +150,16 @@ impl Command for SetNumberingCommand {
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        for (paragraph_index, previous) in &self.previous_properties {
-            let (restored_num_id, restored_level) = {
-                let paragraph = ctx
-                    .document
-                    .paragraph_mut(*paragraph_index)
-                    .ok_or(CommandError::ParagraphUnavailable)?;
-                paragraph.properties = previous.clone();
-                let numbering = paragraph
-                    .properties
-                    .as_ref()
-                    .and_then(|p| p.numbering.as_ref());
-                (
-                    numbering.and_then(|n| n.id.clone()),
-                    numbering.and_then(|n| n.level),
-                )
-            };
-            sync_paragraph_numbering_xml(
-                ctx.document,
-                *paragraph_index,
-                restored_num_id.as_deref(),
-                restored_level,
-            );
+        for ((paragraph_index, previous), raw) in self
+            .previous_properties
+            .iter()
+            .zip(&self.previous_raw_properties)
+        {
+            ctx.document
+                .paragraph_mut(*paragraph_index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = previous.clone();
+            restore_paragraph_properties_xml(ctx.document, *paragraph_index, raw.as_ref());
         }
         *ctx.selection = self.previous_selection;
         Ok(())
@@ -227,6 +252,43 @@ mod tests {
         assert!(
             paragraph.contains(r#"<w:numId w:val="23"/>"#),
             "{paragraph}"
+        );
+    }
+
+    #[test]
+    fn removing_numbering_a_pending_change_records_writes_num_id_zero() {
+        // numbering-with-review.docx's first paragraph had its list taken off
+        // with tracking on: its `w:pPr` has no `w:numPr`, and its
+        // `w:pPrChange` keeps the list, by which the reader numbers it while
+        // the change is pending. Removing the numbering left the file as it
+        // was, so the number came back on reload.
+        let bytes = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/numbering-with-review.docx"
+        ))
+        .expect("read fixture");
+        let mut word_doc = load(&bytes);
+        let original = paragraphs_xml(&word_doc.export_docx().expect("export"));
+        assert_eq!(num_id(&word_doc, 0).as_deref(), Some("3"));
+        let mut selection = None;
+        let mut executor = CommandExecutor::new();
+        executor
+            .execute(
+                Box::new(SetNumberingCommand::new(0, 0, None, Some(2))),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("remove numbering");
+        assert_eq!(num_id(&word_doc, 0).as_deref(), Some("0"));
+        let reloaded = load(&word_doc.export_docx().expect("export"));
+        assert_eq!(num_id(&reloaded, 0).as_deref(), Some("0"));
+
+        executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo");
+        assert_eq!(num_id(&word_doc, 0).as_deref(), Some("3"));
+        assert_eq!(
+            paragraphs_xml(&word_doc.export_docx().expect("export")),
+            original
         );
     }
 
