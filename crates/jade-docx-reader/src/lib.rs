@@ -4,6 +4,7 @@ pub mod common;
 pub mod compatibility;
 pub mod document;
 pub mod docx_xml;
+pub mod embedded_font;
 pub mod field_datetime;
 pub mod font_table;
 pub mod numbering;
@@ -20,7 +21,8 @@ pub use docx_xml::{
     DocxXmlDocument, DocxXmlError, DocxXmlTreeBuilder, XmlAttribute, XmlEditJournal, XmlElement,
     XmlNode, XmlNodeId, XmlNodePath,
 };
-pub use font_table::FontTablePart;
+pub use embedded_font::{docx_embedded_fonts, package_embedded_fonts, EmbeddedFont};
+pub use font_table::{EmbeddedFontReference, EmbeddedFontStyle, FontTablePart};
 pub use numbering::NumberingPart;
 pub use parser::{DocumentParser, RawTreeTeeReader, XmlEventSource};
 pub use settings::DocumentSettings;
