@@ -41,8 +41,8 @@ pub enum PdfLinkTarget {
 }
 
 use skia_safe::{
-    surfaces, Canvas, Color, Color4f, Font, FontMgr, Paint, Path, Picture, PictureRecorder, Rect,
-    Surface,
+    path::AddPathMode, surfaces, Canvas, Color, Color4f, Font, FontMgr, Matrix, Paint, Path,
+    Picture, PictureRecorder, Rect, Surface,
 };
 use std::cell::RefCell;
 use std::convert::Infallible;
@@ -1453,7 +1453,7 @@ impl Painter for SkiaPainter {
         y: f64,
         radius_x: f64,
         radius_y: f64,
-        _rotation: f64,
+        rotation: f64,
         start_angle: f64,
         end_angle: f64,
         anticlockwise: bool,
@@ -1464,18 +1464,40 @@ impl Painter for SkiaPainter {
             (radius_x * 2.0) as f32,
             (radius_y * 2.0) as f32,
         );
-        let mut sweep = (end_angle - start_angle).to_degrees();
-        if anticlockwise && sweep > 0.0 {
-            sweep -= 360.0;
-        } else if !anticlockwise && sweep < 0.0 {
-            sweep += 360.0;
+        let start = start_angle.to_degrees();
+        let sweep = (end_angle - start_angle).to_degrees();
+        let sweep = if !anticlockwise && sweep >= 360.0 {
+            360.0
+        } else if anticlockwise && sweep <= -360.0 {
+            -360.0
+        } else if anticlockwise {
+            -(-sweep).rem_euclid(360.0)
+        } else {
+            sweep.rem_euclid(360.0)
+        };
+        // Skia's `arcTo` treats the sweep modulo 360, so a full turn would
+        // collapse to a single point; split it into two half turns instead.
+        let add_arc = |path: &mut Path| {
+            if sweep.abs() >= 360.0 {
+                let half = sweep / 2.0;
+                path.arc_to(oval, start as f32, half as f32, false);
+                path.arc_to(oval, (start + half) as f32, half as f32, false);
+            } else {
+                path.arc_to(oval, start as f32, sweep as f32, false);
+            }
+        };
+        let mut path = self.shared.path.borrow_mut();
+        if rotation == 0.0 {
+            add_arc(&mut path);
+        } else {
+            // Build the unrotated arc, then rotate it about the centre.
+            // `Extend` joins it to the current point with a line, as canvas does.
+            let mut arc = Path::new();
+            add_arc(&mut arc);
+            let matrix =
+                Matrix::rotate_deg_pivot(rotation.to_degrees() as f32, (x as f32, y as f32));
+            path.add_path_matrix(&arc, &matrix, AddPathMode::Extend);
         }
-        self.shared.path.borrow_mut().arc_to(
-            oval,
-            start_angle.to_degrees() as f32,
-            sweep as f32,
-            /* force_move_to */ false,
-        );
         Ok(())
     }
 
