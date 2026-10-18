@@ -27931,6 +27931,10 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                // The paragraph's `w:p` in each copy of the box goes too: the
+                // model alone lost it on screen and saved it, so joining two
+                // paragraphs wrote the second one's text twice.
+                let element_ids = self.text_box_paragraph_element_ids(index);
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -27940,6 +27944,13 @@ impl WordDocument {
                 let removed = Self::remove_paragraph_by_path(&mut text_box.blocks, &block_path);
                 if removed.is_some() {
                     Self::refresh_text_box_text(text_box);
+                }
+                if let Some(raw) = self.raw_document.as_mut() {
+                    for element_id in element_ids {
+                        if let Some(node_path) = raw.path(element_id) {
+                            let _ = raw.remove_node(&node_path);
+                        }
+                    }
                 }
                 removed.is_some()
             }
@@ -28165,56 +28176,16 @@ impl WordDocument {
                     result.source_node_id
                 };
 
-                let mut new_node_id_created = None;
-                // Each XML run of the original paragraph to its copy in the
-                // new one.
-                let mut tail_run_copies = HashMap::new();
-
-                if let (Some(raw), Some(source_node_id)) =
-                    (self.raw_document.as_mut(), source_node_id)
-                {
-                    if let (Some(parent_id), Some(path)) =
-                        (raw.parent_id(source_node_id), raw.path(source_node_id))
-                    {
-                        if let Some(mut original) = raw.element(source_node_id).cloned() {
-                            let (mut head_children, tail_children) =
-                                Self::split_paragraph_anchor_children(&original.children, offset);
-                            // The tail keeps the original paragraph mark: its
-                            // section break (see the model split above) and
-                            // its revision.
-                            Self::remove_original_mark_properties_from_paragraph_children(
-                                &mut head_children,
-                            );
-                            if let Some(source) = raw.element_mut(source_node_id) {
-                                source.children = head_children;
-                            }
-                            original.children = tail_children;
-                            let original_runs = Self::bindable_run_ids(&original.children);
-                            let insert_index = path
-                                .as_slice()
-                                .last()
-                                .copied()
-                                .unwrap_or(0)
-                                .saturating_add(1);
-                            if let Ok(Some(new_node_id)) =
-                                raw.insert_node(parent_id, insert_index, XmlNode::Element(original))
-                            {
-                                if let Some(element) = raw.element_mut(new_node_id) {
-                                    Self::refresh_paragraph_identity(element);
-                                }
-                                // Insertion gives the copy fresh ids and
-                                // leaves its shape alone.
-                                if let Some(copy) = raw.element(new_node_id) {
-                                    tail_run_copies = original_runs
-                                        .into_iter()
-                                        .zip(Self::bindable_run_ids(&copy.children))
-                                        .collect();
-                                }
-                                new_node_id_created = Some(new_node_id);
+                let (new_node_id_created, tail_run_copies) =
+                    match (self.raw_document.as_mut(), source_node_id) {
+                        (Some(raw), Some(source_node_id)) => {
+                            match Self::split_paragraph_element(raw, source_node_id, offset) {
+                                Some((new_node_id, copies)) => (Some(new_node_id), copies),
+                                None => (None, HashMap::new()),
                             }
                         }
-                    }
-                }
+                        _ => (None, HashMap::new()),
+                    };
 
                 if !self.update_paragraph_surfaces_after_body_split(surface_index, &original_path) {
                     self.rebuild_paragraph_surfaces();
@@ -28240,6 +28211,53 @@ impl WordDocument {
                 run_index,
                 block_path,
             } => {
+                if self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| Self::locate_text_box(doc, &host_path, run_index))
+                    .and_then(|text_box| Self::locate_paragraph(&text_box.blocks, &block_path))
+                    .is_none()
+                {
+                    return false;
+                }
+                // The paragraph's `w:p` in every `w:txbxContent` of the host
+                // run (the DrawingML box and its VML fallback) splits the way
+                // a body paragraph's does. Splitting the model alone showed
+                // the break and saved the paragraph whole.
+                let host_run_id = self
+                    .document
+                    .as_ref()
+                    .and_then(|doc| doc.body.as_ref())
+                    .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
+                    .and_then(|paragraph| paragraph.runs.get(run_index))
+                    .and_then(|run| run.node_id);
+                let mut tail_run_copies = HashMap::new();
+                if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
+                    let mut content_ids = Vec::new();
+                    if let Some(run_element) = raw.element(run_id) {
+                        Self::collect_text_box_content_ids(run_element, &mut content_ids);
+                    }
+                    for (content_index, content_id) in content_ids.into_iter().enumerate() {
+                        let Some(paragraph_id) = raw
+                            .element(content_id)
+                            .and_then(|content| {
+                                Self::locate_text_box_paragraph_element(content, &block_path)
+                            })
+                            .map(|paragraph| paragraph.id)
+                        else {
+                            continue;
+                        };
+                        let split = Self::split_paragraph_element(raw, paragraph_id, offset);
+                        // The model binds to the first box; syncing gives the
+                        // fallback the same runs by position.
+                        if content_index == 0 {
+                            if let Some((_, copies)) = split {
+                                tail_run_copies = copies;
+                            }
+                        }
+                    }
+                }
+
                 let Some(doc) = self.document_mut() else {
                     return false;
                 };
@@ -28253,6 +28271,11 @@ impl WordDocument {
 
                 Self::refresh_text_box_text(text_box);
                 self.rebuild_paragraph_surfaces();
+                if let Some(paragraph) = self.paragraph_mut(index + 1) {
+                    Self::bind_split_tail_runs(&mut paragraph.runs, &tail_run_copies);
+                }
+                self.sync_paragraph_text(index);
+                self.sync_paragraph_text(index + 1);
                 true
             }
             ParagraphSurface::Note {
@@ -28986,6 +29009,53 @@ impl WordDocument {
             }
         }
         ids
+    }
+
+    /// Splits the `w:p` at `paragraph_id` at text `offset`: the element keeps
+    /// the head and a copy holding the tail goes right after it. Returns the
+    /// copy's id and each XML run moved to the tail mapped to its copy.
+    fn split_paragraph_element(
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        offset: usize,
+    ) -> Option<(XmlNodeId, HashMap<XmlNodeId, XmlNodeId>)> {
+        let parent_id = raw.parent_id(paragraph_id)?;
+        let path = raw.path(paragraph_id)?;
+        let mut original = raw.element(paragraph_id).cloned()?;
+        let (mut head_children, tail_children) =
+            Self::split_paragraph_anchor_children(&original.children, offset);
+        // The tail keeps the original paragraph mark: its section break (see
+        // the model split) and its revision.
+        Self::remove_original_mark_properties_from_paragraph_children(&mut head_children);
+        if let Some(source) = raw.element_mut(paragraph_id) {
+            source.children = head_children;
+        }
+        original.children = tail_children;
+        let original_runs = Self::bindable_run_ids(&original.children);
+        let insert_index = path
+            .as_slice()
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(1);
+        let new_node_id = raw
+            .insert_node(parent_id, insert_index, XmlNode::Element(original))
+            .ok()
+            .flatten()?;
+        if let Some(element) = raw.element_mut(new_node_id) {
+            Self::refresh_paragraph_identity(element);
+        }
+        // Insertion gives the copy fresh ids and leaves its shape alone.
+        let copies = raw
+            .element(new_node_id)
+            .map(|copy| {
+                original_runs
+                    .into_iter()
+                    .zip(Self::bindable_run_ids(&copy.children))
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some((new_node_id, copies))
     }
 
     /// Binds the runs a split moved into the new paragraph to the copies of
