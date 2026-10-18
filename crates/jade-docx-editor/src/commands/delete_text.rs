@@ -198,7 +198,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(prev_index);
         }
-        show_moved_text_boxes(ctx, prev_index);
+        relist_moved_stories(ctx, prev_index);
 
         self.paragraph_index = prev_index;
         Ok(TextPosition::new(prev_index, prev_len))
@@ -270,7 +270,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(paragraph_index);
         }
-        show_moved_text_boxes(ctx, paragraph_index);
+        relist_moved_stories(ctx, paragraph_index);
 
         self.paragraph_index = paragraph_index;
         Ok(TextPosition::new(paragraph_index, caret_offset))
@@ -1020,7 +1020,7 @@ impl DeleteTextCommand {
             ctx.document
                 .sync_paragraph_text_preserving_drawings(start.paragraph);
         }
-        show_moved_text_boxes(ctx, start.paragraph);
+        relist_moved_stories(ctx, start.paragraph);
 
         let new_focus = TextPosition::new(start.paragraph, start_offset);
         self.previous_selection = previous_selection;
@@ -1209,16 +1209,26 @@ pub(super) fn capture_paragraph_range(
     Ok(paragraphs)
 }
 
-/// Gives the text boxes runs brought into `paragraph_index` their surfaces
-/// back: removing the paragraph they came from took its text boxes'
-/// paragraphs out of the paragraph order, and joining does not add a box, so
-/// nothing else rebuilds them.
-fn show_moved_text_boxes(ctx: &mut CommandContext<'_>, paragraph_index: usize) {
-    let hosts_text_box = ctx
-        .document
-        .paragraph(paragraph_index)
-        .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.text_box.is_some()));
-    if hosts_text_box && ctx.document.hosted_text_box_surface_count(paragraph_index) == 0 {
+/// Relists the stories that runs brought into `paragraph_index` carry. Text
+/// boxes get their surfaces back: removing the paragraph they came from took
+/// its text boxes' paragraphs out of the paragraph order, and joining does
+/// not add a box, so nothing else rebuilds them.
+fn relist_moved_stories(ctx: &mut CommandContext<'_>, paragraph_index: usize) {
+    let Some(paragraph) = ctx.document.paragraph(paragraph_index) else {
+        return;
+    };
+    let hosts_text_box = paragraph.runs.iter().any(|run| run.text_box.is_some());
+    // A footnote is listed after the paragraph that references it, and an
+    // endnote in reference order. The merge took the reference out of the
+    // removed paragraph before the list was rebuilt, so the note went to the
+    // end of the footnotes, behind the separators, until the next reload.
+    let references_note = paragraph
+        .runs
+        .iter()
+        .any(|run| !run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty());
+    if (hosts_text_box && ctx.document.hosted_text_box_surface_count(paragraph_index) == 0)
+        || references_note
+    {
         ctx.document.rebuild_paragraph_surfaces();
     }
 }
