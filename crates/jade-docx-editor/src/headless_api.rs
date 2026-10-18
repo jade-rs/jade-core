@@ -11662,6 +11662,58 @@ mod tests {
     }
 
     #[test]
+    fn undoing_enter_before_a_section_break_restores_the_sections() {
+        // Undoing Enter merges the paragraphs back, which rebuilds the section
+        // ranges, and only then puts the original paragraph, with its section
+        // break, back: every range stayed one paragraph too long, and the
+        // editor laid the document out in 2 pages that saved as 4.
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/section-break-types.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let ranges = |word_doc: &WordDocument| {
+            word_doc
+                .document
+                .as_ref()
+                .expect("document")
+                .sections
+                .iter()
+                .map(|section| (section.start, section.end))
+                .collect::<Vec<_>>()
+        };
+        let loaded = ranges(&word_doc);
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 0,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        let mut selection = None;
+        command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo");
+        assert_eq!(ranges(&word_doc), loaded);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(ranges(&reloaded), loaded);
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the

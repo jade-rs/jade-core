@@ -107,6 +107,13 @@ impl SplitUndo {
         })?;
         ctx.document.restore_revision_id_counter(self.revision_id);
         ctx.document.rebuild_paragraph_surfaces();
+        // The merge rebuilt the section ranges before the original paragraph,
+        // with its section break, was put back: Enter then undo at the start
+        // of a section left every range one paragraph too long, and the
+        // sections laid out on screen were not the ones saved.
+        if let Some(document) = ctx.document.document_mut() {
+            WordDocument::rebuild_section_ranges(document);
+        }
         Ok(())
     }
 }
