@@ -34,7 +34,8 @@ use crate::docx_xml::{
 use crate::field_datetime::{format_word_date, parse_core_property_datetime};
 use crate::number_format::format_note_marker;
 use crate::numbering::{
-    AbstractNum, MultilevelListPreset, NumberingInstance, NumberingLevel, NumberingPart,
+    AbstractNum, MultilevelListPreset, NumberingCounter, NumberingInstance, NumberingLevel,
+    NumberingPart,
 };
 use crate::parser::DocumentParser;
 use crate::settings::DocumentSettings;
@@ -2522,6 +2523,7 @@ impl WordDocument {
                 package_size_bytes,
             );
 
+            Self::resolve_numbered_ref_fields(&mut parsed_doc, document.numbering_part.as_ref());
             Self::give_textless_shapes_an_inner_paragraph(&mut parsed_doc);
             document.document = Some(Rc::new(parsed_doc));
             document.header_lines = header_lines;
@@ -3019,6 +3021,211 @@ impl WordDocument {
         }
         if let Some(font) = themed_latin {
             props.font_family = Some(font);
+        }
+    }
+
+    /// `REF … \n`/`\r`/`\w` print the bookmarked paragraph's list number,
+    /// which Word for Mac brings up to date when it prints:
+    /// scroll-offset-repro's `REF _Ref490573958 \n` reads `第４５条` where the
+    /// saved result is `第４2条`. Where the bookmarked level's text names
+    /// only its own level the three switches print the same label, which
+    /// replaces the saved result; other forms keep it.
+    fn resolve_numbered_ref_fields(document: &mut Document, numbering: Option<&NumberingPart>) {
+        let Some(numbering) = numbering else {
+            return;
+        };
+        let Some(body) = document.body.as_ref() else {
+            return;
+        };
+        let mut wanted = HashSet::new();
+        Self::collect_numbered_ref_names(&body.elements, &mut wanted);
+        if wanted.is_empty() {
+            return;
+        }
+        let mut counter = NumberingCounter::new();
+        let mut labels = HashMap::new();
+        for (index, element) in body.elements.iter().enumerate() {
+            Self::count_list_labels(element, numbering, &mut counter, Some(index), &mut labels);
+        }
+        let values: HashMap<String, String> = document
+            .bookmarks
+            .iter()
+            .filter(|bookmark| wanted.contains(&bookmark.name))
+            .filter_map(|bookmark| {
+                Some((
+                    bookmark.name.clone(),
+                    labels.get(&bookmark.start_paragraph)?.clone(),
+                ))
+            })
+            .collect();
+        if let Some(body) = document.body.as_mut() {
+            Self::apply_numbered_ref_values(&mut body.elements, &values);
+        }
+    }
+
+    fn collect_numbered_ref_names(elements: &[BodyElement], names: &mut HashSet<String>) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    for field in paragraph.runs.iter().filter_map(|run| run.field.as_ref()) {
+                        if let RunFieldKind::Ref {
+                            name,
+                            numbering: true,
+                            ..
+                        } = &field.kind
+                        {
+                            names.insert(name.clone());
+                        }
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for cell in table.rows.iter().flat_map(|row| row.cells.iter()) {
+                        Self::collect_numbered_ref_names(&cell.blocks, names);
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
+    /// Advances the list counters through `element` in document order and
+    /// records the label of a top-level list paragraph whose level text
+    /// names only its own level.
+    fn count_list_labels(
+        element: &BodyElement,
+        numbering: &NumberingPart,
+        counter: &mut NumberingCounter,
+        top_level_index: Option<usize>,
+        labels: &mut HashMap<usize, String>,
+    ) {
+        match element {
+            BodyElement::Paragraph(paragraph) => {
+                let Some((num_id, level)) = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.numbering.as_ref())
+                    .and_then(|numbering| Some((numbering.list_id()?, numbering.level?)))
+                else {
+                    return;
+                };
+                let Some(info) = numbering.get_level_info(num_id, level) else {
+                    return;
+                };
+                counter.initialize_ancestor_levels(Some(numbering), num_id, level);
+                counter.increment_with(
+                    Some(numbering),
+                    num_id,
+                    numbering.abstract_num_id(num_id).unwrap_or_default(),
+                    level,
+                    numbering.start_value(num_id, level),
+                    numbering.has_start_override(num_id, level),
+                );
+                let own_level_only = info.lvl_text.as_deref().is_some_and(|text| {
+                    let own = format!("%{}", level + 1);
+                    text.match_indices('%')
+                        .all(|(at, _)| text[at..].starts_with(&own))
+                });
+                if let Some(index) = top_level_index.filter(|_| own_level_only) {
+                    // The number without the level's suffix (space or tab).
+                    let label = numbering.format_number(num_id, level, counter);
+                    labels.insert(index, label.trim_end().to_string());
+                }
+            }
+            BodyElement::Table(table) => {
+                for block in table
+                    .rows
+                    .iter()
+                    .flat_map(|row| row.cells.iter())
+                    .flat_map(|cell| cell.blocks.iter())
+                {
+                    Self::count_list_labels(block, numbering, counter, None, labels);
+                }
+            }
+            BodyElement::Math(_) => {}
+        }
+    }
+
+    fn apply_numbered_ref_values(elements: &mut [BodyElement], values: &HashMap<String, String>) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    // Every run of a saved result carries the field. A label
+                    // as long as the saved result takes its runs character by
+                    // character, so their formatting and boundaries stay;
+                    // otherwise the first run shows it and the rest nothing.
+                    let mut index = 0;
+                    while index < paragraph.runs.len() {
+                        let Some(kind) = paragraph.runs[index]
+                            .field
+                            .as_ref()
+                            .map(|field| field.kind.clone())
+                        else {
+                            index += 1;
+                            continue;
+                        };
+                        let end = index
+                            + paragraph.runs[index..]
+                                .iter()
+                                .take_while(|run| {
+                                    run.field.as_ref().is_some_and(|field| field.kind == kind)
+                                })
+                                .count();
+                        if let RunFieldKind::Ref {
+                            name,
+                            numbering: true,
+                            ..
+                        } = &kind
+                        {
+                            if let Some(value) = values.get(name) {
+                                Self::spread_ref_value(&mut paragraph.runs[index..end], value);
+                            }
+                        }
+                        index = end;
+                    }
+                }
+                BodyElement::Table(table) => {
+                    for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                        Self::apply_numbered_ref_values(&mut cell.blocks, values);
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+
+    fn spread_ref_value(runs: &mut [Run], value: &str) {
+        // What each run shows of the saved result: its text, or the cached
+        // result the reader moved out of it.
+        let shown: Vec<String> = runs
+            .iter()
+            .map(|run| {
+                if run.text.is_empty() {
+                    run.field
+                        .as_ref()
+                        .and_then(|field| field.cached_text.clone())
+                        .unwrap_or_default()
+                } else {
+                    run.text.clone()
+                }
+            })
+            .collect();
+        let saved: String = shown.concat();
+        if saved == value {
+            return;
+        }
+        let mut chars = value.chars();
+        let same_length = saved.chars().count() == value.chars().count();
+        for (position, (run, shown)) in runs.iter_mut().zip(&shown).enumerate() {
+            let text = if same_length {
+                chars.by_ref().take(shown.chars().count()).collect()
+            } else if position == 0 {
+                value.to_string()
+            } else {
+                String::new()
+            };
+            if let Some(field) = run.field.as_mut() {
+                field.resolved_value = Some(text);
+            }
         }
     }
 
@@ -7080,7 +7287,8 @@ impl WordDocument {
                                 emitted_field_text = true;
                             }
                         }
-                        crate::document::RunFieldKind::EqDistributed { text, .. } => {
+                        crate::document::RunFieldKind::EqDistributed { text, .. }
+                        | crate::document::RunFieldKind::EqRuby { text, .. } => {
                             Self::push_header_text(
                                 &mut segments[idx],
                                 &mut rich_segments[idx],
@@ -37061,6 +37269,61 @@ mod tests {
         cursor.into_inner()
     }
 
+    /// scroll-offset-repro: Word for Mac prints `REF _Ref… \n` as the
+    /// bookmarked article's current number (`第４５条`), not the stale saved
+    /// result (`第４2条`).
+    #[test]
+    fn numbered_ref_shows_the_bookmarked_paragraphs_current_number() {
+        let document_xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:t xml:space="preserve">See </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> REF _Ref1 \n \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>第</w:t></w:r><w:r><w:t>９</w:t></w:r><w:r><w:t>条</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
+<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>one</w:t></w:r></w:p>
+<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>two</w:t></w:r></w:p>
+<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:bookmarkStart w:id="0" w:name="_Ref1"/><w:r><w:t>three</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>
+</w:body></w:document>"#;
+        let numbering_xml = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimalFullWidth"/><w:suff w:val="space"/><w:lvlText w:val="第%1条"/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#;
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut cursor);
+            let options = SimpleFileOptions::default();
+            for (path, bytes) in [
+                (
+                    "[Content_Types].xml",
+                    r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>"#,
+                ),
+                (
+                    "_rels/.rels",
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+                ),
+                (
+                    "word/_rels/document.xml.rels",
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>"#,
+                ),
+                ("word/document.xml", document_xml),
+                ("word/numbering.xml", numbering_xml),
+            ] {
+                zip.start_file(path, options).expect("start part");
+                zip.write_all(bytes.as_bytes()).expect("write part");
+            }
+            zip.finish().expect("finish package");
+        }
+        let word_doc = executor::block_on(WordDocument::load(
+            &cursor.into_inner(),
+            &Options::default(),
+        ))
+        .expect("load numbered REF fixture");
+        let paragraph = word_doc.paragraph(0).expect("first paragraph");
+        // The saved result spans three runs; the label takes them character
+        // by character.
+        let values: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .filter(|field| matches!(field.kind, RunFieldKind::Ref { .. }))
+            .map(|field| field.resolved_value.as_deref())
+            .collect();
+        assert_eq!(values, [Some("第"), Some("３"), Some("条")]);
+    }
+
     fn build_alt_chunk_docx() -> Vec<u8> {
         let document_xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t>before</w:t></w:r></w:p><w:altChunk r:id="rId9"/><w:p><w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#;
         let document_rels = r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk" Target="chunks/import.html"/></Relationships>"#;
@@ -37341,10 +37604,11 @@ mod tests {
                     xml_escape_text(&text),
                 ));
                 if *outline_level <= 8 && !text.trim().is_empty() {
+                    // Word reads a line feed inside w:t as a space.
                     expected.push(NavigationHeadingInfo {
                         paragraph_index,
                         level: outline_level + 1,
-                        text,
+                        text: text.replace("\r\n", " ").replace(['\n', '\r'], " "),
                     });
                 }
             }

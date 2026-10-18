@@ -116,6 +116,9 @@ pub struct DocumentSettings {
     /// A Japanese `w:noLineBreaksAfter` set replaces the default table.
     #[serde(default)]
     pub no_line_break_after_replaces_default: bool,
+    /// `<w:strictFirstAndLastChars/>`.
+    #[serde(default)]
+    pub strict_first_and_last_chars: bool,
     /// Mirrors `<w:evenAndOddHeaders/>`. When true, sections that declare an
     /// even-page header/footer reference use it on even-numbered pages.
     #[serde(default)]
@@ -366,6 +369,9 @@ impl DocumentSettings {
                             settings.character_spacing_control =
                                 Some(String::from_utf8_lossy(&value.value).to_string());
                         }
+                    } else if name == b"strictFirstAndLastChars" {
+                        settings.strict_first_and_last_chars =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
                     } else if name == b"evenAndOddHeaders" {
                         settings.even_and_odd_headers =
                             Self::parse_on_off_attribute(e.attributes().flatten());
@@ -516,6 +522,9 @@ impl DocumentSettings {
                     } else if name == b"autoSpaceDN" {
                         settings.auto_space_dn =
                             Some(Self::parse_on_off_attribute(e.attributes().flatten()));
+                    } else if name == b"strictFirstAndLastChars" {
+                        settings.strict_first_and_last_chars =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
                     } else if name == b"evenAndOddHeaders" {
                         settings.even_and_odd_headers =
                             Self::parse_on_off_attribute(e.attributes().flatten());
@@ -664,6 +673,7 @@ impl DocumentSettings {
             no_line_break_after: self.no_line_break_after.clone(),
             no_line_break_before_replaces_default: self.no_line_break_before_replaces_default,
             no_line_break_after_replaces_default: self.no_line_break_after_replaces_default,
+            strict_first_and_last_chars: self.strict_first_and_last_chars,
             compatibility_mode: self.compatibility_mode,
         }
     }

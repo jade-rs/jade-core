@@ -245,8 +245,27 @@ where
         );
         #[cfg(feature = "opentype-math")]
         std::mem::swap(&mut measurer.math_fonts, &mut self.math_fonts);
+        // A group ending in keepNext (before a table, a page break or the
+        // section end) has no tail paragraph.
+        let tail = elements.len().checked_sub(1).filter(|&last| {
+            elements[last].as_paragraph().is_some_and(|paragraph| {
+                !paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.keep_next)
+                    .unwrap_or(false)
+            })
+        });
+        measurer.keep_next_tail_bottom = None;
         let result = (|| {
             for (offset, element) in elements.iter().enumerate() {
+                // The group needs only the lines of its first member that may
+                // split that cannot be split from what precedes them (see
+                // `keep_next_tail_pending`).
+                measurer.keep_next_tail_pending = element
+                    .as_paragraph()
+                    .is_some()
+                    .then_some(Some(offset) == tail);
                 measurer.render_body_element(
                     element,
                     options,
@@ -256,8 +275,16 @@ where
                     first_element + offset,
                     section,
                 )?;
+                if measurer.keep_next_tail_bottom.is_some() {
+                    break;
+                }
             }
-            Ok((measurer.current_y - start_y).max(0.0))
+            measurer.keep_next_tail_pending = None;
+            let bottom = measurer
+                .keep_next_tail_bottom
+                .take()
+                .unwrap_or(measurer.current_y);
+            Ok((bottom - start_y).max(0.0))
         })();
         std::mem::swap(
             &mut measurer.applied_run_style_cache,

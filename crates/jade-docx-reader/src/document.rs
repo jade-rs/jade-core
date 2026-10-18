@@ -2483,6 +2483,20 @@ pub enum RunFieldKind {
         text: String,
         guide: String,
     },
+    /// Ruby written as an `EQ` overstrike (`EQ \* jc2 \* hps11
+    /// \o\ad(\s\up11(guide),text)`, §17.16.5.22): `text` is the base and
+    /// `guide` the raised phonetic guide. Word lays it out like `w:ruby`.
+    EqRuby {
+        text: String,
+        guide: String,
+        /// `w:rubyAlign` token, lowercased, from `\* jcN` or the overstrike
+        /// alignment switch.
+        align: Option<String>,
+        /// `\* hpsN`: the guide size in half-points.
+        size_half_points: Option<u32>,
+        /// `\s\upN`: the guide raise in whole points.
+        raise_points: u32,
+    },
     /// A Word field whose instruction Jade cannot safely evaluate, either
     /// because the field kind is not implemented or because required operands
     /// or external state are unavailable. Keeping the normalized instruction
@@ -2502,6 +2516,27 @@ pub enum RunFieldKind {
 }
 
 impl RunFieldKind {
+    /// The ruby an `EQ` overstrike field draws, as a `w:ruby` annotation.
+    pub fn eq_ruby_annotation(&self) -> Option<RubyAnnotation> {
+        let RunFieldKind::EqRuby {
+            guide,
+            align,
+            size_half_points,
+            raise_points,
+            ..
+        } = self
+        else {
+            return None;
+        };
+        Some(RubyAnnotation {
+            text: guide.clone(),
+            size_pt: size_half_points.map(|half_points| half_points as f32 / 2.0),
+            align: align.clone(),
+            raise_half_points: Some(raise_points * 2),
+            ..RubyAnnotation::default()
+        })
+    }
+
     pub fn with_lock(self, locked: bool) -> Self {
         match (locked, self) {
             (true, kind @ Self::Locked { .. }) => kind,
@@ -3719,7 +3754,7 @@ mod tests {
         assert_eq!(std::mem::size_of::<RunField>(), 160);
         // 8 bytes of it: the insertion a tracked deletion sits in
         // (`RevisionMark::insertion`).
-        assert_eq!(std::mem::size_of::<Run>(), 3072);
+        assert_eq!(std::mem::size_of::<Run>(), 3016);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -4870,6 +4905,10 @@ pub struct EastAsianLineBreakingSettings {
     /// `no_line_break_after` is a Japanese custom set (ECMA-376 §17.15.1.58).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub no_line_break_after_replaces_default: bool,
+    /// `w:strictFirstAndLastChars`: the strict Japanese set, which adds the
+    /// small kana and `ー` to the characters that may not start a line.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub strict_first_and_last_chars: bool,
     /// `w:compat/w:compatSetting[@w:name="compatibilityMode"]`: the Word
     /// version whose layout rules the document asks for (12 = Word 2007,
     /// 14 = Word 2010, 15 = Word 2013 and later). `None` when absent.
@@ -5259,7 +5298,7 @@ pub struct RunProperties {
     /// text from `w:rt` is stored here instead of flowing into the body text
     /// (so selection offsets stay consistent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ruby: Option<RubyAnnotation>,
+    pub ruby: Option<Box<RubyAnnotation>>,
     /// Unmodeled `w:rPr` children preserved verbatim (see [`PreservedRunProps`]).
     /// Not serialized: this is an in-memory preservation bridge, reconstructed at
     /// load and consulted only by the export writer.
@@ -5376,7 +5415,7 @@ impl RunProperties {
 /// Ruby (phonetic guide) annotation parsed from `w:ruby` (ECMA-376 Part 1
 /// §17.3.3.25). Word draws the guide text (`w:rt`) in a small font above the
 /// base text (`w:rubyBase`); common in Japanese documents as ふりがな.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RubyAnnotation {
     /// Concatenated guide text from the `w:rt` runs.
@@ -5386,10 +5425,16 @@ pub struct RubyAnnotation {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size_pt: Option<f32>,
     /// Distribution of the guide over the base (`w:rubyPr/w:rubyAlign`,
-    /// §17.3.3.27), normalized to lowercase. Parsed and preserved; the
-    /// renderer currently always centers the guide.
+    /// §17.3.3.27), normalized to lowercase.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub align: Option<String>,
+    /// Distance from the base baseline up to the guide baseline in
+    /// half-points (`w:rubyPr/w:hpsRaise`, §17.3.3.12).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raise_half_points: Option<u32>,
+    /// Fonts the guide run names directly (`w:rt/w:r/w:rPr/w:rFonts`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fonts: Option<RunFonts>,
     /// Whether this run continues the base started by an earlier run. A base
     /// may span several runs (one per formatting change); every one of them
     /// carries the annotation so edits know which text belongs to the base,

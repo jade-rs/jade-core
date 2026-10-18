@@ -32,9 +32,8 @@ use jade_docx_layout::line_metrics::{
     collapsed_spacing_before, doc_grid_has_active_char_grid, doc_grid_has_active_line_grid,
     resolve_effective_snap_to_grid, resolve_line_height_points_with_default_multiplier,
     resolve_widow_orphan_decision, run_font_slots, word_east_asian_fe_font_size_floor,
-    word_east_asian_font_line_box_applies, word_east_asian_font_metrics_apply,
-    word_empty_paragraph_line_height_pt, word_face_line_height_pt,
-    word_font_lines_affect_line_height, word_grid_line_centres_text,
+    word_east_asian_font_line_box_applies, word_empty_paragraph_line_height_pt,
+    word_face_line_height_pt, word_font_lines_affect_line_height, word_grid_line_centres_text,
     word_paragraph_between_border_extent_pt, word_paragraph_border_extent_pt,
     word_paragraphs_share_border_box, word_run_border_extent_pt,
     word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
@@ -3123,6 +3122,17 @@ where
     host: RenderHostSlot<HostPainter>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
+    /// Set while a keepNext group measurement lays out a group member after
+    /// the first: `Some(true)` for the final, non-keepNext paragraph,
+    /// `Some(false)` for a keepNext one. Only the member's first lines that
+    /// may not be split from what precedes them count: `render_text_line`
+    /// records their bottom in `keep_next_tail_bottom` (for a keepNext member
+    /// only when it can split at all) and clears the flag.
+    keep_next_tail_pending: Option<bool>,
+    keep_next_tail_bottom: Option<f64>,
+    /// `w:keepNext` of the body paragraph whose lines `render_text_line` is
+    /// placing, whether or not a keepNext group owns it.
+    current_paragraph_keep_next: bool,
     active_keep_next_group_end: Option<usize>,
     keep_next_group_surfaces: std::collections::BTreeMap<usize, usize>,
     #[cfg(feature = "opentype-math")]
@@ -7697,6 +7707,9 @@ where
             host: RenderHostSlot { value: host },
             keep_next_measurer: None,
             measuring_keep_next: false,
+            keep_next_tail_pending: None,
+            keep_next_tail_bottom: None,
+            current_paragraph_keep_next: false,
             active_keep_next_group_end: None,
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
@@ -9012,6 +9025,12 @@ where
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
                     ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                    ruby.align.hash(&mut hasher);
+                    ruby.raise_half_points.hash(&mut hasher);
+                    ruby.fonts
+                        .as_ref()
+                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                        .hash(&mut hasher);
                     ruby.continuation.hash(&mut hasher);
                 }
                 if let Some(border) = props.border.as_ref() {
@@ -10280,6 +10299,12 @@ where
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
                     ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                    ruby.align.hash(&mut hasher);
+                    ruby.raise_half_points.hash(&mut hasher);
+                    ruby.fonts
+                        .as_ref()
+                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                        .hash(&mut hasher);
                     ruby.continuation.hash(&mut hasher);
                 }
                 if let Some(border) = props.border.as_ref() {
@@ -10515,6 +10540,20 @@ where
                         text.hash(&mut hasher);
                         guide.hash(&mut hasher);
                         8
+                    }
+                    RunFieldKind::EqRuby {
+                        text,
+                        guide,
+                        align,
+                        size_half_points,
+                        raise_points,
+                    } => {
+                        text.hash(&mut hasher);
+                        guide.hash(&mut hasher);
+                        align.hash(&mut hasher);
+                        size_half_points.hash(&mut hasher);
+                        raise_points.hash(&mut hasher);
+                        44
                     }
                     RunFieldKind::Hyperlink {
                         target,
@@ -14852,13 +14891,18 @@ where
             self.paragraph_east_asian_rules(paragraph.properties.as_ref(), paragraph);
         paragraph_style.enable_line_break_rules =
             paragraph_style.east_asian_rules.use_east_asian_layout;
-        paragraph_style.word_east_asian_font_line_box = word_east_asian_font_metrics_apply(
-            paragraph
-                .properties
-                .as_ref()
-                .and_then(|props| props.spacing.as_ref()),
-            self.document_east_asian_rules.use_east_asian_layout,
-        );
+        paragraph_style.word_east_asian_font_line_box =
+            jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply_on_grid(
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.spacing.as_ref()),
+                self.document_east_asian_rules.use_east_asian_layout,
+                word_grid_line_centres_text(
+                    self.resolve_paragraph_snap_to_grid(paragraph),
+                    self.current_doc_grid.as_ref(),
+                ),
+            );
         if paragraph_style
             .east_asian_rules
             .character_spacing_control
@@ -14935,7 +14979,8 @@ where
                                         &inc.num_id,
                                         inc.level,
                                     );
-                                    numbering_counter.increment(
+                                    numbering_counter.increment_with(
+                                        numbering_part,
                                         &inc.num_id,
                                         &inc.abstract_num_id,
                                         inc.level,
@@ -15037,7 +15082,8 @@ where
                                     &inc.num_id,
                                     inc.level,
                                 );
-                                numbering_counter.increment(
+                                numbering_counter.increment_with(
+                                    numbering_part,
                                     &inc.num_id,
                                     &inc.abstract_num_id,
                                     inc.level,
@@ -15141,7 +15187,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -15308,7 +15355,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -15431,7 +15479,8 @@ where
                                         &inc.num_id,
                                         inc.level,
                                     );
-                                    numbering_counter.increment(
+                                    numbering_counter.increment_with(
+                                        numbering_part,
                                         &inc.num_id,
                                         &inc.abstract_num_id,
                                         inc.level,
@@ -15532,7 +15581,8 @@ where
                                     &inc.num_id,
                                     inc.level,
                                 );
-                                numbering_counter.increment(
+                                numbering_counter.increment_with(
+                                    numbering_part,
                                     &inc.num_id,
                                     &inc.abstract_num_id,
                                     inc.level,
@@ -15700,7 +15750,8 @@ where
                                 &inc.num_id,
                                 inc.level,
                             );
-                            numbering_counter.increment(
+                            numbering_counter.increment_with(
+                                numbering_part,
                                 &inc.num_id,
                                 &inc.abstract_num_id,
                                 inc.level,
@@ -15790,7 +15841,8 @@ where
                             &inc.num_id,
                             inc.level,
                         );
-                        numbering_counter.increment(
+                        numbering_counter.increment_with(
+                            numbering_part,
                             &inc.num_id,
                             &inc.abstract_num_id,
                             inc.level,
@@ -15901,13 +15953,19 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
             if let Some(alignment) = &props.alignment {
                 paragraph_style.alignment = alignment.to_string();
             }
             if let Some(indent) = &props.indent {
-                let has_numbering = props.numbering.is_some();
+                // `w:numId="0"` switches numbering off: no list, ordinary indents.
+                let has_numbering = props
+                    .numbering
+                    .as_ref()
+                    .and_then(Numbering::list_id)
+                    .is_some();
                 // Honor `w:mirrorIndents`: swap start/end indents on verso
                 // (even) pages. The swap is keyed on the page where the
                 // paragraph begins, an approximation for paragraphs that span a
@@ -15935,6 +15993,7 @@ where
                         self.current_doc_grid.as_ref(),
                         indent_snap_to_grid,
                     );
+                indent_char_unit_pt = char_unit_pt;
                 apply_paragraph_indent_with_char_unit(
                     &mut x,
                     &mut paragraph_style,
@@ -16025,6 +16084,9 @@ where
             );
             self.ensure_space(spacing_before)?;
             if flow_container != (self.current_page_number, self.column_index) {
+                // The paragraph now starts in another column or page: its
+                // lines take that column's origin and width.
+                self.sync_column_state(&mut x, &mut column_x, &mut column_width, &mut column_right);
                 self.trailing_spacing_after = None;
                 spacing_before = self.body_paragraph_spacing_before(
                     paragraph,
@@ -16071,6 +16133,11 @@ where
                 .as_ref()
                 .and_then(|props| props.keep_next)
                 .unwrap_or(false);
+        self.current_paragraph_keep_next = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.keep_next)
+            .unwrap_or(false);
         // `w:textAlignment` (§17.3.1.39): where glyphs sit vertically inside the
         // line box. Resolve once for the paragraph and thread the leading share
         // through the empty-line and text-line geometry.
@@ -16087,6 +16154,19 @@ where
         } else {
             text_alignment_top_leading_share(text_alignment)
         };
+        // Word for Mac sets an exact-height line's baseline 0.8 of the height
+        // below its top, whatever the face, size or grid (exact-20261018).
+        let exact_line_baseline_share =
+            (matches!(text_alignment, None | Some("auto" | "baseline"))
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.spacing.as_ref())
+                    .and_then(|spacing| spacing.line_rule.as_deref())
+                    == Some("exact"))
+            .then_some(0.8);
         // Capture a "paragraph start" seek snapshot at the actual paragraph top (after spacing-before).
         // This is used as an anchor for starting re-layout from a dirty paragraph without scanning
         // the prefix paragraphs.
@@ -16141,11 +16221,8 @@ where
                             level,
                         );
 
-                        let paragraph_fallback_run_props = self
-                            .paragraph_numbering_fallback_props_for_level(
-                                paragraph,
-                                level_info.as_ref().and_then(|info| info.run_props.as_ref()),
-                            );
+                        let paragraph_fallback_run_props =
+                            self.paragraph_numbering_fallback_props(paragraph);
 
                         let old_number_text = if should_render_numbering {
                             numbering_counter.initialize_ancestor_levels(
@@ -16153,7 +16230,8 @@ where
                                 num_id,
                                 level,
                             );
-                            numbering_counter.increment(
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
                                 num_id,
                                 abstract_num_id,
                                 level,
@@ -16191,28 +16269,20 @@ where
                             }
                         }
 
-                        if props.indent.as_ref().and_then(|i| i.left).is_none() {
-                            if let Some(level_indent) =
-                                level_info.as_ref().and_then(|info| info.indent.as_ref())
-                            {
-                                if let Some(left) = level_indent.left {
-                                    x += points_to_px(left);
-                                }
-                            }
-                        }
-
-                        let mut number_x = x;
-                        let hanging_source =
-                            props.indent.as_ref().and_then(|i| i.hanging).or_else(|| {
-                                level_info
-                                    .as_ref()
-                                    .and_then(|info| info.indent.as_ref())
-                                    .and_then(|indent| indent.hanging)
-                            });
-
-                        if let Some(hanging) = hanging_source {
-                            number_x -= points_to_px(hanging);
-                        }
+                        let level_indent =
+                            level_info.as_ref().and_then(|info| info.indent.as_ref());
+                        let origin = jade_docx_layout::line_wrap::numbered_paragraph_origin(
+                            x,
+                            paragraph_style.first_line_indent,
+                            props.indent.as_ref(),
+                            level_indent.and_then(|indent| indent.left),
+                            level_indent.and_then(|indent| indent.hanging),
+                            paragraph_style.bidi,
+                            indent_char_unit_pt,
+                        );
+                        x = origin.x;
+                        let number_x = origin.number_x;
+                        let body_start = origin.body_start;
 
                         if render_deleted_number {
                             if let Some(number_text) = old_number_text.as_ref() {
@@ -16223,9 +16293,9 @@ where
                                     numbering_context,
                                 )?;
                                 let desired_start = number_x + number_width + 8.0;
-                                if desired_start > x {
+                                if desired_start > body_start {
                                     numbering_first_line_offset =
-                                        numbering_first_line_offset.max(desired_start - x);
+                                        numbering_first_line_offset.max(desired_start - body_start);
                                 }
                                 pending_numbering = Some(PendingNumberingRender {
                                     paragraph_index,
@@ -16293,7 +16363,7 @@ where
 
                             numbering_first_line_offset =
                                 jade_docx_layout::line_wrap::numbering_first_line_offset(
-                                    x,
+                                    body_start,
                                     number_x + numbering_span_width,
                                     numbering_first_line_offset,
                                     level_info.as_ref().and_then(|info| info.suffix.as_deref()),
@@ -16545,6 +16615,16 @@ where
                         guide,
                         Some(&paragraph_style),
                     )?;
+                }
+                // An `EQ` overstrike ruby lays out like `w:ruby` over its base.
+                if let Some(ruby) = run
+                    .field
+                    .as_ref()
+                    .and_then(|field| field.kind.eq_ruby_annotation())
+                {
+                    effective_props
+                        .get_or_insert_with(RunProperties::default)
+                        .ruby = Some(Box::new(ruby));
                 }
                 // w:smallCaps: split into sub-runs so lowercase-origin characters
                 // render as smaller capitals while uppercase/digits/punctuation
@@ -16881,6 +16961,7 @@ where
                     keep_lines_enabled,
                     keep_next_enabled,
                     top_leading_share,
+                    exact_line_baseline_share,
                     if numbering_consumed || resuming {
                         None
                     } else {
@@ -16970,9 +17051,15 @@ where
             }
             self.ensure_space(required_height)?;
             let top = self.current_y;
-            let (min_top_offset, content_height) =
-                self.empty_paragraph_content_metrics(pending_numbering.as_ref(), line_height)?;
-            let top_leading = (line_height - content_height).max(0.0) * top_leading_share;
+            let (min_top_offset, content_height) = self.empty_paragraph_content_metrics(
+                pending_numbering.as_ref(),
+                line_height,
+                paragraph_style.word_east_asian_font_line_box,
+            )?;
+            let top_leading = match exact_line_baseline_share {
+                Some(share) => line_height * share + min_top_offset,
+                None => (line_height - content_height).max(0.0) * top_leading_share,
+            };
             self.current_y += line_height;
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
@@ -18031,9 +18118,10 @@ where
         let word_fonts_affect_height =
             word_font_lines_affect_line_height(word_font_line_box, spacing_ref, snap_to_grid);
         let word_grid_line_box = word_grid_line_centres_text(snap_to_grid, current_doc_grid)
-            && word_east_asian_font_metrics_apply(
+            && jade_docx_layout::line_metrics::word_east_asian_font_metrics_apply_on_grid(
                 spacing_ref,
                 self.document_east_asian_rules.use_east_asian_layout,
+                true,
             );
         let (east_asian_line_pt, single_line_pt) = if word_fonts_affect_height || word_grid_line_box
         {
@@ -18422,45 +18510,16 @@ where
         }
     }
 
-    #[cfg(test)]
+    /// The paragraph-side formatting a numbering label is laid over: the
+    /// paragraph mark's run properties over the style chain. The level's
+    /// `w:rFonts` attributes then replace the mark's one by one; Word for Mac
+    /// 16.114 sets the digits of a level naming only `w:hint="eastAsia"` in
+    /// the mark's ＭＳ 明朝 (probe numbering-label).
     fn paragraph_numbering_fallback_props(&self, paragraph: &Paragraph) -> Option<RunProperties> {
-        self.paragraph_numbering_fallback_props_for_level(paragraph, None)
-    }
-
-    /// The paragraph-side formatting a numbering label of `level_props` (the
-    /// level's `w:rPr`) is laid over. When the level has a `w:rFonts`, Word
-    /// replaces the paragraph mark's `w:rFonts` with it as a whole element
-    /// rather than attribute by attribute: a mark naming ＭＳ 明朝 for ASCII
-    /// under a level with only `w:hint="eastAsia"` still sets the `w:suff`
-    /// space in the document's Century (2.92pt at 10.5pt, every such row of
-    /// `scroll-offset-repro` in the Word for Mac corpus), not ＭＳ 明朝's half
-    /// em (jlsi/jade#471). The style chain still supplies what the level's
-    /// `w:rFonts` leaves out.
-    fn paragraph_numbering_fallback_props_for_level(
-        &self,
-        paragraph: &Paragraph,
-        level_props: Option<&RunProperties>,
-    ) -> Option<RunProperties> {
         let mark = paragraph
             .properties
             .as_ref()
             .and_then(|props| props.mark_run_properties.as_ref());
-        let mark_without_fonts;
-        let mark = match mark {
-            Some(mark)
-                if level_props.is_some_and(|level| level.fonts.is_some())
-                    && (mark.fonts.is_some() || mark.font_family.is_some()) =>
-            {
-                let mut stripped = mark.clone();
-                stripped.fonts = None;
-                stripped.font_family = None;
-                stripped.authored_east_asia_font_hint = None;
-                stripped.authored_east_asia_font_name = None;
-                mark_without_fonts = stripped;
-                Some(&mark_without_fonts)
-            }
-            mark => mark,
-        };
         if self.styles_part.is_some() || mark.is_some() {
             let mut props = self.effective_run_properties(paragraph, mark);
             if let (Some(props), Some(theme)) = (props.as_mut(), self.theme_part.as_ref()) {
@@ -18718,6 +18777,7 @@ where
         keep_lines_enabled: bool,
         keep_next_enabled: bool,
         top_leading_share: f64,
+        exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading_color: Option<Rc<str>>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
@@ -18867,8 +18927,41 @@ where
         // Word-like widow/orphan control:
         // split is allowed only when both pages keep at least 2 lines.
         let mut force_break_before_line: Option<usize> = None;
+        // Room the forced break reserves past the paragraph's remaining lines.
+        let mut force_break_reserve = 0.0;
+        // keepNext also keeps this paragraph's last line on the page of the
+        // next paragraph's first line (this paragraph's line height stands in
+        // for it, as above). When the whole paragraph fits but that line does
+        // not, Word moves the last line, or the last two under widow control,
+        // or the whole paragraph when it cannot split.
+        let keep_next_property = self.current_paragraph_keep_next;
+        if keep_next_property
+            && !keep_lines_handled
+            && !keep_next_handled
+            && !self.pageless_mode
+            && !self.measuring_keep_next
+            && band_count > 1
+        {
+            let bottom_limit = self.effective_body_bottom();
+            let remaining = (bottom_limit - self.current_y).max(0.0);
+            let full_body_height = (bottom_limit - self.effective_body_top()).max(0.0);
+            if paragraph_height <= remaining + 1e-6
+                && paragraph_height + line_height > remaining + 1e-6
+                && paragraph_height + line_height <= full_body_height
+            {
+                let moved = if widow_control_enabled { 2 } else { 1 };
+                let kept = band_count.saturating_sub(moved);
+                if keep_lines_enabled || kept == 0 || (widow_control_enabled && kept < 2) {
+                    self.ensure_space(paragraph_height + line_height)?;
+                } else {
+                    force_break_before_line = band_starts.get(kept).copied();
+                    force_break_reserve = line_height;
+                }
+            }
+        }
         if !keep_lines_handled
             && !keep_next_handled
+            && force_break_before_line.is_none()
             && widow_control_enabled
             && !self.pageless_mode
             && band_count > 1
@@ -18920,11 +19013,10 @@ where
                 let mut opportunities = BumpVec::new_in(&render_pass_arena);
                 for (segment_index, prepared) in prepared_segments.iter().enumerate() {
                     for (glyph_index, step) in prepared.glyph_steps.iter().enumerate() {
-                        if step
-                            .text(&prepared.segment.text)
-                            .chars()
-                            .all(char::is_whitespace)
-                        {
+                        if jade_docx_layout::line_wrap::is_justification_space(
+                            step.text(&prepared.segment.text),
+                            paragraph_style.word_platform,
+                        ) {
                             opportunities.push((segment_index, glyph_index));
                         }
                     }
@@ -19104,6 +19196,28 @@ where
                 Vec::new()
             };
 
+        // The lines of a keepNext group's final paragraph that must share a
+        // page with the group: one when it may split after any line, two
+        // (or all of three or fewer) under widow control, all under keepLines.
+        let keep_next_tail_bands = self
+            .keep_next_tail_pending
+            .filter(|_| self.measuring_keep_next)
+            .and_then(|is_tail| {
+                let required = if keep_lines_enabled {
+                    band_count
+                } else if widow_control_enabled {
+                    if band_count <= 3 {
+                        band_count
+                    } else {
+                        2
+                    }
+                } else {
+                    1
+                };
+                // A keepNext member that cannot split is measured whole and
+                // the group continues past it.
+                (required > 0 && (is_tail || required < band_count)).then_some(required)
+            });
         let mut placed_end = base_offset;
         // `(page, column, top, bottom)` of the previous line's band, for lines
         // that continue it on the far side of a `bothSides` float.
@@ -19146,8 +19260,8 @@ where
                     .enumerate()
                     .filter(|&(_, &start)| start >= line_index)
                     .map(|(band, _)| band_height(band))
-                    .sum();
-                self.ensure_space(remaining_height)?;
+                    .sum::<f64>();
+                self.ensure_space(remaining_height + force_break_reserve)?;
             }
             let break_kind = wrapped_line.break_kind;
             let extent_only = self.measuring_keep_next
@@ -19311,7 +19425,17 @@ where
             }
             let content_height = (max_bottom_offset - min_top_offset).max(1.0);
             let line_box_height = line_height.max(content_height);
-            let top_leading = (line_height - content_height).max(0.0) * top_leading_share;
+            // An atLeast line's extra over the auto grid line sits above it.
+            let extra_above = paragraph_style
+                .word_grid_line_sizing
+                .map_or(0.0, |grid| grid.extra_above_px(Some(content_height)));
+            let top_leading = match exact_line_baseline_share {
+                Some(share) => line_height * share + min_top_offset,
+                None => {
+                    extra_above
+                        + (line_height - extra_above - content_height).max(0.0) * top_leading_share
+                }
+            };
             // jade-docx-layout planned this line on the band of the previous
             // one (text continues past a `bothSides` float): reuse its top.
             let continued_band = float_band
@@ -19388,7 +19512,15 @@ where
                 }
                 placed_end = line_end;
             }
-            self.ensure_space(line_box_height)?;
+            // Word for Mac centres a grid line's text in its pitches and keeps
+            // the line while the text clears the page foot; only the padding
+            // below it may cross.
+            let fit_height = if paragraph_style.word_grid_line_sizing.is_some() {
+                (top_leading + content_height).min(line_box_height)
+            } else {
+                line_box_height
+            };
+            self.ensure_space(fit_height)?;
             // A taller far-side segment that no longer fits moved to a new
             // page or column: it starts there like any line, and the old
             // band's bottom must not be applied to the new page.
@@ -19407,6 +19539,13 @@ where
             self.current_y += line_box_height;
             if let Some((_, band_bottom)) = continued_band {
                 self.current_y = self.current_y.max(band_bottom);
+            }
+            if let Some(required) = keep_next_tail_bands {
+                let band_end = band_starts.get(required).copied().unwrap_or(lines.len());
+                if line_index + 1 == band_end && self.keep_next_tail_pending.is_some() {
+                    self.keep_next_tail_pending = None;
+                    self.keep_next_tail_bottom = Some(self.current_y);
+                }
             }
             if self.rendering_page_footnotes {
                 if self.note_area_bottom.is_some() {
@@ -19924,9 +20063,37 @@ where
                                 "center" | "right" | "end"
                             )
                     })
-                    .map(|cluster| cluster.width)
+                    .map(|cluster| {
+                        // On Mac a line with a tab gave the mark's width to the
+                        // tab first (`shrink_tab_for_final_mark`); what still
+                        // overflows hangs and nothing is left to justify
+                        // (trust page 22).
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && !wrapped_line.tab_stops.is_empty()
+                        {
+                            cluster.width.min(line_width - available_for_line)
+                        } else {
+                            cluster.width
+                        }
+                    })
                     .unwrap_or(0.0);
-                let justify_line = justify || hanging_punctuation_width > 0.0;
+                // A final mark that hung its blank half past the edge
+                // (`compress_mac_punctuation_on_completed_line`) leaves the
+                // line justified to the edge, the paragraph's last line too.
+                let hung_terminal_blank = paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && is_justified_alignment(&paragraph_style.alignment)
+                    && paragraph_style.allows_hanging_punctuation_at(break_kind)
+                    && wrapped_line.clusters.last().is_some_and(|cluster| {
+                        cluster.can_hang_line_end
+                            && cluster.layout.as_ref().is_some_and(|layout| {
+                                let hung = layout.adjusted_glyph_width - cluster.width;
+                                hung > 0.01 && line_width + hung > available_for_line + 0.01
+                            })
+                    });
+                let justify_line =
+                    justify || hanging_punctuation_width > 0.0 || hung_terminal_blank;
                 let extra_total = if justify_line {
                     wrapped_line.justification_extra_width_px(
                         available_for_line,
@@ -20128,7 +20295,9 @@ where
                 })
                 .collect::<Vec<_>>();
             let character_borders = merge_character_border_fragments(&character_border_fragments);
-            for (prepared, start_x) in prepared_segments.iter().zip(positions.iter()) {
+            for (segment_index, (prepared, start_x)) in
+                prepared_segments.iter().zip(positions.iter()).enumerate()
+            {
                 if render_changes {
                     if let Some(revision_mark) = prepared.segment.revision.as_ref() {
                         let fill_color = match revision_mark.kind {
@@ -20374,19 +20543,39 @@ where
                     )
                     .map_err(PainterError::into_js_value)?;
                 }
-                // Ruby guide (`w:ruby`, §17.3.3.25): drawn centered above the
-                // base segment, after the glyphs so it overlays cleanly.
+                // Ruby guide (`w:ruby`, §17.3.3.25): drawn over the whole base,
+                // including the runs that continue it, after the glyphs so it
+                // overlays cleanly.
                 if let Some(ruby) = style.ruby.clone() {
                     let base_color = text_style.fill_color.clone();
-                    self.draw_ruby_text(
+                    let base_end = prepared_segments[segment_index + 1..]
+                        .iter()
+                        .zip(&positions[segment_index + 1..])
+                        .take_while(|(next, _)| {
+                            next.segment
+                                .properties
+                                .as_ref()
+                                .and_then(|properties| properties.ruby.as_ref())
+                                .is_some_and(|next_ruby| next_ruby.continuation)
+                        })
+                        .last()
+                        .map_or(*start_x + width, |(next, next_x)| *next_x + next.width);
+                    let (guide_baseline, guide_glyphs) = self.draw_ruby_text(
                         &ruby,
                         *start_x,
-                        width,
+                        base_end - *start_x,
                         text_y,
                         prepared.top_offset,
                         &base_color,
                         commands_out.as_deref_mut(),
                     )?;
+                    self.capture_ruby_guide(
+                        guide_baseline,
+                        &guide_glyphs,
+                        paragraph_index,
+                        line_index,
+                        &line_layout,
+                    );
                 }
                 // Plugin-driven decoration pass (SlateJS-style overlays).
                 //
@@ -24024,7 +24213,7 @@ where
         let numbering = props
             .numbering
             .as_ref()
-            .and_then(|numbering| Some((numbering.id.as_deref()?, numbering.level?)));
+            .and_then(|numbering| Some((numbering.list_id()?, numbering.level?)));
         if let Some(indent) = props.indent.as_ref() {
             let char_unit_pt = f64::from(Self::estimate_paragraph_font_size(paragraph));
             apply_paragraph_indent_with_char_unit(
@@ -24040,25 +24229,21 @@ where
             let level_info =
                 numbering_part.and_then(|part| part.get_level_info(num_id, level).cloned());
             if let (Some(numbering_part), Some(level_info)) = (numbering_part, level_info) {
-                if props
-                    .indent
-                    .as_ref()
-                    .and_then(|indent| indent.left)
-                    .is_none()
-                {
-                    if let Some(left) = level_info.indent.as_ref().and_then(|indent| indent.left) {
-                        x += points_to_px(left);
-                    }
-                }
-                let hanging = props
-                    .indent
-                    .as_ref()
-                    .and_then(|indent| indent.hanging)
-                    .or_else(|| level_info.indent.as_ref().and_then(|indent| indent.hanging));
-                let number_x = x - hanging.map(points_to_px).unwrap_or(0.0);
+                let origin = jade_docx_layout::line_wrap::numbered_paragraph_origin(
+                    x,
+                    format.style.first_line_indent,
+                    props.indent.as_ref(),
+                    level_info.indent.as_ref().and_then(|indent| indent.left),
+                    level_info.indent.as_ref().and_then(|indent| indent.hanging),
+                    format.style.bidi,
+                    jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT,
+                );
+                x = origin.x;
+                let number_x = origin.number_x;
                 let abstract_num_id = numbering_part.abstract_num_id(num_id).unwrap_or_default();
                 numbering_counter.initialize_ancestor_levels(Some(numbering_part), num_id, level);
-                numbering_counter.increment(
+                numbering_counter.increment_with(
+                    Some(numbering_part),
                     num_id,
                     abstract_num_id,
                     level,
@@ -24068,11 +24253,7 @@ where
                 let display_text = numbering_part.format_number(num_id, level, numbering_counter);
                 let display_props = Self::merge_numbering_run_props(
                     level_info.run_props.clone(),
-                    self.paragraph_numbering_fallback_props_for_level(
-                        paragraph,
-                        level_info.run_props.as_ref(),
-                    )
-                    .as_ref(),
+                    self.paragraph_numbering_fallback_props(paragraph).as_ref(),
                 );
                 let style = self.apply_run_style(display_props.as_ref())?;
                 let suffix_space = level_info.suffix.as_deref() == Some("space");
@@ -24092,7 +24273,7 @@ where
                 )?;
                 format.style.first_line_indent +=
                     jade_docx_layout::line_wrap::numbering_first_line_offset(
-                        x,
+                        origin.body_start,
                         number_x + marker_width,
                         0.0,
                         level_info.suffix.as_deref(),
@@ -26912,16 +27093,22 @@ where
         let mut border = None;
         let mut font_hint = None;
 
+        // Complex-script bold/italic (`w:bCs`/`w:iCs`, ECMA-376 Part 1
+        // §17.3.2.6 / §17.3.2.17) style only the complex-script face.
+        let mut complex_font_style = String::new();
         if let Some(props) = properties {
-            // The renderer is script-agnostic, so complex-script bold/italic
-            // (`w:bCs`/`w:iCs`, ECMA-376 Part 1 §17.3.2.6 / §17.3.2.17) is ORed
-            // with the Latin/East-Asian `w:b`/`w:i` toggles.
-            if props.bold.unwrap_or(false) || props.bold_complex.unwrap_or(false) {
+            if props.bold.unwrap_or(false) {
                 font_style.push_str("bold ");
             }
+            if props.bold_complex.unwrap_or(false) {
+                complex_font_style.push_str("bold ");
+            }
 
-            if props.italic.unwrap_or(false) || props.italic_complex.unwrap_or(false) {
+            if props.italic.unwrap_or(false) {
                 font_style.push_str("italic ");
+            }
+            if props.italic_complex.unwrap_or(false) {
+                complex_font_style.push_str("italic ");
             }
 
             if let Some(size) = props.font_size {
@@ -27032,17 +27219,28 @@ where
             // the annotation for editing alone.
             if let Some(annotation) = props.ruby.as_ref() {
                 if !annotation.text.is_empty() && !annotation.continuation {
+                    let properties = jade_docx_layout::ruby::ruby_run_properties(
+                        Some(props),
+                        font_size_pt,
+                        annotation,
+                    );
                     ruby = Some(ResolvedRuby {
                         text: Rc::from(annotation.text.as_str()),
-                        size_pt: ruby_font_size_pt(font_size_pt, annotation.size_pt),
+                        size_pt: properties.font_size.unwrap_or(font_size_pt),
+                        align: annotation.align.as_deref().map(Rc::from),
+                        raise_pt: annotation
+                            .raise_half_points
+                            .map(jade_docx_layout::ruby::ruby_raise_pt),
+                        properties: Rc::new(properties),
                     });
                 }
             }
         }
 
         let families_rc = resolve_font_families(properties);
-        let descriptors = families_rc.to_descriptor_set_with_sizes(
+        let descriptors = families_rc.to_descriptor_set_with_styles(
             &font_style,
+            &complex_font_style,
             font_size_pt,
             font_size_complex_pt.unwrap_or(font_size_pt),
         );
@@ -27146,6 +27344,12 @@ where
             if let Some(ruby) = props.ruby.as_ref() {
                 ruby.text.hash(&mut hasher);
                 ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
+                ruby.align.hash(&mut hasher);
+                ruby.raise_half_points.hash(&mut hasher);
+                ruby.fonts
+                    .as_ref()
+                    .map(|fonts| (&fonts.ascii, &fonts.east_asia))
+                    .hash(&mut hasher);
                 ruby.continuation.hash(&mut hasher);
             } else {
                 Option::<String>::None.hash(&mut hasher);
@@ -27869,10 +28073,15 @@ where
         ascent
     }
 
+    /// Content top offset and height of an empty paragraph's line. A numbered
+    /// one holds its label; where text lines take Word's line box per face
+    /// (`word_line_box`), so does the label, over every glyph including its
+    /// spaces.
     fn empty_paragraph_content_metrics(
         &mut self,
         pending_numbering: Option<&PendingNumberingRender>,
         line_height: f64,
+        word_line_box: bool,
     ) -> Result<(f64, f64), JsValue> {
         if let Some(numbering) = pending_numbering {
             let mut metric_text = String::new();
@@ -27883,6 +28092,29 @@ where
 
             if !metric_text.is_empty() {
                 let style = self.apply_run_style(numbering.display_props.as_ref())?;
+                if word_line_box {
+                    let mut extent: Option<(f64, f64)> = None;
+                    for grapheme in metric_text.graphemes(true) {
+                        let script = jade_docx_layout::line_wrap::classify_script(grapheme);
+                        let descriptor = style.resolved.descriptor_for_grapheme(grapheme, script);
+                        let Some((ascent, descent)) =
+                            jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
+                                descriptor,
+                            )
+                        else {
+                            extent = None;
+                            break;
+                        };
+                        extent =
+                            Some(extent.map_or((ascent, descent), |(a, d)| {
+                                (a.max(ascent), d.max(descent))
+                            }));
+                    }
+                    if let Some((ascent, descent)) = extent {
+                        let shift = style.baseline_shift_px;
+                        return Ok((shift - ascent, (ascent + descent).max(1.0)));
+                    }
+                }
                 let metric_text_len = metric_text.len();
                 let segment = TextSegment {
                     text: metric_text,
@@ -28014,10 +28246,29 @@ where
         // from the shared layout walk, including grid pitch and tracking.
         let mut suffix_style = style.clone();
         let mut resolved = (*style.resolved).clone();
-        resolved.font_descriptor_latin_ascii = Rc::clone(&resolved.font_descriptor_latin_hansi);
-        resolved.font_descriptor_latin_ascii_hash = resolved.font_descriptor_latin_hansi_hash;
-        resolved.font_descriptor_latin_ascii_id = resolved.font_descriptor_latin_hansi_id;
-        resolved.font_hint = None;
+        if let Some(descriptor) =
+            jade_docx_layout::line_metrics::word_numbering_suffix_space_descriptor(
+                &resolved.font_descriptor_latin_hansi,
+            )
+        {
+            // Word for Mac: an Arial-width space whatever the label's faces.
+            let descriptor: Rc<str> = Rc::from(descriptor);
+            resolved = jade_docx_layout::font_resolver::ResolvedRunStyle::new(
+                Rc::clone(&descriptor),
+                descriptor,
+                Rc::clone(&resolved.font_descriptor_east_asia),
+                Rc::clone(&resolved.font_descriptor_complex),
+                resolved.letter_spacing_px,
+                resolved.text_scale_x,
+                resolved.enable_pair_kerning,
+                None,
+            );
+        } else {
+            resolved.font_descriptor_latin_ascii = Rc::clone(&resolved.font_descriptor_latin_hansi);
+            resolved.font_descriptor_latin_ascii_hash = resolved.font_descriptor_latin_hansi_hash;
+            resolved.font_descriptor_latin_ascii_id = resolved.font_descriptor_latin_hansi_id;
+            resolved.font_hint = None;
+        }
         suffix_style.resolved = Rc::new(resolved);
         let suffix_segment = TextSegment {
             text: " ".into(),
@@ -28473,12 +28724,14 @@ where
         Ok(())
     }
 
-    /// Draws the ruby guide text (`w:ruby`, ECMA-376 Part 1 §17.3.3.25) in a
-    /// small font centered above the base run's segment. Visual-only: the
-    /// guide is not selectable content (matching Word) and, in this MVP, the
-    /// line height is not expanded — the guide sits in the line's leading
-    /// band. Emitted both immediately and as a `DrawCommand::Text` so it
-    /// replays through the paragraph draw cache.
+    /// Draws the ruby guide (`w:ruby`, ECMA-376 Part 1 §17.3.3.25) over its
+    /// base segment and returns the guide baseline and characters.
+    /// Shared layout already widened the base to a wider guide
+    /// (`jade_docx_layout::ruby`); a narrower guide spreads over the base by
+    /// `w:rubyAlign`. Its baseline sits `w:hpsRaise` above the base baseline,
+    /// in whole points. Visual-only: the guide is not selectable content
+    /// (matching Word). Emitted both immediately and as `DrawCommand::Text`s so
+    /// it replays through the paragraph draw cache.
     #[allow(clippy::too_many_arguments)]
     fn draw_ruby_text(
         &self,
@@ -28489,47 +28742,141 @@ where
         top_offset: f64,
         base_color: &str,
         commands_out: Option<&mut Vec<DrawCommand>>,
-    ) -> Result<(), JsValue> {
+    ) -> Result<(f64, Vec<RubyGuideGlyph>), JsValue> {
         if ruby.text.is_empty() {
-            return Ok(());
+            return Ok((baseline_y, Vec::new()));
         }
         let props = Some(RunProperties {
-            font_size: Some(ruby.size_pt),
             color: Some(base_color.to_string().into()),
-            ..RunProperties::default()
+            ..(*ruby.properties).clone()
         });
         let style = self.apply_run_style(props.as_ref())?;
-        let ruby_width = self.measure_text_with_spacing(&ruby.text, &style, None)?;
-        let x = ruby_draw_x(segment_x, segment_width, ruby_width);
-        // The guide baseline sits just above the base glyph-box top; the gap
-        // leaves room for the guide's own descenders.
-        let guide_px = points_to_px(ruby.size_pt);
-        let gap = (guide_px * 0.2).max(1.0);
-        let y = baseline_y + top_offset - gap;
-        let context = self.host.painter();
-        self.draw_text_with_spacing(
-            &context,
-            &ruby.text,
-            x,
-            y,
-            style.letter_spacing_px,
-            &style,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )?;
-        if let Some(buf) = commands_out {
-            let text_style = self.cmd_text_style(props.as_ref(), &style);
-            buf.push(DrawCommand::Text {
-                text: ruby.text.clone(),
-                x,
-                y,
-                style: text_style,
+        let mut glyphs = Vec::new();
+        for grapheme in ruby.text.graphemes(true) {
+            let width = self.measure_text_with_spacing(grapheme, &style, None)?;
+            glyphs.push(RubyGuideGlyph {
+                text: grapheme.to_string(),
+                x: 0.0,
+                width,
             });
         }
-        Ok(())
+        let guide_width: f64 = glyphs.iter().map(|glyph| glyph.width).sum();
+        let (leading, gap) = jade_docx_layout::ruby::ruby_distribution(
+            ruby.align.as_deref(),
+            glyphs.len(),
+            segment_width - guide_width,
+        );
+        let mut x = segment_x + leading;
+        for glyph in &mut glyphs {
+            glyph.x = x;
+            x += glyph.width + gap;
+        }
+        let y = match ruby.raise_pt {
+            Some(raise) => baseline_y - points_to_px(raise),
+            None => {
+                // Without `w:hpsRaise` the guide baseline sits just above the
+                // base glyph-box top, leaving room for its own descenders.
+                let guide_px = points_to_px(ruby.size_pt);
+                baseline_y + top_offset - (guide_px * 0.2).max(1.0)
+            }
+        };
+        let context = self.host.painter();
+        let text_style = self.cmd_text_style(props.as_ref(), &style);
+        let mut commands_out = commands_out;
+        for RubyGuideGlyph { text, x, .. } in &glyphs {
+            self.draw_text_with_spacing(
+                &context,
+                text,
+                *x,
+                y,
+                style.letter_spacing_px,
+                &style,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )?;
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::Text {
+                    text: Rc::from(text.as_str()),
+                    x: *x,
+                    y,
+                    style: text_style.clone(),
+                });
+            }
+        }
+        Ok((y, glyphs))
+    }
+
+    /// Records a drawn ruby guide for full-layout captures, like tab leaders:
+    /// it paints outside editable text offsets.
+    fn capture_ruby_guide(
+        &mut self,
+        baseline: f64,
+        glyphs: &[RubyGuideGlyph],
+        paragraph: usize,
+        line_index: usize,
+        line: &SelectionLineLayout,
+    ) {
+        if !self.auxiliary_story_capture_mode.enabled()
+            || !self.should_draw_current_page_for_render()
+            || glyphs.is_empty()
+        {
+            return;
+        }
+        let start_x = glyphs[0].x;
+        let end_x = glyphs.last().map_or(start_x, |glyph| glyph.x + glyph.width);
+        let mut text = String::new();
+        let mut debug_glyphs = Vec::with_capacity(glyphs.len());
+        for glyph in glyphs {
+            let start = text.len();
+            text.push_str(&glyph.text);
+            debug_glyphs.push(LayoutGlyphDebug {
+                start,
+                end: text.len(),
+                text: glyph.text.clone(),
+                x: glyph.x - start_x,
+                width: glyph.width,
+            });
+        }
+        let page = self.current_page_number.saturating_sub(1);
+        self.auxiliary_story_debug_lines
+            .push(AuxiliaryStoryLineDebug {
+                story: "ruby",
+                page,
+                line: LayoutLineDebug {
+                    paragraph,
+                    line: line_index,
+                    page,
+                    column_index: line.column_index,
+                    vertical: line.vertical,
+                    start: 0,
+                    end: text.len(),
+                    top: line.content_top,
+                    absolute_top: line.absolute_content_top,
+                    height: line.content_height,
+                    baseline,
+                    absolute_baseline: baseline + line.absolute_top - line.top,
+                    report_x_offset: 0.0,
+                    start_x,
+                    end_x,
+                    cursor_end_x: end_x,
+                    visual_end_x: end_x,
+                    allowed_trailing_overflow_width: 0.0,
+                    fragments: vec![LayoutFragmentDebug {
+                        start: 0,
+                        end: text.len(),
+                        x: start_x,
+                        width: end_x - start_x,
+                        baseline,
+                        glyphs: debug_glyphs,
+                    }],
+                    text,
+                    tab_leaders: Vec::new(),
+                    tab_stops: Vec::new(),
+                },
+            });
     }
 
     /// Draws `w:u` (ECMA-376 Part 1 §17.3.2.40) in the current text colour.
@@ -30622,26 +30969,12 @@ where
             self.ensure_space(spacing_after)?;
             self.current_y += spacing_after;
         } else {
+            // Space after that does not fit ends at the page foot: Word
+            // starts the next paragraph at the top of the next page without
+            // it, and opens no page for it after the last paragraph. The
+            // next line's `ensure_space` makes the page advance.
             let bottom_limit = self.effective_body_bottom();
-            if self.current_y + spacing_after > bottom_limit {
-                self.render_footer_simple()?;
-                let next_page = self.current_page_number + 1;
-                self.begin_next_page_backing(next_page)?;
-                self.record_valign_used_height_for_current_page();
-                self.current_page_number += 1;
-                self.record_page_section(self.current_page_number);
-                self.deferred_cached_draw_page = self.current_page_number;
-                self.deferred_cached_draw_commands.clear();
-                self.current_y = self.effective_body_top() + self.current_page_valign_offset();
-                self.last_line_baseline = self.current_y;
-                self.header_drawn = false;
-                self.footer_drawn = false;
-                self.render_header_simple()?;
-                self.current_y += spacing_after;
-                self.last_line_baseline = self.current_y;
-            } else {
-                self.current_y += spacing_after;
-            }
+            self.current_y = (self.current_y + spacing_after).min(bottom_limit.max(self.current_y));
         }
         Ok(())
     }
@@ -31868,7 +32201,9 @@ where
             RunFieldKind::Ref { .. } | RunFieldKind::Seq { .. } | RunFieldKind::AutoNum { .. } => {
                 field.resolved_value.clone()
             }
-            RunFieldKind::EqDistributed { text, .. } => Some(text.clone()),
+            RunFieldKind::EqDistributed { text, .. } | RunFieldKind::EqRuby { text, .. } => {
+                Some(text.clone())
+            }
             RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
@@ -32231,25 +32566,6 @@ fn emphasis_mark_radius(font_size_pt: f32) -> f64 {
     (points_to_px(font_size_pt) * 0.09).max(1.0)
 }
 
-/// Resolves the ruby guide font size (`w:ruby`, §17.3.3.25): the explicit size
-/// from the `w:rt` run / `w:rubyPr/w:hps` wins; otherwise Word's default of
-/// half the base run size applies. Non-positive/non-finite explicit sizes fall
-/// back to the default, and the result is floored at 1 pt so the guide never
-/// degenerates to an invisible font.
-fn ruby_font_size_pt(base_font_size_pt: f32, explicit_pt: Option<f32>) -> f32 {
-    explicit_pt
-        .filter(|size| size.is_finite() && *size > 0.0)
-        .unwrap_or(base_font_size_pt * 0.5)
-        .max(1.0)
-}
-
-/// X origin for the ruby guide text: centered over the base segment, clamped
-/// to the segment start when the guide is wider than the base (Word lets a
-/// wide guide overhang to the right rather than shifting it left of the base).
-fn ruby_draw_x(segment_x: f64, segment_width: f64, ruby_width: f64) -> f64 {
-    segment_x + ((segment_width - ruby_width) / 2.0).max(0.0)
-}
-
 /// Computes the horizontal center offsets (relative to the segment start) of
 /// the emphasis mark for each non-blank glyph. `glyphs` is a slice of
 /// `(x_offset, is_blank)`; blank glyphs (whitespace) are skipped so spaces do
@@ -32337,10 +32653,23 @@ fn underline_spans_for_planned_glyphs(
 /// Resolved ruby (phonetic guide) annotation ready for drawing: the guide
 /// text plus its resolved size in points (explicit `w:rt` size / `w:hps`, or
 /// half the base run size when unspecified — Word's default).
+/// One drawn ruby guide character: its text, x and advance.
+struct RubyGuideGlyph {
+    text: String,
+    x: f64,
+    width: f64,
+}
+
 #[derive(Clone, PartialEq)]
 struct ResolvedRuby {
     text: Rc<str>,
     size_pt: f32,
+    /// `w:rubyAlign`, lowercased.
+    align: Option<Rc<str>>,
+    /// Guide baseline above the base baseline (`w:hpsRaise`, whole points).
+    raise_pt: Option<f32>,
+    /// The guide's faces and size (`jade_docx_layout::ruby::ruby_run_properties`).
+    properties: Rc<RunProperties>,
 }
 
 fn eq_distributed_text_scale_percent(
@@ -35921,11 +36250,64 @@ mod tests {
             renderer.set_auxiliary_story_capture_enabled(false);
             renderer.font_vertical_metrics_cache.borrow_mut().clear();
             let (top, height) = renderer
-                .empty_paragraph_content_metrics(Some(&pending), 16.0)
+                .empty_paragraph_content_metrics(Some(&pending), 16.0, false)
                 .unwrap();
             assert!(top.is_finite() && height > 0.0);
             assert!(!renderer.font_vertical_metrics_cache.borrow().is_empty());
         }
+    }
+
+    /// An empty numbered paragraph's line holds only its label. Where text
+    /// lines take Word's line box per face, the label line does too, over
+    /// every glyph of the label: the ideographic space of `(6)　` brings
+    /// ＭＳ 明朝's box, so the label sits where a text line's baseline would
+    /// (contract-clause-page-top, Word for Mac 16.114).
+    #[test]
+    fn empty_numbered_line_takes_words_line_box_over_the_whole_label() {
+        let (mut renderer, _) = recording_renderer();
+        let pending = PendingNumberingRender {
+            paragraph_index: 0,
+            number_x: 40.0,
+            display_text: "(6)　".into(),
+            display_props: Some(RunProperties {
+                font_size: Some(10.5),
+                fonts: Some(RunFonts {
+                    ascii: Some("Times New Roman".into()),
+                    h_ansi: Some("ＭＳ 明朝".into()),
+                    east_asia: Some("ＭＳ 明朝".into()),
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            }),
+            deleted_text: None,
+            suffix_space: false,
+            following_grapheme: None,
+        };
+        let style = renderer
+            .apply_run_style(pending.display_props.as_ref())
+            .unwrap();
+        let box_of = |grapheme: &str| {
+            let script = jade_docx_layout::line_wrap::classify_script(grapheme);
+            jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
+                style.resolved.descriptor_for_grapheme(grapheme, script),
+            )
+            .unwrap()
+        };
+        let (ascent, descent) = ["(", "6", ")", "　"]
+            .into_iter()
+            .map(box_of)
+            .fold((0.0_f64, 0.0_f64), |(a, d), (ga, gd)| {
+                (a.max(ga), d.max(gd))
+            });
+        assert!(
+            box_of("　") != box_of("6"),
+            "the faces must differ for the test"
+        );
+        let (top, height) = renderer
+            .empty_paragraph_content_metrics(Some(&pending), 24.0, true)
+            .unwrap();
+        assert!((top + ascent).abs() < 1e-9, "{top} vs {ascent}");
+        assert!((height - (ascent + descent)).abs() < 1e-9);
     }
 
     #[test]
@@ -37921,6 +38303,52 @@ mod tests {
             "replay must use layout advances, not painter measurement or centering"
         );
         assert_eq!(cached.count(|op| matches!(op, Op::MeasureText(..))), 0);
+    }
+
+    /// A ruby base may span several runs (`w:rubyBase` with a formatting
+    /// change). The guide spreads over the whole base, not just its first
+    /// run, and sits `w:hpsRaise` above the base baseline in whole points.
+    #[test]
+    fn ruby_guide_spreads_over_a_base_that_spans_runs() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>前</w:t></w:r><w:r><w:ruby><w:rubyPr><w:rubyAlign w:val="center"/><w:hps w:val="10"/><w:hpsRaise w:val="21"/><w:hpsBaseText w:val="20"/></w:rubyPr><w:rt><w:r><w:t>か</w:t></w:r></w:rt><w:rubyBase><w:r><w:rPr><w:b/></w:rPr><w:t>漢</w:t></w:r><w:r><w:t>字</w:t></w:r></w:rubyBase></w:ruby></w:r><w:r><w:t>後</w:t></w:r></w:p></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.render(&document, &Options::default()).unwrap();
+        let snapshot = renderer.capture_full_layout_debug().unwrap();
+        let guides = snapshot
+            .auxiliary_lines
+            .iter()
+            .filter(|entry| entry.story == "ruby")
+            .collect::<Vec<_>>();
+        assert_eq!(guides.len(), 1, "the guide is drawn once per base");
+        let guide = &guides[0].line;
+        let body = &snapshot.body_lines[0];
+        let glyph_x = |text: &str| {
+            body.fragments
+                .iter()
+                .flat_map(|fragment| {
+                    fragment
+                        .glyphs
+                        .iter()
+                        .map(move |glyph| (fragment.x + glyph.x, glyph))
+                })
+                .find(|(_, glyph)| glyph.text == text)
+                .map(|(x, glyph)| (x, glyph.width))
+                .unwrap()
+        };
+        let (base_start, _) = glyph_x("漢");
+        let (last_x, last_width) = glyph_x("字");
+        let base_end = last_x + last_width;
+        let fragment = &guide.fragments[0];
+        let guide_start = fragment.x + fragment.glyphs[0].x;
+        let guide_width = fragment.glyphs[0].width;
+        assert!(
+            (guide_start - (base_start + (base_end - base_start - guide_width) / 2.0)).abs() < 1e-6,
+            "guide {guide_start} must be centred over {base_start}..{base_end}"
+        );
+        assert!((body.baseline - guide.baseline - points_to_px(10.0)).abs() < 1e-6);
     }
 
     #[test]
@@ -40097,10 +40525,13 @@ mod tests {
         );
     }
 
-    /// Complex-script bold/italic (`w:bCs`/`w:iCs`, §17.3.2.6 / §17.3.2.17) are
-    /// ORed into the script-agnostic font-style prefix alongside `w:b`/`w:i`.
+    /// Complex-script bold/italic (`w:bCs`/`w:iCs`, §17.3.2.6 / §17.3.2.17)
+    /// style only the complex-script face; `w:b`/`w:i` style the others.
+    /// Word for Mac sets scroll-offset-repro's `w:bCs` Japanese body at the
+    /// regular 10.5pt pitch, not the 10.71pt of its synthetic bold.
     #[test]
-    fn complex_script_bold_italic_flow_into_font_style_prefix() {
+    fn complex_script_bold_italic_style_only_the_complex_face() {
+        use jade_docx_layout::line_wrap::ScriptCategory;
         let renderer = test_renderer();
 
         let complex = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
@@ -40108,75 +40539,53 @@ mod tests {
             italic_complex: Some(true),
             ..RunProperties::default()
         }));
-        assert!(
-            complex.font_style_prefix.contains("bold"),
-            "w:bCs must emit a bold font-style prefix"
-        );
-        assert!(
-            complex.font_style_prefix.contains("italic"),
-            "w:iCs must emit an italic font-style prefix"
-        );
+        let complex_face = complex.descriptors.for_script(ScriptCategory::Complex);
+        assert!(complex_face.contains("bold"), "{complex_face}");
+        assert!(complex_face.contains("italic"), "{complex_face}");
+        for script in [ScriptCategory::Latin, ScriptCategory::EastAsia] {
+            let face = complex.descriptors.for_script(script);
+            assert!(!face.contains("bold") && !face.contains("italic"), "{face}");
+        }
+        assert!(!complex.font_style_prefix.contains("bold"));
 
         let off = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
             bold_complex: Some(false),
             italic_complex: Some(false),
             ..RunProperties::default()
         }));
-        assert!(
-            !off.font_style_prefix.contains("bold"),
-            "w:bCs=false must not emit bold"
-        );
-        assert!(
-            !off.font_style_prefix.contains("italic"),
-            "w:iCs=false must not emit italic"
-        );
+        assert!(!off
+            .descriptors
+            .for_script(ScriptCategory::Complex)
+            .contains("bold"));
 
-        // `w:b` still wins on its own even if the complex flag is absent.
+        // `w:b` bolds the Latin and East Asian faces.
         let latin = renderer.resolve_applied_run_style_uncached(Some(&RunProperties {
             bold: Some(true),
             ..RunProperties::default()
         }));
         assert!(latin.font_style_prefix.contains("bold"));
+        assert!(latin
+            .descriptors
+            .for_script(ScriptCategory::EastAsia)
+            .contains("bold"));
     }
 
     /// `w:outline` (§17.3.2.23) sets the resolved style's `outline` flag only when
     /// the run property is `Some(true)`, and `cmd_text_style` threads it into the
     /// draw command so the executor strokes hollow glyphs.
     #[test]
-    fn ruby_font_size_pt_prefers_explicit_size_and_defaults_to_half_base() {
-        // Explicit `w:rt` / `w:hps` size wins.
-        assert_eq!(ruby_font_size_pt(12.0, Some(7.0)), 7.0);
-        // Word's default: half the base run size.
-        assert_eq!(ruby_font_size_pt(12.0, None), 6.0);
-        // Degenerate explicit sizes fall back to the default.
-        assert_eq!(ruby_font_size_pt(12.0, Some(0.0)), 6.0);
-        assert_eq!(ruby_font_size_pt(12.0, Some(f32::NAN)), 6.0);
-        // 1pt floor keeps the guide visible for tiny base sizes.
-        assert_eq!(ruby_font_size_pt(1.0, None), 1.0);
-    }
-
-    #[test]
-    fn ruby_draw_x_centers_over_base_and_clamps_to_segment_start() {
-        // Guide narrower than the base: centered.
-        assert_eq!(ruby_draw_x(100.0, 40.0, 20.0), 110.0);
-        // Same width: flush with the base.
-        assert_eq!(ruby_draw_x(100.0, 40.0, 40.0), 100.0);
-        // Wider guide: clamp to the base start (overhang to the right).
-        assert_eq!(ruby_draw_x(100.0, 40.0, 60.0), 100.0);
-    }
-
-    #[test]
     fn ruby_annotation_resolves_into_applied_style() {
         let renderer = test_renderer();
 
         let annotated = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "かんじ".to_string(),
                 size_pt: None,
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(annotated.as_ref());
@@ -40189,24 +40598,26 @@ mod tests {
 
         let explicit = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "よみ".to_string(),
                 size_pt: Some(6.0),
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(explicit.as_ref());
         assert_eq!(style.ruby.as_ref().map(|r| r.size_pt), Some(6.0));
 
         let empty_guide = Some(RunProperties {
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: String::new(),
                 size_pt: Some(6.0),
                 align: None,
                 continuation: false,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(empty_guide.as_ref());
@@ -40223,12 +40634,13 @@ mod tests {
         // guide is drawn once, by the run that starts the base.
         let continuation = Some(RunProperties {
             font_size: Some(10.0),
-            ruby: Some(jade_docx_reader::document::RubyAnnotation {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
                 text: "かんじ".to_string(),
                 size_pt: None,
                 align: None,
                 continuation: true,
-            }),
+                ..Default::default()
+            })),
             ..RunProperties::default()
         });
         let style = renderer.resolve_applied_run_style_uncached(continuation.as_ref());
@@ -50670,12 +51082,14 @@ mod tests {
         assert_eq!(fallback.fonts.unwrap().h_ansi.as_deref(), Some("Arial"));
     }
 
-    /// jlsi/jade#471: a level `w:rFonts` (here only `w:hint="eastAsia"`)
-    /// replaces the paragraph mark's `w:rFonts` as a whole, so the label's
-    /// ASCII font (the `w:suff` space) comes from the style chain (Century),
-    /// not from the mark's ＭＳ 明朝.
+    /// A level `w:rFonts` (here only `w:hint="eastAsia"`) lays its attributes
+    /// over the paragraph mark's: Word for Mac 16.114 sets the label digits
+    /// of such a level in the mark's ＭＳ 明朝 (probe numbering-label, "1"
+    /// advances 5.25pt at 10.5pt). The `w:suff` space Word sets at 0.278 em
+    /// on Mac whatever the faces (jlsi/jade#471), so it does not need the
+    /// mark's fonts dropped.
     #[test]
-    fn numbering_label_takes_level_rfonts_as_a_whole_element() {
+    fn numbering_label_lays_level_rfonts_over_the_mark() {
         let styles = StylesPart::from_xml(
             r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:docDefaults><w:rPrDefault><w:rPr>
@@ -50709,7 +51123,7 @@ mod tests {
             <CanvasRenderer>::merge_numbering_run_props(
                 Some(level.clone()),
                 renderer
-                    .paragraph_numbering_fallback_props_for_level(&paragraph, Some(&level))
+                    .paragraph_numbering_fallback_props(&paragraph)
                     .as_ref(),
             )
             .unwrap()
@@ -50723,8 +51137,8 @@ mod tests {
             ..RunProperties::default()
         });
         let fonts = hint_only.fonts.as_ref().unwrap();
-        assert_eq!(fonts.ascii.as_deref(), Some("Century"));
-        assert_eq!(fonts.h_ansi.as_deref(), Some("Century"));
+        assert_eq!(fonts.ascii.as_deref(), Some("ＭＳ 明朝"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("ＭＳ 明朝"));
         assert_eq!(fonts.east_asia.as_deref(), Some("ＭＳ 明朝"));
         assert_eq!(fonts.hint, Some(FontHint::EastAsia));
         // Everything but the fonts still comes from the paragraph mark.
@@ -50745,7 +51159,7 @@ mod tests {
         );
         assert_eq!(
             named.fonts.as_ref().unwrap().h_ansi.as_deref(),
-            Some("Century")
+            Some("ＭＳ 明朝")
         );
 
         // Without a level w:rFonts the mark's fonts carry over, as before.
@@ -51095,6 +51509,7 @@ mod tests {
             no_line_break_after: vec!["」".into()],
             no_line_break_before_replaces_default: false,
             no_line_break_after_replaces_default: true,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
         let overrides = EastAsianLineBreakingSettings {
@@ -51111,6 +51526,7 @@ mod tests {
             no_line_break_after: vec!["。".into()],
             no_line_break_before_replaces_default: true,
             no_line_break_after_replaces_default: false,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
 
@@ -51150,6 +51566,7 @@ mod tests {
             no_line_break_after: vec!["。".into()],
             no_line_break_before_replaces_default: false,
             no_line_break_after_replaces_default: false,
+            strict_first_and_last_chars: false,
             compatibility_mode: None,
         };
         let merged = merge_east_asian_rules(&base, None);
@@ -53341,7 +53758,10 @@ mod tests {
                     spacing: Some(Spacing {
                         before: (index == 1).then_some(24.0),
                         after: Some(0.0),
-                        line: Some(if index == 0 { 80.0 } else { 10.0 }),
+                        // The first line fits the 64pt body this page leaves
+                        // between the default footer distance and its top;
+                        // the following 24pt before does not.
+                        line: Some(if index == 0 { 50.0 } else { 10.0 }),
                         line_rule: Some("exact".into()),
                         ..Default::default()
                     }),
@@ -53361,11 +53781,14 @@ mod tests {
                 .into_iter()
                 .find(|line| line.text == "Following")
                 .unwrap();
-            outcomes.push((columns, line.page, line.start_x, line.top));
+            outcomes.push((columns, line.page, line.start_x, line.baseline));
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        for (columns, page, x, y) in outcomes {
+        for (columns, page, x, baseline) in outcomes {
             assert_eq!(page, if columns == 1 { 1 } else { 0 });
+            // The 10pt exact line starts at the top: its baseline is 0.8 of
+            // the line below it (`mac_exact_line_puts_its_baseline_at_four_fifths`).
+            let y = baseline - 10.0 * 0.8 * 96.0 / 72.0;
             assert!(y.abs() < 0.001, "{columns} columns: paragraph top {y}");
             if columns == 2 {
                 assert!(x > 100.0);
@@ -54471,6 +54894,533 @@ mod tests {
                 "measurement does not prepare editor-only marks {middle:?}"
             );
             assert_eq!(unbalanced_saves(&painter), 0);
+        }
+    }
+
+    /// A paragraph ending exactly at the page foot pushes the next one to a
+    /// new page; the next one must not start back at the top of the same page.
+    #[test]
+    fn paragraph_after_one_that_fills_the_page_starts_on_the_next_page() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        let elements = (0..6)
+            .map(|_| {
+                let mut paragraph =
+                    note_test_paragraph("one two three four five six seven eight", None);
+                paragraph.properties = Some(ParagraphProperties {
+                    widow_control: Some(false),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        after: Some(20.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                BodyElement::from_paragraph(paragraph)
+            })
+            .collect();
+        let settings = PageSettings {
+            width: Some(200.0),
+            height: Some(792.0),
+            margin_top: Some((792.0 - 100.0) / 2.0),
+            margin_bottom: Some((792.0 - 100.0) / 2.0),
+            margin_left: Some(20.0),
+            margin_right: Some(20.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let paragraphs = renderer.selection.paragraphs();
+        // Two 20pt lines and 20pt after: paragraphs 0 and 1 fill the 100pt
+        // body (0–40, 60–100), so paragraph 2 opens page 2 at its top.
+        let pages: Vec<_> = paragraphs
+            .iter()
+            .map(|p| renderer.page_for_y(p.lines[0].absolute_top))
+            .collect();
+        let tops: Vec<_> = paragraphs
+            .iter()
+            .flat_map(|p| p.lines.iter().map(|l| l.absolute_top))
+            .collect();
+        assert_eq!(
+            pages,
+            vec![0, 0, 1, 1, 2, 2],
+            "tops {tops:?} page_h {}",
+            renderer.page_height
+        );
+        let page_top = |page: usize| {
+            paragraphs
+                .iter()
+                .find(|p| renderer.page_for_y(p.lines[0].absolute_top) == page)
+                .unwrap()
+                .lines[0]
+                .absolute_top
+        };
+        assert!(page_top(1) > page_top(0));
+    }
+
+    /// A `w:vMerge` owner taller than the rows it spans gives its excess to
+    /// the last of them, but where the span crosses the page foot its text
+    /// must still split with the first row rather than run past the page
+    /// (complex-tables staggered merges).
+    #[test]
+    fn vertical_merge_owner_crossing_the_page_foot_stays_on_its_pages() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        let exact = |text: &str| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    line: Some(20.0),
+                    line_rule: Some("exact".into()),
+                    after: Some(0.0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(paragraph)
+        };
+        let cell = |blocks: Vec<BodyElement>, merge: Option<&str>| TableCell {
+            blocks,
+            vertical_merge: merge.map(str::to_string),
+            ..Default::default()
+        };
+        let table = Table {
+            rows: vec![
+                TableRow {
+                    cells: vec![
+                        cell(vec![exact("a")], None),
+                        cell(
+                            (0..12).map(|i| exact(&format!("owner{i}"))).collect(),
+                            Some("restart"),
+                        ),
+                    ],
+                    ..Default::default()
+                },
+                TableRow {
+                    cells: vec![
+                        cell(vec![exact("b")], None),
+                        cell(vec![exact("")], Some("continue")),
+                    ],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        let mut elements: Vec<BodyElement> = (0..6).map(|i| exact(&format!("filler{i}"))).collect();
+        elements.push(BodyElement::Table(Box::new(table)));
+        elements.push(exact("after"));
+        let settings = PageSettings {
+            width: Some(300.0),
+            height: Some(400.0),
+            margin_top: Some(100.0),
+            margin_bottom: Some(100.0),
+            margin_left: Some(20.0),
+            margin_right: Some(20.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let foot = renderer.page_height - renderer.margin_bottom + 1.0;
+        let lines = renderer.layout_debug_lines();
+        let owners: Vec<_> = lines
+            .iter()
+            .filter(|l| l.text.starts_with("owner"))
+            .collect();
+        assert_eq!(owners.len(), 12);
+        for line in &lines {
+            assert!(
+                line.top + line.height <= foot,
+                "{:?} page {} ends at {} below {foot}",
+                line.text,
+                line.page,
+                line.top + line.height
+            );
+        }
+        assert!(owners.iter().any(|l| l.page > owners[0].page));
+    }
+
+    /// `w:numId="0"` switches a style's numbering off, so the paragraph's
+    /// hanging indent is an ordinary one: scroll-offset-repro's
+    /// `　会社は、…` (left 227 hanging 227) starts its first line at the
+    /// margin and fills the line from there.
+    #[test]
+    fn numbering_switched_off_keeps_the_hanging_first_line() {
+        use jade_docx_reader::document::Indent;
+        let paragraph = |numbering: Option<Numbering>| {
+            let mut paragraph = note_test_paragraph("one two three four five six seven", None);
+            paragraph.properties = Some(ParagraphProperties {
+                indent: Some(Indent {
+                    left: Some(30.0),
+                    hanging: Some(30.0),
+                    ..Indent::default()
+                }),
+                numbering,
+                ..Default::default()
+            });
+            paragraph
+        };
+        let first_line = |paragraph: Paragraph| {
+            let (mut renderer, _) = recording_renderer();
+            renderer.selection = SelectionManager::new();
+            renderer.current_y = 120.0;
+            renderer
+                .render_paragraph(&paragraph, &Options::default())
+                .unwrap();
+            let line = &renderer.layout_debug_lines()[0];
+            (line.start_x, line.end - line.start)
+        };
+        let plain = first_line(paragraph(None));
+        let switched_off = first_line(paragraph(Some(Numbering {
+            id: Some("0".into()),
+            level: Some(0),
+        })));
+        assert_eq!(switched_off, plain);
+    }
+
+    /// Word for Mac 16.114 sets an exact-height line's baseline 0.8 of the
+    /// height below its top, whatever the face, size or line grid
+    /// (exact-20261018 probe: 9.6, 14.0, 19.2 and 28.8pt for 12, 17.5, 24
+    /// and 36pt lines; scroll-offset-repro's 17.5pt `２前項の場合…`).
+    #[test]
+    fn mac_exact_line_puts_its_baseline_at_four_fifths() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::Spacing;
+        for (exact, size, grid) in [(17.5, 11.0, true), (24.0, 10.5, false), (12.0, 20.0, true)] {
+            set_word_layout_platform(WordLayoutPlatform::Mac);
+            let mut document = doc_with_paragraph_texts(&["あ亜Ag"]);
+            if grid {
+                document.default_section = Some(SectionProperties {
+                    doc_grid: Some(DocGrid {
+                        grid_type: Some("lines".into()),
+                        line_pitch: Some(18.0),
+                        char_space: None,
+                    }),
+                    ..Default::default()
+                });
+            }
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_family: Some("MS Mincho".into()),
+                font_size: Some(size),
+                ..Default::default()
+            });
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    line: Some(exact),
+                    line_rule: Some("exact".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            let (mut renderer, _) = recording_renderer();
+            renderer.render(&document, &Options::default()).unwrap();
+            let line = renderer.layout_debug_lines()[0].clone();
+            let line_top = renderer.margin_top;
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert!(
+                (line.baseline - line_top - f64::from(exact) * 0.8 * 96.0 / 72.0).abs() < 1e-4,
+                "{exact}pt/{size}pt grid {grid}: baseline {} line top {line_top}",
+                line.baseline,
+            );
+        }
+    }
+
+    /// Word for Mac centres a line's text in the grid pitches it takes, and
+    /// keeps the line on the page while its text clears the page foot: only
+    /// the padding below the text may cross it (scroll-offset-repro keeps a
+    /// 14pt chapter heading, two 18pt pitches, 8.4pt over the foot).
+    #[test]
+    fn mac_grid_line_stays_while_only_its_padding_crosses_the_page_foot() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::PageSettings;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let paragraph = |text: &str, size: f32| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_family: Some("MS Mincho".into()),
+                font_size: Some(size),
+                ..Default::default()
+            });
+            paragraph.properties = Some(ParagraphProperties {
+                widow_control: Some(false),
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(paragraph)
+        };
+        let heading_page = |body_height: f32| {
+            let settings = PageSettings {
+                width: Some(300.0),
+                height: Some(400.0),
+                margin_top: Some(20.0),
+                margin_bottom: Some(400.0 - 20.0 - body_height),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![
+                        paragraph("本文", 10.5),
+                        paragraph("本文", 10.5),
+                        paragraph("本文", 10.5),
+                        paragraph("第七章", 14.0),
+                    ],
+                }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    doc_grid: Some(DocGrid {
+                        grid_type: Some("lines".into()),
+                        line_pitch: Some(18.0),
+                        char_space: None,
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            renderer.page_for_y(paragraphs[3].lines[0].absolute_top)
+        };
+        // Three 18pt lines, then the heading's 36pt line from 54pt: its 14pt
+        // text sits 11pt down, ending at 79pt, and its box at 90pt.
+        let stays = heading_page(85.0);
+        let moves = heading_page(75.0);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(stays, 0, "text clears the 85pt foot");
+        assert_eq!(moves, 1, "text crosses the 75pt foot");
+    }
+
+    /// Word keeps a keepNext chain with the part of the following paragraph
+    /// that may not be split from it: its first line when it may split after
+    /// any line, two lines (or all of a short one) under widow control, and
+    /// all of it under keepLines. scroll-offset-repro page 3 keeps `第９条`,
+    /// its keepNext lead-in and the first line of `①…` at the page foot.
+    #[test]
+    fn keep_next_group_needs_only_the_lines_its_last_paragraph_cannot_split() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, keep_lines, heading_page) in
+            [(false, false, 0), (true, false, 1), (false, true, 1)]
+        {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                ("filler", false),
+                ("first", true),
+                ("middle", true),
+                ("one two three four five six seven eight", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    keep_lines: Some(keep_lines && !keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            assert_eq!(paragraphs[4].lines.len(), 2);
+            let page = |paragraph: usize, line: usize| {
+                renderer.page_for_y(paragraphs[paragraph].lines[line].absolute_top)
+            };
+            let case = format!("widow={widow_control} keepLines={keep_lines}");
+            assert_eq!(page(2, 0), heading_page, "{case}");
+            assert_eq!(page(4, 0), heading_page, "{case}");
+            assert_eq!(page(4, 1), 1, "{case}");
+        }
+    }
+
+    /// A keepNext paragraph may itself split between its lines: Word keeps
+    /// it from the paragraph after it, not from the page. scroll-offset-repro
+    /// page 4 sets `第１３条…` and the first line of its two-line keepNext body
+    /// at the page foot, and the body's second line on page 5.
+    #[test]
+    fn keep_next_group_may_split_inside_a_later_member() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, heading_page) in [(false, 0), (true, 1)] {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                ("filler", false),
+                ("filler", false),
+                ("first", true),
+                ("one two three four five six seven eight", true),
+                ("last", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            assert_eq!(paragraphs[4].lines.len(), 2);
+            let page = |paragraph: usize, line: usize| {
+                renderer.page_for_y(paragraphs[paragraph].lines[line].absolute_top)
+            };
+            let case = format!("widow={widow_control}");
+            assert_eq!(page(3, 0), heading_page, "{case}");
+            assert_eq!(page(4, 0), heading_page, "{case}");
+            assert_eq!(page(4, 1), 1, "{case}");
+            assert_eq!(page(5, 0), 1, "{case}");
+        }
+    }
+
+    /// The other half of keepNext: the paragraph's last line shares a page
+    /// with the next paragraph's first line. scroll-offset-repro page 4 moves
+    /// the second line of the keepNext body of `第１３条…` to page 5, where
+    /// the empty paragraph after it starts, though the line would fit.
+    #[test]
+    fn keep_next_paragraph_moves_its_last_line_to_the_next_paragraph() {
+        use jade_docx_reader::document::{PageSettings, Spacing};
+        for (widow_control, moved) in [(false, vec![3]), (true, vec![2, 3])] {
+            let mut elements = Vec::new();
+            for (text, keep) in [
+                ("filler", false),
+                (
+                    "one two three four five six seven eight one two three four five six seven eight",
+                    true,
+                ),
+                ("last", false),
+            ] {
+                let mut paragraph = note_test_paragraph(text, None);
+                paragraph.properties = Some(ParagraphProperties {
+                    keep_next: Some(keep),
+                    widow_control: Some(widow_control),
+                    spacing: Some(Spacing {
+                        line: Some(20.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+                elements.push(BodyElement::from_paragraph(paragraph));
+            }
+            let settings = PageSettings {
+                width: Some(200.0),
+                height: Some(792.0),
+                margin_top: Some((792.0 - 100.0) / 2.0),
+                margin_bottom: Some((792.0 - 100.0) / 2.0),
+                margin_left: Some(20.0),
+                margin_right: Some(20.0),
+                ..Default::default()
+            };
+            let document = Document {
+                body: Some(Body { elements }),
+                page_settings: Some(settings.clone()),
+                default_section: Some(SectionProperties {
+                    page_settings: Some(settings),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let (mut renderer, _painter) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(&document, &options).unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            // filler (1 line) + 4 body lines fill the 5-line page exactly.
+            assert_eq!(paragraphs[1].lines.len(), 4);
+            let on_next: Vec<_> = (0..4)
+                .filter(|&line| renderer.page_for_y(paragraphs[1].lines[line].absolute_top) == 1)
+                .collect();
+            assert_eq!(on_next, moved, "widow={widow_control}");
+            assert_eq!(
+                renderer.page_for_y(paragraphs[2].lines[0].absolute_top),
+                1,
+                "widow={widow_control}"
+            );
         }
     }
 

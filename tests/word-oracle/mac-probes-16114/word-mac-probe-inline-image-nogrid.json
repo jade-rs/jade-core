@@ -1,0 +1,562 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "9bfa8fb91b96b39ef334ecc3fdaa4c4b3c8914186fe1246c56cb2132296971c9",
+ "pdf_sha256": "47b598662c3c2239fda67a2171216f3d12a2447f7a554ed37feee01b5b3dfd81",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 91.92,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 112.92,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 123.42,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前ああ後"
+    },
+    {
+     "baseline_pt": 114.96,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 112.92,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 125.658,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前あW後"
+    },
+    {
+     "baseline_pt": 138.0,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 85.125,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 115.345,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 125.845,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前Wあ後"
+    },
+    {
+     "baseline_pt": 161.04,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 85.125,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 115.345,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 128.083,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前WW後"
+    },
+    {
+     "baseline_pt": 184.08,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 112.92,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 121.197,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前あ1後"
+    },
+    {
+     "baseline_pt": 207.12,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 85.125,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 110.885,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 121.384,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前1あ後"
+    },
+    {
+     "baseline_pt": 230.16,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 85.125,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 110.885,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 119.162,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前11後"
+    },
+    {
+     "baseline_pt": 253.2,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 85.125,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 121.179,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 133.917,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前WW後"
+    },
+    {
+     "baseline_pt": 276.24,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 112.92,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 123.42,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前ああ後"
+    },
+    {
+     "baseline_pt": 299.28,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 112.92,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 123.22,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前あW後"
+    },
+    {
+     "baseline_pt": 322.32,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 82.5,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 112.72,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 123.22,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前Wあ後"
+    },
+    {
+     "baseline_pt": 345.36,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 82.5,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 112.72,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 123.02,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前WW後"
+    },
+    {
+     "baseline_pt": 368.4,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 82.5,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 112.92,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 118.76,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前あ1後"
+    },
+    {
+     "baseline_pt": 391.44,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 82.5,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 108.26,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 118.759,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前1あ後"
+    },
+    {
+     "baseline_pt": 414.48,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 82.5,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 108.26,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 114.099,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前11後"
+    },
+    {
+     "baseline_pt": 437.52,
+     "characters": [
+      {
+       "text": "前",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 82.5,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 118.554,
+       "advance_pt": 10.359,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 128.854,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "前WW後"
+    }
+   ]
+  }
+ ]
+}
