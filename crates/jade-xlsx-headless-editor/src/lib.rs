@@ -34,6 +34,7 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
+pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
     CellInput, CellKind, CellView, CommentView, DataValidationView, DefinedNameSummary,
     FillSummary, FindHit, FormatSummary, FormulaState, FreezePaneSummary, HeaderFooterChange,
@@ -806,9 +807,13 @@ impl HeadlessWorkbook {
                         CellInput::Number(number) => NewValue::Number(*number),
                         CellInput::Text(text) => NewValue::Text(text.clone()),
                         CellInput::Bool(flag) => NewValue::Bool(*flag),
-                        CellInput::Formula(formula) => NewValue::Formula(
-                            formula.strip_prefix('=').unwrap_or(formula).to_string(),
-                        ),
+                        // Stored as Excel stores it: `_xlfn.` before the
+                        // newer functions, `_xlpm.` on LET/LAMBDA names.
+                        CellInput::Formula(formula) => {
+                            NewValue::Formula(jade_xlsx_calc::formula_text::to_file_formula(
+                                formula.strip_prefix('=').unwrap_or(formula),
+                            ))
+                        }
                         CellInput::Blank => NewValue::Blank,
                     },
                     style_index: *style_index,
@@ -1777,7 +1782,7 @@ impl HeadlessWorkbook {
                 .iter()
                 .map(|name| DefinedNameSummary {
                     name: name.name.clone(),
-                    formula: name.formula.clone(),
+                    formula: formula_text::to_display_formula(&name.formula),
                     sheet_index: name.local_sheet_index,
                     sheet: name
                         .local_sheet_index
@@ -1916,7 +1921,10 @@ impl HeadlessWorkbook {
                             sheet_index: index,
                             reference: format_reference(cell.reference),
                             display,
-                            formula: cell.formula.clone(),
+                            formula: cell
+                                .formula
+                                .as_deref()
+                                .map(formula_text::to_display_formula),
                         });
                     }
                 }
@@ -1981,7 +1989,12 @@ impl HeadlessWorkbook {
                 self.workbook.date_system,
             )
             .text,
-            formula: cell.and_then(|cell| cell.formula.clone()),
+            // As Excel shows it, without the file's `_xlfn.` prefixes.
+            formula: cell.and_then(|cell| {
+                cell.formula
+                    .as_deref()
+                    .map(jade_xlsx_calc::formula_text::to_display_formula)
+            }),
             formula_state: cell
                 .and_then(|cell| formula_cache_state(cell, self.calculation_is_stale())),
             number_format,
