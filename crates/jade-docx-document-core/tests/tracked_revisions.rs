@@ -526,3 +526,42 @@ fn deleted_text_in_a_footnote_keeps_its_edge_spaces_in_the_file() {
     assert_eq!(runs(&word, 1), expected);
     assert_eq!(runs(&reload(&word), 1), expected);
 }
+
+/// An insertion whose text was all deleted (tracking off) leaves an empty
+/// run behind; typing there with tracking off is still plain text.
+#[test]
+fn typing_where_an_insertion_was_emptied_is_plain() {
+    let mut word = hello();
+    run(&mut word, vec![track("A"), insert(1, 0, "é")]);
+    run(
+        &mut word,
+        vec![HeadlessCommand::StopChangeTracking, delete(1, 0, 2)],
+    );
+    run(&mut word, vec![insert(1, 0, "日本")]);
+    assert_eq!(runs(&word, 1), ["日本World"]);
+    assert_eq!(runs(&reload(&word), 1), ["日本World"]);
+}
+
+/// The same after a note reference that starts its paragraph.
+#[test]
+fn typing_where_an_insertion_was_emptied_after_a_note_reference_is_plain() {
+    let mut word = fixture("footnote.docx");
+    // "Hello[1]" → "Hello" / "[1]".
+    run(
+        &mut word,
+        vec![HeadlessCommand::InsertParagraphBreak {
+            paragraph: 0,
+            offset: 5,
+            count: 1,
+        }],
+    );
+    run(&mut word, vec![track("A"), insert(1, 0, "é")]);
+    // The reference renders one character before the typed text.
+    run(
+        &mut word,
+        vec![HeadlessCommand::StopChangeTracking, delete(1, 1, 3)],
+    );
+    run(&mut word, vec![insert(1, 0, "日本")]);
+    assert_eq!(runs(&word, 1), ["日本"]);
+    assert_eq!(runs(&reload(&word), 1), ["日本"]);
+}
