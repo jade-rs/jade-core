@@ -2,10 +2,16 @@
 //!
 //! In the browser every drawing call crosses into the canvas, so what the
 //! engine costs is the work it does to decide on a call, not the call. This
-//! backend makes each call free and keeps only the font, which the host needs
-//! to measure with. A recording painter would charge each call an allocation
-//! the browser never makes.
+//! backend makes each call free and keeps only the font, which measurement
+//! needs. A recording painter would charge each call an allocation the browser
+//! never makes.
+//!
+//! Measurement is real: some paths ask the painter rather than the host, and
+//! both answer from the same shaping measurer, as the browser's canvas and
+//! host both answer from `measureText`.
 
+use jade_docx_layout::layout_cache::TextMeasurer;
+use jade_docx_layout::shaping_measurer::ShapingMeasurer;
 use jade_painter::{Painter, TextMetrics};
 use std::cell::RefCell;
 use std::convert::Infallible;
@@ -16,15 +22,42 @@ use std::rc::Rc;
 /// would skip work the browser does.
 const MIN_GLYPH_RUN_BATCH_LEN: usize = 4;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct PerfPainter {
     font: Rc<RefCell<String>>,
+    measurer: Rc<ShapingMeasurer>,
 }
 
 impl PerfPainter {
-    /// Calls `f` with the font most recently set, without copying it.
-    pub fn with_font<R>(&self, f: impl FnOnce(&str) -> R) -> R {
-        f(&self.font.borrow())
+    pub fn new(measurer: Rc<ShapingMeasurer>) -> Self {
+        Self {
+            font: Rc::default(),
+            measurer,
+        }
+    }
+
+    fn width(&self, text: &str) -> f64 {
+        self.measurer
+            .measure_text(text, &self.font.borrow())
+            .unwrap_or(0.0)
+    }
+
+    fn metrics(&self, text: &str) -> TextMetrics {
+        let width = self.width(text);
+        let font = self.font.borrow();
+        let (ascent, descent) = self.measurer.font_bounding_box(&font).unwrap_or((0.0, 0.0));
+        let (ink_ascent, ink_descent) = self
+            .measurer
+            .measure_font_vertical_metrics(&font)
+            .unwrap_or((ascent, descent));
+        TextMetrics {
+            width,
+            font_bounding_box_ascent: ascent,
+            font_bounding_box_descent: descent,
+            actual_bounding_box_ascent: ink_ascent,
+            actual_bounding_box_descent: ink_descent,
+            actual_bounding_box_right: width,
+        }
     }
 }
 
@@ -67,11 +100,11 @@ impl Painter for PerfPainter {
     fn stroke_text(&self, _text: &str, _x: f64, _y: f64) -> Result<(), Self::Error> {
         Ok(())
     }
-    fn measure_text_width(&self, _text: &str) -> Result<f64, Self::Error> {
-        unreachable!("perf painter: the host measures, not the painter")
+    fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
+        Ok(self.width(text))
     }
-    fn measure_text_metrics(&self, _text: &str) -> Result<TextMetrics, Self::Error> {
-        unreachable!("perf painter: the host measures, not the painter")
+    fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, Self::Error> {
+        Ok(self.metrics(text))
     }
     fn fill_rect(&self, _x: f64, _y: f64, _width: f64, _height: f64) {}
     fn clear_rect(&self, _x: f64, _y: f64, _width: f64, _height: f64) {}
