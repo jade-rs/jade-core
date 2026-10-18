@@ -40637,6 +40637,7 @@ mod tests {
             author: None,
             date: None,
             date_utc: None,
+            insertion: None,
         });
         run
     }
@@ -40711,6 +40712,7 @@ mod tests {
                 author: None,
                 date: None,
                 date_utc: None,
+                insertion: None,
             });
             run
         }
@@ -50001,6 +50003,7 @@ mod tests {
             author: None,
             date: None,
             date_utc: None,
+            insertion: None,
         });
         assert_ne!(
             render_after,
