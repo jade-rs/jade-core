@@ -6,15 +6,28 @@ use crate::document::Paragraph;
 use crate::word_document::{keep_declared_paragraph_properties, WordDocument};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
+/// The paragraph after `paragraph_index` in its story. A body paragraph's
+/// next one is the next body paragraph in the paragraph order: the text
+/// boxes the paragraph hosts and the footnotes it references are listed
+/// between them. A text box paragraph's is the next in its box.
+fn next_story_paragraph(ctx: &CommandContext<'_>, paragraph_index: usize) -> Option<usize> {
+    let count = ctx.document.paragraph_count();
+    if !ctx.document.is_body_paragraph_surface(paragraph_index) {
+        return (paragraph_index + 1 < count).then_some(paragraph_index + 1);
+    }
+    (paragraph_index + 1..count).find(|&index| ctx.document.is_body_paragraph_surface(index))
+}
+
 fn merge_paragraph_with_next(
     ctx: &mut CommandContext<'_>,
     paragraph_index: usize,
 ) -> CommandResult<()> {
     let before_count = ctx.document.paragraph_count();
-    let next_index = paragraph_index.saturating_add(1);
-    if next_index >= before_count {
-        return Err(CommandError::ParagraphUnavailable);
-    }
+    let next_index =
+        next_story_paragraph(ctx, paragraph_index).ok_or(CommandError::ParagraphUnavailable)?;
+    // The next paragraph's text boxes go out of the order with it, and come
+    // back with its runs.
+    let hosted = ctx.document.hosted_text_box_surface_count(next_index);
 
     let moved_runs = {
         let paragraph = ctx
@@ -29,7 +42,7 @@ fn merge_paragraph_with_next(
     // Rebuild surfaces and validate by paragraph-count delta instead.
     ctx.document.rebuild_paragraph_surfaces();
     let after_count = ctx.document.paragraph_count();
-    if before_count != after_count.saturating_add(1) {
+    if before_count != after_count + 1 + hosted {
         return Err(CommandError::ParagraphUnavailable);
     }
 
@@ -38,6 +51,7 @@ fn merge_paragraph_with_next(
         .paragraph_mut(paragraph_index)
         .ok_or(CommandError::ParagraphUnavailable)?;
     append_runs(&mut paragraph.runs, moved_runs);
+    ctx.document.rebuild_paragraph_surfaces();
     ctx.document.sync_paragraph_text(paragraph_index);
 
     Ok(())
@@ -94,8 +108,18 @@ impl SplitUndo {
         self.raw_xml_undo.finish(ctx, true);
         let paragraph = self.paragraph;
         self.raw_xml_undo.undo(ctx, |ctx| {
-            for offset in (0..count).rev() {
-                merge_paragraph_with_next(ctx, start + offset)?;
+            // Each split-off paragraph is the body paragraph after the one
+            // before it; merging the last first leaves the earlier indices.
+            let mut halves = vec![start];
+            for _ in 0..count {
+                let previous = *halves.last().expect("start");
+                halves.push(
+                    next_story_paragraph(ctx, previous)
+                        .ok_or(CommandError::ParagraphUnavailable)?,
+                );
+            }
+            for &index in halves[..count].iter().rev() {
+                merge_paragraph_with_next(ctx, index)?;
             }
             // The merge rebuilds the paragraph from its halves, bound to XML
             // the roll-back replaces with the original element; restore the
@@ -1027,6 +1051,57 @@ mod tests {
                     paragraph_text(reloaded.paragraph(2).expect("last paragraph")),
                     "次",
                     "{code} {result:?} at {offset}: the paragraph after the field keeps its text"
+                );
+            }
+        }
+    }
+
+    /// Undo merges each split-off paragraph back into the one before it,
+    /// which is the next body paragraph: a text box the first half hosts, or
+    /// a footnote it references, is listed in between. Undo merged with that
+    /// paragraph instead, failed, and left the model split while the file
+    /// went back to one paragraph.
+    #[test]
+    fn undoing_a_break_after_a_text_box_or_footnote_rejoins_the_paragraph() {
+        for (fixture, offset) in [
+            ("textbox.docx", "Hello".len()),
+            ("footnote.docx", "Hello".len()),
+        ] {
+            for count in [1, 3] {
+                let data = std::fs::read(fixture_path(fixture)).expect("read fixture");
+                let mut doc = executor::block_on(WordDocument::load(&data, &Options::default()))
+                    .expect("load");
+                let paragraphs = |doc: &WordDocument| {
+                    (0..doc.paragraph_count())
+                        .map(|index| format!("{:?}", doc.paragraph(index).map(|p| &p.runs)))
+                        .collect::<Vec<_>>()
+                };
+                let original = paragraphs(&doc);
+                let original_xml = document_xml(&doc);
+                let range = SelectionRange::collapsed(
+                    doc.model_to_rendered_text_position(TextPosition::new(0, offset)),
+                );
+                let command: Box<dyn Command> = if count == 1 {
+                    Box::new(InsertParagraphBreakCommand::new(range))
+                } else {
+                    Box::new(InsertParagraphBreaksCommand::new(range, count))
+                };
+                let mut selection = Some(range);
+                let mut executor = CommandExecutor::new();
+                let mut ctx = CommandContext::new(&mut doc, &mut selection);
+                executor.execute(command, &mut ctx).expect("break");
+                assert!(executor.undo(&mut ctx).expect("undo"), "{fixture}/{count}");
+                assert_eq!(paragraphs(&doc).len(), original.len(), "{fixture}/{count}");
+                assert_eq!(document_xml(&doc), original_xml, "{fixture}/{count}");
+                let reloaded = executor::block_on(WordDocument::load(
+                    &doc.export_docx().expect("export"),
+                    &Options::default(),
+                ))
+                .expect("reload");
+                assert_eq!(
+                    reloaded.paragraph_count(),
+                    doc.paragraph_count(),
+                    "{fixture}/{count}"
                 );
             }
         }
