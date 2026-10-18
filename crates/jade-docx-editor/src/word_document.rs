@@ -27760,11 +27760,16 @@ impl WordDocument {
     /// a run whose text the edit deleted still points at its `w:t`, and is
     /// not one of them.
     ///
-    /// Only a body paragraph is read: a text box or note paragraph is synced
-    /// by other paths, and its zero-width runs go as before.
+    /// A body or text box paragraph is read. A note paragraph's part is
+    /// re-read on every edit, so its runs are bound to nothing to read from.
+    /// Left out, a text box paragraph lost a complex field's code runs on any
+    /// formatting edit, and its result was saved as plain text.
     pub(crate) fn zero_width_runs(&self, index: usize) -> ZeroWidthRuns {
         let mut zero_width = ZeroWidthRuns::default();
-        if !self.is_body_paragraph_surface(index) {
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. })
+        ) {
             return zero_width;
         }
         let (Some(raw), Some(paragraph)) = (self.raw_document.as_ref(), self.paragraph(index))
