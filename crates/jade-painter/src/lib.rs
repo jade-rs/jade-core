@@ -19,6 +19,7 @@
 //! the renderer paints from `&self` methods throughout. Backends that need
 //! mutable state use interior mutability.
 
+pub mod paper;
 pub mod recording;
 
 /// Destination geometry for an encoded image, in the current painter coordinates.
