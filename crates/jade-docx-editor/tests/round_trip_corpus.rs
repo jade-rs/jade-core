@@ -16,26 +16,33 @@ use jade_docx_headless_api::HeadlessEditRequest;
 use serde_json::json;
 
 fn fixtures() -> Vec<(String, Vec<u8>)> {
-    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
-    let mut fixtures: Vec<_> = std::fs::read_dir(&directory)
-        .expect("fixtures")
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "docx")
-        })
-        .filter(|path| {
-            // AppleDouble companions that macOS leaves on external volumes.
-            !path
-                .file_name()
-                .is_some_and(|name| name.to_string_lossy().starts_with("._"))
-        })
-        .map(|path| {
-            let name = path.file_name().unwrap().to_string_lossy().into_owned();
-            (name, std::fs::read(&path).expect("read fixture"))
-        })
-        .collect();
+    // The shared corpus, and the files another crate's tests keep.
+    let mut fixtures: Vec<_> = [
+        "../../public/fixtures",
+        "../jade-docx-extract/tests/fixtures",
+    ]
+    .iter()
+    .flat_map(|directory| {
+        std::fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(directory))
+            .expect("fixtures")
+    })
+    .filter_map(Result::ok)
+    .map(|entry| entry.path())
+    .filter(|path| {
+        path.extension()
+            .is_some_and(|extension| extension == "docx")
+    })
+    .filter(|path| {
+        // AppleDouble companions that macOS leaves on external volumes.
+        !path
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().starts_with("._"))
+    })
+    .map(|path| {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        (name, std::fs::read(&path).expect("read fixture"))
+    })
+    .collect();
     fixtures.sort();
     fixtures
 }
@@ -182,7 +189,7 @@ fn check(name: &str, original: &[u8]) -> Vec<String> {
 #[test]
 fn every_fixture_saves_without_losing_anything() {
     let fixtures = fixtures();
-    assert!(fixtures.len() > 100, "the corpus is missing");
+    assert!(fixtures.len() >= 160, "the corpus is missing");
     let problems: Vec<String> = fixtures
         .iter()
         .flat_map(|(name, bytes)| check(name, bytes))
