@@ -208,3 +208,59 @@ proptest! {
         }
     }
 }
+
+/// The text is plain, whatever the run it takes its formatting from: a
+/// tracked deletion before it once lent the text its revision, so the
+/// text showed as deleted (and a later untracked deletion left it there).
+#[test]
+fn text_among_anchors_is_not_part_of_a_neighbouring_revision() {
+    let mut word = load("footnote.docx");
+    apply(
+        &mut word,
+        HeadlessCommand::StartChangeTracking {
+            author: Some("Ann".into()),
+            initials: None,
+            date: None,
+            date_utc: None,
+        },
+    )
+    .unwrap();
+    let (start, end) = (rendered(&word, 0, 4), rendered(&word, 0, 5));
+    apply(
+        &mut word,
+        HeadlessCommand::ReplaceRange {
+            start_paragraph: 0,
+            start_offset: start,
+            end_paragraph: 0,
+            end_offset: end,
+            text: String::new(),
+        },
+    )
+    .unwrap();
+    apply(&mut word, HeadlessCommand::StopChangeTracking).unwrap();
+    among(&mut word, 0, 5, 1, "x").unwrap();
+    assert_eq!(layout(&word, 0), "Hello[1]x");
+    let typed = word
+        .paragraph(0)
+        .unwrap()
+        .runs
+        .iter()
+        .find(|r| r.text == "x")
+        .unwrap();
+    assert!(typed.revision.is_none(), "{:?}", typed.revision);
+    // And an untracked deletion takes it.
+    let at = rendered(&word, 0, 5) + 1;
+    apply(
+        &mut word,
+        HeadlessCommand::ReplaceRange {
+            start_paragraph: 0,
+            start_offset: at,
+            end_paragraph: 0,
+            end_offset: at + 1,
+            text: String::new(),
+        },
+    )
+    .unwrap();
+    assert_eq!(layout(&word, 0), "Hello[1]");
+    assert_eq!(layout(&reload(&word), 0), "Hello[1]");
+}

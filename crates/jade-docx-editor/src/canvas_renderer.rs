@@ -3581,14 +3581,14 @@ where
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled preceding paragraph (ECMA-376 Part 1 §17.3.1.9). Rebuilt on each
     /// full body render from [`compute_contextual_spacing_suppression`].
-    contextual_suppress_before: HashSet<usize>,
+    contextual_suppress_before: ElementIndexSet,
     /// Body-element indices whose paragraph `w:spacing` after should be
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled following paragraph.
-    contextual_suppress_after: HashSet<usize>,
+    contextual_suppress_after: ElementIndexSet,
     /// Body element indices whose paragraph shares a border box with the next
     /// one (`word_paragraphs_share_border_box`).
-    paragraph_border_box_continues: HashSet<usize>,
+    paragraph_border_box_continues: ElementIndexSet,
     document_east_asian_rules: EastAsianLineBreakingRules,
     /// Tracks the currently set font on the canvas context to avoid redundant
     /// set_font calls (which trigger expensive WASM→JS string decoding).
@@ -7889,9 +7889,9 @@ where
             word_oracle_text_advances: RefCell::new(FxHashMap::default()),
             word_oracle_paragraph_advances: RefCell::new(FxHashMap::default()),
             word_oracle_report_x_offsets: RefCell::new(FxHashMap::default()),
-            contextual_suppress_before: HashSet::new(),
-            contextual_suppress_after: HashSet::new(),
-            paragraph_border_box_continues: HashSet::new(),
+            contextual_suppress_before: ElementIndexSet::default(),
+            contextual_suppress_after: ElementIndexSet::default(),
+            paragraph_border_box_continues: ElementIndexSet::default(),
             document_east_asian_rules: EastAsianLineBreakingRules::default(),
             current_font: RefCell::new(None),
             current_fill_color: RefCell::new(None),
@@ -20167,11 +20167,16 @@ where
                 let style = &prepared.style;
                 // Re-apply the cached color. The glyph plan below selects the
                 // actual font for its first glyph, avoiding a redundant Latin
-                // font activation for East Asian and complex-script runs.
-                self.set_fill_style_if_changed(
-                    self.resolve_text_fill_color(style.fill_color.as_ref())
-                        .as_ref(),
-                );
+                // font activation for East Asian and complex-script runs. A
+                // line the band cull skips draws no glyphs, so it needs no
+                // color: this is the same check `draw_planned_text` makes, at
+                // the same `current_y`.
+                if self.should_draw_current_page_for_render() {
+                    self.set_fill_style_if_changed(
+                        self.resolve_text_fill_color(style.fill_color.as_ref())
+                            .as_ref(),
+                    );
+                }
                 let text_style = self.cmd_text_style(prepared.segment.properties.as_deref(), style);
                 let text_y = baseline + style.baseline_shift_px;
                 // Draw highlight background behind the text when present.
@@ -32850,8 +32855,34 @@ fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
 /// `w:pStyle` (two default/`None` paragraphs count as identical).
 /// Body element indices whose paragraph shares a border box with the
 /// paragraph right after it ([`word_paragraphs_share_border_box`]).
-fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> HashSet<usize> {
-    let mut continues = HashSet::new();
+/// Body element indexes flagged by a pairwise scan of adjacent paragraphs.
+///
+/// The scans run on every render and, in a document of one paragraph style,
+/// flag nearly every paragraph, so the indexes are kept densely rather than
+/// hashed into a set.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ElementIndexSet(Vec<bool>);
+
+impl ElementIndexSet {
+    fn insert(&mut self, index: usize) {
+        if index >= self.0.len() {
+            self.0.resize(index + 1, false);
+        }
+        self.0[index] = true;
+    }
+
+    pub(crate) fn contains(&self, index: &usize) -> bool {
+        self.0.get(*index).copied().unwrap_or(false)
+    }
+
+    #[cfg(test)]
+    fn is_empty(&self) -> bool {
+        !self.0.contains(&true)
+    }
+}
+
+fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> ElementIndexSet {
+    let mut continues = ElementIndexSet::default();
     for index in 1..elements.len() {
         let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
             (&elements[index - 1], &elements[index])
@@ -32867,9 +32898,9 @@ fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> HashS
 
 fn compute_contextual_spacing_suppression(
     elements: &[BodyElement],
-) -> (HashSet<usize>, HashSet<usize>) {
-    let mut suppress_before = HashSet::new();
-    let mut suppress_after = HashSet::new();
+) -> (ElementIndexSet, ElementIndexSet) {
+    let mut suppress_before = ElementIndexSet::default();
+    let mut suppress_after = ElementIndexSet::default();
     for index in 1..elements.len() {
         let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
             (&elements[index - 1], &elements[index])

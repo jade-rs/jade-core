@@ -1,7 +1,7 @@
 use crate::document::{
     BorderEdge, DropCap, DropCapKind, Indent, ParagraphBorders, Shading, Spacing,
 };
-use crate::docx_xml::{DocxXmlDocument, XmlAttribute, XmlElement, XmlNode};
+use crate::docx_xml::{DocxXmlDocument, XmlAttribute, XmlElement, XmlNode, XmlNodeId};
 use crate::word_document::WordDocument;
 
 pub(crate) fn sync_paragraph_alignment_xml(
@@ -232,50 +232,76 @@ pub(crate) fn sync_paragraph_borders_xml(
     });
 }
 
-/// Captures the exact raw `<w:pPr>` subtree before a paragraph command mutates
-/// it. The parsed model intentionally normalizes colors and known fields, so it
-/// cannot reproduce unknown attributes, extension elements, or original child
-/// ordering on undo by itself.
+/// The paragraph's `<w:pPr>`, so an undo can put it back exactly. It is read
+/// where the edit writes it (see `sync_paragraph_properties_xml`): a note
+/// paragraph's part, or a text box paragraph's `w:p` through its host run.
+/// Reading only a body paragraph's own node left a note or text box
+/// paragraph's edit in the package after it was undone on screen.
 pub(crate) fn snapshot_paragraph_properties_xml(
     word_doc: &WordDocument,
     paragraph_index: usize,
 ) -> Option<XmlElement> {
-    let paragraph_id = word_doc.paragraph(paragraph_index)?.node_id?;
-    let paragraph = word_doc.raw_document.as_ref()?.element(paragraph_id)?;
-    paragraph.children.iter().find_map(|child| match child {
-        XmlNode::Element(element) if element.name == "w:pPr" => Some(element.clone()),
-        _ => None,
-    })
+    let properties = |raw: &DocxXmlDocument, paragraph_id: XmlNodeId| {
+        raw.element(paragraph_id)?
+            .children
+            .iter()
+            .find_map(|child| match child {
+                XmlNode::Element(element) if element.name == "w:pPr" => Some(element.clone()),
+                _ => None,
+            })
+    };
+    if word_doc.is_note_paragraph_surface(paragraph_index) {
+        let (_, raw, paragraph_id) = word_doc.note_paragraph_xml(paragraph_index)?;
+        return properties(&raw, paragraph_id);
+    }
+    let paragraph_id = match word_doc.paragraph(paragraph_index)?.node_id {
+        Some(paragraph_id) => paragraph_id,
+        None => *word_doc
+            .text_box_paragraph_element_ids(paragraph_index)
+            .first()?,
+    };
+    properties(word_doc.raw_document.as_ref()?, paragraph_id)
 }
 
-/// Restores a previously captured raw `<w:pPr>` subtree exactly. `None`
-/// restores the absence of paragraph properties.
+/// Restores a previously captured raw `<w:pPr>` subtree exactly, wherever
+/// [`snapshot_paragraph_properties_xml`] read it. `None` restores the absence
+/// of paragraph properties.
 pub(crate) fn restore_paragraph_properties_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
     snapshot: Option<&XmlElement>,
 ) {
-    let Some(paragraph_id) = word_doc
-        .paragraph(paragraph_index)
-        .and_then(|paragraph| paragraph.node_id)
-    else {
+    let restore = |raw: &mut DocxXmlDocument, paragraph_id: XmlNodeId| {
+        let Some(paragraph) = raw.element_mut(paragraph_id) else {
+            return;
+        };
+        paragraph
+            .children
+            .retain(|child| !matches!(child, XmlNode::Element(element) if element.name == "w:pPr"));
+        if let Some(properties) = snapshot {
+            paragraph
+                .children
+                .insert(0, XmlNode::Element(properties.clone()));
+        }
+        raw.rebuild_index_for_subtree(paragraph_id);
+    };
+    if word_doc.is_note_paragraph_surface(paragraph_index) {
+        let _ = word_doc.update_note_paragraph_xml(paragraph_index, restore);
         return;
+    }
+    let Some(paragraph) = word_doc.paragraph(paragraph_index) else {
+        return;
+    };
+    let targets = match paragraph.node_id {
+        Some(paragraph_id) => vec![paragraph_id],
+        None => word_doc.text_box_paragraph_element_ids(paragraph_index),
     };
     let Some(raw) = word_doc.raw_document.as_mut() else {
         return;
     };
-    let Some(paragraph) = raw.element_mut(paragraph_id) else {
-        return;
-    };
-    paragraph
-        .children
-        .retain(|child| !matches!(child, XmlNode::Element(element) if element.name == "w:pPr"));
-    if let Some(properties) = snapshot {
-        paragraph
-            .children
-            .insert(0, XmlNode::Element(properties.clone()));
+    for paragraph_id in targets {
+        restore(raw, paragraph_id);
     }
-    raw.rebuild_index_for_subtree(paragraph_id);
 }
 
 fn insert_paragraph_property_child(paragraph_properties: &mut XmlElement, child: XmlElement) {
