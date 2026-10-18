@@ -353,6 +353,11 @@ pub trait CanvasRenderHost {
     /// invalidated on shrink/inflate. Default no-op.
     fn mark_page_rendered(&mut self, _page_index: usize) {}
 
+    /// Records that the given 0-based page's backing no longer holds pixels
+    /// for the current layout, so `page_has_rendered_pixels` reports `false`
+    /// until a render repaints it. Default no-op.
+    fn forget_page_pixels(&mut self, _page_index: usize) {}
+
     /// Diagnostic counters exposed through `debugRendererStats`:
     /// `(context_rebuilds, context_rebuild_skips, canvas_inflates,
     /// pages_seek_skipped, context_creations, context_creation_deferrals)`.
@@ -1933,6 +1938,14 @@ impl CanvasRenderHost for OffscreenRenderHost {
             .get(page_index - 1)
             .copied()
             .unwrap_or(false)
+    }
+
+    fn forget_page_pixels(&mut self, page_index: usize) {
+        if page_index == 0 {
+            self.base_has_pixels = false;
+        } else if let Some(flag) = self.page_materialized.get_mut(page_index - 1) {
+            *flag = false;
+        }
     }
 
     fn mark_page_rendered(&mut self, page_index: usize) {
