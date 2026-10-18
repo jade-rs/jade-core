@@ -11838,6 +11838,97 @@ mod tests {
     }
 
     #[test]
+    fn runs_moved_to_another_style_take_its_fonts_as_a_load_does() {
+        // A load fills a run's fonts slot by slot, from its paragraph style
+        // and the document defaults. A style change told inherited from
+        // direct fonts by matching them against the old style's, which such a
+        // run never does, nor did a run whose `w:rFonts` holds only a hint:
+        // both kept the old style's fonts on screen only.
+        let fonts = |word_doc: &WordDocument, paragraph: usize| {
+            word_doc
+                .paragraph(paragraph)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    let fonts = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.fonts.as_ref());
+                    (
+                        run.text.clone(),
+                        fonts.and_then(|fonts| fonts.ascii.as_deref().map(str::to_string)),
+                        fonts.and_then(|fonts| fonts.east_asia.as_deref().map(str::to_string)),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        for (fixture, command, paragraph) in [
+            (
+                // Heading 4 to the list style "1".
+                "numbering-by-style.docx",
+                HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 3,
+                    end_paragraph: 3,
+                    style_id: Some("1".to_string()),
+                },
+                3,
+            ),
+            (
+                // Joins a body paragraph into the heading before it.
+                "toc.docx",
+                HeadlessCommand::DeleteText {
+                    paragraph: 15,
+                    offset: 4,
+                    direction: jade_docx_headless_api::HeadlessDeleteDirection::Forward,
+                    count: 3,
+                },
+                15,
+            ),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("edit applies");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            let live: Vec<_> = fonts(&word_doc, paragraph)
+                .into_iter()
+                .filter(|(text, _, _)| !text.is_empty())
+                .collect();
+            let saved: Vec<_> = fonts(&reloaded, paragraph)
+                .into_iter()
+                .filter(|(text, _, _)| !text.is_empty())
+                .collect();
+            // The reload joins runs the edit left apart; compare by text.
+            let by_char = |runs: Vec<(String, Option<String>, Option<String>)>| {
+                runs.into_iter()
+                    .flat_map(|(text, ascii, east_asia)| {
+                        text.chars()
+                            .map(move |_| (ascii.clone(), east_asia.clone()))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(by_char(live), by_char(saved), "{fixture}");
+        }
+    }
+
+    #[test]
     fn formatting_split_twice_inside_a_hyperlink_writes_its_text_once() {
         // A run inside a w:hyperlink split by one format, then split again
         // by another: the second split's new piece was appended after the
