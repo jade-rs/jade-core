@@ -2239,6 +2239,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         None
     } else {
         crate::line_metrics::word_monospace_advance_px(font_descriptor, grapheme)
+            .or_else(|| crate::line_metrics::word_mac_emoji_advance_px(grapheme, font_descriptor))
     };
     let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
         (Some(width), _) => width,
