@@ -94,6 +94,7 @@ pub fn parse_sheet_with_relationships(
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     };
 
     let mut row: Option<Row> = None;

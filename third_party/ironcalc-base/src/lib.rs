@@ -40,6 +40,7 @@ pub mod language;
 pub mod locale;
 pub mod new_empty;
 pub mod number_format;
+pub mod phonetic;
 pub mod row_visibility;
 pub mod themes;
 pub mod types;

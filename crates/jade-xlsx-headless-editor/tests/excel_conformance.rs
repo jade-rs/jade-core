@@ -284,6 +284,9 @@ const CASES: &[(&str, Expect)] = &[
     ),
     ("HYPERLINK(\"https://example.com\",42)", N(42.0)),
     ("HYPERLINK(\"#Sheet1!A1\",B1)", S("apple")),
+    // PHONETIC: text typed without furigana reads as itself, a range joined.
+    ("PHONETIC(B1)", S("apple")),
+    ("PHONETIC(B1:B2)", S("applebanana")),
     ("JIS(\"a b\")", S("ａ　ｂ")),
     ("LENB(\"あいう\")", N(6.0)),
     ("LENB(\"abc\")", N(3.0)),

@@ -50,6 +50,7 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     }
 }
 

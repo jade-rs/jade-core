@@ -550,6 +550,7 @@ pub enum Function {
     Dbcs,
     Encodeurl,
     Hyperlink,
+    Phonetic,
 
     // Database
     Daverage,
@@ -584,6 +585,7 @@ fn jade_lookup(key: &str) -> Option<Function> {
         "DBCS" => Some(Function::Dbcs),
         "ENCODEURL" => Some(Function::Encodeurl),
         "HYPERLINK" => Some(Function::Hyperlink),
+        "PHONETIC" => Some(Function::Phonetic),
         _ => None,
     }
 }
@@ -1601,6 +1603,7 @@ impl Function {
             Function::Dbcs => "DBCS".to_string(),
             Function::Encodeurl => "ENCODEURL".to_string(),
             Function::Hyperlink => "HYPERLINK".to_string(),
+            Function::Phonetic => "PHONETIC".to_string(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1644,7 +1647,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 501> {
+    pub fn into_iter() -> IntoIter<Function, 502> {
         [
             Function::And,
             Function::False,
@@ -1985,6 +1988,7 @@ impl Function {
             Function::Dbcs,
             Function::Encodeurl,
             Function::Hyperlink,
+            Function::Phonetic,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2681,6 +2685,7 @@ impl<'a> Model<'a> {
             Function::Dbcs => self.fn_jis(args, cell),
             Function::Encodeurl => self.fn_encodeurl(args, cell),
             Function::Hyperlink => self.fn_hyperlink(args, cell),
+            Function::Phonetic => self.fn_phonetic(args, cell),
             Function::Datestring => self.fn_datestring(args, cell),
             Function::Numberstring => self.fn_numberstring(args, cell),
             Function::Acot => self.fn_acot(args, cell),

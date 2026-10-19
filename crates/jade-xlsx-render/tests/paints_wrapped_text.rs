@@ -86,6 +86,7 @@ fn wrapped_layout_with_height(
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     };
 
     layout_sheet(
@@ -223,6 +224,7 @@ fn a_cell_that_does_not_wrap_still_draws_one_line() {
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     };
     let layout = layout_sheet(
         &sheet,

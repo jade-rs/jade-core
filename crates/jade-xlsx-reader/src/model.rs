@@ -248,6 +248,10 @@ pub struct Sheet {
     /// output, which the file stores as plain values.
     #[serde(default)]
     pub array_formulas: Vec<ArrayFormula>,
+    /// The furigana Excel saved with text cells (`<rPh>`), as the reading
+    /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
+    #[serde(default)]
+    pub phonetic_readings: std::collections::BTreeMap<CellRef, String>,
 }
 
 /// An array formula: its anchor holds the formula, and the rest of `range`
