@@ -195,7 +195,12 @@ fn parse_document_nodes(xml: &str) -> Result<Vec<Node>> {
 fn direct_shapes<'a>(nodes: &'a [Node], parent: &Node, out: &mut Vec<&'a Node>) {
     for &index in &parent.children {
         let node = &nodes[index];
-        if node.is(1, "sp") || node.is(1, "pic") || node.is(1, "cxnSp") || node.is(1, "grpSp") {
+        if node.is(1, "sp")
+            || node.is(1, "pic")
+            || node.is(1, "cxnSp")
+            || node.is(1, "grpSp")
+            || node.is(1, "graphicFrame")
+        {
             out.push(node);
         } else if node.is(3, "AlternateContent") {
             if let Some(fallback) = child(nodes, node, 3, "Fallback") {
@@ -211,8 +216,11 @@ fn transform_info(nodes: &[Node], shape: &Node) -> Option<ShapeTransformInfo> {
         "pic" => ("nvPicPr", "cNvPicPr", "picLocks"),
         "cxnSp" => ("nvCxnSpPr", "cNvCxnSpPr", "cxnSpLocks"),
         "grpSp" => ("nvGrpSpPr", "cNvGrpSpPr", "grpSpLocks"),
+        "graphicFrame" => ("nvGraphicFramePr", "cNvGraphicFramePr", "graphicFrameLocks"),
         _ => return None,
     };
+    // A table, chart or diagram: its frame carries its own `p:xfrm`.
+    let frame = shape.name == "graphicFrame";
     let nv = child(nodes, shape, 1, nv_name)?;
     let identity = child(nodes, nv, 1, "cNvPr")?;
     let id = identity.attr("id")?.parse().ok()?;
@@ -223,18 +231,22 @@ fn transform_info(nodes: &[Node], shape: &Node) -> Option<ShapeTransformInfo> {
             .and_then(|locks| locks.attr(name))
             .is_some_and(|value| matches!(value, "1" | "true"))
     };
-    let transform = child(
-        nodes,
-        shape,
-        1,
-        if shape.name == "grpSp" {
-            "grpSpPr"
-        } else {
-            "spPr"
-        },
-    )
-    .and_then(|pr| child(nodes, pr, 2, "xfrm"))
-    .map(|xfrm| {
+    let xfrm = if frame {
+        child(nodes, shape, 1, "xfrm")
+    } else {
+        child(
+            nodes,
+            shape,
+            1,
+            if shape.name == "grpSp" {
+                "grpSpPr"
+            } else {
+                "spPr"
+            },
+        )
+        .and_then(|pr| child(nodes, pr, 2, "xfrm"))
+    };
+    let transform = xfrm.map(|xfrm| {
         let off = child(nodes, xfrm, 2, "off");
         let ext = child(nodes, xfrm, 2, "ext");
         let coord = |node: Option<&Node>, name| {
@@ -261,25 +273,48 @@ fn transform_info(nodes: &[Node], shape: &Node) -> Option<ShapeTransformInfo> {
             "group"
         } else if shape.name == "pic" {
             "picture"
+        } else if frame {
+            frame_kind(nodes, shape)
         } else {
             "shape"
         }
         .into(),
         transform,
         can_move: !locked("noMove"),
-        can_resize: !locked("noResize"),
-        can_rotate: !locked("noRot"),
+        // A frame moves; resizing a table would need its column widths to
+        // follow, and a diagram its drawing, so a frame keeps its size, and
+        // PowerPoint does not rotate one.
+        can_resize: !frame && !locked("noResize"),
+        can_rotate: !frame && !locked("noRot"),
         can_select: !locked("noSelect"),
         lock_aspect_ratio: locked("noChangeAspect"),
         can_duplicate: !locked("noSelect"),
         can_delete: !locked("noSelect"),
         can_arrange: !locked("noSelect"),
-        can_group: !locked("noSelect")
+        can_group: !frame
+            && !locked("noSelect")
             && !locked("noGrp")
             && child(nodes, nv, 1, "nvPr")
                 .and_then(|pr| child(nodes, pr, 1, "ph"))
                 .is_none(),
     })
+}
+
+/// What a graphic frame holds, by its `graphicData` URI.
+fn frame_kind(nodes: &[Node], frame: &Node) -> &'static str {
+    let uri = child(nodes, frame, 2, "graphic")
+        .and_then(|graphic| child(nodes, graphic, 2, "graphicData"))
+        .and_then(|data| data.attr("uri"))
+        .unwrap_or_default();
+    if uri.ends_with("/table") {
+        "table"
+    } else if uri.ends_with("/chart") {
+        "chart"
+    } else if uri.ends_with("/diagram") {
+        "diagram"
+    } else {
+        "frame"
+    }
 }
 
 fn shape_nodes(nodes: &[Node]) -> Vec<&Node> {
@@ -556,6 +591,11 @@ pub(crate) fn set_transform(
             ));
         }
         return Ok(apply_patches(xml, patches));
+    }
+    if shape.is(1, "graphicFrame") {
+        let xfrm = child(&nodes, shape, 1, "xfrm").ok_or(WriteError::NoShape(id))?;
+        let fragment = transform_xml(xml, &nodes, Some(xfrm), transform, xfrm.strict)?;
+        return Ok(apply_patches(xml, vec![(xfrm.outer.clone(), fragment)]));
     }
     let sp_pr = child(&nodes, shape, 1, "spPr");
     let xfrm = sp_pr.and_then(|pr| child(&nodes, pr, 2, "xfrm"));
