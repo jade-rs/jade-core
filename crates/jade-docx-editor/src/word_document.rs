@@ -471,6 +471,56 @@ fn rebase_run_style_properties(
     }
 }
 
+/// Clears the font properties a run is known to inherit, so the paragraph's
+/// new style fills them in again as a load does. Matching them against the
+/// old style's to tell inherited from direct fails where a load filled the
+/// fonts slot by slot from more than one source (a style's East Asian font
+/// and the document default's ASCII one): such a run kept the old style's
+/// fonts on screen only. Runs whose direct fonts are not known keep the
+/// comparison.
+fn release_inherited_fonts(run: &mut RunProperties, declared: impl Fn(&str) -> bool) {
+    let direct = run.direct_font_properties.clone();
+    if !direct.known {
+        return;
+    }
+    // A `w:rFonts` carrying only `w:hint` names no font: what the run names
+    // itself is the test, not the tag. Its hint stays, and the fonts are
+    // filled in around it.
+    let names_a_font = |fonts: &RunFonts| {
+        fonts.ascii.is_some()
+            || fonts.h_ansi.is_some()
+            || fonts.east_asia.is_some()
+            || fonts.complex.is_some()
+            || fonts.ascii_theme.is_some()
+            || fonts.h_ansi_theme.is_some()
+            || fonts.east_asia_theme.is_some()
+            || fonts.complex_theme.is_some()
+    };
+    if !direct.fonts.as_ref().is_some_and(names_a_font) {
+        run.fonts = direct.fonts.as_ref().map(|fonts| RunFonts {
+            hint: fonts.hint.clone(),
+            ..RunFonts::default()
+        });
+        run.font_family = None;
+    }
+    if direct.font_size.is_none() {
+        run.font_size = None;
+    }
+    if direct.font_size_complex.is_none() {
+        run.font_size_complex = None;
+    }
+    if direct.kerning.is_none() {
+        run.kerning = None;
+    }
+    if direct.text_scale.is_none() {
+        run.text_scale = None;
+    }
+    if !declared("w:lang") {
+        run.language = None;
+        run.east_asia_language = None;
+    }
+}
+
 /// A cell a table edit creates at `(row, cell)` and the cell it is formatted
 /// like, by XML id.
 struct CellTemplate {
@@ -1856,6 +1906,15 @@ impl RevisionDecision {
             Self::Reject
         }
     }
+}
+
+/// What [`WordDocument::split_paragraph_element`] copied into the new
+/// paragraph: each moved XML element mapped to its copy, and each run of a
+/// complex field mapped to the field's `begin` run.
+#[derive(Default)]
+struct SplitTailCopies {
+    copies: HashMap<XmlNodeId, XmlNodeId>,
+    field_begins: HashMap<XmlNodeId, XmlNodeId>,
 }
 
 // Some header/footer editing helpers are consumed only by the visual editor.
@@ -4210,10 +4269,14 @@ impl WordDocument {
         // formatting and the style: a numbered paragraph without its own
         // `w:ind` takes the level's left/hanging indent, not the style's.
         // Only the right indent, which levels do not define, flows through.
+        // `w:numId w:val="0"` is numbering taken off (a style's included),
+        // not a list: the paragraph keeps its style's indent, as the editor
+        // gives it when the numbering is removed.
         let numbered = target
             .numbering
             .as_ref()
-            .is_some_and(|numbering| numbering.id.is_some());
+            .and_then(|numbering| numbering.id.as_deref())
+            .is_some_and(|id| id != "0");
         match (&mut target.indent, fallback.indent.as_ref()) {
             (None, Some(fallback_indent)) => {
                 target.indent = Some(if numbered {
@@ -6226,10 +6289,15 @@ impl WordDocument {
     }
 
     #[allow(clippy::ptr_arg)]
+    /// Splits the paragraph at `path` in `elements` at `offset`. With
+    /// `zero_width`, the halves keep a complex field's code runs and whole
+    /// runs keep their XML ids, as a body paragraph's split does, for the
+    /// caller to bind them to the split XML; without, every run is rebuilt.
     fn split_paragraph_by_path(
         elements: &mut Vec<BodyElement>,
         path: &[PathEntry],
         offset: usize,
+        zero_width: Option<&ZeroWidthRuns>,
     ) -> bool {
         let (container, index) = match Self::locate_paragraph_container_mut(elements, path) {
             Some(value) => value,
@@ -6246,15 +6314,36 @@ impl WordDocument {
         let formatting_carrier =
             Self::formatting_carrier_run_near_offset(paragraph, clamped_offset);
 
-        let tail_runs = if clamped_offset == 0 {
-            let mut taken = std::mem::take(&mut paragraph.runs);
-            for run in &mut taken {
-                run.node_id = None;
-                run.text_node_id = None;
+        let tail_runs = match zero_width {
+            Some(zero_width) => {
+                let mut tail_runs = if clamped_offset == 0 {
+                    std::mem::take(&mut paragraph.runs)
+                } else {
+                    split_runs_at_preserving_source(&mut paragraph.runs, clamped_offset, zero_width)
+                };
+                let head_run_ids: HashSet<XmlNodeId> = paragraph
+                    .runs
+                    .iter()
+                    .filter_map(|run| run.node_id)
+                    .collect();
+                for run in &mut tail_runs {
+                    run.text_node_id = None;
+                    run.revision_node_id = None;
+                    if run.node_id.is_some_and(|id| head_run_ids.contains(&id)) {
+                        run.node_id = None;
+                    }
+                }
+                tail_runs
             }
-            taken
-        } else {
-            Self::split_runs(&mut paragraph.runs, clamped_offset)
+            None if clamped_offset == 0 => {
+                let mut taken = std::mem::take(&mut paragraph.runs);
+                for run in &mut taken {
+                    run.node_id = None;
+                    run.text_node_id = None;
+                }
+                taken
+            }
+            None => Self::split_runs(&mut paragraph.runs, clamped_offset),
         };
         Self::ensure_formatting_carrier_run(&mut paragraph.runs, formatting_carrier.as_ref());
 
@@ -6279,7 +6368,11 @@ impl WordDocument {
     fn load_part(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(package) = &self.package {
             if let Some(data) = package.get(path) {
-                let content = String::from_utf8_lossy(data).to_string();
+                // `from_utf8` validates far faster than `from_utf8_lossy`,
+                // which a multi-megabyte `document.xml` felt on every load.
+                let content = String::from_utf8(data.to_vec()).unwrap_or_else(|invalid| {
+                    String::from_utf8_lossy(invalid.as_bytes()).into_owned()
+                });
 
                 // Parse relationships for this part
                 let rels_path = self.get_relationships_path(path);
@@ -16690,13 +16783,21 @@ impl WordDocument {
         let comment_id =
             self.append_comment_to_part(&comments_part_path, &text, author, initials, date)?;
 
-        let reference_run_id = {
+        let (reference_run_id, inside_container) = {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            let (start_child_index, end_child_index) =
-                Self::locate_run_child_indices(raw, paragraph_id, start_run_id, end_run_id)?;
+            // A boundary inside a hyperlink or simple field is marked inside
+            // it, and the reference run follows the end marker there: the
+            // model puts the reference run among the container's runs, and a
+            // marker beside the container moved the range's end past the
+            // rest of it.
+            let start_parent_id = Self::run_container(raw, paragraph_id, start_run_id);
+            let end_parent_id = Self::run_container(raw, paragraph_id, end_run_id);
+            let inside_container = end_parent_id != paragraph_id;
+            let start_child_index =
+                Self::locate_single_run_child_index(raw, start_parent_id, start_run_id)?;
 
             let start_marker = raw.create_element(
                 "w:commentRangeStart",
@@ -16707,16 +16808,15 @@ impl WordDocument {
                 Vec::new(),
             );
             raw.insert_node(
-                paragraph_id,
+                start_parent_id,
                 start_child_index,
                 XmlNode::Element(start_marker),
             )
             .map_err(|err| err.to_string())?;
 
-            let mut end_insert_index = end_child_index.saturating_add(1);
-            if start_child_index <= end_child_index {
-                end_insert_index = end_insert_index.saturating_add(1);
-            }
+            let end_insert_index =
+                Self::locate_single_run_child_index(raw, end_parent_id, end_run_id)?
+                    .saturating_add(1);
             let end_marker = raw.create_element(
                 "w:commentRangeEnd",
                 vec![XmlAttribute {
@@ -16725,8 +16825,12 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(paragraph_id, end_insert_index, XmlNode::Element(end_marker))
-                .map_err(|err| err.to_string())?;
+            raw.insert_node(
+                end_parent_id,
+                end_insert_index,
+                XmlNode::Element(end_marker),
+            )
+            .map_err(|err| err.to_string())?;
 
             let comment_reference = raw.create_element(
                 "w:commentReference",
@@ -16738,13 +16842,15 @@ impl WordDocument {
             );
             let reference_run =
                 raw.create_element("w:r", Vec::new(), vec![XmlNode::Element(comment_reference)]);
-            raw.insert_node(
-                paragraph_id,
-                end_insert_index.saturating_add(1),
-                XmlNode::Element(reference_run),
-            )
-            .map_err(|err| err.to_string())?
-            .ok_or_else(|| "failed to insert comment reference run".to_string())?
+            let reference_run_id = raw
+                .insert_node(
+                    end_parent_id,
+                    end_insert_index.saturating_add(1),
+                    XmlNode::Element(reference_run),
+                )
+                .map_err(|err| err.to_string())?
+                .ok_or_else(|| "failed to insert comment reference run".to_string())?;
+            (reference_run_id, inside_container)
         };
 
         {
@@ -16770,6 +16876,19 @@ impl WordDocument {
                 .comment_markers
                 .sort_by_key(|marker| marker.position);
 
+            // The container's identity, so the sync writes the reference run
+            // in it rather than closing the container before it.
+            let (hyperlink, field) = match inside_container
+                .then(|| {
+                    paragraph
+                        .runs
+                        .get(end_run_index_exclusive.saturating_sub(1))
+                })
+                .flatten()
+            {
+                Some(end_run) => (end_run.hyperlink.clone(), end_run.field.clone()),
+                None => (None, None),
+            };
             paragraph.runs.insert(
                 end_run_index_exclusive.min(paragraph.runs.len()),
                 Run {
@@ -16778,8 +16897,8 @@ impl WordDocument {
                     image: None,
                     text_box: None,
                     math: None,
-                    field: None,
-                    hyperlink: None,
+                    field,
+                    hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
                     revision_node_id: None,
@@ -16898,17 +17017,26 @@ impl WordDocument {
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            let insert_index = match start_anchor_run_id {
+            // As in a single paragraph, a boundary inside a hyperlink or
+            // simple field is marked inside it.
+            let (start_parent_id, insert_index) = match start_anchor_run_id {
                 Some(run_id) => {
-                    Self::locate_single_run_child_index(raw, start_paragraph_id, run_id)?
+                    let parent = Self::run_container(raw, start_paragraph_id, run_id);
+                    (
+                        parent,
+                        Self::locate_single_run_child_index(raw, parent, run_id)?,
+                    )
                 }
-                None => match Self::paragraph_run_child_bounds(raw, start_paragraph_id) {
-                    Some((_, last)) => last.saturating_add(1),
-                    None => raw
-                        .element(start_paragraph_id)
-                        .map(|element| element.children.len())
-                        .unwrap_or(0),
-                },
+                None => (
+                    start_paragraph_id,
+                    match Self::paragraph_run_child_bounds(raw, start_paragraph_id) {
+                        Some((_, last)) => last.saturating_add(1),
+                        None => raw
+                            .element(start_paragraph_id)
+                            .map(|element| element.children.len())
+                            .unwrap_or(0),
+                    },
+                ),
             };
             let marker = raw.create_element(
                 "w:commentRangeStart",
@@ -16918,26 +17046,34 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(start_paragraph_id, insert_index, XmlNode::Element(marker))
+            raw.insert_node(start_parent_id, insert_index, XmlNode::Element(marker))
                 .map_err(|err| err.to_string())?;
         }
 
         // Insert commentRangeEnd + commentReference run in the end paragraph.
-        let reference_run_id = {
+        let (reference_run_id, inside_container) = {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-            let end_index = match end_anchor_run_id {
-                Some(run_id) => Self::locate_single_run_child_index(raw, end_paragraph_id, run_id)?
-                    .saturating_add(1),
-                None => match Self::paragraph_run_child_bounds(raw, end_paragraph_id) {
-                    Some((first, _)) => first,
-                    None => raw
-                        .element(end_paragraph_id)
-                        .map(|element| element.children.len())
-                        .unwrap_or(0),
-                },
+            let (end_parent_id, end_index) = match end_anchor_run_id {
+                Some(run_id) => {
+                    let parent = Self::run_container(raw, end_paragraph_id, run_id);
+                    (
+                        parent,
+                        Self::locate_single_run_child_index(raw, parent, run_id)?.saturating_add(1),
+                    )
+                }
+                None => (
+                    end_paragraph_id,
+                    match Self::paragraph_run_child_bounds(raw, end_paragraph_id) {
+                        Some((first, _)) => first,
+                        None => raw
+                            .element(end_paragraph_id)
+                            .map(|element| element.children.len())
+                            .unwrap_or(0),
+                    },
+                ),
             };
             let end_marker = raw.create_element(
                 "w:commentRangeEnd",
@@ -16947,7 +17083,7 @@ impl WordDocument {
                 }],
                 Vec::new(),
             );
-            raw.insert_node(end_paragraph_id, end_index, XmlNode::Element(end_marker))
+            raw.insert_node(end_parent_id, end_index, XmlNode::Element(end_marker))
                 .map_err(|err| err.to_string())?;
 
             let comment_reference = raw.create_element(
@@ -16960,13 +17096,15 @@ impl WordDocument {
             );
             let reference_run =
                 raw.create_element("w:r", Vec::new(), vec![XmlNode::Element(comment_reference)]);
-            raw.insert_node(
-                end_paragraph_id,
-                end_index.saturating_add(1),
-                XmlNode::Element(reference_run),
-            )
-            .map_err(|err| err.to_string())?
-            .ok_or_else(|| "failed to insert comment reference run".to_string())?
+            let reference_run_id = raw
+                .insert_node(
+                    end_parent_id,
+                    end_index.saturating_add(1),
+                    XmlNode::Element(reference_run),
+                )
+                .map_err(|err| err.to_string())?
+                .ok_or_else(|| "failed to insert comment reference run".to_string())?;
+            (reference_run_id, end_parent_id != end_paragraph_id)
         };
 
         // Annotate the in-memory model so highlighting / queries are correct
@@ -17002,6 +17140,13 @@ impl WordDocument {
             paragraph
                 .comment_markers
                 .sort_by_key(|marker| marker.position);
+            let (hyperlink, field) = match inside_container
+                .then(|| paragraph.runs.get(end_left_run_count.saturating_sub(1)))
+                .flatten()
+            {
+                Some(end_run) => (end_run.hyperlink.clone(), end_run.field.clone()),
+                None => (None, None),
+            };
             paragraph.runs.insert(
                 end_left_run_count.min(paragraph.runs.len()),
                 Run {
@@ -17010,8 +17155,8 @@ impl WordDocument {
                     image: None,
                     text_box: None,
                     math: None,
-                    field: None,
-                    hyperlink: None,
+                    field,
+                    hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
                     revision_node_id: None,
@@ -27300,6 +27445,32 @@ impl WordDocument {
         }
     }
 
+    /// The innermost `w:hyperlink` or `w:fldSimple` under `paragraph_id`
+    /// that holds `run_id`, or the paragraph itself.
+    fn run_container(
+        raw: &DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        run_id: XmlNodeId,
+    ) -> XmlNodeId {
+        let mut container = paragraph_id;
+        let Some(mut parent) = raw.element(paragraph_id) else {
+            return container;
+        };
+        while let Some(inner) = parent.children.iter().find_map(|child| match child {
+            XmlNode::Element(element)
+                if matches!(element.name.as_str(), "w:hyperlink" | "w:fldSimple")
+                    && Self::child_contains_run_id(child, run_id) =>
+            {
+                Some(element)
+            }
+            _ => None,
+        }) {
+            container = inner.id;
+            parent = inner;
+        }
+        container
+    }
+
     fn locate_run_child_indices(
         raw: &DocxXmlDocument,
         paragraph_id: XmlNodeId,
@@ -27619,11 +27790,16 @@ impl WordDocument {
     /// a run whose text the edit deleted still points at its `w:t`, and is
     /// not one of them.
     ///
-    /// Only a body paragraph is read: a text box or note paragraph is synced
-    /// by other paths, and its zero-width runs go as before.
+    /// A body or text box paragraph is read. A note paragraph's part is
+    /// re-read on every edit, so its runs are bound to nothing to read from.
+    /// Left out, a text box paragraph lost a complex field's code runs on any
+    /// formatting edit, and its result was saved as plain text.
     pub(crate) fn zero_width_runs(&self, index: usize) -> ZeroWidthRuns {
         let mut zero_width = ZeroWidthRuns::default();
-        if !self.is_body_paragraph_surface(index) {
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. })
+        ) {
             return zero_width;
         }
         let (Some(raw), Some(paragraph)) = (self.raw_document.as_ref(), self.paragraph(index))
@@ -28269,6 +28445,20 @@ impl WordDocument {
         }
     }
 
+    /// How many text box paragraphs body paragraph `index` hosts: removing
+    /// it takes their surfaces too.
+    pub(crate) fn hosted_text_box_surface_count(&self, index: usize) -> usize {
+        let Some(ParagraphSurface::Body { path }) = self.paragraph_surfaces.get(index) else {
+            return 0;
+        };
+        self.paragraph_surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(surface, ParagraphSurface::TextBox { host_path, .. } if host_path == path)
+            })
+            .count()
+    }
+
     pub fn remove_paragraph_at(&mut self, index: usize) -> bool {
         let surface = match self.paragraph_surfaces.get(index).cloned() {
             Some(surface) => surface,
@@ -28527,6 +28717,9 @@ impl WordDocument {
                     _ => return false,
                 };
 
+                // A complex field's code runs are empty in the model; the
+                // split keeps them so the field stays whole on its side.
+                let zero_width = self.zero_width_runs(surface_index);
                 let source_node_id = {
                     let Some(doc) = self.document_mut() else {
                         return false;
@@ -28541,6 +28734,7 @@ impl WordDocument {
                         &mut remaining,
                         offset,
                         true,
+                        &zero_width,
                     );
 
                     let Some(result) = split_result else {
@@ -28559,10 +28753,10 @@ impl WordDocument {
                         (Some(raw), Some(source_node_id)) => {
                             match Self::split_paragraph_element(raw, source_node_id, offset) {
                                 Some((new_node_id, copies)) => (Some(new_node_id), copies),
-                                None => (None, HashMap::new()),
+                                None => (None, SplitTailCopies::default()),
                             }
                         }
-                        _ => (None, HashMap::new()),
+                        _ => (None, SplitTailCopies::default()),
                     };
 
                 if !self.update_paragraph_surfaces_after_body_split(surface_index, &original_path) {
@@ -28611,7 +28805,10 @@ impl WordDocument {
                     .and_then(|body| Self::locate_paragraph(&body.elements, &host_path))
                     .and_then(|paragraph| paragraph.runs.get(run_index))
                     .and_then(|run| run.node_id);
-                let mut tail_run_copies = HashMap::new();
+                // A field's code runs are empty in the model; read which
+                // before the split, as a body paragraph's does.
+                let zero_width = self.zero_width_runs(index);
+                let mut tail_run_copies = SplitTailCopies::default();
                 if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
                     let mut content_ids = Vec::new();
                     if let Some(run_element) = raw.element(run_id) {
@@ -28645,7 +28842,12 @@ impl WordDocument {
                     return false;
                 };
 
-                if !Self::split_paragraph_by_path(&mut text_box.blocks, &block_path, offset) {
+                if !Self::split_paragraph_by_path(
+                    &mut text_box.blocks,
+                    &block_path,
+                    offset,
+                    Some(&zero_width),
+                ) {
                     return false;
                 }
 
@@ -28724,7 +28926,7 @@ impl WordDocument {
                         marker.has_endnote_ref = kind == NoteKind::Endnote;
                         marker
                     });
-                if !Self::split_paragraph_by_path(&mut note.body, &path, offset) {
+                if !Self::split_paragraph_by_path(&mut note.body, &path, offset, None) {
                     return false;
                 }
                 if let Some(marker) = marker {
@@ -28795,12 +28997,40 @@ impl WordDocument {
             Some(paragraph) => paragraph,
             None => return false,
         };
+        // A footnote is listed after the paragraph that references it, which
+        // after the split may be either half; the full rebuild places it.
+        // Kept where it was, a footnote the first half references went after
+        // the second half, and every note paragraph's index differed from a
+        // reload.
+        if [original_paragraph, new_paragraph]
+            .iter()
+            .any(|paragraph| !Self::paragraph_footnote_reference_ids(paragraph).is_empty())
+        {
+            return false;
+        }
 
         // The split paragraph's own text boxes follow it and are enumerated
         // again below; everything after them stays. Looking for the next body
         // paragraph instead dropped the notes, which follow the last one, when
         // the last paragraph was split: the paragraph count then disagreed
         // with the next full rebuild and a later join failed half-applied.
+        let mut original_text_boxes = Vec::new();
+        let original_host_path = original_path.to_vec();
+        Self::enumerate_paragraph_text_boxes(
+            original_paragraph,
+            &original_host_path,
+            &mut original_text_boxes,
+        );
+        // An equation in a text box is listed as a math surface, which names
+        // no host: the patch below cannot tell it from what follows the
+        // paragraph, kept it, and listed it twice.
+        if original_text_boxes
+            .iter()
+            .any(|surface| matches!(surface, ParagraphSurface::Math))
+        {
+            return false;
+        }
+
         let next_body_index = self.paragraph_surfaces[surface_index + 1..]
             .iter()
             .position(|surface| {
@@ -28813,13 +29043,6 @@ impl WordDocument {
         let mut updated = Vec::with_capacity(self.paragraph_surfaces.len() + 1);
         updated.extend_from_slice(&self.paragraph_surfaces[..=surface_index]);
 
-        let mut original_text_boxes = Vec::new();
-        let original_host_path = original_path.to_vec();
-        Self::enumerate_paragraph_text_boxes(
-            original_paragraph,
-            &original_host_path,
-            &mut original_text_boxes,
-        );
         updated.extend(original_text_boxes);
 
         updated.push(ParagraphSurface::Body {
@@ -29003,6 +29226,7 @@ impl WordDocument {
         remaining: &mut usize,
         offset: usize,
         track_body_index: bool,
+        zero_width: &ZeroWidthRuns,
     ) -> Option<SplitInfo> {
         let mut index = 0usize;
         while index < elements.len() {
@@ -29019,7 +29243,11 @@ impl WordDocument {
                         let mut tail_runs = if clamped_offset == 0 {
                             std::mem::take(&mut paragraph.runs)
                         } else {
-                            Self::split_runs_keeping_ids(&mut paragraph.runs, clamped_offset)
+                            split_runs_at_preserving_source(
+                                &mut paragraph.runs,
+                                clamped_offset,
+                                zero_width,
+                            )
                         };
 
                         // Whole runs keep the id of their XML run, for
@@ -29120,9 +29348,12 @@ impl WordDocument {
                     index += 1;
                 }
                 BodyElement::Table(table) => {
-                    if let Some(info) =
-                        Self::split_paragraph_in_table(table.as_mut(), remaining, offset)
-                    {
+                    if let Some(info) = Self::split_paragraph_in_table(
+                        table.as_mut(),
+                        remaining,
+                        offset,
+                        zero_width,
+                    ) {
                         return Some(info);
                     }
                     index += 1;
@@ -29141,12 +29372,17 @@ impl WordDocument {
         table: &mut Table,
         remaining: &mut usize,
         offset: usize,
+        zero_width: &ZeroWidthRuns,
     ) -> Option<SplitInfo> {
         for row in &mut table.rows {
             for cell in &mut row.cells {
-                if let Some(info) =
-                    Self::split_paragraph_in_elements(&mut cell.blocks, remaining, offset, false)
-                {
+                if let Some(info) = Self::split_paragraph_in_elements(
+                    &mut cell.blocks,
+                    remaining,
+                    offset,
+                    false,
+                    zero_width,
+                ) {
                     return Some(info);
                 }
             }
@@ -29428,7 +29664,7 @@ impl WordDocument {
         raw: &mut DocxXmlDocument,
         paragraph_id: XmlNodeId,
         offset: usize,
-    ) -> Option<(XmlNodeId, HashMap<XmlNodeId, XmlNodeId>)> {
+    ) -> Option<(XmlNodeId, SplitTailCopies)> {
         let parent_id = raw.parent_id(paragraph_id)?;
         let path = raw.path(paragraph_id)?;
         let mut original = raw.element(paragraph_id).cloned()?;
@@ -29440,6 +29676,7 @@ impl WordDocument {
         if let Some(source) = raw.element_mut(paragraph_id) {
             source.children = head_children;
         }
+        let field_begins = Self::complex_field_begins(&tail_children);
         original.children = tail_children;
         let tail = original.clone();
         let insert_index = path
@@ -29461,7 +29698,57 @@ impl WordDocument {
         if let Some(copy) = raw.element(new_node_id) {
             Self::pair_copied_element_ids(&tail, copy, &mut copies);
         }
-        Some((new_node_id, copies))
+        Some((
+            new_node_id,
+            SplitTailCopies {
+                copies,
+                field_begins,
+            },
+        ))
+    }
+
+    /// Each run of a complex field among `children`, from its `begin` to its
+    /// `end`, mapped to the outermost field's `begin` run.
+    fn complex_field_begins(children: &[XmlNode]) -> HashMap<XmlNodeId, XmlNodeId> {
+        let mut begins = HashMap::new();
+        let mut open: Vec<XmlNodeId> = Vec::new();
+        for run_id in Self::bindable_run_ids(children) {
+            let Some(XmlNode::Element(run)) = children
+                .iter()
+                .find_map(|child| Self::find_element_node(child, run_id))
+            else {
+                continue;
+            };
+            let fld_char = run.children.iter().find_map(|child| match child {
+                XmlNode::Element(element) if element.name == "w:fldChar" => element
+                    .attributes
+                    .iter()
+                    .find(|attr| attr.name == "w:fldCharType")
+                    .map(|attr| attr.value.as_str()),
+                _ => None,
+            });
+            if fld_char == Some("begin") {
+                open.push(run_id);
+            }
+            if let Some(&outermost) = open.first() {
+                begins.insert(run_id, outermost);
+            }
+            if fld_char == Some("end") {
+                open.pop();
+            }
+        }
+        begins
+    }
+
+    fn find_element_node(node: &XmlNode, id: XmlNodeId) -> Option<&XmlNode> {
+        match node {
+            XmlNode::Element(element) if element.id == id => Some(node),
+            XmlNode::Element(element) => element
+                .children
+                .iter()
+                .find_map(|child| Self::find_element_node(child, id)),
+            _ => None,
+        }
     }
 
     fn pair_copied_element_ids(
@@ -29486,20 +29773,31 @@ impl WordDocument {
     /// comment's range ended after its reference mark. A run with no copy
     /// (none was made, or it sits in a container) is still rebuilt, as is a
     /// field result: the split drops a complex field's `w:fldChar` runs, and
-    /// rebuilding the result writes the field back as a simple one.
+    /// rebuilding the result writes the field back as a simple one. A field
+    /// that moved whole, from its `begin` on, keeps its runs: rebuilt, its
+    /// result run dropped the `end`, and the open field hid the paragraphs
+    /// after it.
     ///
     /// A text box moves with its paragraphs, bound to their copies inside
     /// it. Rebuilt from the model instead, it lost its paragraphs' styles and
     /// wrote their inherited fonts into its runs.
-    fn bind_split_tail_runs(runs: &mut [Run], copies: &HashMap<XmlNodeId, XmlNodeId>) {
+    fn bind_split_tail_runs(runs: &mut [Run], tail: &SplitTailCopies) {
+        let moved: HashSet<XmlNodeId> = runs.iter().filter_map(|run| run.node_id).collect();
+        let field_moved_whole = |id: &XmlNodeId| {
+            tail.field_begins
+                .get(id)
+                .is_some_and(|begin| moved.contains(begin))
+        };
         for run in runs {
             run.node_id = match run.node_id {
-                Some(id) if run.field.is_none() => copies.get(&id).copied(),
+                Some(id) if run.field.is_none() || field_moved_whole(&id) => {
+                    tail.copies.get(&id).copied()
+                }
                 _ => None,
             };
             if let Some(text_box) = run.text_box.as_mut() {
                 if run.node_id.is_some() {
-                    Self::bind_copied_blocks(&mut text_box.blocks, copies);
+                    Self::bind_copied_blocks(&mut text_box.blocks, &tail.copies);
                 }
             }
         }
@@ -29898,16 +30196,29 @@ impl WordDocument {
     }
 
     /// Puts back what [`Self::remove_paragraph_run_properties`] removed.
-    pub(crate) fn restore_paragraph_run_properties(&mut self, removed: RemovedRunProperties) {
+    /// Returns whether everything went back: a `w:rPr` rebuilt since is gone,
+    /// and what came out of it with it.
+    pub(crate) fn restore_paragraph_run_properties(
+        &mut self,
+        removed: RemovedRunProperties,
+    ) -> bool {
         let Some(raw) = self.raw_document.as_mut() else {
-            return;
+            return removed.0.is_empty();
         };
+        let mut restored = true;
         for (properties_id, nodes) in removed.0 {
+            if raw.element(properties_id).is_none() {
+                restored = false;
+                continue;
+            }
             // Ascending, so each node lands back at its original position.
             for (index, node) in nodes {
-                let _ = raw.insert_node_preserving_ids(properties_id, index, node);
+                restored &= raw
+                    .insert_node_preserving_ids(properties_id, index, node)
+                    .is_ok();
             }
         }
+        restored
     }
 
     /// Gives the runs at `runs` of `paragraph_index`, which were styled by
@@ -29927,6 +30238,11 @@ impl WordDocument {
         runs: std::ops::Range<usize>,
         previous_style: Option<&str>,
     ) {
+        // A run's fonts hold the theme's font names, resolved at load; the
+        // styles name the theme's fonts by key. Compared unresolved, a run's
+        // fonts never matched the old style's, so a heading turned body text
+        // kept the heading's fonts on screen only.
+        let theme = self.loaded_theme_part();
         let Some(styles) = self.styles_part.as_ref() else {
             return;
         };
@@ -29954,15 +30270,20 @@ impl WordDocument {
                 style: props.style.clone(),
                 ..Default::default()
             };
-            let old = styles
+            let mut old = styles
                 .resolve_effective_run_properties(previous_style, Some(&character))
                 .unwrap_or_default();
-            let new = styles
+            let mut new = styles
                 .resolve_effective_run_properties(style, Some(&character))
                 .unwrap_or_default();
+            if let Some(theme) = theme.as_ref() {
+                Self::apply_theme_fonts_to_run_props(&mut old, theme);
+                Self::apply_theme_fonts_to_run_props(&mut new, theme);
+            }
             let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
+            release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
             restyled.push((index, props));
         }
         let restyled_any = !restyled.is_empty();
@@ -29972,8 +30293,11 @@ impl WordDocument {
             }
         }
         if restyled_any {
-            if let Some(theme) = self.loaded_theme_part() {
-                self.apply_theme_fonts_at(paragraph_index, &theme);
+            // What the runs inherit is filled in again from the new style,
+            // the way a load fills it.
+            self.apply_run_font_defaults_at(paragraph_index);
+            if let Some(theme) = theme.as_ref() {
+                self.apply_theme_fonts_at(paragraph_index, theme);
             }
         }
     }
@@ -33212,6 +33536,14 @@ impl WordDocument {
             match element {
                 BodyElement::Paragraph(paragraph) => {
                     Self::capture_preserved_run_props_in_paragraph(paragraph, raw);
+                    // A text box's runs are bound to its `w:txbxContent` like
+                    // any other: left out, every font they inherit counted as
+                    // their own, and typing in the box wrote it into them.
+                    for run in paragraph.runs.iter_mut() {
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::capture_preserved_run_props(&mut text_box.blocks, raw);
+                        }
+                    }
                 }
                 BodyElement::Table(table) => {
                     for row in table.rows.iter_mut() {
@@ -33270,6 +33602,9 @@ impl WordDocument {
                     for run in paragraph.runs.iter_mut() {
                         if let Some(props) = run.properties.as_mut() {
                             props.capture_direct_font_properties();
+                        }
+                        if let Some(text_box) = run.text_box.as_mut() {
+                            Self::capture_direct_run_fonts(&mut text_box.blocks);
                         }
                     }
                 }
@@ -33387,6 +33722,11 @@ impl WordDocument {
         raw: &DocxXmlDocument,
     ) {
         for run in paragraph.runs.iter_mut() {
+            // Only the parser's page-break character is hidden; a run without
+            // one has nothing to look up.
+            if !run.text.contains(PAGE_BREAK_CHAR) {
+                continue;
+            }
             let Some(node_id) = run.node_id else {
                 continue;
             };
@@ -33835,7 +34175,23 @@ impl WordDocument {
                             while run_index < runs.len() {
                                 if let Some(run_id) = runs[run_index].node_id {
                                     if !Self::element_contains_run_id(&container, run_id) {
-                                        break;
+                                        let elsewhere = tokens.iter().any(|token| match token {
+                                            ChildToken::RunElement(element) => element.id == run_id,
+                                            ChildToken::NonRun(XmlNode::Element(element)) => {
+                                                Self::element_contains_run_id(element, run_id)
+                                            }
+                                            ChildToken::NonRun(_) => false,
+                                        });
+                                        if elsewhere {
+                                            break;
+                                        }
+                                        // Its element is gone: undoing a deletion
+                                        // puts the run back before its XML. It is a
+                                        // new piece of this container, not the end
+                                        // of it; ending here wrote it and every run
+                                        // after it outside, a field result twice.
+                                        runs[run_index].node_id = None;
+                                        continue;
                                     }
                                     let Some((updated_container, updated_run_id, text_id)) =
                                         Self::update_run_in_container(
@@ -45005,6 +45361,7 @@ mod tests {
         let mut styled_size = None;
         let mut doc_default_size = None;
         let mut explicit_size = None;
+        let mut explicit_complex_size = None;
 
         for element in &body.elements {
             if let Some(paragraph) = element.as_paragraph() {
@@ -45022,11 +45379,12 @@ mod tests {
                         .and_then(|run| run.properties.as_ref())
                         .and_then(|props| props.font_size);
                 } else if text.contains("Explicit") {
-                    explicit_size = paragraph
+                    let props = paragraph
                         .runs
                         .first()
-                        .and_then(|run| run.properties.as_ref())
-                        .and_then(|props| props.font_size);
+                        .and_then(|run| run.properties.as_ref());
+                    explicit_size = props.and_then(|props| props.font_size);
+                    explicit_complex_size = props.and_then(|props| props.font_size_complex);
                 }
             }
         }
@@ -45041,11 +45399,15 @@ mod tests {
             Some(11.0),
             "paragraphs without run or style overrides should inherit doc defaults"
         );
+        // `w:szCs` sizes complex-script text only. Word for Mac draws a run
+        // that declares `w:szCs` alone at the inherited `w:sz`, Latin and
+        // Japanese text alike.
         assert_eq!(
             explicit_size,
-            Some(15.0),
-            "direct szCs declarations should still win over style/doc defaults"
+            Some(11.0),
+            "a direct szCs alone leaves the run's size to the doc defaults"
         );
+        assert_eq!(explicit_complex_size, Some(15.0));
     }
 
     #[test]
@@ -48511,9 +48873,8 @@ mod tests {
         }
     }
 
-    /// A field the split moves into the new paragraph stays a field. The
-    /// split drops a complex field's `w:fldChar` runs, so its result run is
-    /// rebuilt as a simple field rather than kept as plain text.
+    /// A field the split moves into the new paragraph stays a field, with
+    /// the `w:fldChar` and `w:instrText` runs it was written with.
     #[test]
     fn split_paragraph_keeps_a_field_it_moves() {
         let data = build_document_docx(
@@ -48525,7 +48886,12 @@ mod tests {
         assert!(word_doc.split_paragraph_at(0, 1));
         let xml = exported_document_xml(&word_doc);
         let tail = &xml[xml.find("</w:p><w:p").expect("two paragraphs")..];
-        assert!(tail.contains(r#"w:instr=" PAGE ""#), "{xml}");
+        assert!(
+            tail.contains(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            ),
+            "{xml}"
+        );
     }
 
     #[test]
@@ -49970,8 +50336,12 @@ mod tests {
                 .iter()
                 .map(|run| run.text.as_str())
                 .collect::<String>();
+            // A footnote the head references is listed right after it.
+            let tail_index = (1..doc.paragraph_count())
+                .find(|&index| doc.is_body_paragraph_surface(index))
+                .unwrap();
             let tail = doc
-                .paragraph(1)
+                .paragraph(tail_index)
                 .unwrap()
                 .runs
                 .iter()

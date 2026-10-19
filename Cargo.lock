@@ -1639,6 +1639,7 @@ dependencies = [
 name = "jade-docx-writer"
 version = "0.1.0"
 dependencies = [
+ "memchr",
  "thiserror",
  "zip 8.6.0",
 ]

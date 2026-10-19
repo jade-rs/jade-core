@@ -194,9 +194,10 @@ pub fn repair_markup_compatibility_prefixes(xml: &[u8]) -> Option<Vec<u8>> {
 /// The rewritten root start tag alone; `None` when the part is consistent.
 /// See [`repair_markup_compatibility_prefixes`] for the semantics.
 pub fn repair_markup_compatibility_root_tag(xml: &[u8]) -> Option<RepairedRootTag> {
-    let text = std::str::from_utf8(xml).ok()?;
-    let root = root_start_tag(text)?;
-    let tag = &text[root.start..root.end];
+    // Only the tags read below are decoded: validating a multi-megabyte
+    // `document.xml` as UTF-8 on every export cost more than the scan.
+    let root = root_start_tag(xml)?;
+    let tag = std::str::from_utf8(&xml[root.start..root.end]).ok()?;
     let attributes = parse_attributes(tag);
 
     let declared: Vec<&str> = attributes
@@ -223,8 +224,11 @@ pub fn repair_markup_compatibility_root_tag(xml: &[u8]) -> Option<RepairedRootTa
     // `Requires` sits on `mc:Choice` deep in the body. A part that never
     // declares `mc` cannot contain one, so skip the whole-part scan for it.
     if declared.contains(&"mc") {
-        for choice in element_start_tags(text, "mc:Choice") {
-            for attribute in parse_attributes(&text[choice.start..choice.end]) {
+        for choice in element_start_tags(xml, "mc:Choice") {
+            let Ok(choice) = std::str::from_utf8(&xml[choice.start..choice.end]) else {
+                continue;
+            };
+            for attribute in parse_attributes(choice) {
                 if attribute.name == "Requires" || attribute.name == "mc:Requires" {
                     push_tokens(&attribute.value);
                 }
@@ -298,19 +302,19 @@ struct Span {
 
 /// Byte span of the root element's start tag, including `<` and `>`; skips
 /// the XML declaration, comments and processing instructions before it.
-fn root_start_tag(text: &str) -> Option<Span> {
+fn root_start_tag(xml: &[u8]) -> Option<Span> {
     let mut cursor = 0;
-    while let Some(offset) = text[cursor..].find('<') {
+    while let Some(offset) = memchr::memchr(b'<', &xml[cursor..]) {
         let start = cursor + offset;
-        let rest = &text[start..];
-        if rest.starts_with("<?") {
-            cursor = start + rest.find("?>")? + 2;
-        } else if rest.starts_with("<!--") {
-            cursor = start + rest.find("-->")? + 3;
-        } else if rest.starts_with("<!") {
-            cursor = start + rest.find('>')? + 1;
+        let rest = &xml[start..];
+        if rest.starts_with(b"<?") {
+            cursor = start + memchr::memmem::find(rest, b"?>")? + 2;
+        } else if rest.starts_with(b"<!--") {
+            cursor = start + memchr::memmem::find(rest, b"-->")? + 3;
+        } else if rest.starts_with(b"<!") {
+            cursor = start + memchr::memchr(b'>', rest)? + 1;
         } else {
-            let end = start_tag_end(text, start)?;
+            let end = start_tag_end(xml, start)?;
             return Some(Span { start, end });
         }
     }
@@ -318,18 +322,18 @@ fn root_start_tag(text: &str) -> Option<Span> {
 }
 
 /// Every start tag named `name` in document order.
-fn element_start_tags<'a>(text: &'a str, name: &'a str) -> impl Iterator<Item = Span> + 'a {
-    let needle = format!("<{name}");
+fn element_start_tags<'a>(xml: &'a [u8], name: &str) -> impl Iterator<Item = Span> + 'a {
+    let needle = format!("<{name}").into_bytes();
+    let finder = memchr::memmem::Finder::new(&needle).into_owned();
     let mut cursor = 0;
     std::iter::from_fn(move || {
         loop {
-            let offset = text[cursor..].find(&needle)?;
-            let start = cursor + offset;
-            let after = text[start + needle.len()..].chars().next();
+            let start = cursor + finder.find(&xml[cursor..])?;
+            let after = xml.get(start + needle.len()).copied();
             let is_boundary =
-                matches!(after, Some(c) if c.is_ascii_whitespace() || c == '/' || c == '>');
+                matches!(after, Some(c) if c.is_ascii_whitespace() || c == b'/' || c == b'>');
             if is_boundary {
-                let end = start_tag_end(text, start)?;
+                let end = start_tag_end(xml, start)?;
                 cursor = end;
                 return Some(Span { start, end });
             }
@@ -340,9 +344,9 @@ fn element_start_tags<'a>(text: &'a str, name: &'a str) -> impl Iterator<Item = 
 
 /// End (exclusive) of the start tag beginning at `start`, honouring quoted
 /// attribute values that may contain `>`.
-fn start_tag_end(text: &str, start: usize) -> Option<usize> {
+fn start_tag_end(xml: &[u8], start: usize) -> Option<usize> {
     let mut quote: Option<u8> = None;
-    for (index, byte) in text.as_bytes().iter().enumerate().skip(start + 1) {
+    for (index, byte) in xml.iter().enumerate().skip(start + 1) {
         match quote {
             Some(open) => {
                 if *byte == open {
@@ -488,6 +492,27 @@ mod tests {
             " xmlns:wpg=\"http://schemas.microsoft.com/office/word/2010/wordprocessingGroup\""
         ));
         assert!(repaired.contains("<mc:Choice Requires=\"wpg\">"));
+    }
+
+    /// The scan reads the part as bytes and decodes only the tags it looks
+    /// at, so text it never reads does not have to be valid UTF-8, and a
+    /// longer name that starts with `mc:Choice` is not a choice.
+    #[test]
+    fn scans_choices_without_decoding_the_rest_of_the_part() {
+        let mut xml =
+            format!("<w:document xmlns:w=\"{W}\" xmlns:mc=\"{MC}\"><w:body><w:p><w:r><w:t>")
+                .into_bytes();
+        xml.extend_from_slice(&[0xff, 0xfe]);
+        xml.extend_from_slice(
+            b"</w:t><mc:Choicer Requires=\"w16\"/>\
+              <mc:AlternateContent><mc:Choice Requires=\"wps\"/><mc:Fallback/></mc:AlternateContent>\
+              </w:r></w:p></w:body></w:document>",
+        );
+        let root = repair_markup_compatibility_root_tag(&xml).expect("repaired");
+        let tag = std::str::from_utf8(&root.tag).expect("tag");
+        assert!(tag.contains(" xmlns:wps="), "{tag}");
+        assert!(!tag.contains(" xmlns:w16="), "{tag}");
+        assert_eq!(root.range.start, 0);
     }
 
     #[test]

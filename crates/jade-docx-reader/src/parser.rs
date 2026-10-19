@@ -1538,9 +1538,6 @@ impl DocumentParser {
                                                 &mut current_run_props,
                                                 |props| {
                                                     props.font_size_complex = Some(size);
-                                                    if props.font_size.is_none() {
-                                                        props.font_size = Some(size);
-                                                    }
                                                 },
                                             );
                                         }
@@ -2968,9 +2965,6 @@ impl DocumentParser {
                                             &mut current_run_props,
                                             |props| {
                                                 props.font_size_complex = Some(size);
-                                                if props.font_size.is_none() {
-                                                    props.font_size = Some(size);
-                                                }
                                             },
                                         );
                                     }
@@ -12085,8 +12079,8 @@ mod tests {
     #[test]
     fn parses_complex_script_font_size_independently() {
         // `w:szCs` (§17.3.2.39) sizes complex-script glyphs; `w:sz` keeps
-        // sizing Latin/East-Asian glyphs. szCs alone still mirrors into
-        // font_size (legacy fallback).
+        // sizing Latin/East-Asian glyphs. szCs alone leaves the size to the
+        // styles, as Word for Mac draws it.
         let body = r#"
     <w:p>
       <w:r>
@@ -12112,11 +12106,7 @@ mod tests {
 
         let complex_only = paragraph.runs[1].properties.as_ref().expect("run props");
         assert_eq!(complex_only.font_size_complex, Some(14.0));
-        assert_eq!(
-            complex_only.font_size,
-            Some(14.0),
-            "szCs alone keeps the legacy font_size fallback"
-        );
+        assert_eq!(complex_only.font_size, None, "szCs alone sets no size");
     }
 
     #[test]

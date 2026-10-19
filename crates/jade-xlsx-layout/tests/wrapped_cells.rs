@@ -100,6 +100,7 @@ fn sheet_with(text: &str, style_index: Option<u32>, width_chars: f32) -> Sheet {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     }
 }
 
