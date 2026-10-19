@@ -874,11 +874,9 @@ impl NativeDocument {
         let range = self.selection?;
         let paragraph = range.focus.paragraph;
         let cell_id = self.renderer.cell_id_for_paragraph(paragraph)?;
-        let layout = self
-            .renderer
-            .cell_layouts_debug()
-            .into_iter()
-            .find(|layout| layout.order == cell_id)?;
+        // By registry id: `CellLayout::order` restarts at every table, so
+        // matching on it only finds cells of the first one.
+        let layout = self.renderer.cell_layout(cell_id)?;
         let table_order_index = self.renderer.table_order_for(layout.table_id)?;
         let (rows, columns) = self.word_document.table_dimensions(table_order_index)?;
         Some(TableCell {
@@ -1945,6 +1943,72 @@ impl NativeDocument {
                     .map(|entry| entry.text),
                 _ => None,
             })
+    }
+
+    // ---- for a shell's own commands ------------------------------------------
+
+    /// The document model, for reading what a command needs to address —
+    /// styles, numbering, table dimensions.
+    pub fn word_document(&self) -> &WordDocument {
+        &self.word_document
+    }
+
+    /// The renderer, for what only the last paint knows: which table cell a
+    /// paragraph was laid out in.
+    pub fn renderer(&self) -> &CanvasRenderer<SkiaPainter> {
+        &self.renderer
+    }
+
+    /// The selection as the engine holds it, a caret when collapsed.
+    pub fn selection_range(&self) -> Option<SelectionRange> {
+        self.selection
+    }
+
+    /// Sets the selection without repainting: a highlight that was painted
+    /// stays until the next repaint.
+    pub fn set_selection_range(&mut self, range: Option<SelectionRange>) {
+        self.selection = range;
+        self.renderer.set_selection_range(range);
+    }
+
+    /// Applies any headless command as one undo step and repaints the whole
+    /// document — what a ribbon command needs, whose effect can reach any
+    /// page. With `keep_selection` the selection it acted on survives, so the
+    /// next command acts on the same text; otherwise it is wherever the
+    /// command left it.
+    pub fn apply_command(
+        &mut self,
+        command: HeadlessCommand,
+        keep_selection: bool,
+    ) -> Result<(), String> {
+        let before = self.selection;
+        self.redo_history.clear();
+        self.history
+            .push(HistoryStep::Command { executor_steps: 1 });
+        let after = apply_headless_commands_with_executor_to_document(
+            &mut self.word_document,
+            &mut self.executor,
+            self.selection.take(),
+            &HeadlessEditRequest {
+                commands: vec![command],
+            },
+        );
+        let after = match after {
+            Ok(after) => after,
+            Err(err) => {
+                // Nothing was recorded, so neither is the step.
+                self.history.pop();
+                self.selection = before;
+                return Err(format!("edit failed: {err:?}"));
+            }
+        };
+        self.selection = if keep_selection {
+            before
+        } else {
+            after.or(before)
+        };
+        self.renderer.set_selection_range(self.selection);
+        self.repaint_all().map(|_| ())
     }
 
     /// Applies one command and repaints, returning how long the repaint took.

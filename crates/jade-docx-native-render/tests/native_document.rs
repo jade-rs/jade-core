@@ -274,3 +274,64 @@ fn dark_paper_turns_the_page_over_on_screen_but_not_in_the_pdf() {
     let (back, _, _) = document.page_pixels(0).expect("page 1 pixels");
     assert!(back == light, "switching back restores the page exactly");
 }
+
+/// A shell's own command goes through the same undo history as the built-in
+/// ones, and the caret finds its cell in any table, not only the first.
+#[test]
+fn a_shell_command_is_undoable_and_finds_cells_in_a_second_table() {
+    use jade_docx_headless_api::HeadlessCommand;
+    use jade_selection::{SelectionRange, TextPosition};
+
+    let mut document = open_contract();
+    let insert = |document: &mut NativeDocument, paragraph: usize| {
+        document
+            .apply_command(
+                HeadlessCommand::InsertTable {
+                    after_paragraph: paragraph,
+                    rows: 2,
+                    columns: 2,
+                    column_widths: Vec::new(),
+                    caret_offset: None,
+                },
+                false,
+            )
+            .unwrap();
+    };
+    insert(&mut document, 0);
+    // A second table after the first one's four cells and the paragraph
+    // they followed.
+    insert(&mut document, 6);
+    let second = (0..document.paragraph_count())
+        .filter(|&paragraph| {
+            document
+                .renderer()
+                .cell_id_for_paragraph(paragraph)
+                .is_some()
+        })
+        .nth(4)
+        .expect("a cell of the second table");
+    document.set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
+        second, 0,
+    ))));
+    let cell = document
+        .caret_table_cell()
+        .expect("the caret is in a table");
+    assert_eq!(
+        (
+            cell.table_order_index,
+            cell.row,
+            cell.column,
+            cell.rows,
+            cell.columns
+        ),
+        (1, 0, 0, 2, 2)
+    );
+
+    assert!(document.can_undo());
+    document.undo().unwrap();
+    document.undo().unwrap();
+    assert!(
+        document.word_document().table_dimensions(0).is_none(),
+        "both tables undone"
+    );
+}
