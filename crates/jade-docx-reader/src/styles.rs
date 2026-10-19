@@ -55,6 +55,9 @@ pub struct StylesPart {
     /// (indent / spacing / alignment). Applied below every named style.
     #[serde(skip_serializing_if = "Option::is_none")]
     doc_default_paragraph_properties: Option<ParagraphProperties>,
+    /// Ids of the paragraph styles named `Normal`, in document order.
+    #[serde(skip)]
+    normal_named_paragraph_styles: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -126,9 +129,33 @@ impl StylesPart {
             buf.clear();
         }
 
+        self.merge_duplicate_normal_styles();
         self.parse_table_cell_margin_styles(xml)?;
         self.parse_table_styles(xml)?;
         Ok(())
+    }
+
+    /// Word keys its built-in Normal style by name: when several paragraph
+    /// styles are named `Normal`, the last definition is the one Word uses,
+    /// for paragraphs without a style and for every one of those style ids.
+    fn merge_duplicate_normal_styles(&mut self) {
+        let Some((last_id, earlier_ids)) = self.normal_named_paragraph_styles.split_last() else {
+            return;
+        };
+        let Some(last) = self.paragraph_styles.get(last_id).cloned() else {
+            return;
+        };
+        for id in earlier_ids.iter().filter(|id| *id != last_id) {
+            let Some(style) = self.paragraph_styles.get_mut(id) else {
+                continue;
+            };
+            *style = StyleDefinition {
+                style_id: style.style_id.clone(),
+                is_default: style.is_default,
+                based_on: last.based_on.clone().filter(|based_on| based_on != id),
+                ..last.clone()
+            };
+        }
     }
 
     /// Resolves `w:tblCellMar` through a table style's `w:basedOn` chain.
@@ -1473,6 +1500,14 @@ impl StylesPart {
                 if let Some(style) = current_style.take() {
                     if !style.style_id.is_empty() {
                         if state.in_paragraph_style {
+                            if style
+                                .name
+                                .as_deref()
+                                .is_some_and(|name| name.eq_ignore_ascii_case("Normal"))
+                            {
+                                self.normal_named_paragraph_styles
+                                    .push(style.style_id.clone());
+                            }
                             self.paragraph_styles.insert(style.style_id.clone(), style);
                         } else if state.in_character_style {
                             self.character_styles.insert(style.style_id.clone(), style);
@@ -3408,6 +3443,37 @@ mod tests {
         assert!(part
             .get_style("Normal.0")
             .is_some_and(|style| style.is_default));
+    }
+
+    #[test]
+    fn the_last_style_named_normal_defines_every_normal_style() {
+        // yokohama_table: Word for Mac draws an unstyled empty paragraph, and
+        // one styled `Normal.0`, in the later Normal (Yu Mincho 10.5pt); with
+        // the two definitions swapped, both draw in Times New Roman 12pt.
+        let style = |id: &str, default: bool, size: u32| {
+            format!(
+                r#"<w:style w:type="paragraph"{} w:styleId="{id}"><w:name w:val="Normal"/><w:rPr><w:sz w:val="{size}"/></w:rPr></w:style>"#,
+                if default { r#" w:default="1""# } else { "" }
+            )
+        };
+        let styles = |first: String, second: String| {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{first}{second}</w:styles>"#
+            );
+            StylesPart::from_xml(&xml).expect("parse styles")
+        };
+        let size_of = |part: &StylesPart, id: &str| {
+            part.get_style(id)
+                .and_then(|style| style.run_properties.as_ref())
+                .and_then(|props| props.font_size)
+        };
+        let part = styles(style("Normal", true, 24), style("Normal.0", false, 21));
+        assert_eq!(part.default_paragraph_style_id(), Some("Normal"));
+        assert_eq!(size_of(&part, "Normal"), Some(10.5));
+        assert_eq!(size_of(&part, "Normal.0"), Some(10.5));
+        let part = styles(style("Normal.0", false, 21), style("Normal", true, 24));
+        assert_eq!(size_of(&part, "Normal"), Some(12.0));
+        assert_eq!(size_of(&part, "Normal.0"), Some(12.0));
     }
 
     #[test]
