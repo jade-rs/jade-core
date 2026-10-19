@@ -131,6 +131,27 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
         }
     ));
     assert_eq!(fields[0].resolved_value.as_deref(), Some("Approved value"));
+    // Word for Mac takes a nested COMPARE or IF at its saved result in the
+    // main story and prints these instead; nested REFs stay live.
+    for (index, expected) in [
+        (4, "Nested false"),
+        (5, "Bookmark denied"),
+        (6, "Inline denied"),
+        (12, "Nested empty rejected"),
+        (17, "Stale nested literal"),
+        (18, "Stale forward cache"),
+        (13, "Numeric equal"),
+        (19, "Unlimited wildcard"),
+    ] {
+        assert_eq!(
+            fields[index].word_mac_body_result.as_deref(),
+            Some(expected),
+            "field {index}"
+        );
+    }
+    for index in [0, 7, 8, 9] {
+        assert_eq!(fields[index].word_mac_body_result, None, "field {index}");
+    }
     assert!(matches!(
         fields[1].kind,
         RunFieldKind::Compare {

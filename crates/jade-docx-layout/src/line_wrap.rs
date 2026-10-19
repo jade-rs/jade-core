@@ -6285,21 +6285,24 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     computed.font_descriptor_hash,
                     computed.advance.trailing_auto_space,
                 );
-                let font_vertical_metrics =
-                    if let Some(cached) = font_vertical_metrics_cache.get(&font_desc_hash) {
-                        *cached
-                    } else {
-                        let word_line_box = paragraph_style
-                            .word_east_asian_font_line_box
-                            .then(|| crate::line_metrics::word_font_vertical_metrics_px(font_desc))
-                            .flatten();
-                        let measured = match word_line_box {
-                            Some(metrics) => Some(metrics),
-                            None => ctx.measure_font_vertical_metrics(font_desc)?,
-                        };
-                        font_vertical_metrics_cache.insert(font_desc_hash, measured);
-                        measured
+                let font_vertical_metrics = if let Some(metrics) =
+                    crate::line_metrics::word_mac_emoji_vertical_metrics_px(grapheme, font_desc)
+                {
+                    Some(metrics)
+                } else if let Some(cached) = font_vertical_metrics_cache.get(&font_desc_hash) {
+                    *cached
+                } else {
+                    let word_line_box = paragraph_style
+                        .word_east_asian_font_line_box
+                        .then(|| crate::line_metrics::word_font_vertical_metrics_px(font_desc))
+                        .flatten();
+                    let measured = match word_line_box {
+                        Some(metrics) => Some(metrics),
+                        None => ctx.measure_font_vertical_metrics(font_desc)?,
                     };
+                    font_vertical_metrics_cache.insert(font_desc_hash, measured);
+                    measured
+                };
                 // A character border pushes the line out by its width and
                 // space (`line_metrics::word_run_border_extent_pt`).
                 let border_extent_px = f64::from(crate::line_metrics::word_run_border_extent_pt(

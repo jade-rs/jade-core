@@ -4423,6 +4423,7 @@ mod tests {
             ..RunProperties::default()
         });
         symbol.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Symbol {
                 code_point: 0x2605,
                 character_set: SymbolCharacterSet::Unicode,

@@ -11991,6 +11991,7 @@ mod tests {
     fn paragraph_with_field(kind: RunFieldKind, saved: &str) -> Paragraph {
         let mut run: Run = serde_json::from_value(serde_json::json!({ "text": "" })).unwrap();
         run.field = Some(RunField {
+            word_mac_body_result: None,
             kind,
             source_field_id: None,
             cached_text: Some(saved.into()),

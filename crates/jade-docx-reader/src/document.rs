@@ -1730,20 +1730,29 @@ fn resolve_fields_in_paragraph(
                 right_is_quoted,
                 true_text,
                 false_text,
-            } => Some(
-                if evaluate_field_comparison(
-                    left,
-                    *left_is_quoted,
-                    *operator,
-                    right,
-                    *right_is_quoted,
-                    bookmark_text,
-                ) {
-                    true_text.clone()
-                } else {
-                    false_text.clone().unwrap_or_default()
-                },
-            ),
+            } => {
+                let result = |mac| {
+                    if evaluate_field_comparison_as(
+                        left,
+                        *left_is_quoted,
+                        *operator,
+                        right,
+                        *right_is_quoted,
+                        bookmark_text,
+                        mac,
+                    ) {
+                        true_text.clone()
+                    } else {
+                        false_text.clone().unwrap_or_default()
+                    }
+                };
+                let resolved = result(false);
+                if field.word_mac_body_result.is_none() {
+                    let mac = result(true);
+                    field.word_mac_body_result = (mac != resolved).then(|| mac.into_boxed_str());
+                }
+                Some(resolved)
+            }
             // PRIVATE/ADDIN store opaque data but do not display a field
             // result. Record an explicit empty resolution so structural
             // consumers cannot fall back to stale cached text.
@@ -1763,6 +1772,31 @@ pub(crate) fn evaluate_field_comparison(
     right: &str,
     right_is_quoted: bool,
     bookmark_text: &std::collections::HashMap<String, String>,
+) -> bool {
+    evaluate_field_comparison_as(
+        left,
+        left_is_quoted,
+        operator,
+        right,
+        right_is_quoted,
+        bookmark_text,
+        false,
+    )
+}
+
+/// [`evaluate_field_comparison`] as Word for Mac evaluates it (`mac`): a
+/// quoted Expression2 that is a number still compares numerically with a
+/// numeric Expression1, and a wildcard has no 128-character limit
+/// (`if-compare-field-edge-cases`: `IF 2 = "02"` prints "Numeric equal" and
+/// a 129-character value matches `"*"`).
+pub(crate) fn evaluate_field_comparison_as(
+    left: &str,
+    left_is_quoted: bool,
+    operator: FieldComparisonOperator,
+    right: &str,
+    right_is_quoted: bool,
+    bookmark_text: &std::collections::HashMap<String, String>,
+    mac: bool,
 ) -> bool {
     // Quoted Expression1 is a literal string even when its text collides with
     // a bookmark name. Preserve that distinction after token normalization.
@@ -1789,7 +1823,7 @@ pub(crate) fn evaluate_field_comparison(
     // Word compares numeric expressions numerically. Only choose that path
     // when *both* sides parse, so a text value such as an account identifier
     // with a nonnumeric suffix stays a string comparison.
-    if !right_is_quoted {
+    if !right_is_quoted || mac {
         if let Some(result) = evaluate_numeric_field_comparison(left, operator, right) {
             return result;
         }
@@ -1802,8 +1836,8 @@ pub(crate) fn evaluate_field_comparison(
         // Microsoft documents `?` and `*` specially for equality and
         // inequality. Apply the pattern only on Expression2, matching Word's
         // asymmetric field syntax.
-        FieldComparisonOperator::Equal => word_field_wildcard_match(&left, &right),
-        FieldComparisonOperator::NotEqual => !word_field_wildcard_match(&left, &right),
+        FieldComparisonOperator::Equal => word_field_wildcard_match(&left, &right, !mac),
+        FieldComparisonOperator::NotEqual => !word_field_wildcard_match(&left, &right, !mac),
         FieldComparisonOperator::Greater => ordering.is_gt(),
         FieldComparisonOperator::Less => ordering.is_lt(),
         FieldComparisonOperator::GreaterOrEqual => ordering.is_ge(),
@@ -1832,7 +1866,7 @@ pub(crate) fn evaluate_numeric_field_comparison(
     })
 }
 
-fn word_field_wildcard_match(value: &str, pattern: &str) -> bool {
+fn word_field_wildcard_match(value: &str, pattern: &str, capped: bool) -> bool {
     let value: Vec<char> = value.chars().collect();
     let pattern: Vec<char> = pattern.chars().collect();
     // Word caps the portion of Expression1 corresponding to the first `*`
@@ -1840,7 +1874,11 @@ fn word_field_wildcard_match(value: &str, pattern: &str) -> bool {
     // first star, every literal and `?` consumes exactly one value character,
     // so the unmatched value suffix is precisely the bounded portion. Count
     // Unicode scalar values rather than UTF-8 bytes to avoid penalizing CJK.
-    if let Some(first_asterisk) = pattern.iter().position(|token| *token == '*') {
+    if let Some(first_asterisk) = pattern
+        .iter()
+        .position(|token| *token == '*')
+        .filter(|_| capped)
+    {
         let remaining_value_chars = value.len().saturating_sub(first_asterisk);
         if remaining_value_chars > 128 {
             return false;
@@ -2092,6 +2130,12 @@ pub struct RunField {
     /// the laid-out page geometry. Takes precedence over `cached_text` when set.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_value: Option<String>,
+    /// The result Word for Mac prints for this IF or COMPARE in the main
+    /// story, when it differs from the evaluated one: there Word takes a
+    /// nested COMPARE or IF at its saved result instead of evaluating it
+    /// (`if-compare-field-edge-cases`), while a nested REF stays live.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub word_mac_body_result: Option<Box<str>>,
 }
 
 /// Supported field kinds. Additional variants can be added as new field types
@@ -3751,10 +3795,12 @@ mod tests {
     fn locked_field_metadata_keeps_existing_inline_run_sizes_and_shares_clones() {
         use super::{Run, RunField, RunFieldKind};
         assert_eq!(std::mem::size_of::<RunFieldKind>(), 104);
-        assert_eq!(std::mem::size_of::<RunField>(), 160);
+        // 16 bytes of it: the result Word for Mac prints for a body IF
+        // (`RunField::word_mac_body_result`).
+        assert_eq!(std::mem::size_of::<RunField>(), 176);
         // 8 bytes of it: the insertion a tracked deletion sits in
         // (`RevisionMark::insertion`).
-        assert_eq!(std::mem::size_of::<Run>(), 3016);
+        assert_eq!(std::mem::size_of::<Run>(), 3032);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {

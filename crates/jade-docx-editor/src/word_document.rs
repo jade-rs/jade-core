@@ -14182,6 +14182,7 @@ impl WordDocument {
         field_run.text_box = None;
         field_run.math = None;
         field_run.field = Some(RunField {
+            word_mac_body_result: None,
             kind: field_kind,
             cached_text: Some(cached_text.to_string()),
             source_field_id: None,
@@ -15049,6 +15050,7 @@ impl WordDocument {
             text_box: None,
             math: None,
             field: Some(RunField {
+                word_mac_body_result: None,
                 kind: field_kind,
                 cached_text: None,
                 source_field_id: None,
@@ -15692,6 +15694,7 @@ impl WordDocument {
             text_box: None,
             math: None,
             field: Some(RunField {
+                word_mac_body_result: None,
                 kind: RunFieldKind::Seq {
                     identifier: label.to_string(),
                     restart_at: None,
@@ -15932,6 +15935,7 @@ impl WordDocument {
             text_box: None,
             math: None,
             field: Some(RunField {
+                word_mac_body_result: None,
                 kind: RunFieldKind::NonDisplay {
                     instruction: format!("XE \"{term}\""),
                 },
@@ -19895,6 +19899,7 @@ impl WordDocument {
             });
             let mut page_run = blank_run("");
             page_run.field = Some(RunField {
+                word_mac_body_result: None,
                 kind: RunFieldKind::PageRef {
                     name: bookmark.to_string(),
                     hyperlink: options.hyperlinks,
@@ -41096,6 +41101,7 @@ mod tests {
                         text_box: None,
                         math: None,
                         field: Some(crate::document::RunField {
+                            word_mac_body_result: None,
                             kind: crate::document::RunFieldKind::PageNumber,
                             cached_text: None,
                             source_field_id: None,
@@ -41186,6 +41192,7 @@ mod tests {
                         text_box: None,
                         math: None,
                         field: Some(crate::document::RunField {
+                            word_mac_body_result: None,
                             kind: crate::document::RunFieldKind::PageNumber,
                             cached_text: None,
                             source_field_id: None,
@@ -41229,6 +41236,7 @@ mod tests {
                         text_box: None,
                         math: None,
                         field: Some(crate::document::RunField {
+                            word_mac_body_result: None,
                             kind: crate::document::RunFieldKind::NumPages,
                             cached_text: None,
                             source_field_id: None,
@@ -41331,6 +41339,7 @@ mod tests {
         let before = blank_run("Before");
         let mut ask = blank_run("");
         ask.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Ask {
                 bookmark: "ClientName".to_string(),
                 prompt: Some("Enter client name:".to_string()),
@@ -41363,6 +41372,7 @@ mod tests {
         let before = blank_run("Before ");
         let mut quote = blank_run("");
         quote.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Quote {
                 text: "Current term".to_string(),
                 case_format: None,
@@ -41393,6 +41403,7 @@ mod tests {
         let before = blank_run("Action: ");
         let mut button = blank_run("");
         button.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::MacroButton {
                 macro_name: "PrintEnvelope".to_string(),
                 display_text: "Print envelope".to_string(),
@@ -41422,6 +41433,7 @@ mod tests {
         let before = blank_run("Navigate: ");
         let mut button = blank_run("");
         button.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::GoToButton {
                 destination: "summary".to_string(),
                 display_text: "View summary".to_string(),
@@ -41451,6 +41463,7 @@ mod tests {
         let before = blank_run("Currency: ");
         let mut symbol = blank_run("");
         symbol.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Symbol {
                 code_point: 0x20ac,
                 character_set: crate::document::SymbolCharacterSet::Unicode,
@@ -41483,6 +41496,7 @@ mod tests {
         let before = blank_run("Appendix: ");
         let mut include = blank_run("");
         include.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Unsupported {
                 instruction: "INCLUDETEXT \"appendix.docx\"".to_string(),
             },
@@ -41514,6 +41528,7 @@ mod tests {
         let before = blank_run("Before");
         let mut private = blank_run("");
         private.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::NonDisplay {
                 instruction: "PRIVATE vendor-payload".to_string(),
             },
@@ -41544,6 +41559,7 @@ mod tests {
         let before = blank_run("Before");
         let mut set = blank_run("");
         set.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Set {
                 bookmark: "ClientName".to_string(),
                 value: "Ada Lovelace".to_string(),
@@ -41574,6 +41590,7 @@ mod tests {
         let before = blank_run("Section ");
         let mut section = blank_run("");
         section.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::SectionNumber,
             cached_text: Some("99".to_string()),
             source_field_id: None,
@@ -43286,6 +43303,7 @@ mod tests {
             text_box: None,
             math: None,
             field: Some(RunField {
+                word_mac_body_result: None,
                 kind,
                 cached_text: Some(cached.to_string()),
                 source_field_id: None,
@@ -43365,6 +43383,7 @@ mod tests {
                         text_box: None,
                         math: None,
                         field: Some(RunField {
+                            word_mac_body_result: None,
                             kind: RunFieldKind::EditTime,
                             cached_text: Some("999".to_string()),
                             source_field_id: None,
@@ -43444,6 +43463,7 @@ mod tests {
             text_box: None,
             math: None,
             field: Some(RunField {
+                word_mac_body_result: None,
                 kind: RunFieldKind::FileSize { unit },
                 cached_text: Some("stale".to_string()),
                 source_field_id: None,
