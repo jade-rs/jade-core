@@ -32380,6 +32380,16 @@ where
             {
                 field.cached_text.clone()
             }
+            // A body IF is evaluated, but with a nested COMPARE or IF at its
+            // saved result (`RunField::word_mac_body_result`).
+            RunFieldKind::If { .. }
+                if !self.rendering_header_footer_story
+                    && jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && field.word_mac_body_result.is_some() =>
+            {
+                field.word_mac_body_result.as_deref().map(str::to_string)
+            }
             RunFieldKind::DocumentProperty { .. }
             | RunFieldKind::DocumentVariable { .. }
             | RunFieldKind::NumWords
@@ -40410,6 +40420,7 @@ mod tests {
             (RunFieldKind::SectionPages, ""),
         ] {
             let field = RunField {
+                word_mac_body_result: None,
                 kind: kind.with_lock(true),
                 source_field_id: None,
                 cached_text: Some(saved.to_string()),
@@ -40418,6 +40429,7 @@ mod tests {
             assert_eq!(renderer.resolve_run_field(&field).as_deref(), Some(saved));
         }
         let empty = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::NumPages.with_lock(true),
             source_field_id: None,
             cached_text: None,
@@ -40425,6 +40437,7 @@ mod tests {
         };
         assert_eq!(renderer.resolve_run_field(&empty).as_deref(), Some(""));
         let hidden = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::NonDisplay {
                 instruction: "PRIVATE".into(),
             }
@@ -40461,6 +40474,7 @@ mod tests {
     fn noteref_uses_layout_note_ordinals_and_retains_relative_position_cache() {
         let mut renderer = test_renderer();
         let mut field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::NoteRef {
                 name: "note".into(),
                 hyperlink: true,
@@ -40513,6 +40527,7 @@ mod tests {
         renderer.set_bookmark_paragraphs([("_Ref42".to_string(), 3usize)].into_iter().collect());
 
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::PageRef {
                 name: "_Ref42".to_string(),
                 hyperlink: false,
@@ -40547,6 +40562,7 @@ mod tests {
 
         // An unknown bookmark still falls back to the cached result.
         let unknown = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::PageRef {
                 name: "missing".to_string(),
                 hyperlink: false,
@@ -40613,6 +40629,7 @@ mod tests {
         }));
 
         let date_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Date {
                 format: Some("yyyy/MM/dd".to_string()),
             },
@@ -40627,6 +40644,7 @@ mod tests {
 
         // No picture => default date format.
         let default_date = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Date { format: None },
             cached_text: None,
             source_field_id: None,
@@ -40639,6 +40657,7 @@ mod tests {
 
         // TIME default picture is a 12-hour clock with meridiem.
         let time_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Time { format: None },
             cached_text: None,
             source_field_id: None,
@@ -41224,6 +41243,7 @@ mod tests {
 
         // REF resolved to its bookmark text.
         let ref_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Ref {
                 name: "greeting".to_string(),
                 case_format: None,
@@ -41241,6 +41261,7 @@ mod tests {
 
         // Unresolved REF falls back to the cached result.
         let unresolved_ref = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Ref {
                 name: "missing".to_string(),
                 case_format: None,
@@ -41258,6 +41279,7 @@ mod tests {
 
         // SEQ renders its assigned number.
         let seq_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Seq {
                 identifier: "Figure".to_string(),
                 restart_at: None,
@@ -41282,6 +41304,7 @@ mod tests {
     fn resolve_run_field_if_and_compare_prefer_recomputed_values() {
         let renderer = test_renderer();
         let if_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::If {
                 left: "OrderTotal".to_string(),
                 left_is_quoted: false,
@@ -41296,6 +41319,7 @@ mod tests {
             resolved_value: Some("Approved".to_string()),
         };
         let compare_field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Compare {
                 left: "Tokyo Branch".to_string(),
                 left_is_quoted: true,
@@ -41327,6 +41351,7 @@ mod tests {
         prefix.text = "Textbox channel: ".to_string();
         let mut variable = build_run(None);
         variable.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::DocumentVariable {
                 name: "Release Channel".to_string(),
                 case_format: None,
@@ -41353,6 +41378,7 @@ mod tests {
     fn resolve_run_field_mergefield_does_not_duplicate_editable_result_text() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::MergeField {
                 name: "Customer Name".to_string(),
             },
@@ -41371,6 +41397,7 @@ mod tests {
     fn resolve_run_field_fillin_does_not_duplicate_editable_response() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::FillIn {
                 prompt: Some("Enter client name:".to_string()),
                 default: Some("Anonymous User".to_string()),
@@ -41390,6 +41417,7 @@ mod tests {
     fn resolve_run_field_ask_never_displays_saved_response_at_field_position() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Ask {
                 bookmark: "ClientName".to_string(),
                 prompt: Some("Enter client name:".to_string()),
@@ -41410,6 +41438,7 @@ mod tests {
     fn resolve_run_field_quote_prefers_instruction_literal_over_saved_result() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Quote {
                 text: "Current contractual term".to_string(),
                 case_format: None,
@@ -41431,6 +41460,7 @@ mod tests {
     fn resolve_run_field_symbol_prefers_valid_character_over_saved_result() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Symbol {
                 code_point: 0x20ac,
                 character_set: crate::document::SymbolCharacterSet::Unicode,
@@ -41452,6 +41482,7 @@ mod tests {
     fn resolve_run_field_set_never_displays_saved_assignment() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Set {
                 bookmark: "ClientName".to_string(),
                 value: "Ada Lovelace".to_string(),
@@ -41470,6 +41501,7 @@ mod tests {
     fn resolve_run_field_eq_distributed_uses_instruction_text() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::EqDistributed {
                 text: "契約".to_string(),
                 guide: "　　".to_string(),
@@ -41486,6 +41518,7 @@ mod tests {
     fn resolve_run_field_unsupported_uses_word_cached_result() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Unsupported {
                 instruction: "INCLUDETEXT \"appendix.docx\"".to_string(),
             },
@@ -41507,6 +41540,7 @@ mod tests {
     fn resolve_run_field_non_display_never_exposes_cached_storage() {
         let renderer = test_renderer();
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::NonDisplay {
                 instruction: "PRIVATE vendor-payload".to_string(),
             },
@@ -50643,6 +50677,7 @@ mod tests {
             ..RunProperties::default()
         }));
         symbol.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Symbol {
                 code_point: 0x2605,
                 character_set: crate::document::SymbolCharacterSet::Unicode,
@@ -54441,6 +54476,7 @@ mod tests {
         renderer.current_page_number = 4;
         renderer.active_section_index = 1;
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::SectionPages,
             cached_text: Some("99".to_string()),
             source_field_id: None,
@@ -54457,6 +54493,7 @@ mod tests {
         let mut renderer = test_renderer();
         renderer.active_section_index = 2;
         let field = RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::SectionNumber,
             cached_text: Some("99".to_string()),
             source_field_id: None,
@@ -56549,6 +56586,7 @@ mod tests {
         empty.text.clear();
         let mut symbol = first.clone();
         symbol.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Symbol {
                 code_point: 0x2605,
                 character_set: crate::document::SymbolCharacterSet::Unicode,
