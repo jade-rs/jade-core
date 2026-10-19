@@ -8084,9 +8084,11 @@ fn mac_row_height_with_vertical_merges(
         .iter()
         .map(|&index| cells[index].height - cells[index].padding.bottom)
         .fold(0.0_f64, f64::max);
-    let ends = merged
-        .map(|cell| text + cell.padding.bottom + cell.bottom_border_extent())
-        .fold(content + drawn_bottom, f64::max);
+    let ends = content_cells
+        .iter()
+        .map(|&index| cells[index].height + cells[index].bottom_border_extent())
+        .chain(merged.map(|cell| text + cell.padding.bottom + cell.bottom_border_extent()))
+        .fold(content, f64::max);
     Some((ends - widest_bottom + drawn_bottom, drawn_bottom))
 }
 
@@ -19332,6 +19334,19 @@ mod tests {
         // The first row also holds the table's 0.25pt top border.
         assert_eq!(bordered_heights_beside_a_merge(0.0), vec![22.12, 20.62, 23.12]);
         assert_eq!(bordered_heights_beside_a_merge(8.0), vec![22.12, 25.87, 27.12]);
+        // A 3pt merged border over the last row's 1.5pt ones: Word draws the
+        // last row 20.64pt below the one above, then the 3pt border.
+        let mut rows = rows_beside_a_merge(0.0);
+        for row in &mut rows {
+            row[0].border_bottom.width_px = points_to_px(3.0);
+        }
+        let table = Table {
+            rows: vec![TableRow::default(); 3],
+            ..Default::default()
+        };
+        let mut heights = vec![points_to_px(21.62); 3];
+        add_border_extents(&table, &mut rows, &[false; 3], &mut heights, true);
+        assert!((heights[2] * 0.75 - 23.12).abs() < 0.01, "{}", heights[2] * 0.75);
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(bordered_heights_beside_a_merge(0.0), vec![23.37, 21.87, 23.12]);
         set_word_layout_platform(previous);
