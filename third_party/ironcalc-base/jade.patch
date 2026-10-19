@@ -3278,14 +3278,14 @@ new file mode 100644
          Function::Rand => not_implemented(args),
 --- a/src/functions/mod.rs
 +++ b/src/functions/mod.rs
-@@ -16,6 +16,7 @@ mod financial;
- mod information;
- pub(crate) mod japanese;
- mod links;
+@@ -24,6 +24,7 @@ mod spill_functions;
+ mod statistical;
+ mod subtotal;
+ mod text;
 +mod thai;
- mod logical;
- mod lookup_and_reference;
- mod macros;
+ pub(crate) mod util;
+ mod xlookup;
+ 
 @@ -551,6 +552,7 @@ pub enum Function {
      Encodeurl,
      Hyperlink,
@@ -3338,7 +3338,7 @@ new file mode 100644
 new file mode 100644
 --- /dev/null
 +++ b/src/functions/thai.rs
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,118 @@
 +//! Jade addition: BAHTTEXT, an amount in Thai words as Excel writes it.
 +
 +use crate::calc_result::CalcResult;
@@ -3347,7 +3347,16 @@ new file mode 100644
 +use crate::model::Model;
 +
 +const DIGITS: [&str; 10] = [
-+    "ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า",
++    "ศูนย์",
++    "หนึ่ง",
++    "สอง",
++    "สาม",
++    "สี่",
++    "ห้า",
++    "หก",
++    "เจ็ด",
++    "แปด",
++    "เก้า",
 +];
 +/// Hundreds to hundred-thousands; tens are written apart.
 +const PLACES: [&str; 4] = ["ร้อย", "พัน", "หมื่น", "แสน"];

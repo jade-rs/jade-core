@@ -16,7 +16,6 @@ mod financial;
 mod information;
 pub(crate) mod japanese;
 mod links;
-mod thai;
 mod logical;
 mod lookup_and_reference;
 mod macros;
@@ -25,6 +24,7 @@ mod spill_functions;
 mod statistical;
 mod subtotal;
 mod text;
+mod thai;
 pub(crate) mod util;
 mod xlookup;
 

@@ -6,7 +6,16 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
 
 const DIGITS: [&str; 10] = [
-    "ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า",
+    "ศูนย์",
+    "หนึ่ง",
+    "สอง",
+    "สาม",
+    "สี่",
+    "ห้า",
+    "หก",
+    "เจ็ด",
+    "แปด",
+    "เก้า",
 ];
 /// Hundreds to hundred-thousands; tens are written apart.
 const PLACES: [&str; 4] = ["ร้อย", "พัน", "หมื่น", "แสน"];
