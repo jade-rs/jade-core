@@ -19514,8 +19514,14 @@ where
             }
             // Word for Mac centres a grid line's text in its pitches and keeps
             // the line while the text clears the page foot; only the padding
-            // below it may cross.
-            let fit_height = if paragraph_style.word_grid_line_sizing.is_some() {
+            // below it may cross. The extra of a multiple above single spacing
+            // may cross too: a 1.5-line Arial 12pt line whose baseline sits
+            // 5.3pt above the foot stays (word-mac-probe-line-pitch).
+            let fit_height = if paragraph_style.word_grid_line_sizing.is_some()
+                || paragraph_style
+                    .word_proportional_line_sizing
+                    .is_some_and(|sizing| sizing.multiple() > 1.0)
+            {
                 (top_leading + content_height).min(line_box_height)
             } else {
                 line_box_height
@@ -27191,13 +27197,27 @@ where
                 match alignment {
                     "superscript" | "super" => {
                         baseline_shift_px = -points_to_px(font_size_pt * 0.35);
-                        font_size_pt *= 0.66;
-                        font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
+                        let families = resolve_font_families(properties);
+                        let shifted = |size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                                size,
+                                families.latin_ascii_stack(),
+                            )
+                        };
+                        font_size_pt = shifted(font_size_pt);
+                        font_size_complex_pt = font_size_complex_pt.map(shifted);
                     }
                     "subscript" | "sub" => {
                         baseline_shift_px = points_to_px(font_size_pt * 0.15);
-                        font_size_pt *= 0.66;
-                        font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
+                        let families = resolve_font_families(properties);
+                        let shifted = |size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                                size,
+                                families.latin_ascii_stack(),
+                            )
+                        };
+                        font_size_pt = shifted(font_size_pt);
+                        font_size_complex_pt = font_size_complex_pt.map(shifted);
                     }
                     _ => {}
                 }
