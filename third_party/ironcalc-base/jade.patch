@@ -2944,3 +2944,166 @@
      /// Adds a new defined name.
      /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
      pub fn new_defined_name(
+--- a/src/expressions/parser/static_analysis.rs
++++ b/src/expressions/parser/static_analysis.rs
+@@ -1273,6 +1273,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
+         Function::Subtotal => args_signature_npv(arg_count),
+         Function::Aggregate => args_signature_aggregate(arg_count),
+         Function::Jis => args_signature_scalars(arg_count, 1, 0),
++        Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
++        Function::Encodeurl => args_signature_scalars(arg_count, 1, 0),
++        Function::Hyperlink => args_signature_scalars(arg_count, 1, 1),
+         Function::Datestring => args_signature_scalars(arg_count, 1, 0),
+         Function::Numberstring => args_signature_scalars(arg_count, 2, 0),
+         Function::Rand => args_signature_no_args(arg_count),
+@@ -1948,6 +1951,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
+         Function::Subtotal => not_implemented(args),
+         Function::Aggregate => not_implemented(args),
+         Function::Jis => scalar_arguments(args),
++        Function::Dbcs => scalar_arguments(args),
++        Function::Encodeurl => scalar_arguments(args),
++        Function::Hyperlink => scalar_arguments(args),
+         Function::Datestring => scalar_arguments(args),
+         Function::Numberstring => scalar_arguments(args),
+         Function::Rand => not_implemented(args),
+new file mode 100644
+--- /dev/null
++++ b/src/functions/links.rs
+@@ -0,0 +1,59 @@
++//! Jade additions: ENCODEURL and HYPERLINK, as Excel computes them.
++
++use crate::calc_result::CalcResult;
++use crate::expressions::parser::Node;
++use crate::expressions::types::CellReferenceIndex;
++use crate::model::Model;
++
++/// `text` with every byte outside the URL's unreserved characters — ASCII
++/// letters, digits and `- _ . ~` — written as `%XX`, as Excel's ENCODEURL
++/// writes it (UTF-8, upper-case hex).
++fn encode_url(text: &str) -> String {
++    let mut encoded = String::with_capacity(text.len());
++    for byte in text.bytes() {
++        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
++            encoded.push(byte as char);
++        } else {
++            encoded.push_str(&format!("%{byte:02X}"));
++        }
++    }
++    encoded
++}
++
++impl<'a> Model<'a> {
++    pub(crate) fn fn_encodeurl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if args.len() != 1 {
++            return CalcResult::new_args_number_error(cell);
++        }
++        match self.get_string(&args[0], cell) {
++            Ok(text) => CalcResult::String(encode_url(&text)),
++            Err(error) => error,
++        }
++    }
++
++    /// The cell shows the friendly name — whatever it is, a number included
++    /// — or the link itself when there is none. Following the link is the
++    /// application's business, not the calculation's.
++    pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        match args.len() {
++            1 => match self.get_string(&args[0], cell) {
++                Ok(link) => CalcResult::String(link),
++                Err(error) => error,
++            },
++            2 => self.evaluate_node_in_context(&args[1], cell),
++            _ => CalcResult::new_args_number_error(cell),
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::encode_url;
++
++    #[test]
++    fn unreserved_characters_stay_and_the_rest_is_utf8_percent_encoded() {
++        assert_eq!(encode_url("a-b_c.d~e"), "a-b_c.d~e");
++        assert_eq!(encode_url("a b/c?"), "a%20b%2Fc%3F");
++        assert_eq!(encode_url("é"), "%C3%A9");
++    }
++}
+--- a/src/functions/mod.rs
++++ b/src/functions/mod.rs
+@@ -15,6 +15,7 @@ mod engineering;
+ mod financial;
+ mod information;
+ pub(crate) mod japanese;
++mod links;
+ mod logical;
+ mod lookup_and_reference;
+ mod macros;
+@@ -545,6 +546,10 @@ pub enum Function {
+     Jis,
+     Datestring,
+     Numberstring,
++    /// Jade additions: Japanese Excel's name for JIS, and the web functions.
++    Dbcs,
++    Encodeurl,
++    Hyperlink,
+ 
+     // Database
+     Daverage,
+@@ -576,6 +581,9 @@ fn jade_lookup(key: &str) -> Option<Function> {
+         "JIS" => Some(Function::Jis),
+         "DATESTRING" => Some(Function::Datestring),
+         "NUMBERSTRING" => Some(Function::Numberstring),
++        "DBCS" => Some(Function::Dbcs),
++        "ENCODEURL" => Some(Function::Encodeurl),
++        "HYPERLINK" => Some(Function::Hyperlink),
+         _ => None,
+     }
+ }
+@@ -1590,6 +1598,9 @@ impl Function {
+             Function::Jis => "JIS".to_string(),
+             Function::Datestring => "DATESTRING".to_string(),
+             Function::Numberstring => "NUMBERSTRING".to_string(),
++            Function::Dbcs => "DBCS".to_string(),
++            Function::Encodeurl => "ENCODEURL".to_string(),
++            Function::Hyperlink => "HYPERLINK".to_string(),
+             Function::Daverage => functions.daverage.clone(),
+             Function::Dcount => functions.dcount.clone(),
+             Function::Dget => functions.dget.clone(),
+@@ -1633,7 +1644,7 @@ impl Function {
+         }
+     }
+ 
+-    pub fn into_iter() -> IntoIter<Function, 498> {
++    pub fn into_iter() -> IntoIter<Function, 501> {
+         [
+             Function::And,
+             Function::False,
+@@ -1971,6 +1982,9 @@ impl Function {
+             Function::Jis,
+             Function::Datestring,
+             Function::Numberstring,
++            Function::Dbcs,
++            Function::Encodeurl,
++            Function::Hyperlink,
+             Function::Roman,
+             Function::Arabic,
+             Function::Combin,
+@@ -2168,6 +2182,7 @@ impl Function {
+     pub fn to_xlsx_string(&self) -> String {
+         match self {
+             Function::Concat => "_xlfn.CONCAT".to_string(),
++            Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
+             Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
+             // Jade: future functions upstream writes without their prefix.
+             Function::Days => "_xlfn.DAYS".to_string(),
+@@ -2663,6 +2678,9 @@ impl<'a> Model<'a> {
+             Function::Subtotal => self.fn_subtotal(args, cell),
+             Function::Aggregate => self.fn_aggregate(args, cell),
+             Function::Jis => self.fn_jis(args, cell),
++            Function::Dbcs => self.fn_jis(args, cell),
++            Function::Encodeurl => self.fn_encodeurl(args, cell),
++            Function::Hyperlink => self.fn_hyperlink(args, cell),
+             Function::Datestring => self.fn_datestring(args, cell),
+             Function::Numberstring => self.fn_numberstring(args, cell),
+             Function::Acot => self.fn_acot(args, cell),
