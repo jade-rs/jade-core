@@ -21,6 +21,17 @@ mod merge;
 mod sheets;
 mod sort;
 
+/// A spilled value as a cell holds it.
+fn spilled_value(value: &CellValue) -> NewValue {
+    match value {
+        CellValue::Number(number) => NewValue::Number(*number),
+        CellValue::Text(text) => NewValue::Text(text.clone()),
+        CellValue::Bool(flag) => NewValue::Bool(*flag),
+        CellValue::Error(error) => NewValue::Error(error.clone()),
+        CellValue::Empty => NewValue::Blank,
+    }
+}
+
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
     cell.formula.as_ref()?;
     Some(if matches!(cell.value, CellValue::Empty) {
@@ -839,6 +850,77 @@ impl HeadlessWorkbook {
         self.write_edits_with_parts(edits, styles, Vec::new())
     }
 
+    /// Edits that write into an array formula's spill block it, as typing
+    /// over a spilled cell does in Excel: the rest of the spill is cleared and
+    /// the anchor's range shrinks to the anchor, so the next recalculation
+    /// reads `#SPILL!` there until the cell is cleared again. Rewriting the
+    /// anchor itself clears its spill too. Returns the edits with those
+    /// blanks added, and the ranges to shrink after writing them.
+    fn block_spills(
+        &self,
+        mut edits: Vec<(usize, CellEdit)>,
+    ) -> (
+        Vec<(usize, CellEdit)>,
+        Vec<jade_xlsx_writer::spills::SheetSpills>,
+    ) {
+        use jade_xlsx_writer::spills::{ArrayRange, SheetSpills};
+        let mut blocked: BTreeMap<usize, SheetSpills> = BTreeMap::new();
+        let written: HashSet<(usize, CellRef)> = edits
+            .iter()
+            .map(|(index, edit)| (*index, edit.reference))
+            .collect();
+        let mut blanks = Vec::new();
+        for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            for array in &sheet.array_formulas {
+                let rewrites_anchor = written.contains(&(index, array.anchor));
+                let into_spill = written
+                    .iter()
+                    .any(|(at, cell)| *at == index && array.outputs_to(*cell));
+                if !rewrites_anchor && !into_spill {
+                    continue;
+                }
+                for row in array.range.start.row..=array.range.end.row {
+                    for column in array.range.start.column..=array.range.end.column {
+                        let cell = CellRef::new(column, row);
+                        if array.outputs_to(cell)
+                            && !written.contains(&(index, cell))
+                            && self.cached_value(index, cell) != CellValue::Empty
+                        {
+                            blanks.push((
+                                index,
+                                CellEdit {
+                                    reference: cell,
+                                    value: NewValue::Blank,
+                                    style_index: None,
+                                },
+                            ));
+                        }
+                    }
+                }
+                if !rewrites_anchor {
+                    let part_name = sheet.part_name.clone();
+                    blocked
+                        .entry(index)
+                        .or_insert_with(|| SheetSpills {
+                            part_name,
+                            values: Vec::new(),
+                            ranges: Vec::new(),
+                        })
+                        .ranges
+                        .push(ArrayRange {
+                            anchor: array.anchor,
+                            range: CellRange {
+                                start: array.anchor,
+                                end: array.anchor,
+                            },
+                        });
+                }
+            }
+        }
+        edits.extend(blanks);
+        (edits, blocked.into_values().collect())
+    }
+
     /// [`Self::write_edits_with_styles`] with further parts replaced
     /// wholesale in the same write — a sheet part whose merge list changed
     /// alongside the cells the merge cleared. The cell edits patch the
@@ -849,6 +931,7 @@ impl HeadlessWorkbook {
         styles: Option<(String, String)>,
         extra_parts: Vec<(String, String)>,
     ) -> Result<()> {
+        let (edits, blocked) = self.block_spills(edits);
         let mut references = HashSet::with_capacity(edits.len());
         for (index, edit) in &edits {
             if !references.insert((*index, edit.reference)) {
@@ -879,7 +962,7 @@ impl HeadlessWorkbook {
             &self.workbook,
             &mut sheets,
         )?);
-        let written = jade_xlsx_writer::write_xlsx_with_parts(
+        let mut written = jade_xlsx_writer::write_xlsx_with_parts(
             &self.source,
             styles
                 .as_ref()
@@ -887,6 +970,9 @@ impl HeadlessWorkbook {
             &sheets,
             &parts,
         )?;
+        if !blocked.is_empty() {
+            written = jade_xlsx_writer::spills::write_spills(&written, &blocked, false)?;
+        }
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);
         // One undo step per write; the recalculation below folds into it.
@@ -1489,6 +1575,8 @@ impl HeadlessWorkbook {
             self.source = written;
         }
 
+        self.write_spills(&outcome.spills, complete)?;
+
         self.source_time_zone = self.calculation_time_zone.clone();
         Ok(RecalculationSummary {
             refreshed,
@@ -1503,6 +1591,114 @@ impl HeadlessWorkbook {
                 })
                 .collect(),
         })
+    }
+
+    /// Writes what each array formula spilled — the values beside its
+    /// anchor, blanks where a spill no longer reaches, and the anchor's range
+    /// marked as a dynamic array — when the file does not already say so.
+    ///
+    /// The values are the recalculation's own, so when it was `complete` the
+    /// file does not go back to asking for a full calculation on load.
+    fn write_spills(&mut self, spills: &[jade_xlsx_calc::Spill], complete: bool) -> Result<()> {
+        use jade_xlsx_writer::spills::{ArrayRange, SheetSpills};
+        let mut sheets: BTreeMap<usize, SheetSpills> = BTreeMap::new();
+        let entry = |sheets: &mut BTreeMap<usize, SheetSpills>, index: usize| {
+            let part_name = self.workbook.sheets[index].part_name.clone();
+            sheets.entry(index).or_insert_with(|| SheetSpills {
+                part_name,
+                values: Vec::new(),
+                ranges: Vec::new(),
+            });
+        };
+        for spill in spills {
+            entry(&mut sheets, spill.sheet);
+            let edits = sheets.get_mut(&spill.sheet).expect("entered");
+            for cell in &spill.cells {
+                if self.cached_value(spill.sheet, cell.reference) != cell.value {
+                    edits.values.push(CellEdit {
+                        reference: cell.reference,
+                        value: spilled_value(&cell.value),
+                        style_index: None,
+                    });
+                }
+            }
+            let recorded = self.workbook.sheets[spill.sheet]
+                .array_formulas
+                .iter()
+                .any(|array| array.anchor == spill.anchor && array.range == spill.range);
+            if !recorded {
+                edits.ranges.push(ArrayRange {
+                    anchor: spill.anchor,
+                    range: spill.range,
+                });
+            }
+        }
+        // A file's spills that shrank or stopped: what they no longer reach
+        // is cleared, and the anchor's range follows.
+        for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            for array in &sheet.array_formulas {
+                let now = spills
+                    .iter()
+                    .find(|spill| spill.sheet == index && spill.anchor == array.anchor)
+                    .map_or(
+                        CellRange {
+                            start: array.anchor,
+                            end: array.anchor,
+                        },
+                        |spill| spill.range,
+                    );
+                if now == array.range {
+                    continue;
+                }
+                let part_name = sheet.part_name.clone();
+                let edits = sheets.entry(index).or_insert_with(|| SheetSpills {
+                    part_name,
+                    values: Vec::new(),
+                    ranges: Vec::new(),
+                });
+                for row in array.range.start.row..=array.range.end.row {
+                    for column in array.range.start.column..=array.range.end.column {
+                        let cell = CellRef::new(column, row);
+                        let still = (now.start.row..=now.end.row).contains(&row)
+                            && (now.start.column..=now.end.column).contains(&column);
+                        if array.outputs_to(cell)
+                            && !still
+                            && self.cached_value(index, cell) != CellValue::Empty
+                        {
+                            edits.values.push(CellEdit {
+                                reference: cell,
+                                value: NewValue::Blank,
+                                style_index: None,
+                            });
+                        }
+                    }
+                }
+                if !edits
+                    .ranges
+                    .iter()
+                    .any(|range| range.anchor == array.anchor)
+                {
+                    edits.ranges.push(ArrayRange {
+                        anchor: array.anchor,
+                        range: now,
+                    });
+                }
+            }
+        }
+        let sheets: Vec<SheetSpills> = sheets
+            .into_values()
+            .filter(|sheet| !sheet.values.is_empty() || !sheet.ranges.is_empty())
+            .collect();
+        if sheets.is_empty() {
+            return Ok(());
+        }
+        let written = jade_xlsx_writer::spills::write_spills(&self.source, &sheets, complete)?;
+        self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
+        if self.automatic_height_base.is_none() {
+            self.automatic_height_base = Some(self.source.clone());
+        }
+        self.source = written;
+        Ok(())
     }
 
     fn cached_value(&self, sheet: usize, reference: CellRef) -> CellValue {

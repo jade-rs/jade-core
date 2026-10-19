@@ -109,6 +109,7 @@ fn laid_out() -> SheetLayout {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     };
     layout_sheet(
         &sheet,

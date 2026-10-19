@@ -601,7 +601,11 @@ pub fn add_relationship(
     Ok(apply(&xml, vec![splice])).map(|xml| (xml, id))
 }
 
-fn ensure_override(package: &mut OpcPackage, part: &str, content_type: &str) -> Result<()> {
+pub(crate) fn ensure_override(
+    package: &mut OpcPackage,
+    part: &str,
+    content_type: &str,
+) -> Result<()> {
     let Some(types) = package.part_str("[Content_Types].xml")? else {
         return Ok(());
     };

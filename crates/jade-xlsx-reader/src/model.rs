@@ -243,6 +243,29 @@ pub struct Sheet {
     /// its drawing part.
     #[serde(default)]
     pub shapes: Vec<Shape>,
+    /// The array formulas (`<f t="array" ref>`): dynamic arrays and the older
+    /// Ctrl+Shift+Enter ones. The rest of each range is the formula's
+    /// output, which the file stores as plain values.
+    #[serde(default)]
+    pub array_formulas: Vec<ArrayFormula>,
+}
+
+/// An array formula: its anchor holds the formula, and the rest of `range`
+/// holds what it returned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArrayFormula {
+    pub anchor: CellRef,
+    pub range: CellRange,
+}
+
+impl ArrayFormula {
+    /// Whether `cell` holds this formula's output rather than a value of
+    /// its own.
+    pub fn outputs_to(&self, cell: CellRef) -> bool {
+        cell != self.anchor
+            && (self.range.start.column..=self.range.end.column).contains(&cell.column)
+            && (self.range.start.row..=self.range.end.row).contains(&cell.row)
+    }
 }
 
 /// An Excel table — what the ribbon calls "Format as Table" and the object

@@ -2454,7 +2454,7 @@ where
         None
     };
     let mut state = initial_state.clone();
-    let mut graphemes = text.grapheme_indices(true).peekable();
+    let mut graphemes = crate::graphemes::grapheme_indices(text).peekable();
     let mut is_line_start = initial_state.prev_grapheme.is_none();
     let mut pair_cache = PairMeasureCache::default();
 
@@ -2584,7 +2584,7 @@ pub fn collect_text_advance_steps<C>(
 where
     C: LineWrapContext,
 {
-    let mut steps = Vec::with_capacity(text.graphemes(true).count());
+    let mut steps = Vec::with_capacity(crate::graphemes::grapheme_indices(text).count());
     let end_state = visit_owned_text_advance_steps(
         ctx,
         text,
@@ -3868,7 +3868,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
-        for (rel_offset, grapheme) in run_text.grapheme_indices(true) {
+        for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
             let grapheme_start_abs = base_offset + start_aligned + rel_offset;
             let grapheme_end_abs = grapheme_start_abs + grapheme.len();
 
@@ -5796,7 +5796,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         let mut buffer_is_whitespace: Option<bool> = None;
         let mut active_script = ScriptCategory::Latin;
 
-        let mut grapheme_iter = run_text.grapheme_indices(true).peekable();
+        let mut grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
         while let Some((rel_offset, grapheme)) = grapheme_iter.next() {
             let grapheme_start_abs = base_offset + start_aligned + rel_offset;
             let grapheme_end_abs = grapheme_start_abs + grapheme.len();
@@ -7284,7 +7284,7 @@ fn measure_tab_segment<C: LineWrapContext>(
             .and_then(|p| p.border.as_ref())
             .filter(|border| border.is_visible());
         let mut first_grapheme_in_run = true;
-        let mut tab_grapheme_iter = run_text.grapheme_indices(true).peekable();
+        let mut tab_grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
         while let Some((rel_offset, grapheme)) = tab_grapheme_iter.next() {
             if rel_offset < initial_offset {
                 continue;
@@ -15625,7 +15625,7 @@ mod tests {
             }
             let mut active_script = ScriptCategory::Latin;
 
-            let mut tab_grapheme_iter = run_text.grapheme_indices(true).peekable();
+            let mut tab_grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
             while let Some((rel_offset, grapheme)) = tab_grapheme_iter.next() {
                 if rel_offset < initial_offset {
                     continue;

@@ -50,6 +50,7 @@ mod refresh;
 pub mod sheets;
 pub mod shift;
 pub mod sort;
+pub mod spills;
 pub mod styles;
 pub mod table;
 

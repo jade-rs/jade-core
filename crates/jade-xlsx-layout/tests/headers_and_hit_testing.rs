@@ -49,6 +49,7 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     }
 }
 
