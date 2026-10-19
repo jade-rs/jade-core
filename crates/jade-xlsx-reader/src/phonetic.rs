@@ -336,7 +336,16 @@ pub fn sort_readings(
     range: CellRange,
     columns: &BTreeSet<u32>,
 ) -> Result<BTreeMap<CellRef, PhoneticReading>> {
-    let package = OpcPackage::open(bytes)?;
+    package_readings(&OpcPackage::open(bytes)?, sheet_part, range, columns)
+}
+
+/// [`sort_readings`] in a package already open.
+pub fn package_readings(
+    package: &OpcPackage,
+    sheet_part: &str,
+    range: CellRange,
+    columns: &BTreeSet<u32>,
+) -> Result<BTreeMap<CellRef, PhoneticReading>> {
     let sheet = package.required_part_str(sheet_part)?;
     let mut scanned = scan(&sheet, Select::Inline(range, columns))?;
     if scanned.shared.is_empty() {

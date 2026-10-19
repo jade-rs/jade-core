@@ -265,6 +265,7 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     }
 }
 
