@@ -13280,10 +13280,7 @@ mod tests {
         let previous = word_layout_platform();
         set_word_layout_platform(WordLayoutPlatform::Mac);
         let mut table = Table {
-            columns: vec![TableColumn {
-                width: Some(72.0),
-                ..Default::default()
-            }],
+            columns: vec![TableColumn { width: Some(72.0) }],
             rows: vec![TableRow {
                 cells: vec![text_cell("AAAA AAAA"), text_cell("B"), text_cell("C")],
                 ..Default::default()
