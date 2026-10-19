@@ -680,6 +680,7 @@ mod tests {
         let sequence_heading = |number: &str, title: &str, level: u8| {
             let mut sequence_run = run("");
             sequence_run.field = Some(RunField {
+                word_mac_body_result: None,
                 kind: RunFieldKind::Seq {
                     identifier: "Chapter".to_string(),
                     restart_at: None,
@@ -842,6 +843,7 @@ mod tests {
     fn insert_table_of_contents_builds_table_of_figures_from_caption_sequence() {
         let mut seq_run = run("");
         seq_run.field = Some(RunField {
+            word_mac_body_result: None,
             kind: RunFieldKind::Seq {
                 identifier: "Figure".to_string(),
                 restart_at: None,

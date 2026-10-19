@@ -59,6 +59,11 @@ struct ActiveField {
     // into the parent instruction when this frame closes.
     is_instruction_operand: bool,
     operand_result: String,
+    // The instruction as Word for Mac reads it in the main story, with each
+    // nested COMPARE or IF at its saved result, and the IF result it gives
+    // when that differs from the evaluated instruction.
+    saved_instruction: Option<String>,
+    word_mac_body_result: Option<String>,
     // Simple fields can legitimately have no result run. Remember the run
     // count at entry so invisible structural fields such as SET can still be
     // materialized when the element closes without adding visible content.
@@ -3455,12 +3460,17 @@ impl DocumentParser {
                     }
                     b"w:instrText" => {
                         in_instr_text = false;
-                        if let Some(buffer) = active_fields
+                        if let Some(field) = active_fields
                             .iter_mut()
                             .rev()
-                            .find_map(|field| field.instruction.as_mut())
+                            .find(|field| field.instruction.is_some())
                         {
-                            buffer.push_str(&current_instr_text);
+                            if let Some(buffer) = field.instruction.as_mut() {
+                                buffer.push_str(&current_instr_text);
+                            }
+                            if let Some(buffer) = field.saved_instruction.as_mut() {
+                                buffer.push_str(&current_instr_text);
+                            }
                         }
                         current_instr_text.clear();
                     }
@@ -3561,7 +3571,13 @@ impl DocumentParser {
                                                     Some(paragraph.runs.len());
                                             }
                                         }
+                                        let word_mac_body_result = active_fields
+                                            .iter()
+                                            .rev()
+                                            .find(|field| field.kind.as_ref() == Some(&kind))
+                                            .and_then(|field| field.word_mac_body_result.clone());
                                         run.field = Some(RunField {
+                                            word_mac_body_result,
                                             kind,
                                             cached_text,
                                             source_field_id: None,
@@ -8783,6 +8799,8 @@ impl DocumentParser {
                     instruction: Some(String::new()),
                     is_instruction_operand,
                     operand_result: String::new(),
+                    saved_instruction: Some(String::new()),
+                    word_mac_body_result: None,
                     paragraph_run_start: None,
                     sequence_result_run: None,
                 });
@@ -8795,6 +8813,12 @@ impl DocumentParser {
                         .instruction
                         .take()
                         .expect("complex field instruction");
+                    let saved_instr = active_fields[pos].saved_instruction.take();
+                    active_fields[pos].word_mac_body_result = Self::word_mac_body_if_result(
+                        &instr,
+                        saved_instr.as_deref(),
+                        bookmark_text,
+                    );
                     if let Some(entry) = parse_toc_entry_field(&instr, paragraph) {
                         toc_entry_fields.push(entry);
                     }
@@ -8890,6 +8914,8 @@ impl DocumentParser {
                         instruction: None,
                         is_instruction_operand,
                         operand_result: String::new(),
+                        saved_instruction: None,
+                        word_mac_body_result: None,
                         paragraph_run_start: Some(paragraph_run_start),
                         sequence_result_run: None,
                     });
@@ -8942,6 +8968,7 @@ impl DocumentParser {
                         text_box: None,
                         math: None,
                         field: Some(RunField {
+                            word_mac_body_result: None,
                             kind,
                             cached_text: None,
                             source_field_id: None,
@@ -8991,11 +9018,19 @@ impl DocumentParser {
         if !field.is_instruction_operand {
             return;
         }
-        if let Some(parent_instruction) = active_fields
+        let saved_nested = field.kind.as_ref().is_some_and(|kind| {
+            matches!(
+                kind.base_kind(),
+                RunFieldKind::Compare { .. } | RunFieldKind::If { .. }
+            )
+        });
+        if let Some(parent) = active_fields
             .iter_mut()
             .rev()
-            .find_map(|parent| parent.instruction.as_mut())
+            .find(|parent| parent.instruction.is_some())
         {
+            let before = parent.instruction.as_ref().map_or(0, String::len);
+            let parent_instruction = parent.instruction.as_mut().expect("instruction");
             // A cached nested result may be stale even when its operands are
             // self-contained numeric literals. Refresh that safe subset now;
             // fields requiring unresolved bookmarks or package state retain
@@ -9010,7 +9045,7 @@ impl DocumentParser {
                 let index = deferred_nested_fields.len();
                 deferred_nested_fields.push(DeferredNestedField {
                     kind,
-                    cached_result: field.operand_result,
+                    cached_result: field.operand_result.clone(),
                 });
                 parent_instruction.push_str(DEFERRED_NESTED_FIELD_PREFIX);
                 parent_instruction.push_str(&index.to_string());
@@ -9021,7 +9056,36 @@ impl DocumentParser {
                 // placeholder into the parent instruction.
                 Self::append_nested_operand_token(parent_instruction, &field.operand_result);
             }
+            let appended = parent.instruction.as_ref().expect("instruction")[before..].to_string();
+            if let Some(saved) = parent.saved_instruction.as_mut() {
+                if saved_nested {
+                    Self::append_nested_operand_token(saved, &field.operand_result);
+                } else {
+                    saved.push_str(&appended);
+                }
+            }
         }
+    }
+
+    /// The result Word for Mac prints in the main story for the IF field
+    /// with instruction `instr`, when it differs from the evaluated one:
+    /// `saved_instr` is the same instruction with each nested COMPARE or IF
+    /// at its saved result (`if-compare-field-edge-cases`: a nested COMPARE
+    /// cached as 0 makes `IF {COMPARE 2<10} = 1 ...` false there).
+    fn word_mac_body_if_result(
+        instr: &str,
+        saved_instr: Option<&str>,
+        bookmark_text: &HashMap<String, String>,
+    ) -> Option<String> {
+        let saved_instr = saved_instr.filter(|saved| *saved != instr)?;
+        let saved = Self::parse_field_instruction(saved_instr)?;
+        if !matches!(saved, RunFieldKind::If { .. }) {
+            return None;
+        }
+        let result = Self::locally_resolved_field_result(&saved, bookmark_text)?;
+        let live = Self::parse_field_instruction(instr)
+            .and_then(|kind| Self::locally_resolved_field_result(&kind, bookmark_text));
+        (live.as_ref() != Some(&result)).then_some(result)
     }
 
     fn append_nested_operand_token(parent_instruction: &mut String, result: &str) {

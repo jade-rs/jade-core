@@ -1592,6 +1592,7 @@ mod tests {
                     text_box: None,
                     math: None,
                     field: Some(RunField {
+                        word_mac_body_result: None,
                         kind: RunFieldKind::PageNumber,
                         cached_text: None,
                         source_field_id: None,
