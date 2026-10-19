@@ -2061,6 +2061,16 @@ fn points_to_px(points: f32) -> f64 {
     (points as f64) * 96.0 / 72.0
 }
 
+/// Whether a floating drawing is placed from its anchor line
+/// (`wp:positionV relativeFrom="line"`).
+fn anchored_to_line(layout: &RunImageLayout) -> bool {
+    layout
+        .position_v
+        .as_ref()
+        .and_then(|position| position.relative_from.as_deref())
+        == Some("line")
+}
+
 fn font_size_key(size_pt: f64) -> String {
     format!("{size_pt:.2}")
 }
@@ -16941,7 +16951,7 @@ where
                 paragraph_top_y,
                 line_height,
             ) {
-                paragraph_float_exclusions.push(bounds);
+                paragraph_float_exclusions.push((bounds, anchored_to_line(&image.layout)));
             }
         }
         for (run_index, text_box) in &floating_text_boxes {
@@ -16958,15 +16968,37 @@ where
                 paragraph_top_y,
                 line_height,
             ) {
-                paragraph_float_exclusions.push(bounds);
+                paragraph_float_exclusions.push((bounds, anchored_to_line(&text_box.layout)));
             }
         }
+        // An object placed from its anchor line does not move that line:
+        // Word for Mac keeps `textbox`'s double-spaced first line in place
+        // and wraps only what follows it around the box.
+        let mac = paragraph_style.word_platform
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        let current_float_exclusions = paragraph_float_exclusions
+            .iter()
+            .filter_map(|(bounds, line_anchored)| {
+                if !(mac && *line_anchored) {
+                    return Some(bounds.clone());
+                }
+                let top = bounds.top.max(paragraph_top_y + line_height);
+                (top < bounds.bottom).then(|| FloatExclusion {
+                    top,
+                    ..bounds.clone()
+                })
+            })
+            .collect::<Vec<_>>();
+        let paragraph_float_exclusions = paragraph_float_exclusions
+            .into_iter()
+            .map(|(bounds, _)| bounds)
+            .collect::<Vec<_>>();
         // Only nongrid Mac contour paragraphs need another font-box lookup;
         // ordinary/grid paragraphs avoid scanning active float metadata here.
         let contour_font_box = if paragraph_style.word_platform
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             && paragraph_style.word_grid_line_sizing.is_none()
-            && (paragraph_float_exclusions
+            && (current_float_exclusions
                 .iter()
                 .any(|f| f.polygon.is_some())
                 || self.active_float_exclusions.iter().any(|f| {
@@ -16984,7 +17016,7 @@ where
             line_height,
             x,
             column_right - paragraph_style.right_indent,
-            &paragraph_float_exclusions,
+            &current_float_exclusions,
             contour_font_box,
             paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
@@ -31152,6 +31184,12 @@ where
                     top
                 } else if self.last_line_baseline > paragraph_start_y {
                     self.last_line_baseline
+                } else if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                {
+                    // Before the paragraph's lines exist, its first line
+                    // starts at the paragraph top.
+                    paragraph_start_y
                 } else {
                     paragraph_start_y + line_height
                 }
@@ -54724,6 +54762,54 @@ mod tests {
         assert!((bounds.top - 115.0).abs() < 0.001);
         assert!((bounds.bottom - 247.0).abs() < 0.001);
         assert_eq!(bounds.wrap_text, WrapTextSide::BothSides);
+    }
+
+    #[test]
+    fn mac_line_anchored_exclusion_starts_from_the_paragraph_top_before_its_lines() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let renderer = test_renderer();
+        // `textbox`: a box 31pt below its double-spaced anchor line, wrapped
+        // top and bottom with 12pt distances.
+        let layout = RunImageLayout {
+            kind: RunImageKind::Floating,
+            position_v: Some(ImagePosition {
+                relative_from: Some("line".into()),
+                offset_px: Some(points_to_px(31.0)),
+                align: None,
+            }),
+            wrap: WrapMode::TopAndBottom,
+            dist_top: Some(points_to_px(12.0)),
+            dist_bottom: Some(points_to_px(12.0)),
+            ..RunImageLayout::default()
+        };
+        assert!(anchored_to_line(&layout));
+        let top_pt = |platform| {
+            set_word_layout_platform(platform);
+            renderer
+                .floating_object_wrap_exclusion(
+                    FloatingObjectTarget {
+                        paragraph_index: 0,
+                        run_index: 0,
+                        kind: FloatingObjectKind::TextBox,
+                    },
+                    points_to_px(250.0),
+                    points_to_px(128.0),
+                    &layout,
+                    points_to_px(100.0),
+                    points_to_px(28.6),
+                )
+                .expect("top-and-bottom wrap exclusion")
+                .top
+                * 0.75
+        };
+        let mac = top_pt(WordLayoutPlatform::Mac);
+        let windows = top_pt(WordLayoutPlatform::Windows);
+        assert!((mac - (100.0 + 31.0 - 12.0)).abs() < 0.01, "Mac {mac}");
+        assert!((windows - (100.0 + 28.6 + 31.0 - 12.0)).abs() < 0.01, "Windows {windows}");
+        set_word_layout_platform(previous);
     }
 
     #[test]
