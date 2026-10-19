@@ -3831,6 +3831,7 @@ where
     band_redraw_fallback_line_numbering: Cell<u64>,
     band_redraw_fallback_not_plain_paragraph: Cell<u64>,
     band_redraw_fallback_floating: Cell<u64>,
+    band_redraw_fallback_numbering: Cell<u64>,
     band_redraw_fallback_multi_page: Cell<u64>,
     band_redraw_fallback_multi_column: Cell<u64>,
     band_redraw_fallback_line_height: Cell<u64>,
@@ -7977,6 +7978,7 @@ where
             band_redraw_fallback_line_numbering: Cell::new(0),
             band_redraw_fallback_not_plain_paragraph: Cell::new(0),
             band_redraw_fallback_floating: Cell::new(0),
+            band_redraw_fallback_numbering: Cell::new(0),
             band_redraw_fallback_multi_page: Cell::new(0),
             band_redraw_fallback_multi_column: Cell::new(0),
             band_redraw_fallback_line_height: Cell::new(0),
@@ -8140,6 +8142,7 @@ where
                     self.band_redraw_fallback_not_plain_paragraph.get(),
                 ),
                 ("floating", self.band_redraw_fallback_floating.get()),
+                ("numbering", self.band_redraw_fallback_numbering.get()),
                 ("multi_page", self.band_redraw_fallback_multi_page.get()),
                 ("multi_column", self.band_redraw_fallback_multi_column.get()),
                 ("line_height", self.band_redraw_fallback_line_height.get()),
@@ -11084,20 +11087,6 @@ where
                 .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
             return None;
         };
-        // Numbering markers can paint outside the paragraph's text-line band and
-        // inherit run formatting from the edited paragraph. Keep numbered
-        // paragraphs on the full-page path until the band plan explicitly unions
-        // marker geometry into both its clip and dirty bounds.
-        if self
-            .numbering_debug_regions
-            .borrow()
-            .iter()
-            .any(|marker| marker.paragraph == edited)
-        {
-            self.band_redraw_fallback_floating
-                .set(self.band_redraw_fallback_floating.get() + 1);
-            return None;
-        }
         // Gate 4: no floating images / text boxes / math in the edited paragraph
         // (they can paint outside the text band).
         if paragraph_has_floating_or_math(paragraph) {
@@ -11259,6 +11248,24 @@ where
         let local_bottom = own_box_bottom
             .map(|bottom| local_bottom.max(bottom.min(end_local)))
             .unwrap_or(local_bottom);
+        // A numbering marker paints with the first line, at its baseline, in
+        // the marker's own font, so its ink can reach past the text lines'.
+        // The band clears the marker with the paragraph and repaints it, so it
+        // must cover the marker's ink: extend it there. The neighbour checks
+        // below then hold for the extended band as for any other. A marker
+        // whose ink cannot be bounded keeps the dirty-page render.
+        let (local_top, local_bottom) =
+            match self.band_numbering_marker_ink(paragraph, edited, &layout, true) {
+                Ok(None) => (local_top, local_bottom),
+                Ok(Some((top, bottom))) if top >= 0.0 && bottom <= self.page_height => {
+                    (local_top.min(top), local_bottom.max(bottom))
+                }
+                _ => {
+                    self.band_redraw_fallback_numbering
+                        .set(self.band_redraw_fallback_numbering.get() + 1);
+                    return None;
+                }
+            };
 
         // An empty paragraph has a placeholder line, not measured text ink.
         // Its height can stay unchanged when the first glyph is inserted while
@@ -11287,7 +11294,7 @@ where
         // the device-aligned clip often reaches a neighbour's ink. A band clear
         // there is safe only when this pass repaints that neighbour under the
         // clip; otherwise it would erase ink the pass never repaints.
-        let next_ink_top = paragraphs
+        let next_line_ink_top = paragraphs
             .get(edited.saturating_add(1))
             .and_then(|paragraph| {
                 paragraph
@@ -11298,6 +11305,21 @@ where
                     .reduce(f64::min)
             })
             .map(|absolute| absolute - layout.start_page_offset_y);
+        // The next paragraph's numbering marker paints with its first line and
+        // can rise above that line's ink. A marker of unknown extent counts as
+        // reached, so the scan below decides (and refuses).
+        let next = edited.saturating_add(1);
+        let next_marker_top =
+            top_level_paragraph_at_index(&body.elements, next).and_then(|paragraph| {
+                match self.band_numbering_marker_ink(paragraph, next, &layout, false) {
+                    Ok(marker) => marker.map(|(top, _)| top),
+                    Err(()) => Some(f64::NEG_INFINITY),
+                }
+            });
+        let next_ink_top = next_line_ink_top
+            .into_iter()
+            .chain(next_marker_top)
+            .reduce(f64::min);
         let dpr = self.host.device_pixel_ratio();
         if !self.band_preceding_lines_repaint(&body.elements, edited, &layout, local_top, dpr) {
             self.band_redraw_fallback_neighbor_ink
@@ -11332,9 +11354,12 @@ where
     /// Whether the band pass repaints paragraph `index` under the band clip.
     /// On the band page a cached paragraph replays all of its commands, and an
     /// uncached one paints each line, with its shading and borders, unless the
-    /// band cull skips that line. Frames, drop caps, numbering markers and
-    /// floating objects paint outside that line pass, and a table cell
-    /// paragraph is not a top-level body paragraph.
+    /// band cull skips that line. A numbering marker paints with the first
+    /// line and is among a cached paragraph's commands, so
+    /// [`Self::band_neighbor_reached_lines`] counts that line as reached
+    /// whenever the clip reaches the marker. Frames, drop caps and floating
+    /// objects paint outside that line pass, and a table cell paragraph is
+    /// not a top-level body paragraph.
     fn band_neighbor_paints_in_line_pass(&self, elements: &[BodyElement], index: usize) -> bool {
         let Some(paragraph) = top_level_paragraph_at_index(elements, index) else {
             return false;
@@ -11344,11 +11369,162 @@ where
             .as_ref()
             .is_none_or(|props| props.frame.is_none() && props.drop_cap.is_none())
             && !paragraph_has_floating_or_math(paragraph)
-            && !self
-                .numbering_debug_regions
-                .borrow()
+    }
+
+    /// Lines of paragraph `index` whose ink the band clip reaches, where
+    /// `reaches(top, bottom)` tests page-local ink. A reached numbering
+    /// marker reaches the first line, which paints it. `None` when the
+    /// paragraph has no recorded lines or its marker's ink is unknown.
+    fn band_neighbor_reached_lines(
+        &self,
+        elements: &[BodyElement],
+        index: usize,
+        layout: &ParagraphLayoutResult,
+        reaches: impl Fn(f64, f64) -> bool,
+    ) -> Option<Vec<&jade_docx_layout::selection::LineLayout>> {
+        let lines = &self.selection.paragraphs().get(index)?.lines;
+        let marker_reached = match top_level_paragraph_at_index(elements, index) {
+            Some(paragraph) => self
+                .band_numbering_marker_ink(paragraph, index, layout, false)
+                .ok()?
+                .is_some_and(|(top, bottom)| reaches(top, bottom)),
+            None => false,
+        };
+        let offset = layout.start_page_offset_y;
+        Some(
+            lines
                 .iter()
-                .any(|marker| marker.paragraph == index)
+                .enumerate()
+                .filter(|(line_index, line)| {
+                    (*line_index == 0 && marker_reached)
+                        || reaches(
+                            line.absolute_content_top - offset,
+                            line.absolute_content_top + line.content_height - offset,
+                        )
+                })
+                .map(|(_, line)| line)
+                .collect(),
+        )
+    }
+
+    /// Page-local vertical ink extent `(top, bottom)` of the numbering marker
+    /// that top-level paragraph `index` painted in the previous pass, with
+    /// `layout` naming the band's page, or `Ok(None)` when it has none. The
+    /// marker sits on the paragraph's first line, at that line's baseline
+    /// (`draw_pending_numbering_marker`), in the level's run properties
+    /// completed by the paragraph mark's. `Err` when that extent is unknown:
+    /// no first line is recorded, the marker is underlined, or (for the
+    /// `edited` paragraph) the marker takes its properties from the runs the
+    /// edit may have changed, which only a document without styles does.
+    fn band_numbering_marker_ink(
+        &self,
+        paragraph: &Paragraph,
+        index: usize,
+        layout: &ParagraphLayoutResult,
+        edited: bool,
+    ) -> Result<Option<(f64, f64)>, ()> {
+        let Some(properties) = paragraph.properties.as_ref() else {
+            return Ok(None);
+        };
+        let Some((num_id, level)) = properties
+            .numbering
+            .as_ref()
+            .and_then(|numbering| Some((numbering.id.as_ref()?, numbering.level?)))
+        else {
+            return Ok(None);
+        };
+        let Some(numbering_part) = self.last_numbering_part.as_deref() else {
+            return Ok(None);
+        };
+        if edited && self.styles_part.is_none() && properties.mark_run_properties.is_none() {
+            return Err(());
+        }
+        let props = Self::merge_numbering_run_props(
+            numbering_part
+                .get_level_info(num_id, level)
+                .and_then(|info| info.run_props.clone()),
+            self.paragraph_numbering_fallback_props(paragraph).as_ref(),
+        );
+        let style = self.resolve_applied_run_style_cached(props.as_ref());
+        let (top, bottom) = self.numbering_marker_ink_offsets(&style).ok_or(())?;
+        let line = self
+            .selection
+            .paragraphs()
+            .get(index)
+            .and_then(|paragraph| paragraph.lines.first())
+            .ok_or(())?;
+        let baseline = line.baseline + (line.absolute_top - line.top) - layout.start_page_offset_y;
+        Ok(Some((baseline + top, baseline + bottom)))
+    }
+
+    /// Vertical ink extent `(top, bottom)` of a numbering marker painted in
+    /// `style`, relative to its line's baseline: the font box the line ink
+    /// guard measures (`font_vertical_metrics_cached`), over every font slot
+    /// so that it holds whatever the counter formats. `None` for an
+    /// underlined marker, whose rule that box does not bound.
+    fn numbering_marker_ink_offsets(&self, style: &AppliedRunStyle) -> Option<(f64, f64)> {
+        if style.underline {
+            return None;
+        }
+        let font_px = points_to_px(style.font_size_pt);
+        let fallback_ascent = (font_px * 0.8).max(1.0);
+        let fallback_descent = (font_px * 0.25).max(0.0);
+        let mut extent: Option<(f64, f64)> = None;
+        for slot in [
+            ResolvedFontSlot::LatinAscii,
+            ResolvedFontSlot::LatinHansi,
+            ResolvedFontSlot::EastAsia,
+            ResolvedFontSlot::Complex,
+        ] {
+            let (ascent, descent) = self
+                .font_vertical_metrics_cached(
+                    style.resolved.descriptor_for_slot(slot),
+                    fallback_ascent,
+                    fallback_descent,
+                )
+                .ok()?;
+            let top = style.baseline_shift_px - ascent;
+            let bottom = style.baseline_shift_px + descent;
+            extent = Some(extent.map_or((top, bottom), |(t, b)| (t.min(top), b.max(bottom))));
+        }
+        extent.filter(|(top, bottom)| top.is_finite() && bottom.is_finite())
+    }
+
+    /// Band-mode guard for the edited paragraph's numbering marker, the
+    /// marker's counterpart of the line ink guard: the band cleared the
+    /// marker's previous ink, so its new ink must lie inside the band and be
+    /// painted in this pass. Otherwise the render escalates to a full repaint.
+    fn band_guard_numbering_marker(
+        &mut self,
+        paragraph_index: usize,
+        baseline_y: f64,
+        style: &AppliedRunStyle,
+    ) {
+        let Some(plan) = self.band_redraw_plan else {
+            return;
+        };
+        if self.band_redraw_escalate
+            || self.rendering_header_footer_story
+            || self.band_redraw_edited_paragraph != Some(paragraph_index)
+            || self.current_page_number != plan.page
+        {
+            return;
+        }
+        let (top, bottom) = self
+            .numbering_marker_ink_offsets(style)
+            .unwrap_or((f64::NAN, f64::NAN));
+        if !self.should_draw_current_page_for_render()
+            || band_ink_escapes_band(
+                plan.local_top,
+                plan.local_bottom,
+                baseline_y + top,
+                baseline_y + bottom,
+            )
+        {
+            self.band_redraw_escalate = true;
+            self.band_redraw_fallback_ink_overflow
+                .set(self.band_redraw_fallback_ink_overflow.get() + 1);
+        }
     }
 
     /// Page-local `(top, bottom)` of `line` when it lies in the band's page and
@@ -11377,23 +11553,17 @@ where
         local_bottom: f64,
         device_pixel_ratio: f64,
     ) -> Option<f64> {
-        let paragraphs = self.selection.paragraphs();
         let mut paint_bottom = local_bottom;
         for index in edited + 1..=edited + BAND_MAX_REPAINTED_NEIGHBORS + 1 {
-            let reached = paragraphs
-                .get(index)?
-                .lines
-                .iter()
-                .filter(|line| {
-                    band_clip_overlaps_neighbor_ink(
-                        0.0,
-                        local_bottom,
-                        device_pixel_ratio,
-                        None,
-                        Some(line.absolute_content_top - layout.start_page_offset_y),
-                    )
-                })
-                .collect::<Vec<_>>();
+            let reached = self.band_neighbor_reached_lines(elements, index, layout, |top, _| {
+                band_clip_overlaps_neighbor_ink(
+                    0.0,
+                    local_bottom,
+                    device_pixel_ratio,
+                    None,
+                    Some(top),
+                )
+            })?;
             if reached.is_empty() {
                 return Some(paint_bottom);
             }
@@ -11422,27 +11592,20 @@ where
         local_top: f64,
         device_pixel_ratio: f64,
     ) -> bool {
-        let paragraphs = self.selection.paragraphs();
         for (step, index) in (0..edited).rev().enumerate() {
-            let Some(paragraph) = paragraphs.get(index) else {
-                return false;
-            };
-            let reached = paragraph
-                .lines
-                .iter()
-                .filter(|line| {
+            let Some(reached) =
+                self.band_neighbor_reached_lines(elements, index, layout, |_, bottom| {
                     band_clip_overlaps_neighbor_ink(
                         local_top,
                         local_top,
                         device_pixel_ratio,
-                        Some(
-                            line.absolute_content_top + line.content_height
-                                - layout.start_page_offset_y,
-                        ),
+                        Some(bottom),
                         None,
                     )
                 })
-                .collect::<Vec<_>>();
+            else {
+                return false;
+            };
             if reached.is_empty() {
                 return true;
             }
@@ -28524,6 +28687,7 @@ where
             numbering_context,
             commands_out,
         )?;
+        self.band_guard_numbering_marker(pending.paragraph_index, baseline_y, &style);
         if style.strike || style.double_strike {
             self.draw_strike_through(
                 &context,
@@ -34084,6 +34248,31 @@ mod tests {
         let (top, bottom) = band_local_bounds(100.0, 110.0, 110.0);
         assert!(top < bottom);
         assert!((bottom - 101.0).abs() < 1e-6 || bottom >= 101.0);
+    }
+
+    /// A band covers a numbering marker by the font box of every slot its
+    /// characters can take, on both sides of the baseline. An underlined
+    /// marker's rule is outside that box, so its extent is unknown and the
+    /// band falls back rather than guess.
+    #[test]
+    fn numbering_marker_ink_spans_the_baseline_and_refuses_an_underline() {
+        let renderer = test_renderer();
+        let plain = RunProperties {
+            font_size: Some(10.5),
+            ..RunProperties::default()
+        };
+        let style = renderer.resolve_applied_run_style_cached(Some(&plain));
+        let (top, bottom) = renderer
+            .numbering_marker_ink_offsets(&style)
+            .expect("a plain marker has a known extent");
+        assert!(top < 0.0 && bottom > 0.0, "{top}..{bottom}");
+
+        let underlined = RunProperties {
+            underline: Some(true),
+            ..plain
+        };
+        let style = renderer.resolve_applied_run_style_cached(Some(&underlined));
+        assert_eq!(renderer.numbering_marker_ink_offsets(&style), None);
     }
 
     #[test]
