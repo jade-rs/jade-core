@@ -1,0 +1,730 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "bb6623ddb7a611c6a224d2d3128d20fb1b424f1677941162fc4972288b38263b",
+ "pdf_sha256": "398a44273c3ef2ca18c863e0cf1230bcb187aa73cf276efd68095aa5ae55182c",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 76.08,
+     "characters": [
+      {
+       "text": "S",
+       "x_pt": 57.36,
+       "advance_pt": 11.076,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "h",
+       "x_pt": 68.4,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "a",
+       "x_pt": 78.48,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 87.36,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "o",
+       "x_pt": 97.44,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "w",
+       "x_pt": 107.52,
+       "advance_pt": 14.382,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 121.92,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 130.8,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 145.92,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 151.44,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "x",
+       "x_pt": 160.32,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 170.4,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "Shadowedtext"
+    },
+    {
+     "baseline_pt": 119.52,
+     "characters": [
+      {
+       "text": "E",
+       "x_pt": 54.72,
+       "advance_pt": 12.171,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "m",
+       "x_pt": 66.96,
+       "advance_pt": 15.498,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "b",
+       "x_pt": 82.56,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "o",
+       "x_pt": 92.64,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "s",
+       "x_pt": 102.72,
+       "advance_pt": 7.749,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "s",
+       "x_pt": 110.4,
+       "advance_pt": 7.749,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 118.08,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 126.96,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 142.08,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 147.6,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "x",
+       "x_pt": 156.48,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 166.56,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "Embossedtext"
+    },
+    {
+     "baseline_pt": 121.44,
+     "characters": [
+      {
+       "text": "E",
+       "x_pt": 56.64,
+       "advance_pt": 12.171,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "m",
+       "x_pt": 68.88,
+       "advance_pt": 15.498,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "b",
+       "x_pt": 84.48,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "o",
+       "x_pt": 94.56,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "s",
+       "x_pt": 104.64,
+       "advance_pt": 7.749,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "s",
+       "x_pt": 112.32,
+       "advance_pt": 7.749,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 120.0,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 128.88,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 144.0,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 149.52,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "x",
+       "x_pt": 158.4,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 168.48,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "Embossedtext"
+    },
+    {
+     "baseline_pt": 144.48,
+     "characters": [
+      {
+       "text": "I",
+       "x_pt": 56.64,
+       "advance_pt": 6.633,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "m",
+       "x_pt": 63.36,
+       "advance_pt": 15.498,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "p",
+       "x_pt": 78.96,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "r",
+       "x_pt": 89.04,
+       "advance_pt": 6.633,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "i",
+       "x_pt": 95.76,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "n",
+       "x_pt": 101.28,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 111.36,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 116.88,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 125.76,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 140.88,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 146.4,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "x",
+       "x_pt": 155.28,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 165.36,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "Imprintedtext"
+    },
+    {
+     "baseline_pt": 146.4,
+     "characters": [
+      {
+       "text": "I",
+       "x_pt": 58.56,
+       "advance_pt": 6.633,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "m",
+       "x_pt": 65.28,
+       "advance_pt": 15.498,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "p",
+       "x_pt": 80.88,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "r",
+       "x_pt": 90.96,
+       "advance_pt": 6.633,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "i",
+       "x_pt": 97.68,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "n",
+       "x_pt": 103.2,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 113.28,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 118.8,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "d",
+       "x_pt": 127.68,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 142.8,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "e",
+       "x_pt": 148.32,
+       "advance_pt": 8.844,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "x",
+       "x_pt": 157.2,
+       "advance_pt": 9.96,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      },
+      {
+       "text": "t",
+       "x_pt": 167.28,
+       "advance_pt": 5.538,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 19.92
+      }
+     ],
+     "text": "Imprintedtext"
+    },
+    {
+     "baseline_pt": 159.84,
+     "characters": [
+      {
+       "text": "V",
+       "x_pt": 56.64,
+       "advance_pt": 8.664,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 65.306,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "s",
+       "x_pt": 68.64,
+       "advance_pt": 4.668,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 73.31,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "b",
+       "x_pt": 76.644,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "l",
+       "x_pt": 82.644,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 85.978,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "t",
+       "x_pt": 97.304,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 100.638,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 105.963,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "l",
+       "x_pt": 109.297,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "Visibletail"
+    },
+    {
+     "baseline_pt": 173.76,
+     "characters": [
+      {
+       "text": "R",
+       "x_pt": 79.966,
+       "advance_pt": 8.004,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 87.97,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "i",
+       "x_pt": 93.296,
+       "advance_pt": 3.336,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "s",
+       "x_pt": 96.629,
+       "advance_pt": 4.668,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 101.3,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "d",
+       "x_pt": 106.625,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "Raised"
+    },
+    {
+     "baseline_pt": 179.76,
+     "characters": [
+      {
+       "text": "B",
+       "x_pt": 56.64,
+       "advance_pt": 8.004,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 64.644,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "s",
+       "x_pt": 69.97,
+       "advance_pt": 4.668,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 74.64,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "B",
+       "x_pt": 112.626,
+       "advance_pt": 8.004,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "a",
+       "x_pt": 120.63,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "s",
+       "x_pt": 125.956,
+       "advance_pt": 4.668,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 130.626,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "BaseBase"
+    },
+    {
+     "baseline_pt": 183.84,
+     "characters": [
+      {
+       "text": "L",
+       "x_pt": 135.952,
+       "advance_pt": 7.332,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "o",
+       "x_pt": 143.282,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "w",
+       "x_pt": 149.282,
+       "advance_pt": 8.664,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 157.948,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "r",
+       "x_pt": 163.274,
+       "advance_pt": 3.996,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "e",
+       "x_pt": 167.27,
+       "advance_pt": 5.328,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      },
+      {
+       "text": "d",
+       "x_pt": 172.596,
+       "advance_pt": 6.0,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "Lowered"
+    }
+   ]
+  }
+ ]
+}
