@@ -16998,9 +16998,7 @@ where
         let contour_font_box = if paragraph_style.word_platform
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             && paragraph_style.word_grid_line_sizing.is_none()
-            && (current_float_exclusions
-                .iter()
-                .any(|f| f.polygon.is_some())
+            && (current_float_exclusions.iter().any(|f| f.polygon.is_some())
                 || self.active_float_exclusions.iter().any(|f| {
                     f.page_number == self.current_page_number
                         && f.bounds.bottom > self.current_y
@@ -54808,7 +54806,10 @@ mod tests {
         let mac = top_pt(WordLayoutPlatform::Mac);
         let windows = top_pt(WordLayoutPlatform::Windows);
         assert!((mac - (100.0 + 31.0 - 12.0)).abs() < 0.01, "Mac {mac}");
-        assert!((windows - (100.0 + 28.6 + 31.0 - 12.0)).abs() < 0.01, "Windows {windows}");
+        assert!(
+            (windows - (100.0 + 28.6 + 31.0 - 12.0)).abs() < 0.01,
+            "Windows {windows}"
+        );
         set_word_layout_platform(previous);
     }
 

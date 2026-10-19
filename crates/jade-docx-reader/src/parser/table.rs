@@ -1240,9 +1240,10 @@ impl DocumentParser {
     /// inline; the table keeps its position for saving and for Windows.
     fn mark_position_before_style(table: &mut Table) {
         if table.style.contains_key("table-position") {
-            table
-                .style
-                .insert("table-position-before-style".to_string(), "true".to_string());
+            table.style.insert(
+                "table-position-before-style".to_string(),
+                "true".to_string(),
+            );
         }
     }
 

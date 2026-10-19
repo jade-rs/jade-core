@@ -4090,7 +4090,11 @@ mod tests {
         for family in ["ヒラギノ角ゴ ProN W6", "ヒラギノ角ゴ ProN W3"] {
             let descriptor = format!("10.00pt '{family}', serif");
             let (ascent, _) = word_font_vertical_metrics_px(&descriptor).expect("Hiragino metrics");
-            assert!((ascent * 0.75 - 10.4).abs() <= 0.375, "{family}: {}", ascent * 0.75);
+            assert!(
+                (ascent * 0.75 - 10.4).abs() <= 0.375,
+                "{family}: {}",
+                ascent * 0.75
+            );
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }

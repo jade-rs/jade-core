@@ -2013,8 +2013,7 @@ where
         // `w:tblOverlap` is pairwise: either table can forbid an intersection.
         // Resolve that rectangle collision here, after exact row heights are
         // known, without deriving any independent paragraph wrap boundaries.
-        let is_floating_table = !self.pageless_mode
-            && table_floats(table);
+        let is_floating_table = !self.pageless_mode && table_floats(table);
         let floating_table_frame = if is_floating_table {
             let table_height = row_heights.iter().sum::<f64>();
             let margin_height = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
@@ -8009,13 +8008,9 @@ fn add_border_extents(
         // to the growing row after it (`table-row-height-defaults`,
         // `table-hidden-rows`: 24.48pt, 50.16pt and 24.48pt between the
         // borders of two-line rows around a 50pt exact one).
-        let exact_below_growing = mac
-            && !row_grows_for_borders(row)
-            && previous.is_some_and(|(_, _, grows)| grows);
-        if mac
-            && row_grows_for_borders(row)
-            && previous.is_some_and(|(_, _, grows)| !grows)
-        {
+        let exact_below_growing =
+            mac && !row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| grows);
+        if mac && row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| !grows) {
             first_visible = true;
         }
         if exact_below_growing {
@@ -8067,7 +8062,10 @@ pub(super) fn table_floats(table: &Table) -> bool {
 /// its row (`Some(true)`: the owner of a span over more rows and every
 /// continuation but the last) or ends there (`Some(false)`: the last
 /// continuation); `None` for cells outside a merge.
-fn vertical_merge_edges(rows: &[Vec<PreparedCell>], spans: &[Vec<usize>]) -> Vec<Vec<Option<bool>>> {
+fn vertical_merge_edges(
+    rows: &[Vec<PreparedCell>],
+    spans: &[Vec<usize>],
+) -> Vec<Vec<Option<bool>>> {
     let mut edges: Vec<Vec<Option<bool>>> = rows.iter().map(|row| vec![None; row.len()]).collect();
     for (row_index, row) in rows.iter().enumerate() {
         for (cell_index, owner) in row.iter().enumerate() {
@@ -8194,9 +8192,9 @@ fn add_row_border_extents(
             .iter()
             .map(|&index| cells[index].height)
             .fold(0.0_f64, f64::max);
-        match merge_edges
-            .and_then(|edges| mac_row_height_with_vertical_merges(cells, edges, content, &content_cells))
-        {
+        match merge_edges.and_then(|edges| {
+            mac_row_height_with_vertical_merges(cells, edges, content, &content_cells)
+        }) {
             Some((bordered_content, drawn_bottom)) => {
                 // The row was sized from its content: a shorter Word row
                 // takes the difference off that height, a taller one grows it.
@@ -17534,7 +17532,10 @@ mod tests {
         let trailing = pre_2013_table_trailing_text_inset_px(&table);
         assert!(trailing > 0.0);
         set_word_layout_platform(WordLayoutPlatform::Mac);
-        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 8.0), 260.0 + trailing);
+        assert_eq!(
+            compute_table_x(100.0, 400.0, 240.0, &table, 8.0),
+            260.0 + trailing
+        );
         // Mode 15 has no legacy text inset and keeps the border at the margin.
         assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 0.0), 260.0);
         set_word_layout_platform(WordLayoutPlatform::Windows);
@@ -19358,7 +19359,11 @@ mod tests {
                 let mut merged = make_prepared_cell(
                     0,
                     1,
-                    Some(if row_index == 0 { "restart" } else { "continue" }),
+                    Some(if row_index == 0 {
+                        "restart"
+                    } else {
+                        "continue"
+                    }),
                     row_index > 0,
                 );
                 merged.border_bottom.width_px = points_to_px(1.5);
@@ -19407,8 +19412,14 @@ mod tests {
         // the continuations, 21.84, 25.92 and 25.92pt (each border's top).
         set_word_layout_platform(WordLayoutPlatform::Mac);
         // The first row also holds the table's 0.25pt top border.
-        assert_eq!(bordered_heights_beside_a_merge(0.0), vec![22.12, 20.62, 23.12]);
-        assert_eq!(bordered_heights_beside_a_merge(8.0), vec![22.12, 25.87, 27.12]);
+        assert_eq!(
+            bordered_heights_beside_a_merge(0.0),
+            vec![22.12, 20.62, 23.12]
+        );
+        assert_eq!(
+            bordered_heights_beside_a_merge(8.0),
+            vec![22.12, 25.87, 27.12]
+        );
         // A 3pt merged border over the last row's 1.5pt ones: Word draws the
         // last row 20.64pt below the one above, then the 3pt border.
         let mut rows = rows_beside_a_merge(0.0);
@@ -19421,9 +19432,16 @@ mod tests {
         };
         let mut heights = vec![points_to_px(21.62); 3];
         add_border_extents(&table, &mut rows, &[false; 3], &mut heights, true);
-        assert!((heights[2] * 0.75 - 23.12).abs() < 0.01, "{}", heights[2] * 0.75);
+        assert!(
+            (heights[2] * 0.75 - 23.12).abs() < 0.01,
+            "{}",
+            heights[2] * 0.75
+        );
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert_eq!(bordered_heights_beside_a_merge(0.0), vec![23.37, 21.87, 23.12]);
+        assert_eq!(
+            bordered_heights_beside_a_merge(0.0),
+            vec![23.37, 21.87, 23.12]
+        );
         set_word_layout_platform(previous);
     }
 
@@ -19491,7 +19509,11 @@ mod tests {
             .collect();
         let mut heights = vec![points_to_px(50.0), points_to_px(24.14)];
         add_border_extents(&table, &mut rows, &[false; 2], &mut heights, true);
-        assert!((heights[1] * 0.75 - 25.14).abs() < 0.01, "{}", heights[1] * 0.75);
+        assert!(
+            (heights[1] * 0.75 - 25.14).abs() < 0.01,
+            "{}",
+            heights[1] * 0.75
+        );
         set_word_layout_platform(previous);
     }
 
