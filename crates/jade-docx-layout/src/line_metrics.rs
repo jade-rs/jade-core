@@ -2060,6 +2060,19 @@ pub fn word_mac_emoji_vertical_metrics_px(
     Some((em, em * 250.0 / 800.0))
 }
 
+/// The advance Word for Mac gives an emoji cluster, in px: one em of the
+/// run's size, Apple Color Emoji's 800-unit advance, where the host measures
+/// its own emoji face wider (`toc-caption-edge-cases`: 🧭 at 10.5pt advances
+/// 10.5pt). `None` off Mac and for other clusters.
+pub fn word_mac_emoji_advance_px(grapheme: &str, font_descriptor: &str) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Mac || !is_emoji_presentation_cluster(grapheme)
+    {
+        return None;
+    }
+    let (size_pt, _) = split_font_descriptor(font_descriptor)?;
+    Some(f64::from(size_pt) * 96.0 / 72.0)
+}
+
 /// A grapheme drawn as a colour emoji: one with a pictograph from the
 /// supplementary emoji blocks, or an emoji variation selector.
 fn is_emoji_presentation_cluster(grapheme: &str) -> bool {
