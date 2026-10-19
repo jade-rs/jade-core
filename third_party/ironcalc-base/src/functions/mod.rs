@@ -15,6 +15,7 @@ mod engineering;
 mod financial;
 mod information;
 pub(crate) mod japanese;
+mod links;
 mod logical;
 mod lookup_and_reference;
 mod macros;
@@ -545,6 +546,10 @@ pub enum Function {
     Jis,
     Datestring,
     Numberstring,
+    /// Jade additions: Japanese Excel's name for JIS, and the web functions.
+    Dbcs,
+    Encodeurl,
+    Hyperlink,
 
     // Database
     Daverage,
@@ -576,6 +581,9 @@ fn jade_lookup(key: &str) -> Option<Function> {
         "JIS" => Some(Function::Jis),
         "DATESTRING" => Some(Function::Datestring),
         "NUMBERSTRING" => Some(Function::Numberstring),
+        "DBCS" => Some(Function::Dbcs),
+        "ENCODEURL" => Some(Function::Encodeurl),
+        "HYPERLINK" => Some(Function::Hyperlink),
         _ => None,
     }
 }
@@ -1590,6 +1598,9 @@ impl Function {
             Function::Jis => "JIS".to_string(),
             Function::Datestring => "DATESTRING".to_string(),
             Function::Numberstring => "NUMBERSTRING".to_string(),
+            Function::Dbcs => "DBCS".to_string(),
+            Function::Encodeurl => "ENCODEURL".to_string(),
+            Function::Hyperlink => "HYPERLINK".to_string(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1633,7 +1644,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 498> {
+    pub fn into_iter() -> IntoIter<Function, 501> {
         [
             Function::And,
             Function::False,
@@ -1971,6 +1982,9 @@ impl Function {
             Function::Jis,
             Function::Datestring,
             Function::Numberstring,
+            Function::Dbcs,
+            Function::Encodeurl,
+            Function::Hyperlink,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2168,6 +2182,7 @@ impl Function {
     pub fn to_xlsx_string(&self) -> String {
         match self {
             Function::Concat => "_xlfn.CONCAT".to_string(),
+            Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
             Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
             // Jade: future functions upstream writes without their prefix.
             Function::Days => "_xlfn.DAYS".to_string(),
@@ -2663,6 +2678,9 @@ impl<'a> Model<'a> {
             Function::Subtotal => self.fn_subtotal(args, cell),
             Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Jis => self.fn_jis(args, cell),
+            Function::Dbcs => self.fn_jis(args, cell),
+            Function::Encodeurl => self.fn_encodeurl(args, cell),
+            Function::Hyperlink => self.fn_hyperlink(args, cell),
             Function::Datestring => self.fn_datestring(args, cell),
             Function::Numberstring => self.fn_numberstring(args, cell),
             Function::Acot => self.fn_acot(args, cell),

@@ -1,4 +1,6 @@
 .DS_Store
+# macOS AppleDouble companions created on non-HFS volumes
+._*
 /target/
 **/target/
 crates/jade-docx-editor/pkg/

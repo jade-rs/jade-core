@@ -323,6 +323,27 @@ impl PlacedShape {
                     .fold((0, false), |a, b| (a.0 + b.0, a.1 || b.1));
                 winding != 0 || edge
             }
+            PlacedGeometry::Paths(paths) => {
+                let mut winding = 0;
+                let mut edge = false;
+                for path in paths {
+                    for sub in &path.subpaths {
+                        if path.fill != crate::PathFill::None {
+                            let (w, e) =
+                                polygon_winding(&sub.points, x, y, r.width, r.height, tolerance);
+                            winding += w;
+                            edge |= e;
+                        } else {
+                            edge |= sub.points.windows(2).any(|pair| {
+                                let a = (pair[0].0 * r.width, pair[0].1 * r.height);
+                                let b = (pair[1].0 * r.width, pair[1].1 * r.height);
+                                segment_distance(x, y, a, b) <= tolerance.max(2.0)
+                            });
+                        }
+                    }
+                }
+                winding != 0 || edge
+            }
             PlacedGeometry::Ellipse => {
                 let (rx, ry) = (r.width / 2.0 + tolerance, r.height / 2.0 + tolerance);
                 rx > 0.0

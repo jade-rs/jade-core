@@ -28,7 +28,7 @@ pub struct SetParagraphStyleCommand {
     previous_properties: Vec<(usize, Option<ParagraphProperties>)>,
     previous_runs: Vec<(usize, Vec<Option<RunProperties>>)>,
     /// Run formatting the style replaced in the saved XML, per paragraph.
-    previous_run_xml: Vec<RemovedRunProperties>,
+    previous_run_xml: Vec<(usize, RemovedRunProperties)>,
     previous_selection: Option<SelectionRange>,
     /// Package state before a missing built-in style definition was added,
     /// or before a note paragraph was restyled. Undo restores it whole so the
@@ -192,6 +192,16 @@ impl Command for SetParagraphStyleCommand {
                 )
             });
             let run_count = previous_run_props.len();
+            // Each run's character style, which outranks the paragraph style
+            // for what both define.
+            let character_style_props: Vec<Option<RunProperties>> = previous_run_props
+                .iter()
+                .map(|props| {
+                    let styles = ctx.document.styles_part.as_ref()?;
+                    let id = props.as_ref()?.style.as_deref()?;
+                    styles.resolve_character_run_properties(id)
+                })
+                .collect();
             self.previous_properties
                 .push((paragraph_index, previous_props));
             self.previous_runs
@@ -246,10 +256,13 @@ impl Command for SetParagraphStyleCommand {
                     );
                 }
                 if let Some(run_style_props) = style_run_props.as_ref() {
-                    for run in &mut paragraph.runs {
+                    for (run, character) in paragraph.runs.iter_mut().zip(&character_style_props) {
                         match run.properties.as_mut() {
                             Some(rp) => {
                                 merge_run_properties_override(rp, run_style_props);
+                                if let Some(character) = character {
+                                    keep_character_style_fonts(rp, run_style_props, character);
+                                }
                                 forget_direct_fonts_replaced_by(rp, run_style_props);
                                 forget_style_owned_run_properties(rp, run_style_props);
                             }
@@ -268,13 +281,20 @@ impl Command for SetParagraphStyleCommand {
                 0..run_count,
                 previous_style.as_deref(),
             );
+            // The style's fonts name the theme's by key; a load resolves them
+            // into the runs, so the runs given them here need the same. Left
+            // to the restyle above, a style applied again (which it skips)
+            // left them unresolved, and the runs fell back to no font at all.
+            if let Some(theme) = ctx.document.loaded_theme_part() {
+                ctx.document.apply_theme_fonts_at(paragraph_index, &theme);
+            }
             sync_paragraph_style_xml(ctx.document, paragraph_index, style_id.as_deref());
             if let Some(run_style_props) = style_run_props.as_ref() {
                 let removed = ctx.document.remove_paragraph_run_properties(
                     paragraph_index,
                     &run_property_tags(run_style_props),
                 );
-                self.previous_run_xml.push(removed);
+                self.previous_run_xml.push((paragraph_index, removed));
             }
         }
 
@@ -288,8 +308,15 @@ impl Command for SetParagraphStyleCommand {
             *ctx.selection = self.previous_selection;
             return Ok(());
         }
-        for removed in self.previous_run_xml.drain(..).rev() {
-            ctx.document.restore_paragraph_run_properties(removed);
+        // The removed `w:rPr` children go back by their parent's id. An edit
+        // undone in between can rebuild a run's element, and then they have
+        // nowhere to go: those paragraphs are written again from their runs,
+        // restored below, or the formatting came back on screen only.
+        let mut rewrite = Vec::new();
+        for (paragraph_index, removed) in self.previous_run_xml.drain(..).rev() {
+            if !ctx.document.restore_paragraph_run_properties(removed) {
+                rewrite.push(paragraph_index);
+            }
         }
         for (paragraph_index, previous) in &self.previous_properties {
             let restored_style = {
@@ -314,6 +341,10 @@ impl Command for SetParagraphStyleCommand {
                 run.properties = prev.clone();
             }
         }
+        for paragraph_index in rewrite {
+            ctx.document
+                .sync_paragraph_text_preserving_drawings(paragraph_index);
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -323,6 +354,37 @@ impl Command for SetParagraphStyleCommand {
 /// style replaced. The writer re-emits `w:sz` / `w:kern` / `w:w` / `w:rFonts`
 /// from these whenever it rebuilds the run (typing into it, say), which would
 /// otherwise bring the replaced size back into the saved file.
+/// Puts back the font properties the run's character style gives it where
+/// the paragraph style's were just merged over them: a load resolves the
+/// character style above the paragraph style. Without this a run in a
+/// character style took the heading's size when the heading was applied
+/// again, and went back to its character style's on reload.
+fn keep_character_style_fonts(
+    run: &mut RunProperties,
+    paragraph_style: &RunProperties,
+    character_style: &RunProperties,
+) {
+    macro_rules! keep {
+        ($($field:ident),* $(,)?) => {
+            $(
+                if paragraph_style.$field.is_some() && character_style.$field.is_some() {
+                    run.$field = character_style.$field.clone();
+                }
+            )*
+        };
+    }
+    keep!(
+        font_size,
+        font_size_complex,
+        kerning,
+        text_scale,
+        font_family,
+        fonts,
+        language,
+        east_asia_language,
+    );
+}
+
 fn forget_direct_fonts_replaced_by(run: &mut RunProperties, style: &RunProperties) {
     let direct = &mut run.direct_font_properties;
     if style.font_size.is_some() {

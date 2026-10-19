@@ -115,6 +115,7 @@ fn picture_fills_and_percent_lexical_offsets_are_read_too() {
         line_index: 0,
         line_color: None,
         font_color: None,
+        effect_index: 0,
     });
     let expected_crop = shape.source_rect;
     let layout = layout_slide(

@@ -61,6 +61,69 @@ fn resolve_rgba(color: &Color, theme: &ThemeColors) -> (u8, u8, u8, f64) {
                 base_alpha * alpha.map(|a| (a as f64).clamp(0.0, 1.0)).unwrap_or(1.0),
             )
         }
+        Color::Transformed { base, ops } => {
+            let (r, g, b, mut alpha) = resolve_rgba(base, theme);
+            let mut rgb = (r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0);
+            for (name, value) in ops {
+                let v = *value as f64;
+                let hsl = |rgb, f: &dyn Fn((f64, f64, f64)) -> (f64, f64, f64)| {
+                    hsl_to_rgb(f(rgb_to_hsl(rgb)))
+                };
+                rgb = match name.as_str() {
+                    "alpha" => {
+                        alpha = v;
+                        rgb
+                    }
+                    "alphaMod" => {
+                        alpha *= v;
+                        rgb
+                    }
+                    "alphaOff" => {
+                        alpha += v;
+                        rgb
+                    }
+                    "lum" => hsl(rgb, &|(h, s, _)| (h, s, v.clamp(0.0, 1.0))),
+                    "lumMod" => hsl(rgb, &|(h, s, l)| (h, s, (l * v).clamp(0.0, 1.0))),
+                    "lumOff" => hsl(rgb, &|(h, s, l)| (h, s, (l + v).clamp(0.0, 1.0))),
+                    "sat" => hsl(rgb, &|(h, _, l)| (h, v.clamp(0.0, 1.0), l)),
+                    "satMod" => hsl(rgb, &|(h, s, l)| (h, (s * v).clamp(0.0, 1.0), l)),
+                    "satOff" => hsl(rgb, &|(h, s, l)| (h, (s + v).clamp(0.0, 1.0), l)),
+                    "hue" => hsl(rgb, &|(_, s, l)| (v.rem_euclid(360.0), s, l)),
+                    "hueMod" => hsl(rgb, &|(h, s, l)| ((h * v).rem_euclid(360.0), s, l)),
+                    "hueOff" => hsl(rgb, &|(h, s, l)| ((h + v).rem_euclid(360.0), s, l)),
+                    "comp" => hsl(rgb, &|(h, s, l)| ((h + 180.0).rem_euclid(360.0), s, l)),
+                    "inv" => (1.0 - rgb.0, 1.0 - rgb.1, 1.0 - rgb.2),
+                    "gray" => {
+                        let y = 0.2126 * rgb.0 + 0.7152 * rgb.1 + 0.0722 * rgb.2;
+                        (y, y, y)
+                    }
+                    "shade" => (rgb.0 * v, rgb.1 * v, rgb.2 * v),
+                    "tint" => {
+                        let lift = |c: f64| c * v + (1.0 - v);
+                        (lift(rgb.0), lift(rgb.1), lift(rgb.2))
+                    }
+                    "red" => (v, rgb.1, rgb.2),
+                    "redMod" => (rgb.0 * v, rgb.1, rgb.2),
+                    "redOff" => (rgb.0 + v, rgb.1, rgb.2),
+                    "green" => (rgb.0, v, rgb.2),
+                    "greenMod" => (rgb.0, rgb.1 * v, rgb.2),
+                    "greenOff" => (rgb.0, rgb.1 + v, rgb.2),
+                    "blue" => (rgb.0, rgb.1, v),
+                    "blueMod" => (rgb.0, rgb.1, rgb.2 * v),
+                    "blueOff" => (rgb.0, rgb.1, rgb.2 + v),
+                    _ => rgb,
+                };
+                let clamp = |c: f64| c.clamp(0.0, 1.0);
+                rgb = (clamp(rgb.0), clamp(rgb.1), clamp(rgb.2));
+            }
+            let to_byte = |channel: f64| (channel.clamp(0.0, 1.0) * 255.0).round() as u8;
+            (
+                to_byte(rgb.0),
+                to_byte(rgb.1),
+                to_byte(rgb.2),
+                alpha.clamp(0.0, 1.0),
+            )
+        }
     }
 }
 
@@ -154,4 +217,30 @@ fn hsl_to_rgb((h, s, l): (f64, f64, f64)) -> (f64, f64, f64) {
     };
     let m = l - c / 2.0;
     (r1 + m, g1 + m, b1 + m)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn transformed(hex: &str, ops: &[(&str, f32)]) -> String {
+        let color = Color::Transformed {
+            base: Box::new(Color::Srgb(hex.to_string())),
+            ops: ops.iter().map(|(n, v)| (n.to_string(), *v)).collect(),
+        };
+        resolve_color(&color, &ThemeColors::default())
+    }
+
+    #[test]
+    fn transforms_apply_in_document_order() {
+        assert_eq!(transformed("FF0000", &[("comp", 0.0)]), "#00FFFF");
+        assert_eq!(transformed("FF0000", &[("inv", 0.0)]), "#00FFFF");
+        assert_eq!(transformed("FF0000", &[("satMod", 0.0)]), "#808080");
+        assert_eq!(transformed("FF0000", &[("hueOff", 120.0)]), "#00FF00");
+        assert_eq!(transformed("FFFFFF", &[("gray", 0.0)]), "#FFFFFF");
+        assert_eq!(
+            transformed("000000", &[("alpha", 0.5), ("alphaMod", 0.5)]),
+            "rgba(0,0,0,0.25)"
+        );
+    }
 }

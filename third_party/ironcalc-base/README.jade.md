@@ -90,3 +90,9 @@ applied after the first), each pinned by a case in
   built with, so a table added later never resolved and the formula read
   `#ERROR!`. Pinned by `structured_references_to_a_table_recalculate` in
   `crates/jade-xlsx-calc/tests/recalculates.rs`.
+- DBCS, ENCODEURL and HYPERLINK (`functions/links.rs`; seventh set of hunks in
+  `jade.patch`): DBCS is Japanese Excel's name for JIS; ENCODEURL writes every
+  byte outside the unreserved characters as `%XX` (UTF-8) and is stored as
+  `_xlfn.ENCODEURL`; HYPERLINK shows its friendly name, or the link when there
+  is none. The names answer through `jade_lookup`. Pinned by cases in
+  `crates/jade-xlsx-headless-editor/tests/excel_conformance.rs`.

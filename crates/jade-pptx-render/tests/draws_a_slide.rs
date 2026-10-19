@@ -34,6 +34,9 @@ fn bare_shape(geometry: PlacedGeometry) -> PlacedShape {
         source_id: None,
         text_rotation_deg: 0.0,
         gradient: None,
+        shadow: None,
+        image_alpha: None,
+        pattern: None,
     }
 }
 
@@ -113,6 +116,8 @@ fn an_outline_strokes_after_the_fill() {
         color: "#4472C4".to_string(),
         width_px: 2.0,
         dash_px: Vec::new(),
+        head_end: None,
+        tail_end: None,
     });
     let painter = RecordingPainter::new();
     render_slide(
@@ -282,6 +287,12 @@ fn text_runs_draw_at_their_shape_relative_positions() {
             hyperlink: None,
             width: 0.0,
             source_offsets: Vec::new(),
+            highlight: None,
+            letter_spacing_px: 0.0,
+            text_outline: None,
+            text_shadow: None,
+            underline_style: None,
+            double_strike: false,
         }],
         ..PlacedLine::default()
     }];
@@ -365,6 +376,8 @@ fn a_line_connector_strokes_corner_to_corner() {
         color: "#FF0000".to_string(),
         width_px: 3.0,
         dash_px: Vec::new(),
+        head_end: None,
+        tail_end: None,
     });
     let painter = RecordingPainter::new();
     render_slide(
@@ -455,6 +468,12 @@ fn run(text: &str) -> PlacedRun {
         hyperlink: None,
         width: 0.0,
         source_offsets: Vec::new(),
+        highlight: None,
+        letter_spacing_px: 0.0,
+        text_outline: None,
+        text_shadow: None,
+        underline_style: None,
+        double_strike: false,
     }
 }
 
@@ -465,6 +484,8 @@ fn a_dashed_outline_sets_the_dash_before_stroking_and_clears_it_after() {
         color: "#FF0000".to_string(),
         width_px: 2.0,
         dash_px: vec![8.0, 6.0],
+        head_end: None,
+        tail_end: None,
     });
     let painter = RecordingPainter::new();
     render_slide(
@@ -496,6 +517,8 @@ fn a_solid_outline_never_touches_the_dash() {
         color: "#FF0000".to_string(),
         width_px: 2.0,
         dash_px: Vec::new(),
+        head_end: None,
+        tail_end: None,
     });
     let painter = RecordingPainter::new();
     render_slide(
@@ -692,6 +715,7 @@ fn gradient_shape() -> PlacedShape {
                 color: "#0000FF".to_string(),
             },
         ],
+        radial: None,
     });
     shape
 }
@@ -761,6 +785,7 @@ fn a_gradient_background_covers_the_slide() {
                 color: "#000000".to_string(),
             },
         ],
+        radial: None,
     });
     let painter = RecordingPainter::new();
     render_slide(&painter, &layout, &RenderOptions::default()).expect("render");

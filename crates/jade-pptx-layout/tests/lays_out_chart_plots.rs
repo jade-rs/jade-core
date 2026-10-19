@@ -39,6 +39,7 @@ fn series(name: &str, categories: &[&str], values: &[Option<f64>]) -> ChartSerie
         name: Some(name.to_string()),
         categories: categories.iter().map(|c| c.to_string()).collect(),
         values: values.to_vec(),
+        ..ChartSeries::default()
     }
 }
 
@@ -53,6 +54,7 @@ fn chart(kind: &str, horizontal: bool, series: Vec<ChartSeries>) -> Chart {
         title: Some("Sales".into()),
         horizontal,
         series,
+        style: Default::default(),
     }
 }
 
@@ -253,7 +255,7 @@ fn a_pie_chart_cuts_sectors_proportional_to_the_first_series() {
 #[test]
 fn an_unknown_kind_or_no_series_draws_only_the_frame() {
     let shapes = laid_out(chart(
-        "bubbleChart",
+        "surfaceChart",
         false,
         vec![series("x", &["a"], &[Some(1.0)])],
     ));
@@ -278,4 +280,47 @@ impl Positive for PlacedShape {
     fn width_positive(&self) -> bool {
         self.rect.width > 0.0 && self.rect.height >= 0.0
     }
+}
+
+#[test]
+fn stacked_columns_sit_on_each_other_and_series_colours_win_over_accents() {
+    let mut revenue = series("Revenue", &["Q1"], &[Some(10.0)]);
+    revenue.fill = Some(jade_pptx_reader::Fill::Solid(
+        jade_pptx_reader::Color::Srgb("112233".into()),
+    ));
+    let mut stacked = chart(
+        "barChart",
+        false,
+        vec![revenue, series("Costs", &["Q1"], &[Some(5.0)])],
+    );
+    stacked.style.grouping = Some("stacked".into());
+    stacked.style.legend = Some("r".into());
+    let shapes = laid_out(stacked);
+    let revenue = named(&shapes, "Chart 2!Revenue/Q1");
+    let costs = named(&shapes, "Chart 2!Costs/Q1");
+    assert_eq!(revenue.fill.as_deref(), Some("#112233"));
+    // Same column, the second series on top of the first.
+    assert!((revenue.rect.x - costs.rect.x).abs() < 1e-9);
+    assert!((costs.rect.y + costs.rect.height - revenue.rect.y).abs() < 1e-6);
+    // The legend names both series.
+    assert!(shapes.iter().any(|s| s.name == "Chart 2!legend Revenue"));
+    assert!(shapes.iter().any(|s| s.name == "Chart 2!legend key Costs"));
+}
+
+#[test]
+fn a_doughnut_leaves_its_hole() {
+    let mut doughnut = chart(
+        "doughnutChart",
+        false,
+        vec![series("Share", &["a", "b"], &[Some(1.0), Some(1.0)])],
+    );
+    doughnut.style.hole = Some(0.5);
+    let shapes = laid_out(doughnut);
+    let PlacedGeometry::Polygon(points) = &named(&shapes, "Chart 2!Share/a").geometry else {
+        panic!("sector is a polygon");
+    };
+    // No point reaches the centre: the inner arc stays at a quarter.
+    assert!(points
+        .iter()
+        .all(|(x, y)| ((x - 0.5).powi(2) + (y - 0.5).powi(2)).sqrt() > 0.2));
 }
