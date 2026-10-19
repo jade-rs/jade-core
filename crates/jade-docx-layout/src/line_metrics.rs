@@ -1355,6 +1355,142 @@ const CENTURY_ASCII_UNITS: [u16; 95] = [
 ];
 
 #[inline]
+/// Pairs with a space from the legacy `kern` tables of Arial, Times New
+/// Roman and Century, in 2048ths of an em. The host does not kern them (the
+/// first two faces' GPOS leaves them out); Word for Mac does (word-mac-probe-kern-default and
+/// word-mac-probe-line-pitch: Arial ` A` closes 0.55pt at 10pt). Numeric
+/// table facts for the four styles of each face.
+fn legacy_space_kerning_units(family: &str, bold: bool, italic: bool, left: u8, right: u8) -> i16 {
+    let pairs: &[(u8, u8, i16)] = match (family, bold, italic) {
+        ("Arial", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -113),
+            (b'L', b' ', -76),
+            (b'P', b' ', -37),
+            (b'T', b' ', -37),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", true, false) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", false, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'F', b' ', -37),
+            (b'L', b' ', -37),
+            (b'P', b' ', -76),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", true, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'L', b' ', -37),
+            (b'P', b' ', -76),
+            (b'Y', b' ', -37),
+        ],
+        ("Times New Roman", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'V', -37),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'L', b' ', -76),
+            (b'P', b' ', -76),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+        ],
+        ("Times New Roman", true, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'V', -37),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'F', b' ', -76),
+            (b'L', b' ', -113),
+            (b'P', b' ', -113),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+            (b'r', b' ', -37),
+        ],
+        ("Times New Roman", false, true) => &[
+            (b' ', b'A', -37),
+            (b'A', b' ', -37),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+        ],
+        ("Times New Roman", true, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -113),
+            (b'F', b' ', -37),
+            (b'L', b' ', -76),
+            (b'P', b' ', -76),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+        ],
+        ("Century", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+        ],
+        _ => return 0,
+    };
+    pairs
+        .iter()
+        .find(|(l, r, _)| *l == left && *r == right)
+        .map_or(0, |(_, _, units)| *units)
+}
+
+/// The kerning of an ASCII pair with a space in a face whose legacy `kern`
+/// table has space pairs its GPOS lacks, on Word for Mac. `None` leaves the
+/// pair to the host.
+pub(crate) fn word_mac_legacy_space_kerning_px(
+    font_descriptor: &str,
+    left: u8,
+    right: u8,
+) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Mac || (left != b' ' && right != b' ') {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
+    if !matches!(family, "Arial" | "Times New Roman" | "Century")
+        || !size_pt.is_finite()
+        || size_pt <= 0.0
+    {
+        return None;
+    }
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    let em_px = f64::from(size_pt) * 96.0 / 72.0;
+    Some(
+        f64::from(legacy_space_kerning_units(
+            family, bold, italic, left, right,
+        )) * em_px
+            / 2048.0,
+    )
+}
+
 pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.set(count.get() + 1));
@@ -2567,6 +2703,43 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_legacy_space_pairs_kern_from_the_kern_table() {
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let px = |descriptor: &str, left: u8, right: u8| {
+            word_mac_legacy_space_kerning_px(descriptor, left, right)
+        };
+        let em_px = 10.0 * 96.0 / 72.0;
+        // Arial ` A` closes 0.55pt at 10pt (word-mac-probe-line-pitch).
+        assert_eq!(
+            px("10.00pt 'Arial'", b' ', b'A'),
+            Some(-113.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("bold 10.00pt 'Arial'", b'A', b' '),
+            Some(-76.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("10.00pt 'Times New Roman'", b' ', b'T'),
+            Some(-37.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("10.00pt 'Century'", b'L', b' '),
+            Some(-37.0 * em_px / 2048.0)
+        );
+        assert_eq!(px("10.00pt 'Arial'", b' ', b'x'), Some(0.0));
+        assert_eq!(
+            px("10.00pt 'Arial'", b'A', b'V'),
+            None,
+            "host kerns letter pairs"
+        );
+        assert_eq!(px("10.00pt 'Calibri'", b' ', b'A'), None);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(px("10.00pt 'Arial'", b' ', b'A'), None);
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn mac_shifted_script_sizes_follow_the_face_to_the_half_point() {
         let latin = [5.0, 6.0, 7.0, 8.0, 9.0, 10.5, 13.0];
