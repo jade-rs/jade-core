@@ -1,0 +1,141 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "2c40e7367933f260f27845604d6fc1161970bd208cb3e364e2529e01b06c6c69",
+ "pdf_sha256": "38219b367f84d02425369779d585dfeadf1178cf55a2afcad94712f9d078358f",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 67.92,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 56.64,
+       "advance_pt": 8.589,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 65.28,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 71.756,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 74.158,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 76.803,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 105.36,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 179.04,
+       "advance_pt": 8.589,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 187.68,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 194.156,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 196.558,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 199.203,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 239.04,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 56.64,
+       "advance_pt": 11.106,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 67.68,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 74.635,
+       "advance_pt": 4.747,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 79.195,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 81.833,
+       "advance_pt": 7.132,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

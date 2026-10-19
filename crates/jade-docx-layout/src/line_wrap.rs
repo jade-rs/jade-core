@@ -2299,7 +2299,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 style.word_platform
             }) == crate::line_metrics::WordLayoutPlatform::Mac
         {
-            style.ascii_pair_kerning_px(prev_grapheme.as_bytes()[0], grapheme.as_bytes()[0])
+            let (left, right) = (prev_grapheme.as_bytes()[0], grapheme.as_bytes()[0]);
+            style.ascii_pair_kerning_px(left, right).or_else(|| {
+                crate::line_metrics::word_mac_legacy_space_kerning_px(font_descriptor, left, right)
+            })
         } else {
             None
         };
@@ -2619,8 +2622,9 @@ pub enum LineBreakKind {
     ParagraphEnd,
 }
 
-/// Alignment excludes a soft wrap's trailing ASCII separators while glyph and
-/// caret advances remain intact. Reverse glyph positions come from shared layout.
+/// Alignment excludes a soft wrap's trailing ASCII and ideographic spaces while
+/// glyph and caret advances remain intact: Word centres `１年` alone when a cell
+/// wraps `１年　　　　6か月`. Reverse glyph positions come from shared layout.
 /// Unknown text, tabs, nonbreaking spaces and explicit breaks stay conservative.
 pub fn soft_line_alignment_width_px<'a>(
     natural_advance: f64,
@@ -2635,7 +2639,7 @@ pub fn soft_line_alignment_width_px<'a>(
         if text.is_empty() {
             return natural_advance;
         }
-        if text.bytes().all(|byte| byte == b' ') {
+        if text.chars().all(|ch| ch == ' ' || ch == '\u{3000}') {
             has_separator = true;
             continue;
         }
@@ -7140,6 +7144,11 @@ fn balanced_tab_stop_cursor_width(
         || !paragraph_style
             .east_asian_rules
             .balance_single_byte_double_byte_width
+        // Word for Mac picks the stop from the drawn advances: its header
+        // `AAA…<tab>BBB…` keeps the B run at the next default stop.
+        || !crate::line_metrics::word_widens_balanced_single_byte_glyphs(
+            paragraph_style.word_platform,
+        )
         || current_line_clusters.is_empty()
         || current_line_clusters.iter().any(|cluster| {
             cluster.kind != InlineClusterKind::Grapheme
@@ -7865,13 +7874,21 @@ fn line_break_splits_latin_word(
 }
 
 /// Whether the cluster at `index` belongs to the Latin word around it: a
-/// letter or ASCII digit (Word moves `20％` whole), or a slash right after a
-/// letter (Word keeps `header/footer` whole).
+/// letter or ASCII digit (Word moves `20％` whole), a slash right after a
+/// letter (Word keeps `header/footer` whole), or a period between letters
+/// (Word keeps `settings.xml` whole, UAX #14 LB29). A period ending the
+/// clusters belongs to the word its caller has found after it.
 fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
+    let follows_letter = index > 0 && is_latin_word_grapheme(&clusters[index - 1].text);
     is_latin_word_grapheme(text)
         || is_ascii_digit_grapheme(text)
-        || (text == "/" && index > 0 && is_latin_word_grapheme(&clusters[index - 1].text))
+        || (text == "/" && follows_letter)
+        || (text == "."
+            && follows_letter
+            && clusters
+                .get(index + 1)
+                .is_none_or(|next| is_latin_word_grapheme(&next.text)))
 }
 
 /// Whether the Latin word ending `line` starts right after East Asian text.
@@ -9261,7 +9278,7 @@ mod tests {
         ] {
             assert_eq!(soft_line_alignment_width_px(27.0, kind, glyphs), 27.0);
         }
-        for tail in ["\t", "\u{a0}", "\u{3000}", ""] {
+        for tail in ["\t", "\u{a0}", ""] {
             assert_eq!(
                 soft_line_alignment_width_px(
                     27.0,
@@ -9286,6 +9303,26 @@ mod tests {
                 [(" ", 3.0, 4.0), (" ", 0.0, 3.0)]
             ),
             0.0
+        );
+    }
+
+    #[test]
+    fn soft_alignment_excludes_trailing_ideographic_spaces() {
+        // `１年　　　　6か月` wrapped after its spaces: Word centres `１年`.
+        let glyphs = [
+            ("\u{3000}", 52.5, 10.5),
+            ("\u{3000}\u{3000}", 31.5, 21.0),
+            ("\u{3000}", 21.0, 10.5),
+            ("年", 10.5, 10.5),
+            ("１", 0.0, 10.5),
+        ];
+        assert_eq!(
+            soft_line_alignment_width_px(63.0, LineBreakKind::Soft, glyphs),
+            21.0
+        );
+        assert_eq!(
+            soft_line_alignment_width_px(63.0, LineBreakKind::ParagraphEnd, glyphs),
+            63.0
         );
     }
 
@@ -15106,74 +15143,85 @@ mod tests {
         assert!((cursor - (center_tab_x - 5.0)).abs() < 1e-6);
     }
 
+    /// The header paragraph of a `header-tab-overflow-*` fixture wrapped in
+    /// its 8504-twip text width. Linux CI falls back from the theme face to a
+    /// narrower font, so the advance is fixed instead of host-dependent.
+    fn wrap_header_tab_fixture(
+        fixture: &str,
+        word_platform: crate::line_metrics::WordLayoutPlatform,
+    ) -> (String, Vec<WrappedLine>) {
+        let (document, settings) = load_document_part_with_settings(fixture, "word/header2.xml")
+            .expect("load header fixture");
+        let paragraph = document
+            .body
+            .as_ref()
+            .and_then(|body| body.elements.iter().find_map(BodyElement::as_paragraph))
+            .expect("header paragraph");
+        let mut text = String::new();
+        let mut runs = Vec::new();
+        for run in &paragraph.runs {
+            let start = text.len();
+            text.push_str(&run.text);
+            runs.push(RunStyle {
+                start,
+                end: text.len(),
+                properties: run.properties.clone().map(Rc::new),
+                revision: run.revision.clone(),
+                hyperlink: run.hyperlink.clone(),
+                inline_object: None,
+            });
+        }
+        let east_asian_rules =
+            EastAsianLineBreakingRules::from_settings(&settings.to_line_breaking_settings());
+        let paragraph_style = ParagraphStyle {
+            tab_stops: paragraph
+                .properties
+                .as_ref()
+                .map(|props| resolve_tab_stops(&props.tabs))
+                .unwrap_or_default(),
+            default_tab_width: points_to_px(settings.default_tab_stop.expect("default tab")),
+            enable_line_break_rules: east_asian_rules.use_east_asian_layout,
+            east_asian_rules,
+            word_platform,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &VariableWidthContext::new(9.0, 14.0),
+            &text,
+            &runs,
+            0.0,
+            &paragraph_style,
+            0,
+            points_to_px(425.2),
+        )
+        .expect("wrap header paragraph");
+        (text, lines)
+    }
+
+    fn wrapped_line_texts(lines: &[WrappedLine]) -> Vec<String> {
+        lines
+            .iter()
+            .map(|line| {
+                line.segments
+                    .iter()
+                    .map(|segment| segment.text.as_str())
+                    .collect::<String>()
+            })
+            .collect()
+    }
+
     #[test]
     fn header_tabbed_segment_reflows_together_at_the_declared_stop() {
         for fixture in [
             "header-tab-overflow-long.docx",
             "header-tab-overflow-short.docx",
         ] {
-            let (document, settings) =
-                load_document_part_with_settings(fixture, "word/header2.xml")
-                    .expect("load header fixture");
-            let paragraph = document
-                .body
-                .as_ref()
-                .and_then(|body| body.elements.iter().find_map(BodyElement::as_paragraph))
-                .expect("header paragraph");
-            let mut text = String::new();
-            let mut runs = Vec::new();
-            for run in &paragraph.runs {
-                let start = text.len();
-                text.push_str(&run.text);
-                runs.push(RunStyle {
-                    start,
-                    end: text.len(),
-                    properties: run.properties.clone().map(Rc::new),
-                    revision: run.revision.clone(),
-                    hyperlink: run.hyperlink.clone(),
-                    inline_object: None,
-                });
-            }
-            let east_asian_rules =
-                EastAsianLineBreakingRules::from_settings(&settings.to_line_breaking_settings());
-            let paragraph_style = ParagraphStyle {
-                tab_stops: paragraph
-                    .properties
-                    .as_ref()
-                    .map(|props| resolve_tab_stops(&props.tabs))
-                    .unwrap_or_default(),
-                default_tab_width: points_to_px(settings.default_tab_stop.expect("default tab")),
-                enable_line_break_rules: east_asian_rules.use_east_asian_layout,
-                east_asian_rules,
-                ..ParagraphStyle::default()
-            };
-
-            let lines = wrap_text_into_lines(
-                // Linux CI falls back from Yu Mincho to a narrower font. Use
-                // that narrow advance with the fixture's real 8504-twip text
-                // width so the regression cannot depend on host fonts.
-                &VariableWidthContext::new(9.0, 14.0),
-                &text,
-                &runs,
-                0.0,
-                &paragraph_style,
-                0,
-                points_to_px(425.2),
-            )
-            .expect("wrap header paragraph");
-            let line_texts = lines
-                .iter()
-                .map(|line| {
-                    line.segments
-                        .iter()
-                        .map(|segment| segment.text.as_str())
-                        .collect::<String>()
-                })
-                .collect::<Vec<_>>();
+            let (text, lines) =
+                wrap_header_tab_fixture(fixture, crate::line_metrics::WordLayoutPlatform::Windows);
             let expected_first_line = text.split_once('\t').expect("fixture tab").0;
 
             assert_eq!(
-                line_texts,
+                wrapped_line_texts(&lines),
                 vec![
                     expected_first_line.to_string(),
                     "BBBBBBBBBBBBBBBBBB".to_string()
@@ -15188,6 +15236,24 @@ mod tests {
                 lines[1].segments[0].leading_width,
             );
         }
+    }
+
+    #[test]
+    fn mac_header_tab_takes_the_next_default_stop_from_drawn_advances() {
+        // Word for Mac 16.113 (`header-tab-overflow-short`): the 37 A's end
+        // before a default stop, and the B run fits there on the same line.
+        let (text, lines) = wrap_header_tab_fixture(
+            "header-tab-overflow-short.docx",
+            crate::line_metrics::WordLayoutPlatform::Mac,
+        );
+        assert_eq!(wrapped_line_texts(&lines), vec![text.replace('\t', "")]);
+        let a_width = points_to_px(37.0 * 6.75);
+        let default_stop = points_to_px(6.0 * 42.0);
+        assert!(
+            (lines[0].segments[1].leading_width - (default_stop - a_width)).abs() < 1e-6,
+            "B run starts at the sixth default stop: actual={}",
+            lines[0].segments[1].leading_width,
+        );
     }
 
     #[test]
@@ -17965,6 +18031,31 @@ mod tests {
             Some("Hello World ")
         );
         assert_eq!(infos.get(1).map(|line| line.text.as_str()), Some("Hello"));
+    }
+
+    #[test]
+    fn a_period_between_latin_letters_does_not_split_the_word() {
+        // `document-variable-fields`: Word moves `settings.xml` whole instead
+        // of ending a line with `settings.` (UAX #14 LB29).
+        let ctx = TestContext::new(10.0);
+        let text = "from settings.xml now";
+        for style in [
+            ParagraphStyle::default(),
+            ParagraphStyle {
+                enable_line_break_rules: true,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    use_east_asian_layout: true,
+                    ..Default::default()
+                },
+                ..ParagraphStyle::default()
+            },
+        ] {
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 145.0).unwrap();
+            let infos = collect_line_infos(&lines);
+            assert_eq!(infos[0].text, "from ");
+            assert_eq!(infos[1].text, "settings.xml ");
+        }
     }
 
     #[test]

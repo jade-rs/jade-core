@@ -1,0 +1,5949 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "d665bab259ca7a0f44e3a09cd166b86fb283dab3e576a3c9018f7e61235d1c86",
+ "pdf_sha256": "5901cc1078e4d9ccaf1e0d4da012a55580af5ce6ab51b8bcb4fec4a44b4cb863",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 53.04,
+     "characters": [
+      {
+       "text": "「",
+       "x_pt": 390.471,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "情",
+       "x_pt": 395.722,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "報",
+       "x_pt": 406.22,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "活",
+       "x_pt": 416.719,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "用",
+       "x_pt": 427.218,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 437.721,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "参",
+       "x_pt": 442.971,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "考",
+       "x_pt": 453.471,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "資",
+       "x_pt": 463.971,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "料",
+       "x_pt": 474.47,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "N",
+       "x_pt": 487.596,
+       "advance_pt": 8.606,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 496.153,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 501.404,
+       "advance_pt": 2.936,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 504.32,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "「情報活用」参考資料No.2"
+    },
+    {
+     "baseline_pt": 98.4,
+     "characters": [
+      {
+       "text": "数",
+       "x_pt": 213.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "式",
+       "x_pt": 225.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "エ",
+       "x_pt": 237.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "デ",
+       "x_pt": 249.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "ィ",
+       "x_pt": 261.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "タ",
+       "x_pt": 273.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 285.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "つ",
+       "x_pt": 297.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "い",
+       "x_pt": 309.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "て",
+       "x_pt": 321.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "（",
+       "x_pt": 333.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "補",
+       "x_pt": 345.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "足",
+       "x_pt": 357.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      },
+      {
+       "text": "）",
+       "x_pt": 369.56,
+       "advance_pt": 12.0,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "数式エディタについて（補足）"
+    },
+    {
+     "baseline_pt": 133.68,
+     "characters": [
+      {
+       "text": "＜",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 116.459,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 126.959,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "力",
+       "x_pt": 137.459,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 147.959,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 158.459,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "方",
+       "x_pt": 168.958,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "法",
+       "x_pt": 179.458,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "＞",
+       "x_pt": 189.958,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "＜数式を入力する方法＞"
+    },
+    {
+     "baseline_pt": 151.68,
+     "characters": [
+      {
+       "text": "1",
+       "x_pt": 84.96,
+       "advance_pt": 6.547,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 91.471,
+       "advance_pt": 3.379,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "M",
+       "x_pt": 98.188,
+       "advance_pt": 9.715,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 107.847,
+       "advance_pt": 3.168,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 110.99,
+       "advance_pt": 5.491,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 116.447,
+       "advance_pt": 4.646,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 121.069,
+       "advance_pt": 5.914,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 126.948,
+       "advance_pt": 5.491,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 132.404,
+       "advance_pt": 5.914,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 138.283,
+       "advance_pt": 3.379,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 141.638,
+       "advance_pt": 4.013,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 148.268,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 158.767,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 171.893,
+       "advance_pt": 6.547,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 178.404,
+       "advance_pt": 3.379,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 181.758,
+       "advance_pt": 6.547,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 190.898,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "利",
+       "x_pt": 201.398,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "用",
+       "x_pt": 211.898,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "1.Microsoft数式3.0の利用"
+    },
+    {
+     "baseline_pt": 169.68,
+     "characters": [
+      {
+       "text": "「",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "挿",
+       "x_pt": 109.65,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 120.19,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 130.73,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "タ",
+       "x_pt": 141.269,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 151.809,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "－",
+       "x_pt": 162.349,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 172.889,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "オ",
+       "x_pt": 183.428,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 193.968,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ジ",
+       "x_pt": 204.508,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ェ",
+       "x_pt": 215.048,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 225.588,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 236.128,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 246.668,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 257.207,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "キ",
+       "x_pt": 267.747,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 278.287,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 288.827,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 299.367,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "グ",
+       "x_pt": 309.906,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ル",
+       "x_pt": 320.446,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 330.986,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "プ",
+       "x_pt": 341.526,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 352.065,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 357.354,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 367.895,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 378.434,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "リ",
+       "x_pt": 388.974,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 399.514,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 410.054,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 420.594,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 431.134,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 436.426,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "オ",
+       "x_pt": 446.966,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 457.506,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ジ",
+       "x_pt": 468.046,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ェ",
+       "x_pt": 478.585,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 489.125,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 499.665,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "「挿入」タブ－「オブジェクト（テキストのグループ）」をクリックし、「オブジェクト"
+    },
+    {
+     "baseline_pt": 187.68,
+     "characters": [
+      {
+       "text": "の",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "種",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "類",
+       "x_pt": 120.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "M",
+       "x_pt": 172.61,
+       "advance_pt": 9.969,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 182.52,
+       "advance_pt": 3.326,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 185.831,
+       "advance_pt": 4.689,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 190.493,
+       "advance_pt": 4.689,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 195.155,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 200.409,
+       "advance_pt": 4.889,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 205.272,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 210.526,
+       "advance_pt": 3.516,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 214.026,
+       "advance_pt": 4.108,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 220.716,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 231.216,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 244.341,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 250.181,
+       "advance_pt": 2.936,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 253.095,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 258.937,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 269.437,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 279.937,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "リ",
+       "x_pt": 290.437,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 300.937,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 311.436,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "の種類」から「Microsoft数式3.0」をクリック"
+    },
+    {
+     "baseline_pt": 206.037,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 213.245,
+       "advance_pt": 1.791,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 7.098
+      },
+      {
+       "text": "!",
+       "x_pt": 214.713,
+       "advance_pt": 3.581,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 7.098
+      }
+     ],
+     "text": "!!"
+    },
+    {
+     "baseline_pt": 215.148,
+     "characters": [
+      {
+       "text": "一",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "例",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "'",
+       "x_pt": 132.889,
+       "advance_pt": 7.507,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "#",
+       "x_pt": 140.623,
+       "advance_pt": 4.091,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "\"",
+       "x_pt": 144.95,
+       "advance_pt": 6.143,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "≤",
+       "x_pt": 153.805,
+       "advance_pt": 6.745,
+       "font": "SymbolMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "&",
+       "x_pt": 164.176,
+       "advance_pt": 7.507,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "≤",
+       "x_pt": 176.039,
+       "advance_pt": 6.745,
+       "font": "SymbolMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "!",
+       "x_pt": 185.092,
+       "advance_pt": 6.143,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "\"",
+       "x_pt": 191.309,
+       "advance_pt": 4.091,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "=",
+       "x_pt": 198.099,
+       "advance_pt": 6.745,
+       "font": "SymbolMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "%",
+       "x_pt": 220.856,
+       "advance_pt": 3.415,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "#",
+       "x_pt": 227.074,
+       "advance_pt": 4.091,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "$",
+       "x_pt": 231.978,
+       "advance_pt": 5.455,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "\"",
+       "x_pt": 237.618,
+       "advance_pt": 4.091,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "#",
+       "x_pt": 241.946,
+       "advance_pt": 6.143,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      },
+      {
+       "text": "$",
+       "x_pt": 247.766,
+       "advance_pt": 5.455,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.175
+      }
+     ],
+     "text": "一例'#\"≤&≤!\"=%#$\"#$"
+    },
+    {
+     "baseline_pt": 219.471,
+     "characters": [
+      {
+       "text": "∫",
+       "x_pt": 207.7,
+       "advance_pt": 5.05,
+       "font": "SymbolMT",
+       "size_pt": 18.263
+      }
+     ],
+     "text": "∫"
+    },
+    {
+     "baseline_pt": 221.743,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 211.455,
+       "advance_pt": 1.791,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 7.098
+      },
+      {
+       "text": "\"",
+       "x_pt": 213.121,
+       "advance_pt": 3.581,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 7.098
+      }
+     ],
+     "text": "!\""
+    },
+    {
+     "baseline_pt": 241.68,
+     "characters": [
+      {
+       "text": "＜",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "特",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "徴",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "＞",
+       "x_pt": 126.959,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "＜特徴＞"
+    },
+    {
+     "baseline_pt": 259.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "例",
+       "x_pt": 126.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 137.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 147.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 158.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 168.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 179.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 189.958,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 200.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 210.958,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 221.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 231.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 242.457,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 252.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 263.457,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 273.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 284.456,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 294.956,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 305.456,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "少",
+       "x_pt": 315.956,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 326.456,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "広",
+       "x_pt": 336.955,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "く",
+       "x_pt": 347.455,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 357.955,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 368.455,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 378.955,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・上の例のように、文中に数式が入ると行間が少し広くなる。"
+    },
+    {
+     "baseline_pt": 277.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 94.86,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "図",
+       "x_pt": 104.76,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 115.262,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "同",
+       "x_pt": 125.764,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "じ",
+       "x_pt": 136.266,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "扱",
+       "x_pt": 146.768,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 157.269,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 167.771,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 178.273,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "任",
+       "x_pt": 187.571,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "意",
+       "x_pt": 198.073,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 208.575,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "位",
+       "x_pt": 219.077,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 229.579,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 240.081,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "配",
+       "x_pt": 250.583,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 261.085,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 271.587,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 282.089,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 292.591,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 303.093,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 313.595,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 324.096,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 333.395,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 343.896,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・図と同じ扱いで、任意の位置に配置するときは、右ク"
+    },
+    {
+     "baseline_pt": 288.982,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 470.378,
+       "advance_pt": 1.791,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 7.141
+      },
+      {
+       "text": "!",
+       "x_pt": 471.847,
+       "advance_pt": 3.583,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 7.141
+      }
+     ],
+     "text": "!!"
+    },
+    {
+     "baseline_pt": 295.68,
+     "characters": [
+      {
+       "text": "リ",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 126.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "‐",
+       "x_pt": 137.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 143.26,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "オ",
+       "x_pt": 153.758,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 164.257,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ジ",
+       "x_pt": 174.756,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ェ",
+       "x_pt": 185.255,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 195.753,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 206.252,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 216.751,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "書",
+       "x_pt": 227.25,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 237.748,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "設",
+       "x_pt": 248.247,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 258.746,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 269.245,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "－",
+       "x_pt": 275.044,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 280.844,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "レ",
+       "x_pt": 291.342,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "イ",
+       "x_pt": 301.841,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ア",
+       "x_pt": 312.34,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ウ",
+       "x_pt": 322.839,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 333.337,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 343.836,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "リック‐「オブジェクトの書式設定」－「レイアウト」"
+    },
+    {
+     "baseline_pt": 298.199,
+     "characters": [
+      {
+       "text": "'",
+       "x_pt": 389.99,
+       "advance_pt": 7.51,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "#",
+       "x_pt": 397.728,
+       "advance_pt": 4.093,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "\"",
+       "x_pt": 402.056,
+       "advance_pt": 6.145,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "≤",
+       "x_pt": 410.914,
+       "advance_pt": 6.748,
+       "font": "SymbolMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "&",
+       "x_pt": 421.29,
+       "advance_pt": 7.51,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "≤",
+       "x_pt": 433.157,
+       "advance_pt": 6.748,
+       "font": "SymbolMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "!",
+       "x_pt": 442.214,
+       "advance_pt": 6.145,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "\"",
+       "x_pt": 448.434,
+       "advance_pt": 4.093,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "=",
+       "x_pt": 455.226,
+       "advance_pt": 6.748,
+       "font": "SymbolMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "%",
+       "x_pt": 477.993,
+       "advance_pt": 3.417,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "#",
+       "x_pt": 484.213,
+       "advance_pt": 4.093,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "$",
+       "x_pt": 489.119,
+       "advance_pt": 5.457,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "\"",
+       "x_pt": 494.761,
+       "advance_pt": 4.093,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "#",
+       "x_pt": 499.091,
+       "advance_pt": 6.145,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      },
+      {
+       "text": "$",
+       "x_pt": 504.913,
+       "advance_pt": 5.457,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 12.249
+      }
+     ],
+     "text": "'#\"≤&≤!\"=%#$\"#$"
+    },
+    {
+     "baseline_pt": 302.573,
+     "characters": [
+      {
+       "text": "∫",
+       "x_pt": 464.831,
+       "advance_pt": 5.052,
+       "font": "SymbolMT",
+       "size_pt": 18.374
+      }
+     ],
+     "text": "∫"
+    },
+    {
+     "baseline_pt": 304.871,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 468.587,
+       "advance_pt": 1.791,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 7.141
+      },
+      {
+       "text": "\"",
+       "x_pt": 470.254,
+       "advance_pt": 3.583,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 7.141
+      }
+     ],
+     "text": "!\""
+    },
+    {
+     "baseline_pt": 313.68,
+     "characters": [
+      {
+       "text": "－",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 115.56,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "前",
+       "x_pt": 126.058,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "面",
+       "x_pt": 136.555,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 147.053,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 156.653,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 167.151,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "リ",
+       "x_pt": 177.649,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 188.146,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 198.644,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 209.142,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 218.742,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 229.24,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 239.737,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 250.235,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ド",
+       "x_pt": 259.835,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ラ",
+       "x_pt": 270.333,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 280.83,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "グ",
+       "x_pt": 291.328,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 301.826,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "任",
+       "x_pt": 312.323,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "意",
+       "x_pt": 322.821,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 333.319,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "位",
+       "x_pt": 343.817,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "－「前面」をクリック。その後、ドラッグで任意の位"
+    },
+    {
+     "baseline_pt": 330.622,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 460.964,
+       "advance_pt": 2.342,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 9.339
+      },
+      {
+       "text": "!",
+       "x_pt": 462.884,
+       "advance_pt": 4.684,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 9.339
+      }
+     ],
+     "text": "!!"
+    },
+    {
+     "baseline_pt": 331.68,
+     "characters": [
+      {
+       "text": "置",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "配",
+       "x_pt": 126.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 137.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "可",
+       "x_pt": 147.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "能",
+       "x_pt": 158.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 168.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "置に配置可能。"
+    },
+    {
+     "baseline_pt": 342.68,
+     "characters": [
+      {
+       "text": "'",
+       "x_pt": 355.863,
+       "advance_pt": 9.818,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "#",
+       "x_pt": 365.979,
+       "advance_pt": 5.351,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "\"",
+       "x_pt": 371.639,
+       "advance_pt": 8.035,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "≤",
+       "x_pt": 383.22,
+       "advance_pt": 8.822,
+       "font": "SymbolMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "&",
+       "x_pt": 396.785,
+       "advance_pt": 9.818,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "≤",
+       "x_pt": 412.301,
+       "advance_pt": 8.822,
+       "font": "SymbolMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "!",
+       "x_pt": 424.141,
+       "advance_pt": 8.035,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "\"",
+       "x_pt": 432.273,
+       "advance_pt": 5.351,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "=",
+       "x_pt": 441.154,
+       "advance_pt": 8.822,
+       "font": "SymbolMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "%",
+       "x_pt": 470.919,
+       "advance_pt": 4.467,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "#",
+       "x_pt": 479.051,
+       "advance_pt": 5.351,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "$",
+       "x_pt": 485.465,
+       "advance_pt": 7.135,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "\"",
+       "x_pt": 492.843,
+       "advance_pt": 5.351,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "#",
+       "x_pt": 498.503,
+       "advance_pt": 8.035,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      },
+      {
+       "text": "$",
+       "x_pt": 506.115,
+       "advance_pt": 7.135,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 16.019
+      }
+     ],
+     "text": "'#\"≤&≤!\"=%#$\"#$"
+    },
+    {
+     "baseline_pt": 348.401,
+     "characters": [
+      {
+       "text": "∫",
+       "x_pt": 453.711,
+       "advance_pt": 6.605,
+       "font": "SymbolMT",
+       "size_pt": 24.029
+      }
+     ],
+     "text": "∫"
+    },
+    {
+     "baseline_pt": 349.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "図",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "同",
+       "x_pt": 126.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "じ",
+       "x_pt": 137.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 147.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 158.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "拡",
+       "x_pt": 168.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "大",
+       "x_pt": 179.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "・",
+       "x_pt": 189.958,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "縮",
+       "x_pt": 200.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "小",
+       "x_pt": 210.958,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 221.458,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "可",
+       "x_pt": 231.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "能",
+       "x_pt": 242.457,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 252.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・図と同じで、拡大・縮小が可能。"
+    },
+    {
+     "baseline_pt": 351.408,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 458.622,
+       "advance_pt": 2.342,
+       "font": "TimesNewRomanPSMT",
+       "size_pt": 9.339
+      },
+      {
+       "text": "\"",
+       "x_pt": 460.802,
+       "advance_pt": 4.684,
+       "font": "TimesNewRomanPS-ItalicMT",
+       "size_pt": 9.339
+      }
+     ],
+     "text": "!\""
+    },
+    {
+     "baseline_pt": 367.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "フ",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ォ",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 126.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 137.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 147.959,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 158.459,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 163.71,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "T",
+       "x_pt": 174.21,
+       "advance_pt": 7.044,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 180.951,
+       "advance_pt": 3.326,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 184.261,
+       "advance_pt": 9.388,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 193.6,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 198.853,
+       "advance_pt": 4.889,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "N",
+       "x_pt": 206.633,
+       "advance_pt": 8.606,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 215.191,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 220.444,
+       "advance_pt": 8.216,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "R",
+       "x_pt": 231.53,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 239.116,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 244.368,
+       "advance_pt": 9.388,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 253.708,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 259.552,
+       "advance_pt": 6.452,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 265.936,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 276.436,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "斜",
+       "x_pt": 286.936,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "体",
+       "x_pt": 297.436,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 307.935,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "基",
+       "x_pt": 318.435,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 328.935,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 339.435,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・フォントは、「TimesNewRoman」の斜体が基本。"
+    },
+    {
+     "baseline_pt": 403.68,
+     "characters": [
+      {
+       "text": "2",
+       "x_pt": 84.96,
+       "advance_pt": 6.547,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 91.471,
+       "advance_pt": 3.379,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 100.079,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 110.579,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 121.079,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "π",
+       "x_pt": 131.579,
+       "advance_pt": 7.075,
+       "font": "BookmanOldStyle",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 138.614,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ボ",
+       "x_pt": 149.113,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "タ",
+       "x_pt": 159.613,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 170.113,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 180.613,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "利",
+       "x_pt": 191.113,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "用",
+       "x_pt": 201.612,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "2.数式（π）ボタンの利用"
+    },
+    {
+     "baseline_pt": 421.68,
+     "characters": [
+      {
+       "text": "「",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "挿",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 120.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "タ",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "－",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 172.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 183.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 193.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 204.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "π",
+       "x_pt": 214.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 225.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "（",
+       "x_pt": 230.359,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "記",
+       "x_pt": 240.859,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "号",
+       "x_pt": 251.359,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 261.858,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "特",
+       "x_pt": 272.358,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "殊",
+       "x_pt": 282.858,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 293.358,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "字",
+       "x_pt": 303.858,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 314.357,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "グ",
+       "x_pt": 324.857,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ル",
+       "x_pt": 335.357,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 345.857,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "プ",
+       "x_pt": 356.357,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "）",
+       "x_pt": 366.856,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 372.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 382.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 393.107,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "リ",
+       "x_pt": 403.607,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 414.107,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 424.607,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "「挿入」タブ－「数式（π）（記号と特殊文字のグループ）」をクリック"
+    },
+    {
+     "baseline_pt": 434.16,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 212.351,
+       "advance_pt": 4.457,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "!"
+    },
+    {
+     "baseline_pt": 440.4,
+     "characters": [
+      {
+       "text": "一",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "例",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑃",
+       "x_pt": 130.61,
+       "advance_pt": 6.547,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 137.28,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑎",
+       "x_pt": 141.735,
+       "advance_pt": 5.882,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 150.758,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑋",
+       "x_pt": 161.54,
+       "advance_pt": 6.811,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 171.486,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑏",
+       "x_pt": 182.267,
+       "advance_pt": 5.692,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 188.16,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "=",
+       "x_pt": 195.433,
+       "advance_pt": 7.888,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑓",
+       "x_pt": 218.792,
+       "advance_pt": 5.808,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 224.88,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 229.231,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 235.2,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑑",
+       "x_pt": 239.495,
+       "advance_pt": 6.125,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 245.581,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "一例𝑃(𝑎≤𝑋≤𝑏)=𝑓(𝑥)𝑑𝑥"
+    },
+    {
+     "baseline_pt": 441.12,
+     "characters": [
+      {
+       "text": "∫",
+       "x_pt": 206.16,
+       "advance_pt": 6.188,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "∫"
+    },
+    {
+     "baseline_pt": 444.72,
+     "characters": [
+      {
+       "text": "\"",
+       "x_pt": 210.223,
+       "advance_pt": 4.65,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "\""
+    },
+    {
+     "baseline_pt": 457.68,
+     "characters": [
+      {
+       "text": "＜",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "特",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "徴",
+       "x_pt": 120.109,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      },
+      {
+       "text": "＞",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "HGMaruGothicMPRO",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "＜特徴＞"
+    },
+    {
+     "baseline_pt": 475.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "上",
+       "x_pt": 109.651,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 120.192,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "例",
+       "x_pt": 130.733,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 141.274,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 151.815,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 162.356,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 172.897,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 183.438,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 193.979,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 204.52,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 215.061,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 225.602,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 236.143,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 246.684,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 257.225,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 267.766,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "時",
+       "x_pt": 278.307,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 288.848,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 299.389,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 309.93,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 320.471,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 331.012,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 341.553,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 352.094,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ま",
+       "x_pt": 362.635,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 373.176,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 383.717,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 394.258,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 404.798,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "自",
+       "x_pt": 415.334,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "動",
+       "x_pt": 425.875,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "的",
+       "x_pt": 436.416,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 446.957,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "積",
+       "x_pt": 457.498,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "分",
+       "x_pt": 468.039,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 478.58,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ど",
+       "x_pt": 489.121,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 499.662,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・上の例のように、文中に数式が入る時、行間はそのままである。自動的に積分などの"
+    },
+    {
+     "baseline_pt": 493.68,
+     "characters": [
+      {
+       "text": "記",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "号",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "小",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "さ",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "く",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 172.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 183.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 193.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "記号は小さくなる。"
+    },
+    {
+     "baseline_pt": 511.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "一",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 120.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "み",
+       "x_pt": 172.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "配",
+       "x_pt": 183.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 193.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 204.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 214.608,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 225.108,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 235.607,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 246.107,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 256.607,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "次",
+       "x_pt": 267.107,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 277.607,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "よ",
+       "x_pt": 288.106,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "う",
+       "x_pt": 298.606,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 309.106,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 319.606,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "行",
+       "x_pt": 330.106,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "間",
+       "x_pt": 340.605,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 351.105,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "広",
+       "x_pt": 361.605,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "く",
+       "x_pt": 372.105,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 382.605,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 393.104,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 403.604,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・一行に数式のみ配置するときは、次のように、行間が広くなる。"
+    },
+    {
+     "baseline_pt": 527.28,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 218.563,
+       "advance_pt": 4.457,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "!"
+    },
+    {
+     "baseline_pt": 539.28,
+     "characters": [
+      {
+       "text": "𝑃",
+       "x_pt": 134.51,
+       "advance_pt": 6.547,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 141.36,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑎",
+       "x_pt": 145.635,
+       "advance_pt": 5.882,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 154.658,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑋",
+       "x_pt": 165.44,
+       "advance_pt": 6.811,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 175.386,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑏",
+       "x_pt": 186.167,
+       "advance_pt": 5.692,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 192.0,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "=",
+       "x_pt": 199.333,
+       "advance_pt": 7.888,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "-",
+       "x_pt": 210.0,
+       "advance_pt": 8.522,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑓",
+       "x_pt": 223.255,
+       "advance_pt": 5.808,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 229.44,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 233.693,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 239.52,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑑",
+       "x_pt": 243.957,
+       "advance_pt": 6.125,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 250.043,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "𝑃(𝑎≤𝑋≤𝑏)=-𝑓(𝑥)𝑑𝑥"
+    },
+    {
+     "baseline_pt": 549.12,
+     "characters": [
+      {
+       "text": "\"",
+       "x_pt": 214.693,
+       "advance_pt": 4.65,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "\""
+    },
+    {
+     "baseline_pt": 565.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "任",
+       "x_pt": 109.751,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "意",
+       "x_pt": 120.392,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 131.034,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "位",
+       "x_pt": 141.675,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 152.316,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 162.958,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "配",
+       "x_pt": 173.599,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "置",
+       "x_pt": 184.24,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 194.882,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 205.523,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 216.164,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 226.806,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 237.447,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 248.088,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 258.73,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ら",
+       "x_pt": 269.371,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "か",
+       "x_pt": 280.012,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "じ",
+       "x_pt": 290.653,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 301.295,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 311.936,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 322.577,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 333.219,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "作",
+       "x_pt": 343.86,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・任意の位置に配置するときは、あらかじめ数式を作"
+    },
+    {
+     "baseline_pt": 583.68,
+     "characters": [
+      {
+       "text": "成",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "お",
+       "x_pt": 141.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 151.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 162.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 166.854,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "挿",
+       "x_pt": 177.354,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "入",
+       "x_pt": 187.854,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 198.354,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "タ",
+       "x_pt": 208.357,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 218.857,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "－",
+       "x_pt": 229.357,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 239.36,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 249.86,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "キ",
+       "x_pt": 260.36,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 270.86,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 281.359,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ボ",
+       "x_pt": 291.859,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 302.359,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 312.859,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 323.359,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 333.858,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 343.862,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "成しておき、「挿入」タブ－「テキストボックス」を"
+    },
+    {
+     "baseline_pt": 586.8,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 468.639,
+       "advance_pt": 4.457,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "!"
+    },
+    {
+     "baseline_pt": 598.8,
+     "characters": [
+      {
+       "text": "𝑃",
+       "x_pt": 384.585,
+       "advance_pt": 6.547,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 391.44,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑎",
+       "x_pt": 395.711,
+       "advance_pt": 5.882,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 404.734,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑋",
+       "x_pt": 415.515,
+       "advance_pt": 6.811,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "≤",
+       "x_pt": 425.461,
+       "advance_pt": 7.909,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑏",
+       "x_pt": 436.243,
+       "advance_pt": 5.692,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 442.08,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "=",
+       "x_pt": 449.408,
+       "advance_pt": 7.888,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "-",
+       "x_pt": 460.08,
+       "advance_pt": 8.522,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑓",
+       "x_pt": 473.33,
+       "advance_pt": 5.808,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "(",
+       "x_pt": 479.52,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 483.768,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": ")",
+       "x_pt": 489.6,
+       "advance_pt": 4.382,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑑",
+       "x_pt": 494.033,
+       "advance_pt": 6.125,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 500.118,
+       "advance_pt": 5.618,
+       "font": "CambriaMath",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "𝑃(𝑎≤𝑋≤𝑏)=-𝑓(𝑥)𝑑𝑥"
+    },
+    {
+     "baseline_pt": 601.68,
+     "characters": [
+      {
+       "text": "開",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 120.258,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 130.905,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 141.553,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "そ",
+       "x_pt": 152.2,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "こ",
+       "x_pt": 162.848,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 173.496,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "コ",
+       "x_pt": 184.143,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ピ",
+       "x_pt": 194.791,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 205.439,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "＆",
+       "x_pt": 216.086,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ペ",
+       "x_pt": 226.734,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 237.382,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 248.029,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 258.677,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 269.325,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 279.972,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 290.62,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "テ",
+       "x_pt": 301.269,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "キ",
+       "x_pt": 311.917,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 322.564,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 333.212,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ボ",
+       "x_pt": 343.86,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "開いて、そこにコピー＆ペーストする。テキストボ"
+    },
+    {
+     "baseline_pt": 608.64,
+     "characters": [
+      {
+       "text": "\"",
+       "x_pt": 464.768,
+       "advance_pt": 4.65,
+       "font": "CambriaMath",
+       "size_pt": 7.44
+      }
+     ],
+     "text": "\""
+    },
+    {
+     "baseline_pt": 619.68,
+     "characters": [
+      {
+       "text": "ッ",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 120.258,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ス",
+       "x_pt": 130.905,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 141.553,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "囲",
+       "x_pt": 152.2,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "み",
+       "x_pt": 162.848,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "線",
+       "x_pt": 173.496,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 184.143,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 194.791,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 205.439,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 216.086,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "リ",
+       "x_pt": 226.734,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 237.382,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 248.029,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "‐",
+       "x_pt": 258.677,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 269.326,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "オ",
+       "x_pt": 279.974,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 290.621,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ジ",
+       "x_pt": 301.269,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ェ",
+       "x_pt": 311.916,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ク",
+       "x_pt": 322.564,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 333.212,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 343.859,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "ックスの囲み線は、右クリック‐「オブジェクトの"
+    },
+    {
+     "baseline_pt": 637.68,
+     "characters": [
+      {
+       "text": "書",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "設",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "定",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "－",
+       "x_pt": 160.905,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 170.201,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "色",
+       "x_pt": 180.701,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 191.201,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "線",
+       "x_pt": 201.7,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 212.2,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 221.496,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 231.996,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "線",
+       "x_pt": 241.292,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 251.792,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 261.088,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "色",
+       "x_pt": 271.588,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "な",
+       "x_pt": 282.087,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 292.587,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 303.087,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 312.383,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 322.883,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 333.383,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 343.882,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "書式設定」－「色と線」で、線を「色なし」にする。"
+    },
+    {
+     "baseline_pt": 655.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 98.651,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 108.693,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 119.188,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 129.684,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "フ",
+       "x_pt": 140.18,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ォ",
+       "x_pt": 150.675,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 161.171,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 171.666,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "サ",
+       "x_pt": 182.162,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "イ",
+       "x_pt": 192.658,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ズ",
+       "x_pt": 203.153,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 213.649,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 226.818,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 232.657,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 238.497,
+       "advance_pt": 2.936,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "5",
+       "x_pt": 241.412,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 247.251,
+       "advance_pt": 6.061,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 253.281,
+       "advance_pt": 4.108,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 259.994,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "基",
+       "x_pt": 270.494,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 280.994,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "で",
+       "x_pt": 291.494,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "あ",
+       "x_pt": 301.994,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 312.493,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 322.993,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 333.493,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "サ",
+       "x_pt": 343.074,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "イ",
+       "x_pt": 353.574,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ズ",
+       "x_pt": 364.074,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 374.573,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "変",
+       "x_pt": 385.073,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "え",
+       "x_pt": 395.573,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 406.073,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "い",
+       "x_pt": 416.573,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "と",
+       "x_pt": 427.072,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "き",
+       "x_pt": 437.572,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 448.072,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 458.572,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 468.153,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 478.653,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 489.152,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "選",
+       "x_pt": 499.652,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・数式のフォントサイズは10.5ptが基本であるが、サイズを変えたいときは、数式を選"
+    },
+    {
+     "baseline_pt": 673.68,
+     "characters": [
+      {
+       "text": "択",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ホ",
+       "x_pt": 136.526,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ー",
+       "x_pt": 147.026,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ム",
+       "x_pt": 157.526,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "タ",
+       "x_pt": 168.026,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ブ",
+       "x_pt": 178.525,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 189.025,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "フ",
+       "x_pt": 199.525,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ォ",
+       "x_pt": 210.025,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 220.525,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 231.025,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "サ",
+       "x_pt": 241.524,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "イ",
+       "x_pt": 252.024,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ズ",
+       "x_pt": 262.524,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "を",
+       "x_pt": 273.024,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "変",
+       "x_pt": 283.524,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "更",
+       "x_pt": 294.023,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "す",
+       "x_pt": 304.523,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "る",
+       "x_pt": 315.023,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 325.523,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "下",
+       "x_pt": 331.45,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 341.95,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "数",
+       "x_pt": 352.45,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 362.949,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 373.449,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "8",
+       "x_pt": 386.58,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 392.419,
+       "advance_pt": 6.061,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 398.449,
+       "advance_pt": 4.108,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "に",
+       "x_pt": 405.16,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "変",
+       "x_pt": 415.66,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "更",
+       "x_pt": 426.159,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 436.659,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "た",
+       "x_pt": 447.159,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "場",
+       "x_pt": 457.659,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 468.159,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 478.658,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "例",
+       "x_pt": 489.158,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 499.658,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "択後、ホームタブのフォントサイズを変更する。下の数式は8ptに変更した場合の例。"
+    },
+    {
+     "baseline_pt": 690.96,
+     "characters": [
+      {
+       "text": "!",
+       "x_pt": 198.55,
+       "advance_pt": 3.306,
+       "font": "CambriaMath",
+       "size_pt": 5.52
+      }
+     ],
+     "text": "!"
+    },
+    {
+     "baseline_pt": 700.08,
+     "characters": [
+      {
+       "text": "𝑃",
+       "x_pt": 134.51,
+       "advance_pt": 4.91,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "(",
+       "x_pt": 139.68,
+       "advance_pt": 3.287,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑎",
+       "x_pt": 142.987,
+       "advance_pt": 4.411,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "≤",
+       "x_pt": 149.861,
+       "advance_pt": 5.932,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑋",
+       "x_pt": 158.075,
+       "advance_pt": 5.108,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "≤",
+       "x_pt": 165.653,
+       "advance_pt": 5.932,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑏",
+       "x_pt": 173.867,
+       "advance_pt": 4.269,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": ")",
+       "x_pt": 178.32,
+       "advance_pt": 3.287,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "=",
+       "x_pt": 183.898,
+       "advance_pt": 5.916,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": ")",
+       "x_pt": 192.0,
+       "advance_pt": 6.391,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑓",
+       "x_pt": 201.99,
+       "advance_pt": 4.356,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "(",
+       "x_pt": 206.64,
+       "advance_pt": 3.287,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 209.943,
+       "advance_pt": 4.213,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": ")",
+       "x_pt": 214.56,
+       "advance_pt": 3.287,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑑",
+       "x_pt": 217.764,
+       "advance_pt": 4.594,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      },
+      {
+       "text": "𝑥",
+       "x_pt": 222.4,
+       "advance_pt": 4.213,
+       "font": "CambriaMath",
+       "size_pt": 7.92
+      }
+     ],
+     "text": "𝑃(𝑎≤𝑋≤𝑏)=)𝑓(𝑥)𝑑𝑥"
+    },
+    {
+     "baseline_pt": 707.76,
+     "characters": [
+      {
+       "text": "\"",
+       "x_pt": 195.601,
+       "advance_pt": 3.45,
+       "font": "CambriaMath",
+       "size_pt": 5.52
+      }
+     ],
+     "text": "\""
+    },
+    {
+     "baseline_pt": 727.68,
+     "characters": [
+      {
+       "text": "・",
+       "x_pt": 99.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "フ",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ォ",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ン",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ト",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "は",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "、",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "「",
+       "x_pt": 167.36,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "C",
+       "x_pt": 177.86,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 185.443,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 191.284,
+       "advance_pt": 9.388,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 200.62,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 206.461,
+       "advance_pt": 4.689,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 211.119,
+       "advance_pt": 3.326,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 214.425,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "M",
+       "x_pt": 224.765,
+       "advance_pt": 9.969,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 234.672,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 240.512,
+       "advance_pt": 4.108,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 244.6,
+       "advance_pt": 6.452,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "」",
+       "x_pt": 251.018,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 261.518,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "斜",
+       "x_pt": 272.018,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "体",
+       "x_pt": 282.518,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "が",
+       "x_pt": 293.017,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "基",
+       "x_pt": 303.517,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 314.017,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 324.517,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ド",
+       "x_pt": 335.018,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ラ",
+       "x_pt": 345.518,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "ッ",
+       "x_pt": 356.018,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "グ",
+       "x_pt": 366.518,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "し",
+       "x_pt": 377.017,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "て",
+       "x_pt": 387.517,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "T",
+       "x_pt": 400.643,
+       "advance_pt": 7.044,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 407.385,
+       "advance_pt": 3.326,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 410.694,
+       "advance_pt": 9.388,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 420.033,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 425.286,
+       "advance_pt": 4.889,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "N",
+       "x_pt": 430.148,
+       "advance_pt": 8.606,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 438.706,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 443.958,
+       "advance_pt": 8.216,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "R",
+       "x_pt": 452.125,
+       "advance_pt": 7.624,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 459.711,
+       "advance_pt": 5.28,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 464.964,
+       "advance_pt": 9.388,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 474.303,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 480.147,
+       "advance_pt": 6.452,
+       "font": "Century",
+       "size_pt": 10.56
+      },
+      {
+       "text": "へ",
+       "x_pt": 489.16,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 499.66,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "・フォントは、「CambriaMath」の斜体が基本。ドラッグしてTimesNewRomanへの"
+    },
+    {
+     "baseline_pt": 745.68,
+     "characters": [
+      {
+       "text": "変",
+       "x_pt": 109.61,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "更",
+       "x_pt": 120.11,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "も",
+       "x_pt": 130.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "可",
+       "x_pt": 141.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "能",
+       "x_pt": 151.609,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "。",
+       "x_pt": 162.109,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "変更も可能。"
+    }
+   ]
+  }
+ ]
+}

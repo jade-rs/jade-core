@@ -1,0 +1,100 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "4d8e586f98906687c7e9b91c19dd1057eb4cd56a07f27c1704c9cc988404db0e",
+ "pdf_sha256": "8dfbaab700d74942e783e3bf491b6ae05b22c58b2b135c9bf1048eaf83d059de",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 71.28,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 66.24,
+       "advance_pt": 8.326,
+       "font": "HiraKakuProN-W6",
+       "size_pt": 10.08
+      },
+      {
+       "text": "e",
+       "x_pt": 74.4,
+       "advance_pt": 6.421,
+       "font": "HiraKakuProN-W6",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 80.876,
+       "advance_pt": 2.732,
+       "font": "HiraKakuProN-W6",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 83.512,
+       "advance_pt": 2.732,
+       "font": "HiraKakuProN-W6",
+       "size_pt": 10.08
+      },
+      {
+       "text": "o",
+       "x_pt": 86.39,
+       "advance_pt": 6.754,
+       "font": "HiraKakuProN-W6",
+       "size_pt": 10.08
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 96.24,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 226.8,
+       "advance_pt": 10.14,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 10.08
+      },
+      {
+       "text": "o",
+       "x_pt": 236.88,
+       "advance_pt": 6.3,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 10.08
+      },
+      {
+       "text": "r",
+       "x_pt": 243.12,
+       "advance_pt": 4.334,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 10.08
+      },
+      {
+       "text": "l",
+       "x_pt": 247.444,
+       "advance_pt": 2.339,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 10.08
+      },
+      {
+       "text": "d",
+       "x_pt": 249.843,
+       "advance_pt": 6.512,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 10.08
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

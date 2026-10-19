@@ -808,18 +808,12 @@ fn resolve_run_style_for_wrap_uncached(
             }
         }
 
-        if let Some(alignment) = props.baseline.as_deref() {
-            match alignment {
-                "superscript" | "super" => {
-                    font_size_pt *= 0.66;
-                    font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
-                }
-                "subscript" | "sub" => {
-                    font_size_pt *= 0.66;
-                    font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
-                }
-                _ => {}
-            }
+        if let Some("superscript" | "super" | "subscript" | "sub") = props.baseline.as_deref() {
+            let families = resolve_font_families(properties);
+            let stack = families.latin_ascii_stack();
+            font_size_pt = crate::line_metrics::word_shifted_script_size_pt(font_size_pt, stack);
+            font_size_complex_pt = font_size_complex_pt
+                .map(|size| crate::line_metrics::word_shifted_script_size_pt(size, stack));
         }
     }
 

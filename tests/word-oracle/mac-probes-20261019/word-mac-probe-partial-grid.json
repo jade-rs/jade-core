@@ -1,0 +1,1550 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "7b4e0ccb6f87795ad111ef93156077dbcb114af626893da4a4accc4bc9f39280",
+ "pdf_sha256": "165bc9234b0ae4e8dae55d09b930685bbfeac6c378e75ab5dd51d6100d3a012d",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 612.0,
+   "height_pt": 792.0,
+   "rows": [
+    {
+     "baseline_pt": 60.96,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case1"
+    },
+    {
+     "baseline_pt": 74.88,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 62.654,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "X",
+       "x_pt": 65.423,
+       "advance_pt": 5.73,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 71.129,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 76.503,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 85.761,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 91.334,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "P",
+       "x_pt": 96.907,
+       "advance_pt": 5.708,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "T",
+       "x_pt": 102.59,
+       "advance_pt": 5.376,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 124.56,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 129.614,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 132.383,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 137.007,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 144.123,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 150.093,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 155.468,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 164.872,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 171.239,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 174.008,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 181.105,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 187.87,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 193.244,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 217.92,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 222.974,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 225.743,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 230.366,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 237.483,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 243.453,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 248.827,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 258.231,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 264.599,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 267.368,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 274.465,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 281.23,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 286.604,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "FIXED72PTFILLREMAINDERFILLREMAINDER"
+    },
+    {
+     "baseline_pt": 88.8,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case2"
+    },
+    {
+     "baseline_pt": 102.72,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 142.08,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 226.8,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 116.64,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case3"
+    },
+    {
+     "baseline_pt": 130.56,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 63.965,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 70.329,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 76.694,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 85.548,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 91.912,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 98.277,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 104.642,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 224.4,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 268.08,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAAAAAAABC"
+    },
+    {
+     "baseline_pt": 144.48,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case4"
+    },
+    {
+     "baseline_pt": 158.4,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 103.44,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 109.424,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 115.407,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 121.391,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 129.859,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 135.842,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 141.826,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 147.81,
+       "advance_pt": 6.006,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 266.88,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "ABBBBBBBBC"
+    },
+    {
+     "baseline_pt": 172.32,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case5"
+    },
+    {
+     "baseline_pt": 186.24,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 142.08,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 226.8,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 200.16,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case6"
+    },
+    {
+     "baseline_pt": 214.08,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 62.654,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "X",
+       "x_pt": 65.423,
+       "advance_pt": 5.73,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 71.129,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 76.503,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 85.761,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 91.334,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "P",
+       "x_pt": 96.907,
+       "advance_pt": 5.708,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "T",
+       "x_pt": 102.59,
+       "advance_pt": 5.376,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 124.56,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 129.614,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 132.383,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 137.007,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 144.123,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 150.093,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 155.468,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 164.872,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 171.239,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 174.008,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 181.105,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 187.87,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 193.244,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 217.92,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 222.974,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 225.743,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 230.366,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 237.483,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 243.453,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 248.827,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 258.231,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 264.599,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 267.368,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 274.465,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 281.23,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 286.604,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "FIXED72PTFILLREMAINDERFILLREMAINDER"
+    },
+    {
+     "baseline_pt": 228.0,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case7"
+    },
+    {
+     "baseline_pt": 241.92,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 142.08,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 226.8,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 255.84,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "8",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case8"
+    },
+    {
+     "baseline_pt": 269.76,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 142.08,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 226.8,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 283.68,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "9",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case9"
+    },
+    {
+     "baseline_pt": 297.6,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 226.8,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 396.0,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 311.76,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "0",
+       "x_pt": 86.567,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case10"
+    },
+    {
+     "baseline_pt": 325.68,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 57.6,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 140.4,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 223.2,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "AAA"
+    },
+    {
+     "baseline_pt": 339.6,
+     "characters": [
+      {
+       "text": "C",
+       "x_pt": 57.6,
+       "advance_pt": 5.884,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 63.466,
+       "advance_pt": 5.288,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 68.735,
+       "advance_pt": 4.317,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 73.033,
+       "advance_pt": 5.498,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 80.988,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 86.567,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Case11"
+    },
+    {
+     "baseline_pt": 353.52,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 62.654,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "X",
+       "x_pt": 65.423,
+       "advance_pt": 5.73,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 71.129,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 76.503,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 85.761,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 91.334,
+       "advance_pt": 5.597,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "P",
+       "x_pt": 96.907,
+       "advance_pt": 5.708,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "T",
+       "x_pt": 102.59,
+       "advance_pt": 5.376,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 123.12,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 128.174,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 130.943,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 135.567,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 142.683,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 148.653,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 154.028,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 163.432,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 169.799,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 172.568,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 179.665,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 186.43,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 191.804,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "F",
+       "x_pt": 214.56,
+       "advance_pt": 5.067,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 219.614,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 222.383,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 227.007,
+       "advance_pt": 4.637,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 234.123,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 240.093,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "M",
+       "x_pt": 245.468,
+       "advance_pt": 9.439,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 254.872,
+       "advance_pt": 6.392,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "I",
+       "x_pt": 261.239,
+       "advance_pt": 2.782,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "N",
+       "x_pt": 264.008,
+       "advance_pt": 7.132,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 271.105,
+       "advance_pt": 6.79,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 277.87,
+       "advance_pt": 5.388,
+       "font": "Calibri",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 283.244,
+       "advance_pt": 5.995,
+       "font": "Calibri",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "FIXED72PTFILLREMAINDERFILLREMAINDER"
+    }
+   ]
+  }
+ ]
+}

@@ -3312,6 +3312,10 @@ where
     /// Tracks the baseline of the last rendered text line for positioning
     /// floating images that are anchored relative to a line.
     last_line_baseline: f64,
+    /// `(baseline, top)` of the last body line, so a line-relative anchor
+    /// can measure from that line's top while `last_line_baseline` still
+    /// names it.
+    last_line_box: Option<(f64, f64)>,
     /// Where the previous body paragraph's spacing-after ended — page,
     /// column, `current_y` — and how much it added. A paragraph starting at
     /// exactly that spot overlaps its spacing-before with it
@@ -7771,6 +7775,7 @@ where
             styles_part: None,
             theme_part: None,
             last_line_baseline: margin,
+            last_line_box: None,
             trailing_spacing_after: None,
             header_lines: None,
             footer_lines: None,
@@ -19677,8 +19682,14 @@ where
             }
             // Word for Mac centres a grid line's text in its pitches and keeps
             // the line while the text clears the page foot; only the padding
-            // below it may cross.
-            let fit_height = if paragraph_style.word_grid_line_sizing.is_some() {
+            // below it may cross. The extra of a multiple above single spacing
+            // may cross too: a 1.5-line Arial 12pt line whose baseline sits
+            // 5.3pt above the foot stays (word-mac-probe-line-pitch).
+            let fit_height = if paragraph_style.word_grid_line_sizing.is_some()
+                || paragraph_style
+                    .word_proportional_line_sizing
+                    .is_some_and(|sizing| sizing.multiple() > 1.0)
+            {
                 (top_leading + content_height).min(line_box_height)
             } else {
                 line_box_height
@@ -21033,6 +21044,7 @@ where
             }
             self.selection.record_line(paragraph_index, line_layout);
             self.last_line_baseline = baseline;
+            self.last_line_box = Some((baseline, top));
 
             if matches!(break_kind, LineBreakKind::Page) {
                 self.force_page_break()?;
@@ -27354,13 +27366,27 @@ where
                 match alignment {
                     "superscript" | "super" => {
                         baseline_shift_px = -points_to_px(font_size_pt * 0.35);
-                        font_size_pt *= 0.66;
-                        font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
+                        let families = resolve_font_families(properties);
+                        let stack = families.latin_ascii_stack();
+                        font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                            font_size_pt,
+                            stack,
+                        );
+                        font_size_complex_pt = font_size_complex_pt.map(|size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(size, stack)
+                        });
                     }
                     "subscript" | "sub" => {
                         baseline_shift_px = points_to_px(font_size_pt * 0.15);
-                        font_size_pt *= 0.66;
-                        font_size_complex_pt = font_size_complex_pt.map(|size| size * 0.66);
+                        let families = resolve_font_families(properties);
+                        let stack = families.latin_ascii_stack();
+                        font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                            font_size_pt,
+                            stack,
+                        );
+                        font_size_complex_pt = font_size_complex_pt.map(|size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(size, stack)
+                        });
                     }
                     _ => {}
                 }
@@ -31113,7 +31139,21 @@ where
             Some("bottomMargin") => self.page_height - self.margin_bottom - line_height,
             Some("paragraph") => paragraph_start_y,
             Some("line") => {
-                if self.last_line_baseline > paragraph_start_y {
+                // Word for Mac measures from the top of the line (`textbox`:
+                // a box 31pt below a double-spaced line sits 31pt below the
+                // line's top, not its baseline).
+                let mac_line_top = self
+                    .last_line_box
+                    .filter(|(baseline, top)| {
+                        jade_docx_layout::line_metrics::word_layout_platform()
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && *baseline == self.last_line_baseline
+                            && *top >= paragraph_start_y
+                    })
+                    .map(|(_, top)| top);
+                if let Some(top) = mac_line_top {
+                    top
+                } else if self.last_line_baseline > paragraph_start_y {
                     self.last_line_baseline
                 } else {
                     paragraph_start_y + line_height
@@ -32292,6 +32332,21 @@ where
             // Section storage is zero-based internally; Word's SECTION field
             // is explicitly 1-based.
             RunFieldKind::SectionNumber => Some((self.active_section_index + 1).to_string()),
+            // Word for Mac re-evaluates these when it lays out a header or
+            // footer, but prints a body, table or text box field's saved
+            // result: `document-property-fields`, `document-variable-fields`
+            // and `if-compare-field-edge-cases` show the stale body caches
+            // beside live header and footer values. A body IF is evaluated.
+            RunFieldKind::DocumentProperty { .. }
+            | RunFieldKind::DocumentVariable { .. }
+            | RunFieldKind::Compare { .. }
+                if !self.rendering_header_footer_story
+                    && jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && field.cached_text.is_some() =>
+            {
+                field.cached_text.clone()
+            }
             RunFieldKind::DocumentProperty { .. }
             | RunFieldKind::DocumentVariable { .. }
             | RunFieldKind::NumWords
