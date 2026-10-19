@@ -1,0 +1,264 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "d553ecaf5868bc2cf80c0c293073d9ec8842890a6e3e3ef9a1aa048f7cc5191e",
+ "pdf_sha256": "5926d51af0e2b806afb0c107fc4bad643288bf999043bea7a2aebf0934d25e4b",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 129.918,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "１",
+       "x_pt": 95.665,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "条",
+       "x_pt": 106.369,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 119.992,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "目",
+       "x_pt": 130.697,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "的",
+       "x_pt": 141.402,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 152.106,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第１条（目的）"
+    },
+    {
+     "baseline_pt": 148.08,
+     "characters": [
+      {
+       "text": "こ",
+       "x_pt": 106.81,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 117.31,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "この"
+    },
+    {
+     "baseline_pt": 219.918,
+     "characters": [
+      {
+       "text": "第",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "２",
+       "x_pt": 95.665,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "条",
+       "x_pt": 106.369,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "（",
+       "x_pt": 119.992,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "社",
+       "x_pt": 130.697,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "員",
+       "x_pt": 141.402,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "の",
+       "x_pt": 152.106,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "定",
+       "x_pt": 162.811,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "義",
+       "x_pt": 173.516,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      },
+      {
+       "text": "）",
+       "x_pt": 184.22,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.456
+      }
+     ],
+     "text": "第２条（社員の定義）"
+    },
+    {
+     "baseline_pt": 238.08,
+     "characters": [
+      {
+       "text": "こ",
+       "x_pt": 105.96,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 116.46,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "この"
+    },
+    {
+     "baseline_pt": 776.64,
+     "characters": [
+      {
+       "text": "1",
+       "x_pt": 294.64,
+       "advance_pt": 5.871,
+       "font": "Century",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "1"
+    },
+    {
+     "baseline_pt": 789.12,
+     "characters": [
+      {
+       "text": "株",
+       "x_pt": 255.56,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "式",
+       "x_pt": 266.06,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "会",
+       "x_pt": 276.56,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "社",
+       "x_pt": 287.059,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "〇",
+       "x_pt": 297.559,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "〇",
+       "x_pt": 308.059,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "〇",
+       "x_pt": 318.559,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "〇",
+       "x_pt": 329.058,
+       "advance_pt": 10.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "株式会社〇〇〇〇"
+    }
+   ]
+  }
+ ]
+}

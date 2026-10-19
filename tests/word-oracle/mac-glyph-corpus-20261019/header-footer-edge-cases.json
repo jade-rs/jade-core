@@ -1,0 +1,3223 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "d6c325b84a42e5df290543623f000e00eafdbdbe72322b2f56fd391ba7a37d69",
+ "pdf_sha256": "69c1531d3c0f13639328725bfeedccac891b0e2b8d92209bdcec1ac3fb1e35ce",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 612.0,
+   "height_pt": 792.0,
+   "rows": [
+    {
+     "baseline_pt": 36.72,
+     "characters": [
+      {
+       "text": "I",
+       "x_pt": 57.6,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 60.518,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 66.361,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 69.278,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 75.121,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 78.61,
+       "advance_pt": 9.825,
+       "font": "Arial-BoldItalicMT",
+       "size_pt": 16.08
+      },
+      {
+       "text": "p",
+       "x_pt": 88.384,
+       "advance_pt": 9.825,
+       "font": "Arial-BoldItalicMT",
+       "size_pt": 16.08
+      },
+      {
+       "text": "e",
+       "x_pt": 98.157,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 103.997,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 107.492,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 113.332,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 119.172,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 121.505,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 123.839,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 126.173,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 129.087,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 277.009,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 282.259,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 288.101,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 293.943,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 296.859,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 302.701,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 497.974,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 501.471,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 503.806,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 509.646,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 515.487,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Interoperabilitycenterright"
+    },
+    {
+     "baseline_pt": 50.4,
+     "characters": [
+      {
+       "text": "T",
+       "x_pt": 57.6,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 64.014,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 69.858,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 75.702,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 78.04,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 86.803,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 89.141,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 94.985,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 97.903,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "T",
+       "x_pt": 253.417,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 259.831,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 265.675,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 271.519,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 273.857,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 282.62,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 287.872,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 293.716,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 299.56,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 302.479,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 308.323,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "P",
+       "x_pt": 474.321,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 481.324,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 487.166,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 493.008,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 501.761,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "TableleftTablecenterPage1"
+    },
+    {
+     "baseline_pt": 97.92,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 57.6,
+       "advance_pt": 13.756,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "e",
+       "x_pt": 71.557,
+       "advance_pt": 10.996,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "a",
+       "x_pt": 82.754,
+       "advance_pt": 10.576,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "d",
+       "x_pt": 93.553,
+       "advance_pt": 11.592,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "e",
+       "x_pt": 105.368,
+       "advance_pt": 10.996,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "r",
+       "x_pt": 116.565,
+       "advance_pt": 7.706,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "a",
+       "x_pt": 129.729,
+       "advance_pt": 10.576,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "n",
+       "x_pt": 140.528,
+       "advance_pt": 11.592,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "d",
+       "x_pt": 152.343,
+       "advance_pt": 11.592,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "F",
+       "x_pt": 169.393,
+       "advance_pt": 10.135,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "o",
+       "x_pt": 179.442,
+       "advance_pt": 11.636,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "o",
+       "x_pt": 191.301,
+       "advance_pt": 11.636,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "t",
+       "x_pt": 203.16,
+       "advance_pt": 7.397,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "e",
+       "x_pt": 210.537,
+       "advance_pt": 10.996,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "r",
+       "x_pt": 221.734,
+       "advance_pt": 7.706,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "E",
+       "x_pt": 234.898,
+       "advance_pt": 10.775,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "d",
+       "x_pt": 245.565,
+       "advance_pt": 11.592,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "g",
+       "x_pt": 257.38,
+       "advance_pt": 10.4,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "e",
+       "x_pt": 267.804,
+       "advance_pt": 10.996,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "C",
+       "x_pt": 284.236,
+       "advance_pt": 11.769,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "a",
+       "x_pt": 296.228,
+       "advance_pt": 10.576,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "s",
+       "x_pt": 307.027,
+       "advance_pt": 8.633,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "e",
+       "x_pt": 315.883,
+       "advance_pt": 10.996,
+       "font": "Calibri",
+       "size_pt": 22.08
+      },
+      {
+       "text": "s",
+       "x_pt": 327.08,
+       "advance_pt": 8.633,
+       "font": "Calibri",
+       "size_pt": 22.08
+      }
+     ],
+     "text": "HeaderandFooterEdgeCases"
+    },
+    {
+     "baseline_pt": 133.68,
+     "characters": [
+      {
+       "text": "T",
+       "x_pt": 57.6,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 64.014,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 69.858,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 78.621,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 84.465,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 90.309,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 96.153,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 101.996,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 107.84,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 114.259,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 121.845,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 127.689,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 131.189,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 139.951,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 142.289,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 150.461,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 155.713,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 161.557,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 163.895,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 166.233,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 172.071,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 177.914,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 183.167,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 186.667,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 192.511,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 197.763,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 205.934,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 211.778,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 214.116,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 219.96,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 222.298,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "/",
+       "x_pt": 228.142,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 231.061,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 236.905,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 242.749,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 245.087,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "/",
+       "x_pt": 250.931,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 253.849,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 259.693,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 262.031,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 267.875,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 270.213,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 278.976,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 282.475,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 288.319,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 294.163,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 302.334,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 309.921,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 312.259,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 315.178,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 321.021,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 326.865,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 332.709,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 338.547,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 343.799,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 349.643,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 355.487,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 360.74,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 366.584,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 371.836,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "T",
+       "x_pt": 377.674,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 384.088,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 389.932,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 398.694,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 401.613,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 407.457,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 413.301,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 416.22,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 422.064,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 428.482,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 433.735,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 439.578,
+       "advance_pt": 8.796,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 448.326,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 454.17,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 456.508,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 462.352,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 468.196,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 476.367,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 482.211,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 490.974,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 496.818,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 502.662,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 505.0,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 510.844,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 516.096,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 521.349,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 527.193,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Theheaderwordissplitacrossplain/bold/plainrunswithoutspaces.Thefootercombinesanunlocked"
+    },
+    {
+     "baseline_pt": 147.84,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 57.6,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 64.603,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "G",
+       "x_pt": 71.607,
+       "advance_pt": 8.216,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "E",
+       "x_pt": 79.772,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 89.692,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 92.609,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 94.944,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 100.786,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 103.122,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 111.881,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 119.465,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 121.801,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 124.717,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 133.476,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 142.234,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 145.151,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 148.648,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 154.49,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 160.332,
+       "advance_pt": 8.796,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 169.078,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 174.92,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 180.761,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 183.678,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 189.52,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ",",
+       "x_pt": 195.362,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 201.195,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 203.531,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 209.373,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 214.623,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 219.874,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 225.715,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "N",
+       "x_pt": 234.474,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "U",
+       "x_pt": 242.058,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "M",
+       "x_pt": 249.642,
+       "advance_pt": 8.796,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "P",
+       "x_pt": 258.388,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "A",
+       "x_pt": 265.392,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "G",
+       "x_pt": 272.395,
+       "advance_pt": 8.216,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "E",
+       "x_pt": 280.56,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "S",
+       "x_pt": 287.563,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 297.483,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 300.4,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 302.736,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 308.578,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 310.914,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 316.755,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "PAGEfieldwithafragmented,lockedNUMPAGESfield."
+    },
+    {
+     "baseline_pt": 189.84,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 6.94,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "i",
+       "x_pt": 64.484,
+       "advance_pt": 3.72,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "r",
+       "x_pt": 68.163,
+       "advance_pt": 5.368,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "s",
+       "x_pt": 73.49,
+       "advance_pt": 6.033,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "t",
+       "x_pt": 79.482,
+       "advance_pt": 5.247,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "p",
+       "x_pt": 88.079,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "a",
+       "x_pt": 96.127,
+       "advance_pt": 7.469,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "g",
+       "x_pt": 103.526,
+       "advance_pt": 7.167,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "e",
+       "x_pt": 110.637,
+       "advance_pt": 7.605,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "c",
+       "x_pt": 121.577,
+       "advance_pt": 6.32,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "o",
+       "x_pt": 127.857,
+       "advance_pt": 8.135,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "n",
+       "x_pt": 135.92,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "t",
+       "x_pt": 143.969,
+       "advance_pt": 5.247,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "e",
+       "x_pt": 149.174,
+       "advance_pt": 7.605,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "n",
+       "x_pt": 156.724,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "t",
+       "x_pt": 164.772,
+       "advance_pt": 5.247,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      }
+     ],
+     "text": "Firstpagecontent"
+    },
+    {
+     "baseline_pt": 206.64,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 57.6,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 65.183,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 71.024,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 76.865,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 82.705,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 88.546,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 94.958,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 100.799,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 106.64,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 115.396,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 118.312,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 124.152,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 129.993,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 132.909,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 138.749,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 145.162,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 150.411,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 156.252,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 162.092,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 167.933,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 170.268,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 179.024,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 184.274,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 187.189,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 193.03,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 201.195,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 206.444,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 208.779,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 214.029,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 216.363,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 222.204,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 224.539,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 233.295,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 239.136,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 244.977,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 253.733,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 259.574,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 261.909,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 264.244,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 270.084,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 275.925,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 281.766,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 287.606,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Headerandfootershouldstayvisibleandaligned."
+    },
+    {
+     "baseline_pt": 731.28,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 279.145,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 286.148,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 291.99,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 297.832,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 306.584,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 315.341,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 321.181,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 327.015,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Page1of2"
+    },
+    {
+     "baseline_pt": 743.76,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 64.014,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 69.858,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 75.702,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 78.621,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 84.465,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 90.883,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 93.802,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 99.646,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 105.49,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 107.828,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "S",
+       "x_pt": 463.821,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 470.824,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 476.666,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 481.917,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 484.833,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 487.169,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 493.011,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 501.761,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "FootertableSection1"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 612.0,
+   "height_pt": 792.0,
+   "rows": [
+    {
+     "baseline_pt": 36.72,
+     "characters": [
+      {
+       "text": "I",
+       "x_pt": 57.6,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 60.518,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 66.361,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 69.278,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 75.121,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 78.61,
+       "advance_pt": 9.825,
+       "font": "Arial-BoldItalicMT",
+       "size_pt": 16.08
+      },
+      {
+       "text": "p",
+       "x_pt": 88.384,
+       "advance_pt": 9.825,
+       "font": "Arial-BoldItalicMT",
+       "size_pt": 16.08
+      },
+      {
+       "text": "e",
+       "x_pt": 98.157,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 103.997,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 107.492,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 113.332,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 119.172,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 121.505,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 123.839,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 126.173,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 129.087,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 277.009,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 282.259,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 288.101,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 293.943,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 296.859,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 302.701,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 497.974,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 501.471,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 503.806,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 509.646,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 515.487,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Interoperabilitycenterright"
+    },
+    {
+     "baseline_pt": 50.4,
+     "characters": [
+      {
+       "text": "T",
+       "x_pt": 57.6,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 64.014,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 69.858,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 75.702,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 78.04,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 86.803,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 89.141,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 94.985,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 97.903,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "T",
+       "x_pt": 253.417,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 259.831,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 265.675,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 271.519,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 273.857,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 282.62,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 287.872,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 293.716,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 299.56,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 302.479,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 308.323,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "P",
+       "x_pt": 474.321,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 481.324,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 487.166,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 493.008,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 501.761,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "TableleftTablecenterPage2"
+    },
+    {
+     "baseline_pt": 91.2,
+     "characters": [
+      {
+       "text": "S",
+       "x_pt": 57.6,
+       "advance_pt": 7.152,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "e",
+       "x_pt": 64.69,
+       "advance_pt": 7.605,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "c",
+       "x_pt": 72.233,
+       "advance_pt": 6.32,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "o",
+       "x_pt": 78.507,
+       "advance_pt": 8.135,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "n",
+       "x_pt": 86.564,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "d",
+       "x_pt": 94.606,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "p",
+       "x_pt": 106.034,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "a",
+       "x_pt": 114.076,
+       "advance_pt": 7.469,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "g",
+       "x_pt": 121.484,
+       "advance_pt": 7.167,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "e",
+       "x_pt": 128.589,
+       "advance_pt": 7.605,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "c",
+       "x_pt": 139.517,
+       "advance_pt": 6.32,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "o",
+       "x_pt": 145.791,
+       "advance_pt": 8.135,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "n",
+       "x_pt": 153.848,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "t",
+       "x_pt": 161.89,
+       "advance_pt": 5.247,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "e",
+       "x_pt": 167.09,
+       "advance_pt": 7.605,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "n",
+       "x_pt": 174.633,
+       "advance_pt": 8.119,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      },
+      {
+       "text": "t",
+       "x_pt": 182.676,
+       "advance_pt": 5.247,
+       "font": "Calibri-Bold",
+       "size_pt": 15.12
+      }
+     ],
+     "text": "Secondpagecontent"
+    },
+    {
+     "baseline_pt": 108.0,
+     "characters": [
+      {
+       "text": "R",
+       "x_pt": 57.6,
+       "advance_pt": 7.624,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 65.183,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 71.024,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 76.865,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 82.705,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 88.546,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 91.462,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 97.303,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 106.059,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 111.9,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 117.74,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 121.237,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 124.152,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 132.317,
+       "advance_pt": 8.796,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 141.062,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 146.903,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 152.152,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 157.983,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 163.824,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 167.321,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 173.161,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 178.411,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 184.252,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 187.748,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 192.997,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 201.754,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 204.669,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 210.51,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 219.266,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 224.516,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 230.357,
+       "advance_pt": 8.796,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 239.101,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 247.858,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 251.354,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 257.195,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 265.951,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 271.792,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 277.633,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 286.389,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 289.304,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 291.639,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 297.48,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 299.815,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 308.571,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 314.412,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 320.253,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 326.093,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 331.934,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 337.775,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 343.615,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 347.112,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 349.447,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 355.287,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": ".",
+       "x_pt": 360.537,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Repeatedpartsmustpreservethesamerunandfieldboundaries."
+    },
+    {
+     "baseline_pt": 731.28,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 279.145,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 286.148,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 291.99,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 297.832,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 306.584,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 315.341,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "f",
+       "x_pt": 321.181,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 327.015,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Page2of2"
+    },
+    {
+     "baseline_pt": 743.76,
+     "characters": [
+      {
+       "text": "F",
+       "x_pt": 57.6,
+       "advance_pt": 6.452,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 64.014,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 69.858,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 75.702,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 78.621,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 84.465,
+       "advance_pt": 3.516,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 90.883,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 93.802,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 99.646,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 105.49,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 107.828,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "S",
+       "x_pt": 463.821,
+       "advance_pt": 7.044,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 470.824,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 476.666,
+       "advance_pt": 5.28,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 481.917,
+       "advance_pt": 2.936,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 484.833,
+       "advance_pt": 2.344,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 487.169,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 493.011,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 501.761,
+       "advance_pt": 5.871,
+       "font": "ArialMT",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "FootertableSection1"
+    }
+   ]
+  }
+ ]
+}

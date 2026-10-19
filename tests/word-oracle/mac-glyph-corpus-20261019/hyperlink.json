@@ -1,0 +1,268 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "a1942b51275713b4df4c15c17cb862af06cef3cdd952c8d1b2aed107c9eb682c",
+ "pdf_sha256": "e8978668295bbbdfed761dc5d6db5830b1ed0ee3aa2f6e8a83d353755ce44766",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 68.16,
+     "characters": [
+      {
+       "text": "V",
+       "x_pt": 56.64,
+       "advance_pt": 7.916,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 64.56,
+       "advance_pt": 2.628,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 67.203,
+       "advance_pt": 5.928,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 72.959,
+       "advance_pt": 2.628,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 75.602,
+       "advance_pt": 4.328,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 79.92,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "x",
+       "x_pt": 86.4,
+       "advance_pt": 5.917,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 92.406,
+       "advance_pt": 6.348,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 98.644,
+       "advance_pt": 10.278,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "p",
+       "x_pt": 108.966,
+       "advance_pt": 7.143,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 115.921,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 118.56,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 125.04,
+       "advance_pt": 2.65,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 127.679,
+       "advance_pt": 6.381,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 133.917,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 140.872,
+       "advance_pt": 10.278,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 151.2,
+       "advance_pt": 4.328,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 155.52,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 166.081,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 168.723,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 174.964,
+       "advance_pt": 6.348,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 181.447,
+       "advance_pt": 4.747,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 186.253,
+       "advance_pt": 6.823,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 196.571,
+       "advance_pt": 10.278,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 206.897,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 213.612,
+       "advance_pt": 4.747,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 218.418,
+       "advance_pt": 6.492,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 224.902,
+       "advance_pt": 2.65,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Visitexample.comtolearnmore."
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 68.16,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 56.64,
+       "advance_pt": 11.106,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 67.68,
+       "advance_pt": 6.9,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 74.635,
+       "advance_pt": 4.747,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 79.195,
+       "advance_pt": 2.561,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      },
+      {
+       "text": "d",
+       "x_pt": 81.833,
+       "advance_pt": 7.132,
+       "font": "HiraKakuProN-W3",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}

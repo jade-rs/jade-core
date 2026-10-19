@@ -542,6 +542,14 @@
       "docx_sha256": "9bfa8fb91b96b39ef334ecc3fdaa4c4b3c8914186fe1246c56cb2132296971c9"
     },
     {
+      "fixture": "word-mac-probe-kern-default",
+      "docx_sha256": "2fa243ccb412f37ba27f8e47dad49e46302e902fa380437cfb36831027a91dfb"
+    },
+    {
+      "fixture": "word-mac-probe-line-pitch",
+      "docx_sha256": "541dbfdcf6d480ecd2888f3177d7f8a089b986a0ee82fdf19caa7579f35ee386"
+    },
+    {
       "fixture": "word-mac-probe-numbering-label",
       "docx_sha256": "092e1785ebcd50c0ddb085f1e7b6f20a0e4895b617ac2f6623c72b02e5110ba8"
     },
@@ -552,6 +560,10 @@
     {
       "fixture": "word-mac-probe-pairs-kerned",
       "docx_sha256": "f6bc744c18f1098e7945c231a42b87af37335461eab8a42b96eb5132d41a4562"
+    },
+    {
+      "fixture": "word-mac-probe-partial-grid",
+      "docx_sha256": "7b4e0ccb6f87795ad111ef93156077dbcb114af626893da4a4accc4bc9f39280"
     },
     {
       "fixture": "word-mac-probe-ruby-grid",
@@ -600,6 +612,10 @@
     {
       "fixture": "word-mac-probe-tab-shrink-kanji",
       "docx_sha256": "cdf94d1c874a5b2b90c0dc5af2b0a8a1f0569949e9108f3a43d502861498dbfc"
+    },
+    {
+      "fixture": "word-mac-probe-vert-align",
+      "docx_sha256": "81861a061b5460c034373cd1fc459fd044a6b34c4209eca1bce70c0598ca5236"
     },
     {
       "fixture": "wrong-num",

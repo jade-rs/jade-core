@@ -77,6 +77,11 @@ pub struct WordProportionalLineSizing {
 }
 
 impl WordProportionalLineSizing {
+    /// The `w:line` multiple of single spacing.
+    pub fn multiple(self) -> f64 {
+        self.multiple
+    }
+
     pub fn new(spacing: Option<&Spacing>, snap: bool, all_faces_known: bool) -> Option<Self> {
         if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
             return None;
@@ -289,6 +294,55 @@ impl WordAutoSpace {
         } else {
             self.em_px / 4.0 * self.trailing_share
         }
+    }
+}
+
+/// The size Word for Mac draws a superscript or subscript run at: 0.65 of the
+/// run's size in a Latin face and 0.6 in a Japanese one (the faces' own
+/// OS/2 superscript sizes), to the nearest half point. Word for Mac 16.114
+/// (`word-mac-probe-vert-align`): 8, 9, 10.5, 12, 14, 16 and 20pt draw at 5,
+/// 6, 7, 8, 9, 10.5 and 13pt in Century and Calibri, and at 5, 5.5, 6.5, 7,
+/// 8.5, 9.5 and 12pt in Yu Mincho and MS Mincho. `latin_ascii_stack` is the
+/// run's CSS family stack; its first family decides.
+pub fn word_mac_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    let family = latin_ascii_stack
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(|ch| ch == '"' || ch == '\'')
+        .to_ascii_lowercase();
+    let japanese = [
+        "mincho",
+        "gothic",
+        "明朝",
+        "ゴシック",
+        "游",
+        "yu ",
+        "yumincho",
+        "yugothic",
+        "meiryo",
+        "メイリオ",
+        "hiragino",
+        "ヒラギノ",
+        "biz ud",
+        "noto sans jp",
+        "noto serif jp",
+    ]
+    .iter()
+    .any(|name| family.contains(name));
+    let scale = if japanese { 0.6 } else { 0.65 };
+    ((size_pt * scale * 2.0).round() / 2.0).max(0.5)
+}
+
+/// The size a superscript or subscript run of `size_pt` is drawn at: two
+/// thirds on Word for Windows (0.66, as jade has always drawn it) and the
+/// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
+/// Word for Mac.
+pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    match word_layout_platform() {
+        WordLayoutPlatform::Mac => word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack),
+        _ => size_pt * 0.66,
     }
 }
 
@@ -1301,6 +1355,142 @@ const CENTURY_ASCII_UNITS: [u16; 95] = [
 ];
 
 #[inline]
+/// Pairs with a space from the legacy `kern` tables of Arial, Times New
+/// Roman and Century, in 2048ths of an em. The host does not kern them (the
+/// first two faces' GPOS leaves them out); Word for Mac does (word-mac-probe-kern-default and
+/// word-mac-probe-line-pitch: Arial ` A` closes 0.55pt at 10pt). Numeric
+/// table facts for the four styles of each face.
+fn legacy_space_kerning_units(family: &str, bold: bool, italic: bool, left: u8, right: u8) -> i16 {
+    let pairs: &[(u8, u8, i16)] = match (family, bold, italic) {
+        ("Arial", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -113),
+            (b'L', b' ', -76),
+            (b'P', b' ', -37),
+            (b'T', b' ', -37),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", true, false) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", false, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'F', b' ', -37),
+            (b'L', b' ', -37),
+            (b'P', b' ', -76),
+            (b'Y', b' ', -37),
+        ],
+        ("Arial", true, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -76),
+            (b'L', b' ', -37),
+            (b'P', b' ', -76),
+            (b'Y', b' ', -37),
+        ],
+        ("Times New Roman", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'V', -37),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'L', b' ', -76),
+            (b'P', b' ', -76),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+        ],
+        ("Times New Roman", true, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'T', -37),
+            (b' ', b'V', -37),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'F', b' ', -76),
+            (b'L', b' ', -113),
+            (b'P', b' ', -113),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+            (b'r', b' ', -37),
+        ],
+        ("Times New Roman", false, true) => &[
+            (b' ', b'A', -37),
+            (b'A', b' ', -37),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+            (b'T', b' ', -37),
+            (b'V', b' ', -37),
+        ],
+        ("Times New Roman", true, true) => &[
+            (b' ', b'A', -76),
+            (b' ', b'W', -37),
+            (b' ', b'Y', -37),
+            (b'A', b' ', -113),
+            (b'F', b' ', -37),
+            (b'L', b' ', -76),
+            (b'P', b' ', -76),
+            (b'V', b' ', -37),
+            (b'W', b' ', -37),
+            (b'Y', b' ', -76),
+        ],
+        ("Century", false, false) => &[
+            (b' ', b'A', -113),
+            (b' ', b'Y', -76),
+            (b'A', b' ', -113),
+            (b'L', b' ', -37),
+            (b'P', b' ', -37),
+        ],
+        _ => return 0,
+    };
+    pairs
+        .iter()
+        .find(|(l, r, _)| *l == left && *r == right)
+        .map_or(0, |(_, _, units)| *units)
+}
+
+/// The kerning of an ASCII pair with a space in a face whose legacy `kern`
+/// table has space pairs its GPOS lacks, on Word for Mac. `None` leaves the
+/// pair to the host.
+pub(crate) fn word_mac_legacy_space_kerning_px(
+    font_descriptor: &str,
+    left: u8,
+    right: u8,
+) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Mac || (left != b' ' && right != b' ') {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
+    if !matches!(family, "Arial" | "Times New Roman" | "Century")
+        || !size_pt.is_finite()
+        || size_pt <= 0.0
+    {
+        return None;
+    }
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    let em_px = f64::from(size_pt) * 96.0 / 72.0;
+    Some(
+        f64::from(legacy_space_kerning_units(
+            family, bold, italic, left, right,
+        )) * em_px
+            / 2048.0,
+    )
+}
+
 pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.set(count.get() + 1));
@@ -2513,6 +2703,72 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_legacy_space_pairs_kern_from_the_kern_table() {
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let px = |descriptor: &str, left: u8, right: u8| {
+            word_mac_legacy_space_kerning_px(descriptor, left, right)
+        };
+        let em_px = 10.0 * 96.0 / 72.0;
+        // Arial ` A` closes 0.55pt at 10pt (word-mac-probe-line-pitch).
+        assert_eq!(
+            px("10.00pt 'Arial'", b' ', b'A'),
+            Some(-113.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("bold 10.00pt 'Arial'", b'A', b' '),
+            Some(-76.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("10.00pt 'Times New Roman'", b' ', b'T'),
+            Some(-37.0 * em_px / 2048.0)
+        );
+        assert_eq!(
+            px("10.00pt 'Century'", b'L', b' '),
+            Some(-37.0 * em_px / 2048.0)
+        );
+        assert_eq!(px("10.00pt 'Arial'", b' ', b'x'), Some(0.0));
+        assert_eq!(
+            px("10.00pt 'Arial'", b'A', b'V'),
+            None,
+            "host kerns letter pairs"
+        );
+        assert_eq!(px("10.00pt 'Calibri'", b' ', b'A'), None);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(px("10.00pt 'Arial'", b' ', b'A'), None);
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn mac_shifted_script_sizes_follow_the_face_to_the_half_point() {
+        let latin = [5.0, 6.0, 7.0, 8.0, 9.0, 10.5, 13.0];
+        let japanese = [5.0, 5.5, 6.5, 7.0, 8.5, 9.5, 12.0];
+        for (index, size) in [8.0, 9.0, 10.5, 12.0, 14.0, 16.0, 20.0]
+            .into_iter()
+            .enumerate()
+        {
+            for stack in ["\"Century\", serif", "Calibri, sans-serif"] {
+                assert_eq!(
+                    word_mac_shifted_script_size_pt(size, stack),
+                    latin[index],
+                    "{stack} {size}"
+                );
+            }
+            for stack in [
+                "\"Yu Mincho\", \"YuMincho\"",
+                "\"MS Mincho\", serif",
+                "游明朝",
+            ] {
+                assert_eq!(
+                    word_mac_shifted_script_size_pt(size, stack),
+                    japanese[index],
+                    "{stack} {size}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn mac_numbering_suffix_space_is_measured_in_arial_at_the_label_size() {
         set_word_layout_platform(WordLayoutPlatform::Mac);

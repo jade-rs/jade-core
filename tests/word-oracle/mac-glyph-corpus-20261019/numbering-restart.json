@@ -1,0 +1,4218 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20",
+ "pdf_sha256": "cf2d9c8eb01140cf72963bccf5465430dde63071382246bba481cc73f4049d64",
+ "page_count": 2,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.44,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 97.44,
+     "characters": [
+      {
+       "text": "1",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "1.Article1"
+    },
+    {
+     "baseline_pt": 112.32,
+     "characters": [
+      {
+       "text": "2",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "2.Article2"
+    },
+    {
+     "baseline_pt": 127.2,
+     "characters": [
+      {
+       "text": "3",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "3.Article3"
+    },
+    {
+     "baseline_pt": 142.32,
+     "characters": [
+      {
+       "text": "4",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "4.Article4"
+    },
+    {
+     "baseline_pt": 157.2,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.Article5"
+    },
+    {
+     "baseline_pt": 172.08,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.1AAAAA"
+    },
+    {
+     "baseline_pt": 186.96,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "B",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.1.1BBBB"
+    },
+    {
+     "baseline_pt": 216.96,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.1.2CCCC"
+    },
+    {
+     "baseline_pt": 246.96,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.1.3DDDD"
+    },
+    {
+     "baseline_pt": 276.72,
+     "characters": [
+      {
+       "text": "5",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "E",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "5.1.4EEEE"
+    },
+    {
+     "baseline_pt": 291.6,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 94.349,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.349,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 106.35,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 112.35,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 118.35,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 124.35,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 130.351,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.Article6"
+    },
+    {
+     "baseline_pt": 306.72,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 141.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 147.288,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1List6.1"
+    },
+    {
+     "baseline_pt": 321.6,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1.1List6.1.1"
+    },
+    {
+     "baseline_pt": 336.48,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 366.48,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1.2List6.1.2"
+    },
+    {
+     "baseline_pt": 381.36,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 411.36,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1.3List6.1.3"
+    },
+    {
+     "baseline_pt": 426.24,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 456.24,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1.4List6.1.5"
+    },
+    {
+     "baseline_pt": 471.12,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 486.0,
+     "characters": [
+      {
+       "text": "(",
+       "x_pt": 136.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 142.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ")",
+       "x_pt": 148.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "括",
+       "x_pt": 162.78,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "弧",
+       "x_pt": 174.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "リ",
+       "x_pt": 186.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ス",
+       "x_pt": 198.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ト",
+       "x_pt": 210.782,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 225.78,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "(1)括弧リスト1"
+    },
+    {
+     "baseline_pt": 501.12,
+     "characters": [
+      {
+       "text": "(",
+       "x_pt": 136.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 142.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ")",
+       "x_pt": 148.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "括",
+       "x_pt": 162.78,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "弧",
+       "x_pt": 174.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "リ",
+       "x_pt": 186.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ス",
+       "x_pt": 198.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ト",
+       "x_pt": 210.782,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 225.78,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "(2)括弧リスト2"
+    },
+    {
+     "baseline_pt": 516.0,
+     "characters": [
+      {
+       "text": "(",
+       "x_pt": 136.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 142.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ")",
+       "x_pt": 148.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "括",
+       "x_pt": 162.78,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "弧",
+       "x_pt": 174.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "リ",
+       "x_pt": 186.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ス",
+       "x_pt": 198.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ト",
+       "x_pt": 210.782,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 225.78,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "(3)括弧リスト3"
+    },
+    {
+     "baseline_pt": 530.88,
+     "characters": [
+      {
+       "text": "(",
+       "x_pt": 136.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 142.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ")",
+       "x_pt": 148.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "括",
+       "x_pt": 162.78,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "弧",
+       "x_pt": 174.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "リ",
+       "x_pt": 186.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ス",
+       "x_pt": 198.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ト",
+       "x_pt": 210.782,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 225.78,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "(4)括弧リスト4"
+    },
+    {
+     "baseline_pt": 545.76,
+     "characters": [
+      {
+       "text": "(",
+       "x_pt": 136.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 142.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ")",
+       "x_pt": 148.68,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "括",
+       "x_pt": 162.78,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "弧",
+       "x_pt": 174.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "リ",
+       "x_pt": 186.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ス",
+       "x_pt": 198.781,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "ト",
+       "x_pt": 210.782,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 225.78,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "(5)括弧リスト5"
+    },
+    {
+     "baseline_pt": 575.76,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "5",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.1.5List6.1.5"
+    },
+    {
+     "baseline_pt": 590.64,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "。",
+       "x_pt": 267.08,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…。"
+    },
+    {
+     "baseline_pt": 605.76,
+     "characters": [
+      {
+       "text": "6",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "6",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 141.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 147.288,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "6.2List6.2"
+    },
+    {
+     "baseline_pt": 627.84,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 119.13,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 124.834,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 131.035,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 140.593,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 146.761,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 150.522,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 156.966,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 159.922,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 166.366,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 172.49,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 184.487,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 190.191,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 196.392,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 205.95,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 212.118,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 215.879,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 222.323,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 225.278,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 231.722,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 237.846,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 680.4,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 73.68,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": ".",
+       "x_pt": 79.375,
+       "advance_pt": 5.04,
+       "font": "MS-Gothic",
+       "size_pt": 9.981
+      },
+      {
+       "text": "A",
+       "x_pt": 88.349,
+       "advance_pt": 7.364,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 96.186,
+       "advance_pt": 3.676,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 100.347,
+       "advance_pt": 3.069,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 103.901,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "c",
+       "x_pt": 106.847,
+       "advance_pt": 5.52,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 112.852,
+       "advance_pt": 2.451,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 115.799,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 122.422,
+       "advance_pt": 6.138,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.Article7"
+    },
+    {
+     "baseline_pt": 695.28,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 141.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 147.288,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.1List7.1"
+    },
+    {
+     "baseline_pt": 717.6,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 119.13,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 124.834,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 131.035,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 140.593,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 146.761,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 150.522,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 156.966,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 159.922,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 166.366,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 172.49,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 184.487,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 190.191,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 196.392,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 205.95,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 212.118,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 215.879,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 222.323,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 225.278,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 231.722,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 237.846,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.44,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 82.32,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 141.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 147.288,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.2List7.2"
+    },
+    {
+     "baseline_pt": 104.64,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 119.13,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 124.834,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 131.035,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 140.593,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 146.761,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 150.522,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 156.966,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 159.922,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 166.366,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 172.49,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 184.487,
+       "advance_pt": 5.222,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 190.191,
+       "advance_pt": 5.719,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 196.392,
+       "advance_pt": 9.086,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 205.95,
+       "advance_pt": 5.686,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 212.118,
+       "advance_pt": 3.279,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 215.879,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 222.323,
+       "advance_pt": 2.462,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 225.278,
+       "advance_pt": 5.962,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 231.722,
+       "advance_pt": 5.641,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 237.846,
+       "advance_pt": 11.04,
+       "font": "YuGothic-Light",
+       "size_pt": 11.04
+      },
+      {
+       "text": "。",
+       "x_pt": 249.83,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…。"
+    },
+    {
+     "baseline_pt": 142.32,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 89.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 95.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 101.73,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 111.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 117.286,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 123.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 129.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 135.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 141.287,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 147.288,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.3List7.3"
+    },
+    {
+     "baseline_pt": 157.2,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "4",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "1",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.3.1List7.4.1"
+    },
+    {
+     "baseline_pt": 172.08,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 186.96,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 216.96,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "2",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.3.2List7.3.2"
+    },
+    {
+     "baseline_pt": 231.84,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    },
+    {
+     "baseline_pt": 246.96,
+     "characters": [
+      {
+       "text": "7",
+       "x_pt": 104.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 110.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 116.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 122.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 128.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 146.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 152.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 158.63,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 164.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "7",
+       "x_pt": 170.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 176.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 182.631,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": ".",
+       "x_pt": 188.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "3",
+       "x_pt": 194.632,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "7.3.3List7.3.3"
+    },
+    {
+     "baseline_pt": 261.84,
+     "characters": [
+      {
+       "text": "s",
+       "x_pt": 135.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 141.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 147.08,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 153.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 159.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 165.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 171.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 177.081,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 183.082,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 189.082,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "s",
+       "x_pt": 201.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 207.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "m",
+       "x_pt": 213.088,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 219.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 225.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "h",
+       "x_pt": 231.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 237.089,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 243.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 249.09,
+       "advance_pt": 5.52,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      },
+      {
+       "text": "…",
+       "x_pt": 255.09,
+       "advance_pt": 11.04,
+       "font": "MS-Mincho",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "something…something…"
+    }
+   ]
+  }
+ ]
+}

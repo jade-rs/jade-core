@@ -1,0 +1,100 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "6c8718493d59ce8cdcf6b6d5a38fda35b192343efcda304d04e24bcdadc85df3",
+ "pdf_sha256": "68343d414f7e10908f8108888bbee2601d4c53fc6e910a59e03cd33f97768aa1",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 112.8,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 96.24,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 104.884,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 110.033,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 112.849,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 115.664,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Hello"
+    },
+    {
+     "baseline_pt": 151.2,
+     "characters": [
+      {
+       "text": "W",
+       "x_pt": 314.4,
+       "advance_pt": 10.38,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 324.09,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 329.714,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 333.786,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 336.601,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "World"
+    }
+   ]
+  }
+ ]
+}
