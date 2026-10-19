@@ -277,6 +277,9 @@ mod tests {
         assert_eq!(to_file_formula("STDEV.S(A1:A3)"), "_xlfn.STDEV.S(A1:A3)");
         assert_eq!(to_file_formula("VLOOKUP(1,A:B,2,0)"), "VLOOKUP(1,A:B,2,0)");
         assert_eq!(to_file_formula("A1+B2*3"), "A1+B2*3");
+        assert_eq!(to_file_formula("ENCODEURL(A1)"), "_xlfn.ENCODEURL(A1)");
+        assert_eq!(to_file_formula("HYPERLINK(A1,B1)"), "HYPERLINK(A1,B1)");
+        assert_eq!(to_file_formula("DBCS(A1)"), "DBCS(A1)");
     }
 
     #[test]
