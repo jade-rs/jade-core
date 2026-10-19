@@ -110,6 +110,7 @@ fn laid_out() -> SheetLayout {
         column_breaks: Vec::new(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        phonetic_readings: Default::default(),
     };
     layout_sheet(
         &sheet,

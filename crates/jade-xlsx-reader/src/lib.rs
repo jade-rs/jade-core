@@ -72,6 +72,44 @@ const THEME: &str = "/theme";
 const WORKSHEET: &str = "/worksheet";
 
 /// Reads a whole workbook from `.xlsx` bytes.
+/// The readings of `sheet`'s text cells that carry furigana. A guide the
+/// file got wrong is left out rather than failing the read.
+fn furigana(
+    package: &OpcPackage,
+    part: &str,
+    sheet: &Sheet,
+) -> std::collections::BTreeMap<CellRef, String> {
+    let text_cells: Vec<CellRef> = sheet
+        .rows
+        .iter()
+        .flat_map(|row| &row.cells)
+        .filter(|cell| matches!(cell.value, CellValue::Text(_)))
+        .map(|cell| cell.reference)
+        .collect();
+    let (Some(first), Some(last)) = (text_cells.first(), text_cells.last()) else {
+        return Default::default();
+    };
+    let range = CellRange {
+        start: CellRef::new(
+            text_cells.iter().map(|at| at.column).min().unwrap_or(0),
+            first.row,
+        ),
+        end: CellRef::new(
+            text_cells.iter().map(|at| at.column).max().unwrap_or(0),
+            last.row,
+        ),
+    };
+    let columns = text_cells.iter().map(|at| at.column).collect();
+    phonetic::package_readings(package, part, range, &columns)
+        .map(|readings| {
+            readings
+                .into_iter()
+                .filter_map(|(at, reading)| reading.key.map(|key| (at, key)))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 pub fn read_xlsx(bytes: &[u8]) -> Result<Workbook> {
     let package = OpcPackage::open(bytes)?;
     read_package(&package)
@@ -93,11 +131,15 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         None => Default::default(),
     };
 
+    let mut shared_furigana = false;
     let shared_strings = match workbook_rels.target_by_type_suffix(SHARED_STRINGS) {
         Some(target) => {
             let part = jade_opc::resolve_target(&workbook_part, target);
             match package.part_str(&part)? {
-                Some(xml) => shared_strings::parse_shared_strings(&xml)?,
+                Some(xml) => {
+                    shared_furigana = xml.contains("rPh");
+                    shared_strings::parse_shared_strings(&xml)?
+                }
                 None => Vec::new(),
             }
         }
@@ -165,6 +207,9 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
             &mut media_cache,
         )?;
         sheet.filter_row_state = filter_state::read(&xml, &sheet)?;
+        if shared_furigana || xml.contains("rPh") {
+            sheet.phonetic_readings = furigana(package, &target, &sheet);
+        }
         sheet.visibility = entry.visibility;
         sheets.push(sheet);
     }

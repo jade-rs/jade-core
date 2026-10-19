@@ -156,7 +156,23 @@ pub fn evaluate_with_manual_filter_rows(
         .collect();
     ironcalc_base::row_visibility::with_visibility(visibility, || {
         ironcalc_base::clock::with_milliseconds(instant, || {
-            evaluate_at_instant(workbook, time_zone)
+            // The furigana saved with text cells, for PHONETIC.
+            let readings = workbook
+                .sheets
+                .iter()
+                .enumerate()
+                .flat_map(|(index, sheet)| {
+                    sheet.phonetic_readings.iter().map(move |(at, reading)| {
+                        (
+                            (index as u32, at.row as i32 + 1, at.column as i32 + 1),
+                            reading.clone(),
+                        )
+                    })
+                })
+                .collect();
+            ironcalc_base::phonetic::with_readings(readings, || {
+                evaluate_at_instant(workbook, time_zone)
+            })
         })
     })
 }

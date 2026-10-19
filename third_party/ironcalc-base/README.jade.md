@@ -96,3 +96,9 @@ applied after the first), each pinned by a case in
   `_xlfn.ENCODEURL`; HYPERLINK shows its friendly name, or the link when there
   is none. The names answer through `jade_lookup`. Pinned by cases in
   `crates/jade-xlsx-headless-editor/tests/excel_conformance.rs`.
+- PHONETIC (`phonetic.rs`, `functions/japanese.rs`; eighth set of hunks in
+  `jade.patch`): the furigana Excel saved with text cells reaches the engine
+  through `phonetic::with_readings` for one calculation, as row visibility
+  does; PHONETIC joins the referenced cells' readings, or their text where
+  they have none. Pinned by `crates/jade-xlsx-calc/tests/phonetic.rs` and
+  conformance cases.

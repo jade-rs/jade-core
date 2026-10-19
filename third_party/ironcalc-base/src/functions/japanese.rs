@@ -285,6 +285,38 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// The furigana of the referenced cells, joined: a cell's saved reading,
+    /// or its text when it has none; numbers and other values give nothing.
+    pub(crate) fn fn_phonetic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let range = match self.get_reference(&args[0], cell) {
+            Ok(range) => range,
+            Err(_) => return CalcResult::new_error(Error::NA, cell, "Not a reference".into()),
+        };
+        let mut text = String::new();
+        for row in range.left.row..=range.right.row {
+            for column in range.left.column..=range.right.column {
+                if let Some(reading) = crate::phonetic::reading(range.left.sheet, row, column) {
+                    text.push_str(&reading);
+                    continue;
+                }
+                let at = CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row,
+                    column,
+                };
+                match self.evaluate_cell(at) {
+                    CalcResult::String(value) => text.push_str(&value),
+                    error @ CalcResult::Error { .. } => return error,
+                    _ => {}
+                }
+            }
+        }
+        CalcResult::String(text)
+    }
+
     pub(crate) fn fn_datestring(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
