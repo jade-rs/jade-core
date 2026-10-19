@@ -810,11 +810,10 @@ fn resolve_run_style_for_wrap_uncached(
 
         if let Some("superscript" | "super" | "subscript" | "sub") = props.baseline.as_deref() {
             let families = resolve_font_families(properties);
-            let shifted = |size: f32| {
-                crate::line_metrics::word_shifted_script_size_pt(size, families.latin_ascii_stack())
-            };
-            font_size_pt = shifted(font_size_pt);
-            font_size_complex_pt = font_size_complex_pt.map(shifted);
+            let stack = families.latin_ascii_stack();
+            font_size_pt = crate::line_metrics::word_shifted_script_size_pt(font_size_pt, stack);
+            font_size_complex_pt = font_size_complex_pt
+                .map(|size| crate::line_metrics::word_shifted_script_size_pt(size, stack));
         }
     }
 

@@ -27204,26 +27204,26 @@ where
                     "superscript" | "super" => {
                         baseline_shift_px = -points_to_px(font_size_pt * 0.35);
                         let families = resolve_font_families(properties);
-                        let shifted = |size| {
-                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(
-                                size,
-                                families.latin_ascii_stack(),
-                            )
-                        };
-                        font_size_pt = shifted(font_size_pt);
-                        font_size_complex_pt = font_size_complex_pt.map(shifted);
+                        let stack = families.latin_ascii_stack();
+                        font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                            font_size_pt,
+                            stack,
+                        );
+                        font_size_complex_pt = font_size_complex_pt.map(|size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(size, stack)
+                        });
                     }
                     "subscript" | "sub" => {
                         baseline_shift_px = points_to_px(font_size_pt * 0.15);
                         let families = resolve_font_families(properties);
-                        let shifted = |size| {
-                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(
-                                size,
-                                families.latin_ascii_stack(),
-                            )
-                        };
-                        font_size_pt = shifted(font_size_pt);
-                        font_size_complex_pt = font_size_complex_pt.map(shifted);
+                        let stack = families.latin_ascii_stack();
+                        font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
+                            font_size_pt,
+                            stack,
+                        );
+                        font_size_complex_pt = font_size_complex_pt.map(|size| {
+                            jade_docx_layout::line_metrics::word_shifted_script_size_pt(size, stack)
+                        });
                     }
                     _ => {}
                 }
