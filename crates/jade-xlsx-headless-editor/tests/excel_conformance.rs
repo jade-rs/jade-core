@@ -261,6 +261,29 @@ const CASES: &[(&str, Expect)] = &[
     ("ASC(\"ガ\")", S("ｶﾞ")),
     ("JIS(\"ABC123\")", S("ＡＢＣ１２３")),
     ("JIS(\"ｶﾞｷﾞ\")", S("ガギ")),
+    // DBCS is Japanese Excel's JIS under its other name.
+    ("DBCS(\"ABC123\")", S("ＡＢＣ１２３")),
+    ("DBCS(\"ｶﾞｷﾞ\")", S("ガギ")),
+    // ENCODEURL keeps letters, digits and - _ . ~; everything else is its
+    // UTF-8 bytes, percent-encoded (Microsoft's own example among them).
+    (
+        "ENCODEURL(\"http://contoso.sharepoint.com/Finance/Profit and Loss Statement.xlsx\")",
+        S("http%3A%2F%2Fcontoso.sharepoint.com%2FFinance%2FProfit%20and%20Loss%20Statement.xlsx"),
+    ),
+    ("ENCODEURL(\"a-b_c.d~e\")", S("a-b_c.d~e")),
+    ("ENCODEURL(\"東京\")", S("%E6%9D%B1%E4%BA%AC")),
+    ("ENCODEURL(12)", S("12")),
+    // HYPERLINK shows its friendly name, or the link when there is none.
+    (
+        "HYPERLINK(\"https://example.com\",\"Example\")",
+        S("Example"),
+    ),
+    (
+        "HYPERLINK(\"https://example.com\")",
+        S("https://example.com"),
+    ),
+    ("HYPERLINK(\"https://example.com\",42)", N(42.0)),
+    ("HYPERLINK(\"#Sheet1!A1\",B1)", S("apple")),
     ("JIS(\"a b\")", S("ａ　ｂ")),
     ("LENB(\"あいう\")", N(6.0)),
     ("LENB(\"abc\")", N(3.0)),
