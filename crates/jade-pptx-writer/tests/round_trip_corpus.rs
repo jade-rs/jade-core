@@ -13,28 +13,33 @@ use jade_pptx_writer::{editable_shapes, notes_text, shape_text, EditSession};
 
 fn fixtures() -> Vec<(String, Vec<u8>)> {
     // The shared corpus, and the files another crate's tests keep.
-    let mut fixtures: Vec<_> = ["../../public/fixtures", "../jade-pptx-diff/tests/fixtures"]
-        .iter()
-        .flat_map(|directory| {
-            std::fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(directory))
-                .expect("fixtures")
-        })
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "pptx")
-        })
-        .filter(|path| {
-            !path
-                .file_name()
-                .is_some_and(|name| name.to_string_lossy().starts_with("._"))
-        })
-        .map(|path| {
-            let name = path.file_name().unwrap().to_string_lossy().into_owned();
-            (name, std::fs::read(&path).expect("read fixture"))
-        })
-        .collect();
+    let mut fixtures: Vec<_> = [
+        "../../public/fixtures",
+        // Real decks from PowerPoint, LibreOffice and published talks.
+        "../../public/fixtures/poi",
+        "../jade-pptx-diff/tests/fixtures",
+    ]
+    .iter()
+    .flat_map(|directory| {
+        std::fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(directory))
+            .expect("fixtures")
+    })
+    .filter_map(Result::ok)
+    .map(|entry| entry.path())
+    .filter(|path| {
+        path.extension()
+            .is_some_and(|extension| extension == "pptx")
+    })
+    .filter(|path| {
+        !path
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().starts_with("._"))
+    })
+    .map(|path| {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        (name, std::fs::read(&path).expect("read fixture"))
+    })
+    .collect();
     fixtures.sort();
     fixtures
 }
@@ -169,7 +174,7 @@ fn check(name: &str, original: &[u8]) -> Vec<String> {
 #[test]
 fn every_deck_saves_an_edit_without_losing_anything() {
     let fixtures = fixtures();
-    assert!(fixtures.len() >= 80, "the corpus is missing");
+    assert!(fixtures.len() >= 110, "the corpus is missing");
     let problems: Vec<String> = fixtures
         .iter()
         .flat_map(|(name, bytes)| check(name, bytes))
