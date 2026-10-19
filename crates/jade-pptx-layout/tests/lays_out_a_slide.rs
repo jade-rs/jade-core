@@ -25,6 +25,7 @@ fn shape(fill: Option<Fill>, transform: Transform) -> Shape {
         image_rel_id: None,
         image_part: None,
         source_rect: None,
+        shadow: None,
     }
 }
 
@@ -297,12 +298,15 @@ fn preset_geometry_maps_to_the_placed_kinds() {
     ellipse.preset_geometry = Some("ellipse".to_string());
     let mut round = shape(None, transform(0, 0, 914_400, 914_400));
     round.preset_geometry = Some("roundRect".to_string());
+    let mut star = shape(None, transform(0, 0, 914_400, 914_400));
+    star.preset_geometry = Some("star5".to_string());
     let mut unknown = shape(None, transform(0, 0, 914_400, 914_400));
-    unknown.preset_geometry = Some("star5".to_string());
+    unknown.preset_geometry = Some("notAPreset".to_string());
     let content = SlideContent {
         shapes: vec![
             ShapeItem::Shape(ellipse),
             ShapeItem::Shape(round),
+            ShapeItem::Shape(star),
             ShapeItem::Shape(unknown),
         ],
         ..SlideContent::default()
@@ -313,8 +317,17 @@ fn preset_geometry_maps_to_the_placed_kinds() {
         layout.shapes[1].geometry,
         PlacedGeometry::RoundRect { adjust: 0.16667 }
     );
+    // Every ECMA-376 preset evaluates from its definition: star5's ten
+    // points start at its left arm and peak at the top centre.
+    let PlacedGeometry::Paths(paths) = &layout.shapes[2].geometry else {
+        panic!("star5 should evaluate to paths");
+    };
+    let points = &paths[0].subpaths[0].points;
+    assert_eq!(points.len(), 10);
+    assert!(paths[0].subpaths[0].closed);
+    assert!((points[2].0 - 0.5).abs() < 1e-9 && points[2].1.abs() < 1e-9);
     // Anything unmodelled still shows as its bounding rectangle.
-    assert_eq!(layout.shapes[2].geometry, PlacedGeometry::Rect);
+    assert_eq!(layout.shapes[3].geometry, PlacedGeometry::Rect);
 }
 
 #[test]
@@ -333,6 +346,7 @@ fn a_gradient_fill_falls_back_to_its_first_stop() {
                         color: Color::Scheme("accent1".to_string()),
                     },
                 ],
+                path: None,
             }),
             transform(0, 0, 914_400, 914_400),
         ))],

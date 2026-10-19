@@ -40,6 +40,7 @@ fn shape(name: &str, fill: Option<Fill>, transform: Transform) -> Shape {
         image_rel_id: None,
         image_part: None,
         source_rect: None,
+        shadow: None,
     }
 }
 
@@ -163,6 +164,7 @@ fn master_with_styles() -> SlideContent {
             ShapeItem::Shape(body_placeholder),
             ShapeItem::Shape(logo),
         ],
+        background_ref: None,
         show_master_shapes: true,
         text_styles: Some(TextStyles {
             title: list_style(vec![Some(LevelStyle {
@@ -257,6 +259,7 @@ fn layout_with_placeholders() -> SlideContent {
         color_map_override: None,
         use_master_color_map: false,
         hidden: false,
+        background_ref: None,
     }
 }
 
@@ -275,6 +278,7 @@ fn inherited<'a>(
         theme_fill_styles: None,
         theme_background_fill_styles: None,
         theme_line_styles: None,
+        theme_effect_styles: None,
     }
 }
 
@@ -395,6 +399,7 @@ fn a_style_reference_supplies_fill_and_line_when_the_shape_states_none() {
         line_index: 2,
         line_color: Some(Color::Scheme("accent5".into())),
         font_color: Some(Color::Scheme("lt1".into())),
+        effect_index: 0,
     });
     styled.text = Some(text_of(vec![paragraph("styled text")]));
     let laid_out = layout_slide(
@@ -425,6 +430,7 @@ fn explicit_no_fill_and_no_line_beat_the_style_reference() {
         line_index: 2,
         line_color: Some(Color::Scheme("accent5".into())),
         font_color: None,
+        effect_index: 0,
     });
     styled.outline = Some(Outline {
         no_fill: true,
@@ -449,6 +455,7 @@ fn a_style_with_index_zero_supplies_nothing() {
         line_index: 0,
         line_color: Some(Color::Scheme("accent5".into())),
         font_color: None,
+        effect_index: 0,
     });
     let laid_out = layout_slide(
         slide_size(),
@@ -469,12 +476,15 @@ fn an_explicit_outline_color_keeps_its_own_width_over_the_style() {
         line_index: 2,
         line_color: Some(Color::Scheme("accent5".into())),
         font_color: None,
+        effect_index: 0,
     });
     styled.outline = Some(Outline {
         color: Some(Color::Srgb("FF0000".into())),
         width_emu: Some(19_050),
         dash: Some("dash".into()),
         no_fill: false,
+        head_end: None,
+        tail_end: None,
     });
     let laid_out = layout_slide(
         slide_size(),
@@ -500,6 +510,8 @@ fn dash_presets_map_to_px_patterns() {
             width_emu: Some(12_700),
             dash: Some(dash.into()),
             no_fill: false,
+            head_end: None,
+            tail_end: None,
         });
         let laid_out = layout_slide(
             slide_size(),
@@ -1096,6 +1108,8 @@ fn table() -> Table {
                                 width_emu: Some(20_320),
                                 dash: Some("sysDash".into()),
                                 no_fill: false,
+                                head_end: None,
+                                tail_end: None,
                             }),
                             ..CellBorders::default()
                         },

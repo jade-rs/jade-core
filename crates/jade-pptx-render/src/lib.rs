@@ -11,8 +11,8 @@ use std::cell::RefCell;
 
 use jade_painter::Painter;
 use jade_pptx_layout::{
-    HeuristicMeasure, PlacedGeometry, PlacedOutline, PlacedShape, RunStyle, SlideLayout,
-    TextMeasure, PX_PER_PT,
+    HeuristicMeasure, PathFill, PlacedGeometry, PlacedLineEnd, PlacedOutline, PlacedPath,
+    PlacedPattern, PlacedShape, RunStyle, SlideLayout, TextMeasure, PX_PER_PT,
 };
 
 #[derive(Debug, Clone)]
@@ -134,6 +134,8 @@ fn render_shape<P: Painter>(
             color: "#000000".to_string(),
             width_px: 1.0,
             dash_px: Vec::new(),
+            head_end: None,
+            tail_end: None,
         };
         let outline = shape.outline.as_ref().unwrap_or(&default_outline);
         apply_outline(painter, outline);
@@ -145,16 +147,47 @@ fn render_shape<P: Painter>(
         );
         painter.stroke();
         clear_outline(painter, outline);
+        let rect = shape.paint_rect();
+        draw_line_ends(
+            painter,
+            outline,
+            &[
+                (rect.x, rect.y),
+                (rect.x + rect.width, rect.y + rect.height),
+            ],
+        );
         if transformed {
             painter.restore();
         }
         return Ok(());
     }
 
+    if let Some(shadow) = &shape.shadow {
+        let has_body =
+            shape.fill.is_some() || shape.gradient.is_some() || shape.image_part.is_some();
+        if has_body {
+            // The silhouette, offset and softened, under everything else.
+            painter.save();
+            painter.translate(shadow.dx, shadow.dy)?;
+            painter.set_fill_style_str(&shadow.color);
+            painter.set_blur_filter(shadow.blur_px / 2.0);
+            geometry_path(painter, shape)?;
+            painter.fill();
+            painter.set_blur_filter(0.0);
+            painter.restore();
+        }
+    }
+
     // A picture is the host's to draw; when it cannot, its footprint shows
     // as the placeholder colour rather than nothing.
     let host_drew = if shape.image_part.is_some() {
         painter.save();
+        // Hosts draw bitmaps with the current fill's alpha; make it opaque
+        // and carry the picture's own transparency in the global alpha.
+        painter.set_fill_style_str("#000000");
+        if let Some(alpha) = shape.image_alpha {
+            painter.set_global_alpha(alpha);
+        }
         geometry_path(painter, shape)?;
         painter.clip();
         let drew = draw_image(shape);
@@ -186,6 +219,13 @@ fn render_shape<P: Painter>(
     } else if let Some(fill) = fill.filter(|_| !host_drew) {
         painter.set_fill_style_str(fill);
         fill_geometry(painter, shape)?;
+        if let Some(pattern) = &shape.pattern {
+            painter.save();
+            geometry_path(painter, shape)?;
+            painter.clip();
+            draw_pattern(painter, shape.paint_rect(), pattern);
+            painter.restore();
+        }
     }
 
     if let Some(outline) = &shape.outline {
@@ -213,11 +253,46 @@ fn render_shape<P: Painter>(
     };
     for line in &shape.lines {
         for run in &line.runs {
-            painter.set_fill_style_str(&run.color);
-            painter.set_font(&font_shorthand(run, options));
             let x = origin_x + run.x;
             let baseline = origin_y + run.baseline_y;
-            painter.fill_text(&run.text, x, baseline)?;
+            if let Some(highlight) = &run.highlight {
+                let size_px = run.size_pt as f64 * PX_PER_PT;
+                painter.set_fill_style_str(highlight);
+                painter.fill_rect(x, baseline - size_px * 0.9, run.width, size_px * 1.2);
+            }
+            painter.set_fill_style_str(&run.color);
+            painter.set_font(&font_shorthand(run, options));
+            if let Some(shadow) = &run.text_shadow {
+                painter.set_shadow_color(&shadow.color);
+                painter.set_shadow_offset_x(shadow.dx);
+                painter.set_shadow_offset_y(shadow.dy);
+                painter.set_shadow_blur(shadow.blur_px);
+            }
+            if run.letter_spacing_px != 0.0 {
+                // Spaced text draws a character at a time, each advanced by
+                // its own width plus the spacing.
+                let mut pen = x;
+                let mut buffer = [0u8; 4];
+                for character in run.text.chars().filter(|c| *c != '\t') {
+                    let glyph = character.encode_utf8(&mut buffer);
+                    painter.fill_text(glyph, pen, baseline)?;
+                    pen += painter.measure_text_width(glyph)? + run.letter_spacing_px;
+                }
+            } else {
+                // A tab is the gap the layout already left, not a glyph.
+                painter.fill_text(run.text.trim_end_matches('\t'), x, baseline)?;
+            }
+            if run.text_shadow.is_some() {
+                painter.set_shadow_color("rgba(0,0,0,0)");
+                painter.set_shadow_blur(0.0);
+                painter.set_shadow_offset_x(0.0);
+                painter.set_shadow_offset_y(0.0);
+            }
+            if let Some(outline) = &run.text_outline {
+                apply_outline(painter, outline);
+                painter.stroke_text(run.text.trim_end_matches('\t'), x, baseline)?;
+                clear_outline(painter, outline);
+            }
             if run.underline || run.strike {
                 // Drawn as rects in the run's colour, the way canvas text
                 // decorations have to be: `fillText` has no underline.
@@ -229,10 +304,17 @@ fn render_shape<P: Painter>(
                 let size_px = run.size_pt as f64 * PX_PER_PT;
                 let thickness = size_px / 15.0;
                 if run.underline {
-                    painter.fill_rect(x, baseline + size_px * 0.08, width, thickness);
+                    let y = baseline + size_px * 0.08;
+                    draw_underline(painter, run, x, y, width, thickness);
                 }
                 if run.strike {
-                    painter.fill_rect(x, baseline - size_px * 0.3, width, thickness);
+                    let y = baseline - size_px * 0.3;
+                    if run.double_strike {
+                        painter.fill_rect(x, y - thickness, width, thickness);
+                        painter.fill_rect(x, y + thickness, width, thickness);
+                    } else {
+                        painter.fill_rect(x, y, width, thickness);
+                    }
                 }
             }
         }
@@ -371,6 +453,9 @@ fn fill_gradient_rect<P: Painter>(
     height: f64,
     gradient: &jade_pptx_layout::PlacedGradient,
 ) -> Result<(), P::Error> {
+    if let Some(radial) = &gradient.radial {
+        return fill_radial_rect(painter, x, y, width, height, gradient, radial);
+    }
     let angle = gradient.angle_deg.to_radians();
     // The gradient runs along the rotated x axis; its extent is the box's
     // projection on that axis, so 0 and 1 land on the box's edges.
@@ -398,6 +483,59 @@ fn fill_gradient_rect<P: Painter>(
 /// The gradient's colour at `position` (0..1): the first stop before the
 /// first position, the last after the last, linear between neighbours. The
 /// first and last bands are the stops themselves so the ends stay exact.
+/// A path gradient: rings from the box's edge (stop 1) in to the focus
+/// (stop 0), each painted over the last.
+fn fill_radial_rect<P: Painter>(
+    painter: &P,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    gradient: &jade_pptx_layout::PlacedGradient,
+    radial: &jade_pptx_layout::PlacedRadial,
+) -> Result<(), P::Error> {
+    let (fl, ft, fr, fb) = radial.focus;
+    let (cx, cy) = ((fl + fr) / 2.0, (ft + fb) / 2.0);
+    // An ellipse reaching the farthest corner at stop 1.
+    let reach = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+        .iter()
+        .map(|(px, py): &(f64, f64)| (px - cx).hypot(py - cy))
+        .fold(0.0, f64::max);
+    painter.set_fill_style_str(&gradient_color_at(gradient, 1.0));
+    painter.fill_rect(x, y, width, height);
+    for band in (0..GRADIENT_BANDS).rev() {
+        let t = (band as f64 + 0.5) / GRADIENT_BANDS as f64;
+        let outer = (band as f64 + 1.0) / GRADIENT_BANDS as f64;
+        painter.set_fill_style_str(&gradient_color_at(gradient, t));
+        painter.begin_path();
+        if radial.elliptical {
+            let (rx, ry) = (reach * outer * width, reach * outer * height);
+            painter.ellipse(
+                x + cx * width,
+                y + cy * height,
+                rx.max(0.0),
+                ry.max(0.0),
+                0.0,
+                0.0,
+                std::f64::consts::TAU,
+            )?;
+        } else {
+            let left = fl * (1.0 - outer);
+            let top = ft * (1.0 - outer);
+            let right = fr + (1.0 - fr) * outer;
+            let bottom = fb + (1.0 - fb) * outer;
+            painter.rect(
+                x + left * width,
+                y + top * height,
+                (right - left) * width,
+                (bottom - top) * height,
+            );
+        }
+        painter.fill();
+    }
+    Ok(())
+}
+
 fn gradient_color_at(gradient: &jade_pptx_layout::PlacedGradient, position: f64) -> String {
     let stops = &gradient.stops;
     let Some(first) = stops.first() else {
@@ -492,8 +630,45 @@ fn geometry_path<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P::
         PlacedGeometry::RoundRect { adjust } => round_rect_path(painter, shape, *adjust)?,
         PlacedGeometry::Polygon(points) => polygon_path(painter, shape, points),
         PlacedGeometry::Path(subpaths) => subpaths_path(painter, shape, subpaths),
+        PlacedGeometry::Paths(paths) => {
+            painter.begin_path();
+            for path in paths.iter().filter(|p| p.fill != PathFill::None) {
+                placed_path(painter, shape, path, true);
+            }
+        }
     }
     Ok(())
+}
+
+/// Adds one preset path's subpaths to the current path; `close_all` closes
+/// open subpaths too, the way a fill treats them.
+fn placed_path<P: Painter>(painter: &P, shape: &PlacedShape, path: &PlacedPath, close_all: bool) {
+    let rect = shape.paint_rect();
+    for sub in &path.subpaths {
+        for (index, (nx, ny)) in sub.points.iter().enumerate() {
+            let x = rect.x + nx * rect.width;
+            let y = rect.y + ny * rect.height;
+            if index == 0 {
+                painter.move_to(x, y);
+            } else {
+                painter.line_to(x, y);
+            }
+        }
+        if sub.closed || close_all {
+            painter.close_path();
+        }
+    }
+}
+
+/// The translucent wash a shaded path fill lays over the shape's fill.
+fn path_shade(fill: PathFill) -> Option<&'static str> {
+    match fill {
+        PathFill::Darken => Some("rgba(0,0,0,0.4)"),
+        PathFill::DarkenLess => Some("rgba(0,0,0,0.2)"),
+        PathFill::Lighten => Some("rgba(255,255,255,0.4)"),
+        PathFill::LightenLess => Some("rgba(255,255,255,0.2)"),
+        PathFill::None | PathFill::Norm => None,
+    }
 }
 
 fn subpaths_path<P: Painter>(painter: &P, shape: &PlacedShape, subpaths: &[Vec<(f64, f64)>]) {
@@ -544,6 +719,19 @@ fn fill_geometry<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P::
             subpaths_path(painter, shape, subpaths);
             painter.fill();
         }
+        PlacedGeometry::Paths(paths) => {
+            for path in paths.iter().filter(|p| p.fill != PathFill::None) {
+                painter.begin_path();
+                placed_path(painter, shape, path, true);
+                painter.fill();
+                if let Some(shade) = path_shade(path.fill) {
+                    painter.save();
+                    painter.set_fill_style_str(shade);
+                    painter.fill();
+                    painter.restore();
+                }
+            }
+        }
         // A line has no interior; render_shape strokes it before this runs.
         PlacedGeometry::Line => {}
     }
@@ -575,6 +763,29 @@ fn stroke_geometry<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P
         PlacedGeometry::Path(subpaths) => {
             subpaths_path(painter, shape, subpaths);
             painter.stroke();
+        }
+        PlacedGeometry::Paths(paths) => {
+            for path in paths.iter().filter(|p| p.stroked) {
+                painter.begin_path();
+                placed_path(painter, shape, path, false);
+                painter.stroke();
+            }
+            // Line ends sit on the first open stroked subpath: a connector's
+            // route, an arc's sweep.
+            let open = paths
+                .iter()
+                .filter(|p| p.stroked)
+                .flat_map(|p| p.subpaths.iter())
+                .find(|sub| !sub.closed);
+            if let (Some(sub), Some(outline)) = (open, shape.outline.as_ref()) {
+                let rect = shape.paint_rect();
+                let points: Vec<(f64, f64)> = sub
+                    .points
+                    .iter()
+                    .map(|(nx, ny)| (rect.x + nx * rect.width, rect.y + ny * rect.height))
+                    .collect();
+                draw_line_ends(painter, outline, &points);
+            }
         }
         PlacedGeometry::Line => {}
     }
@@ -665,4 +876,218 @@ fn round_rect_path<P: Painter>(
     )?;
     painter.close_path();
     Ok(())
+}
+
+/// Draws an outline's arrowheads at the two ends of `points`, each pointing
+/// away from the stroke.
+fn draw_line_ends<P: Painter>(painter: &P, outline: &PlacedOutline, points: &[(f64, f64)]) {
+    if outline.head_end.is_none() && outline.tail_end.is_none() {
+        return;
+    }
+    fn distinct(
+        tip: (f64, f64),
+        mut others: impl Iterator<Item = (f64, f64)>,
+    ) -> Option<(f64, f64)> {
+        others.find(|p| (p.0 - tip.0).hypot(p.1 - tip.1) > 1e-6)
+    }
+    if let (Some(end), Some(&tip)) = (&outline.head_end, points.first()) {
+        if let Some(from) = distinct(tip, points.iter().copied().skip(1)) {
+            draw_line_end(painter, outline, end, tip, from);
+        }
+    }
+    if let (Some(end), Some(&tip)) = (&outline.tail_end, points.last()) {
+        if let Some(from) = distinct(tip, points.iter().rev().copied().skip(1)) {
+            draw_line_end(painter, outline, end, tip, from);
+        }
+    }
+}
+
+fn draw_line_end<P: Painter>(
+    painter: &P,
+    outline: &PlacedOutline,
+    end: &PlacedLineEnd,
+    tip: (f64, f64),
+    from: (f64, f64),
+) {
+    let length = (tip.0 - from.0).hypot(tip.1 - from.1);
+    if length <= 0.0 {
+        return;
+    }
+    let dir = ((tip.0 - from.0) / length, (tip.1 - from.1) / length);
+    let perp = (-dir.1, dir.0);
+    let (l, w) = (end.length_px, end.width_px / 2.0);
+    let at = |along: f64, across: f64| {
+        (
+            tip.0 - dir.0 * along + perp.0 * across,
+            tip.1 - dir.1 * along + perp.1 * across,
+        )
+    };
+    let points: Vec<(f64, f64)> = match end.kind.as_str() {
+        "stealth" => vec![at(0.0, 0.0), at(l, w), at(l * 0.7, 0.0), at(l, -w)],
+        "diamond" => vec![at(-l / 2.0, 0.0), at(0.0, w), at(l / 2.0, 0.0), at(0.0, -w)],
+        "oval" => (0..24)
+            .map(|i| {
+                let t = i as f64 * std::f64::consts::TAU / 24.0;
+                at(l / 2.0 * t.cos(), w * t.sin())
+            })
+            .collect(),
+        "arrow" => {
+            painter.set_stroke_style_str(&outline.color);
+            painter.set_line_width(outline.width_px);
+            painter.begin_path();
+            let (a, b) = (at(l, w), at(l, -w));
+            painter.move_to(a.0, a.1);
+            painter.line_to(tip.0, tip.1);
+            painter.line_to(b.0, b.1);
+            painter.stroke();
+            return;
+        }
+        _ => vec![at(0.0, 0.0), at(l, w), at(l, -w)],
+    };
+    painter.set_fill_style_str(&outline.color);
+    painter.begin_path();
+    for (index, (x, y)) in points.iter().enumerate() {
+        if index == 0 {
+            painter.move_to(*x, *y);
+        } else {
+            painter.line_to(*x, *y);
+        }
+    }
+    painter.close_path();
+    painter.fill();
+}
+
+/// Draws a line-based preset pattern (`horz`, `dnDiag`, `cross`, …) over
+/// the clipped box: the background, then the foreground strokes. Presets
+/// that are not lines keep the flat blend already painted.
+fn draw_pattern<P: Painter>(painter: &P, rect: jade_pptx_layout::Rect, pattern: &PlacedPattern) {
+    // (spacing, width, dash) per family; directions from the name.
+    let preset = pattern.preset.as_str();
+    let (spacing, width, dashed) = match preset {
+        "horz" | "vert" | "dnDiag" | "upDiag" | "cross" | "diagCross" | "lgGrid" => {
+            (8.0, 1.0, false)
+        }
+        "ltHorz" | "ltVert" | "ltDnDiag" | "ltUpDiag" | "smGrid" => (4.0, 1.0, false),
+        "dkHorz" | "dkVert" | "dkDnDiag" | "dkUpDiag" => (4.0, 2.0, false),
+        "narHorz" | "narVert" => (3.0, 1.0, false),
+        "wdDnDiag" | "wdUpDiag" => (8.0, 3.0, false),
+        "dashHorz" | "dashVert" | "dashDnDiag" | "dashUpDiag" => (8.0, 1.0, true),
+        _ => return,
+    };
+    let lower = preset.to_ascii_lowercase();
+    let horizontal = lower.ends_with("horz") || matches!(preset, "cross" | "smGrid" | "lgGrid");
+    let vertical = lower.ends_with("vert") || matches!(preset, "cross" | "smGrid" | "lgGrid");
+    let down = lower.ends_with("dndiag") || preset == "diagCross";
+    let up = lower.ends_with("updiag") || preset == "diagCross";
+    painter.set_fill_style_str(&pattern.background);
+    painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
+    painter.set_stroke_style_str(&pattern.foreground);
+    painter.set_line_width(width);
+    if dashed {
+        painter.set_line_dash(&[4.0, 4.0]);
+    }
+    painter.begin_path();
+    let (x0, y0, w, h) = (rect.x, rect.y, rect.width, rect.height);
+    if horizontal {
+        let mut y = y0 + spacing / 2.0;
+        while y < y0 + h {
+            painter.move_to(x0, y);
+            painter.line_to(x0 + w, y);
+            y += spacing;
+        }
+    }
+    if vertical {
+        let mut x = x0 + spacing / 2.0;
+        while x < x0 + w {
+            painter.move_to(x, y0);
+            painter.line_to(x, y0 + h);
+            x += spacing;
+        }
+    }
+    if down || up {
+        let mut c = -h;
+        while c < w {
+            if down {
+                painter.move_to(x0 + c, y0);
+                painter.line_to(x0 + c + h, y0 + h);
+            }
+            if up {
+                painter.move_to(x0 + c, y0 + h);
+                painter.line_to(x0 + c + h, y0);
+            }
+            c += spacing;
+        }
+    }
+    painter.stroke();
+    if dashed {
+        painter.set_line_dash(&[]);
+    }
+}
+
+/// One underline in the run's style: single, `dbl`, `heavy`, a dotted or
+/// dashed rule, or a wave.
+fn draw_underline<P: Painter>(
+    painter: &P,
+    run: &jade_pptx_layout::PlacedRun,
+    x: f64,
+    y: f64,
+    width: f64,
+    thickness: f64,
+) {
+    let style = run.underline_style.as_deref().unwrap_or("sng");
+    let heavy = style.to_ascii_lowercase().contains("heavy");
+    let thickness = if heavy { thickness * 2.0 } else { thickness };
+    if style == "dbl" {
+        painter.fill_rect(x, y, width, thickness);
+        painter.fill_rect(x, y + thickness * 2.0, width, thickness);
+        return;
+    }
+    if style.starts_with("wav") {
+        // A zigzag a few thicknesses tall, one period every ~4 strokes.
+        let amplitude = thickness * 1.5;
+        let period = (thickness * 6.0).max(3.0);
+        painter.set_stroke_style_str(&run.color);
+        painter.set_line_width(thickness);
+        painter.begin_path();
+        painter.move_to(x, y);
+        let mut at = 0.0;
+        let mut up = true;
+        while at < width {
+            at = (at + period / 2.0).min(width);
+            painter.line_to(x + at, y + if up { -amplitude } else { amplitude });
+            up = !up;
+        }
+        painter.stroke();
+        if style == "wavyDbl" {
+            painter.begin_path();
+            painter.move_to(x, y + amplitude * 2.5);
+            let (mut at, mut up) = (0.0, true);
+            while at < width {
+                at = (at + period / 2.0).min(width);
+                let dy = if up { -amplitude } else { amplitude };
+                painter.line_to(x + at, y + amplitude * 2.5 + dy);
+                up = !up;
+            }
+            painter.stroke();
+        }
+        return;
+    }
+    // Dots and dashes as rects along the rule.
+    let (on, off) = match style {
+        s if s.starts_with("dotted") => (thickness, thickness * 2.0),
+        s if s.starts_with("dotDotDash") || s.starts_with("dotDash") => {
+            (thickness * 4.0, thickness * 2.0)
+        }
+        s if s.starts_with("dashLong") => (thickness * 8.0, thickness * 3.0),
+        s if s.starts_with("dash") => (thickness * 4.0, thickness * 3.0),
+        _ => {
+            painter.fill_rect(x, y, width, thickness);
+            return;
+        }
+    };
+    let mut at = 0.0;
+    while at < width {
+        painter.fill_rect(x + at, y, on.min(width - at), thickness);
+        at += on + off;
+    }
 }

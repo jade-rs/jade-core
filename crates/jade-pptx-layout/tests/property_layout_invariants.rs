@@ -39,6 +39,7 @@ fn shape(transform: Transform) -> Shape {
         image_rel_id: None,
         image_part: None,
         source_rect: None,
+        shadow: None,
     }
 }
 
