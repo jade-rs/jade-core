@@ -1805,13 +1805,18 @@ where
         };
 
         let column_count = compute_column_count(table);
-        let mut column_widths = compute_column_widths(table, column_count, available_width);
+        let sizing_width = word_pre_2013_table_sizing_width_px(
+            table,
+            available_width,
+            self.document_east_asian_rules.compatibility_mode,
+        );
+        let mut column_widths = compute_column_widths(table, column_count, sizing_width);
         let (table_width, mut natural_paragraph_layouts) =
             apply_table_layout_width_for_table_with_content(
                 &table_wrap_context,
                 table,
                 &mut column_widths,
-                word_autofit_width_limit_px(table, available_width),
+                word_autofit_width_limit_px(table, sizing_width),
                 padding_x,
                 &|paragraph| layout_config.line_height_for(paragraph),
                 (self.table_autofit_cache_enabled && table_autofit_cache_supported(table))
@@ -6091,6 +6096,56 @@ fn table_default_horizontal_padding_px(
 /// layout (`compatibilityMode` below 15) measures the indent to the text. Word
 /// for Mac prints `system-dev-contract.docx` (mode 12, `tblInd` 0.5pt, cell
 /// margin 0.5pt) with the cell text 0.5pt inside the page margin.
+/// The width a top-level table is sized in. A pre-2013 table hangs its cell
+/// margins outside the text extent on both sides, and Word for Mac resolves
+/// a percentage `w:tblW` and autofit against that wider span:
+/// `word-mac-probe-partial-grid` prints 50% as 253.8pt and 100% as 507.6pt
+/// on a 496.8pt text width with 5.4pt cell margins.
+fn word_pre_2013_table_sizing_width_px(
+    table: &Table,
+    available_width: f64,
+    compatibility_mode: Option<u32>,
+) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+    {
+        return available_width;
+    }
+    let leading = pre_2013_table_text_inset_px(table, compatibility_mode);
+    if leading <= 0.0 {
+        return available_width;
+    }
+    let trailing = table
+        .rows
+        .first()
+        .and_then(|row| {
+            let cell = if table.bidi_visual {
+                row.cells.first()
+            } else {
+                row.cells.last()
+            }?;
+            Some(resolve_cell_padding(
+                cell.margins.as_ref(),
+                row.cell_margins.as_ref(),
+                table.effective_cell_margins(),
+                table.bidi_visual,
+                table_default_horizontal_padding_px(
+                    table,
+                    jade_docx_layout::line_metrics::word_layout_platform(),
+                ),
+                0.0,
+            ))
+        })
+        .map_or(0.0, |padding| {
+            if table.bidi_visual {
+                padding.left
+            } else {
+                padding.right
+            }
+        });
+    available_width + leading + trailing
+}
+
 fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) -> f64 {
     if compatibility_mode.is_none_or(|mode| mode >= 15) {
         return 0.0;
@@ -6662,7 +6717,12 @@ fn apply_preferred_column_widths(
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
     let mut widths = vec![0.0_f64; column_count];
     let mut grid_defined = vec![false; column_count];
-    for (idx, column) in table.columns.iter().enumerate().take(column_count) {
+    let grid = if word_mac_sizes_without_grid(table, column_count) {
+        &[][..]
+    } else {
+        &table.columns[..]
+    };
+    for (idx, column) in grid.iter().enumerate().take(column_count) {
         if let Some(width) = column.width {
             widths[idx] = points_to_px(width);
             grid_defined[idx] = width > 0.0;
@@ -6839,6 +6899,50 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
         }
         measured
     };
+    if word_mac_sizes_without_grid(table, column_widths.len()) {
+        let preferred_total: f64 = content_widths.preferred.iter().sum();
+        let table_width: f64 = column_widths.iter().sum();
+        if content_widths
+            .preferred
+            .iter()
+            .all(|width| *width > f64::EPSILON)
+            && preferred_total <= table_width
+            && table_width <= available_width + f64::EPSILON
+        {
+            for (width, preferred) in column_widths.iter_mut().zip(&content_widths.preferred) {
+                *width = preferred + (table_width - preferred_total) * preferred / preferred_total;
+            }
+            return Ok((table_width, content_widths.natural_paragraph_layouts));
+        }
+        // Narrower than its content: each column keeps its widest word and
+        // gives up width in proportion to how much more its text would take
+        // (`table-cell-preferred-widths`: `FIXED 72PT` wraps at 65.5pt).
+        let floors: Vec<f64> = content_widths
+            .unbreakable
+            .iter()
+            .zip(&content_widths.preferred)
+            .map(|(floor, preferred)| floor.min(*preferred))
+            .collect();
+        let floor_total: f64 = floors.iter().sum();
+        if content_widths
+            .preferred
+            .iter()
+            .all(|width| *width > f64::EPSILON)
+            && floor_total <= table_width
+            && table_width < preferred_total
+            && table_width <= available_width + f64::EPSILON
+        {
+            let share = (table_width - floor_total) / (preferred_total - floor_total);
+            for ((width, preferred), floor) in column_widths
+                .iter_mut()
+                .zip(&content_widths.preferred)
+                .zip(&floors)
+            {
+                *width = floor + (preferred - floor) * share;
+            }
+            return Ok((table_width, content_widths.natural_paragraph_layouts));
+        }
+    }
     let table_width = apply_table_layout_width_with_content_constraints(
         column_widths,
         available_width,
@@ -6847,6 +6951,25 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
         &content_widths.preferred,
     );
     Ok((table_width, content_widths.natural_paragraph_layouts))
+}
+
+/// Whether Word for Mac sizes an autofit table from its content alone: its
+/// `w:tblGrid` lists fewer columns than the cells use and no cell gives an
+/// absolute `w:tcW`. Word then discards the grid and gives each column its
+/// widest content plus a share of the remaining table width in proportion
+/// to that content (`word-mac-probe-partial-grid`: `AAAA AAAA`, `B`, `C` in
+/// 253.8pt take 166.8, 43.7 and 43.3pt; one, two or a 2880-twip grid column
+/// for three `A` cells all give three equal columns).
+fn word_mac_sizes_without_grid(table: &Table, column_count: usize) -> bool {
+    jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit)
+        && table.columns.len() < column_count
+        && table.rows.iter().all(|row| {
+            row.cells
+                .iter()
+                .all(|cell| !cell_has_absolute_preferred_width(cell))
+        })
 }
 
 fn no_wrap_absolute_minimum_widths(table: &Table, column_widths: &[f64]) -> Vec<f64> {
@@ -6901,6 +7024,9 @@ struct AutofitContentWidths {
     minimums: Vec<f64>,
     /// Natural non-wrapped widths used to redistribute the saved table width.
     preferred: Vec<f64>,
+    /// Widest unbreakable piece of each column's content, with the cell
+    /// chrome: the narrowest the column gets without breaking a word.
+    unbreakable: Vec<f64>,
     /// Full natural layouts produced while measuring preferred widths. Row
     /// preparation can reuse these in the final table when the resolved cell
     /// width still fits them, avoiding an identical second wrap pass. Values
@@ -7165,7 +7291,21 @@ fn autofit_content_widths<C: LineWrapContext>(
                     &ParagraphStyle::default(),
                 )?;
                 let overhang = paragraph_trailing_overhang(context, &text, &styled_runs)?;
-                let required_width = natural.max_line_width + overhang;
+                // `max_line_width` never drops below the line height, which
+                // would widen a one-letter column. Word for Mac shares an
+                // autofit table by the text's own width.
+                let content_width = if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                {
+                    natural
+                        .lines
+                        .iter()
+                        .map(|line| line.visual_width)
+                        .fold(0.0, f64::max)
+                } else {
+                    natural.max_line_width
+                };
+                let required_width = content_width + overhang;
                 natural_content_width = natural_content_width.max(required_width);
                 unbreakable_content_width =
                     unbreakable_content_width.max(longest_unbreakable_width(&natural, &text));
@@ -7223,6 +7363,7 @@ fn autofit_content_widths<C: LineWrapContext>(
     }
     Ok(AutofitContentWidths {
         minimums,
+        unbreakable: unbreakable_widths.clone(),
         preferred,
         natural_paragraph_layouts: Rc::new(natural_paragraph_layouts),
     })
@@ -13013,6 +13154,7 @@ mod tests {
         let measured = AutofitContentWidths {
             minimums: vec![0.0],
             preferred: vec![50.0],
+            unbreakable: vec![0.0],
             natural_paragraph_layouts: Rc::new(vec![NaturalParagraphLayout {
                 layout: empty_cell_paragraph(16.0),
                 required_width: 50.0,
@@ -13114,6 +13256,65 @@ mod tests {
         assert_eq!(first_widths, second_widths);
         assert_eq!(cache.borrow().stats().hits, 1);
         assert_eq!(cache.borrow().stats().misses, 1);
+    }
+
+    fn text_cell(text: &str) -> TableCell {
+        let run: Run = serde_json::from_value(serde_json::json!({ "text": text })).unwrap();
+        TableCell {
+            blocks: vec![BodyElement::from_paragraph(Paragraph {
+                runs: vec![run],
+                properties: None,
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+            })],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn mac_autofit_without_a_usable_grid_shares_width_by_content() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut table = Table {
+            columns: vec![TableColumn {
+                width: Some(72.0),
+                ..Default::default()
+            }],
+            rows: vec![TableRow {
+                cells: vec![text_cell("AAAA AAAA"), text_cell("B"), text_cell("C")],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        table.style.insert("width".into(), "50%".into());
+        let context = FixedWidthWrapContext::new();
+        let mut widths = compute_column_widths(&table, 3, 600.0);
+        assert_eq!(widths, vec![100.0; 3], "the one grid column is ignored");
+        apply_table_layout_width_for_table_with_content(
+            &context,
+            &table,
+            &mut widths,
+            600.0,
+            8.0,
+            &|_| 16.0,
+            None,
+            &|_| None,
+        )
+        .unwrap();
+        // Ten per glyph and five per space, plus 8px padding on each side.
+        let preferred = [85.0 + 16.0, 26.0, 26.0];
+        let total: f64 = preferred.iter().sum();
+        for (width, preferred) in widths.iter().zip(preferred) {
+            assert!(
+                (width - preferred * 300.0 / total).abs() < 1e-6,
+                "{widths:?}"
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
