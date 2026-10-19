@@ -10,6 +10,7 @@ mod objects;
 pub(crate) mod pictures;
 pub(crate) mod shape_insertion;
 pub(crate) mod shape_style;
+pub(crate) mod tables;
 pub(crate) use objects::{
     arrange as arrange_shape, delete as delete_shape, duplicate as duplicate_shape, insert_text_box,
 };
@@ -284,7 +285,8 @@ fn transform_info(nodes: &[Node], shape: &Node) -> Option<ShapeTransformInfo> {
         // A frame moves; resizing a table would need its column widths to
         // follow, and a diagram its drawing, so a frame keeps its size, and
         // PowerPoint does not rotate one.
-        can_resize: !frame && !locked("noResize"),
+        can_resize: (!frame || matches!(frame_kind(nodes, shape), "table" | "chart"))
+            && !locked("noResize"),
         can_rotate: !frame && !locked("noRot"),
         can_select: !locked("noSelect"),
         lock_aspect_ratio: locked("noChangeAspect"),
@@ -595,7 +597,17 @@ pub(crate) fn set_transform(
     if shape.is(1, "graphicFrame") {
         let xfrm = child(&nodes, shape, 1, "xfrm").ok_or(WriteError::NoShape(id))?;
         let fragment = transform_xml(xml, &nodes, Some(xfrm), transform, xfrm.strict)?;
-        return Ok(apply_patches(xml, vec![(xfrm.outer.clone(), fragment)]));
+        let mut patches = vec![(xfrm.outer.clone(), fragment)];
+        // A table's columns and rows fill its frame, so they follow a resize.
+        if info.transform.map(|before| before.extent_emu) != Some(transform.extent_emu) {
+            patches.extend(tables::scale_grid(
+                xml,
+                &nodes,
+                shape,
+                transform.extent_emu,
+            )?);
+        }
+        return Ok(apply_patches(xml, patches));
     }
     let sp_pr = child(&nodes, shape, 1, "spPr");
     let xfrm = sp_pr.and_then(|pr| child(&nodes, pr, 2, "xfrm"));

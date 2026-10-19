@@ -108,6 +108,15 @@ pub struct EditableRun {
     pub locked: bool,
 }
 
+/// A table cell's text — paragraphs joined by `\n` — and whether it belongs
+/// to a merge another cell starts, which only that cell edits.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableCell {
+    pub text: String,
+    pub merged: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextSnapshot {
@@ -537,6 +546,33 @@ pub fn set_shape_transform(
     Ok(result)
 }
 
+/// The cells of the table in frame `id` on `slide`, row by row.
+pub fn table_cells(bytes: &[u8], slide: usize, id: u32) -> Result<Vec<Vec<TableCell>>> {
+    let (_, _, xml) = slide_xml(bytes, slide)?;
+    xml::tables::cells(&xml, id)
+}
+
+/// `bytes` with cell (`row`, `column`) of the table in frame `id` holding
+/// `text`, a line each paragraph, keeping the cell's formatting.
+pub fn set_table_cell_text(
+    bytes: &[u8],
+    slide: usize,
+    id: u32,
+    row: usize,
+    column: usize,
+    text: &str,
+) -> Result<Vec<u8>> {
+    let (mut package, part, xml) = slide_xml(bytes, slide)?;
+    let changed = xml::tables::set_cell_text(&xml, id, row, column, text)?;
+    if changed == xml {
+        return Ok(bytes.to_vec());
+    }
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok(result)
+}
+
 pub fn validate_shape_transform(
     info: &ShapeTransformInfo,
     transform: jade_pptx_reader::Transform,
@@ -915,6 +951,19 @@ impl EditSession {
         transform: jade_pptx_reader::Transform,
     ) -> Result<bool> {
         let next = set_shape_transform(self.bytes(), slide, id, transform)?;
+        Ok(self.commit(next))
+    }
+
+    /// Types `text` into a table cell, as one undoable edit.
+    pub fn set_table_cell_text(
+        &mut self,
+        slide: usize,
+        id: u32,
+        row: usize,
+        column: usize,
+        text: &str,
+    ) -> Result<bool> {
+        let next = set_table_cell_text(self.bytes(), slide, id, row, column, text)?;
         Ok(self.commit(next))
     }
 
