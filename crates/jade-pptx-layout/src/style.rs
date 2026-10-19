@@ -248,6 +248,15 @@ pub(crate) struct ResolvedRun {
     pub(crate) strike: bool,
     pub(crate) color: String,
     pub(crate) hyperlink: Option<String>,
+    /// How far the baseline rises (negative: drops), in px.
+    pub(crate) baseline_shift_px: f64,
+    pub(crate) highlight: Option<String>,
+    /// Extra advance after every character, in px.
+    pub(crate) spacing_px: f64,
+    pub(crate) outline: Option<crate::PlacedOutline>,
+    pub(crate) shadow: Option<crate::PlacedShadow>,
+    pub(crate) underline_style: Option<String>,
+    pub(crate) double_strike: bool,
 }
 
 /// The paragraph's size when it has no runs, or for the bullet: the
@@ -271,7 +280,15 @@ pub(crate) fn resolve_run(
     font_scale: f32,
 ) -> ResolvedRun {
     let defaults = &resolved.default_run;
-    let size_pt = run.size_pt.or(defaults.size_pt).unwrap_or(DEFAULT_SIZE_PT) * font_scale;
+    let full_size_pt = run.size_pt.or(defaults.size_pt).unwrap_or(DEFAULT_SIZE_PT) * font_scale;
+    // Super- and subscripts draw at two thirds size, raised or dropped by
+    // their baseline fraction of the full size.
+    let baseline = run.baseline.unwrap_or(0.0);
+    let size_pt = if baseline != 0.0 {
+        full_size_pt * 2.0 / 3.0
+    } else {
+        full_size_pt
+    };
     let bold = run.bold_stated.or(defaults.bold).unwrap_or(run.bold);
     let italic = run.italic_stated.or(defaults.italic).unwrap_or(run.italic);
     // Explicit run color wins over the theme's hyperlink default.
@@ -315,6 +332,16 @@ pub(crate) fn resolve_run(
         strike: run.strike,
         color,
         hyperlink: run.hyperlink.as_ref().and_then(|link| link.target.clone()),
+        baseline_shift_px: baseline as f64 * full_size_pt as f64 * crate::PX_PER_PT,
+        highlight: run
+            .highlight
+            .as_ref()
+            .map(|color| resolve_color(color, context.theme)),
+        spacing_px: run.spacing_pt.unwrap_or(0.0) as f64 * crate::PX_PER_PT,
+        outline: crate::resolve_outline(run.outline.as_ref(), None, context.theme, None),
+        shadow: crate::place_shadow(run.shadow.as_ref(), context.theme),
+        underline_style: run.underline_style.clone(),
+        double_strike: run.double_strike,
     }
 }
 

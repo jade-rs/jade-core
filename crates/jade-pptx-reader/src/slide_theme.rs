@@ -15,6 +15,9 @@ pub struct SlideTheme {
     pub background_fill_styles: Vec<Fill>,
     #[serde(default)]
     pub line_styles: Vec<Outline>,
+    /// `effectStyleLst` outer shadows, for `effectRef idx` 1–3.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effect_styles: Vec<Option<crate::Shadow>>,
 }
 /// One source for rendering and authoring-state queries, with legacy deck fallback.
 #[derive(Debug, Clone, Copy)]
@@ -24,6 +27,7 @@ pub struct ThemeRef<'a> {
     pub fill_styles: &'a [Fill],
     pub background_fill_styles: &'a [Fill],
     pub line_styles: &'a [Outline],
+    pub effect_styles: &'a [Option<crate::Shadow>],
 }
 impl Deck {
     pub fn theme_for_slide(&self, index: usize) -> ThemeRef<'_> {
@@ -38,6 +42,7 @@ impl Deck {
                 fill_styles: &theme.fill_styles,
                 background_fill_styles: &theme.background_fill_styles,
                 line_styles: &theme.line_styles,
+                effect_styles: &theme.effect_styles,
             }
         } else {
             ThemeRef {
@@ -46,6 +51,7 @@ impl Deck {
                 fill_styles: &self.theme_fill_styles,
                 background_fill_styles: &self.theme_background_fill_styles,
                 line_styles: &self.theme_line_styles,
+                effect_styles: &[],
             }
         }
     }
@@ -142,6 +148,7 @@ impl ThemeResolver {
                         fill_styles,
                         background_fill_styles,
                         line_styles,
+                        effect_styles: crate::read_master_effect_styles(package, Some(master))?,
                     }),
                 );
             }

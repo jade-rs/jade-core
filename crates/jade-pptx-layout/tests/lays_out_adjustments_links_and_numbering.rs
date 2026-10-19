@@ -39,6 +39,7 @@ fn shape(name: &str, transform: Transform) -> Shape {
         image_rel_id: None,
         image_part: None,
         source_rect: None,
+        shadow: None,
     }
 }
 
@@ -138,6 +139,11 @@ fn a_picture_placeholder_inherits_its_geometry_from_the_layout() {
         blip_rel_id: Some("rId9".into()),
         image_part: Some("ppt/media/image1.png".into()),
         source_rect: None,
+        preset_geometry: None,
+        adjustments: Vec::new(),
+        outline: None,
+        shadow: None,
+        alpha: None,
     };
     let laid_out = layout_slide_inheriting(
         slide_size(),
@@ -236,7 +242,7 @@ fn numbering_schemes_format_their_numerals_and_punctuation() {
     assert_eq!(format_number(27, "alphaUcParenR"), "AA)");
     assert_eq!(format_number(4, "romanLcPeriod"), "iv.");
     assert_eq!(format_number(1999, "romanUcParenBoth"), "(MCMXCIX)");
-    assert_eq!(format_number(2, "ea1JpnKorPeriod"), "2.");
+    assert_eq!(format_number(2, "ea1JpnKorPeriod"), "二.");
 }
 
 #[test]

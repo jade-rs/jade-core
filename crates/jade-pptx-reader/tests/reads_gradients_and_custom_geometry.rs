@@ -139,7 +139,10 @@ fn shape(deck: &Deck, index: usize) -> &jade_pptx_reader::Shape {
 #[test]
 fn a_linear_gradient_carries_its_angle_and_sorted_stops() {
     let deck = deck();
-    let Some(Fill::Gradient { stops, angle_deg }) = &shape(&deck, 0).fill else {
+    let Some(Fill::Gradient {
+        stops, angle_deg, ..
+    }) = &shape(&deck, 0).fill
+    else {
         panic!("gradient");
     };
     assert_eq!(*angle_deg, Some(90.0));
@@ -156,7 +159,10 @@ fn a_linear_gradient_carries_its_angle_and_sorted_stops() {
 #[test]
 fn a_slide_background_gradient_keeps_its_angle() {
     let deck = deck();
-    let Some(Fill::Gradient { angle_deg, stops }) = &deck.slides[0].content.background else {
+    let Some(Fill::Gradient {
+        angle_deg, stops, ..
+    }) = &deck.slides[0].content.background
+    else {
         panic!("background gradient");
     };
     assert_eq!(*angle_deg, Some(45.0));
@@ -171,19 +177,23 @@ fn the_theme_fill_styles_are_read_with_their_placeholder_colour() {
         deck.theme_fill_styles[0],
         Fill::Solid(Color::Scheme("phClr".into()))
     );
-    let Fill::Gradient { stops, angle_deg } = &deck.theme_fill_styles[1] else {
+    let Fill::Gradient {
+        stops, angle_deg, ..
+    } = &deck.theme_fill_styles[1]
+    else {
         panic!("second fill style is a gradient");
     };
     assert_eq!(*angle_deg, Some(90.0));
     assert_eq!(
         stops[0].color,
-        Color::Adjusted {
+        // satMod is beyond `Adjusted`, so every transform is kept in order.
+        Color::Transformed {
             base: Box::new(Color::Scheme("phClr".into())),
-            alpha: None,
-            lum_mod: Some(1.1),
-            lum_off: None,
-            shade: None,
-            tint: Some(0.67),
+            ops: vec![
+                ("lumMod".into(), 1.1),
+                ("satMod".into(), 1.05),
+                ("tint".into(), 0.67),
+            ],
         }
     );
     assert_eq!(deck.theme_background_fill_styles.len(), 3);
