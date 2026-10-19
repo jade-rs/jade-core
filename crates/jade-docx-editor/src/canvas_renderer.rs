@@ -3312,6 +3312,10 @@ where
     /// Tracks the baseline of the last rendered text line for positioning
     /// floating images that are anchored relative to a line.
     last_line_baseline: f64,
+    /// `(baseline, top)` of the last body line, so a line-relative anchor
+    /// can measure from that line's top while `last_line_baseline` still
+    /// names it.
+    last_line_box: Option<(f64, f64)>,
     /// Where the previous body paragraph's spacing-after ended — page,
     /// column, `current_y` — and how much it added. A paragraph starting at
     /// exactly that spot overlaps its spacing-before with it
@@ -7770,6 +7774,7 @@ where
             styles_part: None,
             theme_part: None,
             last_line_baseline: margin,
+            last_line_box: None,
             trailing_spacing_after: None,
             header_lines: None,
             footer_lines: None,
@@ -20876,6 +20881,7 @@ where
             }
             self.selection.record_line(paragraph_index, line_layout);
             self.last_line_baseline = baseline;
+            self.last_line_box = Some((baseline, top));
 
             if matches!(break_kind, LineBreakKind::Page) {
                 self.force_page_break()?;
@@ -30969,7 +30975,21 @@ where
             Some("bottomMargin") => self.page_height - self.margin_bottom - line_height,
             Some("paragraph") => paragraph_start_y,
             Some("line") => {
-                if self.last_line_baseline > paragraph_start_y {
+                // Word for Mac measures from the top of the line (`textbox`:
+                // a box 31pt below a double-spaced line sits 31pt below the
+                // line's top, not its baseline).
+                let mac_line_top = self
+                    .last_line_box
+                    .filter(|(baseline, top)| {
+                        jade_docx_layout::line_metrics::word_layout_platform()
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && *baseline == self.last_line_baseline
+                            && *top >= paragraph_start_y
+                    })
+                    .map(|(_, top)| top);
+                if let Some(top) = mac_line_top {
+                    top
+                } else if self.last_line_baseline > paragraph_start_y {
                     self.last_line_baseline
                 } else {
                     paragraph_start_y + line_height
