@@ -2014,10 +2014,7 @@ where
         // Resolve that rectangle collision here, after exact row heights are
         // known, without deriving any independent paragraph wrap boundaries.
         let is_floating_table = !self.pageless_mode
-            && table
-                .style
-                .get("table-position")
-                .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+            && table_floats(table);
         let floating_table_frame = if is_floating_table {
             let table_height = row_heights.iter().sum::<f64>();
             let margin_height = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
@@ -4076,11 +4073,7 @@ where
         if layout.rows.is_empty() {
             return Ok(());
         }
-        let is_floating_table = layout
-            .table
-            .style
-            .get("table-position")
-            .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
         let mut table_x = compute_floating_table_x_in_frames(
             self.margin_left,
@@ -5211,11 +5204,7 @@ where
         let _table_state_guard = StateGuard::new(&painter);
         self.configure_table_context();
 
-        let is_floating_table = layout
-            .table
-            .style
-            .get("table-position")
-            .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
         let mut table_x = compute_floating_table_x_in_frames(
             self.margin_left,
@@ -6115,7 +6104,13 @@ fn word_pre_2013_table_sizing_width_px(
     if leading <= 0.0 {
         return available_width;
     }
-    let trailing = table
+    available_width + leading + pre_2013_table_trailing_text_inset_px(table)
+}
+
+/// The cell margin a pre-2013 table hangs past its trailing text edge: the
+/// last cell's trailing padding in the first row.
+fn pre_2013_table_trailing_text_inset_px(table: &Table) -> f64 {
+    table
         .rows
         .first()
         .and_then(|row| {
@@ -6142,8 +6137,7 @@ fn word_pre_2013_table_sizing_width_px(
             } else {
                 padding.right
             }
-        });
-    available_width + leading + trailing
+        })
 }
 
 fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) -> f64 {
@@ -6276,6 +6270,16 @@ fn compute_table_x(
         Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
             if table.bidi_visual {
                 -leading_text_inset
+            } else if leading_text_inset > 0.0
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            {
+                // A pre-2013 right-aligned table puts its last cell's text,
+                // not its border, at the right margin, as a left-aligned one
+                // does on the left: Word for Mac prints
+                // `table-floating-anchor-defaults` (mode 14) 5.4pt further
+                // right than the margin-aligned border.
+                remaining_width + pre_2013_table_trailing_text_inset_px(table)
             } else {
                 remaining_width
             }
@@ -6341,11 +6345,7 @@ fn compute_floating_table_x_in_frames(
     table: &Table,
     page_number: usize,
 ) -> Option<f64> {
-    if !table
-        .style
-        .get("table-position")
-        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
-    {
+    if !table_floats(table) {
         return None;
     }
 
@@ -6405,11 +6405,7 @@ fn compute_floating_table_y(
     table_height: f64,
     table: &Table,
 ) -> Option<f64> {
-    if !table
-        .style
-        .get("table-position")
-        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
-    {
+    if !table_floats(table) {
         return None;
     }
 
@@ -8013,6 +8009,20 @@ fn add_border_extents(
         }
     }
     last_visible
+}
+
+/// Whether `table` is laid out as a floating table (`w:tblpPr`). Word for
+/// Mac lays a table out inline when its `w:tblpPr` comes before
+/// `w:tblStyle`, against the schema's order (the five table-floating
+/// fixtures; the same table with the elements in order floats).
+pub(super) fn table_floats(table: &Table) -> bool {
+    table
+        .style
+        .get("table-position")
+        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
+        && !(table.style.contains_key("table-position-before-style")
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
 }
 
 /// For each cell of a `w:vMerge` region, whether the region goes on below
@@ -17465,6 +17475,33 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 8.0), 92.0);
+    }
+
+    #[test]
+    fn mac_legacy_right_alignment_uses_the_trailing_text_edge() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let table = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell::default()],
+                ..Default::default()
+            }],
+            style: [("text-align".into(), "right".into())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        let trailing = pre_2013_table_trailing_text_inset_px(&table);
+        assert!(trailing > 0.0);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 8.0), 260.0 + trailing);
+        // Mode 15 has no legacy text inset and keeps the border at the margin.
+        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 0.0), 260.0);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 8.0), 260.0);
+        set_word_layout_platform(previous);
     }
 
     #[test]

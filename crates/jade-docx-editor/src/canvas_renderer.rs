@@ -2507,10 +2507,7 @@ fn document_has_horizontal_float_wrap(document: &Document) -> bool {
                         .as_ref()
                         .is_some_and(|text_box| drawing_wraps(&text_box.layout))
             }),
-            BodyElement::Table(table) => table
-                .style
-                .get("table-position")
-                .is_some_and(|position| position == "floating"),
+            BodyElement::Table(table) => table::table_floats(table),
             BodyElement::Math(_) => false,
         })
     })
