@@ -1016,6 +1016,45 @@ impl SkiaPainter {
         font
     }
 
+    /// `text` split where the face drawing it changes: each character in
+    /// [`Self::font_covering`]'s face for it — so a run mixing scripts is
+    /// measured and drawn as a browser does, each in a face that has it.
+    fn segments<'t>(&self, text: &'t str) -> Vec<(Font, &'t str)> {
+        let mut segments: Vec<(Font, &'t str)> = Vec::new();
+        let mut start = 0;
+        for (at, ch) in text.char_indices() {
+            let end = at + ch.len_utf8();
+            let font = self.font_covering(&text[at..end]);
+            match segments.last_mut() {
+                Some((current, run))
+                    if current.typeface().unique_id() == font.typeface().unique_id() =>
+                {
+                    *run = &text[start..end];
+                }
+                _ => {
+                    start = at;
+                    segments.push((font, &text[at..end]));
+                }
+            }
+        }
+        segments
+    }
+
+    /// Draws `text` from `x`, each segment in its face, on the first
+    /// segment's baseline.
+    fn draw_segments(&self, text: &str, x: f64, y: f64, paint: &Paint) {
+        let segments = self.segments(text);
+        let Some((first, _)) = segments.first() else {
+            return;
+        };
+        let baseline_y = self.baseline_y(first, y);
+        let mut pen = x as f32;
+        for (font, run) in &segments {
+            self.draw_text(run, font, pen, baseline_y, paint);
+            pen += font.measure_str(run, Some(paint)).0;
+        }
+    }
+
     fn font(&self) -> Font {
         let style = self.shared.style.borrow();
         match self.shared.fonts.borrow().get(style.font_index) {
@@ -1282,25 +1321,24 @@ impl Painter for SkiaPainter {
         self.shared
             .fill_text_calls
             .set(self.shared.fill_text_calls.get() + 1);
-        let font = self.font_covering(text);
         let paint = self.fill_paint();
-        let baseline_y = self.baseline_y(&font, y);
-        self.draw_text(text, &font, x as f32, baseline_y, &paint);
+        self.draw_segments(text, x, y, &paint);
         Ok(())
     }
 
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
-        let font = self.font_covering(text);
         let paint = self.stroke_paint();
-        let baseline_y = self.baseline_y(&font, y);
-        self.draw_text(text, &font, x as f32, baseline_y, &paint);
+        self.draw_segments(text, x, y, &paint);
         Ok(())
     }
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
-        let font = self.font();
         let paint = self.fill_paint();
-        Ok(font.measure_str(text, Some(&paint)).0 as f64)
+        Ok(self
+            .segments(text)
+            .iter()
+            .map(|(font, run)| font.measure_str(run, Some(&paint)).0 as f64)
+            .sum())
     }
 
     /// Mirrors what Chromium's canvas reports.
@@ -1313,16 +1351,24 @@ impl Painter for SkiaPainter {
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, Self::Error> {
         let font = self.font();
         let paint = self.fill_paint();
-        let (width, ink) = font.measure_str(text, Some(&paint));
+        // Each segment in its face, its ink box at its pen position.
+        let (mut width, mut top, mut bottom, mut right) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+        for (segment_font, run) in self.segments(text) {
+            let (advance, ink) = segment_font.measure_str(run, Some(&paint));
+            top = top.min(ink.top);
+            bottom = bottom.max(ink.bottom);
+            right = right.max(width + ink.right);
+            width += advance;
+        }
         let (_, metrics) = font.metrics();
         Ok(TextMetrics {
             width: width as f64,
             // Skia reports the ascent as a negative offset from the baseline.
             font_bounding_box_ascent: (-metrics.ascent).round() as f64,
             font_bounding_box_descent: metrics.descent.round() as f64,
-            actual_bounding_box_ascent: (-ink.top) as f64,
-            actual_bounding_box_descent: ink.bottom as f64,
-            actual_bounding_box_right: ink.right as f64,
+            actual_bounding_box_ascent: (-top) as f64,
+            actual_bounding_box_descent: bottom as f64,
+            actual_bounding_box_right: right as f64,
         })
     }
 
