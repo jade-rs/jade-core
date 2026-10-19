@@ -550,6 +550,10 @@
       "docx_sha256": "541dbfdcf6d480ecd2888f3177d7f8a089b986a0ee82fdf19caa7579f35ee386"
     },
     {
+      "fixture": "word-mac-probe-merged-rows",
+      "docx_sha256": "1df7e92cf85bd11295995bfdddd574602642fd25b01490c92a7a8967d0d8c1c2"
+    },
+    {
       "fixture": "word-mac-probe-numbering-label",
       "docx_sha256": "092e1785ebcd50c0ddb085f1e7b6f20a0e4895b617ac2f6623c72b02e5110ba8"
     },
