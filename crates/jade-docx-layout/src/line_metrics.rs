@@ -2042,6 +2042,32 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
     Some((f64::from(ascent) * size_px, f64::from(descent) * size_px))
 }
 
+/// The font box Word for Mac gives an emoji cluster, in px: the face that
+/// draws it is Apple Color Emoji (hhea 800/-250, 800 units/em) whatever the
+/// run names, so its line is taller than the run's own face makes it
+/// (`toc-caption-edge-cases`: a 10.5pt Arial caption with 🧭 is 2.1pt taller
+/// at 1.15 lines). `None` off Mac and for other clusters.
+pub fn word_mac_emoji_vertical_metrics_px(
+    grapheme: &str,
+    font_descriptor: &str,
+) -> Option<(f64, f64)> {
+    if word_layout_platform() != WordLayoutPlatform::Mac || !is_emoji_presentation_cluster(grapheme)
+    {
+        return None;
+    }
+    let (size_pt, _) = split_font_descriptor(font_descriptor)?;
+    let em = f64::from(size_pt) * 96.0 / 72.0;
+    Some((em, em * 250.0 / 800.0))
+}
+
+/// A grapheme drawn as a colour emoji: one with a pictograph from the
+/// supplementary emoji blocks, or an emoji variation selector.
+fn is_emoji_presentation_cluster(grapheme: &str) -> bool {
+    grapheme
+        .chars()
+        .any(|ch| matches!(ch as u32, 0x1F000..=0x1FAFF) || ch == '\u{FE0F}')
+}
+
 /// Glyph ascent/descent without the paragraph leading used by horizontal lines.
 /// Upright vertical glyphs occupy an em cell; its baseline uses the face's hhea.
 pub fn word_vertical_glyph_metrics_px(font_descriptor: &str) -> Option<(f64, f64)> {
@@ -4070,6 +4096,25 @@ mod tests {
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(word_east_asian_font_vertical_units("HG丸ｺﾞｼｯｸM-PRO"), None);
+    }
+
+    #[test]
+    fn mac_emoji_clusters_take_the_apple_color_emoji_box() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (ascent, descent) =
+            word_mac_emoji_vertical_metrics_px("🧭", "10.50pt 'Arial', sans-serif")
+                .expect("emoji box");
+        assert!((ascent * 0.75 - 10.5).abs() < 1e-9);
+        assert!((descent * 0.75 - 3.28125).abs() < 1e-9);
+        assert_eq!(
+            word_mac_emoji_vertical_metrics_px("A", "10.50pt 'Arial', sans-serif"),
+            None
+        );
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            word_mac_emoji_vertical_metrics_px("🧭", "10.50pt 'Arial', sans-serif"),
+            None
+        );
     }
 
     #[test]
