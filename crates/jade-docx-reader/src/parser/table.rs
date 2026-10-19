@@ -180,6 +180,7 @@ impl DocumentParser {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:tblStyle" => {
                         table.style_name = Self::read_val_attribute(e.attributes());
+                        Self::mark_position_before_style(table);
                         self.skip_element(reader, b"w:tblStyle")?;
                     }
                     b"w:tblLook" => {
@@ -277,6 +278,7 @@ impl DocumentParser {
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
                     b"w:tblStyle" => {
                         table.style_name = Self::read_val_attribute(e.attributes());
+                        Self::mark_position_before_style(table);
                     }
                     b"w:tblLook" => {
                         Self::parse_table_look(table, e.attributes());
@@ -1233,6 +1235,17 @@ impl DocumentParser {
         (indent, ignored_type)
     }
 
+    /// Records a `w:tblpPr` read before `w:tblStyle`, against the schema's
+    /// order. Word for Mac drops such a position and lays the table out
+    /// inline; the table keeps its position for saving and for Windows.
+    fn mark_position_before_style(table: &mut Table) {
+        if table.style.contains_key("table-position") {
+            table
+                .style
+                .insert("table-position-before-style".to_string(), "true".to_string());
+        }
+    }
+
     /// Preserves floating-table positioning metadata from `w:tblpPr`.
     /// Horizontal and vertical placement are consumed by the canvas renderer;
     /// text distances remain model metadata so future paragraph wrapping work
@@ -1915,6 +1928,28 @@ mod tests {
         assert_eq!(
             table.style.get("margin-left").map(String::as_str),
             Some("24.00pt")
+        );
+    }
+
+    #[test]
+    fn marks_a_floating_position_read_before_the_table_style() {
+        let marker = |xml: &str| {
+            parse_table_props(xml)
+                .style
+                .get("table-position-before-style")
+                .cloned()
+        };
+        assert_eq!(
+            marker(
+                r#"<w:tblPr xmlns:w="urn:w"><w:tblpPr w:tblpY="3600"/><w:tblStyle w:val="TableGrid"/></w:tblPr>"#
+            ),
+            Some("true".to_string())
+        );
+        assert_eq!(
+            marker(
+                r#"<w:tblPr xmlns:w="urn:w"><w:tblStyle w:val="TableGrid"/><w:tblpPr w:tblpY="3600"/></w:tblPr>"#
+            ),
+            None
         );
     }
 
