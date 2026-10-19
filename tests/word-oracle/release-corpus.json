@@ -530,6 +530,10 @@
       "docx_sha256": "8152adf61e993ec685190633998da25b03b5353bafcf43e50f5349144ac90134"
     },
     {
+      "fixture": "word-mac-probe-floating-order",
+      "docx_sha256": "eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7"
+    },
+    {
       "fixture": "word-mac-probe-indent",
       "docx_sha256": "73b9dab957089873b302ecff98217e60a58fe8c540a66267ebd3f46d4b27e673"
     },
@@ -548,6 +552,10 @@
     {
       "fixture": "word-mac-probe-line-pitch",
       "docx_sha256": "541dbfdcf6d480ecd2888f3177d7f8a089b986a0ee82fdf19caa7579f35ee386"
+    },
+    {
+      "fixture": "word-mac-probe-merged-rows",
+      "docx_sha256": "1df7e92cf85bd11295995bfdddd574602642fd25b01490c92a7a8967d0d8c1c2"
     },
     {
       "fixture": "word-mac-probe-numbering-label",
