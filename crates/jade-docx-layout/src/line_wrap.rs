@@ -2299,7 +2299,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 style.word_platform
             }) == crate::line_metrics::WordLayoutPlatform::Mac
         {
-            style.ascii_pair_kerning_px(prev_grapheme.as_bytes()[0], grapheme.as_bytes()[0])
+            let (left, right) = (prev_grapheme.as_bytes()[0], grapheme.as_bytes()[0]);
+            style.ascii_pair_kerning_px(left, right).or_else(|| {
+                crate::line_metrics::word_mac_legacy_space_kerning_px(font_descriptor, left, right)
+            })
         } else {
             None
         };
