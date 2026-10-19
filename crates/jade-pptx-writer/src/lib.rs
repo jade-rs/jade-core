@@ -573,6 +573,29 @@ pub fn set_table_cell_text(
     Ok(result)
 }
 
+/// A row or column added to, or removed from, a table: added at the index
+/// given (the end when it is the count), removed from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TableChange {
+    InsertRow(usize),
+    DeleteRow(usize),
+    InsertColumn(usize),
+    DeleteColumn(usize),
+}
+
+/// `bytes` with a row or column of the table in frame `id` added or removed,
+/// as PowerPoint does: a new one is empty, formatted as the one it pushes
+/// over, and the frame grows or shrinks by it. Cutting a merged cell, or
+/// removing the last row or column, is refused.
+pub fn change_table(bytes: &[u8], slide: usize, id: u32, change: TableChange) -> Result<Vec<u8>> {
+    let (mut package, part, xml) = slide_xml(bytes, slide)?;
+    let changed = xml::tables::change(&xml, id, change)?;
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok(result)
+}
+
 pub fn validate_shape_transform(
     info: &ShapeTransformInfo,
     transform: jade_pptx_reader::Transform,
@@ -964,6 +987,11 @@ impl EditSession {
         text: &str,
     ) -> Result<bool> {
         let next = set_table_cell_text(self.bytes(), slide, id, row, column, text)?;
+        Ok(self.commit(next))
+    }
+
+    pub fn change_table(&mut self, slide: usize, id: u32, change: TableChange) -> Result<bool> {
+        let next = change_table(self.bytes(), slide, id, change)?;
         Ok(self.commit(next))
     }
 
