@@ -249,6 +249,11 @@ fn keystroke_paragraph(renderer: &CanvasRenderer<PerfPainter>) -> Option<usize> 
 
 /// Runs one scenario on `fixture`. Setup happens outside the measured region.
 pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
+    if std::env::var("JADE_PERF_WORD_PLATFORM").as_deref() == Ok("mac") {
+        jade_docx_layout::line_metrics::set_word_layout_platform(
+            jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+        );
+    }
     let bytes = std::fs::read(fixture).map_err(|err| format!("{}: {err}", fixture.display()))?;
     // Built once: the editor keeps its options, and building them parses the
     // shortcut table, which no keystroke pays for.
