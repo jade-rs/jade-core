@@ -77,6 +77,11 @@ pub struct WordProportionalLineSizing {
 }
 
 impl WordProportionalLineSizing {
+    /// The `w:line` multiple of single spacing.
+    pub fn multiple(self) -> f64 {
+        self.multiple
+    }
+
     pub fn new(spacing: Option<&Spacing>, snap: bool, all_faces_known: bool) -> Option<Self> {
         if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
             return None;
@@ -289,6 +294,55 @@ impl WordAutoSpace {
         } else {
             self.em_px / 4.0 * self.trailing_share
         }
+    }
+}
+
+/// The size Word for Mac draws a superscript or subscript run at: 0.65 of the
+/// run's size in a Latin face and 0.6 in a Japanese one (the faces' own
+/// OS/2 superscript sizes), to the nearest half point. Word for Mac 16.114
+/// (`word-mac-probe-vert-align`): 8, 9, 10.5, 12, 14, 16 and 20pt draw at 5,
+/// 6, 7, 8, 9, 10.5 and 13pt in Century and Calibri, and at 5, 5.5, 6.5, 7,
+/// 8.5, 9.5 and 12pt in Yu Mincho and MS Mincho. `latin_ascii_stack` is the
+/// run's CSS family stack; its first family decides.
+pub fn word_mac_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    let family = latin_ascii_stack
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(|ch| ch == '"' || ch == '\'')
+        .to_ascii_lowercase();
+    let japanese = [
+        "mincho",
+        "gothic",
+        "明朝",
+        "ゴシック",
+        "游",
+        "yu ",
+        "yumincho",
+        "yugothic",
+        "meiryo",
+        "メイリオ",
+        "hiragino",
+        "ヒラギノ",
+        "biz ud",
+        "noto sans jp",
+        "noto serif jp",
+    ]
+    .iter()
+    .any(|name| family.contains(name));
+    let scale = if japanese { 0.6 } else { 0.65 };
+    ((size_pt * scale * 2.0).round() / 2.0).max(0.5)
+}
+
+/// The size a superscript or subscript run of `size_pt` is drawn at: two
+/// thirds on Word for Windows (0.66, as jade has always drawn it) and the
+/// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
+/// Word for Mac.
+pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    match word_layout_platform() {
+        WordLayoutPlatform::Mac => word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack),
+        _ => size_pt * 0.66,
     }
 }
 
@@ -2513,6 +2567,35 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_shifted_script_sizes_follow_the_face_to_the_half_point() {
+        let latin = [5.0, 6.0, 7.0, 8.0, 9.0, 10.5, 13.0];
+        let japanese = [5.0, 5.5, 6.5, 7.0, 8.5, 9.5, 12.0];
+        for (index, size) in [8.0, 9.0, 10.5, 12.0, 14.0, 16.0, 20.0]
+            .into_iter()
+            .enumerate()
+        {
+            for stack in ["\"Century\", serif", "Calibri, sans-serif"] {
+                assert_eq!(
+                    word_mac_shifted_script_size_pt(size, stack),
+                    latin[index],
+                    "{stack} {size}"
+                );
+            }
+            for stack in [
+                "\"Yu Mincho\", \"YuMincho\"",
+                "\"MS Mincho\", serif",
+                "游明朝",
+            ] {
+                assert_eq!(
+                    word_mac_shifted_script_size_pt(size, stack),
+                    japanese[index],
+                    "{stack} {size}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn mac_numbering_suffix_space_is_measured_in_arial_at_the_label_size() {
         set_word_layout_platform(WordLayoutPlatform::Mac);
