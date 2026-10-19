@@ -52,10 +52,13 @@ Three probes of `mac-probes-16114` (`pairs-kerned`, `squeeze-k5-b2`,
 `exact-grid`) captured again on this machine are identical to the originals,
 so the layout rules agree between the two Macs.
 
-Run the corpus after building the playground:
+Run the corpus after building the playground. `--changes false` lays every
+document out in the final view as well, including `review-kinds` and
+`review-duplicate-ids`, whose saved `w:revisionView` would otherwise show
+their markup:
 
 ```sh
 node tests/playwright/word-glyph-sweep.mjs \
   tests/word-oracle/mac-glyph-corpus-20261019 \
-  --platform mac --expected-fixtures 118
+  --platform mac --changes false --expected-fixtures 118
 ```

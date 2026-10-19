@@ -1845,10 +1845,22 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         "Noto Sans JP" | "NotoSansJP" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1160.0, 288.0, 1000.0))
         }
-        // macOS Hiragino Kaku Gothic ProN W3: hhea 880/-120, 1000 units/em.
-        // Word's East Asian box excludes this face's 500-unit Latin line gap.
-        "ヒラギノ角ゴ ProN W3" | "Hiragino Kaku Gothic ProN W3" | "Hiragino Kaku Gothic ProN"
-            if word_layout_platform() == WordLayoutPlatform::Mac => Some((880.0, 120.0, 1000.0)),
+        // macOS Hiragino Kaku Gothic ProN and Pro, W3 and W6: hhea 880/-120,
+        // 1000 units/em in every weight. Word's East Asian box excludes the
+        // face's 500-unit Latin line gap.
+        "ヒラギノ角ゴ ProN W3"
+        | "Hiragino Kaku Gothic ProN W3"
+        | "Hiragino Kaku Gothic ProN"
+        | "ヒラギノ角ゴ ProN W6"
+        | "Hiragino Kaku Gothic ProN W6"
+        | "ヒラギノ角ゴ Pro W3"
+        | "Hiragino Kaku Gothic Pro W3"
+        | "ヒラギノ角ゴ Pro W6"
+        | "Hiragino Kaku Gothic Pro W6"
+            if word_layout_platform() == WordLayoutPlatform::Mac =>
+        {
+            Some((880.0, 120.0, 1000.0))
+        }
         // Source-matched HG Maru subsets in the unchanged Word Mac math PDF:
         // hhea 220/-36, 256 units/em, no line gap.
         "HG丸ｺﾞｼｯｸM-PRO" | "HGMaruGothicMPRO"
@@ -4072,6 +4084,17 @@ mod tests {
             let descriptor = format!("11.00pt '{family}', serif");
             let (ascent, _) = word_font_vertical_metrics_px(&descriptor).expect("Hiragino metrics");
             assert!((ascent * 0.75 - (68.16 - 56.7)).abs() <= 0.375);
+        }
+        // table2x2 sets its 10pt header in W6 and its body in W3; Word puts
+        // both baselines 10.4pt below the top of the cell's text.
+        for family in ["ヒラギノ角ゴ ProN W6", "ヒラギノ角ゴ ProN W3"] {
+            let descriptor = format!("10.00pt '{family}', serif");
+            let (ascent, _) = word_font_vertical_metrics_px(&descriptor).expect("Hiragino metrics");
+            assert!(
+                (ascent * 0.75 - 10.4).abs() <= 0.375,
+                "{family}: {}",
+                ascent * 0.75
+            );
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }

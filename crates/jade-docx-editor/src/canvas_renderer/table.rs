@@ -2013,11 +2013,7 @@ where
         // `w:tblOverlap` is pairwise: either table can forbid an intersection.
         // Resolve that rectangle collision here, after exact row heights are
         // known, without deriving any independent paragraph wrap boundaries.
-        let is_floating_table = !self.pageless_mode
-            && table
-                .style
-                .get("table-position")
-                .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+        let is_floating_table = !self.pageless_mode && table_floats(table);
         let floating_table_frame = if is_floating_table {
             let table_height = row_heights.iter().sum::<f64>();
             let margin_height = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
@@ -2517,8 +2513,20 @@ where
             Some(mb) => {
                 self.current_y += mb;
             }
-            // The last row already ends below its bottom border.
-            None if last_row_bottom_border > 0.0 => {}
+            // The last row already ends below its bottom border, unless its
+            // height is exact: Word for Mac hangs that border below an exact
+            // row (`table-diagonal-borders`: text resumes 0.5pt below two
+            // 60pt exact rows).
+            None if last_row_bottom_border > 0.0 => {
+                if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && last_visible_row_index
+                        .and_then(|index| table.rows.get(index))
+                        .is_some_and(|row| !row_grows_for_borders(row))
+                {
+                    self.current_y += last_row_bottom_border;
+                }
+            }
             // An authored grid does not invent an editing gap beneath an
             // omitted bottom edge. Following text starts at the actual end.
             None if last_visible_row_index
@@ -4076,11 +4084,7 @@ where
         if layout.rows.is_empty() {
             return Ok(());
         }
-        let is_floating_table = layout
-            .table
-            .style
-            .get("table-position")
-            .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
         let mut table_x = compute_floating_table_x_in_frames(
             self.margin_left,
@@ -5211,11 +5215,7 @@ where
         let _table_state_guard = StateGuard::new(&painter);
         self.configure_table_context();
 
-        let is_floating_table = layout
-            .table
-            .style
-            .get("table-position")
-            .is_some_and(|value| value.eq_ignore_ascii_case("floating"));
+        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
         let mut table_x = compute_floating_table_x_in_frames(
             self.margin_left,
@@ -6115,7 +6115,13 @@ fn word_pre_2013_table_sizing_width_px(
     if leading <= 0.0 {
         return available_width;
     }
-    let trailing = table
+    available_width + leading + pre_2013_table_trailing_text_inset_px(table)
+}
+
+/// The cell margin a pre-2013 table hangs past its trailing text edge: the
+/// last cell's trailing padding in the first row.
+fn pre_2013_table_trailing_text_inset_px(table: &Table) -> f64 {
+    table
         .rows
         .first()
         .and_then(|row| {
@@ -6142,8 +6148,7 @@ fn word_pre_2013_table_sizing_width_px(
             } else {
                 padding.right
             }
-        });
-    available_width + leading + trailing
+        })
 }
 
 fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) -> f64 {
@@ -6276,6 +6281,16 @@ fn compute_table_x(
         Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
             if table.bidi_visual {
                 -leading_text_inset
+            } else if leading_text_inset > 0.0
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            {
+                // A pre-2013 right-aligned table puts its last cell's text,
+                // not its border, at the right margin, as a left-aligned one
+                // does on the left: Word for Mac prints
+                // `table-floating-anchor-defaults` (mode 14) 5.4pt further
+                // right than the margin-aligned border.
+                remaining_width + pre_2013_table_trailing_text_inset_px(table)
             } else {
                 remaining_width
             }
@@ -6341,11 +6356,7 @@ fn compute_floating_table_x_in_frames(
     table: &Table,
     page_number: usize,
 ) -> Option<f64> {
-    if !table
-        .style
-        .get("table-position")
-        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
-    {
+    if !table_floats(table) {
         return None;
     }
 
@@ -6405,11 +6416,7 @@ fn compute_floating_table_y(
     table_height: f64,
     table: &Table,
 ) -> Option<f64> {
-    if !table
-        .style
-        .get("table-position")
-        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
-    {
+    if !table_floats(table) {
         return None;
     }
 
@@ -7790,7 +7797,12 @@ fn resolve_row_height(
         }
         (Some(explicit_height), TableRowHeightRule::AtLeast) => {
             // Horizontal rows retain vertical padding around the minimum.
-            // All directions retain the shared horizontal border band.
+            // All directions retain the shared horizontal border band: half
+            // of each border, or on Mac the bottom border below the padding
+            // (a 14.25pt minimum under a 1.5pt bottom is 23.75pt with 4pt
+            // padding; the first row's top border is added with the others).
+            let mac = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             let minimum = cells
                 .iter()
                 .filter(|cell| !cell.skip_render)
@@ -7800,9 +7812,12 @@ fn resolve_row_height(
                     } else {
                         0.0
                     };
-                    let insets =
-                        padding + (cell.top_border_extent() + cell.bottom_border_extent()) * 0.5;
-                    points_to_px(explicit_height) + insets
+                    let border_band = if mac {
+                        cell.bottom_border_extent()
+                    } else {
+                        (cell.top_border_extent() + cell.bottom_border_extent()) * 0.5
+                    };
+                    points_to_px(explicit_height) + padding + border_band
                 })
                 .fold(points_to_px(explicit_height), f64::max);
             row_height = row_height.max(minimum);
@@ -7975,28 +7990,152 @@ fn add_border_extents(
         let row_refs: Vec<&[PreparedCell]> = prepared_rows.iter().map(Vec::as_slice).collect();
         compute_vertical_merge_row_spans(&row_refs)
     };
-    for (index, ((row, cells), height)) in table
-        .rows
-        .iter()
-        .zip(prepared_rows.iter_mut())
-        .zip(row_heights.iter_mut())
-        .enumerate()
-    {
-        if !hidden_rows.get(index).copied().unwrap_or(false) {
-            last_visible = add_row_border_extents(
-                row,
-                cells,
-                height,
-                &mut first_visible,
-                &mut previous_row_grows,
-                spans
-                    .get(index)
-                    .map(Vec::as_slice)
-                    .filter(|_| exclude_merge_owners),
-            );
+    let merge_edges = (exclude_merge_owners
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
+        .then(|| vertical_merge_edges(prepared_rows, &spans));
+    let mac = jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+    // The last visible row, the bottom border band it added and whether it grows.
+    let mut previous: Option<(usize, f64, bool)> = None;
+    for (index, (row, cells)) in table.rows.iter().zip(prepared_rows.iter_mut()).enumerate() {
+        if hidden_rows.get(index).copied().unwrap_or(false) {
+            continue;
         }
+        // Word for Mac draws an exact row exactly as tall as declared, and
+        // the borders between it and a growing row inside the growing row:
+        // the border above it then belongs to the exact row and the one below
+        // to the growing row after it (`table-row-height-defaults`,
+        // `table-hidden-rows`: 24.48pt, 50.16pt and 24.48pt between the
+        // borders of two-line rows around a 50pt exact one).
+        let exact_below_growing =
+            mac && !row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| grows);
+        if mac && row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| !grows) {
+            first_visible = true;
+        }
+        if exact_below_growing {
+            if let Some((previous_index, previous_bottom, _)) = previous {
+                if let Some(previous_height) = row_heights.get_mut(previous_index) {
+                    *previous_height -= previous_bottom;
+                }
+            }
+            previous_row_grows = false;
+        }
+        let Some(height) = row_heights.get_mut(index) else {
+            continue;
+        };
+        last_visible = add_row_border_extents(
+            row,
+            cells,
+            height,
+            &mut first_visible,
+            &mut previous_row_grows,
+            spans
+                .get(index)
+                .map(Vec::as_slice)
+                .filter(|_| exclude_merge_owners),
+            merge_edges
+                .as_ref()
+                .and_then(|rows| rows.get(index))
+                .map(Vec::as_slice),
+        );
+        previous = Some((index, last_visible, row_grows_for_borders(row)));
     }
     last_visible
+}
+
+/// Whether `table` is laid out as a floating table (`w:tblpPr`). Word for
+/// Mac lays a table out inline when its `w:tblpPr` comes before
+/// `w:tblStyle`, against the schema's order (the five table-floating
+/// fixtures; the same table with the elements in order floats).
+pub(super) fn table_floats(table: &Table) -> bool {
+    table
+        .style
+        .get("table-position")
+        .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
+        && !(table.style.contains_key("table-position-before-style")
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
+}
+
+/// For each cell of a `w:vMerge` region, whether the region goes on below
+/// its row (`Some(true)`: the owner of a span over more rows and every
+/// continuation but the last) or ends there (`Some(false)`: the last
+/// continuation); `None` for cells outside a merge.
+fn vertical_merge_edges(
+    rows: &[Vec<PreparedCell>],
+    spans: &[Vec<usize>],
+) -> Vec<Vec<Option<bool>>> {
+    let mut edges: Vec<Vec<Option<bool>>> = rows.iter().map(|row| vec![None; row.len()]).collect();
+    for (row_index, row) in rows.iter().enumerate() {
+        for (cell_index, owner) in row.iter().enumerate() {
+            let span = spans[row_index].get(cell_index).copied().unwrap_or(1);
+            if span < 2 {
+                continue;
+            }
+            edges[row_index][cell_index] = Some(true);
+            let last = (row_index + span - 1).min(rows.len() - 1);
+            for below in (row_index + 1)..=last {
+                if let Some(position) = rows[below].iter().position(|cell| {
+                    cell.skip_render
+                        && cell.column_index == owner.column_index
+                        && cell.span == owner.span
+                }) {
+                    edges[below][position] = Some(below < last);
+                }
+            }
+        }
+    }
+    edges
+}
+
+/// Word for Mac's height of a row holding part of a `w:vMerge` region. The
+/// row ends where its tallest cell's bottom margin and bottom border end,
+/// less the widest bottom border in the row, and the next row's top border
+/// follows. The merged cells count with their own bottom margin and declared
+/// bottom border, also where the region goes on below and nothing is drawn:
+/// in yokohama_table a 1.5pt merged bottom border under continuations
+/// without `w:tcMar` makes each row it passes 1.25pt shorter, and 8pt of
+/// continuation bottom margin makes each row 4pt taller.
+/// Returns the bordered row height and the bottom border drawn under it.
+fn mac_row_height_with_vertical_merges(
+    cells: &[PreparedCell],
+    edges: &[Option<bool>],
+    content: f64,
+    content_cells: &[usize],
+) -> Option<(f64, f64)> {
+    let edge = |index: usize| edges.get(index).copied().flatten();
+    if !(0..cells.len()).any(|index| edge(index).is_some()) {
+        return None;
+    }
+    let drawn_bottom = cells
+        .iter()
+        .enumerate()
+        .filter(|(index, cell)| match edge(*index) {
+            Some(continues) => !continues,
+            None => !cell.skip_render,
+        })
+        .map(|(_, cell)| cell.bottom_border_extent())
+        .fold(0.0_f64, f64::max);
+    let merged = cells
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| edge(*index).is_some())
+        .map(|(_, cell)| cell);
+    let widest_bottom = merged
+        .clone()
+        .map(PreparedCell::bottom_border_extent)
+        .fold(drawn_bottom, f64::max);
+    let text = content_cells
+        .iter()
+        .map(|&index| cells[index].height - cells[index].padding.bottom)
+        .fold(0.0_f64, f64::max);
+    let ends = content_cells
+        .iter()
+        .map(|&index| cells[index].height + cells[index].bottom_border_extent())
+        .chain(merged.map(|cell| text + cell.padding.bottom + cell.bottom_border_extent()))
+        .fold(content, f64::max);
+    Some((ends - widest_bottom + drawn_bottom, drawn_bottom))
 }
 
 fn row_grows_for_borders(row: &TableRow) -> bool {
@@ -8015,9 +8154,10 @@ fn add_row_border_extents(
     first_visible: &mut bool,
     previous_row_grows: &mut bool,
     row_spans: Option<&[usize]>,
+    merge_edges: Option<&[Option<bool>]>,
 ) -> f64 {
     let grows = row_grows_for_borders(row);
-    let bottom = cells
+    let mut bottom = cells
         .iter()
         .filter(|cell| !cell.skip_render)
         .map(|cell| cell.bottom_border_extent())
@@ -8036,7 +8176,7 @@ fn add_row_border_extents(
         // only larger measured content grows it here.
         // Vertically stacked text fills whatever height the row has,
         // so those cells do not size it.
-        let content = cells
+        let content_cells: Vec<usize> = cells
             .iter()
             .enumerate()
             .filter(|(cell_index, cell)| {
@@ -8046,9 +8186,32 @@ fn add_row_border_extents(
                         .is_some_and(direction_requires_vertical_stack)
                     && !row_spans.is_some_and(|spans| spans_merged_owner(spans, *cell_index))
             })
-            .map(|(_, cell)| cell.height)
+            .map(|(cell_index, _)| cell_index)
+            .collect();
+        let content = content_cells
+            .iter()
+            .map(|&index| cells[index].height)
             .fold(0.0_f64, f64::max);
-        *height = height.max(content + top + bottom);
+        match merge_edges.and_then(|edges| {
+            mac_row_height_with_vertical_merges(cells, edges, content, &content_cells)
+        }) {
+            Some((bordered_content, drawn_bottom)) => {
+                // The row was sized from its content: a shorter Word row
+                // takes the difference off that height, a taller one grows it.
+                let shortfall = (content + bottom - bordered_content).max(0.0);
+                *height = (*height + top).max(content + top + bottom) - shortfall;
+                *height = height.max(bordered_content + top);
+                bottom = drawn_bottom;
+            }
+            // On Mac a declared minimum stays below the first row's top
+            // border, as content does.
+            None if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac =>
+            {
+                *height = (*height + top).max(content + top + bottom);
+            }
+            None => *height = height.max(content + top + bottom),
+        }
         if top > 0.0 {
             for cell in cells.iter_mut() {
                 cell.padding.top += top;
@@ -10647,6 +10810,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                 &mut first_visible,
                 &mut previous_row_grows,
                 None,
+                None,
             );
             total_height += upper.height - previous_height;
         }
@@ -10659,6 +10823,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             &mut last.height,
             &mut first_visible,
             &mut previous_row_grows,
+            None,
             None,
         );
         total_height += last.height - previous_height;
@@ -14849,6 +15014,7 @@ mod tests {
             &mut true,
             &mut false,
             None,
+            None,
         );
         assert_eq!(height, 40.0);
         assert_eq!(exact_cells[0].page_top_inset, 4.0);
@@ -17348,6 +17514,36 @@ mod tests {
     }
 
     #[test]
+    fn mac_legacy_right_alignment_uses_the_trailing_text_edge() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let table = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell::default()],
+                ..Default::default()
+            }],
+            style: [("text-align".into(), "right".into())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        let trailing = pre_2013_table_trailing_text_inset_px(&table);
+        assert!(trailing > 0.0);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            compute_table_x(100.0, 400.0, 240.0, &table, 8.0),
+            260.0 + trailing
+        );
+        // Mode 15 has no legacy text inset and keeps the border at the margin.
+        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 0.0), 260.0);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(compute_table_x(100.0, 400.0, 240.0, &table, 8.0), 260.0);
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn ignored_table_indentation_does_not_add_a_legacy_text_inset() {
         let mut table = Table {
             bidi_visual: true,
@@ -19119,6 +19315,206 @@ mod tests {
                 "minimum={minimum}, resolved={resolved_pt}, Word={observed_word_height}"
             );
         }
+    }
+
+    #[test]
+    fn mac_at_least_floor_keeps_the_bottom_border_below_the_padding() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        // Probe rows with 4pt padding: a 14.25pt minimum over a 1.5pt
+        // bottom border is 23.75pt; yokohama_table's 47.4pt minimum under a
+        // 1.5pt top and over a 0.25pt bottom border is 55.65pt.
+        for (minimum, top_border, bottom_border, observed_word_height) in
+            [(14.25, 0.0, 1.5, 23.75), (47.4, 1.5, 0.25, 55.65)]
+        {
+            let row = TableRow {
+                height: Some(minimum),
+                height_rule: Some(TableRowHeightRule::AtLeast),
+                ..Default::default()
+            };
+            let mut cell = zero_padding_cell();
+            cell.padding.top = points_to_px(4.0);
+            cell.padding.bottom = points_to_px(4.0);
+            cell.border_top.width_px = points_to_px(top_border);
+            cell.border_bottom.width_px = points_to_px(bottom_border);
+            let resolved_pt = resolve_row_height(points_to_px(10.0), 20.0, &row, &[cell]) * 0.75;
+            assert!(
+                (resolved_pt - observed_word_height).abs() < 0.01,
+                "minimum={minimum}, resolved={resolved_pt}, Word={observed_word_height}"
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    /// Three rows beside a cell merged over all of them: 4pt padding and a
+    /// 13.62pt line in the second column, a 0.25pt border between its rows
+    /// and 1.5pt under the table, and the merged cell's continuations
+    /// without `w:tcMar` (yokohama_table rows 3-5).
+    fn rows_beside_a_merge(continuation_bottom_padding_pt: f32) -> Vec<Vec<PreparedCell>> {
+        (0..3)
+            .map(|row_index| {
+                let mut merged = make_prepared_cell(
+                    0,
+                    1,
+                    Some(if row_index == 0 {
+                        "restart"
+                    } else {
+                        "continue"
+                    }),
+                    row_index > 0,
+                );
+                merged.border_bottom.width_px = points_to_px(1.5);
+                merged.border_top.width_px = points_to_px(0.25);
+                if row_index == 0 {
+                    merged.padding.top = points_to_px(4.0);
+                    merged.padding.bottom = points_to_px(4.0);
+                    merged.height = points_to_px(21.62);
+                } else {
+                    merged.padding.top = 0.0;
+                    merged.padding.bottom = points_to_px(continuation_bottom_padding_pt);
+                }
+                let mut text = make_prepared_cell(1, 1, None, false);
+                text.padding.top = points_to_px(4.0);
+                text.padding.bottom = points_to_px(4.0);
+                text.height = points_to_px(21.62);
+                text.border_top.width_px = points_to_px(0.25);
+                text.border_bottom.width_px = points_to_px(if row_index == 2 { 1.5 } else { 0.25 });
+                vec![merged, text]
+            })
+            .collect()
+    }
+
+    fn bordered_heights_beside_a_merge(continuation_bottom_padding_pt: f32) -> Vec<f64> {
+        let mut rows = rows_beside_a_merge(continuation_bottom_padding_pt);
+        let table = Table {
+            rows: vec![TableRow::default(); 3],
+            ..Default::default()
+        };
+        let mut heights: Vec<f64> = vec![points_to_px(21.62); 3];
+        add_border_extents(&table, &mut rows, &[false; 3], &mut heights, true);
+        heights
+            .iter()
+            .map(|height| ((height * 0.75) * 100.0).round() / 100.0)
+            .collect()
+    }
+
+    #[test]
+    fn mac_rows_beside_a_continuing_merge_count_its_bottom_border_and_margin() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // Word for Mac draws the borders between these rows 21.84, 20.64 and
+        // 21.84pt apart, then the 1.5pt border; with 8pt of bottom margin on
+        // the continuations, 21.84, 25.92 and 25.92pt (each border's top).
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        // The first row also holds the table's 0.25pt top border.
+        assert_eq!(
+            bordered_heights_beside_a_merge(0.0),
+            vec![22.12, 20.62, 23.12]
+        );
+        assert_eq!(
+            bordered_heights_beside_a_merge(8.0),
+            vec![22.12, 25.87, 27.12]
+        );
+        // A 3pt merged border over the last row's 1.5pt ones: Word draws the
+        // last row 20.64pt below the one above, then the 3pt border.
+        let mut rows = rows_beside_a_merge(0.0);
+        for row in &mut rows {
+            row[0].border_bottom.width_px = points_to_px(3.0);
+        }
+        let table = Table {
+            rows: vec![TableRow::default(); 3],
+            ..Default::default()
+        };
+        let mut heights = vec![points_to_px(21.62); 3];
+        add_border_extents(&table, &mut rows, &[false; 3], &mut heights, true);
+        assert!(
+            (heights[2] * 0.75 - 23.12).abs() < 0.01,
+            "{}",
+            heights[2] * 0.75
+        );
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            bordered_heights_beside_a_merge(0.0),
+            vec![23.37, 21.87, 23.12]
+        );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn mac_exact_row_keeps_the_border_above_it_inside_its_height() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // `table-row-height-defaults`: a two-line row over a 24pt exact row
+        // with 12pt bottom padding, 0.5pt borders everywhere.
+        let heights = |platform| {
+            set_word_layout_platform(platform);
+            let table = Table {
+                rows: vec![
+                    TableRow::default(),
+                    TableRow {
+                        height: Some(24.0),
+                        height_rule: Some(TableRowHeightRule::Exact),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            };
+            let mut rows: Vec<Vec<PreparedCell>> = (0..2)
+                .map(|_| {
+                    let mut cell = zero_padding_cell();
+                    cell.border_top.width_px = points_to_px(0.5);
+                    cell.border_bottom.width_px = points_to_px(0.5);
+                    cell.height = points_to_px(24.14);
+                    vec![cell]
+                })
+                .collect();
+            let mut heights = vec![points_to_px(24.14), points_to_px(36.0)];
+            add_border_extents(&table, &mut rows, &[false; 2], &mut heights, true);
+            heights
+                .iter()
+                .map(|height| ((height * 0.75) * 100.0).round() / 100.0)
+                .collect::<Vec<_>>()
+        };
+        // Word for Mac draws the borders 24.48pt and 36pt apart.
+        assert_eq!(heights(WordLayoutPlatform::Mac), vec![24.64, 36.0]);
+        assert_eq!(heights(WordLayoutPlatform::Windows), vec![25.14, 36.0]);
+        // A growing row after an exact one holds the border between them.
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let table = Table {
+            rows: vec![
+                TableRow {
+                    height: Some(50.0),
+                    height_rule: Some(TableRowHeightRule::Exact),
+                    ..Default::default()
+                },
+                TableRow::default(),
+            ],
+            ..Default::default()
+        };
+        let mut rows: Vec<Vec<PreparedCell>> = (0..2)
+            .map(|_| {
+                let mut cell = zero_padding_cell();
+                cell.border_top.width_px = points_to_px(0.5);
+                cell.border_bottom.width_px = points_to_px(0.5);
+                cell.height = points_to_px(24.14);
+                vec![cell]
+            })
+            .collect();
+        let mut heights = vec![points_to_px(50.0), points_to_px(24.14)];
+        add_border_extents(&table, &mut rows, &[false; 2], &mut heights, true);
+        assert!(
+            (heights[1] * 0.75 - 25.14).abs() < 0.01,
+            "{}",
+            heights[1] * 0.75
+        );
+        set_word_layout_platform(previous);
     }
 
     #[test]
