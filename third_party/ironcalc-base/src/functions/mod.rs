@@ -24,6 +24,7 @@ mod spill_functions;
 mod statistical;
 mod subtotal;
 mod text;
+mod thai;
 pub(crate) mod util;
 mod xlookup;
 
@@ -551,6 +552,7 @@ pub enum Function {
     Encodeurl,
     Hyperlink,
     Phonetic,
+    Bahttext,
 
     // Database
     Daverage,
@@ -586,6 +588,7 @@ fn jade_lookup(key: &str) -> Option<Function> {
         "ENCODEURL" => Some(Function::Encodeurl),
         "HYPERLINK" => Some(Function::Hyperlink),
         "PHONETIC" => Some(Function::Phonetic),
+        "BAHTTEXT" => Some(Function::Bahttext),
         _ => None,
     }
 }
@@ -1604,6 +1607,7 @@ impl Function {
             Function::Encodeurl => "ENCODEURL".to_string(),
             Function::Hyperlink => "HYPERLINK".to_string(),
             Function::Phonetic => "PHONETIC".to_string(),
+            Function::Bahttext => "BAHTTEXT".to_string(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1647,7 +1651,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 502> {
+    pub fn into_iter() -> IntoIter<Function, 503> {
         [
             Function::And,
             Function::False,
@@ -1989,6 +1993,7 @@ impl Function {
             Function::Encodeurl,
             Function::Hyperlink,
             Function::Phonetic,
+            Function::Bahttext,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2686,6 +2691,7 @@ impl<'a> Model<'a> {
             Function::Encodeurl => self.fn_encodeurl(args, cell),
             Function::Hyperlink => self.fn_hyperlink(args, cell),
             Function::Phonetic => self.fn_phonetic(args, cell),
+            Function::Bahttext => self.fn_bahttext(args, cell),
             Function::Datestring => self.fn_datestring(args, cell),
             Function::Numberstring => self.fn_numberstring(args, cell),
             Function::Acot => self.fn_acot(args, cell),

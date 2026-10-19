@@ -102,3 +102,8 @@ applied after the first), each pinned by a case in
   does; PHONETIC joins the referenced cells' readings, or their text where
   they have none. Pinned by `crates/jade-xlsx-calc/tests/phonetic.rs` and
   conformance cases.
+- BAHTTEXT (`functions/thai.rs`; ninth set of hunks in `jade.patch`): the
+  amount rounded to the satang in Thai words, บาท then ถ้วน or the satang and
+  สตางค์, ลบ before a negative; ten is สิบ, twenty ยี่สิบ, and a final one
+  reads เอ็ด after any higher digit, the millions included. The name answers
+  through `jade_lookup`. Pinned by conformance cases.
