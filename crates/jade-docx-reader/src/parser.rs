@@ -63,7 +63,7 @@ struct ActiveField {
     // nested COMPARE or IF at its saved result, and the IF result it gives
     // when that differs from the evaluated instruction.
     saved_instruction: Option<String>,
-    word_mac_body_result: Option<String>,
+    word_mac_body_result: Option<Box<str>>,
     // Simple fields can legitimately have no result run. Remember the run
     // count at entry so invisible structural fields such as SET can still be
     // materialized when the element closes without adding visible content.
@@ -9076,7 +9076,7 @@ impl DocumentParser {
         instr: &str,
         saved_instr: Option<&str>,
         bookmark_text: &HashMap<String, String>,
-    ) -> Option<String> {
+    ) -> Option<Box<str>> {
         let saved_instr = saved_instr.filter(|saved| *saved != instr)?;
         let saved = Self::parse_field_instruction(saved_instr)?;
         if !matches!(saved, RunFieldKind::If { .. }) {
@@ -9085,7 +9085,7 @@ impl DocumentParser {
         let result = Self::locally_resolved_field_result(&saved, bookmark_text)?;
         let live = Self::parse_field_instruction(instr)
             .and_then(|kind| Self::locally_resolved_field_result(&kind, bookmark_text));
-        (live.as_ref() != Some(&result)).then_some(result)
+        (live.as_ref() != Some(&result)).then(|| result.into_boxed_str())
     }
 
     fn append_nested_operand_token(parent_instruction: &mut String, result: &str) {

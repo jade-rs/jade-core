@@ -140,6 +140,8 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
         (12, "Nested empty rejected"),
         (17, "Stale nested literal"),
         (18, "Stale forward cache"),
+        (13, "Numeric equal"),
+        (19, "Unlimited wildcard"),
     ] {
         assert_eq!(
             fields[index].word_mac_body_result.as_deref(),

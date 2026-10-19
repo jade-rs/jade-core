@@ -32388,7 +32388,7 @@ where
                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                     && field.word_mac_body_result.is_some() =>
             {
-                field.word_mac_body_result.clone()
+                field.word_mac_body_result.as_deref().map(str::to_string)
             }
             RunFieldKind::DocumentProperty { .. }
             | RunFieldKind::DocumentVariable { .. }
