@@ -1,0 +1,59 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "67c9106ee8f8425943864072905e6dc5f364f739d658260841bcc02bc6ae0741",
+ "pdf_sha256": "bf47721a17853c647890f021b9e14211fb1fe50527973cba323393ad2cb09e7f",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 111.84,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 84.96,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 93.604,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 98.753,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 101.569,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 104.384,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Hello"
+    }
+   ]
+  }
+ ]
+}
