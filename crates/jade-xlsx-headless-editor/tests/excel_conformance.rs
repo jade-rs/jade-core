@@ -287,6 +287,22 @@ const CASES: &[(&str, Expect)] = &[
     // PHONETIC: text typed without furigana reads as itself, a range joined.
     ("PHONETIC(B1)", S("apple")),
     ("PHONETIC(B1:B2)", S("applebanana")),
+    // BAHTTEXT: the amount in Thai words, บาท then ถ้วน (exact) or สตางค์;
+    // a final one after higher digits reads เอ็ด, ten is สิบ, twenty ยี่สิบ.
+    ("BAHTTEXT(1234)", S("หนึ่งพันสองร้อยสามสิบสี่บาทถ้วน")),
+    ("BAHTTEXT(0)", S("ศูนย์บาทถ้วน")),
+    ("BAHTTEXT(1)", S("หนึ่งบาทถ้วน")),
+    ("BAHTTEXT(11)", S("สิบเอ็ดบาทถ้วน")),
+    ("BAHTTEXT(21)", S("ยี่สิบเอ็ดบาทถ้วน")),
+    ("BAHTTEXT(101)", S("หนึ่งร้อยเอ็ดบาทถ้วน")),
+    ("BAHTTEXT(870)", S("แปดร้อยเจ็ดสิบบาทถ้วน")),
+    ("BAHTTEXT(-2500)", S("ลบสองพันห้าร้อยบาทถ้วน")),
+    ("BAHTTEXT(123.45)", S("หนึ่งร้อยยี่สิบสามบาทสี่สิบห้าสตางค์")),
+    ("BAHTTEXT(1250.75)", S("หนึ่งพันสองร้อยห้าสิบบาทเจ็ดสิบห้าสตางค์")),
+    ("BAHTTEXT(0.5)", S("ห้าสิบสตางค์")),
+    ("BAHTTEXT(1000000)", S("หนึ่งล้านบาทถ้วน")),
+    ("BAHTTEXT(21000001)", S("ยี่สิบเอ็ดล้านเอ็ดบาทถ้วน")),
+    ("BAHTTEXT(\"x\")", E("#VALUE!")),
     ("JIS(\"a b\")", S("ａ　ｂ")),
     ("LENB(\"あいう\")", N(6.0)),
     ("LENB(\"abc\")", N(3.0)),
