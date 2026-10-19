@@ -1,0 +1,1521 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "1df7e92cf85bd11295995bfdddd574602642fd25b01490c92a7a8967d0d8c1c2",
+ "pdf_sha256": "03eebe55f65944a219f857d480b3c2a6de2c1f3c87d4e848ff95894325885f8a",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 46.56,
+     "characters": [
+      {
+       "text": "は",
+       "x_pt": 72.0,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "じ",
+       "x_pt": 82.5,
+       "advance_pt": 8.089,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "め",
+       "x_pt": 90.539,
+       "advance_pt": 10.349,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "はじめ"
+    },
+    {
+     "baseline_pt": 64.32,
+     "characters": [
+      {
+       "text": "Ａ",
+       "x_pt": 82.08,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 89.586,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 100.081,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ａ",
+       "x_pt": 222.24,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.746,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 242.871,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ａ",
+       "x_pt": 362.16,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.666,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 382.791,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ａ結合Ａ中0Ａ右0"
+    },
+    {
+     "baseline_pt": 86.16,
+     "characters": [
+      {
+       "text": "Ａ",
+       "x_pt": 222.24,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.746,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 242.871,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ａ",
+       "x_pt": 362.16,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.666,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 382.791,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ａ中1Ａ右1"
+    },
+    {
+     "baseline_pt": 106.8,
+     "characters": [
+      {
+       "text": "Ａ",
+       "x_pt": 222.24,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.746,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 242.871,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ａ",
+       "x_pt": 362.16,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.666,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 382.791,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ａ中2Ａ右2"
+    },
+    {
+     "baseline_pt": 126.0,
+     "characters": [
+      {
+       "text": "Ａ",
+       "x_pt": 72.0,
+       "advance_pt": 7.55,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 79.506,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.001,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ａの後"
+    },
+    {
+     "baseline_pt": 143.76,
+     "characters": [
+      {
+       "text": "Ｂ",
+       "x_pt": 82.08,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 90.242,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 100.737,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｂ",
+       "x_pt": 222.24,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.402,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 243.527,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｂ",
+       "x_pt": 362.16,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.322,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 383.447,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｂ結合Ｂ中0Ｂ右0"
+    },
+    {
+     "baseline_pt": 165.6,
+     "characters": [
+      {
+       "text": "Ｂ",
+       "x_pt": 222.24,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.402,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 243.527,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｂ",
+       "x_pt": 362.16,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.322,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 383.447,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｂ中1Ｂ右1"
+    },
+    {
+     "baseline_pt": 187.68,
+     "characters": [
+      {
+       "text": "Ｂ",
+       "x_pt": 222.24,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.402,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 243.527,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｂ",
+       "x_pt": 362.16,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.322,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 383.447,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｂ中2Ｂ右2"
+    },
+    {
+     "baseline_pt": 206.64,
+     "characters": [
+      {
+       "text": "Ｂ",
+       "x_pt": 72.0,
+       "advance_pt": 8.205,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 80.162,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.657,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｂの後"
+    },
+    {
+     "baseline_pt": 224.64,
+     "characters": [
+      {
+       "text": "Ｃ",
+       "x_pt": 82.08,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "左",
+       "x_pt": 89.873,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 102.998,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 222.24,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.033,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 243.158,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 362.16,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.953,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 383.078,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｃ左0Ｃ中0Ｃ右0"
+    },
+    {
+     "baseline_pt": 246.48,
+     "characters": [
+      {
+       "text": "Ｃ",
+       "x_pt": 82.08,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "左",
+       "x_pt": 89.873,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 102.998,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 222.24,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.033,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 243.158,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 362.16,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.953,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 383.078,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｃ左1Ｃ中1Ｃ右1"
+    },
+    {
+     "baseline_pt": 268.32,
+     "characters": [
+      {
+       "text": "Ｃ",
+       "x_pt": 82.08,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "左",
+       "x_pt": 89.873,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 102.998,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 222.24,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.033,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 243.158,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｃ",
+       "x_pt": 362.16,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.953,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 383.078,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｃ左2Ｃ中2Ｃ右2"
+    },
+    {
+     "baseline_pt": 287.52,
+     "characters": [
+      {
+       "text": "Ｃ",
+       "x_pt": 72.0,
+       "advance_pt": 7.836,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 79.793,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.29,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｃの後"
+    },
+    {
+     "baseline_pt": 305.28,
+     "characters": [
+      {
+       "text": "Ｄ",
+       "x_pt": 82.08,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 90.037,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 100.539,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｄ",
+       "x_pt": 222.24,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.197,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 243.322,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｄ",
+       "x_pt": 362.16,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.117,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 383.242,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｄ結合Ｄ中0Ｄ右0"
+    },
+    {
+     "baseline_pt": 327.12,
+     "characters": [
+      {
+       "text": "Ｄ",
+       "x_pt": 222.24,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.197,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 243.322,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｄ",
+       "x_pt": 362.16,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.117,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 383.242,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｄ中1Ｄ右1"
+    },
+    {
+     "baseline_pt": 346.32,
+     "characters": [
+      {
+       "text": "Ｄ",
+       "x_pt": 222.24,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 230.197,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 243.322,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｄ",
+       "x_pt": 362.16,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 370.117,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 383.242,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｄ中2Ｄ右2"
+    },
+    {
+     "baseline_pt": 365.28,
+     "characters": [
+      {
+       "text": "Ｄ",
+       "x_pt": 72.0,
+       "advance_pt": 8.004,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 79.957,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.459,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｄの後"
+    },
+    {
+     "baseline_pt": 383.28,
+     "characters": [
+      {
+       "text": "Ｅ",
+       "x_pt": 82.08,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 89.545,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 100.041,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｅ",
+       "x_pt": 222.24,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.705,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 242.83,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｅ",
+       "x_pt": 362.16,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.625,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 382.75,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｅ結合Ｅ中0Ｅ右0"
+    },
+    {
+     "baseline_pt": 405.12,
+     "characters": [
+      {
+       "text": "Ｅ",
+       "x_pt": 222.24,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.705,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 242.83,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｅ",
+       "x_pt": 362.16,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.625,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 382.75,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｅ中1Ｅ右1"
+    },
+    {
+     "baseline_pt": 431.04,
+     "characters": [
+      {
+       "text": "Ｅ",
+       "x_pt": 222.24,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 229.705,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 242.83,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｅ",
+       "x_pt": 362.16,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 369.625,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 382.75,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｅ中2Ｅ右2"
+    },
+    {
+     "baseline_pt": 454.08,
+     "characters": [
+      {
+       "text": "Ｅ",
+       "x_pt": 72.0,
+       "advance_pt": 7.508,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 79.465,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 89.96,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｅの後"
+    },
+    {
+     "baseline_pt": 471.84,
+     "characters": [
+      {
+       "text": "Ｆ",
+       "x_pt": 82.08,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "結",
+       "x_pt": 88.724,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "合",
+       "x_pt": 99.223,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｆ",
+       "x_pt": 222.24,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 228.884,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 242.01,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｆ",
+       "x_pt": 362.16,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 368.804,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 381.93,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｆ結合Ｆ中0Ｆ右0"
+    },
+    {
+     "baseline_pt": 493.92,
+     "characters": [
+      {
+       "text": "Ｆ",
+       "x_pt": 222.24,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 228.884,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 242.01,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｆ",
+       "x_pt": 362.16,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 368.804,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 381.93,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｆ中1Ｆ右1"
+    },
+    {
+     "baseline_pt": 514.56,
+     "characters": [
+      {
+       "text": "Ｆ",
+       "x_pt": 222.24,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 228.884,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 242.01,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｆ",
+       "x_pt": 362.16,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 368.804,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 381.93,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｆ中2Ｆ右2"
+    },
+    {
+     "baseline_pt": 534.96,
+     "characters": [
+      {
+       "text": "Ｆ",
+       "x_pt": 222.24,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "中",
+       "x_pt": 228.884,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 242.01,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｆ",
+       "x_pt": 362.16,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "右",
+       "x_pt": 368.804,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "3",
+       "x_pt": 381.93,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｆ中3Ｆ右3"
+    },
+    {
+     "baseline_pt": 554.16,
+     "characters": [
+      {
+       "text": "Ｆ",
+       "x_pt": 72.0,
+       "advance_pt": 6.684,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 78.644,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 89.143,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｆの後"
+    },
+    {
+     "baseline_pt": 595.44,
+     "characters": [
+      {
+       "text": "Ｇ",
+       "x_pt": 81.36,
+       "advance_pt": 8.163,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 89.481,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 99.977,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 113.106,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｇ",
+       "x_pt": 221.28,
+       "advance_pt": 8.163,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 229.401,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 239.897,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 253.026,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｇ",
+       "x_pt": 361.44,
+       "advance_pt": 8.163,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 369.561,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 380.057,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 393.186,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｇ本文0Ｇ本文1Ｇ本文2"
+    },
+    {
+     "baseline_pt": 613.44,
+     "characters": [
+      {
+       "text": "Ｇ",
+       "x_pt": 72.0,
+       "advance_pt": 8.163,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 80.121,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.617,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｇの後"
+    },
+    {
+     "baseline_pt": 654.96,
+     "characters": [
+      {
+       "text": "Ｈ",
+       "x_pt": 81.36,
+       "advance_pt": 8.131,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 89.441,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 99.939,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "0",
+       "x_pt": 113.065,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｈ",
+       "x_pt": 221.28,
+       "advance_pt": 8.131,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 229.361,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 239.859,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "1",
+       "x_pt": 252.985,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "Ｈ",
+       "x_pt": 361.44,
+       "advance_pt": 8.131,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "本",
+       "x_pt": 369.521,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "文",
+       "x_pt": 380.019,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "2",
+       "x_pt": 393.145,
+       "advance_pt": 5.28,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｈ本文0Ｈ本文1Ｈ本文2"
+    },
+    {
+     "baseline_pt": 672.96,
+     "characters": [
+      {
+       "text": "Ｈ",
+       "x_pt": 72.0,
+       "advance_pt": 8.131,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "の",
+       "x_pt": 80.081,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      },
+      {
+       "text": "後",
+       "x_pt": 90.579,
+       "advance_pt": 10.56,
+       "font": "MS-PGothic",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Ｈの後"
+    }
+   ]
+  }
+ ]
+}
