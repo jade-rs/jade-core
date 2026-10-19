@@ -1372,14 +1372,7 @@ pub fn implicit_latin_east_asian_gap_width(
         return (0.0, 0.0);
     }
 
-    // Word for Mac spaces Latin text after an inline picture as after East
-    // Asian text (`image-inline`: `World` starts 2.35pt past a 140pt picture
-    // in 10.5pt Yu Mincho).
-    let prev_is_east_asia = prev_grapheme.is_some_and(|prev| {
-        is_auto_space_east_asian_text(prev)
-            || (prev == "\u{fffc}"
-                && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac)
-    });
+    let prev_is_east_asia = prev_grapheme.is_some_and(is_auto_space_east_asian_text);
     let next_is_east_asia = next_grapheme.is_some_and(is_auto_space_east_asian_text);
 
     if !prev_is_east_asia && !next_is_east_asia {
@@ -5749,11 +5742,6 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
             );
             current_width += object_width;
             advance_state_across_runs = TextAdvanceState::default();
-            // The picture stands before the next text for its auto spacing
-            // (`implicit_latin_east_asian_gap_width`).
-            if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac {
-                advance_state_across_runs.prev_grapheme = Some(CompactString::new("\u{fffc}"));
-            }
             continue;
         }
 
@@ -15949,30 +15937,6 @@ mod tests {
         );
         assert!((leading - 3.5).abs() < 1e-9);
         assert!((trailing - 3.5 * constants::AUTO_SPACE_LATIN_TO_EAST_ASIAN_SHARE).abs() < 1e-9);
-    }
-
-    #[test]
-    fn mac_latin_after_an_inline_picture_takes_the_auto_space() {
-        let gap = |platform| {
-            crate::line_metrics::set_word_layout_platform(platform);
-            let paragraph = ParagraphStyle {
-                enable_line_break_rules: true,
-                word_platform: platform,
-                ..ParagraphStyle::default()
-            };
-            implicit_latin_east_asian_gap_width(
-                &paragraph,
-                "W",
-                ScriptCategory::Latin,
-                6.0,
-                Some("\u{fffc}"),
-                Some("o"),
-                None,
-            )
-            .0
-        };
-        assert!(gap(crate::line_metrics::WordLayoutPlatform::Mac) > 0.0);
-        assert_eq!(gap(crate::line_metrics::WordLayoutPlatform::Windows), 0.0);
     }
 
     #[test]
