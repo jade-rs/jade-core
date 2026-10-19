@@ -124,6 +124,11 @@ pub struct DocxXmlDocument {
     /// as runs, so the model-to-XML run mapping must skip them.
     self_closing_elements: HashSet<XmlNodeId>,
     journal: JournalSlot,
+    /// Length of the text the tree was parsed from, which
+    /// [`Self::to_string`] reserves up front: a written part is about as long
+    /// as its source, and growing the buffer by doubling copied a
+    /// multi-megabyte `document.xml` some twenty times per export.
+    source_len: usize,
 }
 
 /// Elements whose empty-element form the document parser ignores although
@@ -156,7 +161,9 @@ impl DocxXmlDocument {
             }
             builder.observe(&event)?;
         }
-        builder.finish()
+        let mut document = builder.finish()?;
+        document.source_len = xml.len();
+        Ok(document)
     }
 
     /// Allocates a document-unique DrawingML object id for `wp:docPr@id` /
@@ -196,7 +203,7 @@ impl DocxXmlDocument {
 
     /// XML 宣言 (`<?xml ...?>`) を含んだ文字列として書き出す。
     pub fn to_string(&self) -> Result<String, DocxXmlError> {
-        let mut buffer = String::new();
+        let mut buffer = String::with_capacity(self.source_len + self.source_len / 8);
         buffer.push_str(&self.declaration.to_string());
         buffer.push_str("\r\n");
         let plan = schema::write_plan(&self.root);
@@ -230,8 +237,19 @@ impl DocxXmlDocument {
 
     /// 指定 ID の要素を取得する。
     pub fn element(&self, id: XmlNodeId) -> Option<&XmlElement> {
-        let path = self.path(id)?;
-        Self::element_by_path(&self.root, path.as_slice())
+        // The walk that checks the index's path finds the element too; going
+        // through `path` walked it twice. Loading asks this of every run.
+        if let Some(element) = self
+            .indexed_path(id)
+            .and_then(|path| Self::element_by_path(&self.root, path.as_slice()))
+            .filter(|element| element.id == id)
+        {
+            return Some(element);
+        }
+        let mut path = Vec::new();
+        Self::find_path(&self.root, id, &mut path)
+            .then(|| Self::element_by_path(&self.root, &path))
+            .flatten()
     }
 
     /// 指定 ID の要素を可変参照として取得する。
@@ -963,6 +981,7 @@ impl DocxXmlTreeBuilder {
             next_drawing_object_id: None,
             self_closing_elements: self.self_closing_elements,
             journal: JournalSlot::default(),
+            source_len: 0,
         })
     }
 
@@ -1154,7 +1173,13 @@ impl XmlElement {
         buffer.push('<');
         buffer.push_str(&self.name);
         let ignorable = fix.and_then(|fix| fix.ignorable.as_deref());
-        let id = renumbered.get(&self.id).map(String::as_str);
+        // Hashing every element's id for a map that is almost always empty
+        // showed up in export profiles.
+        let id = if renumbered.is_empty() {
+            None
+        } else {
+            renumbered.get(&self.id).map(String::as_str)
+        };
         for attr in &self.attributes {
             let value = match (attr.name.as_str(), ignorable, id) {
                 ("mc:Ignorable", Some(value), _) | ("w:id", _, Some(value)) => value,

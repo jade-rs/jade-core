@@ -67,6 +67,30 @@ pub struct PlacedRun {
     /// Empty on generated bullets. Capitals may expand one source grapheme.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_offsets: Vec<usize>,
+    /// `<a:highlight>` colour painted behind the run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight: Option<String>,
+    /// Extra advance after each character (`spc`), already in `width`.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub letter_spacing_px: f64,
+    /// The glyphs' outline (`<a:ln>` on the run).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_outline: Option<crate::PlacedOutline>,
+    /// The glyphs' shadow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_shadow: Option<crate::PlacedShadow>,
+    /// A non-single underline's `u` value (`dbl`, `wavy`, `dotted`, …).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
+    #[serde(default)]
+    pub double_strike: bool,
+}
+
+/// PowerPoint's default tab spacing: one inch.
+const DEFAULT_TAB_PX: f64 = 96.0;
+
+fn is_zero(value: &f64) -> bool {
+    *value == 0.0
 }
 
 /// The resolved `bodyPr` a text body lays out in, in px.
@@ -126,9 +150,63 @@ pub(crate) fn layout_text_in_region(
         frame.inset_right += box_width_px - region.x - region.width;
         frame.inset_bottom += box_height_px - region.y - region.height;
     }
+    if let Some((count, spacing_emu)) = text.columns.filter(|(n, _)| *n > 1) {
+        return layout_columns(
+            text,
+            box_width_px,
+            box_height_px,
+            frame,
+            count,
+            spacing_emu,
+            context,
+        );
+    }
     let (mut lines, content_bottom) = flow_text(text, box_width_px, &frame, context);
     anchor_lines(&mut lines, &frame, box_height_px, content_bottom);
     (lines, content_bottom + frame.inset_bottom)
+}
+
+/// `numCol` text: flowed at one column's width, then dealt into columns
+/// left to right, each starting again at the top inset when the last one
+/// fills.
+fn layout_columns(
+    text: &TextBody,
+    box_width_px: f64,
+    box_height_px: f64,
+    frame: TextFrame,
+    count: u32,
+    spacing_emu: i64,
+    context: &TextContext<'_>,
+) -> (Vec<PlacedLine>, f64) {
+    let inner = (box_width_px - frame.inset_left - frame.inset_right).max(1.0);
+    let spacing = emu_to_px(spacing_emu).max(0.0);
+    let column = ((inner - spacing * (count - 1) as f64) / count as f64).max(1.0);
+    let narrow = TextFrame {
+        inset_right: frame.inset_right + (inner - column),
+        ..frame
+    };
+    let (mut lines, _) = flow_text(text, box_width_px, &narrow, context);
+    let limit = box_height_px - frame.inset_bottom;
+    let mut index = 0u32;
+    let mut lift = 0.0;
+    let mut bottom = frame.inset_top;
+    for line in &mut lines {
+        // A column always takes at least its first line, however tall.
+        let first_in_column = line.top - lift <= frame.inset_top + 0.5;
+        if !first_in_column && index + 1 < count && line.top - lift + line.height > limit {
+            index += 1;
+            lift = line.top - frame.inset_top;
+        }
+        let shift = index as f64 * (column + spacing);
+        line.top -= lift;
+        line.text_left += shift;
+        for run in &mut line.runs {
+            run.x += shift;
+            run.baseline_y -= lift;
+        }
+        bottom = f64::max(bottom, line.top + line.height);
+    }
+    (lines, bottom + frame.inset_bottom)
 }
 
 /// Shifts top-flowed lines for the frame's anchor. `content_bottom` is the
@@ -183,7 +261,7 @@ pub(crate) fn flow_text(
     let mut lines = Vec::new();
     let mut line_top = frame.inset_top;
     // Auto-number bullets count per outline level within one text body.
-    let mut counters: Vec<u32> = Vec::new();
+    let mut counters: Vec<(u32, String)> = Vec::new();
     let mut body_offset = 0;
     for (index, paragraph) in text.paragraphs.iter().enumerate() {
         layout_paragraph(
@@ -235,24 +313,51 @@ struct ParagraphBox {
 /// The marker an auto-numbered bullet draws for its scheme: the numeral
 /// style (arabic, alphabetic, roman) and the punctuation around it.
 fn auto_number_marker(
-    counters: &mut Vec<u32>,
+    counters: &mut Vec<(u32, String)>,
     level: usize,
     scheme: &str,
     start: Option<u32>,
 ) -> String {
     if counters.len() <= level {
-        counters.resize(level + 1, 0);
+        counters.resize(level + 1, (0, String::new()));
+    }
+    // Another scheme at the same level starts its own count.
+    if counters[level].1 != scheme {
+        counters[level] = (0, scheme.to_string());
     }
     match start {
-        Some(start) if counters[level] == 0 => counters[level] = start.max(1),
-        _ => counters[level] += 1,
+        Some(start) if counters[level].0 == 0 => counters[level].0 = start.max(1),
+        _ => counters[level].0 += 1,
     }
-    format_number(counters[level], scheme)
+    format_number(counters[level].0, scheme)
 }
 
 /// `arabicPeriod` → "1.", `alphaLcParenR` → "a)", `romanUcParenBoth` →
 /// "(I)". Unknown schemes fall back to arabic with a period.
 pub fn format_number(n: u32, scheme: &str) -> String {
+    // The East Asian and enclosed schemes carry their own punctuation.
+    match scheme {
+        "circleNumDbPlain" | "circleNumWdWhitePlain" if (1..=20).contains(&n) => {
+            return char::from_u32(0x2460 + n - 1).map_or(n.to_string(), String::from);
+        }
+        "circleNumWdBlackPlain" if (1..=10).contains(&n) => {
+            return char::from_u32(0x2776 + n - 1).map_or(n.to_string(), String::from);
+        }
+        "circleNumWdBlackPlain" if (11..=20).contains(&n) => {
+            return char::from_u32(0x24EB + n - 11).map_or(n.to_string(), String::from);
+        }
+        "arabicDbPeriod" => return format!("{}．", full_width(n)),
+        "arabicDbPlain" => return full_width(n),
+        // `Db` is the double-byte full stop; the others take an ASCII one.
+        "ea1JpnChsDbPeriod" => return format!("{}．", kanji(n)),
+        "ea1ChsPeriod" | "ea1ChtPeriod" | "ea1JpnKorPeriod" => {
+            return format!("{}.", kanji(n));
+        }
+        "ea1JpnKorPlain" | "ea1ChsPlain" | "ea1ChtPlain" => return kanji(n),
+        "arabic1Minus" => return format!("{n}-"),
+        "arabic2Minus" => return format!("- {n} -"),
+        _ => {}
+    }
     let numeral = if scheme.starts_with("alphaLc") {
         alpha(n).to_lowercase()
     } else if scheme.starts_with("alphaUc") {
@@ -273,6 +378,36 @@ pub fn format_number(n: u32, scheme: &str) -> String {
     } else {
         format!("{numeral}.")
     }
+}
+
+/// 12 → １２.
+fn full_width(n: u32) -> String {
+    n.to_string()
+        .chars()
+        .map(|digit| char::from_u32(digit as u32 - '0' as u32 + 0xFF10).unwrap_or(digit))
+        .collect()
+}
+
+/// 1 → 一, 10 → 十, 23 → 二十三, 105 → 百五.
+fn kanji(n: u32) -> String {
+    const DIGITS: [&str; 10] = ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+    if n == 0 || n >= 10_000 {
+        return n.to_string();
+    }
+    let mut out = String::new();
+    for (unit, name) in [(1000, "千"), (100, "百"), (10, "十")] {
+        let digit = (n / unit) % 10;
+        if digit > 1 {
+            out.push_str(DIGITS[digit as usize]);
+        }
+        if digit > 0 {
+            out.push_str(name);
+        }
+    }
+    if !n.is_multiple_of(10) {
+        out.push_str(DIGITS[(n % 10) as usize]);
+    }
+    out
 }
 
 /// 1 → A, 26 → Z, 27 → AA.
@@ -345,7 +480,7 @@ fn layout_paragraph(
     own_style: Option<&jade_pptx_reader::ListStyle>,
     line_top: &mut f64,
     context: &TextContext<'_>,
-    counters: &mut Vec<u32>,
+    counters: &mut Vec<(u32, String)>,
     out: &mut Vec<PlacedLine>,
 ) {
     let resolved = resolve_paragraph(paragraph, own_style, context);
@@ -381,7 +516,7 @@ fn layout_paragraph(
     // A shallower paragraph restarts the numbering of everything deeper.
     let level = paragraph.level as usize;
     for counter in counters.iter_mut().skip(level + 1) {
-        *counter = 0;
+        counter.0 = 0;
     }
     let marker = match &resolved.bullet {
         Some(Bullet::Char(character)) => Some(character.clone()),
@@ -523,8 +658,11 @@ fn layout_paragraph(
             .map(|(_, run, _, _, _)| &runs[*run].style)
             .or_else(|| runs.first().map(|run| &run.style))
             .unwrap_or(&fallback_style);
+        let spacing = stream
+            .get(next)
+            .map_or(0.0, |(_, run, _, _, _)| runs[*run].spacing_px);
         next += 1;
-        context.measure.measure(grapheme, style)
+        context.measure.measure(grapheme, style) + spacing
     };
     let wrapped = wrap_text(
         &full_text,
@@ -593,7 +731,10 @@ fn layout_paragraph(
 
         let widths: Vec<f64> = segments
             .iter()
-            .map(|(run, text, _)| context.measure.measure(text, &runs[*run].style))
+            .map(|(run, text, _)| {
+                context.measure.measure(text, &runs[*run].style)
+                    + runs[*run].spacing_px * text.graphemes(true).count() as f64
+            })
             .collect();
         let line_width: f64 = widths.iter().sum();
         let slack = usable_width - line_width;
@@ -655,15 +796,71 @@ fn layout_paragraph(
                     east_asian_font: marker_style.east_asian_font.clone(),
                     hyperlink: None,
                     source_offsets: Vec::new(),
+                    highlight: None,
+                    letter_spacing_px: 0.0,
+                    text_outline: None,
+                    text_shadow: None,
+                    underline_style: None,
+                    double_strike: false,
                 });
             }
         }
+        // Tabs advance to the next default stop, measured from the inset.
+        let default_tab = paragraph
+            .default_tab_emu
+            .map_or(DEFAULT_TAB_PX, emu_to_px)
+            .max(1.0);
+        let tab_stop = |x: f64| -> f64 {
+            let from = x - boxed.inset_left;
+            // The paragraph's own stops first, then the default spacing.
+            if let Some(stop) = paragraph
+                .tab_stops_emu
+                .iter()
+                .map(|emu| emu_to_px(*emu))
+                .find(|stop| *stop > from + 0.5)
+            {
+                return boxed.inset_left + stop;
+            }
+            boxed.inset_left + ((from / default_tab).floor() + 1.0) * default_tab
+        };
+        let mut pieces = Vec::new();
         for ((run_index, text, source_offsets), width) in segments.into_iter().zip(widths) {
+            if !text.contains('\t') || expand {
+                pieces.push((run_index, text, source_offsets, Some(width)));
+                continue;
+            }
+            // One piece per tab: the text up to and including it.
+            let mut chunk = String::new();
+            let mut start = 0;
+            let graphemes: Vec<&str> = text.graphemes(true).collect();
+            for (index, g) in graphemes.iter().enumerate() {
+                chunk.push_str(g);
+                if *g == "\t" || index + 1 == graphemes.len() {
+                    let offsets = source_offsets
+                        .get(start..=(index + 1).min(source_offsets.len().saturating_sub(1)))
+                        .map(<[usize]>::to_vec)
+                        .unwrap_or_default();
+                    pieces.push((run_index, std::mem::take(&mut chunk), offsets, None));
+                    start = index + 1;
+                }
+            }
+        }
+        for (run_index, text, source_offsets, width) in pieces {
             let run = &runs[run_index];
+            let width = width.unwrap_or_else(|| {
+                let glyphs = text.trim_end_matches('\t');
+                let drawn = context.measure.measure(glyphs, &run.style)
+                    + run.spacing_px * glyphs.graphemes(true).count() as f64;
+                if text.ends_with('\t') {
+                    tab_stop(x + drawn) - x
+                } else {
+                    drawn
+                }
+            });
             placed.push(PlacedRun {
                 text,
                 x,
-                baseline_y: baseline,
+                baseline_y: baseline - run.baseline_shift_px,
                 width,
                 size_pt: run.style.size_pt,
                 bold: run.style.bold,
@@ -675,6 +872,12 @@ fn layout_paragraph(
                 east_asian_font: run.style.east_asian_font.clone(),
                 hyperlink: run.hyperlink.clone(),
                 source_offsets,
+                highlight: run.highlight.clone(),
+                letter_spacing_px: run.spacing_px,
+                text_outline: run.outline.clone(),
+                text_shadow: run.shadow.clone(),
+                underline_style: run.underline_style.clone(),
+                double_strike: run.double_strike,
             });
             x += width;
         }
@@ -691,4 +894,19 @@ fn layout_paragraph(
     }
 
     *line_top += paragraph_space_px(resolved.space_after, paragraph_size_pt);
+}
+
+#[cfg(test)]
+mod numbering_tests {
+    use super::format_number;
+
+    #[test]
+    fn east_asian_and_enclosed_schemes() {
+        assert_eq!(format_number(3, "circleNumDbPlain"), "③");
+        assert_eq!(format_number(12, "circleNumWdBlackPlain"), "⓬");
+        assert_eq!(format_number(12, "arabicDbPeriod"), "１２．");
+        assert_eq!(format_number(23, "ea1JpnChsDbPeriod"), "二十三．");
+        assert_eq!(format_number(105, "ea1JpnKorPlain"), "百五");
+        assert_eq!(format_number(4, "romanLcParenR"), "iv)");
+    }
 }

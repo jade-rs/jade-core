@@ -58,6 +58,7 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     };
     layout_sheet(
         &sheet,

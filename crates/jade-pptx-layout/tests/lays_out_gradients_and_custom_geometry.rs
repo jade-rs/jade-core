@@ -36,6 +36,7 @@ fn shape(name: &str, fill: Option<Fill>) -> Shape {
         image_rel_id: None,
         image_part: None,
         source_rect: None,
+        shadow: None,
     }
 }
 
@@ -77,6 +78,7 @@ fn gradient(angle_deg: Option<f32>) -> Fill {
             stop(100_000, "0000FF"),
         ],
         angle_deg,
+        path: None,
     }
 }
 
@@ -171,6 +173,7 @@ fn a_fill_ref_takes_the_theme_fill_style_with_its_colour_in_place_of_ph_clr() {
                 },
             ],
             angle_deg: Some(90.0),
+            path: None,
         },
     ];
     let mut styled = shape("styled", None);
@@ -180,6 +183,7 @@ fn a_fill_ref_takes_the_theme_fill_style_with_its_colour_in_place_of_ph_clr() {
         line_index: 0,
         line_color: None,
         font_color: None,
+        effect_index: 0,
     });
     let mut flat = shape("flat", None);
     flat.style = Some(ShapeStyle {
@@ -188,6 +192,7 @@ fn a_fill_ref_takes_the_theme_fill_style_with_its_colour_in_place_of_ph_clr() {
         line_index: 0,
         line_color: None,
         font_color: None,
+        effect_index: 0,
     });
     let laid_out = layout_slide_inheriting(
         slide_size(),
@@ -222,6 +227,7 @@ fn a_fill_ref_beyond_the_theme_styles_falls_back_to_a_solid_of_its_colour() {
         line_index: 0,
         line_color: None,
         font_color: None,
+        effect_index: 0,
     });
     let laid_out = layout_slide(
         slide_size(),

@@ -202,6 +202,8 @@ pub(crate) fn place_table(
                     .as_ref()
                     .or(from_style.bottom.as_ref()),
             ),
+            ("diagonal_down", placed.cell.borders.diagonal_down.as_ref()),
+            ("diagonal_up", placed.cell.borders.diagonal_up.as_ref()),
         ] {
             let Some(resolved) = resolve_outline(
                 outline,
@@ -222,6 +224,8 @@ pub(crate) fn place_table(
                     height: 0.0,
                     ..rect
                 },
+                // A diagonal spans the whole cell; the upward one flips.
+                "diagonal_down" | "diagonal_up" => rect,
                 _ => Rect {
                     y: rect.y + rect.height,
                     height: 0.0,
@@ -237,7 +241,7 @@ pub(crate) fn place_table(
                 rect: edge,
                 rotation_rad: 0.0,
                 flip_h: false,
-                flip_v: false,
+                flip_v: side == "diagonal_up",
                 geometry: PlacedGeometry::Line,
                 fill: None,
                 gradient: None,
@@ -248,6 +252,9 @@ pub(crate) fn place_table(
                 origin,
                 source_id: table.id,
                 text_rotation_deg: 0.0,
+                shadow: None,
+                image_alpha: None,
+                pattern: None,
             });
         }
         out.push(PlacedShape {
@@ -267,7 +274,12 @@ pub(crate) fn place_table(
                 .as_ref()
                 .or(from_style.fill.as_ref())
                 .and_then(|fill| resolve_fill(fill, context.theme)),
-            gradient: None,
+            gradient: placed
+                .cell
+                .fill
+                .as_ref()
+                .or(from_style.fill.as_ref())
+                .and_then(|fill| crate::resolve_gradient(fill, context.theme)),
             outline: None,
             image_part: None,
             source_rect: None,
@@ -275,6 +287,9 @@ pub(crate) fn place_table(
             origin,
             source_id: table.id,
             text_rotation_deg: 0.0,
+            shadow: None,
+            image_alpha: None,
+            pattern: None,
         });
     }
     out.extend(borders);

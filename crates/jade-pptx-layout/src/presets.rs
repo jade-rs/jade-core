@@ -18,8 +18,10 @@ impl PresetLayout {
             } else {
                 text_height + width * margin
             }
-        } else {
+        } else if self.text.height > 0.0 {
             text_height * height / self.text.height
+        } else {
+            content_height
         }
     }
 }
@@ -97,7 +99,13 @@ pub(crate) fn resolve(
                 rect(w * inset, h * inset, w * (1.0 - inset), h * (1.0 - inset)),
             )
         }
-        _ => return None,
+        // Straight connectors stay `Line`: the renderer gives them their
+        // default stroke and line ends.
+        "line" | "straightConnector1" => return None,
+        name => {
+            let preset = crate::preset_shapes::evaluate(name, adjustments, w, h)?;
+            (PlacedGeometry::Paths(preset.paths), preset.text)
+        }
     };
     Some(PresetLayout { geometry, text })
 }

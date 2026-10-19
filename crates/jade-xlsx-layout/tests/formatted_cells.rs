@@ -62,6 +62,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     }
 }
 

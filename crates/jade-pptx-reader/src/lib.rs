@@ -9,6 +9,7 @@
 
 pub mod chart;
 pub mod error;
+mod shape_guides;
 pub mod slide;
 mod slide_theme;
 pub mod table_style;
@@ -21,23 +22,25 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
-pub use chart::{parse_chart_xml, ChartContent, ChartSeries};
+pub use chart::{parse_chart_xml, ChartContent, ChartSeries, ChartStyle};
 pub use error::{PptxError, Result};
+pub use shape_guides::ShapeGuides;
 pub use slide::{
     diagram_drawing_rel_id, parse_diagram_drawing_xml, Chart, CustomGeometry, GeometryPath,
-    PathCommand,
+    GradientPath, LineEnd, PathCommand,
 };
 pub use slide::{parse_default_text_style, parse_slide_xml, TextVertical};
 pub use slide::{
     Autofit, Bullet, CellBorders, Color, Fill, GradientStop, GroupShape, GroupTransform, Hyperlink,
-    LevelStyle, ListStyle, Outline, Picture, Placeholder, RunProps, Shape, ShapeItem, ShapeStyle,
-    SlideContent, SourceRect, Spacing, Table, TableCell, TableRow, TextAlign, TextAnchor, TextBody,
-    TextBodyPropertyPresence, TextInsets, TextParagraph, TextRun, TextStyles, Transform,
+    LevelStyle, ListStyle, Outline, Picture, Placeholder, RunProps, Shadow, Shape, ShapeItem,
+    ShapeStyle, SlideContent, SourceRect, Spacing, Table, TableCell, TableRow, TextAlign,
+    TextAnchor, TextBody, TextBodyPropertyPresence, TextInsets, TextParagraph, TextRun, TextStyles,
+    Transform,
 };
 pub use table_style::{parse_table_styles, TablePartStyle, TableStyle, TableStyleFlags};
 pub use theme::{
-    parse_color_map, parse_theme_colors, parse_theme_fill_styles, parse_theme_fonts,
-    parse_theme_line_styles, ThemeColors, ThemeFonts,
+    parse_color_map, parse_theme_colors, parse_theme_effect_styles, parse_theme_fill_styles,
+    parse_theme_fonts, parse_theme_line_styles, ThemeColors, ThemeFonts,
 };
 
 /// English Metric Units per inch — the unit every pptx coordinate is in.
@@ -226,6 +229,7 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
         fill_styles: theme_fill_styles.clone(),
         background_fill_styles: theme_background_fill_styles.clone(),
         line_styles: theme_line_styles.clone(),
+        effect_styles: Vec::new(),
     });
     let mut themes = slide_theme::ThemeResolver::default();
     let mut slides = Vec::new();
@@ -240,7 +244,7 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
         let mut notes = None;
         if let Some(rels_xml) = package.part_str(&jade_opc::rels_part_name(&entry.part_name))? {
             let relationships = jade_opc::parse_relationships(&rels_xml)?;
-            resolve_image_parts(&mut content.shapes, &relationships, &entry.part_name);
+            resolve_content_images(&mut content, &relationships, &entry.part_name);
             resolve_hyperlinks(&mut content.shapes, &relationships);
             resolve_charts(
                 &package,
@@ -445,11 +449,35 @@ fn parsed_shape_tree(
         return Ok(cached.clone());
     }
     let parsed = match package.part_str(part)? {
-        Some(xml) => Some(parse_slide_xml(&xml)?),
+        Some(xml) => {
+            let mut content = parse_slide_xml(&xml)?;
+            // Layout and master pictures (logos, backgrounds) resolve
+            // against their own part's relationships.
+            if let Some(rels_xml) = package.part_str(&jade_opc::rels_part_name(part))? {
+                let relationships = jade_opc::parse_relationships(&rels_xml)?;
+                resolve_content_images(&mut content, &relationships, part);
+                resolve_hyperlinks(&mut content.shapes, &relationships);
+            }
+            Some(content)
+        }
         None => None,
     };
     cache.insert(part.to_string(), parsed.clone());
     Ok(parsed)
+}
+
+/// Resolves a part's background picture and its shapes' pictures.
+fn resolve_content_images(
+    content: &mut SlideContent,
+    relationships: &jade_opc::Relationships,
+    part: &str,
+) {
+    if let Some(Fill::Picture { rel_id, image_part }) = &mut content.background {
+        *image_part = relationships
+            .target(rel_id)
+            .map(|target| jade_opc::resolve_target(part, target));
+    }
+    resolve_image_parts(&mut content.shapes, relationships, part);
 }
 
 fn resolve_image_parts(
@@ -505,6 +533,7 @@ fn resolve_charts(
                     chart.title = content.title;
                     chart.horizontal = content.horizontal;
                     chart.series = content.series;
+                    chart.style = content.style;
                 }
                 chart.chart_part = Some(part);
             }
@@ -591,6 +620,28 @@ fn read_theme(package: &OpcPackage) -> Result<ThemeParts> {
 
     read_master_theme(package, master_part.as_deref())
 }
+/// The effect styles of the theme a master uses.
+pub(crate) fn read_master_effect_styles(
+    package: &OpcPackage,
+    master_part: Option<&str>,
+) -> Result<Vec<Option<Shadow>>> {
+    let Some(master) = master_part else {
+        return Ok(Vec::new());
+    };
+    let theme_part = match package.part_str(&jade_opc::rels_part_name(master))? {
+        Some(xml) => jade_opc::parse_relationships(&xml)?
+            .by_type_suffix("/theme")
+            .into_iter()
+            .find(|r| !r.external)
+            .map(|r| jade_opc::resolve_target(master, &r.target)),
+        None => None,
+    };
+    match theme_part.and_then(|part| package.part_str(&part).ok().flatten()) {
+        Some(xml) => parse_theme_effect_styles(&xml),
+        None => Ok(Vec::new()),
+    }
+}
+
 fn read_master_theme(package: &OpcPackage, master_part: Option<&str>) -> Result<ThemeParts> {
     let color_map = match master_part {
         Some(master) => match package.part_str(master)? {

@@ -50,6 +50,7 @@ fn tall_sheet(rows: u32) -> Sheet {
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
         shapes: Vec::new(),
+        array_formulas: Vec::new(),
     }
 }
 

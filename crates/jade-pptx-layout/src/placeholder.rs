@@ -82,6 +82,8 @@ pub(crate) fn visual<'a>(shape: &'a Shape, inherited: &InheritedContent<'a>) -> 
         color: line_fill.and_then(|l| l.color.clone()),
         width_emu: lines.iter().find_map(|l| l.width_emu),
         dash: lines.iter().find_map(|l| l.dash.clone()),
+        head_end: lines.iter().find_map(|l| l.head_end.clone()),
+        tail_end: lines.iter().find_map(|l| l.tail_end.clone()),
     });
     Visual {
         geometry,
