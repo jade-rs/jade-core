@@ -2092,6 +2092,12 @@ pub struct RunField {
     /// the laid-out page geometry. Takes precedence over `cached_text` when set.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_value: Option<String>,
+    /// The result Word for Mac prints for this IF or COMPARE in the main
+    /// story, when it differs from the evaluated one: there Word takes a
+    /// nested COMPARE or IF at its saved result instead of evaluating it
+    /// (`if-compare-field-edge-cases`), while a nested REF stays live.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub word_mac_body_result: Option<String>,
 }
 
 /// Supported field kinds. Additional variants can be added as new field types
