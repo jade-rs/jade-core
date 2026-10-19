@@ -7263,8 +7263,15 @@ impl DocumentParser {
             fill_color = None;
         }
 
+        // A VML shape without `position:absolute` flows inline, as a VML
+        // picture does above: `table-object-edge-cases` and
+        // `word-compat-comprehensive` set their text boxes in the line.
         let layout = RunImageLayout {
-            kind: RunImageKind::Floating,
+            kind: if is_absolute {
+                RunImageKind::Floating
+            } else {
+                RunImageKind::Inline
+            },
             position_h,
             position_v,
             rotation_deg,
