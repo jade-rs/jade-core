@@ -1,13 +1,22 @@
-//! Tables on a slide (`a:tbl` in a `p:graphicFrame`): their cells' text, and
-//! their grid scaled to a resized frame.
+//! Tables on a slide (`a:tbl` in a `p:graphicFrame`): their cells' text,
+//! rows and columns added and removed, and their grid scaled to a resized
+//! frame.
 
 use std::ops::Range;
 
-use super::{apply_patches, child, edit_tag, parse_nodes, shape_nodes, Node};
-use crate::{Result, TableCell, WriteError};
+use super::{apply_patches, child, edit_tag, edit_tag_attributes, parse_nodes, shape_nodes, Node};
+use crate::{Result, TableCell, TableChange, WriteError};
 
 /// The `a:tbl` of the frame with `id`.
 fn table(nodes: &[Node], id: u32) -> Option<&Node> {
+    frame(nodes, id)
+        .and_then(|frame| child(nodes, frame, 2, "graphic"))
+        .and_then(|graphic| child(nodes, graphic, 2, "graphicData"))
+        .and_then(|data| child(nodes, data, 2, "tbl"))
+}
+
+/// The `p:graphicFrame` with `id`.
+fn frame(nodes: &[Node], id: u32) -> Option<&Node> {
     shape_nodes(nodes)
         .into_iter()
         .filter(|node| node.is(1, "graphicFrame"))
@@ -18,9 +27,6 @@ fn table(nodes: &[Node], id: u32) -> Option<&Node> {
                 .and_then(|value| value.parse::<u32>().ok())
                 == Some(id)
         })
-        .and_then(|frame| child(nodes, frame, 2, "graphic"))
-        .and_then(|graphic| child(nodes, graphic, 2, "graphicData"))
-        .and_then(|data| child(nodes, data, 2, "tbl"))
 }
 
 fn children<'a>(nodes: &'a [Node], parent: &Node, name: &str) -> Vec<&'a Node> {
@@ -158,6 +164,188 @@ pub(crate) fn set_cell_text(
         ),
     };
     Ok(apply_patches(xml, vec![patch]))
+}
+
+fn flag(cell: &Node, key: &str) -> bool {
+    cell.attr(key)
+        .is_some_and(|value| matches!(value, "1" | "true"))
+}
+
+fn span(cell: &Node, key: &str) -> usize {
+    cell.attr(key)
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(1)
+}
+
+fn size(node: &Node, key: &str) -> i64 {
+    node.attr(key).and_then(|v| v.parse().ok()).unwrap_or(0)
+}
+
+/// A copy of `cell` with no text — one empty paragraph keeping the first
+/// paragraph's properties — and without the merge attributes in `drop`.
+fn emptied_cell(xml: &str, nodes: &[Node], cell: &Node, drop: &[&str]) -> Result<String> {
+    let prefix = prefix_of(cell);
+    let mut out = edit_tag_attributes(&xml[cell.opening.clone()], &[], drop)?;
+    if cell.empty {
+        return Ok(out);
+    }
+    if let Some(body) = child(nodes, cell, 2, "txBody") {
+        let outer = |node: Option<&Node>| {
+            node.map(|node| xml[node.outer.clone()].to_string())
+                .unwrap_or_default()
+        };
+        let first = children(nodes, body, "p").first().copied();
+        let end = first
+            .and_then(|p| child(nodes, p, 2, "endParaRPr"))
+            .map(|end| xml[end.outer.clone()].to_string())
+            .or_else(|| {
+                first
+                    .and_then(|p| children(nodes, p, "r").first().copied())
+                    .and_then(|run| child(nodes, run, 2, "rPr"))
+                    .map(|rpr| xml[rpr.outer.clone()].replace("rPr", "endParaRPr"))
+            })
+            .unwrap_or_default();
+        out.push_str(&format!(
+            "<{prefix}txBody>{}{}<{prefix}p>{}{end}</{prefix}p></{prefix}txBody>",
+            outer(child(nodes, body, 2, "bodyPr")),
+            outer(child(nodes, body, 2, "lstStyle")),
+            outer(first.and_then(|p| child(nodes, p, 2, "pPr"))),
+        ));
+    }
+    if let Some(properties) = child(nodes, cell, 2, "tcPr") {
+        out.push_str(&xml[properties.outer.clone()]);
+    }
+    out.push_str(&format!("</{}>", cell.qualified));
+    Ok(out)
+}
+
+fn prefix_of(node: &Node) -> String {
+    node.qualified
+        .rsplit_once(':')
+        .map(|(prefix, _)| format!("{prefix}:"))
+        .unwrap_or_default()
+}
+
+/// `xml` with a row or column of table `id` added or removed, as PowerPoint
+/// does: a new one is empty, formatted (and as tall or wide) as the one it
+/// pushes over — the last, when added at the end — and the frame grows or
+/// shrinks by it. A change that would cut a merged cell is refused, as is
+/// removing the last row or column.
+pub(crate) fn change(xml: &str, id: u32, change: TableChange) -> Result<String> {
+    let nodes = parse_nodes(xml)?;
+    let refused = || WriteError::UnsupportedObjectOperation(id);
+    let frame = frame(&nodes, id).ok_or(WriteError::NoShape(id))?;
+    let table = table(&nodes, id).ok_or(WriteError::NoShape(id))?;
+    let extent = child(&nodes, frame, 1, "xfrm")
+        .and_then(|xfrm| child(&nodes, xfrm, 2, "ext"))
+        .ok_or(WriteError::NoShape(id))?;
+    let grid = child(&nodes, table, 2, "tblGrid").ok_or(refused())?;
+    let columns = children(&nodes, grid, "gridCol");
+    let rows = children(&nodes, table, "tr");
+    let cells: Vec<Vec<&Node>> = rows.iter().map(|row| children(&nodes, row, "tc")).collect();
+    if cells.iter().any(|row| row.len() != columns.len()) {
+        return Err(refused());
+    }
+    let resize = |key: &str, by: i64| -> Result<(Range<usize>, String)> {
+        let total = (size(extent, key) + by).max(0);
+        Ok((
+            extent.opening.clone(),
+            edit_tag(&xml[extent.opening.clone()], &[(key, total.to_string())])?,
+        ))
+    };
+    let mut patches = Vec::new();
+    match change {
+        TableChange::InsertRow(at) => {
+            if at > rows.len() || rows.is_empty() {
+                return Err(refused());
+            }
+            // A vertical merge running across the new row's place.
+            if at < rows.len() && at > 0 && cells[at].iter().any(|cell| flag(cell, "vMerge")) {
+                return Err(refused());
+            }
+            let template = rows[at.min(rows.len() - 1)];
+            // Its height and cells: the row's id (`extLst`) stays its own.
+            let mut row = xml[template.opening.clone()].to_string();
+            for cell in &cells[at.min(rows.len() - 1)] {
+                row.push_str(&emptied_cell(xml, &nodes, cell, &["rowSpan", "vMerge"])?);
+            }
+            row.push_str(&format!("</{}>", template.qualified));
+            let place = if at < rows.len() {
+                rows[at].outer.start
+            } else {
+                rows[rows.len() - 1].outer.end
+            };
+            patches.push((place..place, row));
+            patches.push(resize("cy", size(template, "h"))?);
+        }
+        TableChange::DeleteRow(at) => {
+            if at >= rows.len() || rows.len() == 1 {
+                return Err(refused());
+            }
+            if cells[at]
+                .iter()
+                .any(|cell| flag(cell, "vMerge") || span(cell, "rowSpan") > 1)
+            {
+                return Err(refused());
+            }
+            patches.push((rows[at].outer.clone(), String::new()));
+            patches.push(resize("cy", -size(rows[at], "h"))?);
+        }
+        TableChange::InsertColumn(at) => {
+            if at > columns.len() || columns.is_empty() {
+                return Err(refused());
+            }
+            if at < columns.len() && at > 0 && cells.iter().any(|row| flag(row[at], "hMerge")) {
+                return Err(refused());
+            }
+            let from = at.min(columns.len() - 1);
+            let template = columns[from];
+            // The column's width alone: its id (`extLst`) stays its own.
+            let column = if template.empty {
+                xml[template.outer.clone()].to_string()
+            } else {
+                format!(
+                    "{}</{}>",
+                    &xml[template.opening.clone()],
+                    template.qualified
+                )
+            };
+            let before = |nodes: &[&Node]| {
+                if at < nodes.len() {
+                    nodes[at].outer.start
+                } else {
+                    nodes[nodes.len() - 1].outer.end
+                }
+            };
+            let place = before(&columns);
+            patches.push((place..place, column));
+            for row in &cells {
+                let place = before(row);
+                patches.push((
+                    place..place,
+                    emptied_cell(xml, &nodes, row[from], &["gridSpan", "hMerge"])?,
+                ));
+            }
+            patches.push(resize("cx", size(template, "w"))?);
+        }
+        TableChange::DeleteColumn(at) => {
+            if at >= columns.len() || columns.len() == 1 {
+                return Err(refused());
+            }
+            if cells
+                .iter()
+                .any(|row| flag(row[at], "hMerge") || span(row[at], "gridSpan") > 1)
+            {
+                return Err(refused());
+            }
+            patches.push((columns[at].outer.clone(), String::new()));
+            for row in &cells {
+                patches.push((row[at].outer.clone(), String::new()));
+            }
+            patches.push(resize("cx", -size(columns[at], "w"))?);
+        }
+    }
+    Ok(apply_patches(xml, patches))
 }
 
 /// The patches that scale the table's column widths to `width` and its row
