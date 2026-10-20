@@ -499,7 +499,7 @@ fn remove_vml_note(xml: &str, at: CellRef) -> Result<String> {
 }
 
 /// `prefix{n}{suffix}` for the smallest `n` the package does not have.
-fn free_part_name(package: &OpcPackage, prefix: &str, suffix: &str) -> String {
+pub(crate) fn free_part_name(package: &OpcPackage, prefix: &str, suffix: &str) -> String {
     (1u32..)
         .map(|n| format!("{prefix}{n}{suffix}"))
         .find(|name| package.part(name).is_none())
@@ -508,7 +508,7 @@ fn free_part_name(package: &OpcPackage, prefix: &str, suffix: &str) -> String {
 
 /// `part` as a target relative to `from`'s directory, the way Excel writes
 /// relationship targets (`../comments1.xml` from a worksheet).
-fn relative_target(from: &str, part: &str) -> String {
+pub(crate) fn relative_target(from: &str, part: &str) -> String {
     let from_dir: Vec<&str> = from
         .rsplit_once('/')
         .map(|(dir, _)| dir.split('/').collect())
