@@ -29,6 +29,24 @@ pub struct ConditionalRule {
     pub visual: Option<ConditionalVisual>,
     #[serde(default)]
     pub issues: Vec<String>,
+    /// What `top10` and `aboveAverage` rules rank by.
+    #[serde(default)]
+    pub ranking: RuleRanking,
+}
+
+/// A `top10` or `aboveAverage` rule's settings; the defaults are what the
+/// file leaves unsaid.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct RuleRanking {
+    /// `top10`: how many items, or what percent of them.
+    pub rank: Option<u32>,
+    pub percent: bool,
+    pub bottom: bool,
+    /// `aboveAverage`: below the average instead, counting the average
+    /// itself when `equal_average`, or `std_dev` deviations away.
+    pub below_average: bool,
+    pub equal_average: bool,
+    pub std_dev: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -137,6 +155,10 @@ fn attribute(element: &BytesStart<'_>, name: &[u8]) -> Result<Option<String>> {
     Ok(None)
 }
 
+fn flag(value: Option<String>) -> bool {
+    value.is_some_and(|value| value == "1" || value == "true")
+}
+
 fn enabled(value: Option<String>) -> bool {
     !value.is_some_and(|value| matches!(value.as_str(), "0" | "false" | "none"))
 }
@@ -200,6 +222,16 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                                 formulas: Vec::new(),
                                 visual: None,
                                 issues: Vec::new(),
+                                ranking: RuleRanking {
+                                    rank: attribute(element, b"rank")?
+                                        .and_then(|value| value.parse().ok()),
+                                    percent: flag(attribute(element, b"percent")?),
+                                    bottom: flag(attribute(element, b"bottom")?),
+                                    below_average: !enabled(attribute(element, b"aboveAverage")?),
+                                    equal_average: flag(attribute(element, b"equalAverage")?),
+                                    std_dev: attribute(element, b"stdDev")?
+                                        .and_then(|value| value.parse().ok()),
+                                },
                             };
                             if empty {
                                 format.as_mut().unwrap().rules.push(parsed);
