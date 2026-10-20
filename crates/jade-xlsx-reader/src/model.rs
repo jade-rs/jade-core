@@ -239,6 +239,10 @@ pub struct Sheet {
     /// Page breaks between columns, from `<colBreaks>`.
     #[serde(default)]
     pub column_breaks: Vec<PageBreak>,
+    /// How the sheet prints: its paper, orientation, scaling, margins and
+    /// print titles.
+    #[serde(default)]
+    pub page_setup: PageSetup,
     /// Shapes, text boxes, pictures and charts anchored on the sheet, from
     /// its drawing part.
     #[serde(default)]
@@ -369,6 +373,86 @@ pub struct HeaderFooter {
     pub scale_with_doc: bool,
     /// `alignWithMargins`; Excel defaults it to on.
     pub align_with_margins: bool,
+}
+
+/// How a sheet prints, from its `<pageSetup>`, `<pageMargins>`,
+/// `sheetPr/pageSetUpPr` and the workbook's `_xlnm.Print_Titles` for it —
+/// what Excel's Page Setup dialog shows. `None` is an attribute the file
+/// leaves out, which Excel reads as its default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PageSetup {
+    /// `paperSize`: Excel's paper code — 1 Letter, 5 Legal, 8 A3, 9 A4,
+    /// 11 A5, 12 B4, 13 B5 and so on. Unset, the printer's default.
+    pub paper_size: Option<u32>,
+    /// `orientation`; unset (or `default`), portrait.
+    pub orientation: Option<PageOrientation>,
+    /// `scale`: the percentage to print at, 10 to 400; unset, 100.
+    pub scale: Option<u32>,
+    /// `pageSetUpPr/@fitToPage`: Fit to N pages wide by M tall, rather than
+    /// `scale`.
+    pub fit_to_page: bool,
+    /// `fitToWidth`: pages across when fitting, 0 for as many as it takes;
+    /// unset, 1.
+    pub fit_to_width: Option<u32>,
+    /// `fitToHeight`: pages down when fitting, 0 for as many as it takes;
+    /// unset, 1.
+    pub fit_to_height: Option<u32>,
+    /// `pageOrder="overThenDown"`: number the pages across before down.
+    pub over_then_down: bool,
+    /// `<pageMargins>`, in inches.
+    pub margins: Option<PageMargins>,
+    /// The rows repeated at the top of every page, zero-based and inclusive,
+    /// from `_xlnm.Print_Titles` (`Sheet1!$1:$2`).
+    pub title_rows: Option<(u32, u32)>,
+    /// The columns repeated at the left of every page (`Sheet1!$A:$A`).
+    pub title_columns: Option<(u32, u32)>,
+}
+
+impl PageSetup {
+    /// Pages across and down when fitting to pages, 0 for as many as it
+    /// takes; `None` when the sheet prints at a scale instead.
+    pub fn fit_to(&self) -> Option<(u32, u32)> {
+        self.fit_to_page.then(|| {
+            (
+                self.fit_to_width.unwrap_or(1),
+                self.fit_to_height.unwrap_or(1),
+            )
+        })
+    }
+}
+
+/// A page's orientation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PageOrientation {
+    Portrait,
+    Landscape,
+}
+
+/// A sheet's margins, in inches, as `<pageMargins>` states them: the cells'
+/// from each edge of the paper, and the header's and footer's from the top
+/// and bottom edges.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PageMargins {
+    pub left: f64,
+    pub right: f64,
+    pub top: f64,
+    pub bottom: f64,
+    pub header: f64,
+    pub footer: f64,
+}
+
+impl Default for PageMargins {
+    /// Excel's Normal margins.
+    fn default() -> Self {
+        Self {
+            left: 0.7,
+            right: 0.7,
+            top: 0.75,
+            bottom: 0.75,
+            header: 0.3,
+            footer: 0.3,
+        }
+    }
 }
 
 /// A page break, as `<brk>` states it.
