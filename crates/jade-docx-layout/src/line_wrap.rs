@@ -1032,16 +1032,32 @@ fn automatic_note_separator_width_px(
 /// The text an inline object stands for in a paragraph.
 const INLINE_OBJECT_TEXT: &str = "\u{fffc}";
 
-/// The advance of an ASCII space next to an inline object
-/// ([`crate::line_metrics::word_object_adjacent_space_advance_px`]).
-fn object_adjacent_space_width_px(
+/// The advance of an ASCII space with a full-width neighbour
+/// ([`crate::line_metrics::word_balanced_space_advance_px`]): an East Asian
+/// character, an inline object or another space on either side.
+fn balanced_space_width_px(
     grapheme: &str,
     paragraph_style: Option<&ParagraphStyle>,
+    prev_grapheme: Option<&str>,
     follows_inline_object: bool,
     next_grapheme: Option<&str>,
     font_descriptor: &str,
 ) -> Option<f64> {
-    if grapheme != " " || (!follows_inline_object && next_grapheme != Some(INLINE_OBJECT_TEXT)) {
+    if grapheme != " " {
+        return None;
+    }
+    let widens = |neighbour: &str| {
+        neighbour == " "
+            || neighbour == INLINE_OBJECT_TEXT
+            || classify_script(neighbour) == ScriptCategory::EastAsia
+    };
+    // A space with nothing before it, such as a numbering label's suffix
+    // (laid out on its own at 0.278 em, `word_numbering_suffix_space_descriptor`)
+    // or a paragraph's first character, keeps its advance.
+    if !follows_inline_object
+        && (prev_grapheme.is_none()
+            || (!prev_grapheme.is_some_and(widens) && !next_grapheme.is_some_and(widens)))
+    {
         return None;
     }
     let paragraph = paragraph_style?;
@@ -1051,10 +1067,7 @@ fn object_adjacent_space_width_px(
     {
         return None;
     }
-    crate::line_metrics::word_object_adjacent_space_advance_px(
-        paragraph.word_platform,
-        font_descriptor,
-    )
+    crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
 }
 
 fn compute_grapheme_advance_with_ascii_width(
@@ -1929,7 +1942,7 @@ pub struct TextAdvanceState {
     /// See [`GraphemeAdvanceContext::prev_auto_space`].
     pub prev_auto_space: Option<crate::line_metrics::WordAutoSpace>,
     /// The previous cluster is an inline object, which line wrapping leaves
-    /// no grapheme for (`object_adjacent_space_width_px`).
+    /// no grapheme for (`balanced_space_width_px`).
     pub follows_inline_object: bool,
 }
 
@@ -2400,11 +2413,11 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         style,
         automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor)
             .or_else(|| {
-                object_adjacent_space_width_px(
+                balanced_space_width_px(
                     grapheme,
                     paragraph_style,
-                    state.follows_inline_object
-                        || state.prev_grapheme.as_deref() == Some(INLINE_OBJECT_TEXT),
+                    state.prev_grapheme.as_deref(),
+                    state.follows_inline_object,
                     next_grapheme,
                     font_descriptor,
                 )
@@ -10928,6 +10941,41 @@ mod tests {
         );
         assert_eq!(east_asian_justification_gap("(", "c"), None);
         assert_eq!(east_asian_justification_gap("c", ")"), None);
+    }
+
+    #[test]
+    fn mac_balanced_space_beside_full_width_text_or_a_space_is_half_an_em() {
+        // math's `2. 数式`: with balanceSingleByteDoubleByteWidth, Word for
+        // Mac advances a space half an em when a neighbour is East Asian or
+        // another space; between two single-byte characters it keeps its own.
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(10.0);
+        // TestContext sets 12pt text: half an em is 8px.
+        for (text, widened) in [
+            ("2. 数", vec![true]),
+            ("数 A", vec![true]),
+            ("A  B", vec![true, true]),
+            ("A ,数", vec![false]),
+            ("Hello World", vec![false]),
+        ] {
+            let mut paragraph = ParagraphStyle {
+                word_platform: WordLayoutPlatform::Mac,
+                ..ParagraphStyle::default()
+            };
+            paragraph
+                .east_asian_rules
+                .balance_single_byte_double_byte_width = true;
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 500.0)
+                    .unwrap();
+            let spaces = lines[0]
+                .clusters
+                .iter()
+                .filter(|cluster| cluster.text.as_str() == " ")
+                .map(|cluster| (cluster.width - 8.0).abs() < 1e-6)
+                .collect::<Vec<_>>();
+            assert_eq!(spaces, widened, "{text}");
+        }
     }
 
     #[test]

@@ -9117,6 +9117,14 @@ impl DocumentParser {
             parent_instruction.push_str("\"\"");
         } else if result.chars().any(char::is_whitespace) || result.contains('"') {
             parent_instruction.push('"');
+            // Word never matches a nested result that holds a straight double
+            // quote: `IF {REF x} = "…"` is false and `COMPARE` gives 0 for
+            // every literal, escaped or not (Word for Mac 16.114 captures of
+            // if-compare-field-edge-cases). A private-use mark no literal
+            // carries keeps such an operand from comparing equal.
+            if result.contains('"') {
+                parent_instruction.push(crate::document::QUOTED_NESTED_RESULT_MARK);
+            }
             for ch in result.chars() {
                 if ch == '"' {
                     parent_instruction.push('\\');
@@ -18030,7 +18038,7 @@ mod tests {
         assert_eq!(
             field.kind,
             RunFieldKind::If {
-                left: "The \"quoted\" region".to_string(),
+                left: "\u{e7a0}The \"quoted\" region".to_string(),
                 left_is_quoted: true,
                 operator: FieldComparisonOperator::Equal,
                 right: "The \"quoted\" region".to_string(),
@@ -18041,7 +18049,7 @@ mod tests {
         );
         assert_eq!(
             field.resolved_value.as_deref(),
-            Some("Quoted value matched")
+            Some("Quoted value rejected")
         );
     }
 
