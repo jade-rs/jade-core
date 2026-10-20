@@ -2122,6 +2122,7 @@ fn parse_spacing_definition(element: &BytesStart) -> Option<Spacing> {
     let mut spacing = Spacing::default();
     let mut line_raw: Option<f32> = None;
     let mut updated = false;
+    let (mut before_auto, mut after_auto) = (false, false);
 
     for attr in element.attributes().flatten() {
         match attr.key.as_ref() {
@@ -2162,8 +2163,18 @@ fn parse_spacing_definition(element: &BytesStart) -> Option<Spacing> {
                 });
                 updated = true;
             }
+            b"w:beforeAutospacing" => {
+                before_auto = crate::document::ooxml_on(&attr.value);
+            }
+            b"w:afterAutospacing" => {
+                after_auto = crate::document::ooxml_on(&attr.value);
+            }
             _ => {}
         }
+    }
+    if before_auto || after_auto {
+        spacing.apply_autospacing(before_auto, after_auto);
+        updated = true;
     }
 
     if let Some(raw) = line_raw {
@@ -2656,6 +2667,24 @@ mod tests {
         let resolved = styles.resolve_run_properties("Cs").expect("style");
         assert_eq!(resolved.font_size, Some(10.0));
         assert_eq!(resolved.font_size_complex, Some(20.0));
+    }
+
+    #[test]
+    fn auto_spacing_is_fourteen_points_whatever_the_authored_value() {
+        // Word's Normal (Web) after an HTML import: `w:before="100"` beside
+        // `w:beforeAutospacing="1"` is drawn 14pt, as the paragraph dialog's
+        // "auto" says.
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:styleId="Web"><w:pPr><w:spacing w:before="100" w:beforeAutospacing="1" w:after="100" w:afterAutospacing="0"/></w:pPr></w:style>
+</w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let spacing = styles
+            .resolve_paragraph_properties("Web")
+            .unwrap()
+            .spacing
+            .unwrap();
+        assert_eq!(spacing.before, Some(14.0));
+        assert_eq!(spacing.after, Some(5.0));
     }
 
     #[test]
