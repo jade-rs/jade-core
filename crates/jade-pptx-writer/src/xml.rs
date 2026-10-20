@@ -23,7 +23,7 @@ mod slides;
 pub(crate) use notes::{notes_snapshot, replace_notes_range, set_notes};
 mod text;
 pub(crate) use formatting::format_text_range;
-pub(crate) use slides::{edit_slides, SlideEdit};
+pub(crate) use slides::{copy_objects, edit_slides, SlideEdit};
 pub(crate) use text::{replace_text_range, text_snapshot};
 
 pub(crate) struct RunAnchor {

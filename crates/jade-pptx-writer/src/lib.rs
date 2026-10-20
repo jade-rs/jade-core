@@ -388,6 +388,67 @@ pub fn duplicate_shape(bytes: &[u8], slide: usize, id: u32) -> Result<(Vec<u8>, 
     jade_pptx_reader::read_deck(&result)?;
     Ok((result, new_id))
 }
+/// Copies top-level objects `ids` of slide `from` onto slide `to`, in front
+/// of its own objects, as PowerPoint pastes them: onto another slide where
+/// they were, onto their own slide offset as [`duplicate_shape`] does. Each
+/// object's relationships go with it — media shared, a chart's or diagram's
+/// parts copied. Returns the copies' ids, in order.
+pub fn copy_shapes(
+    bytes: &[u8],
+    from: usize,
+    ids: &[u32],
+    to: usize,
+) -> Result<(Vec<u8>, Vec<u32>)> {
+    if from == to {
+        let mut current = bytes.to_vec();
+        let mut copies = Vec::with_capacity(ids.len());
+        for &id in ids {
+            let (next, copy) = duplicate_shape(&current, from, id)?;
+            current = next;
+            copies.push(copy);
+        }
+        return Ok((current, copies));
+    }
+    let (_, from_part, source) = slide_xml(bytes, from)?;
+    let (mut package, to_part, into) = slide_xml(bytes, to)?;
+    // A placeholder placed by its layout keeps its place on a slide whose
+    // layout puts it elsewhere.
+    let deck = jade_pptx_reader::read_deck(bytes)?;
+    let placed: Vec<_> = ids
+        .iter()
+        .map(|&id| (id, inherited_shape_transform(&deck, from, id)))
+        .collect();
+    let (changed, copies) =
+        xml::copy_objects(&mut package, &from_part, &source, &placed, &to_part, &into)?;
+    package.replace(&to_part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok((result, copies))
+}
+
+/// Moves and sizes several objects of one slide, as one edit: what moving a
+/// selection of them does.
+pub fn set_shape_transforms(
+    bytes: &[u8],
+    slide: usize,
+    changes: &[(u32, jade_pptx_reader::Transform)],
+) -> Result<Vec<u8>> {
+    let mut current = bytes.to_vec();
+    for &(id, transform) in changes {
+        current = set_shape_transform(&current, slide, id, transform)?;
+    }
+    Ok(current)
+}
+
+/// Deletes several objects of one slide, as one edit.
+pub fn delete_shapes(bytes: &[u8], slide: usize, ids: &[u32]) -> Result<Vec<u8>> {
+    let mut current = bytes.to_vec();
+    for &id in ids {
+        current = delete_shape(&current, slide, id)?;
+    }
+    Ok(current)
+}
+
 pub fn delete_shape(bytes: &[u8], slide: usize, id: u32) -> Result<Vec<u8>> {
     shape_operation(bytes, slide, |xml| xml::delete_shape(xml, id))
 }
@@ -953,6 +1014,13 @@ impl EditSession {
         self.commit(next);
         Ok(new_id)
     }
+    /// Pastes objects copied from slide `from` onto slide `to`, as one step
+    /// of Undo: see [`copy_shapes`].
+    pub fn copy_shapes(&mut self, from: usize, ids: &[u32], to: usize) -> Result<Vec<u32>> {
+        let (next, copies) = copy_shapes(self.bytes(), from, ids, to)?;
+        self.commit(next);
+        Ok(copies)
+    }
     pub fn group_objects(&mut self, slide: usize, ids: &[u32]) -> Result<u32> {
         let (next, id) = group_objects(self.bytes(), slide, ids)?;
         self.commit(next);
@@ -1040,6 +1108,22 @@ impl EditSession {
         transform: jade_pptx_reader::Transform,
     ) -> Result<bool> {
         let next = set_shape_transform(self.bytes(), slide, id, transform)?;
+        Ok(self.commit(next))
+    }
+
+    /// Moves and sizes several objects of one slide, as one step of Undo.
+    pub fn set_shape_transforms(
+        &mut self,
+        slide: usize,
+        changes: &[(u32, jade_pptx_reader::Transform)],
+    ) -> Result<bool> {
+        let next = set_shape_transforms(self.bytes(), slide, changes)?;
+        Ok(self.commit(next))
+    }
+
+    /// Deletes several objects of one slide, as one step of Undo.
+    pub fn delete_shapes(&mut self, slide: usize, ids: &[u32]) -> Result<bool> {
+        let next = delete_shapes(self.bytes(), slide, ids)?;
         Ok(self.commit(next))
     }
 
