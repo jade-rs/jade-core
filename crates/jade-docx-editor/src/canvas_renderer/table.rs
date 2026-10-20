@@ -254,6 +254,10 @@ struct LineLayout {
     /// the text is drawn on that baseline, as in body paragraphs, instead of
     /// hanging from the line top in whatever face draws it.
     word_baseline_offset: Option<f64>,
+    /// The height a line holding an inline picture needs at least: the
+    /// picture stands on the baseline and the text's descent hangs below it.
+    /// Zero for a line of text only.
+    min_advance: f64,
 }
 
 impl LineLayout {
@@ -316,6 +320,41 @@ pub(super) struct StyledRunRange {
     ///
     /// 以前はここで捨てていたので、表の中の変更履歴に色が付かなかった。
     revision: Option<RevisionMark>,
+    /// An inline picture this run stands for (one `U+FFFC` in the cell text).
+    picture: Option<CellPicture>,
+}
+
+/// An inline picture in a table cell paragraph: the run that holds it and
+/// its model. Laid out as one inline object; the model text has no
+/// character for it, as in body paragraphs.
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct CellPicture {
+    run_index: usize,
+    image: Rc<RunImage>,
+}
+
+impl CellPicture {
+    /// The picture's model size as the line wrapper's inline object.
+    fn inline_object(&self) -> jade_docx_layout::line_wrap::InlineObject {
+        jade_docx_layout::line_wrap::InlineObject {
+            width: self.image.width_px.unwrap_or(1.0).max(1.0),
+            height: self.image.height_px.unwrap_or(1.0).max(1.0),
+        }
+    }
+}
+
+/// The picture an inline-image run lays out in a table cell, if any: a
+/// floating picture is not part of the cell's lines, and one without a size
+/// has nothing to reserve.
+fn cell_inline_picture(run: &Run, run_index: usize) -> Option<CellPicture> {
+    let image = run.image.as_ref()?;
+    (matches!(image.layout.kind, RunImageKind::Inline)
+        && image.width_px.is_some_and(|width| width > 0.0)
+        && image.height_px.is_some_and(|height| height > 0.0))
+    .then(|| CellPicture {
+        run_index,
+        image: Rc::new(image.clone()),
+    })
 }
 
 /// Paragraph representation within a table cell along with its line layouts.
@@ -357,9 +396,72 @@ struct TableNoteAnchor {
 }
 
 impl CellParagraph {
+    /// How far `line` advances: the paragraph's line, or more for a line
+    /// holding an inline picture.
+    fn line_advance(&self, line: &LineLayout) -> f64 {
+        self.line_height.max(line.min_advance)
+    }
+
+    /// The height of `lines` laid out in this paragraph.
+    fn lines_height(&self, lines: &[LineLayout]) -> f64 {
+        lines.iter().map(|line| self.line_advance(line)).sum()
+    }
+
+    /// Layout offsets of this paragraph's inline pictures, in order.
+    fn picture_offsets(&self) -> impl Iterator<Item = usize> + '_ {
+        self.styled_runs
+            .iter()
+            .filter(|run| run.picture.is_some())
+            .map(|run| run.start)
+    }
+
+    /// The model offset of layout offset `offset`: an inline picture has a
+    /// character in the layout text and none in the model.
+    fn model_offset(&self, offset: usize) -> usize {
+        let pictures = self
+            .picture_offsets()
+            .filter(|start| *start < offset)
+            .count();
+        offset.saturating_sub(pictures * CELL_PICTURE_CHAR.len_utf8())
+    }
+
+    /// The paragraph's model text: its layout text without its pictures.
+    fn model_text(&self) -> std::borrow::Cow<'_, str> {
+        let mut pictures = self.picture_offsets().peekable();
+        if pictures.peek().is_none() {
+            return std::borrow::Cow::Borrowed(&self.text);
+        }
+        let mut text = String::with_capacity(self.text.len());
+        let mut cursor = 0;
+        for start in pictures {
+            let start = start.min(self.text.len());
+            text.push_str(&self.text[cursor.min(start)..start]);
+            cursor = start + CELL_PICTURE_CHAR.len_utf8();
+        }
+        text.push_str(&self.text[cursor.min(self.text.len())..]);
+        std::borrow::Cow::Owned(text)
+    }
+
+    /// Moves selection fragments from layout to model offsets.
+    fn remap_selection_fragments(&self, fragments: &mut [SelectionFragmentLayout]) {
+        if self.picture_offsets().next().is_none() {
+            return;
+        }
+        for fragment in fragments {
+            fragment.start = self.model_offset(fragment.start);
+            fragment.end = self.model_offset(fragment.end);
+            let mut glyphs = fragment.glyphs.to_vec();
+            for glyph in &mut glyphs {
+                glyph.start = self.model_offset(glyph.start);
+                glyph.end = self.model_offset(glyph.end);
+            }
+            fragment.glyphs = glyphs.into();
+        }
+    }
+
     fn fragment(&self, range: Range<usize>, segment_start: usize) -> Self {
         let lines = self.lines[range].to_vec();
-        let height = lines.len() as f64 * self.line_height;
+        let height = self.lines_height(&lines);
         Self {
             text: self.text.clone(),
             is_continuation: self.is_continuation || segment_start > self.segment_start,
@@ -3009,12 +3111,12 @@ where
                     if !paragraph.is_continuation {
                         self.selection.reset_paragraph_registration(paragraph_index);
                         self.selection
-                            .append_paragraph_text(paragraph_index, &paragraph.text);
+                            .append_paragraph_text(paragraph_index, &paragraph.model_text());
                     } else {
                         self.selection.continue_paragraph_registration(
                             paragraph_index,
-                            &paragraph.text,
-                            paragraph.segment_start,
+                            &paragraph.model_text(),
+                            paragraph.model_offset(paragraph.segment_start),
                         );
                     }
 
@@ -3138,6 +3240,7 @@ where
                         text_y += line_height;
                     } else {
                         for line in paragraph.lines.iter() {
+                            let line_height = paragraph.line_advance(line);
                             let line_top = text_y;
                             let text_x = line.aligned_start_x(
                                 x_start + pad_left,
@@ -3171,6 +3274,18 @@ where
                                         &decorations,
                                     )?;
                                 }
+                            }
+                            if draw_enabled
+                                && !matches!(cell.text_direction, Some(TextDirection::LrTbV))
+                            {
+                                self.draw_cell_line_pictures(
+                                    paragraph,
+                                    line,
+                                    text_x,
+                                    line_top,
+                                    line_height,
+                                    paragraph_index,
+                                )?;
                             }
 
                             if draw_enabled {
@@ -3223,7 +3338,11 @@ where
                                         text_x + line.visual_width().max(1.0);
                                 }
                             }
+                            paragraph.remap_selection_fragments(&mut fragments);
                             selection_line.fragments = fragments.into();
+                            selection_line.break_range = line.break_range.map(|(start, end)| {
+                                (paragraph.model_offset(start), paragraph.model_offset(end))
+                            });
 
                             if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full
                                 && cell.text_direction == Some(TextDirection::LrTbV)
@@ -3967,6 +4086,7 @@ where
                 // selection index. The template remains the editable paragraph.
                 let capture_paragraph = self.auxiliary_story_debug_lines.len();
                 for (line_index, line) in paragraph.lines.iter().enumerate() {
+                    let line_height = paragraph.line_advance(line);
                     let line_top = text_y;
                     let text_x = line.aligned_start_x(
                         x_start + pad_left,
@@ -3999,6 +4119,16 @@ where
                                 &repeat_decorations,
                             )?;
                         }
+                    }
+                    if !matches!(cell.text_direction, Some(TextDirection::LrTbV)) {
+                        self.draw_cell_line_pictures(
+                            paragraph,
+                            line,
+                            text_x,
+                            line_top,
+                            line_height,
+                            capture_paragraph,
+                        )?;
                     }
                     if self.auxiliary_story_capture_mode.enabled()
                         && !line.text.is_empty()
@@ -4667,6 +4797,60 @@ where
             .baseline_shift_px
     }
 
+    /// Paints the inline pictures on `line`, standing on its baseline at
+    /// their layout positions.
+    fn draw_cell_line_pictures(
+        &mut self,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        text_x: f64,
+        line_top: f64,
+        line_height: f64,
+        paragraph_index: usize,
+    ) -> Result<(), JsValue> {
+        if line.min_advance <= 0.0 {
+            return Ok(());
+        }
+        let baseline = line_top + line.word_baseline_offset.unwrap_or(line_height);
+        for run in &paragraph.styled_runs {
+            let Some(picture) = run.picture.as_ref() else {
+                continue;
+            };
+            let Some(glyph) = line.glyphs.iter().find(|glyph| glyph.start == run.start) else {
+                continue;
+            };
+            let object = picture.inline_object();
+            let image = picture.image.as_ref();
+            let draw_spec = ImageDrawSpec {
+                x: text_x + glyph.x,
+                y: baseline - object.height,
+                width: object.width,
+                height: object.height,
+                rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
+                flip_horizontal: image.layout.flip_horizontal,
+                flip_vertical: image.layout.flip_vertical,
+                crop: image.crop,
+                paragraph_index,
+                run_index: picture.run_index,
+            };
+            if image.data_uri.is_some() {
+                self.draw_image_element(image, draw_spec)?;
+            } else if let Some(group) = image.shape_group.as_ref() {
+                self.draw_shape_group(group, draw_spec)?;
+            } else if let Some(label) = image.placeholder_label.as_deref() {
+                self.draw_image_placeholder(
+                    label,
+                    draw_spec.x,
+                    draw_spec.y,
+                    draw_spec.width,
+                    draw_spec.height,
+                    draw_spec.rotation_deg,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
     fn table_line_selection_fragments(
         &self,
         paragraph: &CellParagraph,
@@ -4749,6 +4933,10 @@ where
             let range = span
                 .run_index
                 .and_then(|index| paragraph.styled_runs.get(index));
+            // `draw_cell_line_pictures` paints a picture's run.
+            if range.is_some_and(|range| range.picture.is_some()) {
+                continue;
+            }
             let run_props = range.and_then(|range| range.properties.as_ref());
             let revision = range.and_then(|range| range.revision.as_ref());
             // Draw at the layout's glyph positions: auto-spacing puts gaps
@@ -5109,6 +5297,7 @@ where
         let draw_enabled = self.should_draw_current_page_for_render();
         let lines = if paragraph.lines.is_empty() {
             vec![LineLayout {
+                min_advance: 0.0,
                 left_inset: 0.0,
                 right_inset: 0.0,
                 text: String::new(),
@@ -8348,10 +8537,16 @@ fn split_cell_paragraph(
     {
         return None;
     }
-    let mut fits = (((available - paragraph.spacing_before).max(0.0) + ROW_SPLIT_EPSILON)
-        / paragraph.line_height)
-        .floor() as usize;
-    fits = fits.min(paragraph.lines.len());
+    let room = (available - paragraph.spacing_before).max(0.0) + ROW_SPLIT_EPSILON;
+    let mut used = 0.0;
+    let mut fits = paragraph
+        .lines
+        .iter()
+        .take_while(|line| {
+            used += paragraph.line_advance(line);
+            used <= room
+        })
+        .count();
     if paragraph.widow_control {
         use jade_docx_layout::line_metrics::{resolve_widow_orphan_decision, WidowOrphanDecision};
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
@@ -9934,6 +10129,7 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                             .iter()
                             .filter(|run| run.end > start)
                             .map(|run| StyledRunRange {
+                                picture: None,
                                 start: run.start.saturating_sub(start),
                                 end: run.end - start,
                                 properties: run.properties.clone(),
@@ -9965,7 +10161,7 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                     paragraph.segment_start = start;
                     paragraph.is_continuation = true;
                     paragraph.spacing_before = 0.0;
-                    paragraph.height = paragraph.lines.len() as f64 * paragraph.line_height;
+                    paragraph.height = paragraph.lines_height(&paragraph.lines);
                     block.height = paragraph.height + paragraph.spacing_after;
                 }
             }
@@ -10860,7 +11056,7 @@ fn collect_paragraph_text(
     let mut note_anchors = Vec::new();
     let mut text = String::new();
     let mut styled_runs = Vec::new();
-    for run in &paragraph.runs {
+    for (run_index, run) in paragraph.runs.iter().enumerate() {
         if !render_changes {
             let hidden = match run.revision.as_ref().map(|mark| &mark.kind) {
                 Some(RevisionKind::Inserted | RevisionKind::MovedTo) => render_original,
@@ -10870,6 +11066,18 @@ fn collect_paragraph_text(
             if hidden {
                 continue;
             }
+        }
+        if let Some(picture) = cell_inline_picture(run, run_index) {
+            let start = text.len();
+            text.push(CELL_PICTURE_CHAR);
+            styled_runs.push(StyledRunRange {
+                start,
+                end: text.len(),
+                properties: run.properties.clone(),
+                revision: run.revision.clone(),
+                picture: Some(picture),
+            });
+            continue;
         }
         let marker = note_markers.marker_text_for_run(run);
         let field_text = run.field.as_ref().and_then(field_value_for);
@@ -10887,6 +11095,7 @@ fn collect_paragraph_text(
             }
             let end = text.len();
             styled_runs.push(StyledRunRange {
+                picture: None,
                 start,
                 end,
                 properties: run.properties.clone(),
@@ -10933,6 +11142,7 @@ fn collect_paragraph_text(
             text.push_str(&marker);
             let end = text.len();
             styled_runs.push(StyledRunRange {
+                picture: None,
                 start,
                 end,
                 properties: Some(properties),
@@ -10942,6 +11152,10 @@ fn collect_paragraph_text(
     }
     (text, styled_runs, note_anchors)
 }
+
+/// The character an inline picture takes in a table cell's layout text, as
+/// in body paragraphs. The model text has none.
+const CELL_PICTURE_CHAR: char = '\u{fffc}';
 
 fn cell_fit_text_enabled(cell: &TableCell) -> bool {
     cell.style
@@ -11002,6 +11216,7 @@ fn fit_text_run_ranges(
     let ratio = fitted_target / measured_width;
     let source = if styled_runs.is_empty() {
         vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: text.len(),
             properties: None,
@@ -11058,6 +11273,7 @@ fn mac_cell_fit_text_run_ranges(
     };
     let source = if styled_runs.is_empty() {
         vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: text.len(),
             properties: None,
@@ -11345,6 +11561,34 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         cursor += width;
     }
 
+    // An inline picture stands on the baseline: the line's baseline sits
+    // the picture's height (or the text's ascent, when taller) below its top
+    // and the text's descent hangs below. Word for Mac draws a cell line of
+    // only an 89.1pt picture exactly 89.1pt tall (`table-object-edge-cases`).
+    let object_height = line
+        .clusters
+        .iter()
+        .filter_map(|cluster| cluster.inline_object)
+        .map(|object| object.height)
+        .fold(0.0_f64, f64::max);
+    let (word_baseline_offset, min_advance) = if object_height > 0.0 {
+        let (text_ascent, text_descent) = line
+            .clusters
+            .iter()
+            .filter(|cluster| cluster.inline_object.is_none() && !cluster.is_whitespace)
+            .filter_map(|cluster| cluster.layout.as_ref())
+            .fold((0.0_f64, 0.0_f64), |(ascent, descent), layout| {
+                (
+                    ascent.max(layout.font_ascent.unwrap_or(0.0)),
+                    descent.max(layout.font_descent.unwrap_or(0.0)),
+                )
+            });
+        let baseline = object_height.max(text_ascent);
+        (Some(baseline), baseline + text_descent)
+    } else {
+        (None, 0.0)
+    };
+
     LineLayout {
         left_inset: 0.0,
         right_inset: 0.0,
@@ -11356,7 +11600,8 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         break_kind: line.break_kind,
         break_range: line.break_range,
         break_properties: line.break_properties.clone(),
-        word_baseline_offset: None,
+        word_baseline_offset,
+        min_advance,
     }
 }
 
@@ -11400,7 +11645,7 @@ fn styled_run_styles(text: &str, styled_runs: &[StyledRunRange]) -> Vec<RunStyle
                 properties: run.properties.clone().map(Rc::new),
                 revision: run.revision.clone(),
                 hyperlink: None,
-                inline_object: None,
+                inline_object: run.picture.as_ref().map(CellPicture::inline_object),
             })
         })
         .collect::<Vec<_>>();
@@ -11584,6 +11829,7 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     paragraph.styled_runs = run_styles
         .iter()
         .map(|run| StyledRunRange {
+            picture: None,
             start: run.start,
             end: run.end,
             properties: run.properties.as_deref().cloned(),
@@ -11758,7 +12004,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             let mut line = build_line_layout_from_wrapped_line(wrapped);
             line.left_inset = paragraph_style.line_indent(index);
             line.right_inset = paragraph_style.right_indent;
-            if paragraph_style.word_east_asian_font_line_box {
+            if paragraph_style.word_east_asian_font_line_box && line.min_advance <= 0.0 {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_grid_baseline_offset(
                         wrapped,
@@ -11772,6 +12018,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
 
     if lines.is_empty() {
         lines.push(LineLayout {
+            min_advance: 0.0,
             left_inset: paragraph_style.line_indent(0),
             right_inset: paragraph_style.right_indent,
             text: String::new(),
@@ -11799,7 +12046,11 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         max_line_width = max_line_width.max(line.visual_width);
     }
 
-    let line_count = lines.len().max(1) as f64;
+    let height = lines
+        .iter()
+        .map(|line| line_height.max(line.min_advance))
+        .sum::<f64>()
+        .max(line_height);
 
     CellParagraph {
         text: text.to_string(),
@@ -11810,7 +12061,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines: Rc::new(lines),
         styled_runs: Vec::new(),
         max_line_width: max_line_width.max(line_height),
-        height: line_count * line_height,
+        height,
         line_height,
         vertical_layout: None,
         ..CellParagraph::default()
@@ -11836,6 +12087,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
         spacing_after: 0.0,
         align: None,
         lines: Rc::new(vec![LineLayout {
+            min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: String::new(),
@@ -13508,6 +13760,112 @@ mod tests {
     ///
     /// ここで落としていたので、XML に `w:ins` / `w:del` が入っていても表の中
     /// だけ色が付かなかった。描く側はこの値を見て帯を敷く。
+    fn picture_run(width: f64, height: f64) -> Run {
+        Run {
+            text: String::new(),
+            properties: None,
+            image: Some(RunImage {
+                width_px: Some(width),
+                height_px: Some(height),
+                layout: RunImageLayout {
+                    kind: RunImageKind::Inline,
+                    ..RunImageLayout::default()
+                },
+                ..RunImage::default()
+            }),
+            text_box: None,
+            math: None,
+            field: None,
+            hyperlink: None,
+            node_id: None,
+            text_node_id: None,
+            revision_node_id: None,
+            comment_reference_ids: Vec::new(),
+            footnote_reference_ids: Vec::new(),
+            endnote_reference_ids: Vec::new(),
+            note_separator: None,
+            has_footnote_ref: false,
+            has_endnote_ref: false,
+            revision: None,
+        }
+    }
+
+    /// Lays out `runs` as one table cell paragraph 500px wide on 16px lines.
+    fn cell_paragraph_with_runs(runs: Vec<Run>) -> CellParagraph {
+        let paragraph = Paragraph {
+            runs,
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let (text, styled_runs, _) =
+            collect_paragraph_text(&paragraph, true, false, &NoteMarkers::default(), &|_| None);
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let style = ParagraphStyle::default();
+        let lines = context
+            .wrap_horizontal(
+                &text,
+                &styled_run_styles(&text, &styled_runs),
+                &style,
+                0,
+                500.0,
+            )
+            .unwrap();
+        let mut paragraph =
+            horizontal_cell_paragraph_from_wrapped_lines(&text, 16.0, &style, 0, &lines);
+        paragraph.styled_runs = styled_runs;
+        paragraph
+    }
+
+    #[test]
+    fn a_cell_picture_stands_on_the_baseline_of_a_line_as_tall_as_it() {
+        // table-object-edge-cases: Word for Mac draws a cell line holding only
+        // an 89.1pt picture 89.1pt tall, the picture's foot on the baseline.
+        let paragraph = cell_paragraph_with_runs(vec![picture_run(118.8, 118.8)]);
+        assert_eq!(paragraph.text, "\u{fffc}");
+        let line = &paragraph.lines[0];
+        assert_eq!(line.min_advance, 118.8);
+        assert_eq!(line.word_baseline_offset, Some(118.8));
+        assert_eq!(paragraph.line_advance(line), 118.8);
+        assert_eq!(paragraph.height, 118.8);
+        assert!((line.visual_width - 118.8).abs() < 1e-9);
+        // A short picture keeps the paragraph's own line.
+        let short = cell_paragraph_with_runs(vec![picture_run(10.0, 8.0)]);
+        assert_eq!(short.height, 16.0);
+    }
+
+    #[test]
+    fn a_cell_picture_has_no_model_character() {
+        let mut text = picture_run(0.0, 0.0);
+        text.image = None;
+        text.text = "AB".to_string();
+        let paragraph = cell_paragraph_with_runs(vec![picture_run(40.0, 30.0), text]);
+        assert_eq!(paragraph.text, "\u{fffc}AB");
+        assert_eq!(paragraph.model_text(), "AB");
+        assert_eq!(paragraph.model_offset(0), 0);
+        assert_eq!(paragraph.model_offset(3), 0);
+        assert_eq!(paragraph.model_offset(5), 2);
+        // The text's descent hangs below the picture.
+        let line = &paragraph.lines[0];
+        assert_eq!(
+            line.word_baseline_offset.map(|baseline| baseline >= 30.0),
+            Some(true)
+        );
+        assert!(line.min_advance >= 30.0);
+        let mut fragments = vec![SelectionFragmentLayout {
+            baseline_shift_px: 0.0,
+            start: 3,
+            end: 5,
+            x: 0.0,
+            width: 14.0,
+            glyphs: Rc::from([]),
+        }];
+        paragraph.remap_selection_fragments(&mut fragments);
+        assert_eq!((fragments[0].start, fragments[0].end), (0, 2));
+    }
+
     #[test]
     fn collect_paragraph_text_appends_superscript_note_markers() {
         let mut reference = Run {
@@ -13957,6 +14315,7 @@ mod tests {
         // of flattening the cell into a synthetic plain-text run.
         let styled_runs = vec![
             StyledRunRange {
+                picture: None,
                 start: 0,
                 end: 2,
                 properties: Some(RunProperties {
@@ -13966,6 +14325,7 @@ mod tests {
                 revision: None,
             },
             StyledRunRange {
+                picture: None,
                 start: 2,
                 end: 4,
                 properties: Some(RunProperties {
@@ -13992,6 +14352,7 @@ mod tests {
     fn mac_cell_fit_text_groups_runs_and_condenses_by_whole_percent() {
         let styled_runs = vec![
             StyledRunRange {
+                picture: None,
                 start: 0,
                 end: 2,
                 properties: Some(RunProperties {
@@ -14001,6 +14362,7 @@ mod tests {
                 revision: None,
             },
             StyledRunRange {
+                picture: None,
                 start: 2,
                 end: 4,
                 properties: None,
@@ -14055,6 +14417,7 @@ mod tests {
         let text = "MIXED BOLD ITALIC CELL FIT TEXT";
         let styled_runs = vec![
             StyledRunRange {
+                picture: None,
                 start: 0,
                 end: 11,
                 properties: Some(RunProperties {
@@ -14064,6 +14427,7 @@ mod tests {
                 revision: None,
             },
             StyledRunRange {
+                picture: None,
                 start: 11,
                 end: text.len(),
                 properties: Some(RunProperties {
@@ -14162,12 +14526,14 @@ mod tests {
     fn line_style_spans_preserves_unstyled_gaps() {
         let styled_runs = vec![
             StyledRunRange {
+                picture: None,
                 start: 0,
                 end: 2,
                 properties: None,
                 revision: None,
             },
             StyledRunRange {
+                picture: None,
                 start: 4,
                 end: 6,
                 properties: None,
@@ -14194,6 +14560,7 @@ mod tests {
     #[test]
     fn line_range_width_handles_partial_overlap() {
         let line = LineLayout {
+            min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),
@@ -14231,6 +14598,7 @@ mod tests {
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
         };
         let line = LineLayout {
+            min_advance: 0.0,
             text: "AB ".into(),
             visual_width: 23.0,
             left_inset: 0.0,
@@ -14283,6 +14651,7 @@ mod tests {
     #[test]
     fn line_layout_visual_end_x_uses_visual_width() {
         let line = LineLayout {
+            min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),
@@ -14443,6 +14812,7 @@ mod tests {
         .unwrap();
         let text = "こんにちは";
         let runs = vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: text.len(),
             properties: Some(RunProperties {
@@ -14536,6 +14906,7 @@ mod tests {
         let painter = RecordingPainter::with_width_per_char(10.0);
         let text = "Hello";
         let runs = vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: text.len(),
             revision: None,
@@ -14740,6 +15111,7 @@ mod tests {
         .unwrap();
         let text = "Aあ";
         let runs = vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: text.len(),
             revision: None,
@@ -16711,12 +17083,14 @@ mod tests {
 
         let mut runs = vec![
             StyledRunRange {
+                picture: None,
                 start: 0,
                 end: 1,
                 properties: None,
                 revision: None,
             },
             StyledRunRange {
+                picture: None,
                 start: 1,
                 end: 2,
                 properties: Some(RunProperties {
@@ -16736,6 +17110,7 @@ mod tests {
             Some(false)
         );
         let mut body_runs = vec![StyledRunRange {
+            picture: None,
             start: 0,
             end: 1,
             properties: None,
