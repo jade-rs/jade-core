@@ -3009,17 +3009,20 @@ pub fn apply_headless_commands_with_executor_to_document(
                     revision_ids.as_deref(),
                 );
                 let targets = revision_targets.as_ref().map(|targets| {
+                    let groups = revision_groups(word_doc);
                     let mut set = RevisionTargets::default();
                     for target in targets {
                         if target.paragraph_mark {
                             set.add_paragraph_mark(target.paragraph, target.id.clone());
                         } else {
-                            set.add_run(
-                                target.paragraph,
-                                target.start_offset,
-                                target.end_offset,
-                                target.id.clone(),
-                            );
+                            for id in revision_target_run_ids(&groups, target) {
+                                set.add_run(
+                                    target.paragraph,
+                                    target.start_offset,
+                                    target.end_offset,
+                                    id,
+                                );
+                            }
                         }
                     }
                     set
@@ -5928,18 +5931,48 @@ fn revision_id_group(word_doc: &WordDocument, id: &str) -> Vec<String> {
     revision_groups(word_doc)
         .into_iter()
         .map(|(_, ids)| ids)
-        .find(|ids| ids.iter().any(|candidate| candidate == id))
+        .find(|ids| ids.iter().any(|candidate| candidate.as_deref() == Some(id)))
+        .map(|ids| ids.into_iter().flatten().collect())
         .unwrap_or_else(|| vec![id.to_string()])
 }
 
+/// The `w:id`s a run target decides inside its span: its own, and every
+/// piece of a change listed there under that id. A word typed with changes
+/// tracked is one listed change stored as one `w:ins` and `w:id` a keystroke,
+/// so the target the list hands out names only the first keystroke's id.
+fn revision_target_run_ids(
+    groups: &[(HeadlessRevisionSnapshot, Vec<Option<String>>)],
+    target: &HeadlessRevisionTarget,
+) -> Vec<Option<String>> {
+    let mut ids = vec![target.id.clone()];
+    for (listed, pieces) in groups {
+        if !listed.paragraph_mark
+            && listed.paragraph == target.paragraph
+            && target.start_offset <= listed.start_offset
+            && listed.end_offset <= target.end_offset
+            && listed.id == target.id
+        {
+            for piece in pieces {
+                if !ids.contains(piece) {
+                    ids.push(piece.clone());
+                }
+            }
+        }
+    }
+    ids
+}
+
 /// The tracked changes as Word's Reviewing pane lists them, each with the
-/// `w:id`s of the elements it spans. Adjacent text with the same kind, author
-/// and date is one change even when its pieces carry different ids: Word
-/// gives every `w:ins`/`w:del` element its own id, so a change split by a
-/// comment boundary or by formatting part of it arrives in several elements,
-/// and jade's own export renumbers such pieces the same way.
-fn revision_groups(word_doc: &WordDocument) -> Vec<(HeadlessRevisionSnapshot, Vec<String>)> {
-    let mut revisions: Vec<(HeadlessRevisionSnapshot, Vec<String>)> = Vec::new();
+/// `w:id`s of the elements it spans (`None` for an element without one).
+/// Adjacent text with the same kind, author and date is one change even when
+/// its pieces carry different ids: Word gives every `w:ins`/`w:del` element
+/// its own id, so a change split by a comment boundary or by formatting part
+/// of it arrives in several elements, jade's own export renumbers such pieces
+/// the same way, and typing with changes tracked stores one a keystroke.
+fn revision_groups(
+    word_doc: &WordDocument,
+) -> Vec<(HeadlessRevisionSnapshot, Vec<Option<String>>)> {
+    let mut revisions: Vec<(HeadlessRevisionSnapshot, Vec<Option<String>>)> = Vec::new();
     for paragraph_index in 0..word_doc.paragraph_count() {
         let Some(paragraph) = word_doc.paragraph(paragraph_index) else {
             continue;
@@ -5971,10 +6004,8 @@ fn revision_groups(word_doc: &WordDocument) -> Vec<(HeadlessRevisionSnapshot, Ve
                 {
                     last.end_offset = run_end;
                     last.text.push_str(&run.text);
-                    if let Some(id) = &mark.id {
-                        if !ids.contains(id) {
-                            ids.push(id.clone());
-                        }
+                    if !ids.contains(&mark.id) {
+                        ids.push(mark.id.clone());
                     }
                     continue;
                 }
@@ -5993,7 +6024,7 @@ fn revision_groups(word_doc: &WordDocument) -> Vec<(HeadlessRevisionSnapshot, Ve
                     text: run.text.clone(),
                     paragraph_mark: false,
                 },
-                mark.id.iter().cloned().collect(),
+                vec![mark.id.clone()],
             ));
         }
         if let Some(element) = word_doc
@@ -6006,7 +6037,7 @@ fn revision_groups(word_doc: &WordDocument) -> Vec<(HeadlessRevisionSnapshot, Ve
                 paragraph_mark_revision_snapshots(element, paragraph_index, offset)
                     .into_iter()
                     .map(|snapshot| {
-                        let ids = snapshot.id.iter().cloned().collect();
+                        let ids = vec![snapshot.id.clone()];
                         (snapshot, ids)
                     }),
             );
@@ -7164,6 +7195,101 @@ mod tests {
             "accepting the listed id accepts every piece"
         );
         assert_eq!(paragraph_text(&word_doc, 0), "甲は、乙に対し通知する。");
+    }
+
+    #[test]
+    fn a_word_typed_while_tracking_is_rejected_by_its_listed_target() {
+        // Typing records each keystroke as its own `w:ins` with its own id.
+        // The panel lists the word as one change; rejecting that change by
+        // the target the panel built from it has to take every keystroke,
+        // not just the first one.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hello.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let original = paragraph_text(&word_doc, 0);
+        let mut executor = CommandExecutor::new();
+        let mut apply = |word_doc: &mut WordDocument, command: HeadlessCommand| {
+            apply_headless_commands_with_executor_to_document(
+                word_doc,
+                &mut executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("command applies");
+        };
+        apply(
+            &mut word_doc,
+            HeadlessCommand::StartChangeTracking {
+                author: Some("jade".to_string()),
+                initials: None,
+                date: Some("2026-10-20T00:00:00Z".to_string()),
+                date_utc: None,
+            },
+        );
+        for (offset, key) in "new ".chars().enumerate() {
+            apply(
+                &mut word_doc,
+                HeadlessCommand::InsertText {
+                    paragraph: 0,
+                    offset,
+                    text: key.to_string(),
+                },
+            );
+        }
+        assert_eq!(paragraph_text(&word_doc, 0), format!("new {original}"));
+        let ids = word_doc
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter_map(|run| run.revision.as_ref())
+            .filter_map(|revision| revision.id.clone())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(ids.len(), 4, "one w:ins and w:id a keystroke");
+
+        let query = HeadlessQueryRequest {
+            queries: vec![HeadlessQuery::Revisions {
+                start_revision: 0,
+                max_revisions: 10,
+                kind: None,
+                author: None,
+                date_from: None,
+                date_to: None,
+            }],
+        };
+        let response =
+            execute_headless_queries_on_document(&word_doc, &query).expect("query succeeds");
+        let HeadlessQueryResult::Revisions { revisions, .. } = &response.results[0] else {
+            panic!("expected revisions result")
+        };
+        let listed = revisions.iter().collect::<Vec<_>>();
+        assert_eq!(
+            listed
+                .iter()
+                .map(|revision| revision.text.as_str())
+                .collect::<String>(),
+            "new "
+        );
+
+        apply(
+            &mut word_doc,
+            HeadlessCommand::RejectRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: None,
+                revision_ids: None,
+                revision_targets: Some(revision_targets_for(&listed)),
+            },
+        );
+        assert_eq!(paragraph_text(&word_doc, 0), original);
+        assert!(revision_snapshots(&word_doc).is_empty());
     }
 
     #[test]
