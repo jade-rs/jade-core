@@ -368,12 +368,14 @@ pub fn word_automatic_note_separator_advance_px(
     (size_pt.is_finite() && size_pt > 0.0).then_some(f64::from(size_pt) * 96.0 / 72.0 * 0.5)
 }
 
-/// Word for Mac gives an ASCII space next to an inline object half an em
-/// when `w:balanceSingleByteDoubleByteWidth` is on: 5.25pt at 10.5pt and 10pt
-/// at 20pt, in Yu Mincho and Century alike, before or after the picture
-/// (image-inline). Spaces away from the object, and every space without the
-/// setting, keep their font advance.
-pub fn word_object_adjacent_space_advance_px(
+/// Word for Mac gives an ASCII space half an em when
+/// `w:balanceSingleByteDoubleByteWidth` is on and either neighbour is an East
+/// Asian character, an inline object or another space: 5.25pt at 10.5pt and
+/// 10pt at 20pt, in Yu Mincho, Century and Bookman Old Style alike (math's
+/// `2. 数式`, image-inline, probe `object-spaces`). A space between two
+/// single-byte characters (`Hello World`, `A ,数`) keeps its font advance,
+/// as does every space without the setting (trust-beneficiary-sale-keep-next).
+pub fn word_balanced_space_advance_px(
     platform: WordLayoutPlatform,
     font_descriptor: &str,
 ) -> Option<f64> {
