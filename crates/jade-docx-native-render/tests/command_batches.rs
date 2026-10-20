@@ -5,14 +5,17 @@
 mod common;
 use common::{open_contract, paragraph_on_first_page};
 use jade_docx_editor::commands::insert_image::InsertImageCommand;
+use jade_docx_editor::commands::insert_text::InsertTextCommand;
 use jade_docx_headless_api::HeadlessCommand;
 use jade_selection::{SelectionRange, TextPosition};
+use std::rc::Rc;
 
 #[test]
 fn a_batch_of_commands_undoes_as_one() {
     let mut document = open_contract();
     let paragraph = paragraph_on_first_page(&mut document);
     let before = document.paragraph_text(paragraph).unwrap();
+    let allocation = Rc::as_ptr(document.word_document().document.as_ref().unwrap());
 
     document
         .apply_commands(
@@ -39,6 +42,11 @@ fn a_batch_of_commands_undoes_as_one() {
         )
         .unwrap();
     assert_eq!(
+        Rc::as_ptr(document.word_document().document.as_ref().unwrap()),
+        allocation,
+        "a batch must edit without copying the whole document"
+    );
+    assert_eq!(
         document.paragraph_text(paragraph).unwrap(),
         format!("one two {before}")
     );
@@ -62,6 +70,7 @@ fn a_failed_batch_leaves_the_document_as_it_was() {
     let mut document = open_contract();
     let paragraph = paragraph_on_first_page(&mut document);
     let before = document.paragraph_text(paragraph).unwrap();
+    let allocation = Rc::as_ptr(document.word_document().document.as_ref().unwrap());
     let result = document.apply_commands(
         vec![
             HeadlessCommand::InsertText {
@@ -78,6 +87,11 @@ fn a_failed_batch_leaves_the_document_as_it_was() {
         false,
     );
     assert!(result.is_err());
+    assert_eq!(
+        Rc::as_ptr(document.word_document().document.as_ref().unwrap()),
+        allocation,
+        "a failed batch and its rollback must stay in place"
+    );
     assert_eq!(document.paragraph_text(paragraph).unwrap(), before);
     assert!(!document.can_undo());
 }
@@ -172,4 +186,36 @@ fn a_page_number_goes_into_the_footer_as_one_undo_step() {
         .clone()
         .remove_page_numbers()
         .is_ok());
+}
+
+#[test]
+fn a_shell_text_command_edits_in_place() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    let before = document.paragraph_text(paragraph).unwrap();
+    let allocation = Rc::as_ptr(document.word_document().document.as_ref().unwrap());
+    let caret = SelectionRange::collapsed(TextPosition::new(paragraph, 0));
+    document
+        .execute_command(
+            Box::new(InsertTextCommand::new(caret, "added ".to_string(), None)),
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        Rc::as_ptr(document.word_document().document.as_ref().unwrap()),
+        allocation,
+        "a shell command must edit without copying the whole document"
+    );
+    assert_eq!(
+        document.paragraph_text(paragraph).unwrap(),
+        format!("added {before}")
+    );
+    document.undo().unwrap();
+    assert_eq!(document.paragraph_text(paragraph).unwrap(), before);
+    assert!(!document.can_undo());
+    document.redo().unwrap();
+    assert_eq!(
+        document.paragraph_text(paragraph).unwrap(),
+        format!("added {before}")
+    );
 }
