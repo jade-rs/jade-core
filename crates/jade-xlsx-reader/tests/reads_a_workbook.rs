@@ -587,3 +587,34 @@ fn a_formula_translates_for_a_copy_the_way_a_spreadsheet_pastes_one() {
         "#REF!+A1"
     );
 }
+
+#[test]
+fn a_formula_transposes_with_the_range_it_was_copied_in() {
+    // A1:B1 copied, B1 holding =A1*2, pasted transposed at D1: B1 lands on
+    // D2, and its reference to the cell on its left now names the cell
+    // above it, where A1 landed.
+    use jade_xlsx_reader::{transpose_formula, CellRef};
+    let at = |text: &str| CellRef::parse(text).expect("a reference");
+
+    assert_eq!(transpose_formula("A1*2", at("B1"), at("D2")), "D1*2");
+    // A range's corners turn too, so it still covers the same cells.
+    assert_eq!(
+        transpose_formula("SUM(A1:C2)", at("D1"), at("A4")),
+        "SUM(A1:B3)"
+    );
+    assert_eq!(
+        transpose_formula("SUM(B2:C3)", at("A1"), at("A1")),
+        "SUM(B2:C3)",
+        "a square offset reads the same turned"
+    );
+    assert_eq!(transpose_formula("C1+A2", at("B1"), at("F5")), "F6+G4");
+    // An absolute axis keeps the reference an ordinary paste's.
+    assert_eq!(
+        transpose_formula("$A$1+$A2", at("B1"), at("D2")),
+        "$A$1+$A3"
+    );
+    assert_eq!(
+        transpose_formula(r#""A1"&Notes!A1"#, at("B1"), at("D2")),
+        r#""A1"&Notes!D1"#
+    );
+}
