@@ -761,13 +761,14 @@ struct HorizontalBorderBands {
 
 impl HorizontalBorderBands {
     fn for_row(cells: &[PreparedCell], reserve_bottom: bool) -> Self {
+        // The widest rule along the edge, and whether its cells disagree.
         let extent = |top: bool| {
             let mut minimum = f64::INFINITY;
             let mut maximum = 0.0_f64;
             let mut replaced = false;
             for cell in cells.iter().filter(|cell| !cell.skip_render) {
                 if cell.cell_spacing > f64::EPSILON {
-                    return 0.0;
+                    return (0.0, false);
                 }
                 let (fallback, segments) = if top {
                     (&cell.border_top, &cell.border_top_segments)
@@ -790,18 +791,29 @@ impl HorizontalBorderBands {
                     }
                 }
             }
-            if replaced || maximum - minimum > f64::EPSILON {
-                maximum
-            } else {
-                0.0
-            }
+            (maximum, replaced || maximum - minimum > f64::EPSILON)
         };
-        let top = extent(true);
-        let bottom = extent(false);
+        let band = |(width, nonuniform): (f64, bool)| if nonuniform { width } else { 0.0 };
+        let top = band(extent(true));
+        let (bottom_width, bottom_nonuniform) = extent(false);
+        let bottom = band((bottom_width, bottom_nonuniform));
+        // Word for Mac aligns a cell's content within the row above the
+        // border the row reserves below it, even when every cell draws the
+        // same rule there: a centred line does not sink by half of a 0.5pt
+        // rule (`scroll-offset-repro`).
+        let content_bottom = if !reserve_bottom {
+            0.0
+        } else if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        {
+            bottom_width
+        } else {
+            bottom
+        };
         Self {
             top,
             bottom,
-            content_bottom: if reserve_bottom { bottom } else { 0.0 },
+            content_bottom,
         }
     }
 }
@@ -15678,6 +15690,28 @@ mod tests {
             (0.0, 0.0, 0.0)
         );
         assert_eq!(std::mem::size_of::<HorizontalBorderBands>(), 24);
+    }
+
+    #[test]
+    fn mac_aligns_cell_content_above_a_uniform_bottom_rule() {
+        // scroll-offset-repro's centred rows under 0.5pt rules: Word for Mac
+        // keeps the reserved bottom rule out of the alignment slack.
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let mut cells = vec![
+            make_prepared_cell(0, 1, None, false),
+            make_prepared_cell(1, 1, None, false),
+        ];
+        for cell in &mut cells {
+            cell.border_bottom.width_px = 2.0 / 3.0;
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac = HorizontalBorderBands::for_row(&cells, true);
+        let exact = HorizontalBorderBands::for_row(&cells, false);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = HorizontalBorderBands::for_row(&cells, true);
+        assert_eq!((mac.bottom, mac.content_bottom), (0.0, 2.0 / 3.0));
+        assert_eq!(exact.content_bottom, 0.0);
+        assert_eq!(windows.content_bottom, 0.0);
     }
 
     #[test]
