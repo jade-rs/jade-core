@@ -19623,16 +19623,26 @@ where
                     }
                 }
 
-                if matches!(opportunities.last(), Some((last_segment, last_glyph)) if {
+                // A space that ends the line takes no extra; one followed by
+                // text does, even when it is the line's only space (`math`'s
+                // `「Cambria Math」の…`, justified by widening that space).
+                if matches!(opportunities.last(), Some(&(last_segment, last_glyph)) if {
                     prepared_segments
-                        .get(*last_segment)
-                        .and_then(|prepared| prepared.glyph_steps.get(*last_glyph))
-                        .map(|step| {
-                            step.text(&prepared_segments[*last_segment].segment.text)
-                                .chars()
-                                .all(char::is_whitespace)
+                        .iter()
+                        .enumerate()
+                        .skip(last_segment)
+                        .all(|(segment_index, prepared)| {
+                            let from = if segment_index == last_segment {
+                                last_glyph + 1
+                            } else {
+                                0
+                            };
+                            prepared.glyph_steps.iter().skip(from).all(|step| {
+                                step.text(&prepared.segment.text)
+                                    .chars()
+                                    .all(char::is_whitespace)
+                            })
                         })
-                        .unwrap_or(false)
                 }) {
                     opportunities.pop();
                 }
