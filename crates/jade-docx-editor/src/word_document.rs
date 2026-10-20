@@ -6525,6 +6525,7 @@ impl WordDocument {
             return;
         };
         let mut inserted = 0usize;
+        let mut shifted_blocks = Vec::new();
         for reference in &document.alt_chunks {
             let Some(relationship) = doc_part.relationships.iter().find(|relationship| {
                 relationship.id == reference.relationship_id
@@ -6556,8 +6557,42 @@ impl WordDocument {
                 .block_index
                 .saturating_add(inserted)
                 .min(body.elements.len());
-            inserted = inserted.saturating_add(paragraphs.len());
+            let count = paragraphs.len();
+            inserted = inserted.saturating_add(count);
             body.elements.splice(index..index, paragraphs);
+            shifted_blocks.push((index, count));
+        }
+        for (index, count) in shifted_blocks {
+            Self::shift_block_indices(document, index, count);
+        }
+    }
+
+    /// Moves the block indices the reader recorded (section ranges,
+    /// bookmarks, TC entries) past `count` blocks inserted at `index`. The
+    /// section that holds the insertion point grows to cover the new blocks,
+    /// so the renderer lays them out.
+    fn shift_block_indices(document: &mut Document, index: usize, count: usize) {
+        let section_count = document.sections.len();
+        for (position, section) in document.sections.iter_mut().enumerate() {
+            if section.start > index {
+                section.start += count;
+            }
+            if section.end > index || (section.end == index && position + 1 == section_count) {
+                section.end += count;
+            }
+        }
+        for bookmark in &mut document.bookmarks {
+            if bookmark.start_paragraph >= index {
+                bookmark.start_paragraph += count;
+            }
+            if bookmark.end_paragraph >= index {
+                bookmark.end_paragraph += count;
+            }
+        }
+        for entry in &mut document.toc_entry_fields {
+            if entry.paragraph >= index {
+                entry.paragraph += count;
+            }
         }
     }
 
@@ -37788,6 +37823,11 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(texts, ["before", "Imported", "Hello & safe", "after"]);
+        // The body section grows over the imported blocks, so all four are
+        // laid out (alt-chunk-html drew only the first two).
+        let sections = &document.document.as_ref().expect("document").sections;
+        assert_eq!(sections.len(), 1);
+        assert_eq!((sections[0].start, sections[0].end), (0, 4));
     }
 
     #[test]

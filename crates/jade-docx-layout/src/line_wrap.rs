@@ -7803,8 +7803,9 @@ fn prevent_mid_word_breaks(
         let (head, tail) = lines.split_at_mut(idx);
         let prev_line = &mut head[idx - 1];
         let next_line = &mut tail[0];
-        let next_starts_latin_word =
-            !next_line.clusters.is_empty() && is_latin_word_cluster(&next_line.clusters, 0);
+        let next_starts_latin_word = !next_line.clusters.is_empty()
+            && (is_latin_word_cluster(&next_line.clusters, 0)
+                || closes_latin_word(prev_line, next_line));
         if !next_starts_latin_word {
             continue;
         }
@@ -7855,6 +7856,21 @@ fn prevent_mid_word_breaks(
             prepend_cluster_to_line_preserving_rules(next_line, cluster, segment);
         }
     }
+}
+
+/// Whether `next` starts with ASCII punctuation that closes the Latin word
+/// ending `prev`: UAX #14 has no break before it (LB13), so Word moves
+/// `text.` whole where the period alone overflows (word-compat-comprehensive's
+/// text box).
+fn closes_latin_word(prev: &WrappedLine, next: &WrappedLine) -> bool {
+    next.clusters.first().is_some_and(|cluster| {
+        matches!(
+            cluster.text.as_str(),
+            "." | "," | ";" | ":" | "!" | "?" | ")" | "]" | "}"
+        )
+    }) && prev.clusters.last().is_some_and(|cluster| {
+        is_latin_word_grapheme(&cluster.text) || is_ascii_digit_grapheme(&cluster.text)
+    })
 }
 
 fn line_break_splits_latin_word(
@@ -18059,6 +18075,28 @@ mod tests {
             let infos = collect_line_infos(&lines);
             assert_eq!(infos[0].text, "from ");
             assert_eq!(infos[1].text, "settings.xml ");
+        }
+    }
+
+    #[test]
+    fn closing_punctuation_moves_with_the_word_it_ends() {
+        // word-compat-comprehensive's text box: Word moves `text.` whole where
+        // the period alone overflows (UAX #14 LB13), on either platform.
+        let ctx = TestContext::new(10.0);
+        let text = "Hello World text.";
+        for word_platform in [
+            crate::line_metrics::WordLayoutPlatform::Windows,
+            crate::line_metrics::WordLayoutPlatform::Mac,
+        ] {
+            let style = ParagraphStyle {
+                word_platform,
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 165.0).unwrap();
+            let infos = collect_line_infos(&lines);
+            assert_eq!(infos[0].text, "Hello World ");
+            assert_eq!(infos[1].text, "text.");
         }
     }
 
