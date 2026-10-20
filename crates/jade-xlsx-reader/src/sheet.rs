@@ -485,6 +485,64 @@ fn parse_frozen_count(value: &str) -> Option<u32> {
 pub fn translate_formula(formula: &str, origin: CellRef, target: CellRef) -> String {
     let column_delta = i64::from(target.column) - i64::from(origin.column);
     let row_delta = i64::from(target.row) - i64::from(origin.row);
+    map_references(formula, |reference| {
+        let column = if reference.column_absolute {
+            Some(reference.column)
+        } else {
+            shift_axis(reference.column, column_delta)
+        };
+        let row = if reference.row_absolute {
+            Some(reference.row)
+        } else {
+            shift_axis(reference.row, row_delta)
+        };
+        column.zip(row)
+    })
+}
+
+/// Moves a formula as Paste Special's Transpose does, copied from `origin`
+/// and pasted at `target`, the cell `origin` lands on in the transposed
+/// range. A relative reference's offset from the formula's cell turns with
+/// the range — what was one column to the left is one row up — so
+/// references inside the range keep to the same cells, transposed. An
+/// absolute axis stays; a reference with one moves as an ordinary paste
+/// moves it.
+pub fn transpose_formula(formula: &str, origin: CellRef, target: CellRef) -> String {
+    let column_delta = i64::from(target.column) - i64::from(origin.column);
+    let row_delta = i64::from(target.row) - i64::from(origin.row);
+    map_references(formula, |reference| {
+        if reference.column_absolute || reference.row_absolute {
+            let column = if reference.column_absolute {
+                Some(reference.column)
+            } else {
+                shift_axis(reference.column, column_delta)
+            };
+            let row = if reference.row_absolute {
+                Some(reference.row)
+            } else {
+                shift_axis(reference.row, row_delta)
+            };
+            return column.zip(row);
+        }
+        let across = i64::from(reference.column) - i64::from(origin.column);
+        let down = i64::from(reference.row) - i64::from(origin.row);
+        shift_axis(target.column, down).zip(shift_axis(target.row, across))
+    })
+}
+
+/// An A1 reference found in a formula: where it points, and which of its
+/// axes carry a `$`.
+struct FoundReference {
+    column: u32,
+    row: u32,
+    column_absolute: bool,
+    row_absolute: bool,
+}
+
+/// `formula` with each A1 reference outside strings and quoted sheet names
+/// moved where `place` says (column, row); `None`, or a place off the grid,
+/// becomes `#REF!`.
+fn map_references(formula: &str, place: impl Fn(&FoundReference) -> Option<(u32, u32)>) -> String {
     let bytes = formula.as_bytes();
     let mut output = String::with_capacity(formula.len());
     let mut index = 0usize;
@@ -539,9 +597,7 @@ pub fn translate_formula(formula: &str, origin: CellRef, target: CellRef) -> Str
             in_sheet_name = true;
             continue;
         }
-        if let Some((end, translated)) =
-            translated_reference(formula, index, column_delta, row_delta)
-        {
+        if let Some((end, translated)) = translated_reference(formula, index, &place) {
             output.push_str(&translated);
             index = end;
             continue;
@@ -560,8 +616,7 @@ pub fn translate_formula(formula: &str, origin: CellRef, target: CellRef) -> Str
 fn translated_reference(
     formula: &str,
     start: usize,
-    column_delta: i64,
-    row_delta: i64,
+    place: &impl Fn(&FoundReference) -> Option<(u32, u32)>,
 ) -> Option<(usize, String)> {
     let bytes = formula.as_bytes();
     let previous = start
@@ -600,8 +655,8 @@ fn translated_reference(
         return None;
     }
 
-    let mut column = column_number(&formula[column_start..row_start - usize::from(row_absolute)])?;
-    let mut row = formula[row_start..index]
+    let column = column_number(&formula[column_start..row_start - usize::from(row_absolute)])?;
+    let row = formula[row_start..index]
         .parse::<u32>()
         .ok()?
         .checked_sub(1)?;
@@ -610,17 +665,14 @@ fn translated_reference(
     if column > 16_383 || row > 1_048_575 {
         return None;
     }
-    let shifted_column = column_absolute
-        .then_some(column)
-        .or_else(|| shift_axis(column, column_delta));
-    let shifted_row = row_absolute
-        .then_some(row)
-        .or_else(|| shift_axis(row, row_delta));
-    let (Some(shifted_column), Some(shifted_row)) = (shifted_column, shifted_row) else {
+    let Some((column, row)) = place(&FoundReference {
+        column,
+        row,
+        column_absolute,
+        row_absolute,
+    }) else {
         return Some((index, "#REF!".to_string()));
     };
-    column = shifted_column;
-    row = shifted_row;
     if column > 16_383 || row > 1_048_575 {
         return Some((index, "#REF!".to_string()));
     }

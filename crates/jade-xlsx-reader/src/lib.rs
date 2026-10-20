@@ -57,7 +57,7 @@ pub use model::{
     PageBreak, Row, Shape, ShapeKind, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
     VerticalAlignment, Workbook, EMU_PER_PX,
 };
-pub use sheet::translate_formula;
+pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
 
 /// The relationship type of the package's main part, whose last segment is all
