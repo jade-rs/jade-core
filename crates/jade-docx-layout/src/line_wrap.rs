@@ -7940,12 +7940,17 @@ fn line_break_splits_latin_word(
 
 /// Whether the cluster at `index` belongs to the Latin word around it: a
 /// letter or ASCII digit (Word moves `20％` whole), a slash right after a
-/// letter (Word keeps `header/footer` whole), or a period between letters
-/// (Word keeps `settings.xml` whole, UAX #14 LB29). A period ending the
-/// clusters belongs to the word its caller has found after it.
+/// letter (Word keeps `header/footer` whole), a period between letters
+/// (Word keeps `settings.xml` whole, UAX #14 LB29), or a period or comma
+/// between digits (Word for Mac keeps `1.5in),` whole in
+/// `floating-simple-position`, UAX #14 LB25). A separator ending the clusters
+/// belongs to the word its caller has found after it.
 fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
-    let follows_letter = index > 0 && is_latin_word_grapheme(&clusters[index - 1].text);
+    let previous = index
+        .checked_sub(1)
+        .map(|index| clusters[index].text.as_str());
+    let follows_letter = previous.is_some_and(is_latin_word_grapheme);
     is_latin_word_grapheme(text)
         || is_ascii_digit_grapheme(text)
         || (text == "/" && follows_letter)
@@ -7954,6 +7959,11 @@ fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
             && clusters
                 .get(index + 1)
                 .is_none_or(|next| is_latin_word_grapheme(&next.text)))
+        || (matches!(text, "." | ",")
+            && previous.is_some_and(is_ascii_digit_grapheme)
+            && clusters
+                .get(index + 1)
+                .is_none_or(|next| is_ascii_digit_grapheme(&next.text)))
 }
 
 /// Whether the Latin word ending `line` starts right after East Asian text.
@@ -18198,6 +18208,27 @@ mod tests {
             assert_eq!(infos[0].text, "from ");
             assert_eq!(infos[1].text, "settings.xml ");
         }
+    }
+
+    #[test]
+    fn a_period_between_digits_does_not_split_the_number() {
+        // `floating-simple-position`: Word for Mac moves `1.5in),` whole
+        // instead of ending a line with `1.` (UAX #14 LB25).
+        let ctx = TestContext::new(10.0);
+        let text = "at (1.0in, 1.5in), not";
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            135.0,
+        )
+        .unwrap();
+        let infos = collect_line_infos(&lines);
+        assert_eq!(infos[0].text, "at (1.0in, ");
+        assert_eq!(infos[1].text, "1.5in), not");
     }
 
     #[test]
