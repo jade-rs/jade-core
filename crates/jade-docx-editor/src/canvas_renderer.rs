@@ -19623,15 +19623,29 @@ where
                     }
                 }
 
-                // Spaces before the line's first text take no extra (trust's
-                // ` (16)\t売主の…` keeps its leading space), nor does a space
-                // that ends the line. One between text does, even when it is
-                // the line's only space (`math`'s `「Cambria Math」の…`).
-                let first_text =
-                    prepared_segments
-                        .iter()
-                        .enumerate()
-                        .find_map(|(segment_index, prepared)| {
+                // Word for Mac: spaces before the line's first text take no
+                // extra (trust's ` (16)\t売主の…` keeps its leading space),
+                // nor does a space that ends the line. One between text does,
+                // even when it is the line's only space (`math`'s
+                // `「Cambria Math」の…`). Elsewhere the line's last space is
+                // dropped as the trailing one, as before.
+                let mac = paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+                let only_whitespace_from = |segment: usize, glyph: usize| {
+                    prepared_segments.iter().enumerate().skip(segment).all(
+                        |(segment_index, prepared)| {
+                            let from = if segment_index == segment { glyph } else { 0 };
+                            prepared.glyph_steps.iter().skip(from).all(|step| {
+                                step.text(&prepared.segment.text)
+                                    .chars()
+                                    .all(char::is_whitespace)
+                            })
+                        },
+                    )
+                };
+                if mac {
+                    let first_text = prepared_segments.iter().enumerate().find_map(
+                        |(segment_index, prepared)| {
                             prepared
                                 .glyph_steps
                                 .iter()
@@ -19642,27 +19656,14 @@ where
                                         .all(char::is_whitespace)
                                 })
                                 .map(|glyph_index| (segment_index, glyph_index))
-                        });
-                opportunities
-                    .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
-                if matches!(opportunities.last(), Some(&(last_segment, last_glyph)) if {
-                    prepared_segments
-                        .iter()
-                        .enumerate()
-                        .skip(last_segment)
-                        .all(|(segment_index, prepared)| {
-                            let from = if segment_index == last_segment {
-                                last_glyph + 1
-                            } else {
-                                0
-                            };
-                            prepared.glyph_steps.iter().skip(from).all(|step| {
-                                step.text(&prepared.segment.text)
-                                    .chars()
-                                    .all(char::is_whitespace)
-                            })
-                        })
-                }) {
+                        },
+                    );
+                    opportunities
+                        .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
+                }
+                if matches!(opportunities.last(), Some(&(last_segment, last_glyph))
+                    if !mac || only_whitespace_from(last_segment, last_glyph + 1))
+                {
                     opportunities.pop();
                 }
 
