@@ -156,10 +156,13 @@ fn check(name: &str, original: &[u8]) -> Vec<String> {
 
     // ---- a value typed below the data, then saved ---------------------------
     let mut edited = HeadlessWorkbook::open_for_editing(original).expect("opened once already");
+    // A protected sheet refuses typing, as Excel does: the first sheet that
+    // is not.
     let Some(sheet) = edited
         .workbook()
         .sheets
-        .first()
+        .iter()
+        .find(|sheet| sheet.protection.is_none())
         .map(|sheet| sheet.name.clone())
     else {
         return problems;

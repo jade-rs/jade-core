@@ -102,6 +102,7 @@ fn sheet_with(text: &str, style_index: Option<u32>, width_chars: f32) -> Sheet {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        protection: None,
     }
 }
 
