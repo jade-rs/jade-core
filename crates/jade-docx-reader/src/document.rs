@@ -1126,6 +1126,10 @@ pub(crate) struct FieldInstructionToken {
     pub quoted: bool,
 }
 
+/// Prefixes a nested field result that holds a straight double quote when it
+/// becomes a comparison operand, so that it equals no literal, as in Word.
+pub(crate) const QUOTED_NESTED_RESULT_MARK: char = '\u{E7A0}';
+
 pub(crate) fn tokenize_field_instruction(instruction: &str) -> Vec<String> {
     tokenize_field_instruction_with_quotes(instruction)
         .into_iter()
