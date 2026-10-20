@@ -15,6 +15,7 @@
 //! read sees exactly what will be exported.
 
 mod auto_filter;
+mod conditional_formats;
 mod current_region;
 pub mod fill;
 mod merge;
@@ -45,6 +46,7 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
+pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
     CellBorderView, CellInput, CellKind, CellView, CommentView, DataValidationView,
