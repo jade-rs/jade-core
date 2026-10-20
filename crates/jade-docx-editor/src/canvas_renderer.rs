@@ -33,7 +33,7 @@ use jade_docx_layout::line_metrics::{
     resolve_effective_snap_to_grid, resolve_line_height_points_with_default_multiplier,
     resolve_widow_orphan_decision, run_font_slots, word_east_asian_fe_font_size_floor,
     word_east_asian_font_line_box_applies, word_empty_paragraph_line_height_pt,
-    word_face_line_height_pt, word_font_lines_affect_line_height, word_grid_line_centres_text,
+    word_font_lines_affect_line_height, word_grid_line_centres_text,
     word_paragraph_between_border_extent_pt, word_paragraph_border_extent_pt,
     word_paragraphs_share_border_box, word_run_border_extent_pt,
     word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
@@ -3660,6 +3660,8 @@ where
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
+    /// See [`CanvasRenderer::effective_run_properties_rc`].
+    effective_run_properties_cache: RefCell<FxHashMap<u64, Vec<EffectiveRunPropertiesEntry>>>,
     /// Fast path for shared run properties produced by `jade-docx-layout`. The cache
     /// retains the `Rc`, so pointer identity cannot be recycled underneath an
     /// entry and repeated segment style applications skip the full value hash.
@@ -3972,6 +3974,64 @@ where
     HostPainter: Painter,
     HostPainter::Error: PainterError,
 {
+    /// [`Self::effective_run_properties`], shared. Layout and painting resolve
+    /// the same few (paragraph style, direct formatting) pairs for every run on
+    /// every render; an entry is reused only for an equal pair resolved against
+    /// the same styles and theme parts.
+    fn effective_run_properties_rc(
+        &self,
+        paragraph: &Paragraph,
+        direct: Option<&RunProperties>,
+    ) -> Option<Rc<RunProperties>> {
+        let paragraph_style_id = paragraph
+            .properties
+            .as_ref()
+            .and_then(|properties| properties.style.as_deref());
+        let styles = self.styles_part.as_ref().map(Rc::as_ptr);
+        let theme = self.theme_part.as_ref().map(Rc::as_ptr);
+        let key = {
+            let mut hasher = FxHasher::default();
+            paragraph_style_id.hash(&mut hasher);
+            Self::compute_applied_run_style_cache_key(direct, None).hash(&mut hasher);
+            hasher.finish()
+        };
+        if let Some(entry) = self
+            .effective_run_properties_cache
+            .borrow()
+            .get(&key)
+            .and_then(|entries| {
+                entries.iter().find(|entry| {
+                    entry.styles == styles
+                        && entry.theme == theme
+                        && entry.paragraph_style_id.as_deref() == paragraph_style_id
+                        && entry.direct.as_ref() == direct
+                })
+            })
+        {
+            return entry.effective.clone();
+        }
+        let effective = self
+            .effective_run_properties(paragraph, direct)
+            .map(Rc::new);
+        let mut cache = self.effective_run_properties_cache.borrow_mut();
+        // Formatting variants are few in normal documents; bound what
+        // adversarial inputs can retain.
+        if cache.len() >= 4096 {
+            cache.clear();
+        }
+        cache
+            .entry(key)
+            .or_default()
+            .push(EffectiveRunPropertiesEntry {
+                styles,
+                theme,
+                paragraph_style_id: paragraph_style_id.map(str::to_owned),
+                direct: direct.cloned(),
+                effective: effective.clone(),
+            });
+        effective
+    }
+
     /// Resolves the visual run style without losing directly authored
     /// `w:rFonts` hint provenance.
     ///
@@ -4031,6 +4091,7 @@ where
     ) {
         self.styles_part = styles_part;
         self.theme_part = theme_part;
+        self.effective_run_properties_cache.borrow_mut().clear();
         self.line_number_run_properties = None;
         self.clear_text_measure_cache();
         self.clear_paragraph_wrap_cache();
@@ -7936,6 +7997,7 @@ where
             last_render_body_element_count: 0,
             last_render_prefix_skips: 0,
             applied_run_style_cache: RefCell::new(FxHashMap::default()),
+            effective_run_properties_cache: RefCell::new(FxHashMap::default()),
             applied_run_style_identity_cache: RefCell::new(FxHashMap::default()),
             word_run_faces_cache: RefCell::new(FxHashMap::default()),
             paragraph_layout_cache: RefCell::new(ParagraphLayoutCache::new()),
@@ -8119,10 +8181,6 @@ where
         }
     }
 
-    /// Band-redraw diagnostics for `debugRendererStats.band_redraw`.
-    ///
-    /// Returns `(eligible, taken, fallback_reasons)` where the reasons vector is
-    /// `(name, count)` pairs. All counters are monotonic (session lifetime).
     /// Dirty visible pages lazy band edits left unpainted (session lifetime).
     pub fn band_redraw_skipped_pages(&self) -> u64 {
         self.band_redraw_skipped_pages.get()
@@ -8134,6 +8192,10 @@ where
         self.band_redraw_paints_band_page_only = enabled;
     }
 
+    /// Band-redraw diagnostics for `debugRendererStats.band_redraw`.
+    ///
+    /// Returns `(eligible, taken, fallback_reasons)` where the reasons vector is
+    /// `(name, count)` pairs. All counters are monotonic (session lifetime).
     #[allow(clippy::type_complexity)]
     pub fn band_redraw_stats(&self) -> (u64, u64, Vec<(&'static str, u64)>) {
         (
@@ -16581,11 +16643,11 @@ where
 
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             let resolved_run_properties =
-                self.effective_run_properties(paragraph, run.properties.as_ref());
+                self.effective_run_properties_rc(paragraph, run.properties.as_ref());
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
             // not display such runs and they occupy no layout space, so skip the
             // run entirely. (A "show hidden text" toggle is a follow-up.)
-            if run_properties_are_hidden(resolved_run_properties.as_ref()) {
+            if run_properties_are_hidden(resolved_run_properties.as_deref()) {
                 continue;
             }
 
@@ -16621,7 +16683,7 @@ where
                 run_styles.push(RunStyle {
                     start: start_pos,
                     end: current_pos,
-                    properties: resolved_run_properties.map(Rc::new),
+                    properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
                     inline_object: Some(InlineObject { width, height }),
@@ -16647,7 +16709,7 @@ where
                 run_styles.push(RunStyle {
                     start: start_pos,
                     end: current_pos,
-                    properties: resolved_run_properties.map(Rc::new),
+                    properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
                     inline_object: Some(InlineObject { width, height }),
@@ -16733,7 +16795,7 @@ where
                 pending_note_separator = None;
                 let segment_start = current_pos;
                 let suppress_line_height = run.suppresses_line_height_contribution();
-                let mut effective_props = resolved_run_properties;
+                let mut effective_props = resolved_run_properties.as_deref().cloned();
                 if run.hyperlink.is_some() {
                     let props = effective_props.get_or_insert_with(RunProperties::default);
                     if props.underline.is_none() {
@@ -18358,8 +18420,8 @@ where
         );
         if word_font_line_box {
             if let Some(blank_run) = Self::paragraph_blank_line_run_properties(paragraph) {
-                let effective = self.effective_run_properties(paragraph, blank_run);
-                let resolved = LineWrapContext::resolve_run_style(self, effective.as_ref())?;
+                let effective = self.effective_run_properties_rc(paragraph, blank_run);
+                let resolved = LineWrapContext::resolve_run_style(self, effective.as_deref())?;
                 if let Some(height) =
                     word_empty_paragraph_line_height_pt(&resolved.font_descriptor_latin_ascii)
                 {
@@ -18441,14 +18503,12 @@ where
             self.document_east_asian_rules.use_east_asian_layout,
         );
         if let Some(blank_run) = Self::paragraph_blank_line_run_properties(paragraph) {
-            let effective = self.effective_run_properties(paragraph, blank_run);
-            let style = self.resolve_applied_run_style_cached(effective.as_ref());
+            let effective = self.effective_run_properties_rc(paragraph, blank_run);
+            let style = self.resolve_applied_run_style_cached(effective.as_deref());
             return Ok((
                 None,
-                word_face_line_height_pt(
-                    &style.resolved.font_descriptor_latin_ascii,
-                    east_asian_faces_size_lines,
-                ),
+                self.word_run_faces(&style.resolved, east_asian_faces_size_lines)
+                    .latin_line_height_pt(),
             ));
         }
         let mut east_asian_line: Option<f32> = None;
@@ -18470,9 +18530,9 @@ where
                 }
                 _ => {
                     let effective =
-                        self.effective_run_properties(paragraph, run.properties.as_ref());
-                    let style = self.resolve_applied_run_style_cached(effective.as_ref());
-                    let border_extent = word_run_border_extent_pt(effective.as_ref());
+                        self.effective_run_properties_rc(paragraph, run.properties.as_ref());
+                    let style = self.resolve_applied_run_style_cached(effective.as_deref());
+                    let border_extent = word_run_border_extent_pt(effective.as_deref());
                     previous = Some((run.properties.as_ref(), Rc::clone(&style), border_extent));
                     (style, border_extent)
                 }
@@ -33421,31 +33481,17 @@ fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
     }
 }
 
-/// Pure selection logic shared by `CanvasRenderer::active_hf_lines`. Extracted
-/// so variant choice (default / first / even) can be unit-tested without the
-/// full renderer.
-///
-/// `current_page` is 1-based. Zero (which shouldn't happen in practice) is
-/// treated as page 1.
-/// Computes which body-element paragraphs should suppress their `w:spacing`
-/// before/after due to `w:contextualSpacing` (ECMA-376 Part 1 §17.3.1.9).
-///
-/// Word ignores the spacing between two *adjacent* paragraphs that use the
-/// *identical* paragraph style when the paragraph carrying the spacing also
-/// declares `w:contextualSpacing`. The returned sets are keyed by the index
-/// into `elements`:
-/// * `suppress_before` — the lower paragraph drops its space *before* (it has
-///   `contextualSpacing` and the element directly above is a same-styled
-///   paragraph).
-/// * `suppress_after` — the upper paragraph drops its space *after* (it has
-///   `contextualSpacing` and the element directly below is a same-styled
-///   paragraph).
-///
-/// Only directly consecutive `Paragraph` elements are considered "adjacent";
-/// an intervening table breaks adjacency. Style identity compares the resolved
-/// `w:pStyle` (two default/`None` paragraphs count as identical).
-/// Body element indices whose paragraph shares a border box with the
-/// paragraph right after it ([`word_paragraphs_share_border_box`]).
+/// One resolved (paragraph style, direct formatting) pair, keyed by the styles
+/// and theme parts it was resolved against.
+#[derive(Debug)]
+struct EffectiveRunPropertiesEntry {
+    styles: Option<*const StylesPart>,
+    theme: Option<*const ThemePart>,
+    paragraph_style_id: Option<String>,
+    direct: Option<RunProperties>,
+    effective: Option<Rc<RunProperties>>,
+}
+
 /// Body element indexes flagged by a pairwise scan of adjacent paragraphs.
 ///
 /// The scans run on every render and, in a document of one paragraph style,
@@ -33472,6 +33518,31 @@ impl ElementIndexSet {
     }
 }
 
+/// Pure selection logic shared by `CanvasRenderer::active_hf_lines`. Extracted
+/// so variant choice (default / first / even) can be unit-tested without the
+/// full renderer.
+///
+/// `current_page` is 1-based. Zero (which shouldn't happen in practice) is
+/// treated as page 1.
+/// Computes which body-element paragraphs should suppress their `w:spacing`
+/// before/after due to `w:contextualSpacing` (ECMA-376 Part 1 §17.3.1.9).
+///
+/// Word ignores the spacing between two *adjacent* paragraphs that use the
+/// *identical* paragraph style when the paragraph carrying the spacing also
+/// declares `w:contextualSpacing`. The returned sets are keyed by the index
+/// into `elements`:
+/// * `suppress_before` — the lower paragraph drops its space *before* (it has
+///   `contextualSpacing` and the element directly above is a same-styled
+///   paragraph).
+/// * `suppress_after` — the upper paragraph drops its space *after* (it has
+///   `contextualSpacing` and the element directly below is a same-styled
+///   paragraph).
+///
+/// Only directly consecutive `Paragraph` elements are considered "adjacent";
+/// an intervening table breaks adjacency. Style identity compares the resolved
+/// `w:pStyle` (two default/`None` paragraphs count as identical).
+/// Body element indices whose paragraph shares a border box with the
+/// paragraph right after it ([`word_paragraphs_share_border_box`]).
 fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> ElementIndexSet {
     let mut continues = ElementIndexSet::default();
     for index in 1..elements.len() {
@@ -37995,6 +38066,84 @@ mod tests {
             (line.height - 14.0 * 10.5 / 12.0).abs() < 1e-9,
             "{}",
             line.height
+        );
+    }
+
+    /// The shared resolution answers exactly what a fresh one does, reuses an
+    /// equal (paragraph style, formatting) pair, and never outlives the styles
+    /// it was resolved against.
+    #[test]
+    fn shared_effective_run_properties_match_a_fresh_resolution() {
+        let styles_xml = |size: u32| {
+            format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                  <w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                    <w:sz w:val="21"/></w:rPr></w:rPrDefault></w:docDefaults>
+                  <w:style w:type="paragraph" w:styleId="Caption"><w:rPr>
+                    <w:sz w:val="{size}"/><w:color w:val="123456"/></w:rPr></w:style>
+                </w:styles>"#
+            )
+        };
+        let (mut renderer, _) = recording_renderer();
+        renderer.set_style_context(
+            Some(Rc::new(StylesPart::from_xml(&styles_xml(22)).unwrap())),
+            None,
+        );
+        let paragraph = |style: Option<&str>| Paragraph {
+            properties: style.map(|style| ParagraphProperties {
+                style: Some(Rc::from(style)),
+                ..ParagraphProperties::default()
+            }),
+            runs: Vec::new(),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let bold = RunProperties {
+            bold: Some(true),
+            ..RunProperties::default()
+        };
+        let italic = RunProperties {
+            italic: Some(true),
+            ..RunProperties::default()
+        };
+        for (style, direct) in [
+            (Some("Caption"), Some(&bold)),
+            (Some("Caption"), Some(&italic)),
+            (Some("Caption"), None),
+            (None, Some(&bold)),
+            (None, None),
+        ] {
+            let paragraph = paragraph(style);
+            let shared = renderer.effective_run_properties_rc(&paragraph, direct);
+            assert_eq!(
+                shared.as_deref(),
+                renderer
+                    .effective_run_properties(&paragraph, direct)
+                    .as_ref(),
+                "{style:?} {direct:?}"
+            );
+            let again = renderer.effective_run_properties_rc(&paragraph, direct);
+            match (&shared, &again) {
+                (Some(shared), Some(again)) => assert!(Rc::ptr_eq(shared, again)),
+                (None, None) => {}
+                _ => panic!("a repeated resolution changed shape"),
+            }
+        }
+
+        let caption = paragraph(Some("Caption"));
+        let before = renderer.effective_run_properties_rc(&caption, Some(&bold));
+        renderer.set_style_context(
+            Some(Rc::new(StylesPart::from_xml(&styles_xml(40)).unwrap())),
+            None,
+        );
+        let after = renderer.effective_run_properties_rc(&caption, Some(&bold));
+        assert_ne!(before, after, "replaced styles must not reuse old results");
+        assert_eq!(
+            after.as_deref(),
+            renderer
+                .effective_run_properties(&caption, Some(&bold))
+                .as_ref()
         );
     }
 
