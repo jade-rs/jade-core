@@ -6605,12 +6605,25 @@ fn punctuation_pair_blank_width(left: &InlineCluster, right: &InlineCluster) -> 
 /// punctuation mark's blank can be narrowed: kana, kanji, the ideographic
 /// space and also fullwidth digits and letters (Word narrows the comma before
 /// `１０`), which [`is_auto_space_east_asian_text`] counts as fullwidth forms.
-fn is_squeeze_neighbour(text: &str) -> bool {
-    (text == "\u{3000}" || is_non_whitespace_east_asian_grapheme(text))
+/// Word for Mac also counts a symbol the font sets a full em wide, such as
+/// `‐ ― ※ ○ → ×` in MS Mincho, but not a proportional one like `α`
+/// (`compressPunctuation` squeeze probes, `math`).
+fn is_squeeze_neighbour(text: &str, script: ScriptCategory, glyph: f64, em: f64) -> bool {
+    let east_asian = text == "\u{3000}"
+        || is_non_whitespace_east_asian_grapheme(text)
+        || (script != ScriptCategory::Complex
+            && !text.chars().all(|ch| ch.is_whitespace() || ch.is_control())
+            && em > 0.0
+            && glyph >= em - FULL_WIDTH_NEIGHBOUR_TOLERANCE_PX);
+    east_asian
         && !punctuation_blank_before(text)
         && !punctuation_blank_after(text)
         && !matches!(text, "・" | "：" | "；")
 }
+
+/// How much narrower than the punctuation mark's em a symbol may measure and
+/// still count as set at full width.
+const FULL_WIDTH_NEIGHBOUR_TOLERANCE_PX: f64 = 0.01;
 
 fn punctuation_pair_blank(
     left: (&str, ScriptCategory, u64, f64),
@@ -6619,13 +6632,12 @@ fn punctuation_pair_blank(
 ) -> (f64, f64) {
     let (left_text, left_script, left_font, left_glyph) = left;
     let (right_text, right_script, right_font, right_glyph) = right;
-    if left_script != ScriptCategory::EastAsia
-        || right_script != ScriptCategory::EastAsia
-        || left_font != right_font
-    {
+    if left_font != right_font {
         return (0.0, 0.0);
     }
-    let (glyph, share) = if is_squeeze_neighbour(left_text) {
+    let (glyph, share) = if right_script == ScriptCategory::EastAsia
+        && is_squeeze_neighbour(left_text, left_script, left_glyph, right_glyph)
+    {
         if punctuation_blank_before(right_text) {
             (right_glyph, 0.5)
         } else if matches!(right_text, "・" | "：" | "；") {
@@ -6633,7 +6645,9 @@ fn punctuation_pair_blank(
         } else {
             (0.0, 0.0)
         }
-    } else if is_squeeze_neighbour(right_text) {
+    } else if left_script == ScriptCategory::EastAsia
+        && is_squeeze_neighbour(right_text, right_script, right_glyph, left_glyph)
+    {
         if punctuation_blank_after(left_text) {
             (left_glyph, 0.5)
         } else if matches!(left_text, "・" | "：" | "；") {
@@ -13699,6 +13713,22 @@ mod tests {
         // Without punctuation there is nothing to narrow.
         let plain = mac_squeeze_text(19, &[]);
         assert_eq!(mac_squeeze_first_line(&plain, 19, 0.25, &style), 18);
+    }
+
+    #[test]
+    fn mac_squeeze_counts_the_blank_beside_full_width_symbols() {
+        // Squeeze probes: Word for Mac narrows `「` after `‐ ― ※ ○ → ×`, which
+        // MS Mincho sets a full em wide, and `」` before them (`math`'s
+        // `リック‐「オブジェクトの…`).
+        let style = mac_punctuation_test_style();
+        for symbol in ["‐", "―", "※", "○", "→", "×"] {
+            for text in [
+                format!("あ{symbol}「{}", "い".repeat(20)),
+                format!("ああ」{symbol}{}", "い".repeat(20)),
+            ] {
+                assert_eq!(mac_squeeze_first_line(&text, 10, 5.0, &style), 10, "{text}");
+            }
+        }
     }
 
     #[test]
