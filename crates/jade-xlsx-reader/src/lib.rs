@@ -54,8 +54,8 @@ pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
     DateSystem, DefinedName, Fill, Font, FreezePane, HeaderFooter, HorizontalAlignment, Hyperlink,
-    PageBreak, Row, Shape, ShapeKind, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
-    VerticalAlignment, Workbook, EMU_PER_PX,
+    PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape, ShapeKind, Sheet,
+    SheetProtection, SheetVisibility, StyleTable, Table, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -211,6 +211,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
             sheet.phonetic_readings = furigana(package, &target, &sheet);
         }
         sheet.visibility = entry.visibility;
+        read_print_titles(&part.defined_names, position, &mut sheet.page_setup);
         sheets.push(sheet);
     }
 
@@ -264,6 +265,44 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         calculation_mode: part.calculation_mode,
         calculate_on_save: part.calculate_on_save.unwrap_or(true),
     })
+}
+
+/// The rows and columns the sheet at tab `position` repeats on every
+/// printed page, from its `_xlnm.Print_Titles`, into `setup`: `Sheet1!$1:$2`
+/// rows 0 to 1, `Sheet1!$A:$A` column 0, or both joined by a comma.
+fn read_print_titles(names: &[DefinedName], position: usize, setup: &mut PageSetup) {
+    let Some(name) = names.iter().find(|name| {
+        name.local_sheet_index == Some(position)
+            && name.name.eq_ignore_ascii_case("_xlnm.Print_Titles")
+    }) else {
+        return;
+    };
+    let mut quoted = false;
+    for part in name.formula.split(|c| {
+        if c == '\'' {
+            quoted = !quoted;
+        }
+        c == ',' && !quoted
+    }) {
+        let reference = part
+            .rsplit_once('!')
+            .map_or(part, |(_, reference)| reference);
+        let reference = reference.trim().replace('$', "");
+        let Some((first, last)) = reference.split_once(':') else {
+            continue;
+        };
+        if let (Ok(first), Ok(last)) = (first.parse::<u32>(), last.parse::<u32>()) {
+            if first > 0 && last > 0 {
+                setup.title_rows = Some((first.min(last) - 1, first.max(last) - 1));
+            }
+        } else if let (Ok(first), Ok(last)) = (
+            CellRef::parse(&format!("{first}1")),
+            CellRef::parse(&format!("{last}1")),
+        ) {
+            setup.title_columns =
+                Some((first.column.min(last.column), first.column.max(last.column)));
+        }
+    }
 }
 
 /// The parts a worksheet points at through its relationships — comments,

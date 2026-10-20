@@ -9,7 +9,7 @@ use quick_xml::Reader;
 use crate::error::Result;
 use crate::model::{
     ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
-    Hyperlink, PageBreak, Row, Sheet, SheetVisibility,
+    Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
 };
 use jade_opc::{local_name, Relationships};
 
@@ -92,6 +92,7 @@ pub fn parse_sheet_with_relationships(
         header_footer: None,
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
+        page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
@@ -117,6 +118,8 @@ pub fn parse_sheet_with_relationships(
     let mut header_footer_text = String::new();
     let mut in_row_breaks = false;
     let mut in_column_breaks = false;
+    // A custom view keeps page settings of its own; the sheet's are outside.
+    let mut in_custom_views = false;
     let mut buf = Vec::new();
 
     loop {
@@ -144,6 +147,17 @@ pub fn parse_sheet_with_relationships(
                     }
                     b"rowBreaks" => in_row_breaks = !empty,
                     b"colBreaks" => in_column_breaks = !empty,
+                    b"customSheetViews" => in_custom_views = !empty,
+                    b"pageSetUpPr" if !in_custom_views => {
+                        sheet.page_setup.fit_to_page = attribute_value(element, b"fitToPage")?
+                            .is_some_and(|value| value != "0" && value != "false");
+                    }
+                    b"pageMargins" if !in_custom_views => {
+                        sheet.page_setup.margins = Some(parse_page_margins(element)?);
+                    }
+                    b"pageSetup" if !in_custom_views => {
+                        parse_page_setup(element, &mut sheet.page_setup)?;
+                    }
                     b"brk" if in_row_breaks || in_column_breaks => {
                         if let Some(brk) = parse_break(element)? {
                             if in_row_breaks {
@@ -317,6 +331,7 @@ pub fn parse_sheet_with_relationships(
                 b"rPh" => in_phonetic_guide = false,
                 b"rowBreaks" => in_row_breaks = false,
                 b"colBreaks" => in_column_breaks = false,
+                b"customSheetViews" => in_custom_views = false,
                 b"oddHeader" | b"oddFooter" | b"evenHeader" | b"evenFooter" | b"firstHeader"
                 | b"firstFooter" => {
                     if let (Some(slot), Some(header_footer)) =
@@ -432,6 +447,44 @@ fn parse_header_footer(element: &BytesStart<'_>) -> Result<HeaderFooter> {
         different_first: flag(b"differentFirst", false)?,
         scale_with_doc: flag(b"scaleWithDoc", true)?,
         align_with_margins: flag(b"alignWithMargins", true)?,
+    })
+}
+
+/// `<pageSetup>`'s paper, orientation, scale, fit and page order into
+/// `setup`.
+fn parse_page_setup(element: &BytesStart<'_>, setup: &mut PageSetup) -> Result<()> {
+    let number = |key: &[u8]| -> Result<Option<u32>> {
+        Ok(attribute_value(element, key)?.and_then(|value| value.parse().ok()))
+    };
+    setup.paper_size = number(b"paperSize")?;
+    setup.scale = number(b"scale")?;
+    setup.fit_to_width = number(b"fitToWidth")?;
+    setup.fit_to_height = number(b"fitToHeight")?;
+    setup.orientation = match attribute_value(element, b"orientation")?.as_deref() {
+        Some("landscape") => Some(PageOrientation::Landscape),
+        Some("portrait") => Some(PageOrientation::Portrait),
+        _ => None,
+    };
+    setup.over_then_down =
+        attribute_value(element, b"pageOrder")?.as_deref() == Some("overThenDown");
+    Ok(())
+}
+
+/// `<pageMargins>`, each side Excel's Normal one where it is missing.
+fn parse_page_margins(element: &BytesStart<'_>) -> Result<PageMargins> {
+    let normal = PageMargins::default();
+    let inches = |key: &[u8], default: f64| -> Result<f64> {
+        Ok(attribute_value(element, key)?
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(default))
+    };
+    Ok(PageMargins {
+        left: inches(b"left", normal.left)?,
+        right: inches(b"right", normal.right)?,
+        top: inches(b"top", normal.top)?,
+        bottom: inches(b"bottom", normal.bottom)?,
+        header: inches(b"header", normal.header)?,
+        footer: inches(b"footer", normal.footer)?,
     })
 }
 

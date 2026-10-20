@@ -61,6 +61,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         header_footer: None,
         row_breaks: Vec::new(),
         column_breaks: Vec::new(),
+        page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
