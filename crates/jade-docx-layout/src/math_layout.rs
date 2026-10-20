@@ -55,14 +55,12 @@ pub fn math_block_content_box(
 
 /// Line height and baseline from a shared math plan and ordinary paragraph rules.
 /// Pass the plan's paragraph metrics, including font MATH leading and its floor.
-#[cfg(feature = "opentype-math")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MathBlockLineBox {
     pub height: f64,
     pub baseline: f64,
 }
 
-#[cfg(feature = "opentype-math")]
 pub fn math_block_line_box(
     metrics: MathMetrics,
     font_size_pt: f32,
