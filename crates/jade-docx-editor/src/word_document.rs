@@ -18800,6 +18800,31 @@ impl WordDocument {
         Ok(())
     }
 
+    /// Word's ページ番号 gallery for a shell outside the browser editor: the
+    /// default header (or footer) story becomes one paragraph holding a live
+    /// PAGE field, aligned `left`, `center` or `right`. The story is created
+    /// when the document has none.
+    pub fn insert_page_number(&mut self, footer: bool, alignment: &str) -> Result<(), String> {
+        let alignment = match alignment {
+            "left" => HeaderFooterAlignment::Left,
+            "center" => HeaderFooterAlignment::Center,
+            "right" => HeaderFooterAlignment::Right,
+            other => return Err(format!("unsupported page number alignment: {other}")),
+        };
+        let role = if footer {
+            HeaderFooterRole::Footer
+        } else {
+            HeaderFooterRole::Header
+        };
+        self.set_hf_page_number(role, HeaderFooterVariant::Default, alignment)
+    }
+
+    /// Takes every PAGE field out of the headers and footers, as Word's
+    /// ページ番号の削除 does; answers how many went.
+    pub fn remove_page_numbers(&mut self) -> Result<usize, String> {
+        self.remove_page_numbers_from_header_footers()
+    }
+
     /// Removes every PAGE field from all existing header/footer variants.
     /// Literal text, NUMPAGES/SECTION fields, tables, drawings, and unknown
     /// OOXML remain untouched. Missing variants are not created as a side
