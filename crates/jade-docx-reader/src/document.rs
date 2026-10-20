@@ -4563,6 +4563,12 @@ pub struct ParagraphProperties {
     /// `w:r` content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mark_run_properties: Option<RunProperties>,
+    /// Tracked change on the paragraph mark itself (`w:pPr/w:rPr/w:del`,
+    /// `w:ins`, `w:moveFrom` or `w:moveTo`, ECMA-376 Part 1 §17.13.5). A
+    /// deleted mark joins the paragraph with the next one once the deletion
+    /// is applied, as Word's final view shows it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mark_revision: Option<RevisionMark>,
     pub alignment: Option<Rc<str>>,
     /// Base paragraph direction (`w:bidi`, ECMA-376 Part 1 §17.3.1.6).
     /// `Some(true)` selects an RTL paragraph base direction, while

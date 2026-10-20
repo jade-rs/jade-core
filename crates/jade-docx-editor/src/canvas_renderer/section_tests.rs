@@ -10,7 +10,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_painter::recording::RecordingPainter;
 use std::io::Write;
 
-fn build_docx_with_body(body_xml: &str) -> Vec<u8> {
+pub(super) fn build_docx_with_body(body_xml: &str) -> Vec<u8> {
     use zip::write::SimpleFileOptions;
 
     let document_xml = format!(
