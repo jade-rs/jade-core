@@ -26665,6 +26665,7 @@ where
                         balance_single_byte_double_byte_width,
                     )
                 }),
+                follows_inline_object: false,
             },
             glyph_steps,
         }))

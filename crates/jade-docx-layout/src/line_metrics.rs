@@ -368,6 +368,18 @@ pub fn word_automatic_note_separator_advance_px(
     (size_pt.is_finite() && size_pt > 0.0).then_some(f64::from(size_pt) * 96.0 / 72.0 * 0.5)
 }
 
+/// Word for Mac gives an ASCII space next to an inline object half an em
+/// when `w:balanceSingleByteDoubleByteWidth` is on: 5.25pt at 10.5pt and 10pt
+/// at 20pt, in Yu Mincho and Century alike, before or after the picture
+/// (image-inline). Spaces away from the object, and every space without the
+/// setting, keep their font advance.
+pub fn word_object_adjacent_space_advance_px(
+    platform: WordLayoutPlatform,
+    font_descriptor: &str,
+) -> Option<f64> {
+    word_automatic_note_separator_advance_px(platform, font_descriptor)
+}
+
 /// The face Word for Mac sets a numbering label's `w:suff="space"` in: the
 /// label's descriptor with its family replaced by Arial. Word for Mac 16.114
 /// makes that space 0.278 em of the label size (Arial's and Century's space)
