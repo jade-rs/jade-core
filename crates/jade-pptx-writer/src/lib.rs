@@ -411,8 +411,15 @@ pub fn copy_shapes(
     }
     let (_, from_part, source) = slide_xml(bytes, from)?;
     let (mut package, to_part, into) = slide_xml(bytes, to)?;
+    // A placeholder placed by its layout keeps its place on a slide whose
+    // layout puts it elsewhere.
+    let deck = jade_pptx_reader::read_deck(bytes)?;
+    let placed: Vec<_> = ids
+        .iter()
+        .map(|&id| (id, inherited_shape_transform(&deck, from, id)))
+        .collect();
     let (changed, copies) =
-        xml::copy_objects(&mut package, &from_part, &source, ids, &to_part, &into)?;
+        xml::copy_objects(&mut package, &from_part, &source, &placed, &to_part, &into)?;
     package.replace(&to_part, changed.into_bytes());
     let result = package.write()?;
     jade_pptx_reader::read_deck(&result)?;

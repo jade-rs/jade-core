@@ -487,52 +487,7 @@ pub(crate) fn duplicate(xml: &str, id: u32, baseline: Option<Transform>) -> Resu
                     moved = original;
                 }
                 if moved != original {
-                    let pr = child(
-                        &nodes,
-                        n,
-                        1,
-                        if info.kind == "group" {
-                            "grpSpPr"
-                        } else {
-                            "spPr"
-                        },
-                    );
-                    let xfrm = pr.and_then(|pr| child(&nodes, pr, 2, "xfrm"));
-                    let fragment = transform_xml(xml, &nodes, xfrm, moved, n.strict)?;
-                    if let Some(xfrm) = xfrm {
-                        patches.push((xfrm.outer.clone(), fragment));
-                    } else if let Some(pr) = pr {
-                        if pr.empty {
-                            patches.push((
-                                pr.outer.clone(),
-                                format!(
-                                    "{}{fragment}</{}>",
-                                    pr.empty_open.as_deref().unwrap_or_default(),
-                                    pr.qualified
-                                ),
-                            ));
-                        } else {
-                            patches.push((pr.range.start..pr.range.start, fragment));
-                        }
-                    } else {
-                        let nv = n
-                            .children
-                            .iter()
-                            .map(|i| &nodes[*i])
-                            .find(|c| {
-                                c.ns == 1
-                                    && matches!(c.name.as_str(), "nvSpPr" | "nvPicPr" | "nvCxnSpPr")
-                            })
-                            .ok_or(WriteError::UnsupportedObjectOperation(id))?;
-                        let tag = n.qualified.rsplit_once(':').map_or_else(
-                            || "spPr".to_owned(),
-                            |(prefix, _)| format!("{prefix}:spPr"),
-                        );
-                        patches.push((
-                            nv.outer.end..nv.outer.end,
-                            format!("<{tag}>{fragment}</{tag}>"),
-                        ));
-                    }
+                    patches.push(place_patch(xml, &nodes, n, &info.kind, moved, id)?);
                 }
             }
         }
@@ -574,6 +529,58 @@ pub(crate) fn duplicate(xml: &str, id: u32, baseline: Option<Transform>) -> Resu
         }
     }
     Ok((apply_patches(xml, patches), new_id))
+}
+
+/// The patch that puts `transform` in object `n`'s own `xfrm` — made in
+/// its shape properties, made too when it has none, as for a placeholder
+/// that takes its place from the layout.
+fn place_patch(
+    xml: &str,
+    nodes: &[Node],
+    n: &Node,
+    kind: &str,
+    transform: Transform,
+    id: u32,
+) -> Result<(std::ops::Range<usize>, String)> {
+    let pr = child(
+        nodes,
+        n,
+        1,
+        if kind == "group" { "grpSpPr" } else { "spPr" },
+    );
+    let xfrm = pr.and_then(|pr| child(nodes, pr, 2, "xfrm"));
+    let fragment = transform_xml(xml, nodes, xfrm, transform, n.strict)?;
+    if let Some(xfrm) = xfrm {
+        return Ok((xfrm.outer.clone(), fragment));
+    }
+    if let Some(pr) = pr {
+        return Ok(if pr.empty {
+            (
+                pr.outer.clone(),
+                format!(
+                    "{}{fragment}</{}>",
+                    pr.empty_open.as_deref().unwrap_or_default(),
+                    pr.qualified
+                ),
+            )
+        } else {
+            (pr.range.start..pr.range.start, fragment)
+        });
+    }
+    let nv = n
+        .children
+        .iter()
+        .map(|i| &nodes[*i])
+        .find(|c| c.ns == 1 && matches!(c.name.as_str(), "nvSpPr" | "nvPicPr" | "nvCxnSpPr"))
+        .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let tag = n
+        .qualified
+        .rsplit_once(':')
+        .map_or_else(|| "spPr".to_owned(), |(prefix, _)| format!("{prefix}:spPr"));
+    Ok((
+        nv.outer.end..nv.outer.end,
+        format!("<{tag}>{fragment}</{tag}>"),
+    ))
 }
 
 /// The patches that give object `source` — its id `id` — and the shapes in
@@ -639,10 +646,16 @@ fn identity_patches(
 
 /// Object `id` of slide XML `source` copied out for the slide XML `into`:
 /// its ids — a group's shapes' too — unused there, its name kept unless
-/// `into` has it, new Office creation ids, its position kept. The fragment's
+/// `into` has it, new Office creation ids, its position kept — written out
+/// from `baseline` when it took it from its layout. The fragment's
 /// namespaces are declared on it; its relationship ids are still the
 /// source slide's.
-pub(crate) fn copy_out(source: &str, id: u32, into: &str) -> Result<(String, u32)> {
+pub(crate) fn copy_out(
+    source: &str,
+    id: u32,
+    baseline: Option<Transform>,
+    into: &str,
+) -> Result<(String, u32)> {
     let nodes = parse_nodes(source)?;
     let (node, info) = target(&nodes, id)?;
     if !info.can_duplicate {
@@ -683,7 +696,15 @@ pub(crate) fn copy_out(source: &str, id: u32, into: &str) -> Result<(String, u32
     } else {
         info.name.clone()
     };
-    let patches = identity_patches(source, &nodes, node, id, &id_map, &name)?;
+    let mut patches = identity_patches(source, &nodes, node, id, &id_map, &name)?;
+    for n in descendants(&nodes, node) {
+        let inherited = transform_info(&nodes, n)
+            .filter(|branch| branch.id == id && branch.transform.is_none())
+            .and(baseline);
+        if let Some(transform) = inherited {
+            patches.push(place_patch(source, &nodes, n, &info.kind, transform, id)?);
+        }
+    }
     let local = patches
         .into_iter()
         .map(|(r, s)| (r.start - node.outer.start..r.end - node.outer.start, s))
