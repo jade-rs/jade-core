@@ -4,6 +4,7 @@ use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use std::ops::Range;
 
 pub(crate) mod crop;
+pub(crate) mod diagrams;
 mod formatting;
 pub(crate) mod grouping;
 mod objects;
@@ -283,9 +284,9 @@ fn transform_info(nodes: &[Node], shape: &Node) -> Option<ShapeTransformInfo> {
         transform,
         can_move: !locked("noMove"),
         // A frame moves; resizing a table would need its column widths to
-        // follow, and a diagram its drawing, so a frame keeps its size, and
-        // PowerPoint does not rotate one.
-        can_resize: (!frame || matches!(frame_kind(nodes, shape), "table" | "chart"))
+        // follow, and a diagram its drawing — both scaled to the new frame —
+        // and PowerPoint does not rotate one.
+        can_resize: (!frame || matches!(frame_kind(nodes, shape), "table" | "chart" | "diagram"))
             && !locked("noResize"),
         can_rotate: !frame && !locked("noRot"),
         can_select: !locked("noSelect"),
