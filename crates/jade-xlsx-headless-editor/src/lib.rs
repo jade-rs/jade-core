@@ -48,7 +48,7 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
-pub use charts::{ChartChange, ChartKind, LegendPosition};
+pub use charts::{chart_kind, ChartChange, ChartKind, LegendPosition};
 pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
