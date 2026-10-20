@@ -10,7 +10,7 @@ use futures::executor::block_on;
 use jade_docx_editor::canvas_renderer::CanvasRenderer;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
-use jade_docx_editor::commands::{CommandContext, CommandExecutor};
+use jade_docx_editor::commands::{Command, CommandContext, CommandExecutor};
 use jade_docx_editor::headless_api::{
     apply_headless_commands_with_executor_to_document, execute_headless_queries_on_document,
 };
@@ -2032,6 +2032,98 @@ impl NativeDocument {
             self.renderer.restore_document_cache(Rc::clone(document));
         }
         result
+    }
+
+    /// [`Self::apply_command`] for several commands that are one action — a
+    /// paste of formatted runs, a replace of matches the engine's own replace
+    /// cannot find — applied in order and undone as one step. When one of
+    /// them fails, the ones before it are taken back off the document and
+    /// nothing is recorded.
+    pub fn apply_commands(
+        &mut self,
+        commands: Vec<HeadlessCommand>,
+        keep_selection: bool,
+    ) -> Result<(), String> {
+        if commands.is_empty() {
+            return Ok(());
+        }
+        let before = self.selection;
+        let recorded = self.executor.history_revision();
+        self.executor.begin_group();
+        let after = self.edit_in_place(|this| {
+            let result = apply_headless_commands_with_executor_to_document(
+                &mut this.word_document,
+                &mut this.executor,
+                this.selection.take(),
+                &HeadlessEditRequest { commands },
+            );
+            match result {
+                Ok(after) => {
+                    this.executor.end_group();
+                    Ok(after)
+                }
+                Err(err) => {
+                    let mut selection = before;
+                    let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+                    this.executor.abort_group(&mut ctx);
+                    Err(err)
+                }
+            }
+        });
+        let after = match after {
+            Ok(after) => after,
+            Err(err) => {
+                self.selection = before;
+                self.repaint_all()?;
+                return Err(format!("edit failed: {err:?}"));
+            }
+        };
+        self.finish_recorded_edit(recorded, before, after, keep_selection)
+    }
+
+    /// Executes a command the shell built itself — one the headless API has
+    /// no form for, such as a picture with its bytes — as one undo step, and
+    /// repaints the whole document.
+    pub fn execute_command(
+        &mut self,
+        command: Box<dyn Command>,
+        keep_selection: bool,
+    ) -> Result<(), String> {
+        let before = self.selection;
+        let recorded = self.executor.history_revision();
+        let mut selection = self.selection;
+        let result = self.edit_in_place(|this| {
+            let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+            this.executor.execute(command, &mut ctx)
+        });
+        if let Err(err) = result {
+            self.selection = before;
+            return Err(format!("edit failed: {err:?}"));
+        }
+        self.finish_recorded_edit(recorded, before, selection, keep_selection)
+    }
+
+    /// The tail of an edit through the executor: one step on this history
+    /// when it recorded anything, the selection, and a whole repaint.
+    fn finish_recorded_edit(
+        &mut self,
+        recorded: u64,
+        before: Option<SelectionRange>,
+        after: Option<SelectionRange>,
+        keep_selection: bool,
+    ) -> Result<(), String> {
+        if self.executor.history_revision() != recorded {
+            self.redo_history.clear();
+            self.history
+                .push(HistoryStep::Command { executor_steps: 1 });
+        }
+        self.selection = if keep_selection {
+            before
+        } else {
+            after.or(before)
+        };
+        self.renderer.set_selection_range(self.selection);
+        self.repaint_all().map(|_| ())
     }
 
     /// Applies one command and repaints, returning how long the repaint took.

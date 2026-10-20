@@ -39,6 +39,7 @@ impl HeadlessWorkbook {
     /// write, one undo step.
     pub fn merge_cells(&mut self, sheet: &str, range: &str) -> Result<MergeSummary> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "merging cells is not allowed", |p| p.format_cells)?;
         let range = parse_range(range)?;
         if range.start == range.end {
             return Err(HeadlessError::MergeTooSmall(format_reference(range.start)));
@@ -119,6 +120,7 @@ impl HeadlessWorkbook {
     /// step.
     pub fn unmerge_cells(&mut self, sheet: &str, range: &str) -> Result<Vec<String>> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "merging cells is not allowed", |p| p.format_cells)?;
         let range = parse_range(range)?;
         let model = &self.workbook.sheets[index];
         let (removed, kept): (Vec<CellRange>, Vec<CellRange>) = model
@@ -134,7 +136,7 @@ impl HeadlessWorkbook {
         Ok(removed.into_iter().map(format_range).collect())
     }
 
-    fn sheet_part(&self, part_name: &str) -> Result<String> {
+    pub(crate) fn sheet_part(&self, part_name: &str) -> Result<String> {
         Ok(jade_opc::OpcPackage::open(&self.source)?
             .part_str(part_name)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.to_string()))?)

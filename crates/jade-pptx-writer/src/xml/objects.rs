@@ -472,53 +472,8 @@ pub(crate) fn duplicate(xml: &str, id: u32, baseline: Option<Transform>) -> Resu
     } else {
         branch_infos(&nodes, source, id).is_some_and(|branches| branches.iter().all(|b| b.can_move))
     };
-    let mut creation_ids = HashMap::<String, String>::new();
-    let mut patches = Vec::new();
+    let mut patches = identity_patches(xml, &nodes, source, id, &id_map, &name)?;
     for n in descendants(&nodes, source) {
-        if n.is(1, "cNvPr") {
-            let old = n
-                .attr("id")
-                .and_then(|v| v.parse().ok())
-                .ok_or(WriteError::UnsupportedObjectOperation(id))?;
-            let fresh = id_map
-                .get(&old)
-                .ok_or(WriteError::UnsupportedObjectOperation(id))?;
-            let values = if old == id {
-                vec![("id", fresh.to_string()), ("name", name.clone())]
-            } else {
-                vec![("id", fresh.to_string())]
-            };
-            patches.push((
-                n.opening.clone(),
-                edit_tag(&xml[n.opening.clone()], &values)?,
-            ));
-        } else if detachable(n) || build(n) {
-            let key = if detachable(n) { "id" } else { "spid" };
-            if let Some(fresh) = n
-                .attr(key)
-                .and_then(|v| v.parse::<u32>().ok())
-                .and_then(|old| id_map.get(&old))
-            {
-                patches.push((
-                    n.opening.clone(),
-                    edit_tag(&xml[n.opening.clone()], &[(key, fresh.to_string())])?,
-                ));
-            }
-        }
-        if n.is(8, "creationId") {
-            if let Some(old) = n.attr("id") {
-                let fresh = creation_ids.entry(old.to_owned()).or_insert_with(|| {
-                    format!(
-                        "{{{}}}",
-                        uuid::Uuid::new_v4().to_string().to_ascii_uppercase()
-                    )
-                });
-                patches.push((
-                    n.opening.clone(),
-                    edit_tag(&xml[n.opening.clone()], &[("id", fresh.clone())])?,
-                ));
-            }
-        }
         if let Some(branch) = transform_info(&nodes, n).filter(|branch| branch.id == id) {
             if let Some(mut moved) = branch.transform.or(baseline).filter(|_| can_offset) {
                 // A 10 pt visual offset is only an insertion convenience. Keep
@@ -532,52 +487,7 @@ pub(crate) fn duplicate(xml: &str, id: u32, baseline: Option<Transform>) -> Resu
                     moved = original;
                 }
                 if moved != original {
-                    let pr = child(
-                        &nodes,
-                        n,
-                        1,
-                        if info.kind == "group" {
-                            "grpSpPr"
-                        } else {
-                            "spPr"
-                        },
-                    );
-                    let xfrm = pr.and_then(|pr| child(&nodes, pr, 2, "xfrm"));
-                    let fragment = transform_xml(xml, &nodes, xfrm, moved, n.strict)?;
-                    if let Some(xfrm) = xfrm {
-                        patches.push((xfrm.outer.clone(), fragment));
-                    } else if let Some(pr) = pr {
-                        if pr.empty {
-                            patches.push((
-                                pr.outer.clone(),
-                                format!(
-                                    "{}{fragment}</{}>",
-                                    pr.empty_open.as_deref().unwrap_or_default(),
-                                    pr.qualified
-                                ),
-                            ));
-                        } else {
-                            patches.push((pr.range.start..pr.range.start, fragment));
-                        }
-                    } else {
-                        let nv = n
-                            .children
-                            .iter()
-                            .map(|i| &nodes[*i])
-                            .find(|c| {
-                                c.ns == 1
-                                    && matches!(c.name.as_str(), "nvSpPr" | "nvPicPr" | "nvCxnSpPr")
-                            })
-                            .ok_or(WriteError::UnsupportedObjectOperation(id))?;
-                        let tag = n.qualified.rsplit_once(':').map_or_else(
-                            || "spPr".to_owned(),
-                            |(prefix, _)| format!("{prefix}:spPr"),
-                        );
-                        patches.push((
-                            nv.outer.end..nv.outer.end,
-                            format!("<{tag}>{fragment}</{tag}>"),
-                        ));
-                    }
+                    patches.push(place_patch(xml, &nodes, n, &info.kind, moved, id)?);
                 }
             }
         }
@@ -619,6 +529,206 @@ pub(crate) fn duplicate(xml: &str, id: u32, baseline: Option<Transform>) -> Resu
         }
     }
     Ok((apply_patches(xml, patches), new_id))
+}
+
+/// The patch that puts `transform` in object `n`'s own `xfrm` — made in
+/// its shape properties, made too when it has none, as for a placeholder
+/// that takes its place from the layout.
+fn place_patch(
+    xml: &str,
+    nodes: &[Node],
+    n: &Node,
+    kind: &str,
+    transform: Transform,
+    id: u32,
+) -> Result<(std::ops::Range<usize>, String)> {
+    let pr = child(
+        nodes,
+        n,
+        1,
+        if kind == "group" { "grpSpPr" } else { "spPr" },
+    );
+    let xfrm = pr.and_then(|pr| child(nodes, pr, 2, "xfrm"));
+    let fragment = transform_xml(xml, nodes, xfrm, transform, n.strict)?;
+    if let Some(xfrm) = xfrm {
+        return Ok((xfrm.outer.clone(), fragment));
+    }
+    if let Some(pr) = pr {
+        return Ok(if pr.empty {
+            (
+                pr.outer.clone(),
+                format!(
+                    "{}{fragment}</{}>",
+                    pr.empty_open.as_deref().unwrap_or_default(),
+                    pr.qualified
+                ),
+            )
+        } else {
+            (pr.range.start..pr.range.start, fragment)
+        });
+    }
+    let nv = n
+        .children
+        .iter()
+        .map(|i| &nodes[*i])
+        .find(|c| c.ns == 1 && matches!(c.name.as_str(), "nvSpPr" | "nvPicPr" | "nvCxnSpPr"))
+        .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let tag = n
+        .qualified
+        .rsplit_once(':')
+        .map_or_else(|| "spPr".to_owned(), |(prefix, _)| format!("{prefix}:spPr"));
+    Ok((
+        nv.outer.end..nv.outer.end,
+        format!("<{tag}>{fragment}</{tag}>"),
+    ))
+}
+
+/// The patches that give object `source` — its id `id` — and the shapes in
+/// it the ids `id_map` names, the name `name`, and new Office creation ids.
+fn identity_patches(
+    xml: &str,
+    nodes: &[Node],
+    source: &Node,
+    id: u32,
+    id_map: &HashMap<u32, u32>,
+    name: &str,
+) -> Result<Vec<(std::ops::Range<usize>, String)>> {
+    let mut creation_ids = HashMap::<String, String>::new();
+    let mut patches = Vec::new();
+    for n in descendants(nodes, source) {
+        if n.is(1, "cNvPr") {
+            let old = n
+                .attr("id")
+                .and_then(|v| v.parse().ok())
+                .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+            let fresh = id_map
+                .get(&old)
+                .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+            let values = if old == id {
+                vec![("id", fresh.to_string()), ("name", name.to_owned())]
+            } else {
+                vec![("id", fresh.to_string())]
+            };
+            patches.push((
+                n.opening.clone(),
+                edit_tag(&xml[n.opening.clone()], &values)?,
+            ));
+        } else if detachable(n) || build(n) {
+            let key = if detachable(n) { "id" } else { "spid" };
+            if let Some(fresh) = n
+                .attr(key)
+                .and_then(|v| v.parse::<u32>().ok())
+                .and_then(|old| id_map.get(&old))
+            {
+                patches.push((
+                    n.opening.clone(),
+                    edit_tag(&xml[n.opening.clone()], &[(key, fresh.to_string())])?,
+                ));
+            }
+        }
+        if n.is(8, "creationId") {
+            if let Some(old) = n.attr("id") {
+                let fresh = creation_ids.entry(old.to_owned()).or_insert_with(|| {
+                    format!(
+                        "{{{}}}",
+                        uuid::Uuid::new_v4().to_string().to_ascii_uppercase()
+                    )
+                });
+                patches.push((
+                    n.opening.clone(),
+                    edit_tag(&xml[n.opening.clone()], &[("id", fresh.clone())])?,
+                ));
+            }
+        }
+    }
+    Ok(patches)
+}
+
+/// Object `id` of slide XML `source` copied out for the slide XML `into`:
+/// its ids — a group's shapes' too — unused there, its name kept unless
+/// `into` has it, new Office creation ids, its position kept — written out
+/// from `baseline` when it took it from its layout. The fragment's
+/// namespaces are declared on it; its relationship ids are still the
+/// source slide's.
+pub(crate) fn copy_out(
+    source: &str,
+    id: u32,
+    baseline: Option<Transform>,
+    into: &str,
+) -> Result<(String, u32)> {
+    let nodes = parse_nodes(source)?;
+    let (node, info) = target(&nodes, id)?;
+    if !info.can_duplicate {
+        return Err(WriteError::UnsupportedObjectOperation(id));
+    }
+    let refs = References::new(&nodes);
+    let into_nodes = parse_nodes(into)?;
+    let into_refs = References::new(&into_nodes);
+    let mut reserved: HashSet<_> = into_refs
+        .0
+        .keys()
+        .chain(into_refs.1.keys())
+        .copied()
+        .collect();
+    let mut old_ids: Vec<_> = if info.kind == "group" {
+        subtree_ids(&nodes, &refs, node)
+            .ok_or(WriteError::UnsupportedObjectOperation(id))?
+            .into_iter()
+            .collect()
+    } else {
+        vec![id]
+    };
+    old_ids.sort_unstable();
+    old_ids.retain(|old| *old != id);
+    old_ids.insert(0, id);
+    let mut id_map = HashMap::new();
+    for old in old_ids {
+        let fresh = fresh_id(&reserved)?;
+        reserved.insert(fresh);
+        id_map.insert(old, fresh);
+    }
+    let taken = !info.name.is_empty()
+        && into_nodes
+            .iter()
+            .any(|n| n.is(1, "cNvPr") && n.attr("name") == Some(info.name.as_str()));
+    let name = if taken {
+        fresh_name(&into_nodes, &info.name)
+    } else {
+        info.name.clone()
+    };
+    let mut patches = identity_patches(source, &nodes, node, id, &id_map, &name)?;
+    for n in descendants(&nodes, node) {
+        let inherited = transform_info(&nodes, n)
+            .filter(|branch| branch.id == id && branch.transform.is_none())
+            .and(baseline);
+        if let Some(transform) = inherited {
+            patches.push(place_patch(source, &nodes, n, &info.kind, transform, id)?);
+        }
+    }
+    let local = patches
+        .into_iter()
+        .map(|(r, s)| (r.start - node.outer.start..r.end - node.outer.start, s))
+        .collect();
+    let fragment = text::scoped(
+        source,
+        &nodes,
+        node,
+        apply_patches(&source[node.outer.clone()], local),
+    );
+    Ok((fragment, id_map[&id]))
+}
+
+/// `fragment` added to slide XML `xml` in front of its other objects.
+pub(crate) fn insert_fragment(xml: &str, fragment: &str) -> Result<String> {
+    let nodes = parse_nodes(xml)?;
+    let tree = tree(&nodes)?;
+    let at = tree
+        .children
+        .iter()
+        .map(|i| &nodes[*i])
+        .rfind(|n| drawable(n))
+        .map_or(tree.range.start, |n| n.outer.end);
+    Ok(apply_patches(xml, vec![(at..at, fragment.to_owned())]))
 }
 
 pub(crate) fn delete(xml: &str, id: u32) -> Result<String> {

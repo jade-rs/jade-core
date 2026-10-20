@@ -59,6 +59,7 @@ fn laid_out(rows: u32) -> SheetLayout {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        protection: None,
     };
     layout_sheet(
         &sheet,
@@ -219,6 +220,7 @@ fn selecting_a_merged_cell_borders_the_whole_merge_and_its_bands() {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        protection: None,
     };
     sheet.rows[1].cells.push(Cell {
         reference: CellRef::new(1, 1),

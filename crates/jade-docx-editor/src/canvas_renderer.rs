@@ -238,6 +238,7 @@ where
     }
 }
 
+mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
@@ -2487,6 +2488,23 @@ fn top_level_paragraph_at_index(elements: &[BodyElement], target: usize) -> Opti
 /// box, or math content. Band redraw excludes such paragraphs because those
 /// objects can paint outside the text band even when the paragraph's line
 /// geometry is unchanged.
+/// The space Word for Mac leaves below an inline text box for its outline,
+/// with the box at the top of its line: the outline's width to the nearest
+/// 0.48pt, 0.96pt for VML's default 0.75pt stroke and 2.88pt for a 3pt one
+/// (table-object-edge-cases, word-compat-comprehensive). Zero without an
+/// outline and on Windows.
+fn mac_inline_text_box_outline_px(text_box: &RunTextBox) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || text_box.border.style == TextBoxBorderStyle::None
+    {
+        return 0.0;
+    }
+    const STEP_PX: f64 = 0.48 * 96.0 / 72.0;
+    let width = text_box.border.width_px.unwrap_or(1.0).max(0.0);
+    (width / STEP_PX).round() * STEP_PX
+}
+
 fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
     paragraph
         .runs
@@ -3576,6 +3594,12 @@ where
     /// not recorded above it: they do not carry float exclusions.
     paragraph_frame_wrap_guard: Option<(usize, f64)>,
     paragraph_frame_debug_regions: Vec<ParagraphFrameDebugInfo>,
+    /// The next body paragraph's floating objects, offered to the body
+    /// paragraph being rendered (Word for Mac, compatibility mode 14).
+    float_lookahead: Option<float_lookahead::FloatLookahead>,
+    /// Keeps the next paragraph's objects where the first pass put them
+    /// after the paragraph above grew around them.
+    float_lookahead_pin: Option<float_lookahead::FloatLookaheadPin>,
     cell_highlighted: RefCell<HashSet<usize>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
@@ -8001,6 +8025,8 @@ where
             paragraph_frame_column: None,
             paragraph_frame_wrap_guard: None,
             paragraph_frame_debug_regions: Vec::new(),
+            float_lookahead: None,
+            float_lookahead_pin: None,
             cell_highlighted: RefCell::new(HashSet::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
@@ -12951,6 +12977,8 @@ where
         self.table_counter = 0;
         self.floating_table_frames.clear();
         self.active_float_exclusions.clear();
+        self.float_lookahead = None;
+        self.float_lookahead_pin = None;
         self.paragraph_frame = None;
         self.paragraph_frame_column = None;
         self.paragraph_frame_wrap_guard = None;
@@ -13425,6 +13453,8 @@ where
                             self.active_keep_next_group_end = Some(last);
                         }
                     }
+                    self.float_lookahead =
+                        self.float_lookahead_for(&body.elements, body_element_index, end);
                     self.render_body_element(
                         element,
                         options,
@@ -13434,6 +13464,13 @@ where
                         body_element_index,
                         index,
                     )?;
+                    self.float_lookahead = None;
+                    if self
+                        .float_lookahead_pin
+                        .is_some_and(|pin| pin.element <= body_element_index)
+                    {
+                        self.float_lookahead_pin = None;
+                    }
                     // If we overflowed onto the next page while rendering this element, stop ASAP.
                     if self.layout_limit_reached() {
                         truncated = true;
@@ -13930,6 +13967,11 @@ where
             return false;
         }
         if self.pageless_mode || self.render_skip_draw {
+            return false;
+        }
+        // The look-ahead wrap reads the next paragraph, which the cache does
+        // not key.
+        if self.float_lookahead.is_some() || self.float_lookahead_pin.is_some() {
             return false;
         }
         if !self.incremental_layout_enabled || self.skip_layout_cache_update {
@@ -15234,6 +15276,8 @@ where
         // be replayed incorrectly.
         if (prefix_replay || fast_replay || shift_replay)
             && self.active_float_exclusions.is_empty()
+            && self.float_lookahead.is_none()
+            && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
             && self.can_use_unchecked_cache_replay(options)
         {
@@ -15568,6 +15612,8 @@ where
             && !self.rendering_page_footnotes
             && !continuing_note_paragraph
             && self.active_float_exclusions.is_empty()
+            && self.float_lookahead.is_none()
+            && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
             // In Markup, numbering labels depend on deleted-list offsets from
             // earlier paragraphs. Keep those paragraphs on the normal path;
@@ -16733,7 +16779,8 @@ where
                 let height = text_box
                     .height_px
                     .unwrap_or(line_height * 2.0)
-                    .max(line_height);
+                    .max(line_height)
+                    + mac_inline_text_box_outline_px(text_box);
                 inline_text_boxes.insert(start_pos, (run_index, text_box.clone()));
                 run_styles.push(RunStyle {
                     start: start_pos,
@@ -16776,6 +16823,22 @@ where
             // buffer so run boundaries do not each incur a fresh allocation.
             segment.clear();
             note_marker_text.clear();
+            // Word sets its field syntax error in bold.
+            let resolved_run_properties = if run
+                .field
+                .as_ref()
+                .is_some_and(|field| field.shows_word_syntax_error())
+            {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                properties.bold = Some(true);
+                properties.bold_complex = Some(true);
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
@@ -17053,6 +17116,7 @@ where
         // both the line breaks and the per-line horizontal geometry. Include
         // floats anchored by this paragraph as well as still-active floats
         // from earlier body elements on the same page.
+        let float_anchor_top = self.float_anchor_top(body_element_index, paragraph_top_y);
         let mut paragraph_float_exclusions = Vec::new();
         for (run_index, image) in &floating_images {
             let target = FloatingObjectTarget {
@@ -17065,7 +17129,7 @@ where
                 image.width_px.unwrap_or(line_height).max(1.0),
                 image.height_px.unwrap_or(line_height).max(1.0),
                 &image.layout,
-                paragraph_top_y,
+                float_anchor_top,
                 line_height,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&image.layout)));
@@ -17082,7 +17146,7 @@ where
                 text_box.width_px.unwrap_or(line_height).max(1.0),
                 text_box.height_px.unwrap_or(line_height).max(1.0),
                 &text_box.layout,
-                paragraph_top_y,
+                float_anchor_top,
                 line_height,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&text_box.layout)));
@@ -17137,6 +17201,60 @@ where
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && paragraph_style.word_grid_line_sizing.is_none(),
         );
+        // Word for Mac in compatibility mode 14 also wraps this paragraph
+        // around the next paragraph's shapes (see `float_lookahead`), judged
+        // from the lines it takes without them.
+        let mut float_lookahead_applied = None;
+        if let Some(lookahead) = self.float_lookahead.take().filter(|_| {
+            !layout_text.is_empty()
+                && note_resume_from == 0
+                && paragraph_style.drop_cap.is_none()
+                && !paragraph_style.bidi
+                && current_direction.is_none_or(|direction| {
+                    !matches!(
+                        direction,
+                        TextDirection::TbRl
+                            | TextDirection::TbRlV
+                            | TextDirection::BtLr
+                            | TextDirection::BtLrV
+                    )
+                })
+        }) {
+            let natural_lines = self.wrap_text_into_lines_cached(
+                &layout_text,
+                &run_styles,
+                x,
+                &paragraph_style,
+                paragraph_offset,
+                column_right,
+            )?;
+            if let Some(lookahead_exclusions) = self.float_lookahead_exclusions(
+                &lookahead,
+                paragraph_index,
+                &natural_lines,
+                x,
+                column_right - paragraph_style.right_indent,
+                &paragraph_style,
+                paragraph_top_y,
+                line_height,
+            ) {
+                let mut exclusions = current_float_exclusions.clone();
+                exclusions.extend(lookahead_exclusions);
+                paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
+                    self.current_y,
+                    line_height,
+                    x,
+                    column_right - paragraph_style.right_indent,
+                    &exclusions,
+                    contour_font_box,
+                    paragraph_style.word_grid_line_sizing.is_none(),
+                );
+                float_lookahead_applied = Some(float_lookahead::FloatLookaheadApplied {
+                    anchor_element: lookahead.anchor_element(),
+                    natural_lines: natural_lines.len(),
+                });
+            }
+        }
         self.active_float_exclusions
             .extend(
                 paragraph_float_exclusions
@@ -17180,7 +17298,7 @@ where
                         image,
                         paragraph_index,
                         *run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
                     )?;
@@ -17193,7 +17311,7 @@ where
                         text_box,
                         paragraph_index,
                         *run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         render_changes,
                     )?;
@@ -17205,7 +17323,12 @@ where
             // Word leaves the paragraph mark's font box below an inline image
             // even when this paragraph contains no text. Resolve it only for
             // object-only paragraphs; shared layout owns the union and grid fit.
-            let paragraph_mark_font_box = if paragraph_style.word_platform
+            // An auto-spaced line of nothing but objects is as tall as the
+            // objects plus the spacing multiple's extra over the mark's single
+            // line, set below them, without the mark's descent: Word for Mac
+            // gives a lone 20pt picture a 20pt line at single spacing and a
+            // 21.8pt one at 1.15 lines of 10.5pt Arial.
+            let (paragraph_mark_font_box, object_line_extra_px) = if paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && (!inline_images.is_empty() || !inline_text_boxes.is_empty())
                 && run_styles.iter().all(|style| style.inline_object.is_some())
@@ -17216,17 +17339,37 @@ where
                     .and_then(|properties| properties.mark_run_properties.as_ref());
                 let effective = self.effective_run_properties(paragraph, mark);
                 let style = self.resolve_applied_run_style_cached(effective.as_ref());
-                jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
-                    &style.resolved.font_descriptor_latin_ascii,
+                let descriptor = &style.resolved.font_descriptor_latin_ascii;
+                let extra = paragraph_style
+                    .word_grid_line_sizing
+                    .is_none()
+                    .then(|| {
+                        jade_docx_layout::line_metrics::word_auto_line_multiple(
+                            paragraph
+                                .properties
+                                .as_ref()
+                                .and_then(|properties| properties.spacing.as_ref()),
+                        )
+                    })
+                    .flatten()
+                    .filter(|multiple| *multiple >= 1.0)
+                    .and_then(|multiple| {
+                        jade_docx_layout::line_metrics::word_latin_font_line_height_pt(descriptor)
+                            .map(|single| points_to_px(single) * (multiple - 1.0))
+                    });
+                (
+                    jade_docx_layout::line_metrics::word_font_vertical_metrics_px(descriptor),
+                    extra,
                 )
             } else {
-                None
+                (None, None)
             };
             // Laid out from `resume_from` on: the start of a note paragraph
             // continued from the previous page, or the first line whose
             // references were renumbered on the page they moved to.
             let mut resume_from = note_resume_from.min(layout_text.len());
             let mut restarts = 0usize;
+            let lines_start = (self.current_page_number, self.current_y);
             loop {
                 let resuming = resume_from > paragraph_offset;
                 paragraph_style.first_line_indent = if first_line_consumed || resuming {
@@ -17257,6 +17400,7 @@ where
                     x,
                     &paragraph_style,
                     paragraph_mark_font_box,
+                    object_line_extra_px,
                     &styles,
                     &line_height_neutral_ranges,
                     &inline_images,
@@ -17334,6 +17478,30 @@ where
             if let Some((page, floor)) = drop_cap_floor {
                 if self.current_page_number == page {
                     self.current_y = self.current_y.max(floor);
+                }
+            }
+            if let Some(applied) = float_lookahead_applied
+                .filter(|_| restarts == 0 && self.current_page_number == lines_start.0)
+            {
+                // Lines of one paragraph share their pitch: the growth is the
+                // added lines' share of the height laid out.
+                let lines = self
+                    .wrap_text_into_lines_cached(
+                        &layout_text,
+                        &run_styles,
+                        x,
+                        &paragraph_style,
+                        paragraph_offset,
+                        column_right,
+                    )?
+                    .len();
+                if lines > applied.natural_lines {
+                    let height = self.current_y - lines_start.1;
+                    self.float_lookahead_pin = Some(float_lookahead::FloatLookaheadPin {
+                        element: applied.anchor_element,
+                        page_number: self.current_page_number,
+                        shift: height * (lines - applied.natural_lines) as f64 / lines as f64,
+                    });
                 }
             }
             self.sync_column_state(&mut x, &mut column_x, &mut column_width, &mut column_right);
@@ -17512,7 +17680,7 @@ where
                         &image,
                         paragraph_index,
                         run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
                     )?;
@@ -17525,7 +17693,7 @@ where
                         &text_box,
                         paragraph_index,
                         run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         render_changes,
                     )?;
@@ -18060,9 +18228,11 @@ where
     }
 
     /// Seek snapshots restore the flow cursor but not float exclusions, so
-    /// none may be taken inside a frame or beside its wrap region.
+    /// none may be taken inside a frame or beside its wrap region, nor while
+    /// a look-ahead pin holds the next paragraph's objects.
     fn paragraph_frame_snapshot_unsafe(&self) -> bool {
         self.paragraph_frame.is_some()
+            || self.float_lookahead_pin.is_some()
             || self.paragraph_frame_column.is_some()
             || self
                 .paragraph_frame_wrap_guard
@@ -19071,6 +19241,7 @@ where
         base_x: f64,
         paragraph_style: &ParagraphStyle,
         paragraph_mark_font_box: Option<(f64, f64)>,
+        object_line_extra_px: Option<f64>,
         run_styles: &[RunStyle],
         line_height_neutral_ranges: &[(usize, usize)],
         inline_images: &HashMap<usize, (usize, RunImage)>,
@@ -19695,18 +19866,42 @@ where
                 min_top_offset = min_top_offset.min(prepared.top_offset);
                 max_bottom_offset = max_bottom_offset.max(prepared.bottom_offset);
             }
+            let mut has_inline_object = false;
+            let mut object_top = 0.0_f64;
             for cluster in &wrapped_line.clusters {
                 if let Some((top, bottom)) = cluster.inline_object_bounds_px() {
+                    has_inline_object = true;
+                    object_top = object_top.min(top);
                     min_top_offset = min_top_offset.min(top);
                     max_bottom_offset = max_bottom_offset.max(bottom);
                 }
             }
+            // Word for Mac sizes an auto-spaced line that an inline object
+            // makes taller than its text by the object plus the spacing
+            // multiple's extra over single spacing, set below it: a 20pt
+            // picture beside 10.5pt Arial takes 20 + 2.2 + 1.8pt at 1.15
+            // lines. Lines of nothing but objects rising above the mark take
+            // `object_line_extra_px`; a header's 8.7pt logo keeps the text line.
+            let object_line_extra = if prepared_segments.is_empty() {
+                object_line_extra_px.filter(|_| {
+                    has_inline_object
+                        && paragraph_mark_font_box.is_none_or(|(ascent, _)| -object_top > ascent)
+                })
+            } else {
+                paragraph_style
+                    .word_proportional_line_sizing
+                    .map(|sizing| sizing.multiple())
+                    .filter(|multiple| has_inline_object && *multiple >= 1.0)
+                    .map(|multiple| line_height - line_height / multiple)
+            };
             if prepared_segments.is_empty() && paragraph_mark_font_box.is_some() {
                 if let Some((ascent, descent)) =
                     wrapped_line.content_box_px_with_paragraph_mark(paragraph_mark_font_box)
                 {
                     min_top_offset = min_top_offset.min(-ascent);
-                    max_bottom_offset = max_bottom_offset.max(descent);
+                    if object_line_extra.is_none() {
+                        max_bottom_offset = max_bottom_offset.max(descent);
+                    }
                 }
             }
             if !min_top_offset.is_finite() || !max_bottom_offset.is_finite() {
@@ -19734,7 +19929,12 @@ where
                 max_bottom_offset = descent;
             }
             let content_height = (max_bottom_offset - min_top_offset).max(1.0);
-            let line_box_height = line_height.max(content_height);
+            let line_box_height = match object_line_extra {
+                Some(extra) if prepared_segments.is_empty() || content_height > line_height => {
+                    content_height + extra
+                }
+                _ => line_height.max(content_height),
+            };
             // An atLeast line's extra over the auto grid line sits above it.
             let extra_above = paragraph_style
                 .word_grid_line_sizing
@@ -20317,7 +20517,9 @@ where
                                     x: cursor_x,
                                     y: baseline + cluster.inline_object_bounds_px().unwrap().0,
                                     width: object.width.max(1.0),
-                                    height: object.height.max(1.0),
+                                    height: (object.height
+                                        - mac_inline_text_box_outline_px(text_box))
+                                    .max(1.0),
                                     rotation_deg: text_box.layout.rotation_deg.unwrap_or(0.0),
                                 },
                             ));
@@ -20381,14 +20583,25 @@ where
                     })
                     .map(|cluster| {
                         // On Mac a line with a tab gave the mark's width to the
-                        // tab first (`shrink_tab_for_final_mark`); what still
-                        // overflows hangs and nothing is left to justify
-                        // (trust page 22).
+                        // tab first (`shrink_tab_for_final_mark`). Word justifies
+                        // the line as if the mark hung whole with the tab still
+                        // open, then closes the tab: the mark stops the closed
+                        // width short of the edge (trust page 22: 4.05pt, the
+                        // auto-space gaps 0.70pt wider).
+                        let closed: f64 = wrapped_line
+                            .tab_stops
+                            .iter()
+                            .map(|stop| stop.closed_for_final_mark)
+                            .sum();
                         if paragraph_style.word_platform
                             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                             && !wrapped_line.tab_stops.is_empty()
                         {
-                            cluster.width.min(line_width - available_for_line)
+                            if closed > f64::EPSILON {
+                                (cluster.width - closed).max(0.0)
+                            } else {
+                                cluster.width.min(line_width - available_for_line)
+                            }
                         } else {
                             cluster.width
                         }
@@ -26683,6 +26896,7 @@ where
                         balance_single_byte_double_byte_width,
                     )
                 }),
+                follows_inline_object: false,
             },
             glyph_steps,
         }))
@@ -49867,6 +50081,107 @@ mod tests {
         );
     }
 
+    /// Word for Mac in compatibility mode 14 wraps the paragraph before a
+    /// square-wrapped shape's anchor around the shape, as if the shape sat at
+    /// that paragraph's top, and leaves the shape where the first pass put it
+    /// (`floating-square-wrap`, `floating-wrap-sides`).
+    #[test]
+    fn mode_14_wraps_the_paragraph_before_a_square_float_anchor() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        const FLOAT_WIDTH: f64 = 300.0;
+        const FLOAT_HEIGHT: f64 = 60.0;
+        let render = |compatibility_mode: u32| {
+            let before = "before ".repeat(12);
+            let anchor = "anchor ".repeat(60);
+            let mut document = doc_with_paragraph_texts(&[before.as_str(), anchor.as_str()]);
+            document.east_asian_line_breaking.compatibility_mode = Some(compatibility_mode);
+            let body = document.body.as_mut().expect("body");
+            let BodyElement::Paragraph(paragraph) = &mut body.elements[1] else {
+                panic!("paragraph");
+            };
+            let mut float = RunImage {
+                width_px: Some(FLOAT_WIDTH),
+                height_px: Some(FLOAT_HEIGHT),
+                ..RunImage::default()
+            };
+            float.layout.kind = RunImageKind::Floating;
+            float.layout.wrap = WrapMode::Square;
+            float.layout.wrap_text = WrapTextSide::BothSides;
+            float.layout.position_h = Some(ImagePosition {
+                relative_from: Some("margin".to_string()),
+                offset_px: Some(0.0),
+                align: None,
+            });
+            float.layout.position_v = Some(ImagePosition {
+                relative_from: Some("paragraph".to_string()),
+                offset_px: Some(0.0),
+                align: None,
+            });
+            let float_run = Run {
+                text: String::new(),
+                image: Some(float),
+                ..paragraph.runs[0].clone()
+            };
+            paragraph.runs.insert(0, float_run);
+            let painter = jade_painter::recording::RecordingPainter::new();
+            let mut renderer =
+                CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false)
+                    .expect("paged recording renderer");
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            (renderer.margin_left, renderer.layout_debug_lines())
+        };
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (margin, plain) = render(15);
+        let (_, wrapped) = render(14);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+
+        let lines_of = |lines: &[LayoutLineDebug], paragraph: usize| {
+            lines
+                .iter()
+                .filter(|line| line.paragraph == paragraph)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        // Mode 15 keeps the earlier paragraph at the full width.
+        let plain_before = lines_of(&plain, 0);
+        assert!(
+            (plain_before[0].start_x - margin).abs() < 0.5,
+            "{plain_before:?}"
+        );
+        let first_pass_anchor_top = lines_of(&plain, 1)[0].top;
+
+        // Mode 14 moves it beside the shape, which grows it by a line.
+        let before = lines_of(&wrapped, 0);
+        assert!(
+            before
+                .iter()
+                .all(|line| line.start_x >= margin + FLOAT_WIDTH - 0.5),
+            "{before:?}"
+        );
+        assert!(before.len() > plain_before.len(), "{before:?}");
+
+        // The shape stays at the first pass's anchor top: the anchor
+        // paragraph's lines beside it wrap, and those below it do not.
+        let anchor = lines_of(&wrapped, 1);
+        assert!(anchor[0].top > first_pass_anchor_top + 0.5, "{anchor:?}");
+        for line in &anchor {
+            if line.top + line.height <= first_pass_anchor_top + FLOAT_HEIGHT - 0.5 {
+                assert!(line.start_x >= margin + FLOAT_WIDTH - 0.5, "{line:?}");
+            } else if line.top >= first_pass_anchor_top + FLOAT_HEIGHT {
+                assert!((line.start_x - margin).abs() < 0.5, "{line:?}");
+            }
+        }
+        assert!(
+            anchor
+                .iter()
+                .any(|line| line.top >= first_pass_anchor_top + FLOAT_HEIGHT
+                    && line.top < anchor[0].top + FLOAT_HEIGHT),
+            "a line returns to the margin above the unpinned shape's bottom: {anchor:?}"
+        );
+    }
+
     /// `filler` one-line paragraphs, then a paragraph that wraps on both
     /// sides of a centred 150×60 float, with a tall inline object after
     /// `lead_words` words so a far-side segment can be taller than its band.
@@ -55014,6 +55329,23 @@ mod tests {
             horizontal_align_offset_within(Some("right"), 400.0, 100.0, 1),
             300.0
         );
+    }
+
+    #[test]
+    fn mac_inline_text_box_line_holds_its_outline_to_the_nearest_0_48pt() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut text_box = RunTextBox::default();
+        let pt = |px: f64| px * 72.0 / 96.0;
+        // VML's default 0.75pt stroke.
+        assert!((pt(mac_inline_text_box_outline_px(&text_box)) - 0.96).abs() < 1e-9);
+        text_box.border.width_px = Some(4.0);
+        assert!((pt(mac_inline_text_box_outline_px(&text_box)) - 2.88).abs() < 1e-9);
+        text_box.border.style = TextBoxBorderStyle::None;
+        assert_eq!(mac_inline_text_box_outline_px(&text_box), 0.0);
+        text_box.border.style = TextBoxBorderStyle::Solid;
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(mac_inline_text_box_outline_px(&text_box), 0.0);
     }
 
     #[test]
