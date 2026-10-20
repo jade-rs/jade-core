@@ -136,7 +136,7 @@ impl HeadlessWorkbook {
         Ok(removed.into_iter().map(format_range).collect())
     }
 
-    fn sheet_part(&self, part_name: &str) -> Result<String> {
+    pub(crate) fn sheet_part(&self, part_name: &str) -> Result<String> {
         Ok(jade_opc::OpcPackage::open(&self.source)?
             .part_str(part_name)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.to_string()))?)

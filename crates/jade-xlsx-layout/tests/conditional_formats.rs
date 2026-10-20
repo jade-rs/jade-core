@@ -87,6 +87,7 @@ fn comparison_operators_and_text_wildcards_obey_rule_semantics() {
         formulas: vec!["10".into(), "20".into()],
         visual: None,
         issues: Vec::new(),
+        ranking: Default::default(),
     };
     assert_eq!(matches_rule(&rule, &CellValue::Number(10.0)), Some(true));
     assert_eq!(matches_rule(&rule, &CellValue::Number(20.0)), Some(true));
@@ -136,6 +137,7 @@ fn an_unstored_font_only_rule_is_available_to_the_cell_editor() {
                 formulas: Vec::new(),
                 visual: None,
                 issues: Vec::new(),
+                ranking: Default::default(),
             }],
         },
     );
