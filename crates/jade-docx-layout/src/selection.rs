@@ -757,6 +757,61 @@ impl SelectionManager {
         }
     }
 
+    /// Splits the registration of a paragraph laid out together with the
+    /// paragraphs after it into one registration per paragraph, each with its
+    /// own text offsets. Word's final view draws a paragraph whose mark is a
+    /// tracked deletion on the same lines as the paragraph after it.
+    ///
+    /// `pieces` lists each later paragraph's index and the offset in
+    /// `index`'s text where its text starts, in order. A line both paragraphs
+    /// share is registered for each, clipped to its own glyphs. A paragraph
+    /// with no visible text gets an empty line at the join and is not
+    /// selectable.
+    pub fn split_joined_paragraph(&mut self, index: usize, pieces: &[(usize, usize)]) {
+        if self.frozen || pieces.is_empty() {
+            return;
+        }
+        let head = self.ensure_paragraph_internal(index);
+        let text = std::mem::take(&mut head.text);
+        let lines = std::mem::take(&mut head.lines);
+        head.invalidate_bounding_box();
+        let mut bounds = Vec::with_capacity(pieces.len() + 1);
+        bounds.push((index, 0));
+        for &(target, start) in pieces {
+            let previous = bounds.last().map_or(0, |&(_, start)| start);
+            let mut start = start.clamp(previous, text.len());
+            while !text.is_char_boundary(start) {
+                start += 1;
+            }
+            bounds.push((target, start));
+        }
+        // Line numbers of the joined paragraph no longer apply.
+        self.caret_x_overrides
+            .retain(|&(paragraph, _), _| paragraph != index);
+        for (piece, &(target, start)) in bounds.iter().enumerate() {
+            let last_piece = piece + 1 == bounds.len();
+            let end = bounds.get(piece + 1).map_or(text.len(), |&(_, end)| end);
+            let mut piece_lines: Vec<LineLayout> = lines
+                .iter()
+                .filter_map(|line| clip_joined_line(line, start, end, piece == 0, last_piece))
+                .collect();
+            let hidden = piece_lines.is_empty();
+            if hidden {
+                piece_lines.extend(joined_placeholder_line(&lines, start));
+            }
+            let paragraph = self.ensure_paragraph_internal(target);
+            paragraph.text.clear();
+            paragraph.text.push_str(&text[start..end]);
+            paragraph.lines = piece_lines;
+            paragraph.invalidate_bounding_box();
+            if hidden {
+                self.non_selectable_paragraphs.insert(target);
+            } else {
+                self.non_selectable_paragraphs.remove(&target);
+            }
+        }
+    }
+
     pub fn record_table_cell(&mut self, cell: CellLayout) {
         self.record_table_cell_impl(cell, false);
     }
@@ -3384,6 +3439,185 @@ fn caret_x_for_line(line: &LineLayout, offset: usize) -> f64 {
     caret_x.clamp(min_x, max_x)
 }
 
+/// One paragraph's share of a line laid out for joined paragraphs (see
+/// [`SelectionManager::split_joined_paragraph`]): the fragments, tab stops
+/// and break between `start` and `end`, in that paragraph's own offsets.
+fn clip_joined_line(
+    line: &LineLayout,
+    start: usize,
+    end: usize,
+    first_piece: bool,
+    last_piece: bool,
+) -> Option<LineLayout> {
+    let owns = |offset: usize| offset >= start && (offset < end || (last_piece && offset == end));
+    let fragments: Vec<FragmentLayout> = line
+        .fragments
+        .iter()
+        .filter_map(|fragment| clip_joined_fragment(fragment, start, end, owns))
+        .collect();
+    let tab_stops: Vec<TabStopLayout> = line
+        .tab_stops
+        .iter()
+        .filter(|tab| owns(tab.start_offset.min(tab.end_offset)))
+        .map(|tab| TabStopLayout {
+            start_offset: tab.start_offset.saturating_sub(start),
+            end_offset: tab.end_offset.saturating_sub(start),
+            ..tab.clone()
+        })
+        .collect();
+    let break_range = line
+        .break_range
+        .filter(|&(from, to)| owns(from.min(to)))
+        .map(|(from, to)| (from.saturating_sub(start), to.saturating_sub(start)));
+    if fragments.is_empty() && tab_stops.is_empty() && break_range.is_none() {
+        // A line with no content at all (an empty paragraph's) stays with
+        // the first paragraph.
+        let empty_line =
+            line.fragments.is_empty() && line.tab_stops.is_empty() && line.break_range.is_none();
+        return (first_piece && empty_line).then(|| line.clone());
+    }
+    let line_offsets = line
+        .fragments
+        .iter()
+        .map(|fragment| fragment.start.min(fragment.end))
+        .chain(
+            line.tab_stops
+                .iter()
+                .map(|tab| tab.start_offset.min(tab.end_offset)),
+        )
+        .chain(line.break_range.map(|(from, to)| from.min(to)));
+    let shared_before = line_offsets.clone().any(|offset| offset < start);
+    let shared_after = line_offsets
+        .clone()
+        .any(|offset| offset >= start && !owns(offset))
+        || line.fragments.iter().any(|fragment| fragment.end > end);
+    let left = fragments
+        .iter()
+        .map(|fragment| fragment.x)
+        .chain(tab_stops.iter().map(|tab| tab.start_x.min(tab.end_x)))
+        .fold(f64::INFINITY, f64::min);
+    let right = fragments
+        .iter()
+        .map(|fragment| fragment.x + fragment.width)
+        .chain(tab_stops.iter().map(|tab| tab.start_x.max(tab.end_x)))
+        .fold(f64::NEG_INFINITY, f64::max);
+    let mut clipped = line.clone();
+    if shared_before && left.is_finite() {
+        clipped.start_x = left;
+    }
+    if shared_after && right.is_finite() {
+        clipped.cursor_end_x = right;
+        clipped.allowed_trailing_overflow_width = 0.0;
+    }
+    if shared_before || shared_after {
+        const EPS: f64 = 0.01;
+        let (from, to) = (clipped.start_x, clipped.cursor_end_x);
+        clipped.tab_leaders = line
+            .tab_leaders
+            .iter()
+            .filter(|leader| leader.start_x >= from - EPS && leader.end_x <= to + EPS)
+            .cloned()
+            .collect();
+    }
+    clipped.fragments = Rc::from(fragments);
+    clipped.tab_stops = Rc::from(tab_stops);
+    clipped.break_range = break_range;
+    Some(clipped)
+}
+
+fn clip_joined_fragment(
+    fragment: &FragmentLayout,
+    start: usize,
+    end: usize,
+    owns: impl Fn(usize) -> bool,
+) -> Option<FragmentLayout> {
+    let shift = |glyph: &GlyphBox, origin: f64| GlyphBox {
+        start: glyph.start.saturating_sub(start),
+        end: glyph.end.min(end.max(glyph.start)).saturating_sub(start),
+        x: glyph.x - origin,
+        width: glyph.width,
+    };
+    if fragment.start >= fragment.end {
+        if !owns(fragment.start) {
+            return None;
+        }
+    } else if fragment.end <= start || fragment.start >= end {
+        return None;
+    }
+    if fragment.start >= start && fragment.end <= end.max(fragment.start) {
+        return Some(FragmentLayout {
+            start: fragment.start - start,
+            end: fragment.end - start,
+            glyphs: fragment
+                .glyphs
+                .iter()
+                .map(|glyph| shift(glyph, 0.0))
+                .collect(),
+            ..fragment.clone()
+        });
+    }
+    // The fragment runs across the join: keep the glyphs that start in it.
+    let glyphs: Vec<&GlyphBox> = fragment
+        .glyphs
+        .iter()
+        .filter(|glyph| glyph.start >= start && glyph.start < end)
+        .collect();
+    let left = glyphs
+        .iter()
+        .map(|glyph| glyph.x)
+        .fold(f64::INFINITY, f64::min);
+    let right = glyphs
+        .iter()
+        .map(|glyph| glyph.x + glyph.width)
+        .fold(f64::NEG_INFINITY, f64::max);
+    if !left.is_finite() {
+        return None;
+    }
+    Some(FragmentLayout {
+        start: fragment.start.max(start) - start,
+        end: fragment.end.min(end) - start,
+        x: fragment.x + left,
+        width: right - left,
+        baseline_shift_px: fragment.baseline_shift_px,
+        glyphs: glyphs.iter().map(|glyph| shift(glyph, left)).collect(),
+    })
+}
+
+/// The empty line a joined paragraph with no visible text keeps where its
+/// text would start.
+fn joined_placeholder_line(lines: &[LineLayout], offset: usize) -> Option<LineLayout> {
+    let line = lines
+        .iter()
+        .rev()
+        .find(|line| {
+            line.logical_source_range()
+                .is_some_and(|(start, _)| start < offset)
+        })
+        .or_else(|| lines.first())?;
+    let x = line
+        .fragments
+        .iter()
+        .find(|fragment| fragment.start <= offset && offset <= fragment.end)
+        .map(|fragment| fragment.x + fragment.relative_x_for_end(offset))
+        .or_else(|| {
+            line.fragments
+                .iter()
+                .filter(|fragment| fragment.end <= offset)
+                .map(|fragment| fragment.x + fragment.width)
+                .reduce(f64::max)
+        })
+        .unwrap_or(line.start_x);
+    let mut placeholder = line.clone();
+    placeholder.start_x = x;
+    placeholder.cursor_end_x = x;
+    placeholder.allowed_trailing_overflow_width = 0.0;
+    placeholder.fragments = Rc::from([]);
+    placeholder.tab_stops = Rc::from([]);
+    placeholder.tab_leaders = Rc::from([]);
+    placeholder.break_range = None;
+    Some(placeholder)
+}
+
 #[derive(Clone, Copy)]
 enum VerticalDirection {
     Up,
@@ -3444,6 +3678,47 @@ mod tests {
             vertical: false,
             vertical_reversed: false,
         }
+    }
+
+    #[test]
+    fn split_joined_paragraph_gives_each_paragraph_its_share_of_a_line() {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        manager.append_paragraph_text(0, "Helloorld more");
+        manager.record_line(0, make_line("Helloorld ", 100.0, 0.0, 0.0));
+        manager.record_line(0, make_line_with_offset(10, "more", 100.0, 20.0, 20.0));
+        manager.split_joined_paragraph(0, &[(1, 5), (2, 5), (3, 5)]);
+
+        let paragraphs = manager.paragraphs();
+        let texts: Vec<&str> = paragraphs.iter().map(|p| p.text.as_str()).collect();
+        assert_eq!(texts, ["Hello", "", "", "orld more"]);
+        let hello = &paragraphs[0].lines;
+        assert_eq!(hello.len(), 1);
+        assert_eq!(
+            (hello[0].fragments[0].start, hello[0].fragments[0].end),
+            (0, 5)
+        );
+        assert_eq!(hello[0].fragments[0].width, 50.0);
+        assert_eq!(hello[0].cursor_end_x, 150.0);
+        let world = &paragraphs[3].lines;
+        assert_eq!(world.len(), 2);
+        let first = &world[0].fragments[0];
+        assert_eq!((first.start, first.end, first.x), (0, 5, 150.0));
+        assert_eq!(first.glyphs[0].x, 0.0);
+        assert_eq!((first.glyphs[0].start, first.glyphs[0].end), (0, 1));
+        assert_eq!(world[0].start_x, 150.0);
+        assert_eq!(
+            (world[1].fragments[0].start, world[1].fragments[0].end),
+            (5, 9)
+        );
+        // The paragraphs with no text sit at the join and take no clicks.
+        for hidden in &paragraphs[1..3] {
+            assert_eq!(hidden.lines.len(), 1);
+            assert!(hidden.lines[0].fragments.is_empty());
+            assert_eq!(hidden.lines[0].start_x, 150.0);
+        }
+        assert_eq!(manager.hit_test(152.0, 10.0), Some(TextPosition::new(3, 0)));
+        assert_eq!(manager.hit_test(148.0, 10.0), Some(TextPosition::new(0, 5)));
     }
 
     fn make_line_with_offset(

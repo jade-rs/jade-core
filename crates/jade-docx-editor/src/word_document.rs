@@ -10888,7 +10888,80 @@ impl WordDocument {
             raw.insert_node(r_pr_id, insert_at, XmlNode::Element(mark.clone()))
                 .map_err(|error| error.to_string())?;
         }
+        self.refresh_paragraph_mark_revision(paragraph_index);
         Ok(())
+    }
+
+    /// Reads the tracked change on paragraph `paragraph_index`'s mark
+    /// (`w:pPr/w:rPr/w:ins|del|moveFrom|moveTo`) back from the round-trip XML
+    /// into the model, which the final view joins paragraphs by. Edits that
+    /// add or decide a mark revision change only the XML.
+    pub(crate) fn refresh_paragraph_mark_revision(&mut self, paragraph_index: usize) {
+        let Some(paragraph_id) = self
+            .paragraph(paragraph_index)
+            .and_then(|paragraph| paragraph.node_id)
+        else {
+            return;
+        };
+        let Some(element) = self
+            .raw_document
+            .as_ref()
+            .and_then(|raw| raw.element(paragraph_id))
+        else {
+            return;
+        };
+        fn child<'a>(element: &'a XmlElement, name: &str) -> Option<&'a XmlElement> {
+            element.children.iter().find_map(|child| match child {
+                XmlNode::Element(child) if child.name.rsplit(':').next() == Some(name) => {
+                    Some(child)
+                }
+                _ => None,
+            })
+        }
+        let mark = child(element, "pPr")
+            .and_then(|p_pr| child(p_pr, "rPr"))
+            .and_then(|r_pr| {
+                r_pr.children.iter().find_map(|child| {
+                    let XmlNode::Element(mark) = child else {
+                        return None;
+                    };
+                    let kind = match mark.name.rsplit(':').next()? {
+                        "ins" => RevisionKind::Inserted,
+                        "del" => RevisionKind::Deleted,
+                        "moveFrom" => RevisionKind::MovedFrom,
+                        "moveTo" => RevisionKind::MovedTo,
+                        _ => return None,
+                    };
+                    let attribute = |name: &str| {
+                        mark.attributes
+                            .iter()
+                            .find(|attribute| attribute.name == name)
+                            .map(|attribute| attribute.value.clone())
+                    };
+                    Some(RevisionMark {
+                        kind,
+                        id: attribute("w:id"),
+                        author: attribute("w:author"),
+                        date: attribute("w:date"),
+                        date_utc: attribute("w16du:dateUtc"),
+                        insertion: None,
+                    })
+                })
+            });
+        let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
+            return;
+        };
+        let current = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.mark_revision.as_deref());
+        if current == mark.as_ref() {
+            return;
+        }
+        paragraph
+            .properties
+            .get_or_insert_with(Default::default)
+            .mark_revision = mark.map(Box::new);
     }
 
     /// The source paragraph mark moves to the tail when a paragraph is split.
@@ -11501,6 +11574,11 @@ impl WordDocument {
             }
         }
         self.revision_session = session;
+        if !paragraph_mark_ids.is_empty() {
+            for index in 0..self.paragraph_count() {
+                self.refresh_paragraph_mark_revision(index);
+            }
+        }
         if !touched_paragraphs.is_empty() || !paragraph_mark_ids.is_empty() {
             self.refresh_revision_counter();
         }
