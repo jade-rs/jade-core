@@ -6740,6 +6740,9 @@ fn mac_squeeze_budget(clusters: &[InlineCluster], punctuation: bool) -> MacSquee
             budget.east_asian_em = first.3;
         }
     }
+    if punctuation {
+        budget.punctuation_shrink += clusters.first().map_or(0.0, line_start_centred_blank);
+    }
     for pair in clusters.windows(2) {
         if let Some(right) = punctuation_side(&pair[1]) {
             budget.add_pair(
@@ -6754,6 +6757,22 @@ fn mac_squeeze_budget(clusters: &[InlineCluster], punctuation: bool) -> MacSquee
         }
     }
     budget
+}
+
+/// The quarter-em blank before a centred mark (`・：；`) that starts a line.
+/// Word for Mac narrows it as it would beside a kana, so the mark gives as
+/// much as a comma and is drawn left of the line start: math's squeezed
+/// `・図と同じ扱いで、…、右ク` narrows `・` by 0.6pt on each side and each `、`
+/// by 1.2pt.
+fn line_start_centred_blank(cluster: &InlineCluster) -> f64 {
+    match punctuation_side(cluster) {
+        Some((text, ScriptCategory::EastAsia, _, glyph))
+            if matches!(text, "・" | "：" | "；") && glyph.is_finite() && glyph > 0.0 =>
+        {
+            (glyph * 0.25).min(cluster.width.max(0.0))
+        }
+        _ => 0.0,
+    }
 }
 
 /// [`mac_squeeze_budget`] once `candidate` follows `clusters`.
@@ -6951,6 +6970,17 @@ fn compress_mac_punctuation_on_completed_line(
     } else {
         0.0
     };
+    if punctuation {
+        if let Some(first) = line.clusters.first_mut() {
+            let reduction = line_start_centred_blank(first) * punctuation_fraction;
+            if reduction > 0.0 {
+                first.width -= reduction;
+                if let Some(layout) = first.layout.as_mut() {
+                    layout.leading_advance -= reduction;
+                }
+            }
+        }
+    }
     for i in 1..line.clusters.len() {
         let blank = if punctuation {
             punctuation_pair_blank_width(&line.clusters[i - 1], &line.clusters[i])
@@ -14075,6 +14105,45 @@ mod tests {
         }
         let total: f64 = lines[0].clusters.iter().map(|c| c.width).sum();
         assert!((total - (19.0 * 10.5 - 8.75)).abs() < 1e-6, "{total}");
+    }
+
+    #[test]
+    fn mac_squeeze_narrows_a_line_start_middle_dot_on_both_sides() {
+        // math's `・図と同じ扱いで、任意の…、右ク`: 3.6pt over, Word narrows
+        // the leading `・` by 0.6pt on each side (drawn left of the line
+        // start) and each `、` by 1.2pt.
+        let text = format!(
+            "・{}、{}、{}",
+            "あ".repeat(7),
+            "い".repeat(13),
+            "う".repeat(10)
+        );
+        let ctx = TestContext::new(10.5);
+        let lines = wrap_text_into_lines(
+            &ctx,
+            &text,
+            &[make_run(&text)],
+            0.0,
+            &mac_punctuation_test_style(),
+            0,
+            25.0 * 10.5 - 3.6,
+        )
+        .unwrap();
+        let line = &lines[0].clusters;
+        assert_eq!(line.len(), 25);
+        let dot = &line[0];
+        assert!((dot.width - (10.5 - 0.6)).abs() < 1e-6, "{}", dot.width);
+        let leading = dot.layout.as_ref().unwrap().leading_advance;
+        assert!((leading + 0.6).abs() < 1e-6, "{leading}");
+        assert!(
+            (line[1].width - (10.5 - 0.6)).abs() < 1e-6,
+            "{}",
+            line[1].width
+        );
+        for pair in line.windows(2).filter(|pair| pair[0].text.as_str() == "、") {
+            let narrowed = pair[0].width + pair[1].width - 21.0;
+            assert!((narrowed + 1.2).abs() < 1e-6, "{narrowed}");
+        }
     }
 
     #[test]
