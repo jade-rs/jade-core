@@ -3610,6 +3610,9 @@ where
     /// Body element indices whose paragraph shares a border box with the next
     /// one (`word_paragraphs_share_border_box`).
     paragraph_border_box_continues: ElementIndexSet,
+    /// Whether the three sets above hold a header/footer story's scan. The
+    /// body's pairs are decided on demand from `last_document` instead.
+    spacing_scan_from_story: bool,
     document_east_asian_rules: EastAsianLineBreakingRules,
     /// Tracks the currently set font on the canvas context to avoid redundant
     /// set_font calls (which trigger expensive WASM→JS string decoding).
@@ -3974,6 +3977,43 @@ where
     HostPainter: Painter,
     HostPainter::Error: PainterError,
 {
+    /// The elements whose adjacent pairs decide contextual spacing and border
+    /// boxes: the body of the document being rendered.
+    fn spacing_scan_body_elements(&self) -> &[BodyElement] {
+        self.last_document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .map_or(&[], |body| body.elements.as_slice())
+    }
+
+    /// Whether the paragraph at `index` drops its space before
+    /// (`w:contextualSpacing` under a same-styled paragraph).
+    fn contextual_suppresses_spacing_before(&self, index: usize) -> bool {
+        if self.spacing_scan_from_story {
+            return self.contextual_suppress_before.contains(&index);
+        }
+        index.checked_sub(1).is_some_and(|upper| {
+            contextual_spacing_suppression_at(self.spacing_scan_body_elements(), upper).0
+        })
+    }
+
+    /// Whether the paragraph at `index` drops its space after
+    /// (`w:contextualSpacing` above a same-styled paragraph).
+    fn contextual_suppresses_spacing_after(&self, index: usize) -> bool {
+        if self.spacing_scan_from_story {
+            return self.contextual_suppress_after.contains(&index);
+        }
+        contextual_spacing_suppression_at(self.spacing_scan_body_elements(), index).1
+    }
+
+    /// Whether the paragraph at `index` shares a border box with the next one.
+    fn paragraph_border_box_continues_after(&self, index: usize) -> bool {
+        if self.spacing_scan_from_story {
+            return self.paragraph_border_box_continues.contains(&index);
+        }
+        paragraph_border_box_continues_at(self.spacing_scan_body_elements(), index)
+    }
+
     /// [`Self::effective_run_properties`], shared. Layout and painting resolve
     /// the same few (paragraph style, direct formatting) pairs for every run on
     /// every render; an entry is reused only for an equal pair resolved against
@@ -7979,6 +8019,7 @@ where
             contextual_suppress_before: ElementIndexSet::default(),
             contextual_suppress_after: ElementIndexSet::default(),
             paragraph_border_box_continues: ElementIndexSet::default(),
+            spacing_scan_from_story: false,
             document_east_asian_rules: EastAsianLineBreakingRules::default(),
             current_font: RefCell::new(None),
             current_fill_color: RefCell::new(None),
@@ -13113,11 +13154,11 @@ where
 
         let mut rendered_endnotes = HashSet::new();
         if let Some(body) = &document.body {
-            let (cs_before, cs_after) = compute_contextual_spacing_suppression(&body.elements);
-            self.contextual_suppress_before = cs_before;
-            self.contextual_suppress_after = cs_after;
-            self.paragraph_border_box_continues =
-                compute_paragraph_border_box_continuations(&body.elements);
+            // The body's contextual spacing and border boxes are decided per
+            // adjacent pair when a paragraph is laid out (see
+            // `contextual_suppresses_spacing_before`): precomputing them walked
+            // the whole body on every keystroke.
+            self.spacing_scan_from_story = false;
 
             let mut fallback_sections: Vec<SectionRange> = Vec::new();
             let sections: &[SectionRange] = if document.sections.is_empty() {
@@ -16300,9 +16341,7 @@ where
         let line_height = points_to_px(line_height_points);
 
         let suppress_spacing_before = continuing_note_paragraph
-            || self
-                .contextual_suppress_before
-                .contains(&body_element_index);
+            || self.contextual_suppresses_spacing_before(body_element_index);
         let preceding_spacing_after =
             self.paragraph_spacing_after_input(paragraph, body_element_index, section_index);
         if spacing_ref
@@ -16422,10 +16461,8 @@ where
         // layout adds it once.
         let border_box_continues_from_previous = body_element_index
             .checked_sub(1)
-            .is_some_and(|previous| self.paragraph_border_box_continues.contains(&previous));
-        let border_box_continues = self
-            .paragraph_border_box_continues
-            .contains(&body_element_index);
+            .is_some_and(|previous| self.paragraph_border_box_continues_after(previous));
+        let border_box_continues = self.paragraph_border_box_continues_after(body_element_index);
         let paragraph_box_borders = paragraph
             .properties
             .as_ref()
@@ -17430,7 +17467,7 @@ where
         }
 
         // Apply spacing after
-        let suppress_spacing_after = self.contextual_suppress_after.contains(&body_element_index);
+        let suppress_spacing_after = self.contextual_suppresses_spacing_after(body_element_index);
         if spacing_ref
             .is_some_and(|spacing| spacing.after.is_some() || spacing.after_lines.is_some())
             && !suppress_spacing_after
@@ -31941,6 +31978,7 @@ where
         let saved_contextual_before = std::mem::take(&mut self.contextual_suppress_before);
         let saved_contextual_after = std::mem::take(&mut self.contextual_suppress_after);
         let saved_border_box_continues = std::mem::take(&mut self.paragraph_border_box_continues);
+        let saved_spacing_scan_from_story = self.spacing_scan_from_story;
         let saved_table_counter = self.table_counter;
         let saved_table_layouts = self.table_layouts.len();
         let saved_table_handles = self.table_handles.len();
@@ -31989,6 +32027,7 @@ where
         ) = compute_contextual_spacing_suppression(&body.elements);
         self.paragraph_border_box_continues =
             compute_paragraph_border_box_continuations(&body.elements);
+        self.spacing_scan_from_story = true;
         self.rendering_header_footer_story = true;
         self.render_skip_draw = saved_render_skip_draw || !draw;
 
@@ -32069,6 +32108,7 @@ where
         self.contextual_suppress_before = saved_contextual_before;
         self.contextual_suppress_after = saved_contextual_after;
         self.paragraph_border_box_continues = saved_border_box_continues;
+        self.spacing_scan_from_story = saved_spacing_scan_from_story;
         self.table_counter = saved_table_counter;
         self.table_layouts.truncate(saved_table_layouts);
         self.table_handles.truncate(saved_table_handles);
@@ -33546,16 +33586,55 @@ impl ElementIndexSet {
 fn compute_paragraph_border_box_continuations(elements: &[BodyElement]) -> ElementIndexSet {
     let mut continues = ElementIndexSet::default();
     for index in 1..elements.len() {
-        let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
-            (&elements[index - 1], &elements[index])
-        else {
-            continue;
-        };
-        if word_paragraphs_share_border_box(upper.properties.as_ref(), lower.properties.as_ref()) {
+        if paragraph_border_box_continues_at(elements, index - 1) {
             continues.insert(index - 1);
         }
     }
     continues
+}
+
+/// The two adjacent paragraphs at `upper_index` and the element after it.
+fn adjacent_paragraphs(
+    elements: &[BodyElement],
+    upper_index: usize,
+) -> Option<(&Paragraph, &Paragraph)> {
+    match (
+        elements.get(upper_index)?,
+        elements.get(upper_index.checked_add(1)?)?,
+    ) {
+        (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) => Some((upper, lower)),
+        _ => None,
+    }
+}
+
+/// Whether the paragraph at `upper_index` shares a border box with the one
+/// right after it: one entry of [`compute_paragraph_border_box_continuations`].
+fn paragraph_border_box_continues_at(elements: &[BodyElement], upper_index: usize) -> bool {
+    adjacent_paragraphs(elements, upper_index).is_some_and(|(upper, lower)| {
+        word_paragraphs_share_border_box(upper.properties.as_ref(), lower.properties.as_ref())
+    })
+}
+
+/// `(lower drops its space before, upper drops its space after)` for the
+/// adjacent paragraphs at `upper_index` and the element after it: one pair of
+/// [`compute_contextual_spacing_suppression`].
+fn contextual_spacing_suppression_at(elements: &[BodyElement], upper_index: usize) -> (bool, bool) {
+    let Some((upper, lower)) = adjacent_paragraphs(elements, upper_index) else {
+        return (false, false);
+    };
+    let upper_style = upper.properties.as_ref().and_then(|p| p.style.as_deref());
+    let lower_style = lower.properties.as_ref().and_then(|p| p.style.as_deref());
+    if upper_style != lower_style {
+        return (false, false);
+    }
+    let contextual = |paragraph: &Paragraph| {
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|p| p.contextual_spacing)
+            .unwrap_or(false)
+    };
+    (contextual(lower), contextual(upper))
 }
 
 fn compute_contextual_spacing_suppression(
@@ -33564,30 +33643,11 @@ fn compute_contextual_spacing_suppression(
     let mut suppress_before = ElementIndexSet::default();
     let mut suppress_after = ElementIndexSet::default();
     for index in 1..elements.len() {
-        let (BodyElement::Paragraph(upper), BodyElement::Paragraph(lower)) =
-            (&elements[index - 1], &elements[index])
-        else {
-            continue;
-        };
-        let upper_style = upper.properties.as_ref().and_then(|p| p.style.as_deref());
-        let lower_style = lower.properties.as_ref().and_then(|p| p.style.as_deref());
-        if upper_style != lower_style {
-            continue;
-        }
-        let upper_contextual = upper
-            .properties
-            .as_ref()
-            .and_then(|p| p.contextual_spacing)
-            .unwrap_or(false);
-        let lower_contextual = lower
-            .properties
-            .as_ref()
-            .and_then(|p| p.contextual_spacing)
-            .unwrap_or(false);
-        if lower_contextual {
+        let (before, after) = contextual_spacing_suppression_at(elements, index - 1);
+        if before {
             suppress_before.insert(index);
         }
-        if upper_contextual {
+        if after {
             suppress_after.insert(index - 1);
         }
     }
@@ -51150,6 +51210,106 @@ mod tests {
         assert_ne!(
             render_after,
             renderer.compute_paragraph_render_hash(&paragraph, &options, None)
+        );
+    }
+
+    /// Deciding contextual spacing and border boxes per pair on demand answers
+    /// exactly what the whole-body scan does, for every element of sequences
+    /// mixing styles, contextual spacing, borders and a table between.
+    #[test]
+    fn on_demand_spacing_pairs_match_the_whole_body_scan() {
+        let border = |size: u32| {
+            Some(ParagraphBorders {
+                top: Some(BorderEdge {
+                    val: Some("single".into()),
+                    size_eighths: Some(size),
+                    ..BorderEdge::default()
+                }),
+                ..ParagraphBorders::default()
+            })
+        };
+        let mut palette = vec![BodyElement::Table(Box::default())];
+        for style in [None, Some("A"), Some("B")] {
+            for contextual in [None, Some(true), Some(false)] {
+                for borders in [None, border(4), border(8)] {
+                    palette.push(BodyElement::Paragraph(Box::new(Paragraph {
+                        runs: Vec::new(),
+                        properties: Some(ParagraphProperties {
+                            style: style.map(Into::into),
+                            contextual_spacing: contextual,
+                            borders,
+                            ..ParagraphProperties::default()
+                        }),
+                        node_id: None,
+                        comment_ranges: Vec::new(),
+                        comment_markers: Vec::new(),
+                    })));
+                }
+            }
+        }
+        palette.push(BodyElement::Paragraph(Box::new(Paragraph {
+            runs: Vec::new(),
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        })));
+        // Every ordered pair, then the whole palette as one body.
+        let mut bodies = Vec::new();
+        for upper in &palette {
+            for lower in &palette {
+                bodies.push(vec![upper.clone(), lower.clone()]);
+            }
+        }
+        bodies.push(palette.clone());
+
+        let (mut renderer, _) = recording_renderer();
+        for elements in bodies {
+            let (before, after) = compute_contextual_spacing_suppression(&elements);
+            let continues = compute_paragraph_border_box_continuations(&elements);
+            renderer.last_document = Some(Rc::new(Document {
+                body: Some(Body {
+                    elements: elements.clone(),
+                }),
+                ..Document::default()
+            }));
+            renderer.spacing_scan_from_story = false;
+            for index in 0..elements.len() + 1 {
+                assert_eq!(
+                    renderer.contextual_suppresses_spacing_before(index),
+                    before.contains(&index),
+                    "before {index}"
+                );
+                assert_eq!(
+                    renderer.contextual_suppresses_spacing_after(index),
+                    after.contains(&index),
+                    "after {index}"
+                );
+                assert_eq!(
+                    renderer.paragraph_border_box_continues_after(index),
+                    continues.contains(&index),
+                    "border box {index}"
+                );
+            }
+        }
+
+        // A header/footer story answers from its own scan, not the body's.
+        // palette[4]: no style, contextual spacing, no borders.
+        let story = vec![palette[4].clone(), palette[4].clone()];
+        let (before, after) = compute_contextual_spacing_suppression(&story);
+        assert!(before.contains(&1) && after.contains(&0));
+        renderer.contextual_suppress_before = before;
+        renderer.contextual_suppress_after = after;
+        renderer.paragraph_border_box_continues =
+            compute_paragraph_border_box_continuations(&story);
+        renderer.last_document = Some(Rc::new(Document::default()));
+        renderer.spacing_scan_from_story = true;
+        assert!(renderer.contextual_suppresses_spacing_before(1));
+        assert!(renderer.contextual_suppresses_spacing_after(0));
+        renderer.spacing_scan_from_story = false;
+        assert!(
+            !renderer.contextual_suppresses_spacing_before(1),
+            "the empty body has no pair"
         );
     }
 
