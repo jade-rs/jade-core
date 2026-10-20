@@ -19623,16 +19623,45 @@ where
                     }
                 }
 
-                if matches!(opportunities.last(), Some((last_segment, last_glyph)) if {
+                // Spaces before the line's first text take no extra (trust's
+                // ` (16)\t売主の…` keeps its leading space), nor does a space
+                // that ends the line. One between text does, even when it is
+                // the line's only space (`math`'s `「Cambria Math」の…`).
+                let first_text =
                     prepared_segments
-                        .get(*last_segment)
-                        .and_then(|prepared| prepared.glyph_steps.get(*last_glyph))
-                        .map(|step| {
-                            step.text(&prepared_segments[*last_segment].segment.text)
-                                .chars()
-                                .all(char::is_whitespace)
+                        .iter()
+                        .enumerate()
+                        .find_map(|(segment_index, prepared)| {
+                            prepared
+                                .glyph_steps
+                                .iter()
+                                .position(|step| {
+                                    !step
+                                        .text(&prepared.segment.text)
+                                        .chars()
+                                        .all(char::is_whitespace)
+                                })
+                                .map(|glyph_index| (segment_index, glyph_index))
+                        });
+                opportunities
+                    .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
+                if matches!(opportunities.last(), Some(&(last_segment, last_glyph)) if {
+                    prepared_segments
+                        .iter()
+                        .enumerate()
+                        .skip(last_segment)
+                        .all(|(segment_index, prepared)| {
+                            let from = if segment_index == last_segment {
+                                last_glyph + 1
+                            } else {
+                                0
+                            };
+                            prepared.glyph_steps.iter().skip(from).all(|step| {
+                                step.text(&prepared.segment.text)
+                                    .chars()
+                                    .all(char::is_whitespace)
+                            })
                         })
-                        .unwrap_or(false)
                 }) {
                     opportunities.pop();
                 }
