@@ -16823,6 +16823,22 @@ where
             // buffer so run boundaries do not each incur a fresh allocation.
             segment.clear();
             note_marker_text.clear();
+            // Word sets its field syntax error in bold.
+            let resolved_run_properties = if run
+                .field
+                .as_ref()
+                .is_some_and(|field| field.shows_word_syntax_error())
+            {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                properties.bold = Some(true);
+                properties.bold_complex = Some(true);
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
