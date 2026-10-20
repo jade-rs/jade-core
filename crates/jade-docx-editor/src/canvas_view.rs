@@ -7394,9 +7394,29 @@ impl OffscreenDocumentView {
         // keep the conservative full-render path — their reflow can shift
         // downstream content that a single-paragraph band would miss.
         let incremental = matches!(footprint, HistoryRenderFootprint::SingleParagraph { .. });
+        // Typing keeps the layout after the edited paragraph when it comes out
+        // with its old geometry, so an edit on a completed layout does not walk
+        // to the last page. A restore of one body paragraph that heads the
+        // dirty range is the same edit, so it keeps that layout too. Text boxes
+        // stay out, as for typing.
+        let retained_paragraph = match footprint {
+            HistoryRenderFootprint::SingleParagraph { index } if index == dirty_from => self
+                .state
+                .borrow()
+                .word_doc
+                .as_ref()
+                .is_some_and(|doc| doc.is_body_paragraph_surface(index))
+                .then_some(index),
+            _ => None,
+        };
 
         {
             let mut renderer = self.renderer.borrow_mut();
+            let retained_height = retained_paragraph.and_then(|index| {
+                renderer
+                    .cached_paragraph_height(index)
+                    .map(|height| (index, height))
+            });
             // In lazy mode, keep layout_page_limit to avoid full document re-layout.
             // In non-lazy mode, structural history actions compute full layout to
             // keep pageCount accurate. A single-paragraph text undo/redo cannot
@@ -7427,7 +7447,15 @@ impl OffscreenDocumentView {
                     // the first visible page (never past `dirty_from`) is as safe
                     // as it is for typing and avoids a walk from the document top.
                     renderer.prefer_visible_window_seek_once();
-                    renderer.invalidate_layout_from(dirty_from);
+                    let retained_completed_pagination =
+                        retained_height.is_some_and(|(index, height)| {
+                            renderer.prepare_completed_pagination_edit(index, height)
+                        });
+                    if !retained_completed_pagination {
+                        renderer.invalidate_layout_from(dirty_from);
+                    }
+                } else if let Some((index, height)) = retained_height {
+                    renderer.arm_fast_replay_for_complete_layout_edit(index, height);
                 }
                 renderer.invalidate_paragraph_wrap_cache_from(dirty_from);
                 if lazy_mode {
