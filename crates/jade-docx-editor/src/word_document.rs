@@ -36038,6 +36038,44 @@ fn schema_valid_part(path: &str, content: &str) -> Vec<u8> {
     content.as_bytes().to_vec()
 }
 
+/// The run defaults of Word's Japanese Normal template (`w:docDefaults`).
+const WORD_TEMPLATE_DOC_DEFAULTS_XML: &str = concat!(
+    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
+    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
+    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
+    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
+    r#"</w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#
+);
+
+/// Word's Japanese Normal template styles for a package without a styles part.
+const WORD_TEMPLATE_STYLES_XML: &str = concat!(
+    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
+    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
+    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
+    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
+    r#"</w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>"#,
+    r#"<w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/>"#,
+    r#"<w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style>"#,
+    r#"<w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/></w:style>"#,
+    r#"<w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:tblPr>"#,
+    r#"<w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/>"#,
+    r#"<w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/>"#,
+    r#"</w:tblCellMar></w:tblPr></w:style></w:styles>"#
+);
+
+/// Word's Japanese Normal template settings for a package without a settings part.
+const WORD_TEMPLATE_SETTINGS_XML: &str = concat!(
+    r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:defaultTabStop w:val="840"/><w:displayHorizontalDrawingGridEvery w:val="0"/>"#,
+    r#"<w:displayVerticalDrawingGridEvery w:val="2"/><w:characterSpacingControl w:val="compressPunctuation"/>"#,
+    r#"<w:compat><w:spaceForUL/><w:balanceSingleByteDoubleByteWidth/><w:doNotLeaveBackslashAlone/>"#,
+    r#"<w:ulTrailSpace/><w:doNotExpandShiftReturn/><w:adjustLineHeightInTable/><w:useFELayout/>"#,
+    r#"<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>"#,
+    r#"</w:compat></w:settings>"#
+);
+
 #[cfg(test)]
 mod tests {
     mod resize_stateful {
@@ -53325,41 +53363,3 @@ mod tests {
         assert!(xml.find("<w:b/>").expect("bold") < begin, "{xml}");
     }
 }
-
-/// The run defaults of Word's Japanese Normal template (`w:docDefaults`).
-const WORD_TEMPLATE_DOC_DEFAULTS_XML: &str = concat!(
-    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
-    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
-    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
-    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
-    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
-    r#"</w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#
-);
-
-/// Word's Japanese Normal template styles for a package without a styles part.
-const WORD_TEMPLATE_STYLES_XML: &str = concat!(
-    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
-    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
-    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
-    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
-    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
-    r#"</w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>"#,
-    r#"<w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/>"#,
-    r#"<w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style>"#,
-    r#"<w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/></w:style>"#,
-    r#"<w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:tblPr>"#,
-    r#"<w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/>"#,
-    r#"<w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/>"#,
-    r#"</w:tblCellMar></w:tblPr></w:style></w:styles>"#
-);
-
-/// Word's Japanese Normal template settings for a package without a settings part.
-const WORD_TEMPLATE_SETTINGS_XML: &str = concat!(
-    r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
-    r#"<w:defaultTabStop w:val="840"/><w:displayHorizontalDrawingGridEvery w:val="0"/>"#,
-    r#"<w:displayVerticalDrawingGridEvery w:val="2"/><w:characterSpacingControl w:val="compressPunctuation"/>"#,
-    r#"<w:compat><w:spaceForUL/><w:balanceSingleByteDoubleByteWidth/><w:doNotLeaveBackslashAlone/>"#,
-    r#"<w:ulTrailSpace/><w:doNotExpandShiftReturn/><w:adjustLineHeightInTable/><w:useFELayout/>"#,
-    r#"<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>"#,
-    r#"</w:compat></w:settings>"#
-);
