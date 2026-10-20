@@ -7998,6 +7998,7 @@ impl DocumentParser {
             let mut updated = false;
             let mut line_value: Option<f32> = None;
             let mut line_rule_value: Option<String> = None;
+            let (mut before_auto, mut after_auto) = (false, false);
 
             for attr in attributes.flatten() {
                 match attr.key.as_ref() {
@@ -8034,8 +8035,18 @@ impl DocumentParser {
                         let rule = String::from_utf8_lossy(&attr.value).to_string();
                         line_rule_value = Some(rule);
                     }
+                    b"w:beforeAutospacing" => {
+                        before_auto = crate::document::ooxml_on(&attr.value);
+                    }
+                    b"w:afterAutospacing" => {
+                        after_auto = crate::document::ooxml_on(&attr.value);
+                    }
                     _ => {}
                 }
+            }
+            if before_auto || after_auto {
+                spacing.apply_autospacing(before_auto, after_auto);
+                updated = true;
             }
 
             if let Some(rule) = line_rule_value {
@@ -14323,6 +14334,28 @@ mod tests {
             assert_eq!(text_box.border.style, TextBoxBorderStyle::Solid);
             assert_eq!(text_box.text, "Text");
         }
+    }
+
+    #[test]
+    fn direct_auto_spacing_replaces_authored_points_and_lines() {
+        let xml = format!(
+            r#"<w:document xmlns:w="{W}"><w:body><w:p><w:pPr><w:spacing w:beforeAutospacing="true" w:before="0" w:beforeLines="50" w:afterAutospacing="1" w:after="600"/></w:pPr><w:r><w:t>a</w:t></w:r></w:p></w:body></w:document>"#,
+            W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        );
+        let document = DocumentParser::new().parse_document_xml(&xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let spacing = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .spacing
+            .as_ref()
+            .unwrap();
+        assert_eq!(spacing.before, Some(14.0));
+        assert_eq!(spacing.before_lines, None);
+        assert_eq!(spacing.after, Some(14.0));
     }
 
     #[test]
