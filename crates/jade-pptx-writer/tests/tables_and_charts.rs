@@ -1,8 +1,8 @@
 //! Tables, charts and SmartArt in real decks (Apache POI's test data) edit
 //! as in PowerPoint: a table's cells take text, a table resizes with its
 //! columns and rows scaled to fill the new frame, a chart resizes as its
-//! frame does, and a SmartArt diagram keeps its size, since its saved drawing
-//! would not follow.
+//! frame does, and a SmartArt diagram resizes with its saved drawing scaled
+//! to the new frame.
 
 use std::io::Read;
 use std::path::PathBuf;
@@ -145,7 +145,7 @@ fn a_table_resizes_with_its_columns_and_rows_filling_the_frame() {
 }
 
 #[test]
-fn a_chart_resizes_and_a_diagram_keeps_its_size() {
+fn a_chart_resizes_with_its_frame() {
     let bytes = deck("chart-slide-bg.pptx");
     let chart = editable_shapes(&bytes, 0)
         .unwrap()
@@ -163,13 +163,6 @@ fn a_chart_resizes_and_a_diagram_keeps_its_size() {
         .find(|shape| shape.id == chart.id)
         .unwrap();
     assert_eq!(resized.transform.unwrap().extent_emu, transform.extent_emu);
-
-    let diagram = editable_shapes(&deck("SmartArt.pptx"), 0)
-        .unwrap()
-        .into_iter()
-        .find(|shape| shape.kind == "diagram")
-        .unwrap();
-    assert!(diagram.can_move && !diagram.can_resize);
 }
 
 /// The frame's extent, from the slide's `p:xfrm`.
@@ -454,4 +447,133 @@ fn a_merged_cell_splits_back_into_its_cells() {
     assert!(!cell_tags(&slide, 0)[1].contains("gridSpan"));
     assert!(!cell_tags(&slide, 3)[3].contains("vMerge"));
     EditSession::open(session.bytes()).expect("the saved deck opens");
+}
+
+/// The shapes of the drawing PowerPoint caches for a SmartArt diagram, as
+/// (x, y, cx, cy) in EMU.
+fn drawing_boxes(bytes: &[u8]) -> Vec<(i64, i64, i64, i64)> {
+    let drawing = part(bytes, "ppt/diagrams/drawing1.xml");
+    let xs = numbers(&drawing, "<a:off x");
+    let ys = numbers(&drawing, "\" y");
+    let cxs = numbers(&drawing, "<a:ext cx");
+    let cys = numbers(&drawing, "\" cy");
+    (0..xs.len())
+        .map(|index| (xs[index], ys[index], cxs[index], cys[index]))
+        .collect()
+}
+
+/// A SmartArt diagram resizes as PowerPoint resizes it: its frame, and the
+/// drawing it shows scaled to the new frame — every shape's box (and its
+/// text box) by the frame's ratios — so it draws filling the frame. Undo
+/// puts both back.
+#[test]
+fn a_smartart_diagram_resizes_with_its_drawing() {
+    let bytes = deck("SmartArt.pptx");
+    let diagram = editable_shapes(&bytes, 0)
+        .unwrap()
+        .into_iter()
+        .find(|shape| shape.kind == "diagram")
+        .unwrap();
+    assert!(diagram.can_move && diagram.can_resize);
+    let before = drawing_boxes(&bytes);
+    assert_eq!(before.len(), 10, "five shapes and their text boxes");
+    let mut transform = diagram.transform.unwrap();
+    let (cx, cy) = transform.extent_emu;
+    transform.extent_emu = (cx * 3 / 2, cy / 2);
+
+    let mut session = EditSession::open(&bytes).unwrap();
+    assert!(session
+        .set_shape_transform(0, diagram.id, transform)
+        .unwrap());
+    let scale = |value: i64, to: i64, from: i64| {
+        (i128::from(value) * i128::from(to) / i128::from(from)) as i64
+    };
+    let expected: Vec<_> = before
+        .iter()
+        .map(|&(x, y, w, h)| {
+            (
+                scale(x, cx * 3 / 2, cx),
+                scale(y, cy / 2, cy),
+                scale(w, cx * 3 / 2, cx),
+                scale(h, cy / 2, cy),
+            )
+        })
+        .collect();
+    let after = drawing_boxes(session.bytes());
+    for (got, want) in after.iter().zip(&expected) {
+        assert!(
+            (got.0 - want.0).abs() <= 1
+                && (got.1 - want.1).abs() <= 1
+                && (got.2 - want.2).abs() <= 1
+                && (got.3 - want.3).abs() <= 1,
+            "{got:?} vs {want:?}"
+        );
+    }
+    // It draws inside the new frame, filling its width as before.
+    let deck_after = jade_pptx_reader::read_deck(session.bytes()).unwrap();
+    let layout =
+        jade_pptx_layout::layout_deck_slide(&deck_after, 0, &jade_pptx_layout::HeuristicMeasure)
+            .unwrap();
+    let frame_px = (
+        jade_pptx_reader::emu_to_px(transform.offset_emu.0),
+        jade_pptx_reader::emu_to_px(transform.offset_emu.0 + transform.extent_emu.0),
+        jade_pptx_reader::emu_to_px(transform.offset_emu.1 + transform.extent_emu.1),
+    );
+    let placed: Vec<_> = layout
+        .shapes
+        .iter()
+        .filter(|shape| shape.group_ids.contains(&diagram.id))
+        .collect();
+    assert!(!placed.is_empty());
+    for shape in &placed {
+        assert!(shape.rect.x >= frame_px.0 - 1.0, "{:?}", shape.rect);
+        assert!(
+            shape.rect.x + shape.rect.width <= frame_px.1 + 1.0,
+            "{:?}",
+            shape.rect
+        );
+        assert!(
+            shape.rect.y + shape.rect.height <= frame_px.2 + 1.0,
+            "{:?}",
+            shape.rect
+        );
+    }
+    EditSession::open(session.bytes()).expect("the saved deck opens");
+
+    assert!(session.undo());
+    assert_eq!(drawing_boxes(session.bytes()), before);
+}
+
+/// Every SmartArt diagram in the corpus resizes, its deck reopening and
+/// laying out.
+#[test]
+fn every_smartart_diagram_resizes() {
+    for name in [
+        "SmartArt.pptx",
+        "smartart-simple.pptx",
+        "smartart-rotated-text.pptx",
+    ] {
+        let bytes = deck(name);
+        let diagrams: Vec<_> = editable_shapes(&bytes, 0)
+            .unwrap()
+            .into_iter()
+            .filter(|shape| shape.kind == "diagram")
+            .collect();
+        assert!(!diagrams.is_empty(), "{name}");
+        let mut session = EditSession::open(&bytes).unwrap();
+        for diagram in diagrams {
+            assert!(diagram.can_resize, "{name}");
+            let mut transform = diagram.transform.unwrap();
+            transform.extent_emu = (transform.extent_emu.0 / 2, transform.extent_emu.1 * 2);
+            assert!(
+                session
+                    .set_shape_transform(0, diagram.id, transform)
+                    .unwrap(),
+                "{name}"
+            );
+        }
+        let saved = session.bytes().to_vec();
+        EditSession::open(&saved).expect("the saved deck opens");
+        drawn_text(&saved, 0);
+    }
 }

@@ -16,7 +16,7 @@ fn table(nodes: &[Node], id: u32) -> Option<&Node> {
 }
 
 /// The `p:graphicFrame` with `id`.
-fn frame(nodes: &[Node], id: u32) -> Option<&Node> {
+pub(super) fn frame(nodes: &[Node], id: u32) -> Option<&Node> {
     shape_nodes(nodes)
         .into_iter()
         .filter(|node| node.is(1, "graphicFrame"))

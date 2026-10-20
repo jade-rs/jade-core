@@ -540,14 +540,60 @@ pub fn set_shape_transform(
     let (mut package, part, xml) = slide_xml(bytes, slide)?;
     let deck = jade_pptx_reader::read_deck(bytes)?;
     let baseline = inherited_shape_transform(&deck, slide, id);
+    let before = xml::shapes(&xml)?.into_iter().find(|shape| shape.id == id);
     let changed = xml::set_transform(&xml, id, transform, baseline)?;
     if changed == xml {
         return Ok(bytes.to_vec());
     }
     package.replace(&part, changed.into_bytes());
+    // A SmartArt diagram shows the drawing PowerPoint cached for it, in the
+    // frame's own coordinates: resized, the drawing scales with the frame.
+    let resized_diagram = before
+        .filter(|shape| shape.kind == "diagram")
+        .and_then(|shape| shape.transform)
+        .filter(|old| old.extent_emu != transform.extent_emu);
+    if let Some(old) = resized_diagram {
+        if let Some(drawing) = diagram_drawing_part(&package, &part, &xml, id)? {
+            let scaled = xml::diagrams::scale_drawing(
+                &package.required_part_str(&drawing)?,
+                old.extent_emu,
+                transform.extent_emu,
+            )?;
+            package.replace(&drawing, scaled.into_bytes());
+        }
+    }
     let result = package.write()?;
     jade_pptx_reader::read_deck(&result)?;
     Ok(result)
+}
+
+/// The drawing PowerPoint caches for the SmartArt frame `id`: the one its
+/// data part's `dataModelExt` names, or the slide's one diagram drawing.
+fn diagram_drawing_part(
+    package: &OpcPackage,
+    slide_part: &str,
+    slide_xml: &str,
+    id: u32,
+) -> Result<Option<String>> {
+    let Some(rels) = package.part_str(&jade_opc::rels_part_name(slide_part))? else {
+        return Ok(None);
+    };
+    let rels = jade_opc::parse_relationships(&rels)?;
+    let data = xml::diagrams::data_relationship(slide_xml, id)?
+        .and_then(|rel| rels.target(&rel))
+        .map(|target| jade_opc::resolve_target(slide_part, target));
+    let drawing_rel = match data {
+        Some(data) => match package.part_str(&data)? {
+            Some(data_xml) => jade_pptx_reader::diagram_drawing_rel_id(&data_xml)?,
+            None => None,
+        },
+        None => None,
+    };
+    Ok(drawing_rel
+        .as_deref()
+        .and_then(|rel| rels.target(rel))
+        .or_else(|| rels.target_by_type_suffix("/diagramDrawing"))
+        .map(|target| jade_opc::resolve_target(slide_part, target)))
 }
 
 /// The cells of the table in frame `id` on `slide`, row by row.
