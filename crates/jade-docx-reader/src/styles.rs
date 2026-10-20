@@ -2520,6 +2520,9 @@ pub fn merge_paragraph_properties_override(
     if source.mark_run_properties.is_some() {
         target.mark_run_properties = source.mark_run_properties.clone();
     }
+    if source.mark_revision.is_some() {
+        target.mark_revision = source.mark_revision.clone();
+    }
     if source.alignment.is_some() {
         target.alignment = source.alignment.clone();
     }
