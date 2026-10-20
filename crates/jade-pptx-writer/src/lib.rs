@@ -419,6 +419,29 @@ pub fn copy_shapes(
     Ok((result, copies))
 }
 
+/// Moves and sizes several objects of one slide, as one edit: what moving a
+/// selection of them does.
+pub fn set_shape_transforms(
+    bytes: &[u8],
+    slide: usize,
+    changes: &[(u32, jade_pptx_reader::Transform)],
+) -> Result<Vec<u8>> {
+    let mut current = bytes.to_vec();
+    for &(id, transform) in changes {
+        current = set_shape_transform(&current, slide, id, transform)?;
+    }
+    Ok(current)
+}
+
+/// Deletes several objects of one slide, as one edit.
+pub fn delete_shapes(bytes: &[u8], slide: usize, ids: &[u32]) -> Result<Vec<u8>> {
+    let mut current = bytes.to_vec();
+    for &id in ids {
+        current = delete_shape(&current, slide, id)?;
+    }
+    Ok(current)
+}
+
 pub fn delete_shape(bytes: &[u8], slide: usize, id: u32) -> Result<Vec<u8>> {
     shape_operation(bytes, slide, |xml| xml::delete_shape(xml, id))
 }
@@ -1078,6 +1101,22 @@ impl EditSession {
         transform: jade_pptx_reader::Transform,
     ) -> Result<bool> {
         let next = set_shape_transform(self.bytes(), slide, id, transform)?;
+        Ok(self.commit(next))
+    }
+
+    /// Moves and sizes several objects of one slide, as one step of Undo.
+    pub fn set_shape_transforms(
+        &mut self,
+        slide: usize,
+        changes: &[(u32, jade_pptx_reader::Transform)],
+    ) -> Result<bool> {
+        let next = set_shape_transforms(self.bytes(), slide, changes)?;
+        Ok(self.commit(next))
+    }
+
+    /// Deletes several objects of one slide, as one step of Undo.
+    pub fn delete_shapes(&mut self, slide: usize, ids: &[u32]) -> Result<bool> {
+        let next = delete_shapes(self.bytes(), slide, ids)?;
         Ok(self.commit(next))
     }
 
