@@ -2359,6 +2359,12 @@ pub fn apply_word_font_proportional_line_height(
 
 /// The auto line multiple `spacing` asks for (1.0 when it sets none), or
 /// `None` for exact and at-least line spacing.
+/// The `w:line` multiple of an auto-spaced paragraph (1 without spacing);
+/// `None` for exact and at-least spacing.
+pub fn word_auto_line_multiple(spacing: Option<&Spacing>) -> Option<f64> {
+    proportional_line_multiple(spacing).map(f64::from)
+}
+
 fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
     let Some(spacing) = spacing else {
         return Some(1.0);
