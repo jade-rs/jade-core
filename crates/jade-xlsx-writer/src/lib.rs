@@ -36,6 +36,7 @@
 pub mod auto_filter;
 mod calc;
 pub mod chart_cache;
+pub mod charts;
 pub mod clipboard;
 pub mod conditional_formats;
 pub mod dimensions;
@@ -46,6 +47,7 @@ pub mod format_axes;
 pub mod header_footer;
 pub mod merges;
 pub mod notes;
+pub mod objects;
 mod patch;
 mod refresh;
 pub mod sheets;
@@ -56,6 +58,7 @@ pub mod styles;
 pub mod table;
 
 pub use calc::{request_full_recalculation, withdraw_full_recalculation};
+pub use charts::{ChartKind, LegendPosition, SeriesReferences};
 pub use conditional_formats::{
     add_conditional_format, clear_conditional_formats, delete_conditional_format, ConditionalStyle,
     NewConditionalRule,
@@ -65,6 +68,7 @@ pub use format_axes::{format_axes, AxisFormatResult};
 pub use header_footer::set_header_footer;
 pub use merges::set_merges;
 pub use notes::{delete_note, set_note};
+pub use objects::{delete_shape, set_shape_anchor, ShapeAnchor};
 pub use patch::patch_sheet;
 pub use refresh::{refresh_sheet, CachedValue, CachedValueEdit, SheetCachedValues};
 pub use shift::{restructure, shift_defined_names, shift_sheet};
