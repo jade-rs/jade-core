@@ -85,6 +85,8 @@ pub(crate) fn cells(xml: &str, id: u32) -> Result<Vec<Vec<TableCell>>> {
                 .map(|cell| TableCell {
                     text: cell_text(&nodes, cell),
                     merged: merged(cell),
+                    row_span: span(cell, "rowSpan"),
+                    column_span: span(cell, "gridSpan"),
                 })
                 .collect()
         })
@@ -328,6 +330,43 @@ pub(crate) fn change(xml: &str, id: u32, change: TableChange) -> Result<String> 
             }
             patches.push(resize("cx", size(template, "w"))?);
         }
+        TableChange::MergeCells {
+            row,
+            column,
+            rows,
+            columns,
+        } => {
+            patches.extend(merge_cells(
+                xml,
+                &nodes,
+                &cells,
+                (row, column),
+                (rows, columns),
+            )?);
+        }
+        TableChange::SplitCell { row, column } => {
+            let anchor = cells
+                .get(row)
+                .and_then(|cells| cells.get(column))
+                .ok_or_else(refused)?;
+            let (rows, columns) = (span(anchor, "rowSpan"), span(anchor, "gridSpan"));
+            if merged(anchor) || (rows <= 1 && columns <= 1) {
+                return Err(refused());
+            }
+            for (r, line) in cells.iter().enumerate().skip(row).take(rows) {
+                for (c, cell) in line.iter().enumerate().skip(column).take(columns) {
+                    let drop: &[&str] = if (r, c) == (row, column) {
+                        &["gridSpan", "rowSpan"]
+                    } else {
+                        &["hMerge", "vMerge"]
+                    };
+                    patches.push((
+                        cell.opening.clone(),
+                        edit_tag_attributes(&xml[cell.opening.clone()], &[], drop)?,
+                    ));
+                }
+            }
+        }
         TableChange::DeleteColumn(at) => {
             if at >= columns.len() || columns.len() == 1 {
                 return Err(refused());
@@ -346,6 +385,107 @@ pub(crate) fn change(xml: &str, id: u32, change: TableChange) -> Result<String> 
         }
     }
     Ok(apply_patches(xml, patches))
+}
+
+/// The patches that merge the `rows` × `columns` cells from `at` into the
+/// first. Every merge the range touches must lie inside it: a cell
+/// continuing a merge from outside, or a merge reaching out of it, is
+/// refused, as PowerPoint will not cut one.
+fn merge_cells(
+    xml: &str,
+    nodes: &[Node],
+    cells: &[Vec<&Node>],
+    (row, column): (usize, usize),
+    (rows, columns): (usize, usize),
+) -> Result<Vec<(Range<usize>, String)>> {
+    let refused = || WriteError::UnsupportedObjectOperation(0);
+    let (last_row, last_column) = (row + rows, column + columns);
+    if rows * columns < 2
+        || last_row > cells.len()
+        || cells.first().is_none_or(|line| last_column > line.len())
+    {
+        return Err(refused());
+    }
+    for (r, line) in cells.iter().enumerate().take(last_row).skip(row) {
+        for (c, cell) in line.iter().enumerate().take(last_column).skip(column) {
+            let continues_from_outside =
+                (c == column && flag(cell, "hMerge")) || (r == row && flag(cell, "vMerge"));
+            let reaches_out =
+                c + span(cell, "gridSpan") > last_column || r + span(cell, "rowSpan") > last_row;
+            if continues_from_outside || reaches_out {
+                return Err(refused());
+            }
+        }
+    }
+    let mut patches = Vec::new();
+    let mut moved = String::new();
+    for (r, line) in cells.iter().enumerate().take(last_row).skip(row) {
+        for (c, cell) in line.iter().enumerate().take(last_column).skip(column) {
+            let first = (r, c) == (row, column);
+            let tag = &xml[cell.opening.clone()];
+            let opening = if first {
+                let mut spans = Vec::new();
+                if columns > 1 {
+                    spans.push(("gridSpan", columns.to_string()));
+                }
+                if rows > 1 {
+                    spans.push(("rowSpan", rows.to_string()));
+                }
+                edit_tag_attributes(tag, &spans, &["hMerge", "vMerge"])?
+            } else {
+                let mut merges = Vec::new();
+                let mut drop = vec!["gridSpan", "rowSpan"];
+                if c > column {
+                    merges.push(("hMerge", "1".to_string()));
+                } else {
+                    drop.push("hMerge");
+                }
+                if r > row {
+                    merges.push(("vMerge", "1".to_string()));
+                } else {
+                    drop.push("vMerge");
+                }
+                edit_tag_attributes(tag, &merges, &drop)?
+            };
+            patches.push((cell.opening.clone(), opening));
+            // The rest give the first their text, paragraph by paragraph.
+            if first || cell_text(nodes, cell).is_empty() {
+                continue;
+            }
+            let paragraphs = child(nodes, cell, 2, "txBody")
+                .map(|body| children(nodes, body, "p"))
+                .unwrap_or_default();
+            if let (Some(start), Some(end)) = (paragraphs.first(), paragraphs.last()) {
+                moved.push_str(&xml[start.outer.start..end.outer.end]);
+                let prefix = prefix_of(cell);
+                let properties = child(nodes, start, 2, "pPr")
+                    .map(|pr| xml[pr.outer.clone()].to_string())
+                    .unwrap_or_default();
+                patches.push((
+                    start.outer.start..end.outer.end,
+                    format!("<{prefix}p>{properties}</{prefix}p>"),
+                ));
+            }
+        }
+    }
+    if !moved.is_empty() {
+        let anchor = cells[row][column];
+        let paragraphs = child(nodes, anchor, 2, "txBody")
+            .map(|body| children(nodes, body, "p"))
+            .unwrap_or_default();
+        let place = match (
+            cell_text(nodes, anchor).is_empty(),
+            paragraphs.first(),
+            paragraphs.last(),
+        ) {
+            // An empty first cell gives way to the text.
+            (true, Some(start), Some(end)) => start.outer.start..end.outer.end,
+            (false, _, Some(end)) => end.outer.end..end.outer.end,
+            _ => return Err(refused()),
+        };
+        patches.push((place, moved));
+    }
+    Ok(patches)
 }
 
 /// The patches that scale the table's column widths to `width` and its row
