@@ -115,6 +115,10 @@ pub struct EditableRun {
 pub struct TableCell {
     pub text: String,
     pub merged: bool,
+    /// How many rows and columns the cell spans: 1 each unless it starts a
+    /// merge.
+    pub row_span: usize,
+    pub column_span: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -573,14 +577,30 @@ pub fn set_table_cell_text(
     Ok(result)
 }
 
-/// A row or column added to, or removed from, a table: added at the index
-/// given (the end when it is the count), removed from it.
+/// A change to a table's layout: a row or column added at the index given
+/// (the end when it is the count) or removed from it; cells merged into one,
+/// or a merged cell split back into its cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TableChange {
     InsertRow(usize),
     DeleteRow(usize),
     InsertColumn(usize),
     DeleteColumn(usize),
+    /// The `rows` × `columns` cells from (`row`, `column`) become one, as
+    /// PowerPoint's Merge Cells makes them: the first spans the rest, which
+    /// give it their text as paragraphs.
+    MergeCells {
+        row: usize,
+        column: usize,
+        rows: usize,
+        columns: usize,
+    },
+    /// The merged cell at (`row`, `column`) becomes its cells again, its text
+    /// staying in the first.
+    SplitCell {
+        row: usize,
+        column: usize,
+    },
 }
 
 /// `bytes` with a row or column of the table in frame `id` added or removed,

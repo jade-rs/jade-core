@@ -335,3 +335,123 @@ fn the_last_row_and_column_stay() {
         .change_table(0, 4, TableChange::InsertRow(5))
         .is_err());
 }
+
+/// The `<a:tc ...>` tags of row `row`, in order.
+fn cell_tags(slide: &str, row: usize) -> Vec<String> {
+    let rows: Vec<&str> = slide.split("<a:tr ").skip(1).collect();
+    rows[row]
+        .split("<a:tc")
+        .skip(1)
+        .filter(|rest| rest.starts_with('>') || rest.starts_with(' '))
+        .map(|rest| format!("<a:tc{}", &rest[..=rest.find('>').unwrap()]))
+        .collect()
+}
+
+#[test]
+fn cells_merge_into_the_first_with_their_text_as_paragraphs() {
+    let bytes = deck("table-with-different-font-colors.pptx");
+    let mut session = EditSession::open(&bytes).unwrap();
+    // Rows 1–2, columns 1–2: Text 6, Text 7 / Text 10, Text 11.
+    assert!(session
+        .change_table(
+            0,
+            4,
+            TableChange::MergeCells {
+                row: 1,
+                column: 1,
+                rows: 2,
+                columns: 2,
+            },
+        )
+        .unwrap());
+    let cells = table_cells(session.bytes(), 0, 4).unwrap();
+    assert_eq!(cells[1][1].text, "Text 6\nText 7\nText 10\nText 11");
+    assert!(!cells[1][1].merged);
+    for (row, column) in [(1, 2), (2, 1), (2, 2)] {
+        assert!(cells[row][column].merged, "({row}, {column})");
+        assert_eq!(cells[row][column].text, "");
+    }
+    // As PowerPoint writes it.
+    let slide = part(session.bytes(), "ppt/slides/slide1.xml");
+    let first = cell_tags(&slide, 1);
+    assert!(first[1].contains("gridSpan=\"2\"") && first[1].contains("rowSpan=\"2\""));
+    assert!(first[2].contains("hMerge=\"1\""));
+    let second = cell_tags(&slide, 2);
+    assert!(second[1].contains("vMerge=\"1\""));
+    assert!(second[2].contains("hMerge=\"1\"") && second[2].contains("vMerge=\"1\""));
+    // The rest stay, the deck reopens and draws the joined text once.
+    assert_eq!(cells[0][0].text, "Text 1");
+    assert_eq!(cells[3][3].text, "Text 16");
+    EditSession::open(session.bytes()).expect("the saved deck opens");
+    let drawn = drawn_text(session.bytes(), 0);
+    assert_eq!(drawn.matches("Text 11").count(), 1, "{drawn}");
+
+    assert!(session.undo());
+    assert_eq!(
+        table_cells(session.bytes(), 0, 4).unwrap()[2][2].text,
+        "Text 11"
+    );
+}
+
+#[test]
+fn a_merge_takes_in_whole_merges_but_never_cuts_one() {
+    let bytes = deck("table_test2.pptx");
+    let mut session = EditSession::open(&bytes).unwrap();
+    let merge = |row, column, rows, columns| TableChange::MergeCells {
+        row,
+        column,
+        rows,
+        columns,
+    };
+    // Header2 spans columns 1–2 and Header3 columns 3–4: a range starting
+    // or ending inside either is refused, as is a single cell.
+    for change in [merge(0, 2, 1, 2), merge(0, 1, 1, 2 + 1), merge(0, 0, 1, 1)] {
+        assert!(session.change_table(0, 4, change).is_err(), "{change:?}");
+    }
+    assert!(!session.is_dirty());
+    // Both whole: one cell across columns 1–4. (Header3 is vertical text,
+    // a line break after each letter.)
+    let before = table_cells(&bytes, 0, 4).unwrap();
+    assert!(session.change_table(0, 4, merge(0, 1, 1, 4)).unwrap());
+    let cells = table_cells(session.bytes(), 0, 4).unwrap();
+    assert_eq!(
+        cells[0][1].text,
+        format!("{}\n{}", before[0][1].text, before[0][3].text)
+    );
+    assert!(cells[0][1].text.starts_with("Header2\nH\ne"));
+    assert!((2..5).all(|column| cells[0][column].merged));
+    assert!(!cells[0][5].merged);
+    EditSession::open(session.bytes()).expect("the saved deck opens");
+}
+
+#[test]
+fn a_merged_cell_splits_back_into_its_cells() {
+    let bytes = deck("table_test2.pptx");
+    let mut session = EditSession::open(&bytes).unwrap();
+    let before = table_cells(&bytes, 0, 4).unwrap();
+    assert_eq!((before[0][1].row_span, before[0][1].column_span), (1, 2));
+    assert_eq!((before[2][3].row_span, before[2][3].column_span), (3, 1));
+    assert_eq!((before[0][0].row_span, before[0][0].column_span), (1, 1));
+    // A cell that is not merged has nothing to split.
+    assert!(session
+        .change_table(0, 4, TableChange::SplitCell { row: 0, column: 0 })
+        .is_err());
+    // Header2's merge, and the three-row merge below.
+    assert!(session
+        .change_table(0, 4, TableChange::SplitCell { row: 0, column: 1 })
+        .unwrap());
+    assert!(session
+        .change_table(0, 4, TableChange::SplitCell { row: 2, column: 3 })
+        .unwrap());
+    let cells = table_cells(session.bytes(), 0, 4).unwrap();
+    assert_eq!(cells[0][1].text, "Header2");
+    assert!(!cells[0][2].merged);
+    assert!((2..5).all(|row| !cells[row][3].merged));
+    // The text stays in the first cell, as PowerPoint leaves it.
+    assert!(cells[2][3].text.starts_with("eirmod"));
+    assert_eq!(cells[3][3].text, "");
+    let slide = part(session.bytes(), "ppt/slides/slide1.xml");
+    assert!(!cell_tags(&slide, 0)[1].contains("gridSpan"));
+    assert!(!cell_tags(&slide, 3)[3].contains("vMerge"));
+    EditSession::open(session.bytes()).expect("the saved deck opens");
+}
