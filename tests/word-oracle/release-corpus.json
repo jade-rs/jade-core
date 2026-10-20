@@ -530,6 +530,10 @@
       "docx_sha256": "8152adf61e993ec685190633998da25b03b5353bafcf43e50f5349144ac90134"
     },
     {
+      "fixture": "word-mac-probe-float-lookahead",
+      "docx_sha256": "c467a0189eda20dbf17ab2b8d95704beecb7341322031333f8877383c03bad50"
+    },
+    {
       "fixture": "word-mac-probe-floating-order",
       "docx_sha256": "eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7"
     },
@@ -564,6 +568,14 @@
     {
       "fixture": "word-mac-probe-numbering-label-faces",
       "docx_sha256": "479980ec5ec700c26c6cc63aa732fde9296d6e169fc0669dac0491a71423ab3d"
+    },
+    {
+      "fixture": "word-mac-probe-object-lines",
+      "docx_sha256": "7231dec77b5b82e01ab393eab9b3b2f791b695b7fd590f9ba343a47b801e28e8"
+    },
+    {
+      "fixture": "word-mac-probe-object-spaces",
+      "docx_sha256": "ec2623cfa5fddcf8b2463671252939acec0365a23c0356b2d5d6654852f01790"
     },
     {
       "fixture": "word-mac-probe-pairs-kerned",

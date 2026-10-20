@@ -15,9 +15,12 @@
 //! read sees exactly what will be exported.
 
 mod auto_filter;
+mod charts;
+mod conditional_formats;
 mod current_region;
 pub mod fill;
 mod merge;
+mod objects;
 mod sheets;
 mod sort;
 
@@ -45,6 +48,8 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
+pub use charts::{chart_kind, ChartChange, ChartKind, LegendPosition};
+pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
     CellBorderView, CellInput, CellKind, CellView, CommentView, DataValidationView,
@@ -63,6 +68,7 @@ pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
 };
+pub use objects::ShapeAnchor;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -102,6 +108,10 @@ pub enum HeadlessError {
     Package(#[from] jade_opc::OpcError),
     #[error("filter: {0}")]
     AutoFilter(String),
+    /// What the sheet's protection forbids: a locked cell changed, or an
+    /// operation the protection does not allow.
+    #[error("sheet `{sheet}` is protected: {what}")]
+    Protected { sheet: String, what: &'static str },
     /// A merge of one cell: there is nothing to merge it with.
     #[error("`{0}` is a single cell; a merge needs at least two")]
     MergeTooSmall(String),
@@ -396,6 +406,8 @@ impl HeadlessWorkbook {
         if sizes.is_empty() {
             return Ok(());
         }
+        let index = self.sheet_index(sheet)?;
+        self.guard_axis_format(index, axis)?;
         let written = jade_xlsx_writer::dimensions::set_axis_sizes(
             &self.source,
             &self.workbook,
@@ -405,6 +417,18 @@ impl HeadlessWorkbook {
         )?;
         let state = (axis == Axis::Rows).then(|| self.filter_state_for_row_sizes(sheet, sizes));
         self.commit_axis_sizes_with_filter_state(written, state)
+    }
+
+    /// Refuses resizing rows or columns of a protected sheet unless it
+    /// allows formatting them.
+    fn guard_axis_format(&self, index: usize, axis: Axis) -> Result<()> {
+        if axis == Axis::Rows {
+            self.guard(index, "formatting rows is not allowed", |p| p.format_rows)
+        } else {
+            self.guard(index, "formatting columns is not allowed", |p| {
+                p.format_columns
+            })
+        }
     }
 
     fn commit_axis_sizes(&mut self, written: Vec<u8>) -> Result<()> {
@@ -509,6 +533,8 @@ impl HeadlessWorkbook {
         } else {
             jade_xlsx_reader::model::MAX_COLUMN_COUNT
         };
+        let index = self.sheet_index(sheet)?;
+        self.guard_axis_format(index, axis)?;
         if first > last || last >= limit {
             return Err(jade_xlsx_writer::WriteError::StructureOutOfBounds {
                 at: first,
@@ -831,7 +857,50 @@ impl HeadlessWorkbook {
                 },
             ));
         }
+        // What a person types, fills or clears: a protected sheet's locked
+        // cells refuse it.
+        for (index, edit) in &edits {
+            self.guard_cells(*index, [edit.reference])?;
+        }
         self.write_edits(edits)
+    }
+
+    /// Refuses `what` on a protected sheet unless its protection allows it,
+    /// as Excel does.
+    fn guard(
+        &self,
+        index: usize,
+        what: &'static str,
+        allowed: impl Fn(&jade_xlsx_reader::SheetProtection) -> bool,
+    ) -> Result<()> {
+        let sheet = &self.workbook.sheets[index];
+        match &sheet.protection {
+            Some(protection) if !allowed(protection) => Err(HeadlessError::Protected {
+                sheet: sheet.name.clone(),
+                what,
+            }),
+            _ => Ok(()),
+        }
+    }
+
+    /// Refuses changing a cell of a protected sheet unless its format
+    /// unlocks it: cells are locked by default, empty ones included.
+    fn guard_cells(&self, index: usize, cells: impl IntoIterator<Item = CellRef>) -> Result<()> {
+        let sheet = &self.workbook.sheets[index];
+        if sheet.protection.is_none() {
+            return Ok(());
+        }
+        let formats = &self.workbook.styles.cell_formats;
+        for at in cells {
+            let style = effective_style(sheet, at) as usize;
+            if !formats.get(style).is_some_and(|format| format.unlocked) {
+                return Err(HeadlessError::Protected {
+                    sheet: sheet.name.clone(),
+                    what: "the cell is locked",
+                });
+            }
+        }
+        Ok(())
     }
 
     /// One atomic write of edits across sheets: one undo step, then a
@@ -1061,6 +1130,7 @@ impl HeadlessWorkbook {
         author: &str,
     ) -> Result<CommentView> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "editing notes is not allowed", |p| p.objects)?;
         let at = CellRef::parse(reference)
             .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
         let part_name = self.workbook.sheets[index].part_name.clone();
@@ -1080,6 +1150,7 @@ impl HeadlessWorkbook {
     /// has none.
     pub fn delete_note(&mut self, sheet: &str, reference: &str) -> Result<bool> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "editing notes is not allowed", |p| p.objects)?;
         let at = CellRef::parse(reference)
             .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
         let part_name = self.workbook.sheets[index].part_name.clone();
@@ -1106,6 +1177,7 @@ impl HeadlessWorkbook {
     /// One undo step.
     pub fn set_shape_text(&mut self, sheet: &str, shape: &str, text: &str) -> Result<ShapeView> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "editing shapes is not allowed", |p| p.objects)?;
         let sheet_model = &self.workbook.sheets[index];
         let found = sheet_model
             .shape_named(shape)
@@ -1191,6 +1263,7 @@ impl HeadlessWorkbook {
         target: &str,
     ) -> Result<FormatSummary> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "formatting cells is not allowed", |p| p.format_cells)?;
         let source_range = parse_range(source)?;
         let mut target_range = parse_range(target)?;
         if target_range.start == target_range.end {
@@ -1304,6 +1377,7 @@ impl HeadlessWorkbook {
         change: &FormatChange,
     ) -> Result<SetFormatSummary> {
         let index = self.sheet_index(sheet)?;
+        self.guard(index, "formatting cells is not allowed", |p| p.format_cells)?;
         let range = parse_format_range(range)?;
         if change.is_empty() {
             return Err(HeadlessError::EmptyFormatChange);
@@ -1447,6 +1521,24 @@ impl HeadlessWorkbook {
         inserted: bool,
     ) -> Result<StructureSummary> {
         let index = self.sheet_index(sheet)?;
+        match (axis, inserted) {
+            (Axis::Rows, true) => {
+                self.guard(index, "inserting rows is not allowed", |p| p.insert_rows)?
+            }
+            (Axis::Rows, false) => {
+                self.guard(index, "deleting rows is not allowed", |p| p.delete_rows)?
+            }
+            (Axis::Columns, true) => {
+                self.guard(index, "inserting columns is not allowed", |p| {
+                    p.insert_columns
+                })?
+            }
+            (Axis::Columns, false) => {
+                self.guard(index, "deleting columns is not allowed", |p| {
+                    p.delete_columns
+                })?
+            }
+        }
         let change = StructureChange {
             sheet: self.workbook.sheets[index].name.clone(),
             axis,
@@ -2330,6 +2422,16 @@ impl HeadlessWorkbook {
         }
         let at = CellRef::parse(anchor).map_err(|_| HeadlessError::BadReference(anchor.into()))?;
         let index = self.sheet_index(sheet)?;
+        let (columns, rows) = (
+            clipboard.range.end.column - clipboard.range.start.column,
+            clipboard.range.end.row - clipboard.range.start.row,
+        );
+        self.guard_cells(
+            index,
+            (at.row..=at.row + rows).flat_map(|row| {
+                (at.column..=at.column + columns).map(move |column| CellRef::new(column, row))
+            }),
+        )?;
         let request = jade_xlsx_writer::clipboard::PasteRequest {
             source_sheet: &clipboard.sheet,
             source: clipboard.range,

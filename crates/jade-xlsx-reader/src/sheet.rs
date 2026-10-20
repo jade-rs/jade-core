@@ -95,6 +95,7 @@ pub fn parse_sheet_with_relationships(
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        protection: None,
     };
 
     let mut row: Option<Row> = None;
@@ -151,6 +152,9 @@ pub fn parse_sheet_with_relationships(
                                 sheet.column_breaks.push(brk);
                             }
                         }
+                    }
+                    b"sheetProtection" => {
+                        sheet.protection = parse_sheet_protection(element)?;
                     }
                     b"sheetView" => {
                         if let Some(value) = attribute_value(element, b"showGridLines")? {
@@ -780,6 +784,36 @@ fn parse_row(element: &BytesStart<'_>, fallback_index: u32, sheet: &Sheet) -> Re
         style_index,
         cells: Vec::new(),
     })
+}
+
+/// A `sheetProtection` that protects the sheet: what it still allows. Each
+/// attribute names an operation and is `true` (the default) when the
+/// protection forbids it, so an operation is allowed only where the file
+/// says `0` (`objects` and `scenarios` default the other way).
+fn parse_sheet_protection(
+    element: &BytesStart<'_>,
+) -> Result<Option<crate::model::SheetProtection>> {
+    let flag = |key: &[u8], default: bool| -> Result<bool> {
+        Ok(attribute_value(element, key)?
+            .map(|value| value == "1" || value == "true")
+            .unwrap_or(default))
+    };
+    if !flag(b"sheet", false)? {
+        return Ok(None);
+    }
+    Ok(Some(crate::model::SheetProtection {
+        format_cells: !flag(b"formatCells", true)?,
+        format_columns: !flag(b"formatColumns", true)?,
+        format_rows: !flag(b"formatRows", true)?,
+        insert_columns: !flag(b"insertColumns", true)?,
+        insert_rows: !flag(b"insertRows", true)?,
+        insert_hyperlinks: !flag(b"insertHyperlinks", true)?,
+        delete_columns: !flag(b"deleteColumns", true)?,
+        delete_rows: !flag(b"deleteRows", true)?,
+        sort: !flag(b"sort", true)?,
+        auto_filter: !flag(b"autoFilter", true)?,
+        objects: !flag(b"objects", false)?,
+    }))
 }
 
 fn attribute_value(element: &BytesStart<'_>, key: &[u8]) -> Result<Option<String>> {

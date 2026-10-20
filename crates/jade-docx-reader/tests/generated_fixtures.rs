@@ -137,7 +137,6 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
         (4, "Nested false"),
         (5, "Bookmark denied"),
         (6, "Inline denied"),
-        (12, "Nested empty rejected"),
         (17, "Stale nested literal"),
         (18, "Stale forward cache"),
         (13, "Numeric equal"),
@@ -149,9 +148,15 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
             "field {index}"
         );
     }
-    for index in [0, 7, 8, 9] {
+    for index in [0, 7, 8, 9, 12] {
         assert_eq!(fields[index].word_mac_body_result, None, "field {index}");
     }
+    // The nested `IF 1=2 …` is Word's syntax error, never "": the outer
+    // comparison is false on every platform.
+    assert_eq!(
+        fields[12].resolved_value.as_deref(),
+        Some("Nested empty rejected")
+    );
     assert!(matches!(
         fields[1].kind,
         RunFieldKind::Compare {
@@ -195,7 +200,7 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
     assert_eq!(
         fields[9].kind,
         RunFieldKind::If {
-            left: "The \"quoted\" region".to_string(),
+            left: "\u{e7a0}The \"quoted\" region".to_string(),
             left_is_quoted: true,
             operator: FieldComparisonOperator::Equal,
             right: "The \"quoted\" region".to_string(),
@@ -206,16 +211,12 @@ fn if_compare_fixture_preserves_fragmented_instructions_and_live_results() {
     );
     assert_eq!(
         fields[9].resolved_value.as_deref(),
-        Some("Quoted value matched")
+        Some("Quoted value rejected")
     );
     assert_eq!(fields[10].resolved_value.as_deref(), Some("Empty matched"));
     assert_eq!(
         fields[11].resolved_value.as_deref(),
         Some("Compact empty matched")
-    );
-    assert_eq!(
-        fields[12].resolved_value.as_deref(),
-        Some("Nested empty matched")
     );
     assert_eq!(
         fields[13].kind,

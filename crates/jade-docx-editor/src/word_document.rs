@@ -6525,6 +6525,7 @@ impl WordDocument {
             return;
         };
         let mut inserted = 0usize;
+        let mut shifted_blocks = Vec::new();
         for reference in &document.alt_chunks {
             let Some(relationship) = doc_part.relationships.iter().find(|relationship| {
                 relationship.id == reference.relationship_id
@@ -6548,54 +6549,75 @@ impl WordDocument {
                 continue;
             };
             let text = String::from_utf8_lossy(bytes);
-            let paragraphs = Self::sanitized_html_paragraphs(&text)
+            let paragraphs = Self::sanitized_html_blocks(&text)
                 .into_iter()
-                .map(|text| BodyElement::from_paragraph(Self::plain_paragraph(text)))
+                .map(|block| BodyElement::from_paragraph(block.into_paragraph()))
                 .collect::<Vec<_>>();
             let index = reference
                 .block_index
                 .saturating_add(inserted)
                 .min(body.elements.len());
-            inserted = inserted.saturating_add(paragraphs.len());
+            let count = paragraphs.len();
+            inserted = inserted.saturating_add(count);
             body.elements.splice(index..index, paragraphs);
+            shifted_blocks.push((index, count));
+        }
+        for (index, count) in shifted_blocks {
+            Self::shift_block_indices(document, index, count);
         }
     }
 
+    /// Moves the block indices the reader recorded (section ranges,
+    /// bookmarks, TC entries) past `count` blocks inserted at `index`. The
+    /// section that holds the insertion point grows to cover the new blocks,
+    /// so the renderer lays them out.
+    fn shift_block_indices(document: &mut Document, index: usize, count: usize) {
+        let section_count = document.sections.len();
+        for (position, section) in document.sections.iter_mut().enumerate() {
+            if section.start > index {
+                section.start += count;
+            }
+            if section.end > index || (section.end == index && position + 1 == section_count) {
+                section.end += count;
+            }
+        }
+        for bookmark in &mut document.bookmarks {
+            if bookmark.start_paragraph >= index {
+                bookmark.start_paragraph += count;
+            }
+            if bookmark.end_paragraph >= index {
+                bookmark.end_paragraph += count;
+            }
+        }
+        for entry in &mut document.toc_entry_fields {
+            if entry.paragraph >= index {
+                entry.paragraph += count;
+            }
+        }
+    }
+
+    #[cfg(test)]
     fn plain_paragraph(text: String) -> Paragraph {
-        Paragraph {
-            runs: vec![Run {
-                text,
-                properties: None,
-                image: None,
-                text_box: None,
-                math: None,
-                field: None,
-                hyperlink: None,
-                node_id: None,
-                text_node_id: None,
-                revision_node_id: None,
-                comment_reference_ids: Vec::new(),
-                footnote_reference_ids: Vec::new(),
-                endnote_reference_ids: Vec::new(),
-                note_separator: None,
-                has_footnote_ref: false,
-                has_endnote_ref: false,
-                revision: None,
-            }],
-            properties: None,
-            node_id: None,
-            comment_ranges: Vec::new(),
-            comment_markers: Vec::new(),
+        HtmlBlock {
+            kind: HtmlBlockKind::Plain,
+            runs: vec![(text, false, false, false)],
         }
+        .into_paragraph()
     }
 
-    /// Converts untrusted altChunk HTML into plain paragraph text. No markup,
-    /// URLs, styles, or event attributes survive this boundary.
-    fn sanitized_html_paragraphs(html: &str) -> Vec<String> {
+    /// Converts untrusted altChunk HTML into paragraphs the way Word imports
+    /// it: `h1`–`h6` become bold headings at the browser sizes (24, 18, 13.5,
+    /// 12, 10 and 7.5pt) and `p` a paragraph, both with auto spacing before
+    /// and after, and `b`/`strong`, `i`/`em` and `u` format their runs. No
+    /// URLs, styles, or event attributes survive this boundary. Word sets the
+    /// imported text in its user interface's web font; the document's own
+    /// faces are kept here.
+    fn sanitized_html_blocks(html: &str) -> Vec<HtmlBlock> {
         let mut blocks = Vec::new();
-        let mut current = String::new();
+        let mut current = HtmlBlock::default();
         let mut cursor = 0usize;
         let mut suppressed: Option<String> = None;
+        let (mut bold, mut italic, mut underline) = (0usize, 0usize, 0usize);
         while cursor < html.len() {
             if html[cursor..].starts_with("<!--") {
                 cursor = html[cursor + 4..]
@@ -6625,8 +6647,20 @@ impl WordDocument {
                     } else if !closing && suppressed.is_none() {
                         suppressed = Some(name.clone());
                     }
-                } else if suppressed.is_none()
-                    && (name == "br"
+                } else if suppressed.is_none() {
+                    let counter = match name.as_str() {
+                        "b" | "strong" => Some(&mut bold),
+                        "i" | "em" => Some(&mut italic),
+                        "u" => Some(&mut underline),
+                        _ => None,
+                    };
+                    if let Some(counter) = counter {
+                        *counter = if closing {
+                            counter.saturating_sub(1)
+                        } else {
+                            *counter + 1
+                        };
+                    } else if name == "br"
                         || matches!(
                             name.as_str(),
                             "p" | "div"
@@ -6640,9 +6674,21 @@ impl WordDocument {
                                 | "tr"
                                 | "blockquote"
                                 | "pre"
-                        ))
-                {
-                    Self::finish_html_block(&mut current, &mut blocks);
+                        )
+                    {
+                        let next_kind = if closing || name == "br" {
+                            HtmlBlockKind::Plain
+                        } else {
+                            HtmlBlockKind::from_tag(&name)
+                        };
+                        let kind = if name == "br" {
+                            current.kind
+                        } else {
+                            next_kind
+                        };
+                        current.finish(&mut blocks);
+                        current.kind = kind;
+                    }
                 }
                 cursor = end + 1;
                 continue;
@@ -6652,28 +6698,12 @@ impl WordDocument {
                 .map_or(html.len(), |offset| cursor + offset);
             if suppressed.is_none() {
                 let decoded = Self::decode_html_entities(&html[cursor..next]);
-                for character in decoded.chars() {
-                    if character.is_whitespace() {
-                        if !current.is_empty() && !current.ends_with(' ') {
-                            current.push(' ');
-                        }
-                    } else {
-                        current.push(character);
-                    }
-                }
+                current.push_text(&decoded, bold > 0, italic > 0, underline > 0);
             }
             cursor = next;
         }
-        Self::finish_html_block(&mut current, &mut blocks);
+        current.finish(&mut blocks);
         blocks
-    }
-
-    fn finish_html_block(current: &mut String, blocks: &mut Vec<String>) {
-        let text = current.trim();
-        if !text.is_empty() {
-            blocks.push(text.to_string());
-        }
-        current.clear();
     }
 
     fn decode_html_entities(text: &str) -> String {
@@ -18765,6 +18795,31 @@ impl WordDocument {
         Ok(())
     }
 
+    /// Word's ページ番号 gallery for a shell outside the browser editor: the
+    /// default header (or footer) story becomes one paragraph holding a live
+    /// PAGE field, aligned `left`, `center` or `right`. The story is created
+    /// when the document has none.
+    pub fn insert_page_number(&mut self, footer: bool, alignment: &str) -> Result<(), String> {
+        let alignment = match alignment {
+            "left" => HeaderFooterAlignment::Left,
+            "center" => HeaderFooterAlignment::Center,
+            "right" => HeaderFooterAlignment::Right,
+            other => return Err(format!("unsupported page number alignment: {other}")),
+        };
+        let role = if footer {
+            HeaderFooterRole::Footer
+        } else {
+            HeaderFooterRole::Header
+        };
+        self.set_hf_page_number(role, HeaderFooterVariant::Default, alignment)
+    }
+
+    /// Takes every PAGE field out of the headers and footers, as Word's
+    /// ページ番号の削除 does; answers how many went.
+    pub fn remove_page_numbers(&mut self) -> Result<usize, String> {
+        self.remove_page_numbers_from_header_footers()
+    }
+
     /// Removes every PAGE field from all existing header/footer variants.
     /// Literal text, NUMPAGES/SECTION fields, tables, drawings, and unknown
     /// OOXML remain untouched. Missing variants are not created as a side
@@ -20105,8 +20160,13 @@ impl WordDocument {
         }
 
         // Raw XML: insert bookmarkStart after the paragraph's pPr (or at the
-        // front) and bookmarkEnd at the end of the paragraph.
-        if let (Some(node_id), Some(mut raw)) = (node_id, self.raw_document.take()) {
+        // front) and bookmarkEnd at the end of the paragraph. A heading with
+        // no XML of its own (an HTML altChunk's) keeps the model bookmark
+        // only; the raw tree is taken only once there is a node to edit.
+        let Some(node_id) = node_id else {
+            return Ok(());
+        };
+        if let Some(mut raw) = self.raw_document.take() {
             let result = (|| {
                 let para = raw
                     .element(node_id)
@@ -36006,6 +36066,148 @@ fn schema_valid_part(path: &str, content: &str) -> Vec<u8> {
     content.as_bytes().to_vec()
 }
 
+/// The kind of block an altChunk HTML element becomes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum HtmlBlockKind {
+    /// Text outside `p` and the headings (`div`, `li`, a bare text run).
+    #[default]
+    Plain,
+    /// `p`: Word's Normal (Web), auto spacing before and after.
+    Paragraph,
+    /// `h1`–`h6`, by level.
+    Heading(u8),
+}
+
+impl HtmlBlockKind {
+    fn from_tag(name: &str) -> Self {
+        match name {
+            "p" => Self::Paragraph,
+            "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => Self::Heading(name.as_bytes()[1] - b'0'),
+            _ => Self::Plain,
+        }
+    }
+}
+
+/// One paragraph of imported altChunk HTML: its kind and its formatted runs.
+#[derive(Debug, Default)]
+struct HtmlBlock {
+    kind: HtmlBlockKind,
+    /// (text, bold, italic, underline)
+    runs: Vec<(String, bool, bool, bool)>,
+}
+
+impl HtmlBlock {
+    /// Appends text with HTML's whitespace collapsing across runs.
+    fn push_text(&mut self, text: &str, bold: bool, italic: bool, underline: bool) {
+        for character in text.chars() {
+            let last = self.runs.last().and_then(|(text, ..)| text.chars().last());
+            if character.is_whitespace() && (last.is_none() || last == Some(' ')) {
+                continue;
+            }
+            let character = if character.is_whitespace() {
+                ' '
+            } else {
+                character
+            };
+            match self.runs.last_mut() {
+                Some((text, b, i, u)) if (*b, *i, *u) == (bold, italic, underline) => {
+                    text.push(character)
+                }
+                _ => self
+                    .runs
+                    .push((character.to_string(), bold, italic, underline)),
+            }
+        }
+    }
+
+    /// Moves a non-empty block to `blocks` (its trailing space dropped) and
+    /// starts the next one.
+    fn finish(&mut self, blocks: &mut Vec<HtmlBlock>) {
+        let mut block = std::mem::take(self);
+        while let Some((text, ..)) = block.runs.last_mut() {
+            let trimmed = text.trim_end().len();
+            text.truncate(trimmed);
+            if text.is_empty() {
+                block.runs.pop();
+            } else {
+                break;
+            }
+        }
+        if !block.runs.is_empty() {
+            blocks.push(block);
+        }
+    }
+
+    fn into_paragraph(self) -> Paragraph {
+        const HEADING_SIZES_PT: [f32; 6] = [24.0, 18.0, 13.5, 12.0, 10.0, 7.5];
+        let heading = match self.kind {
+            HtmlBlockKind::Heading(level) => Some(level.clamp(1, 6)),
+            _ => None,
+        };
+        let runs = self
+            .runs
+            .into_iter()
+            .map(|(text, bold, italic, underline)| {
+                let mut properties = RunProperties::default();
+                if bold || heading.is_some() {
+                    properties.bold = Some(true);
+                    properties.bold_complex = Some(true);
+                }
+                if italic {
+                    properties.italic = Some(true);
+                    properties.italic_complex = Some(true);
+                }
+                if underline {
+                    properties.underline = Some(true);
+                }
+                if let Some(level) = heading {
+                    let size = HEADING_SIZES_PT[usize::from(level - 1)];
+                    properties.font_size = Some(size);
+                    properties.font_size_complex = Some(size);
+                }
+                let has_properties = bold || italic || underline || heading.is_some();
+                Run {
+                    text,
+                    properties: has_properties.then_some(properties),
+                    image: None,
+                    text_box: None,
+                    math: None,
+                    field: None,
+                    hyperlink: None,
+                    node_id: None,
+                    text_node_id: None,
+                    revision_node_id: None,
+                    comment_reference_ids: Vec::new(),
+                    footnote_reference_ids: Vec::new(),
+                    endnote_reference_ids: Vec::new(),
+                    note_separator: None,
+                    has_footnote_ref: false,
+                    has_endnote_ref: false,
+                    revision: None,
+                }
+            })
+            .collect();
+        let properties = (self.kind != HtmlBlockKind::Plain).then(|| {
+            let spacing = jade_docx_reader::document::Spacing {
+                before: Some(jade_docx_reader::document::WORD_AUTO_PARAGRAPH_SPACING_PT),
+                after: Some(jade_docx_reader::document::WORD_AUTO_PARAGRAPH_SPACING_PT),
+                ..Default::default()
+            };
+            ParagraphProperties {
+                spacing: Some(spacing),
+                outline_level: heading.map(|level| level - 1),
+                ..ParagraphProperties::default()
+            }
+        });
+        Paragraph {
+            runs,
+            properties,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     mod resize_stateful {
@@ -37771,6 +37973,71 @@ mod tests {
     }
 
     #[test]
+    fn html_alt_chunk_blocks_take_word_heading_and_paragraph_formatting() {
+        let blocks = WordDocument::sanitized_html_blocks(
+            "<h2>Title <i>here</i></h2><p>One <b>two</b>\n  three</p><div>plain</div>",
+        );
+        let paragraphs = blocks
+            .into_iter()
+            .map(HtmlBlock::into_paragraph)
+            .collect::<Vec<_>>();
+        assert_eq!(paragraphs.len(), 3);
+        let heading = &paragraphs[0];
+        assert_eq!(heading.properties.as_ref().unwrap().outline_level, Some(1));
+        let heading_runs = heading
+            .runs
+            .iter()
+            .map(|run| {
+                let props = run.properties.as_ref().unwrap();
+                (run.text.as_str(), props.bold, props.italic, props.font_size)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            heading_runs,
+            [
+                ("Title ", Some(true), None, Some(18.0)),
+                ("here", Some(true), Some(true), Some(18.0)),
+            ]
+        );
+        let paragraph = &paragraphs[1];
+        let spacing = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .spacing
+            .as_ref()
+            .unwrap();
+        assert_eq!((spacing.before, spacing.after), (Some(14.0), Some(14.0)));
+        let texts = paragraph
+            .runs
+            .iter()
+            .map(|run| (run.text.as_str(), run.properties.is_some()))
+            .collect::<Vec<_>>();
+        assert_eq!(texts, [("One ", false), ("two", true), (" three", false)]);
+        assert!(paragraphs[2].properties.is_none());
+    }
+
+    #[test]
+    fn table_of_contents_over_an_alt_chunk_heading_keeps_the_document_exportable() {
+        // alt-chunk-html's imported `h1` is a heading with no XML of its own.
+        // Bookmarking it for the TOC used to take the raw tree and drop it, so
+        // the document could no longer be saved (word-schema's `toc` sweep).
+        let data = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/alt-chunk-html.docx"
+        ))
+        .unwrap();
+        let mut document = executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load altChunk fixture");
+        document
+            .insert_table_of_contents(0, &jade_docx_reader::document::TocOptions::default())
+            .expect("insert TOC");
+        let exported = document.export_docx().expect("export after TOC");
+        executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload exported document");
+    }
+
+    #[test]
     fn load_renders_sanitized_html_alt_chunk_in_block_order() {
         let data = build_alt_chunk_docx();
         let document = executor::block_on(WordDocument::load(&data, &Options::default()))
@@ -37788,6 +38055,11 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(texts, ["before", "Imported", "Hello & safe", "after"]);
+        // The body section grows over the imported blocks, so all four are
+        // laid out (alt-chunk-html drew only the first two).
+        let sections = &document.document.as_ref().expect("document").sections;
+        assert_eq!(sections.len(), 1);
+        assert_eq!((sections[0].start, sections[0].end), (0, 4));
     }
 
     #[test]
@@ -43740,7 +44012,12 @@ mod tests {
         let header = flatten(&doc.header_lines);
         let footer = flatten(&doc.footer_lines);
 
-        assert!(header.contains("Header IF: Live header"), "{header}");
+        // `IF 2<10 …`: Word shows its syntax error for a compact expression
+        // with a number on the left.
+        assert!(
+            header.contains("Header IF: エラー! 条件式が正しくありません。"),
+            "{header}"
+        );
         assert!(!header.contains("Stale header"), "{header}");
         assert!(footer.contains("Footer COMPARE: 1"), "{footer}");
     }

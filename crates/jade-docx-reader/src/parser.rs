@@ -7998,6 +7998,7 @@ impl DocumentParser {
             let mut updated = false;
             let mut line_value: Option<f32> = None;
             let mut line_rule_value: Option<String> = None;
+            let (mut before_auto, mut after_auto) = (false, false);
 
             for attr in attributes.flatten() {
                 match attr.key.as_ref() {
@@ -8034,8 +8035,18 @@ impl DocumentParser {
                         let rule = String::from_utf8_lossy(&attr.value).to_string();
                         line_rule_value = Some(rule);
                     }
+                    b"w:beforeAutospacing" => {
+                        before_auto = crate::document::ooxml_on(&attr.value);
+                    }
+                    b"w:afterAutospacing" => {
+                        after_auto = crate::document::ooxml_on(&attr.value);
+                    }
                     _ => {}
                 }
+            }
+            if before_auto || after_auto {
+                spacing.apply_autospacing(before_auto, after_auto);
+                updated = true;
             }
 
             if let Some(rule) = line_rule_value {
@@ -9106,6 +9117,14 @@ impl DocumentParser {
             parent_instruction.push_str("\"\"");
         } else if result.chars().any(char::is_whitespace) || result.contains('"') {
             parent_instruction.push('"');
+            // Word never matches a nested result that holds a straight double
+            // quote: `IF {REF x} = "…"` is false and `COMPARE` gives 0 for
+            // every literal, escaped or not (Word for Mac 16.114 captures of
+            // if-compare-field-edge-cases). A private-use mark no literal
+            // carries keeps such an operand from comparing equal.
+            if result.contains('"') {
+                parent_instruction.push(crate::document::QUOTED_NESTED_RESULT_MARK);
+            }
             for ch in result.chars() {
                 if ch == '"' {
                     parent_instruction.push('\\');
@@ -10170,6 +10189,25 @@ fn parse_comparison_field(
     let quoted_args = quoted_tokens.get(name_idx + 1..)?;
     let (left, left_is_quoted, operator, right, right_is_quoted, consumed) =
         parse_comparison_operands(args, quoted_args)?;
+    // Word's IF reads a compact expression whose left operand is a number
+    // (`2<10`, `1=2`, `10>2`) as a malformed number and shows its syntax
+    // error; a bookmark or name on the left (`OrderTotal>=100`, `a=a`), a
+    // spaced operator and COMPARE all evaluate (Word for Mac 16.114 header
+    // captures; if-compare-field-edge-cases' header `IF 2<10 …`, and its
+    // nested `IF 1=2 …` whose result never equals "").
+    let compact_number = is_if
+        && !left_is_quoted
+        && left.starts_with(|ch: char| ch.is_ascii_digit())
+        && !args
+            .iter()
+            .zip(quoted_args)
+            .any(|(token, quoted)| !*quoted && parse_comparison_operator(token).is_some());
+    if compact_number {
+        return Some(RunFieldKind::Quote {
+            text: crate::document::WORD_IF_SYNTAX_ERROR.to_string(),
+            case_format: None,
+        });
+    }
     if is_if {
         let true_text = args.get(consumed)?.clone();
         let false_text = args.get(consumed + 1).cloned();
@@ -14326,6 +14364,28 @@ mod tests {
     }
 
     #[test]
+    fn direct_auto_spacing_replaces_authored_points_and_lines() {
+        let xml = format!(
+            r#"<w:document xmlns:w="{W}"><w:body><w:p><w:pPr><w:spacing w:beforeAutospacing="true" w:before="0" w:beforeLines="50" w:afterAutospacing="1" w:after="600"/></w:pPr><w:r><w:t>a</w:t></w:r></w:p></w:body></w:document>"#,
+            W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        );
+        let document = DocumentParser::new().parse_document_xml(&xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let spacing = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .spacing
+            .as_ref()
+            .unwrap();
+        assert_eq!(spacing.before, Some(14.0));
+        assert_eq!(spacing.before_lines, None);
+        assert_eq!(spacing.after, Some(14.0));
+    }
+
+    #[test]
     fn math_fixture_text_box_retains_its_white_shape_fill() {
         let xml = read_document_xml(&fixture_path("math.docx")).expect("math document XML");
         let document = DocumentParser::new().parse_document_xml(&xml).unwrap();
@@ -17272,20 +17332,20 @@ mod tests {
             .as_paragraph()
             .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.field.as_ref()))
             .expect("IF field");
+        // A compact expression with a number on the left is Word's syntax
+        // error, not a comparison.
         assert_eq!(
             if_field.kind,
-            RunFieldKind::If {
-                left: "100".to_string(),
-                left_is_quoted: false,
-                operator: FieldComparisonOperator::GreaterOrEqual,
-                right: "99".to_string(),
-                right_is_quoted: false,
-                true_text: "Approved value".to_string(),
-                false_text: Some("Denied value".to_string()),
+            RunFieldKind::Quote {
+                text: crate::document::WORD_IF_SYNTAX_ERROR.to_string(),
+                case_format: None,
             }
         );
         assert_eq!(if_field.cached_text.as_deref(), Some("Stale IF result"));
-        assert_eq!(if_field.resolved_value.as_deref(), Some("Approved value"));
+        assert_eq!(
+            if_field.resolved_value.as_deref(),
+            Some(crate::document::WORD_IF_SYNTAX_ERROR)
+        );
 
         let compare_field = body.elements[1]
             .as_paragraph()
@@ -17997,7 +18057,7 @@ mod tests {
         assert_eq!(
             field.kind,
             RunFieldKind::If {
-                left: "The \"quoted\" region".to_string(),
+                left: "\u{e7a0}The \"quoted\" region".to_string(),
                 left_is_quoted: true,
                 operator: FieldComparisonOperator::Equal,
                 right: "The \"quoted\" region".to_string(),
@@ -18008,7 +18068,7 @@ mod tests {
         );
         assert_eq!(
             field.resolved_value.as_deref(),
-            Some("Quoted value matched")
+            Some("Quoted value rejected")
         );
     }
 

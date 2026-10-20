@@ -160,6 +160,12 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                             entry.alignment = parse_alignment(element)?;
                         }
                     }
+                    b"protection" => {
+                        if let Some(entry) = format.as_mut() {
+                            entry.unlocked = attribute_value(element, b"locked")?
+                                .is_some_and(|value| value == "0" || value == "false");
+                        }
+                    }
                     // ---- font children ----
                     b"b" if section == Section::Fonts => {
                         set_font_flag(&mut font, element, |f| &mut f.bold)?

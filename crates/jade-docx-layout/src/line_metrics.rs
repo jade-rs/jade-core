@@ -368,6 +368,20 @@ pub fn word_automatic_note_separator_advance_px(
     (size_pt.is_finite() && size_pt > 0.0).then_some(f64::from(size_pt) * 96.0 / 72.0 * 0.5)
 }
 
+/// Word for Mac gives an ASCII space half an em when
+/// `w:balanceSingleByteDoubleByteWidth` is on and either neighbour is an East
+/// Asian character, an inline object or another space: 5.25pt at 10.5pt and
+/// 10pt at 20pt, in Yu Mincho, Century and Bookman Old Style alike (math's
+/// `2. 数式`, image-inline, probe `object-spaces`). A space between two
+/// single-byte characters (`Hello World`, `A ,数`) keeps its font advance,
+/// as does every space without the setting (trust-beneficiary-sale-keep-next).
+pub fn word_balanced_space_advance_px(
+    platform: WordLayoutPlatform,
+    font_descriptor: &str,
+) -> Option<f64> {
+    word_automatic_note_separator_advance_px(platform, font_descriptor)
+}
+
 /// The face Word for Mac sets a numbering label's `w:suff="space"` in: the
 /// label's descriptor with its family replaced by Arial. Word for Mac 16.114
 /// makes that space 0.278 em of the label size (Arial's and Century's space)
@@ -2347,6 +2361,12 @@ pub fn apply_word_font_proportional_line_height(
 
 /// The auto line multiple `spacing` asks for (1.0 when it sets none), or
 /// `None` for exact and at-least line spacing.
+/// The `w:line` multiple of an auto-spaced paragraph (1 without spacing);
+/// `None` for exact and at-least spacing.
+pub fn word_auto_line_multiple(spacing: Option<&Spacing>) -> Option<f64> {
+    proportional_line_multiple(spacing).map(f64::from)
+}
+
 fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
     let Some(spacing) = spacing else {
         return Some(1.0);

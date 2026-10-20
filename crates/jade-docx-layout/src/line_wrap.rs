@@ -1029,6 +1029,47 @@ fn automatic_note_separator_width_px(
     )
 }
 
+/// The text an inline object stands for in a paragraph.
+const INLINE_OBJECT_TEXT: &str = "\u{fffc}";
+
+/// The advance of an ASCII space with a full-width neighbour
+/// ([`crate::line_metrics::word_balanced_space_advance_px`]): an East Asian
+/// character, an inline object or another space on either side.
+fn balanced_space_width_px(
+    grapheme: &str,
+    paragraph_style: Option<&ParagraphStyle>,
+    prev_grapheme: Option<&str>,
+    follows_inline_object: bool,
+    next_grapheme: Option<&str>,
+    font_descriptor: &str,
+) -> Option<f64> {
+    if grapheme != " " {
+        return None;
+    }
+    let widens = |neighbour: &str| {
+        neighbour == " "
+            || neighbour == INLINE_OBJECT_TEXT
+            || classify_script(neighbour) == ScriptCategory::EastAsia
+    };
+    // A space with nothing before it, such as a numbering label's suffix
+    // (laid out on its own at 0.278 em, `word_numbering_suffix_space_descriptor`)
+    // or a paragraph's first character, keeps its advance.
+    if !follows_inline_object
+        && (prev_grapheme.is_none()
+            || (!prev_grapheme.is_some_and(widens) && !next_grapheme.is_some_and(widens)))
+    {
+        return None;
+    }
+    let paragraph = paragraph_style?;
+    if !paragraph
+        .east_asian_rules
+        .balance_single_byte_double_byte_width
+    {
+        return None;
+    }
+    crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
+}
+
 fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
@@ -1667,8 +1708,16 @@ pub fn east_asian_justification_gap(prev: &str, next: &str) -> Option<EastAsianJ
             em_share: 0.25 * constants::AUTO_SPACE_LATIN_TO_EAST_ASIAN_SHARE,
         });
     }
-    (is_non_whitespace_east_asian_grapheme(prev) && is_non_whitespace_east_asian_grapheme(next))
-        .then_some(EastAsianJustificationGap::InterCharacter)
+    // Word also stretches the boundary between East Asian text and a
+    // single-byte bracket or punctuation mark (`、(c)受`), though not the
+    // gaps inside `(c)` (trust-beneficiary-sale-keep-next page 14).
+    let is_single_byte_punctuation =
+        |grapheme: &str| grapheme.len() == 1 && grapheme.as_bytes()[0].is_ascii_punctuation();
+    let east_asian = is_non_whitespace_east_asian_grapheme;
+    ((east_asian(prev) && east_asian(next))
+        || (east_asian(prev) && is_single_byte_punctuation(next))
+        || (is_single_byte_punctuation(prev) && east_asian(next)))
+    .then_some(EastAsianJustificationGap::InterCharacter)
 }
 
 /// Whether justification widens `grapheme` as a word space. Word for Mac
@@ -1892,6 +1941,9 @@ pub struct TextAdvanceState {
     pub prev_font_descriptor_hash: Option<u64>,
     /// See [`GraphemeAdvanceContext::prev_auto_space`].
     pub prev_auto_space: Option<crate::line_metrics::WordAutoSpace>,
+    /// The previous cluster is an inline object, which line wrapping leaves
+    /// no grapheme for (`balanced_space_width_px`).
+    pub follows_inline_object: bool,
 }
 
 pub struct TextAdvanceStep<'a> {
@@ -1976,6 +2028,7 @@ fn update_text_advance_state(
     trailing_auto_space: Option<crate::line_metrics::WordAutoSpace>,
 ) {
     state.prev_auto_space = trailing_auto_space;
+    state.follows_inline_object = false;
     state.prev_prev_grapheme = state.prev_grapheme.take();
     state.prev_grapheme = Some(CompactString::new(grapheme));
     state.prev_adjusted_glyph_width = Some(adjusted_glyph_width);
@@ -2358,7 +2411,17 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             run_letter_spacing: style.letter_spacing_px,
         },
         style,
-        automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor),
+        automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor)
+            .or_else(|| {
+                balanced_space_width_px(
+                    grapheme,
+                    paragraph_style,
+                    state.prev_grapheme.as_deref(),
+                    state.follows_inline_object,
+                    next_grapheme,
+                    font_descriptor,
+                )
+            }),
     );
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
@@ -4396,6 +4459,9 @@ pub struct TabStopSegment {
     pub end_offset: usize,
     pub start_x: f64,
     pub end_x: f64,
+    /// Width the tab gave up to a final comma or full stop that would end
+    /// past the edge (`shrink_tab_for_final_mark`).
+    pub closed_for_final_mark: f64,
 }
 
 /// Smallest unit (grapheme or tab) used for enforcing wrapping rules.
@@ -4704,7 +4770,7 @@ impl InlineCluster {
             start,
             end,
             width: object.width.max(1.0),
-            text: CompactString::new("\u{fffc}"),
+            text: CompactString::new(INLINE_OBJECT_TEXT),
             kind: InlineClusterKind::InlineObject,
             is_whitespace: false,
             forbid_line_start: false,
@@ -5741,7 +5807,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 ),
             );
             current_width += object_width;
-            advance_state_across_runs = TextAdvanceState::default();
+            advance_state_across_runs = TextAdvanceState {
+                follows_inline_object: true,
+                ..TextAdvanceState::default()
+            };
             continue;
         }
 
@@ -6030,6 +6099,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     end_offset: grapheme_end_abs,
                     start_x: gap_start,
                     end_x: gap_start + gap_width,
+                    closed_for_final_mark: 0.0,
                 });
 
                 current_line_clusters.push(InlineCluster::tab(
@@ -6888,8 +6958,10 @@ fn compress_mac_punctuation_on_completed_line(
 
 /// Word for Mac fits a justified line whose final comma or full stop would
 /// end past the edge by narrowing the tab before it by the mark's whole
-/// advance; the line is then justified. A tab narrower than that closes and
-/// the mark hangs the rest (probe tabshrink-comma; trust pages 22 and 34).
+/// advance; the line is then justified. A tab narrower than that closes; the
+/// line is justified as if the mark hung whole past the edge with the tab
+/// still open, so the mark ends up the closed width short of the edge (probe
+/// tabshrink-comma; trust pages 22 and 34).
 /// Only measured for documents without punctuation compression.
 fn shrink_tab_for_final_mark(
     line: &mut WrappedLine,
@@ -6935,6 +7007,7 @@ fn shrink_tab_for_final_mark(
         .find(|stop| stop.start_offset == tab_start)
     {
         stop.end_x -= shrink;
+        stop.closed_for_final_mark += shrink;
     }
     if let Some(segment) = line
         .segments
@@ -7803,8 +7876,9 @@ fn prevent_mid_word_breaks(
         let (head, tail) = lines.split_at_mut(idx);
         let prev_line = &mut head[idx - 1];
         let next_line = &mut tail[0];
-        let next_starts_latin_word =
-            !next_line.clusters.is_empty() && is_latin_word_cluster(&next_line.clusters, 0);
+        let next_starts_latin_word = !next_line.clusters.is_empty()
+            && (is_latin_word_cluster(&next_line.clusters, 0)
+                || closes_latin_word(prev_line, next_line));
         if !next_starts_latin_word {
             continue;
         }
@@ -7857,6 +7931,21 @@ fn prevent_mid_word_breaks(
     }
 }
 
+/// Whether `next` starts with ASCII punctuation that closes the Latin word
+/// ending `prev`: UAX #14 has no break before it (LB13), so Word moves
+/// `text.` whole where the period alone overflows (word-compat-comprehensive's
+/// text box).
+fn closes_latin_word(prev: &WrappedLine, next: &WrappedLine) -> bool {
+    next.clusters.first().is_some_and(|cluster| {
+        matches!(
+            cluster.text.as_str(),
+            "." | "," | ";" | ":" | "!" | "?" | ")" | "]" | "}"
+        )
+    }) && prev.clusters.last().is_some_and(|cluster| {
+        is_latin_word_grapheme(&cluster.text) || is_ascii_digit_grapheme(&cluster.text)
+    })
+}
+
 fn line_break_splits_latin_word(
     text: &str,
     prev_line: &WrappedLine,
@@ -7879,12 +7968,17 @@ fn line_break_splits_latin_word(
 
 /// Whether the cluster at `index` belongs to the Latin word around it: a
 /// letter or ASCII digit (Word moves `20％` whole), a slash right after a
-/// letter (Word keeps `header/footer` whole), or a period between letters
-/// (Word keeps `settings.xml` whole, UAX #14 LB29). A period ending the
-/// clusters belongs to the word its caller has found after it.
+/// letter (Word keeps `header/footer` whole), a period between letters
+/// (Word keeps `settings.xml` whole, UAX #14 LB29), or a period or comma
+/// between digits (Word for Mac keeps `1.5in),` whole in
+/// `floating-simple-position`, UAX #14 LB25). A separator ending the clusters
+/// belongs to the word its caller has found after it.
 fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
     let text = clusters[index].text.as_str();
-    let follows_letter = index > 0 && is_latin_word_grapheme(&clusters[index - 1].text);
+    let previous = index
+        .checked_sub(1)
+        .map(|index| clusters[index].text.as_str());
+    let follows_letter = previous.is_some_and(is_latin_word_grapheme);
     is_latin_word_grapheme(text)
         || is_ascii_digit_grapheme(text)
         || (text == "/" && follows_letter)
@@ -7893,6 +7987,11 @@ fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
             && clusters
                 .get(index + 1)
                 .is_none_or(|next| is_latin_word_grapheme(&next.text)))
+        || (matches!(text, "." | ",")
+            && previous.is_some_and(is_ascii_digit_grapheme)
+            && clusters
+                .get(index + 1)
+                .is_none_or(|next| is_ascii_digit_grapheme(&next.text)))
 }
 
 /// Whether the Latin word ending `line` starts right after East Asian text.
@@ -10835,6 +10934,135 @@ mod tests {
     }
 
     #[test]
+    fn justification_stretches_east_asian_text_beside_single_byte_punctuation() {
+        // trust-beneficiary-sale-keep-next page 14 `、(c)受`: Word widens the
+        // gaps on either side of the parenthesised letter, not inside it.
+        use EastAsianJustificationGap::InterCharacter;
+        assert_eq!(
+            east_asian_justification_gap("、", "("),
+            Some(InterCharacter)
+        );
+        assert_eq!(
+            east_asian_justification_gap(")", "受"),
+            Some(InterCharacter)
+        );
+        assert_eq!(east_asian_justification_gap("(", "c"), None);
+        assert_eq!(east_asian_justification_gap("c", ")"), None);
+    }
+
+    #[test]
+    fn mac_balanced_space_beside_full_width_text_or_a_space_is_half_an_em() {
+        // math's `2. 数式`: with balanceSingleByteDoubleByteWidth, Word for
+        // Mac advances a space half an em when a neighbour is East Asian or
+        // another space; between two single-byte characters it keeps its own.
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(10.0);
+        // TestContext sets 12pt text: half an em is 8px.
+        for (text, widened) in [
+            ("2. 数", vec![true]),
+            ("数 A", vec![true]),
+            ("A  B", vec![true, true]),
+            ("A ,数", vec![false]),
+            ("Hello World", vec![false]),
+        ] {
+            let mut paragraph = ParagraphStyle {
+                word_platform: WordLayoutPlatform::Mac,
+                ..ParagraphStyle::default()
+            };
+            paragraph
+                .east_asian_rules
+                .balance_single_byte_double_byte_width = true;
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 500.0)
+                    .unwrap();
+            let spaces = lines[0]
+                .clusters
+                .iter()
+                .filter(|cluster| cluster.text.as_str() == " ")
+                .map(|cluster| (cluster.width - 8.0).abs() < 1e-6)
+                .collect::<Vec<_>>();
+            assert_eq!(spaces, widened, "{text}");
+        }
+    }
+
+    #[test]
+    fn mac_balanced_space_next_to_an_inline_object_is_half_an_em() {
+        // image-inline: with balanceSingleByteDoubleByteWidth, Word for Mac
+        // sets a space before or after a picture 5.25pt wide at 10.5pt; the
+        // space between `Hello` and `World` keeps its own advance.
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(10.0);
+        for (text, balance, platform, expected) in [
+            (
+                "Hello World \u{fffc} x",
+                true,
+                WordLayoutPlatform::Mac,
+                true,
+            ),
+            (
+                "Hello World \u{fffc} x",
+                false,
+                WordLayoutPlatform::Mac,
+                false,
+            ),
+            (
+                "Hello World \u{fffc} x",
+                true,
+                WordLayoutPlatform::Windows,
+                false,
+            ),
+        ] {
+            let object = text.find('\u{fffc}').unwrap();
+            let object_end = object + '\u{fffc}'.len_utf8();
+            let run = |start, end, inline_object| RunStyle {
+                start,
+                end,
+                properties: None,
+                revision: None,
+                hyperlink: None,
+                inline_object,
+            };
+            let runs = [
+                run(0, object, None),
+                run(
+                    object,
+                    object_end,
+                    Some(InlineObject {
+                        width: 20.0,
+                        height: 20.0,
+                    }),
+                ),
+                run(object_end, text.len(), None),
+            ];
+            let mut paragraph = ParagraphStyle {
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            paragraph
+                .east_asian_rules
+                .balance_single_byte_double_byte_width = balance;
+            let lines = wrap_text_into_lines(&ctx, text, &runs, 0.0, &paragraph, 0, 500.0).unwrap();
+            let spaces = lines[0]
+                .clusters
+                .iter()
+                .filter(|cluster| cluster.text.as_str() == " ")
+                .map(|cluster| cluster.width)
+                .collect::<Vec<_>>();
+            assert_eq!(spaces.len(), 3, "{text}");
+            // TestContext sets 12pt text: half an em is 8px.
+            let half_em = 8.0;
+            assert!((spaces[0] - half_em).abs() > 0.5, "{spaces:?}");
+            for space in &spaces[1..] {
+                assert_eq!(
+                    (space - half_em).abs() < 1e-6,
+                    expected,
+                    "{balance} {platform:?} {spaces:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn numbering_ascent_covers_both_segments_of_first_float_band_only() {
         use crate::line_metrics::{
             set_word_layout_platform, WordGridLineSizing, WordLayoutPlatform,
@@ -13291,6 +13519,11 @@ mod tests {
                 .unwrap();
             assert_eq!(after_tab.leading_width, tab_after);
             assert_eq!(line.clusters.last().unwrap().width, 14.0);
+            // The renderer justifies by the width the tab gave up.
+            assert_eq!(
+                line.tab_stops[0].closed_for_final_mark,
+                tab_before - tab_after
+            );
         }
     }
 
@@ -18059,6 +18292,49 @@ mod tests {
             let infos = collect_line_infos(&lines);
             assert_eq!(infos[0].text, "from ");
             assert_eq!(infos[1].text, "settings.xml ");
+        }
+    }
+
+    #[test]
+    fn a_period_between_digits_does_not_split_the_number() {
+        // `floating-simple-position`: Word for Mac moves `1.5in),` whole
+        // instead of ending a line with `1.` (UAX #14 LB25).
+        let ctx = TestContext::new(10.0);
+        let text = "at (1.0in, 1.5in), not";
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            135.0,
+        )
+        .unwrap();
+        let infos = collect_line_infos(&lines);
+        assert_eq!(infos[0].text, "at (1.0in, ");
+        assert_eq!(infos[1].text, "1.5in), not");
+    }
+
+    #[test]
+    fn closing_punctuation_moves_with_the_word_it_ends() {
+        // word-compat-comprehensive's text box: Word moves `text.` whole where
+        // the period alone overflows (UAX #14 LB13), on either platform.
+        let ctx = TestContext::new(10.0);
+        let text = "Hello World text.";
+        for word_platform in [
+            crate::line_metrics::WordLayoutPlatform::Windows,
+            crate::line_metrics::WordLayoutPlatform::Mac,
+        ] {
+            let style = ParagraphStyle {
+                word_platform,
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, 165.0).unwrap();
+            let infos = collect_line_infos(&lines);
+            assert_eq!(infos[0].text, "Hello World ");
+            assert_eq!(infos[1].text, "text.");
         }
     }
 
