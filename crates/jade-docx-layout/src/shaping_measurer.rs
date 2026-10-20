@@ -344,18 +344,27 @@ impl ShapingMeasurer {
         best.map(|(index, _)| index)
     }
 
-    /// Face for one character, recording characters that no named family covers.
+    /// Face for one character: the stack's first that has it, else the
+    /// fallback face, else any registered face that has it.
     ///
-    /// Chromium reaches for a system font at that point, which a measurer built
-    /// from explicitly registered faces cannot reproduce — the width silently
-    /// becomes a `.notdef` advance. Recording the characters lets a native shell
+    /// Chromium reaches for a system font once the named families run out;
+    /// the nearest a measurer built from registered faces has is another
+    /// registered face carrying the character — Noto Sans Thai for Thai in a
+    /// Japanese run. Characters no registered face covers would silently
+    /// measure as `.notdef`, so they are recorded, letting a native shell
     /// surface "this document needs a font you have not registered" instead.
     fn face_for_char(&self, stack: &ResolvedStack, ch: char) -> usize {
         let selected = select_face(&stack.faces, stack.fallback, |index| self.covers(index, ch));
-        if !stack.faces.iter().any(|index| self.covers(*index, ch)) {
-            self.uncovered.borrow_mut().insert(ch);
+        if self.covers(selected, ch) {
+            return selected;
         }
-        selected
+        match (0..self.faces.len()).find(|index| self.covers(*index, ch)) {
+            Some(covering) => covering,
+            None => {
+                self.uncovered.borrow_mut().insert(ch);
+                selected
+            }
+        }
     }
 
     /// Characters seen so far that none of their descriptor's families covered.
@@ -772,6 +781,40 @@ mod tests {
                 "{text:?} @{descriptor}: expected {expected}, got {actual}"
             );
         }
+    }
+
+    /// A character no family in the descriptor has falls back to a
+    /// registered face that has it, as Chromium reaches for a system font:
+    /// Thai in a Japanese run measures as Noto Sans Thai's glyphs, not as
+    /// `.notdef` boxes, and is not reported as uncovered.
+    #[test]
+    fn a_character_no_named_family_has_falls_back_to_any_registered_face() {
+        let mut measurer = measurer(ShapingOptions::CHROMIUM_PARITY);
+        measurer
+            .register_font_path(
+                "Noto Sans Thai",
+                400,
+                RegisteredFontStyle::Normal,
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../fonts/Noto_Sans_Thai/NotoSansThai-VariableFont_wdth,wght.ttf"),
+            )
+            .expect("register Noto Sans Thai");
+        let japanese = "10.50pt 'Noto Sans JP'";
+        let latin = measurer.measure_text("Total ", japanese).expect("measure");
+        let thai = measurer
+            .measure_text("บาท", "10.50pt 'Noto Sans Thai'")
+            .expect("measure");
+        let mixed = measurer
+            .measure_text("Total บาท", japanese)
+            .expect("measure");
+        assert!(
+            (mixed - (latin + thai)).abs() < 0.01,
+            "{mixed} vs {latin} + {thai}"
+        );
+        assert!(measurer.uncovered_characters().is_empty());
+        // A character no registered face has is still reported.
+        measurer.measure_text("한", japanese).expect("measure");
+        assert_eq!(measurer.uncovered_characters(), ['한']);
     }
 
     #[test]
