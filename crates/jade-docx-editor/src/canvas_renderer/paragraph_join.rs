@@ -107,7 +107,29 @@ where
     /// (whose first element is body element `element_base`), or notes that
     /// the element belongs to a join planned earlier. Called for every body
     /// element before it is rendered.
+    #[inline]
     pub(super) fn prepare_paragraph_join(
+        &mut self,
+        elements: &[BodyElement],
+        index: usize,
+        section_end: usize,
+        element_base: usize,
+        options: &Options,
+    ) {
+        // Almost every paragraph mark carries no revision.
+        if self.paragraph_join_last.is_none()
+            && elements
+                .get(index)
+                .and_then(BodyElement::as_paragraph)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .is_none_or(|props| props.mark_revision.is_none())
+        {
+            return;
+        }
+        self.plan_paragraph_join(elements, index, section_end, element_base, options);
+    }
+
+    fn plan_paragraph_join(
         &mut self,
         elements: &[BodyElement],
         index: usize,

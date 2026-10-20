@@ -352,7 +352,7 @@ impl DocumentParser {
                             let mark = Self::build_revision_mark(e, Self::revision_kind(e));
                             if parsing_paragraph_run_props {
                                 if let Some(props) = current_paragraph_props.as_mut() {
-                                    props.mark_revision = Some(mark.clone());
+                                    props.mark_revision = Some(Box::new(mark.clone()));
                                 }
                             }
                             // Popped again by the matching end tag.
@@ -1889,8 +1889,10 @@ impl DocumentParser {
                     b"w:ins" | b"w:del" | b"w:moveFrom" | b"w:moveTo" => {
                         if parsing_paragraph_run_props {
                             if let Some(props) = current_paragraph_props.as_mut() {
-                                props.mark_revision =
-                                    Some(Self::build_revision_mark(e, Self::revision_kind(e)));
+                                props.mark_revision = Some(Box::new(Self::build_revision_mark(
+                                    e,
+                                    Self::revision_kind(e),
+                                )));
                             }
                         }
                     }
