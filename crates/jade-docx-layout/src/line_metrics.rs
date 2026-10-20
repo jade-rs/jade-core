@@ -2253,6 +2253,12 @@ impl WordRunFaces {
         }
     }
 
+    /// [`word_face_line_height_pt`] of the Latin face these faces were built
+    /// with: the same ascent + descent, without parsing the descriptor again.
+    pub fn latin_line_height_pt(&self) -> Option<f32> {
+        self.latin.map(|(ascent, descent)| ascent + descent)
+    }
+
     /// [`word_run_vertical_extent_pt`] for a run drawing `slots` in these faces.
     #[allow(clippy::result_unit_err)]
     pub fn run_vertical_extent_pt(
@@ -2754,6 +2760,26 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn word_run_faces_latin_line_height_matches_the_face_line_height() {
+        for descriptor in [
+            "12.00pt 'Times New Roman', serif",
+            "10.50pt 'ＭＳ 明朝', serif",
+            "italic 700 9.00pt 'Century', serif",
+            "11pt Arial, sans-serif",
+            "serif",
+        ] {
+            for east_asian_faces_size_lines in [false, true] {
+                let faces = WordRunFaces::new(descriptor, descriptor, east_asian_faces_size_lines);
+                assert_eq!(
+                    faces.latin_line_height_pt(),
+                    word_face_line_height_pt(descriptor, east_asian_faces_size_lines),
+                    "{descriptor} {east_asian_faces_size_lines}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn mac_legacy_space_pairs_kern_from_the_kern_table() {
         let previous = word_layout_platform();
