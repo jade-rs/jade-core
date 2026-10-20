@@ -152,3 +152,18 @@ fn what_duplicate_refuses_is_not_pasted() {
     assert!(!video.can_duplicate);
     assert!(copy_shapes(&bytes, 0, &[video.id], 1).is_err());
 }
+
+#[test]
+fn a_placeholder_placed_by_its_layout_keeps_its_place_on_another_slide() {
+    // The sample deck's title slide takes its title's place from its layout;
+    // the second slide is on another layout.
+    const DECK: &[u8] = include_bytes!("../../../public/fixtures/sample-deck.pptx");
+    let placeholders: Vec<ShapeTransformInfo> = copyable(DECK, 0);
+    let ids: Vec<u32> = placeholders.iter().map(|shape| shape.id).collect();
+    let (pasted, copies) = copy_shapes(DECK, 0, &ids, 1).unwrap();
+    let on_target = editable_shapes(&pasted, 1).unwrap();
+    for (original, copy) in placeholders.iter().zip(&copies) {
+        let copy = on_target.iter().find(|shape| shape.id == *copy).unwrap();
+        assert_eq!(copy.transform, original.transform, "{}", original.name);
+    }
+}

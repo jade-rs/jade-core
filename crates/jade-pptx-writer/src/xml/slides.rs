@@ -941,7 +941,8 @@ fn insert_body(
 
 /// Copies objects `ids` of the slide part `from` (whose XML is `source`)
 /// into the slide part `to` (whose XML is `into`), in front of its own
-/// objects and where they were. Each object's relationships go with it: a
+/// objects and where they were — each with the place it takes from its
+/// layout, if it has none of its own. Each object's relationships go with it: a
 /// picture's or a video's media is shared, a hyperlink keeps its target, and
 /// a chart's or diagram's parts are copied for the copy alone. Returns the
 /// slide XML and the copies' ids, in order.
@@ -949,7 +950,7 @@ pub(crate) fn copy_objects(
     package: &mut OpcPackage,
     from: &str,
     source: &str,
-    ids: &[u32],
+    ids: &[(u32, Option<jade_pptx_reader::Transform>)],
     to: &str,
     into: &str,
 ) -> Result<(String, Vec<u32>)> {
@@ -964,8 +965,8 @@ pub(crate) fn copy_objects(
     let mut mapping = BTreeMap::new();
     let mut into = into.to_owned();
     let mut copied = Vec::with_capacity(ids.len());
-    for &id in ids {
-        let (fragment, new_id) = super::objects::copy_out(source, id, &into)?;
+    for &(id, baseline) in ids {
+        let (fragment, new_id) = super::objects::copy_out(source, id, baseline, &into)?;
         let fragment = relink(
             package,
             from,
