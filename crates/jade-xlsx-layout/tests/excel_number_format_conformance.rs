@@ -131,6 +131,19 @@ fn text_sections_and_colours_follow_excel() {
     };
     assert_eq!(text("@"), "abc");
     assert_eq!(text("0;0;0;\"[\"@\"]\""), "[abc]");
+    // A number under a text format shows as General, as when Excel's
+    // Number Format box is set to Text on a cell holding one.
+    let number = |code: &str| {
+        format_value(
+            &CellValue::Number(1234.5),
+            Some(code),
+            DateSystem::Nineteen00,
+        )
+        .text
+    };
+    assert_eq!(number("@"), "1234.5");
+    assert_eq!(number("\"x\"@"), "1234.5");
+    assert_eq!(number("\"@\"0.0"), "@1234.5", "a quoted @ is a literal");
     let negative = format_value(
         &CellValue::Number(-5.0),
         Some("#,##0;[Red]-#,##0"),
