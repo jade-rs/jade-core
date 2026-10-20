@@ -1077,6 +1077,8 @@ impl DeleteTextCommand {
         }
         if let Some(revision_id) = self.tracked_join_revision_id.take() {
             std::mem::take(&mut self.raw_xml_undo).undo(ctx, |_| Ok(()))?;
+            ctx.document
+                .refresh_paragraph_mark_revision(self.paragraph_index);
             ctx.document.restore_revision_id_counter(revision_id);
             *ctx.selection = self.previous_selection;
             return Ok(());

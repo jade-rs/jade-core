@@ -65,6 +65,7 @@ impl DocumentParser {
                 .mark_run_properties
                 .as_ref()
                 .is_none_or(RunProperties::is_empty)
+            && props.mark_revision.is_none()
             && props.alignment.is_none()
             && props.bidi.is_none()
             && props.numbering.is_none()

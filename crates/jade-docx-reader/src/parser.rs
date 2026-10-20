@@ -348,20 +348,14 @@ impl DocumentParser {
                             paragraph_comment_ranges.clear();
                             paragraph_comment_markers.clear();
                         }
-                        b"w:ins" => {
-                            let mark = Self::build_revision_mark(e, RevisionKind::Inserted);
-                            revision_stack.push(mark);
-                        }
-                        b"w:del" => {
-                            let mark = Self::build_revision_mark(e, RevisionKind::Deleted);
-                            revision_stack.push(mark);
-                        }
-                        b"w:moveFrom" => {
-                            let mark = Self::build_revision_mark(e, RevisionKind::MovedFrom);
-                            revision_stack.push(mark);
-                        }
-                        b"w:moveTo" => {
-                            let mark = Self::build_revision_mark(e, RevisionKind::MovedTo);
+                        b"w:ins" | b"w:del" | b"w:moveFrom" | b"w:moveTo" => {
+                            let mark = Self::build_revision_mark(e, Self::revision_kind(e));
+                            if parsing_paragraph_run_props {
+                                if let Some(props) = current_paragraph_props.as_mut() {
+                                    props.mark_revision = Some(Box::new(mark.clone()));
+                                }
+                            }
+                            // Popped again by the matching end tag.
                             revision_stack.push(mark);
                         }
                         b"w:tbl" => {
@@ -1891,6 +1885,17 @@ impl DocumentParser {
                     }
                 }
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                    // A tracked change on the paragraph mark (`w:pPr/w:rPr/w:del`).
+                    b"w:ins" | b"w:del" | b"w:moveFrom" | b"w:moveTo" => {
+                        if parsing_paragraph_run_props {
+                            if let Some(props) = current_paragraph_props.as_mut() {
+                                props.mark_revision = Some(Box::new(Self::build_revision_mark(
+                                    e,
+                                    Self::revision_kind(e),
+                                )));
+                            }
+                        }
+                    }
                     b"w:sectPr" => {
                         let section = SectionProperties::default();
                         if parsing_paragraph_props {
@@ -4618,6 +4623,15 @@ impl DocumentParser {
                 .map(|outer| Box::new(outer.clone()));
         }
         Some(mark)
+    }
+
+    fn revision_kind(element: &BytesStart) -> RevisionKind {
+        match element.name().as_ref() {
+            b"w:ins" => RevisionKind::Inserted,
+            b"w:moveFrom" => RevisionKind::MovedFrom,
+            b"w:moveTo" => RevisionKind::MovedTo,
+            _ => RevisionKind::Deleted,
+        }
     }
 
     fn build_revision_mark(element: &BytesStart, kind: RevisionKind) -> RevisionMark {
@@ -15962,6 +15976,57 @@ mod tests {
         assert!((spacing.after_lines.unwrap() - 1.0).abs() < EPS);
         assert!((spacing.line.unwrap() - 2.0).abs() < EPS);
         assert_eq!(spacing.line_rule.as_deref(), Some("auto"));
+    }
+
+    #[test]
+    fn paragraph_mark_revision_is_read_from_the_mark_run_properties() {
+        let body = r#"
+    <w:p>
+      <w:pPr>
+        <w:rPr><w:del w:id="0" w:author="A" w:date="2025-11-28T15:48:00Z"/></w:rPr>
+      </w:pPr>
+      <w:r><w:t>Hello</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:rPr><w:ins w:id="1" w:author="B"></w:ins><w:b/></w:rPr></w:pPr>
+      <w:del w:id="2" w:author="A"><w:r><w:delText>Foo</w:delText></w:r></w:del>
+      <w:r><w:t>Bar</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:rPr><w:b/></w:rPr></w:pPr>
+      <w:r><w:rPr><w:b/></w:rPr><w:t>World</w:t></w:r>
+    </w:p>
+"#;
+
+        let document = parse_document_from_body(body);
+        let body = document.body.expect("body");
+        let paragraphs: Vec<&Paragraph> = body
+            .elements
+            .iter()
+            .filter_map(BodyElement::as_paragraph)
+            .collect();
+        let mark = |index: usize| {
+            paragraphs[index]
+                .properties
+                .as_ref()
+                .and_then(|props| props.mark_revision.as_ref())
+        };
+        let deleted = mark(0).expect("deleted mark");
+        assert_eq!(deleted.kind, RevisionKind::Deleted);
+        assert_eq!(deleted.author.as_deref(), Some("A"));
+        assert!(paragraphs[0].runs[0].revision.is_none());
+        let inserted = mark(1).expect("inserted mark");
+        assert_eq!(inserted.kind, RevisionKind::Inserted);
+        // The mark's own revision does not leak into the paragraph's runs.
+        assert_eq!(
+            paragraphs[1].runs[0]
+                .revision
+                .as_ref()
+                .map(|mark| &mark.kind),
+            Some(&RevisionKind::Deleted)
+        );
+        assert!(paragraphs[1].runs[1].revision.is_none());
+        assert!(mark(2).is_none());
     }
 
     #[test]

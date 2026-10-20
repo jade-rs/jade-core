@@ -242,6 +242,7 @@ mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
+mod paragraph_join;
 #[cfg(test)]
 mod recording_host;
 #[cfg(test)]
@@ -3600,6 +3601,15 @@ where
     /// Keeps the next paragraph's objects where the first pass put them
     /// after the paragraph above grew around them.
     float_lookahead_pin: Option<float_lookahead::FloatLookaheadPin>,
+    /// The join planned for the next body paragraph (see `paragraph_join`).
+    paragraph_join: Option<paragraph_join::ParagraphJoin>,
+    /// Body element index of the last paragraph of the current join.
+    paragraph_join_last: Option<usize>,
+    /// First surface -> last surface of each join laid out by the last
+    /// render, kept like `keep_next_group_surfaces`.
+    paragraph_join_surfaces: std::collections::BTreeMap<usize, usize>,
+    /// Set while a join's paragraphs are laid out as one.
+    joined_render: Option<paragraph_join::JoinedRender>,
     cell_highlighted: RefCell<HashSet<usize>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
@@ -5466,8 +5476,10 @@ where
         if self.skip_change_detection {
             return self.forced_dirty_from;
         }
-        self.forced_dirty_from
-            .or_else(|| self.find_first_changed_paragraph(document))
+        self.forced_dirty_from.or_else(|| {
+            self.find_first_changed_paragraph(document)
+                .map(|paragraph| self.paragraph_join_owner(paragraph))
+        })
     }
 
     fn paragraph_spacing_after_input(
@@ -5876,7 +5888,7 @@ where
     /// as the first changed paragraph (dirty from here). This is used by the editor
     /// command path to avoid computing hashes for all paragraphs.
     pub fn set_incremental_dirty_from(&mut self, paragraph_index: usize) {
-        self.forced_dirty_from = Some(self.keep_next_group_owner(paragraph_index));
+        self.forced_dirty_from = Some(self.layout_group_owner(paragraph_index));
         self.edit_render_pending = true;
         // Skip change detection since we know exactly which paragraph changed.
         self.skip_change_detection = true;
@@ -8027,6 +8039,10 @@ where
             paragraph_frame_debug_regions: Vec::new(),
             float_lookahead: None,
             float_lookahead_pin: None,
+            paragraph_join: None,
+            paragraph_join_last: None,
+            paragraph_join_surfaces: std::collections::BTreeMap::new(),
+            joined_render: None,
             cell_highlighted: RefCell::new(HashSet::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
@@ -10062,7 +10078,12 @@ where
     /// paragraph's layout (the body selection text went missing after a page
     /// number was inserted into a header).
     pub fn paragraph_content_hash_cached(&self, paragraph: &Paragraph) -> ContentHash {
-        if self.rendering_header_footer_story || self.rendering_note_story || self.measuring_notes {
+        // A joined paragraph is a temporary: its address may be reused.
+        if self.rendering_header_footer_story
+            || self.rendering_note_story
+            || self.measuring_notes
+            || self.joined_render.is_some()
+        {
             return self.compute_paragraph_content_hash(paragraph);
         }
         let ptr_key = paragraph as *const Paragraph as usize;
@@ -10149,6 +10170,12 @@ where
             numbering
                 .and_then(|n| n.level)
                 .map(|v| v as i32)
+                .hash(&mut hasher);
+            // A hidden paragraph mark joins the paragraph with the next one.
+            props
+                .mark_revision
+                .as_ref()
+                .map(|mark| std::mem::discriminant(&mark.kind))
                 .hash(&mut hasher);
         }
 
@@ -10868,8 +10895,10 @@ where
     /// This should be called when editing a paragraph to ensure all subsequent
     /// paragraphs are re-laid out.
     pub fn invalidate_layout_from(&mut self, paragraph_index: usize) {
-        let paragraph_index = self.keep_next_group_owner(paragraph_index);
+        let paragraph_index = self.layout_group_owner(paragraph_index);
         self.keep_next_group_surfaces
+            .split_off(&paragraph_index.saturating_add(1));
+        self.paragraph_join_surfaces
             .split_off(&paragraph_index.saturating_add(1));
         self.paragraph_layout_cache
             .borrow_mut()
@@ -10900,8 +10929,10 @@ where
     /// Useful for structural edits where paragraph indices shift. Callers can shift the
     /// render cache separately to preserve downstream cache entries.
     pub fn invalidate_layout_from_keep_render_cache(&mut self, paragraph_index: usize) {
-        let paragraph_index = self.keep_next_group_owner(paragraph_index);
+        let paragraph_index = self.layout_group_owner(paragraph_index);
         self.keep_next_group_surfaces
+            .split_off(&paragraph_index.saturating_add(1));
+        self.paragraph_join_surfaces
             .split_off(&paragraph_index.saturating_add(1));
         self.paragraph_layout_cache
             .borrow_mut()
@@ -11121,6 +11152,7 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_render_cache(&mut self) {
         self.keep_next_group_surfaces.clear();
+        self.paragraph_join_surfaces.clear();
         self.paragraph_render_cache.borrow_mut().clear();
     }
 
@@ -11228,6 +11260,12 @@ where
                 .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
             return None;
         };
+        // Joined paragraphs register their lines per member.
+        if self.paragraph_join_group(edited).count() > 1 {
+            self.band_redraw_fallback_not_plain_paragraph
+                .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
+            return None;
+        }
         // Gate 4: no floating images / text boxes / math in the edited paragraph
         // (they can paint outside the text band).
         if paragraph_has_floating_or_math(paragraph) {
@@ -11832,6 +11870,8 @@ where
     pub fn drop_document_cache(&mut self) {
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
+        // Joins stay: the edit that follows maps its paragraph to the first
+        // member through them (`set_incremental_dirty_from`).
         self.last_document = None;
         self.invalidate_paragraph_content_hash_cache();
     }
@@ -12164,8 +12204,16 @@ where
         &self,
         paragraph_index: usize,
     ) -> Option<(f64, f64, DirtyRect)> {
-        let layout = self.selection.paragraphs().get(paragraph_index)?;
-        if layout.lines.is_empty() {
+        // Joined paragraphs share lines: an edit of one moves the others.
+        let group = self.paragraph_join_group(paragraph_index);
+        let paragraphs = self.selection.paragraphs();
+        let lines: Vec<&jade_docx_layout::selection::LineLayout> = paragraphs
+            .get(group)
+            .into_iter()
+            .flatten()
+            .flat_map(|layout| layout.lines.iter())
+            .collect();
+        if lines.is_empty() {
             return None;
         }
 
@@ -12175,7 +12223,7 @@ where
         let mut min_y = f64::MAX;
         let mut max_y = f64::MIN;
 
-        for line in &layout.lines {
+        for line in lines {
             min_x = min_x.min(line.start_x);
             max_x = max_x.max(line.visual_end_x());
             min_y = min_y.min(line.absolute_top);
@@ -12979,6 +13027,9 @@ where
         self.active_float_exclusions.clear();
         self.float_lookahead = None;
         self.float_lookahead_pin = None;
+        self.paragraph_join = None;
+        self.paragraph_join_last = None;
+        self.joined_render = None;
         self.paragraph_frame = None;
         self.paragraph_frame_column = None;
         self.paragraph_frame_wrap_guard = None;
@@ -13407,9 +13458,14 @@ where
                     {
                         self.active_keep_next_group_end = None;
                     }
+                    // A later member of a join is laid out with its first.
+                    let joined_member = self
+                        .paragraph_join_last
+                        .is_some_and(|last| body_element_index <= last);
                     if !self.measuring_keep_next
                         && !self.pageless_mode
                         && self.active_keep_next_group_end.is_none()
+                        && !joined_member
                     {
                         self.keep_next_group_surfaces
                             .remove(&self.paragraph_counter);
@@ -13455,6 +13511,13 @@ where
                     }
                     self.float_lookahead =
                         self.float_lookahead_for(&body.elements, body_element_index, end);
+                    self.prepare_paragraph_join(
+                        &body.elements,
+                        body_element_index,
+                        end,
+                        0,
+                        options,
+                    );
                     self.render_body_element(
                         element,
                         options,
@@ -13871,6 +13934,25 @@ where
                     // Note stories share the main selection manager and remain editable.
                     self.selection
                         .set_paragraph_selectable(paragraph_index, false);
+                }
+                // Only a document with joins, now or in the last render, pays
+                // for the call.
+                if body_element_index != usize::MAX
+                    && section_index != usize::MAX
+                    && (self.paragraph_join_last.is_some()
+                        || !self.paragraph_join_surfaces.is_empty())
+                {
+                    if let Some(result) = self.render_paragraph_join_member(
+                        options,
+                        numbering_part,
+                        numbering_counter,
+                        deleted_numbering_offsets,
+                        paragraph_index,
+                        body_element_index,
+                        section_index,
+                    ) {
+                        return result;
+                    }
                 }
                 if let Some(frame) = self.body_paragraph_frame(paragraph, body_element_index) {
                     let result = self.render_framed_paragraph(
@@ -15279,6 +15361,7 @@ where
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
+            && self.joined_render.is_none()
             && self.can_use_unchecked_cache_replay(options)
         {
             if let Some((entry, y_offset)) = self
@@ -15615,6 +15698,9 @@ where
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
+            // A joined paragraph is laid out from several model paragraphs;
+            // the render cache keys one.
+            && self.joined_render.is_none()
             // In Markup, numbering labels depend on deleted-list offsets from
             // earlier paragraphs. Keep those paragraphs on the normal path;
             // revision-free, unnumbered content has no such side effects.
@@ -15649,7 +15735,12 @@ where
             });
         let layout_content_hash =
             if self.incremental_layout_enabled && !self.skip_layout_cache_update {
-                Some(self.paragraph_content_hash_cached(paragraph))
+                // A joined paragraph is cached under its first member's hash,
+                // which `find_first_changed_paragraph` compares.
+                Some(match self.joined_render.as_ref() {
+                    Some(joined) => joined.head_hash,
+                    None => self.paragraph_content_hash_cached(paragraph),
+                })
             } else {
                 None
             };
@@ -16743,6 +16834,9 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         for (run_index, run) in paragraph.runs.iter().enumerate() {
+            if let Some(joined) = self.joined_render.as_mut() {
+                joined.record_run_start(run_index, layout_text.len());
+            }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
@@ -17915,10 +18009,13 @@ where
                         "fast_replay_check"
                     );
                 }
+                // A stable exit restores the previous pass's registrations
+                // after this paragraph, over the later members of a join.
                 let stable = same_height
                     && stable_page
                     && stable_column
                     && stable_offset
+                    && self.joined_render.is_none()
                     && (!self.preserve_completed_pagination_on_stable_edit || stable_cached_extent);
                 if stable {
                     if self.paragraph_break_pending {

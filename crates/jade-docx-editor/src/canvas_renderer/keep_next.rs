@@ -258,8 +258,17 @@ where
             })
         });
         measurer.keep_next_tail_bottom = None;
+        measurer.paragraph_join = None;
+        measurer.paragraph_join_last = None;
         let result = (|| {
             for (offset, element) in elements.iter().enumerate() {
+                measurer.prepare_paragraph_join(
+                    elements,
+                    offset,
+                    elements.len(),
+                    first_element,
+                    options,
+                );
                 // The group needs only the lines of its first member that may
                 // split that cannot be split from what precedes them (see
                 // `keep_next_tail_pending`).
