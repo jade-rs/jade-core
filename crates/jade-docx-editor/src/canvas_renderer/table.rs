@@ -6924,6 +6924,12 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
             grid_defined[idx] = width > 0.0;
         }
     }
+    if let Some(cell_widths) = word_mac_stale_grid_cell_widths(table, column_count) {
+        for (idx, width) in cell_widths.into_iter().enumerate() {
+            widths[idx] = width;
+            grid_defined[idx] = true;
+        }
+    }
 
     // A percentage tcW is relative to the table, unlike percentage tblW which
     // is relative to the page text extent. Use tblW as the provisional table
@@ -7156,6 +7162,59 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
 /// to that content (`word-mac-probe-partial-grid`: `AAAA AAAA`, `B`, `C` in
 /// 253.8pt take 166.8, 43.7 and 43.3pt; one, two or a 2880-twip grid column
 /// for three `A` cells all give three equal columns).
+/// Word for Mac sizes an autofit table from its cells' preferred widths and
+/// saves the result as the grid, so a grid Word wrote matches the cells'
+/// widths but for its own fitting (scroll-offset-repro: 3217 and 4469 twips
+/// for cells of 3260 and 4536). A grid that disagrees with every row's cell
+/// widths by more than that was not computed from them, and Word lays the
+/// table out from the cells: word-compat-comprehensive prints a 3312-twip
+/// grid as its cells' 2160, 3744 and 3744 twips. Returns those widths in px.
+fn word_mac_stale_grid_cell_widths(table: &Table, column_count: usize) -> Option<Vec<f64>> {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || !matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit)
+        || table.columns.len() != column_count
+        || column_count == 0
+    {
+        return None;
+    }
+    let mut cell_widths: Vec<Option<f64>> = vec![None; column_count];
+    for row in &table.rows {
+        if row.grid_before.unwrap_or(0) > 0 || row.grid_after.unwrap_or(0) > 0 {
+            return None;
+        }
+        if row.cells.len() != column_count {
+            return None;
+        }
+        for (column, cell) in row.cells.iter().enumerate() {
+            if cell.span.unwrap_or(1) != 1 || !cell_has_absolute_preferred_width(cell) {
+                return None;
+            }
+            let width = cell
+                .style
+                .get("width")
+                .and_then(|value| parse_length_to_px(value))
+                .filter(|width| *width > 0.0)?;
+            match cell_widths[column] {
+                Some(previous) if (previous - width).abs() > 0.5 => return None,
+                _ => cell_widths[column] = Some(width),
+            }
+        }
+    }
+    let cell_widths = cell_widths.into_iter().collect::<Option<Vec<f64>>>()?;
+    let stale = table
+        .columns
+        .iter()
+        .zip(&cell_widths)
+        .any(|(column, cell)| {
+            column
+                .width
+                .map(points_to_px)
+                .is_none_or(|grid| (grid - cell).abs() > cell * 0.05)
+        });
+    stale.then_some(cell_widths)
+}
+
 fn word_mac_sizes_without_grid(table: &Table, column_count: usize) -> bool {
     jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
@@ -13688,6 +13747,66 @@ mod tests {
             })],
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn mac_autofit_lays_out_a_stale_grid_from_its_cell_widths() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let table = |grid: &[f32], cells: &[&str]| {
+            let row = TableRow {
+                cells: cells
+                    .iter()
+                    .map(|width| {
+                        let mut cell = text_cell("A");
+                        cell.style.insert("width".into(), (*width).into());
+                        cell
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            Table {
+                columns: grid
+                    .iter()
+                    .map(|width| TableColumn {
+                        width: Some(*width),
+                    })
+                    .collect(),
+                rows: vec![row.clone(), row],
+                ..Default::default()
+            }
+        };
+        let pt = |widths: Vec<f64>| {
+            widths
+                .iter()
+                .map(|w| (w * 0.75 * 10.0).round() / 10.0)
+                .collect::<Vec<_>>()
+        };
+        // word-compat-comprehensive: an even 3312-twip grid under cells of
+        // 2160, 3744 and 3744 twips.
+        let stale = table(
+            &[165.6, 165.6, 165.6],
+            &["108.00pt", "187.20pt", "187.20pt"],
+        );
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            pt(compute_column_widths(&stale, 3, 662.4)),
+            vec![108.0, 187.2, 187.2]
+        );
+        // scroll-offset-repro: Word's own grid for cells of 3260 and 4536 twips.
+        let fitted = table(&[160.85, 223.45], &["163.00pt", "226.80pt"]);
+        assert_eq!(
+            pt(compute_column_widths(&fitted, 2, 662.4)),
+            vec![160.9, 223.5]
+        );
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            pt(compute_column_widths(&stale, 3, 662.4)),
+            vec![165.6, 165.6, 165.6]
+        );
+        set_word_layout_platform(previous);
     }
 
     #[test]
