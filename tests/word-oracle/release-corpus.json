@@ -570,6 +570,10 @@
       "docx_sha256": "479980ec5ec700c26c6cc63aa732fde9296d6e169fc0669dac0491a71423ab3d"
     },
     {
+      "fixture": "word-mac-probe-object-lines",
+      "docx_sha256": "7231dec77b5b82e01ab393eab9b3b2f791b695b7fd590f9ba343a47b801e28e8"
+    },
+    {
       "fixture": "word-mac-probe-object-spaces",
       "docx_sha256": "ec2623cfa5fddcf8b2463671252939acec0365a23c0356b2d5d6654852f01790"
     },
