@@ -20160,8 +20160,13 @@ impl WordDocument {
         }
 
         // Raw XML: insert bookmarkStart after the paragraph's pPr (or at the
-        // front) and bookmarkEnd at the end of the paragraph.
-        if let (Some(node_id), Some(mut raw)) = (node_id, self.raw_document.take()) {
+        // front) and bookmarkEnd at the end of the paragraph. A heading with
+        // no XML of its own (an HTML altChunk's) keeps the model bookmark
+        // only; the raw tree is taken only once there is a node to edit.
+        let Some(node_id) = node_id else {
+            return Ok(());
+        };
+        if let Some(mut raw) = self.raw_document.take() {
             let result = (|| {
                 let para = raw
                     .element(node_id)
@@ -38010,6 +38015,26 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(texts, [("One ", false), ("two", true), (" three", false)]);
         assert!(paragraphs[2].properties.is_none());
+    }
+
+    #[test]
+    fn table_of_contents_over_an_alt_chunk_heading_keeps_the_document_exportable() {
+        // alt-chunk-html's imported `h1` is a heading with no XML of its own.
+        // Bookmarking it for the TOC used to take the raw tree and drop it, so
+        // the document could no longer be saved (word-schema's `toc` sweep).
+        let data = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/alt-chunk-html.docx"
+        ))
+        .unwrap();
+        let mut document = executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load altChunk fixture");
+        document
+            .insert_table_of_contents(0, &jade_docx_reader::document::TocOptions::default())
+            .expect("insert TOC");
+        let exported = document.export_docx().expect("export after TOC");
+        executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload exported document");
     }
 
     #[test]
