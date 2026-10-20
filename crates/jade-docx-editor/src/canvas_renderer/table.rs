@@ -799,8 +799,8 @@ impl HorizontalBorderBands {
         let bottom = band((bottom_width, bottom_nonuniform));
         // Word for Mac aligns a cell's content within the row above the
         // border the row reserves below it, even when every cell draws the
-        // same rule there: a centred line keeps the row's 18pt pitch instead
-        // of sinking half of a 0.5pt rule (`scroll-offset-repro`).
+        // same rule there: a centred line does not sink by half of a 0.5pt
+        // rule (`scroll-offset-repro`).
         let content_bottom = if !reserve_bottom {
             0.0
         } else if jade_docx_layout::line_metrics::word_layout_platform()
