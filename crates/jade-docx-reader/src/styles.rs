@@ -437,6 +437,14 @@ impl StylesPart {
         self.doc_default_paragraph_properties.as_ref()
     }
 
+    /// Gives this part `template`'s document-default run properties when it
+    /// has none of its own (`w:docDefaults/w:rPrDefault`).
+    pub fn fill_doc_default_run_properties(&mut self, template: &StylesPart) {
+        if self.doc_default_run_properties.is_none() {
+            self.doc_default_run_properties = template.doc_default_run_properties.clone();
+        }
+    }
+
     pub fn doc_default_run_properties(&self) -> Option<&RunProperties> {
         self.doc_default_run_properties.as_ref()
     }

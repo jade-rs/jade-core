@@ -2323,6 +2323,7 @@ impl WordDocument {
             let mut footnotes_map: BTreeMap<String, crate::document::Note> = BTreeMap::new();
             let mut endnotes_map: BTreeMap<String, crate::document::Note> = BTreeMap::new();
             let mut doc_settings = DocumentSettings::default();
+            let mut settings_loaded = false;
             let mut loaded_comments_part: Option<CommentsPart> = None;
             let mut comments_extended_xml: Option<String> = None;
 
@@ -2421,6 +2422,7 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         if let Ok(settings) = DocumentSettings::from_xml(&part.content) {
                             doc_settings = settings;
+                            settings_loaded = true;
                         }
                     }
                 } else if rel_type == RelationshipTypes::Theme.as_str() {
@@ -2444,6 +2446,8 @@ impl WordDocument {
                     }
                 }
             }
+
+            Self::apply_word_template_defaults(&mut document, &mut doc_settings, settings_loaded)?;
 
             if let Some(mut comments_part) = loaded_comments_part {
                 if let Some(comments_extended_xml) = comments_extended_xml.as_deref() {
@@ -7145,6 +7149,34 @@ impl WordDocument {
         } else {
             format!("_rels/{}.rels", path)
         }
+    }
+
+    /// Word opens a document that leaves out its defaults with those of the
+    /// template it starts from, the Japanese Normal template here: Yu Mincho
+    /// 10.5pt with Japanese East Asian language when `w:docDefaults` gives no
+    /// run properties (and the template's Normal and table styles when there
+    /// is no styles part at all), and a 42pt default tab stop when there is
+    /// no settings part. Word for Mac and Windows draw `underline-kinds`,
+    /// `tabs` and `note-styles-creation` that way. Only the parsed models get
+    /// the defaults; the package parts are left as they are.
+    fn apply_word_template_defaults(
+        document: &mut Self,
+        doc_settings: &mut DocumentSettings,
+        settings_loaded: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        match document.styles_part.as_mut() {
+            None => document.styles_part = Some(StylesPart::from_xml(WORD_TEMPLATE_STYLES_XML)?),
+            Some(styles) if styles.doc_default_run_properties().is_none() => {
+                styles.fill_doc_default_run_properties(&StylesPart::from_xml(
+                    WORD_TEMPLATE_DOC_DEFAULTS_XML,
+                )?);
+            }
+            Some(_) => {}
+        }
+        if !settings_loaded {
+            *doc_settings = DocumentSettings::from_xml(WORD_TEMPLATE_SETTINGS_XML)?;
+        }
+        Ok(())
     }
 
     fn resolve_target_path(base_path: &str, target: &str) -> String {
@@ -45554,6 +45586,53 @@ mod tests {
     }
 
     #[test]
+    fn a_package_without_styles_or_settings_takes_the_japanese_template_defaults() {
+        let cursor = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(cursor);
+        let options = SimpleFileOptions::default();
+        for (name, body) in [
+            (
+                "[Content_Types].xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"#,
+            ),
+            (
+                "word/document.xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>"#,
+            ),
+        ] {
+            zip.start_file(name, options).expect("zip entry");
+            zip.write_all(body.as_bytes()).expect("write entry");
+        }
+        let data = zip.finish().expect("finish zip").into_inner();
+        let doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        let document = doc.document.as_ref().expect("document");
+        assert_eq!(document.default_font_size, Some(10.5));
+        assert_eq!(document.default_tab_stop, Some(42.0));
+        let styles = doc.styles_part.as_ref().expect("template styles");
+        let fonts = styles
+            .doc_default_run_properties()
+            .and_then(|props| props.fonts.as_ref())
+            .expect("default fonts");
+        assert_eq!(fonts.ascii.as_deref(), Some("游明朝"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("游明朝"));
+        // Only the parsed models take the defaults: the package keeps its parts.
+        assert!(!doc.parts.keys().any(|path| path.ends_with("styles.xml")));
+    }
+
+    #[test]
     fn paragraph_spacing_inherits_unset_parts_and_table_style_spacing() {
         const DOCUMENT_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -53246,3 +53325,41 @@ mod tests {
         assert!(xml.find("<w:b/>").expect("bold") < begin, "{xml}");
     }
 }
+
+/// The run defaults of Word's Japanese Normal template (`w:docDefaults`).
+const WORD_TEMPLATE_DOC_DEFAULTS_XML: &str = concat!(
+    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
+    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
+    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
+    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
+    r#"</w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#
+);
+
+/// Word's Japanese Normal template styles for a package without a styles part.
+const WORD_TEMPLATE_STYLES_XML: &str = concat!(
+    r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:docDefaults><w:rPrDefault><w:rPr>"#,
+    r#"<w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/>"#,
+    r#"<w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="24"/>"#,
+    r#"<w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/>"#,
+    r#"</w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>"#,
+    r#"<w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/>"#,
+    r#"<w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style>"#,
+    r#"<w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/></w:style>"#,
+    r#"<w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:tblPr>"#,
+    r#"<w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/>"#,
+    r#"<w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/>"#,
+    r#"</w:tblCellMar></w:tblPr></w:style></w:styles>"#
+);
+
+/// Word's Japanese Normal template settings for a package without a settings part.
+const WORD_TEMPLATE_SETTINGS_XML: &str = concat!(
+    r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    r#"<w:defaultTabStop w:val="840"/><w:displayHorizontalDrawingGridEvery w:val="0"/>"#,
+    r#"<w:displayVerticalDrawingGridEvery w:val="2"/><w:characterSpacingControl w:val="compressPunctuation"/>"#,
+    r#"<w:compat><w:spaceForUL/><w:balanceSingleByteDoubleByteWidth/><w:doNotLeaveBackslashAlone/>"#,
+    r#"<w:ulTrailSpace/><w:doNotExpandShiftReturn/><w:adjustLineHeightInTable/><w:useFELayout/>"#,
+    r#"<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>"#,
+    r#"</w:compat></w:settings>"#
+);
