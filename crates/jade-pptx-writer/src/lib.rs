@@ -388,6 +388,37 @@ pub fn duplicate_shape(bytes: &[u8], slide: usize, id: u32) -> Result<(Vec<u8>, 
     jade_pptx_reader::read_deck(&result)?;
     Ok((result, new_id))
 }
+/// Copies top-level objects `ids` of slide `from` onto slide `to`, in front
+/// of its own objects, as PowerPoint pastes them: onto another slide where
+/// they were, onto their own slide offset as [`duplicate_shape`] does. Each
+/// object's relationships go with it — media shared, a chart's or diagram's
+/// parts copied. Returns the copies' ids, in order.
+pub fn copy_shapes(
+    bytes: &[u8],
+    from: usize,
+    ids: &[u32],
+    to: usize,
+) -> Result<(Vec<u8>, Vec<u32>)> {
+    if from == to {
+        let mut current = bytes.to_vec();
+        let mut copies = Vec::with_capacity(ids.len());
+        for &id in ids {
+            let (next, copy) = duplicate_shape(&current, from, id)?;
+            current = next;
+            copies.push(copy);
+        }
+        return Ok((current, copies));
+    }
+    let (_, from_part, source) = slide_xml(bytes, from)?;
+    let (mut package, to_part, into) = slide_xml(bytes, to)?;
+    let (changed, copies) =
+        xml::copy_objects(&mut package, &from_part, &source, ids, &to_part, &into)?;
+    package.replace(&to_part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok((result, copies))
+}
+
 pub fn delete_shape(bytes: &[u8], slide: usize, id: u32) -> Result<Vec<u8>> {
     shape_operation(bytes, slide, |xml| xml::delete_shape(xml, id))
 }
@@ -952,6 +983,13 @@ impl EditSession {
         let (next, new_id) = duplicate_shape(self.bytes(), slide, id)?;
         self.commit(next);
         Ok(new_id)
+    }
+    /// Pastes objects copied from slide `from` onto slide `to`, as one step
+    /// of Undo: see [`copy_shapes`].
+    pub fn copy_shapes(&mut self, from: usize, ids: &[u32], to: usize) -> Result<Vec<u32>> {
+        let (next, copies) = copy_shapes(self.bytes(), from, ids, to)?;
+        self.commit(next);
+        Ok(copies)
     }
     pub fn group_objects(&mut self, slide: usize, ids: &[u32]) -> Result<u32> {
         let (next, id) = group_objects(self.bytes(), slide, ids)?;
