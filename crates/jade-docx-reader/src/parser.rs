@@ -77,6 +77,15 @@ struct DeferredNestedField {
     cached_result: String,
 }
 
+/// The section of Word's Japanese Normal template, for a document without one.
+const WORD_TEMPLATE_SECTION_XML: &str = concat!(
+    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>"#,
+    r#"<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>"#,
+    r#"<w:pgMar w:top="1985" w:right="1701" w:bottom="1701" w:left="1701" w:header="851" w:footer="992" w:gutter="0"/>"#,
+    r#"<w:cols w:space="425"/><w:docGrid w:type="lines" w:linePitch="360"/></w:sectPr>"#,
+    r#"</w:body></w:document>"#
+);
+
 const DEFERRED_NESTED_FIELD_PREFIX: &str = "\u{e000}jade-nested-field:";
 const DEFERRED_NESTED_FIELD_SUFFIX: char = '\u{e001}';
 
@@ -3796,6 +3805,23 @@ impl DocumentParser {
         }
 
         document.default_section = default_section_props;
+        // A document without any `w:sectPr` takes the page of the template
+        // Word opens it with, the Japanese Normal template: A4, 35/30/30/30mm
+        // margins and an 18pt line grid (`underline-kinds` and
+        // `note-styles-creation` in Word for Mac and Windows).
+        if document.default_section.is_none()
+            && !document.body.as_ref().is_some_and(|body| {
+                body.elements.iter().any(|element| {
+                    matches!(element, BodyElement::Paragraph(paragraph)
+                        if paragraph.properties.as_ref().is_some_and(|props| props.section.is_some()))
+                })
+            })
+        {
+            document.default_section = Self::new()
+                .parse_document_xml(WORD_TEMPLATE_SECTION_XML)
+                .ok()
+                .and_then(|template| template.default_section);
+        }
 
         if let Some(body) = document.body.as_ref() {
             document.sections =
@@ -10634,6 +10660,45 @@ fn reference_event_to_string(event: &quick_xml::events::BytesRef<'_>) -> Option<
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_document_without_sections_takes_the_japanese_template_page() {
+        let parse = |body: &str| {
+            DocumentParser::new()
+                .parse_document_xml(&format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+                ))
+                .expect("parse")
+        };
+        let document = parse("<w:p><w:r><w:t>Hello</w:t></w:r></w:p>");
+        let section = document.default_section.as_ref().expect("template section");
+        let page = section.page_settings.as_ref().expect("page");
+        assert_eq!((page.width, page.height), (Some(595.3), Some(841.9)));
+        assert_eq!(
+            (
+                page.margin_top,
+                page.margin_left,
+                page.margin_right,
+                page.margin_bottom
+            ),
+            (Some(99.25), Some(85.05), Some(85.05), Some(85.05))
+        );
+        let grid = section.doc_grid.as_ref().expect("grid");
+        assert_eq!(
+            (grid.grid_type.as_deref(), grid.line_pitch),
+            (Some("lines"), Some(18.0))
+        );
+        assert_eq!(
+            document.page_settings.as_ref().and_then(|page| page.width),
+            Some(595.3)
+        );
+        // A section given anywhere, even only on a paragraph, keeps Word's
+        // reading of the document's own sections.
+        let document = parse(
+            r#"<w:p><w:pPr><w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:pPr></w:p><w:p/>"#,
+        );
+        assert!(document.default_section.is_none());
+    }
     use super::*;
     use crate::document::MathElementKind;
     use std::io::Cursor;
