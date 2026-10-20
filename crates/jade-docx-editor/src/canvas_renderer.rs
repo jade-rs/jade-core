@@ -12850,6 +12850,16 @@ where
         self.valign_used_heights.clear();
         self.valign_available_heights.clear();
         self.comment_annotations.clear();
+        // The stable-edit exit leaves the paragraphs after the edited one
+        // unwalked, so set their regions aside with the selection tail rather
+        // than dropping them; PDF export reads them per page.
+        let hyperlink_suffix = selection_suffix.as_ref().map(|&(from, _)| {
+            let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
+                .into_iter()
+                .partition(|region| region.paragraph < from);
+            self.hyperlink_regions = kept;
+            (from, suffix)
+        });
         // Incremental hyperlink region update: keep regions for paragraphs
         // before the dirty point, only rebuild from dirty_from onwards.
         if let Some(dirty_from) = incremental_dirty_from {
@@ -13600,6 +13610,14 @@ where
         if self.last_fast_replay_stable {
             if let Some((from, suffix)) = selection_suffix {
                 self.selection.restore_paragraph_suffix(from, suffix);
+            }
+            // As with the selection tail, the saved regions are authoritative
+            // for any paragraph after the edited one that the walk re-recorded.
+            if let Some((from, suffix)) = hyperlink_suffix {
+                self.hyperlink_regions
+                    .retain(|region: &HyperlinkRegion| region.paragraph < from);
+                self.hyperlink_regions.extend(suffix);
+                self.invalidate_hyperlink_regions_js_cache();
             }
         }
         if let Some((layouts, handles, row_handles, counter)) = pixel_table_metadata {
@@ -35774,6 +35792,61 @@ mod tests {
         });
         assert_eq!(renderer.host.page_count(), pages);
         assert!(renderer.last_layout_complete());
+    }
+
+    #[test]
+    fn stable_edit_on_a_complete_layout_keeps_later_hyperlink_regions() {
+        // The stable-edit exit stops the walk after the edited paragraph, so
+        // the paragraphs after it never re-record their hyperlink regions. The
+        // regions that PDF export reads for a later page must survive it, as
+        // the selection tail does.
+        let texts = vec!["body paragraph"; 160];
+        let mut document = doc_with_paragraph_texts(&texts);
+        let BodyElement::Paragraph(linked) = &mut document.body.as_mut().unwrap().elements[120]
+        else {
+            unreachable!();
+        };
+        linked.runs[0].hyperlink = Some(crate::document::RunHyperlink {
+            target: Some("https://example.com/later".to_string()),
+            ..crate::document::RunHyperlink::default()
+        });
+        let document = Rc::new(document);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(PageCountingHost {
+                inner: NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::new(),
+                },
+                extra_pages: 0,
+                cursor: 0,
+            }),
+            false,
+        )
+        .unwrap();
+        renderer.set_layout_page_limit(None);
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(&document),
+                &Options::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(renderer.last_layout_complete());
+        let page = renderer.cached_paragraph_start_page(120).unwrap() - 1;
+        assert!(page > 0, "the link must sit after the edited page");
+        let regions = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>| {
+            format!("{:?}", renderer.page_hyperlink_regions(page))
+        };
+        assert!(!renderer.page_hyperlink_regions(page).is_empty());
+        let before = regions(&renderer);
+
+        rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
+            renderer.arm_fast_replay_for_complete_layout_edit(0, height);
+        });
+        assert!(renderer.last_fast_replay_stable());
+        assert_eq!(regions(&renderer), before);
     }
 
     #[test]
