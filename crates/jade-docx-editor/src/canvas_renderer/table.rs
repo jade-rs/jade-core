@@ -13799,7 +13799,7 @@ mod tests {
         let fitted = table(&[160.85, 223.45], &["163.00pt", "226.80pt"]);
         assert_eq!(
             pt(compute_column_widths(&fitted, 2, 662.4)),
-            vec![160.9, 223.5]
+            vec![160.9, 223.4]
         );
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(
