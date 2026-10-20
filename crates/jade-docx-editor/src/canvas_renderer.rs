@@ -19623,9 +19623,28 @@ where
                     }
                 }
 
-                // A space that ends the line takes no extra; one followed by
-                // text does, even when it is the line's only space (`math`'s
-                // `「Cambria Math」の…`, justified by widening that space).
+                // Spaces before the line's first text take no extra (trust's
+                // ` (16)\t売主の…` keeps its leading space), nor does a space
+                // that ends the line. One between text does, even when it is
+                // the line's only space (`math`'s `「Cambria Math」の…`).
+                let first_text =
+                    prepared_segments
+                        .iter()
+                        .enumerate()
+                        .find_map(|(segment_index, prepared)| {
+                            prepared
+                                .glyph_steps
+                                .iter()
+                                .position(|step| {
+                                    !step
+                                        .text(&prepared.segment.text)
+                                        .chars()
+                                        .all(char::is_whitespace)
+                                })
+                                .map(|glyph_index| (segment_index, glyph_index))
+                        });
+                opportunities
+                    .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
                 if matches!(opportunities.last(), Some(&(last_segment, last_glyph)) if {
                     prepared_segments
                         .iter()
