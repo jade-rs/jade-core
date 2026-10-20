@@ -252,6 +252,30 @@ pub struct Sheet {
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]
     pub phonetic_readings: std::collections::BTreeMap<CellRef, String>,
+    /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
+    /// protected: what it still allows.
+    #[serde(default)]
+    pub protection: Option<SheetProtection>,
+}
+
+/// What a protected sheet still allows, as its `sheetProtection` says. Each
+/// flag is `true` when the operation is allowed; Excel's defaults allow
+/// none of them. Cells are locked unless their format unlocks them
+/// ([`CellFormat::unlocked`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct SheetProtection {
+    pub format_cells: bool,
+    pub format_columns: bool,
+    pub format_rows: bool,
+    pub insert_columns: bool,
+    pub insert_rows: bool,
+    pub insert_hyperlinks: bool,
+    pub delete_columns: bool,
+    pub delete_rows: bool,
+    pub sort: bool,
+    pub auto_filter: bool,
+    /// Notes, shapes and charts (`objects`).
+    pub objects: bool,
 }
 
 /// An array formula: its anchor holds the formula, and the rest of `range`
@@ -785,6 +809,10 @@ pub struct CellFormat {
     pub border_index: Option<u32>,
     pub number_format_id: Option<u32>,
     pub alignment: Alignment,
+    /// `<protection locked="0">`: the cell stays editable on a protected
+    /// sheet. Cells are locked by default.
+    #[serde(default)]
+    pub unlocked: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
