@@ -20567,14 +20567,25 @@ where
                     })
                     .map(|cluster| {
                         // On Mac a line with a tab gave the mark's width to the
-                        // tab first (`shrink_tab_for_final_mark`); what still
-                        // overflows hangs and nothing is left to justify
-                        // (trust page 22).
+                        // tab first (`shrink_tab_for_final_mark`). Word justifies
+                        // the line as if the mark hung whole with the tab still
+                        // open, then closes the tab: the mark stops the closed
+                        // width short of the edge (trust page 22: 4.05pt, the
+                        // auto-space gaps 0.70pt wider).
+                        let closed: f64 = wrapped_line
+                            .tab_stops
+                            .iter()
+                            .map(|stop| stop.closed_for_final_mark)
+                            .sum();
                         if paragraph_style.word_platform
                             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                             && !wrapped_line.tab_stops.is_empty()
                         {
-                            cluster.width.min(line_width - available_for_line)
+                            if closed > f64::EPSILON {
+                                (cluster.width - closed).max(0.0)
+                            } else {
+                                cluster.width.min(line_width - available_for_line)
+                            }
                         } else {
                             cluster.width
                         }

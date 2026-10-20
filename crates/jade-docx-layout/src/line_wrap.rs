@@ -4459,6 +4459,9 @@ pub struct TabStopSegment {
     pub end_offset: usize,
     pub start_x: f64,
     pub end_x: f64,
+    /// Width the tab gave up to a final comma or full stop that would end
+    /// past the edge (`shrink_tab_for_final_mark`).
+    pub closed_for_final_mark: f64,
 }
 
 /// Smallest unit (grapheme or tab) used for enforcing wrapping rules.
@@ -6096,6 +6099,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     end_offset: grapheme_end_abs,
                     start_x: gap_start,
                     end_x: gap_start + gap_width,
+                    closed_for_final_mark: 0.0,
                 });
 
                 current_line_clusters.push(InlineCluster::tab(
@@ -6954,8 +6958,10 @@ fn compress_mac_punctuation_on_completed_line(
 
 /// Word for Mac fits a justified line whose final comma or full stop would
 /// end past the edge by narrowing the tab before it by the mark's whole
-/// advance; the line is then justified. A tab narrower than that closes and
-/// the mark hangs the rest (probe tabshrink-comma; trust pages 22 and 34).
+/// advance; the line is then justified. A tab narrower than that closes; the
+/// line is justified as if the mark hung whole past the edge with the tab
+/// still open, so the mark ends up the closed width short of the edge (probe
+/// tabshrink-comma; trust pages 22 and 34).
 /// Only measured for documents without punctuation compression.
 fn shrink_tab_for_final_mark(
     line: &mut WrappedLine,
@@ -7001,6 +7007,7 @@ fn shrink_tab_for_final_mark(
         .find(|stop| stop.start_offset == tab_start)
     {
         stop.end_x -= shrink;
+        stop.closed_for_final_mark += shrink;
     }
     if let Some(segment) = line
         .segments
@@ -13512,6 +13519,11 @@ mod tests {
                 .unwrap();
             assert_eq!(after_tab.leading_width, tab_after);
             assert_eq!(line.clusters.last().unwrap().width, 14.0);
+            // The renderer justifies by the width the tab gave up.
+            assert_eq!(
+                line.tab_stops[0].closed_for_final_mark,
+                tab_before - tab_after
+            );
         }
     }
 
