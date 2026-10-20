@@ -7145,6 +7145,15 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
             return Ok((table_width, content_widths.natural_paragraph_layouts));
         }
     }
+    if let Some(table_width) = word_mac_shrink_autofit_to_words(
+        column_widths,
+        available_width,
+        mode,
+        &content_widths.minimums,
+        &content_widths.unbreakable,
+    ) {
+        return Ok((table_width, content_widths.natural_paragraph_layouts));
+    }
     let table_width = apply_table_layout_width_with_content_constraints(
         column_widths,
         available_width,
@@ -7153,6 +7162,57 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
         &content_widths.preferred,
     );
     Ok((table_width, content_widths.natural_paragraph_layouts))
+}
+
+/// Word for Mac fits an autofit table wider than its space below its cells'
+/// absolute widths: each column keeps its widest word and gives up width in
+/// proportion to how much wider than that word it is. A 2 × 165.6pt nested
+/// table in a 320.4pt cell gives `A` 159.1pt and `long wrapping value`
+/// 161.3pt (table-object-edge-cases; captures with `wrapping`,
+/// `longwrappingvalue` and `Alpha beta` follow the same share). jade shrank
+/// every column by the same share of its width. `None` where the words
+/// cannot give the width.
+fn word_mac_shrink_autofit_to_words(
+    column_widths: &mut [f64],
+    available_width: f64,
+    mode: TableLayoutMode,
+    minimum_widths: &[f64],
+    unbreakable_widths: &[f64],
+) -> Option<f64> {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || !matches!(mode, TableLayoutMode::Autofit)
+        || available_width <= 0.0
+        || unbreakable_widths.len() != column_widths.len()
+    {
+        return None;
+    }
+    let table_width: f64 = column_widths.iter().sum();
+    let deficit = table_width - available_width;
+    if deficit <= 0.01 {
+        return None;
+    }
+    let floors: Vec<f64> = column_widths
+        .iter()
+        .zip(unbreakable_widths)
+        .enumerate()
+        .map(|(index, (width, word))| {
+            let minimum = minimum_widths.get(index).copied().unwrap_or(0.0);
+            word.max(minimum).max(0.0).min(*width)
+        })
+        .collect();
+    let capacity: f64 = column_widths
+        .iter()
+        .zip(&floors)
+        .map(|(width, floor)| width - floor)
+        .sum();
+    if capacity + f64::EPSILON < deficit {
+        return None;
+    }
+    for (width, floor) in column_widths.iter_mut().zip(&floors) {
+        *width -= deficit * (*width - floor) / capacity;
+    }
+    Some(column_widths.iter().sum())
 }
 
 /// Whether Word for Mac sizes an autofit table from its content alone: its
@@ -13747,6 +13807,41 @@ mod tests {
             })],
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn mac_autofit_shrinks_each_column_toward_its_widest_word() {
+        // table-object-edge-cases' nested table: 2 × 165.6pt in 320.4pt, with
+        // `A` and `long wrapping value`, whose widest words take 17.8 and
+        // 53.4pt with the cell margins. Word gives up 10.8pt as 6.4 and 4.4pt.
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let pt = |points: f64| points * 96.0 / 72.0;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut widths = vec![pt(165.6), pt(165.6)];
+        let total = word_mac_shrink_autofit_to_words(
+            &mut widths,
+            pt(320.4),
+            TableLayoutMode::Autofit,
+            &[0.0, 0.0],
+            &[pt(17.8), pt(53.4)],
+        )
+        .expect("shrinks");
+        assert!((total - pt(320.4)).abs() < 1e-9);
+        let first = widths[0] * 72.0 / 96.0;
+        assert!(
+            (first - (165.6 - 10.8 * 147.8 / 260.0)).abs() < 1e-6,
+            "{first}"
+        );
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut widths = vec![pt(165.6), pt(165.6)];
+        assert!(word_mac_shrink_autofit_to_words(
+            &mut widths,
+            pt(320.4),
+            TableLayoutMode::Autofit,
+            &[0.0, 0.0],
+            &[pt(17.8), pt(53.4)],
+        )
+        .is_none());
     }
 
     #[test]
