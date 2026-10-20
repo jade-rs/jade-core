@@ -538,6 +538,7 @@ pub(super) fn reconcile(xml: &str, formats: &mut Vec<ConditionalFormatting>) -> 
                 formulas: Vec::new(),
                 visual,
                 issues,
+                ranking: Default::default(),
             }],
         });
     }
