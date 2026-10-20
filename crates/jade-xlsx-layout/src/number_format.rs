@@ -111,6 +111,13 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         return Formatted::plain(general(value));
     };
     let sections = split_sections(code);
+    // A lone section with `@` in it is a text format: Excel shows a number
+    // under it as General, `@` itself (Text) included.
+    if let [only] = sections.as_slice() {
+        if is_text_section(only) {
+            return Formatted::plain(general(value));
+        }
+    }
     let conditional = sections.iter().any(|section| has_condition(section));
 
     // Which section applies, and whether the sign has to be added back. A
@@ -306,6 +313,25 @@ fn literal_only(pattern: &str) -> Option<String> {
 
 /// Splits a code into its `;`-separated sections, ignoring separators inside
 /// quotes or brackets.
+/// Whether `section` has the `@` that places text, outside quoted literals
+/// and escapes.
+fn is_text_section(section: &str) -> bool {
+    let mut chars = section.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => {
+                chars.by_ref().find(|c| *c == '"');
+            }
+            '\\' => {
+                chars.next();
+            }
+            '@' => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
 fn split_sections(code: &str) -> Vec<String> {
     let mut sections = vec![String::new()];
     let mut in_quotes = false;
