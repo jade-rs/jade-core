@@ -10189,6 +10189,25 @@ fn parse_comparison_field(
     let quoted_args = quoted_tokens.get(name_idx + 1..)?;
     let (left, left_is_quoted, operator, right, right_is_quoted, consumed) =
         parse_comparison_operands(args, quoted_args)?;
+    // Word's IF reads a compact expression whose left operand is a number
+    // (`2<10`, `1=2`, `10>2`) as a malformed number and shows its syntax
+    // error; a bookmark or name on the left (`OrderTotal>=100`, `a=a`), a
+    // spaced operator and COMPARE all evaluate (Word for Mac 16.114 header
+    // captures; if-compare-field-edge-cases' header `IF 2<10 …`, and its
+    // nested `IF 1=2 …` whose result never equals "").
+    let compact_number = is_if
+        && !left_is_quoted
+        && left.starts_with(|ch: char| ch.is_ascii_digit())
+        && !args
+            .iter()
+            .zip(quoted_args)
+            .any(|(token, quoted)| !*quoted && parse_comparison_operator(token).is_some());
+    if compact_number {
+        return Some(RunFieldKind::Quote {
+            text: crate::document::WORD_IF_SYNTAX_ERROR.to_string(),
+            case_format: None,
+        });
+    }
     if is_if {
         let true_text = args.get(consumed)?.clone();
         let false_text = args.get(consumed + 1).cloned();
@@ -17313,20 +17332,20 @@ mod tests {
             .as_paragraph()
             .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.field.as_ref()))
             .expect("IF field");
+        // A compact expression with a number on the left is Word's syntax
+        // error, not a comparison.
         assert_eq!(
             if_field.kind,
-            RunFieldKind::If {
-                left: "100".to_string(),
-                left_is_quoted: false,
-                operator: FieldComparisonOperator::GreaterOrEqual,
-                right: "99".to_string(),
-                right_is_quoted: false,
-                true_text: "Approved value".to_string(),
-                false_text: Some("Denied value".to_string()),
+            RunFieldKind::Quote {
+                text: crate::document::WORD_IF_SYNTAX_ERROR.to_string(),
+                case_format: None,
             }
         );
         assert_eq!(if_field.cached_text.as_deref(), Some("Stale IF result"));
-        assert_eq!(if_field.resolved_value.as_deref(), Some("Approved value"));
+        assert_eq!(
+            if_field.resolved_value.as_deref(),
+            Some(crate::document::WORD_IF_SYNTAX_ERROR)
+        );
 
         let compare_field = body.elements[1]
             .as_paragraph()
