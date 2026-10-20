@@ -44012,7 +44012,12 @@ mod tests {
         let header = flatten(&doc.header_lines);
         let footer = flatten(&doc.footer_lines);
 
-        assert!(header.contains("Header IF: Live header"), "{header}");
+        // `IF 2<10 …`: Word shows its syntax error for a compact expression
+        // with a number on the left.
+        assert!(
+            header.contains("Header IF: エラー! 条件式が正しくありません。"),
+            "{header}"
+        );
         assert!(!header.contains("Stale header"), "{header}");
         assert!(footer.contains("Footer COMPARE: 1"), "{footer}");
     }

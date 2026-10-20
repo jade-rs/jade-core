@@ -1130,6 +1130,17 @@ pub(crate) struct FieldInstructionToken {
 /// becomes a comparison operand, so that it equals no literal, as in Word.
 pub(crate) const QUOTED_NESTED_RESULT_MARK: char = '\u{E7A0}';
 
+/// The result Word for Mac with a Japanese user interface shows, in bold,
+/// for an IF field it cannot parse.
+pub const WORD_IF_SYNTAX_ERROR: &str = "エラー! 条件式が正しくありません。";
+
+impl RunField {
+    /// Whether the field shows Word's IF syntax error, which Word sets bold.
+    pub fn shows_word_syntax_error(&self) -> bool {
+        matches!(&self.kind, RunFieldKind::Quote { text, .. } if text == WORD_IF_SYNTAX_ERROR)
+    }
+}
+
 pub(crate) fn tokenize_field_instruction(instruction: &str) -> Vec<String> {
     tokenize_field_instruction_with_quotes(instruction)
         .into_iter()
