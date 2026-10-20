@@ -10954,14 +10954,14 @@ impl WordDocument {
         let current = paragraph
             .properties
             .as_ref()
-            .and_then(|props| props.mark_revision.as_ref());
+            .and_then(|props| props.mark_revision.as_deref());
         if current == mark.as_ref() {
             return;
         }
         paragraph
             .properties
             .get_or_insert_with(Default::default)
-            .mark_revision = mark;
+            .mark_revision = mark.map(Box::new);
     }
 
     /// The source paragraph mark moves to the tail when a paragraph is split.

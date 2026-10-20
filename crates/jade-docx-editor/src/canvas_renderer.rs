@@ -13935,7 +13935,13 @@ where
                     self.selection
                         .set_paragraph_selectable(paragraph_index, false);
                 }
-                if body_element_index != usize::MAX && section_index != usize::MAX {
+                // Only a document with joins, now or in the last render, pays
+                // for the call.
+                if body_element_index != usize::MAX
+                    && section_index != usize::MAX
+                    && (self.paragraph_join_last.is_some()
+                        || !self.paragraph_join_surfaces.is_empty())
+                {
                     if let Some(result) = self.render_paragraph_join_member(
                         options,
                         numbering_part,
