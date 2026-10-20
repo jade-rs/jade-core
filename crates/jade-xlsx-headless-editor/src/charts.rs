@@ -143,7 +143,7 @@ fn series_from_range(
 
 /// What a chart in the file is, as Insert ▸ Chart names it; `None` for
 /// the types it does not offer (3-D, radar, a combination).
-fn kind_of(chart: &Chart) -> Option<ChartKind> {
+pub fn chart_kind(chart: &Chart) -> Option<ChartKind> {
     let stacked = matches!(chart.grouping.as_str(), "stacked" | "percentStacked");
     Some(match chart.kind.as_str() {
         "barChart" => match (chart.horizontal, stacked) {
@@ -239,7 +239,7 @@ impl HeadlessWorkbook {
             .ok_or_else(missing)?;
         let part = chart.part_name.clone().ok_or_else(missing)?;
         let plot = if change.kind.is_some() || change.data.is_some() {
-            let kind = match change.kind.or_else(|| kind_of(&chart)) {
+            let kind = match change.kind.or_else(|| chart_kind(&chart)) {
                 Some(kind) => kind,
                 None => {
                     return Err(HeadlessError::BadReference(format!(
