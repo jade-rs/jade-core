@@ -238,6 +238,7 @@ where
     }
 }
 
+mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
@@ -3593,6 +3594,12 @@ where
     /// not recorded above it: they do not carry float exclusions.
     paragraph_frame_wrap_guard: Option<(usize, f64)>,
     paragraph_frame_debug_regions: Vec<ParagraphFrameDebugInfo>,
+    /// The next body paragraph's floating objects, offered to the body
+    /// paragraph being rendered (Word for Mac, compatibility mode 14).
+    float_lookahead: Option<float_lookahead::FloatLookahead>,
+    /// Keeps the next paragraph's objects where the first pass put them
+    /// after the paragraph above grew around them.
+    float_lookahead_pin: Option<float_lookahead::FloatLookaheadPin>,
     cell_highlighted: RefCell<HashSet<usize>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
@@ -8018,6 +8025,8 @@ where
             paragraph_frame_column: None,
             paragraph_frame_wrap_guard: None,
             paragraph_frame_debug_regions: Vec::new(),
+            float_lookahead: None,
+            float_lookahead_pin: None,
             cell_highlighted: RefCell::new(HashSet::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
@@ -12968,6 +12977,8 @@ where
         self.table_counter = 0;
         self.floating_table_frames.clear();
         self.active_float_exclusions.clear();
+        self.float_lookahead = None;
+        self.float_lookahead_pin = None;
         self.paragraph_frame = None;
         self.paragraph_frame_column = None;
         self.paragraph_frame_wrap_guard = None;
@@ -13442,6 +13453,8 @@ where
                             self.active_keep_next_group_end = Some(last);
                         }
                     }
+                    self.float_lookahead =
+                        self.float_lookahead_for(&body.elements, body_element_index, end);
                     self.render_body_element(
                         element,
                         options,
@@ -13451,6 +13464,13 @@ where
                         body_element_index,
                         index,
                     )?;
+                    self.float_lookahead = None;
+                    if self
+                        .float_lookahead_pin
+                        .is_some_and(|pin| pin.element <= body_element_index)
+                    {
+                        self.float_lookahead_pin = None;
+                    }
                     // If we overflowed onto the next page while rendering this element, stop ASAP.
                     if self.layout_limit_reached() {
                         truncated = true;
@@ -13947,6 +13967,11 @@ where
             return false;
         }
         if self.pageless_mode || self.render_skip_draw {
+            return false;
+        }
+        // The look-ahead wrap reads the next paragraph, which the cache does
+        // not key.
+        if self.float_lookahead.is_some() || self.float_lookahead_pin.is_some() {
             return false;
         }
         if !self.incremental_layout_enabled || self.skip_layout_cache_update {
@@ -15251,6 +15276,8 @@ where
         // be replayed incorrectly.
         if (prefix_replay || fast_replay || shift_replay)
             && self.active_float_exclusions.is_empty()
+            && self.float_lookahead.is_none()
+            && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
             && self.can_use_unchecked_cache_replay(options)
         {
@@ -15585,6 +15612,8 @@ where
             && !self.rendering_page_footnotes
             && !continuing_note_paragraph
             && self.active_float_exclusions.is_empty()
+            && self.float_lookahead.is_none()
+            && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
             // In Markup, numbering labels depend on deleted-list offsets from
             // earlier paragraphs. Keep those paragraphs on the normal path;
@@ -17071,6 +17100,7 @@ where
         // both the line breaks and the per-line horizontal geometry. Include
         // floats anchored by this paragraph as well as still-active floats
         // from earlier body elements on the same page.
+        let float_anchor_top = self.float_anchor_top(body_element_index, paragraph_top_y);
         let mut paragraph_float_exclusions = Vec::new();
         for (run_index, image) in &floating_images {
             let target = FloatingObjectTarget {
@@ -17083,7 +17113,7 @@ where
                 image.width_px.unwrap_or(line_height).max(1.0),
                 image.height_px.unwrap_or(line_height).max(1.0),
                 &image.layout,
-                paragraph_top_y,
+                float_anchor_top,
                 line_height,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&image.layout)));
@@ -17100,7 +17130,7 @@ where
                 text_box.width_px.unwrap_or(line_height).max(1.0),
                 text_box.height_px.unwrap_or(line_height).max(1.0),
                 &text_box.layout,
-                paragraph_top_y,
+                float_anchor_top,
                 line_height,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&text_box.layout)));
@@ -17155,6 +17185,60 @@ where
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && paragraph_style.word_grid_line_sizing.is_none(),
         );
+        // Word for Mac in compatibility mode 14 also wraps this paragraph
+        // around the next paragraph's shapes (see `float_lookahead`), judged
+        // from the lines it takes without them.
+        let mut float_lookahead_applied = None;
+        if let Some(lookahead) = self.float_lookahead.take().filter(|_| {
+            !layout_text.is_empty()
+                && note_resume_from == 0
+                && paragraph_style.drop_cap.is_none()
+                && !paragraph_style.bidi
+                && current_direction.is_none_or(|direction| {
+                    !matches!(
+                        direction,
+                        TextDirection::TbRl
+                            | TextDirection::TbRlV
+                            | TextDirection::BtLr
+                            | TextDirection::BtLrV
+                    )
+                })
+        }) {
+            let natural_lines = self.wrap_text_into_lines_cached(
+                &layout_text,
+                &run_styles,
+                x,
+                &paragraph_style,
+                paragraph_offset,
+                column_right,
+            )?;
+            if let Some(lookahead_exclusions) = self.float_lookahead_exclusions(
+                &lookahead,
+                paragraph_index,
+                &natural_lines,
+                x,
+                column_right - paragraph_style.right_indent,
+                &paragraph_style,
+                paragraph_top_y,
+                line_height,
+            ) {
+                let mut exclusions = current_float_exclusions.clone();
+                exclusions.extend(lookahead_exclusions);
+                paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
+                    self.current_y,
+                    line_height,
+                    x,
+                    column_right - paragraph_style.right_indent,
+                    &exclusions,
+                    contour_font_box,
+                    paragraph_style.word_grid_line_sizing.is_none(),
+                );
+                float_lookahead_applied = Some(float_lookahead::FloatLookaheadApplied {
+                    anchor_element: lookahead.anchor_element(),
+                    natural_lines: natural_lines.len(),
+                });
+            }
+        }
         self.active_float_exclusions
             .extend(
                 paragraph_float_exclusions
@@ -17198,7 +17282,7 @@ where
                         image,
                         paragraph_index,
                         *run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
                     )?;
@@ -17211,7 +17295,7 @@ where
                         text_box,
                         paragraph_index,
                         *run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         render_changes,
                     )?;
@@ -17269,6 +17353,7 @@ where
             // references were renumbered on the page they moved to.
             let mut resume_from = note_resume_from.min(layout_text.len());
             let mut restarts = 0usize;
+            let lines_start = (self.current_page_number, self.current_y);
             loop {
                 let resuming = resume_from > paragraph_offset;
                 paragraph_style.first_line_indent = if first_line_consumed || resuming {
@@ -17377,6 +17462,30 @@ where
             if let Some((page, floor)) = drop_cap_floor {
                 if self.current_page_number == page {
                     self.current_y = self.current_y.max(floor);
+                }
+            }
+            if let Some(applied) = float_lookahead_applied
+                .filter(|_| restarts == 0 && self.current_page_number == lines_start.0)
+            {
+                // Lines of one paragraph share their pitch: the growth is the
+                // added lines' share of the height laid out.
+                let lines = self
+                    .wrap_text_into_lines_cached(
+                        &layout_text,
+                        &run_styles,
+                        x,
+                        &paragraph_style,
+                        paragraph_offset,
+                        column_right,
+                    )?
+                    .len();
+                if lines > applied.natural_lines {
+                    let height = self.current_y - lines_start.1;
+                    self.float_lookahead_pin = Some(float_lookahead::FloatLookaheadPin {
+                        element: applied.anchor_element,
+                        page_number: self.current_page_number,
+                        shift: height * (lines - applied.natural_lines) as f64 / lines as f64,
+                    });
                 }
             }
             self.sync_column_state(&mut x, &mut column_x, &mut column_width, &mut column_right);
@@ -17555,7 +17664,7 @@ where
                         &image,
                         paragraph_index,
                         run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
                     )?;
@@ -17568,7 +17677,7 @@ where
                         &text_box,
                         paragraph_index,
                         run_index,
-                        paragraph_top_y,
+                        float_anchor_top,
                         line_height,
                         render_changes,
                     )?;
@@ -18103,9 +18212,11 @@ where
     }
 
     /// Seek snapshots restore the flow cursor but not float exclusions, so
-    /// none may be taken inside a frame or beside its wrap region.
+    /// none may be taken inside a frame or beside its wrap region, nor while
+    /// a look-ahead pin holds the next paragraph's objects.
     fn paragraph_frame_snapshot_unsafe(&self) -> bool {
         self.paragraph_frame.is_some()
+            || self.float_lookahead_pin.is_some()
             || self.paragraph_frame_column.is_some()
             || self
                 .paragraph_frame_wrap_guard
@@ -49940,6 +50051,107 @@ mod tests {
                 .filter(|line| (line.top - below.top).abs() < 0.5)
                 .count(),
             1
+        );
+    }
+
+    /// Word for Mac in compatibility mode 14 wraps the paragraph before a
+    /// square-wrapped shape's anchor around the shape, as if the shape sat at
+    /// that paragraph's top, and leaves the shape where the first pass put it
+    /// (`floating-square-wrap`, `floating-wrap-sides`).
+    #[test]
+    fn mode_14_wraps_the_paragraph_before_a_square_float_anchor() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        const FLOAT_WIDTH: f64 = 300.0;
+        const FLOAT_HEIGHT: f64 = 60.0;
+        let render = |compatibility_mode: u32| {
+            let before = "before ".repeat(12);
+            let anchor = "anchor ".repeat(60);
+            let mut document = doc_with_paragraph_texts(&[before.as_str(), anchor.as_str()]);
+            document.east_asian_line_breaking.compatibility_mode = Some(compatibility_mode);
+            let body = document.body.as_mut().expect("body");
+            let BodyElement::Paragraph(paragraph) = &mut body.elements[1] else {
+                panic!("paragraph");
+            };
+            let mut float = RunImage {
+                width_px: Some(FLOAT_WIDTH),
+                height_px: Some(FLOAT_HEIGHT),
+                ..RunImage::default()
+            };
+            float.layout.kind = RunImageKind::Floating;
+            float.layout.wrap = WrapMode::Square;
+            float.layout.wrap_text = WrapTextSide::BothSides;
+            float.layout.position_h = Some(ImagePosition {
+                relative_from: Some("margin".to_string()),
+                offset_px: Some(0.0),
+                align: None,
+            });
+            float.layout.position_v = Some(ImagePosition {
+                relative_from: Some("paragraph".to_string()),
+                offset_px: Some(0.0),
+                align: None,
+            });
+            let float_run = Run {
+                text: String::new(),
+                image: Some(float),
+                ..paragraph.runs[0].clone()
+            };
+            paragraph.runs.insert(0, float_run);
+            let painter = jade_painter::recording::RecordingPainter::new();
+            let mut renderer =
+                CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false)
+                    .expect("paged recording renderer");
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            (renderer.margin_left, renderer.layout_debug_lines())
+        };
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (margin, plain) = render(15);
+        let (_, wrapped) = render(14);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+
+        let lines_of = |lines: &[LayoutLineDebug], paragraph: usize| {
+            lines
+                .iter()
+                .filter(|line| line.paragraph == paragraph)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        // Mode 15 keeps the earlier paragraph at the full width.
+        let plain_before = lines_of(&plain, 0);
+        assert!(
+            (plain_before[0].start_x - margin).abs() < 0.5,
+            "{plain_before:?}"
+        );
+        let first_pass_anchor_top = lines_of(&plain, 1)[0].top;
+
+        // Mode 14 moves it beside the shape, which grows it by a line.
+        let before = lines_of(&wrapped, 0);
+        assert!(
+            before
+                .iter()
+                .all(|line| line.start_x >= margin + FLOAT_WIDTH - 0.5),
+            "{before:?}"
+        );
+        assert!(before.len() > plain_before.len(), "{before:?}");
+
+        // The shape stays at the first pass's anchor top: the anchor
+        // paragraph's lines beside it wrap, and those below it do not.
+        let anchor = lines_of(&wrapped, 1);
+        assert!(anchor[0].top > first_pass_anchor_top + 0.5, "{anchor:?}");
+        for line in &anchor {
+            if line.top + line.height <= first_pass_anchor_top + FLOAT_HEIGHT - 0.5 {
+                assert!(line.start_x >= margin + FLOAT_WIDTH - 0.5, "{line:?}");
+            } else if line.top >= first_pass_anchor_top + FLOAT_HEIGHT {
+                assert!((line.start_x - margin).abs() < 0.5, "{line:?}");
+            }
+        }
+        assert!(
+            anchor
+                .iter()
+                .any(|line| line.top >= first_pass_anchor_top + FLOAT_HEIGHT
+                    && line.top < anchor[0].top + FLOAT_HEIGHT),
+            "a line returns to the margin above the unpinned shape's bottom: {anchor:?}"
         );
     }
 
