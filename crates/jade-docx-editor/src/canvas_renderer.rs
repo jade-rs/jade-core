@@ -2487,6 +2487,23 @@ fn top_level_paragraph_at_index(elements: &[BodyElement], target: usize) -> Opti
 /// box, or math content. Band redraw excludes such paragraphs because those
 /// objects can paint outside the text band even when the paragraph's line
 /// geometry is unchanged.
+/// The space Word for Mac leaves below an inline text box for its outline,
+/// with the box at the top of its line: the outline's width to the nearest
+/// 0.48pt, 0.96pt for VML's default 0.75pt stroke and 2.88pt for a 3pt one
+/// (table-object-edge-cases, word-compat-comprehensive). Zero without an
+/// outline and on Windows.
+fn mac_inline_text_box_outline_px(text_box: &RunTextBox) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || text_box.border.style == TextBoxBorderStyle::None
+    {
+        return 0.0;
+    }
+    const STEP_PX: f64 = 0.48 * 96.0 / 72.0;
+    let width = text_box.border.width_px.unwrap_or(1.0).max(0.0);
+    (width / STEP_PX).round() * STEP_PX
+}
+
 fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
     paragraph
         .runs
@@ -16733,7 +16750,8 @@ where
                 let height = text_box
                     .height_px
                     .unwrap_or(line_height * 2.0)
-                    .max(line_height);
+                    .max(line_height)
+                    + mac_inline_text_box_outline_px(text_box);
                 inline_text_boxes.insert(start_pos, (run_index, text_box.clone()));
                 run_styles.push(RunStyle {
                     start: start_pos,
@@ -17205,7 +17223,12 @@ where
             // Word leaves the paragraph mark's font box below an inline image
             // even when this paragraph contains no text. Resolve it only for
             // object-only paragraphs; shared layout owns the union and grid fit.
-            let paragraph_mark_font_box = if paragraph_style.word_platform
+            // An auto-spaced line of nothing but objects is as tall as the
+            // objects plus the spacing multiple's extra over the mark's single
+            // line, set below them, without the mark's descent: Word for Mac
+            // gives a lone 20pt picture a 20pt line at single spacing and a
+            // 21.8pt one at 1.15 lines of 10.5pt Arial.
+            let (paragraph_mark_font_box, object_line_extra_px) = if paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && (!inline_images.is_empty() || !inline_text_boxes.is_empty())
                 && run_styles.iter().all(|style| style.inline_object.is_some())
@@ -17216,11 +17239,30 @@ where
                     .and_then(|properties| properties.mark_run_properties.as_ref());
                 let effective = self.effective_run_properties(paragraph, mark);
                 let style = self.resolve_applied_run_style_cached(effective.as_ref());
-                jade_docx_layout::line_metrics::word_font_vertical_metrics_px(
-                    &style.resolved.font_descriptor_latin_ascii,
+                let descriptor = &style.resolved.font_descriptor_latin_ascii;
+                let extra = paragraph_style
+                    .word_grid_line_sizing
+                    .is_none()
+                    .then(|| {
+                        jade_docx_layout::line_metrics::word_auto_line_multiple(
+                            paragraph
+                                .properties
+                                .as_ref()
+                                .and_then(|properties| properties.spacing.as_ref()),
+                        )
+                    })
+                    .flatten()
+                    .filter(|multiple| *multiple >= 1.0)
+                    .and_then(|multiple| {
+                        jade_docx_layout::line_metrics::word_latin_font_line_height_pt(descriptor)
+                            .map(|single| points_to_px(single) * (multiple - 1.0))
+                    });
+                (
+                    jade_docx_layout::line_metrics::word_font_vertical_metrics_px(descriptor),
+                    extra,
                 )
             } else {
-                None
+                (None, None)
             };
             // Laid out from `resume_from` on: the start of a note paragraph
             // continued from the previous page, or the first line whose
@@ -17257,6 +17299,7 @@ where
                     x,
                     &paragraph_style,
                     paragraph_mark_font_box,
+                    object_line_extra_px,
                     &styles,
                     &line_height_neutral_ranges,
                     &inline_images,
@@ -19071,6 +19114,7 @@ where
         base_x: f64,
         paragraph_style: &ParagraphStyle,
         paragraph_mark_font_box: Option<(f64, f64)>,
+        object_line_extra_px: Option<f64>,
         run_styles: &[RunStyle],
         line_height_neutral_ranges: &[(usize, usize)],
         inline_images: &HashMap<usize, (usize, RunImage)>,
@@ -19695,18 +19739,42 @@ where
                 min_top_offset = min_top_offset.min(prepared.top_offset);
                 max_bottom_offset = max_bottom_offset.max(prepared.bottom_offset);
             }
+            let mut has_inline_object = false;
+            let mut object_top = 0.0_f64;
             for cluster in &wrapped_line.clusters {
                 if let Some((top, bottom)) = cluster.inline_object_bounds_px() {
+                    has_inline_object = true;
+                    object_top = object_top.min(top);
                     min_top_offset = min_top_offset.min(top);
                     max_bottom_offset = max_bottom_offset.max(bottom);
                 }
             }
+            // Word for Mac sizes an auto-spaced line that an inline object
+            // makes taller than its text by the object plus the spacing
+            // multiple's extra over single spacing, set below it: a 20pt
+            // picture beside 10.5pt Arial takes 20 + 2.2 + 1.8pt at 1.15
+            // lines. Lines of nothing but objects rising above the mark take
+            // `object_line_extra_px`; a header's 8.7pt logo keeps the text line.
+            let object_line_extra = if prepared_segments.is_empty() {
+                object_line_extra_px.filter(|_| {
+                    has_inline_object
+                        && paragraph_mark_font_box.is_none_or(|(ascent, _)| -object_top > ascent)
+                })
+            } else {
+                paragraph_style
+                    .word_proportional_line_sizing
+                    .map(|sizing| sizing.multiple())
+                    .filter(|multiple| has_inline_object && *multiple >= 1.0)
+                    .map(|multiple| line_height - line_height / multiple)
+            };
             if prepared_segments.is_empty() && paragraph_mark_font_box.is_some() {
                 if let Some((ascent, descent)) =
                     wrapped_line.content_box_px_with_paragraph_mark(paragraph_mark_font_box)
                 {
                     min_top_offset = min_top_offset.min(-ascent);
-                    max_bottom_offset = max_bottom_offset.max(descent);
+                    if object_line_extra.is_none() {
+                        max_bottom_offset = max_bottom_offset.max(descent);
+                    }
                 }
             }
             if !min_top_offset.is_finite() || !max_bottom_offset.is_finite() {
@@ -19734,7 +19802,12 @@ where
                 max_bottom_offset = descent;
             }
             let content_height = (max_bottom_offset - min_top_offset).max(1.0);
-            let line_box_height = line_height.max(content_height);
+            let line_box_height = match object_line_extra {
+                Some(extra) if prepared_segments.is_empty() || content_height > line_height => {
+                    content_height + extra
+                }
+                _ => line_height.max(content_height),
+            };
             // An atLeast line's extra over the auto grid line sits above it.
             let extra_above = paragraph_style
                 .word_grid_line_sizing
@@ -20317,7 +20390,9 @@ where
                                     x: cursor_x,
                                     y: baseline + cluster.inline_object_bounds_px().unwrap().0,
                                     width: object.width.max(1.0),
-                                    height: object.height.max(1.0),
+                                    height: (object.height
+                                        - mac_inline_text_box_outline_px(text_box))
+                                    .max(1.0),
                                     rotation_deg: text_box.layout.rotation_deg.unwrap_or(0.0),
                                 },
                             ));
@@ -26683,6 +26758,7 @@ where
                         balance_single_byte_double_byte_width,
                     )
                 }),
+                follows_inline_object: false,
             },
             glyph_steps,
         }))
@@ -55014,6 +55090,23 @@ mod tests {
             horizontal_align_offset_within(Some("right"), 400.0, 100.0, 1),
             300.0
         );
+    }
+
+    #[test]
+    fn mac_inline_text_box_line_holds_its_outline_to_the_nearest_0_48pt() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut text_box = RunTextBox::default();
+        let pt = |px: f64| px * 72.0 / 96.0;
+        // VML's default 0.75pt stroke.
+        assert!((pt(mac_inline_text_box_outline_px(&text_box)) - 0.96).abs() < 1e-9);
+        text_box.border.width_px = Some(4.0);
+        assert!((pt(mac_inline_text_box_outline_px(&text_box)) - 2.88).abs() < 1e-9);
+        text_box.border.style = TextBoxBorderStyle::None;
+        assert_eq!(mac_inline_text_box_outline_px(&text_box), 0.0);
+        text_box.border.style = TextBoxBorderStyle::Solid;
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(mac_inline_text_box_outline_px(&text_box), 0.0);
     }
 
     #[test]

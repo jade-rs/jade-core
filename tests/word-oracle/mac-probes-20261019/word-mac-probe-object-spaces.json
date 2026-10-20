@@ -1,0 +1,1069 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114",
+ "word_build": "16.114.26101123",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "ec2623cfa5fddcf8b2463671252939acec0365a23c0356b2d5d6654852f01790",
+ "pdf_sha256": "581dad0259ef31998645c68481b6280a75243bc36f247ed8016a10fdf817a581",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 125.28,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 84.96,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 93.604,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 98.753,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 101.569,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 104.384,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 135.17,
+       "advance_pt": 10.38,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 144.86,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 150.484,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 154.556,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 157.371,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "HelloWorld"
+    },
+    {
+     "baseline_pt": 161.28,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 84.96,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 93.604,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 98.753,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 101.569,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 104.384,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 140.42,
+       "advance_pt": 10.38,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 150.11,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 155.734,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 159.806,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 162.621,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "HelloWorld"
+    },
+    {
+     "baseline_pt": 197.28,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 84.96,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 93.604,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 98.753,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 101.569,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 104.384,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 112.739,
+       "advance_pt": 10.38,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 122.429,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 128.053,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 132.125,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 134.94,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "HelloWorld"
+    },
+    {
+     "baseline_pt": 233.28,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 110.13,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 117.554,
+       "advance_pt": 5.058,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 125.305,
+       "advance_pt": 5.882,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 131.155,
+       "advance_pt": 5.882,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 139.73,
+       "advance_pt": 4.889,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 144.587,
+       "advance_pt": 4.889,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 152.169,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 158.062,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 166.679,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 171.821,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 179.689,
+       "advance_pt": 5.533,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 185.19,
+       "advance_pt": 5.533,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 193.417,
+       "advance_pt": 5.977,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 199.362,
+       "advance_pt": 5.977,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 208.032,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 211.052,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "j",
+       "x_pt": 216.796,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "j",
+       "x_pt": 219.817,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 225.561,
+       "advance_pt": 5.343,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 230.873,
+       "advance_pt": 5.343,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 238.909,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 241.729,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 247.273,
+       "advance_pt": 8.987,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 256.206,
+       "advance_pt": 8.987,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 267.865,
+       "advance_pt": 6.135,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 273.968,
+       "advance_pt": 6.135,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 282.797,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 288.414,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 296.757,
+       "advance_pt": 5.998,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 302.723,
+       "advance_pt": 5.998,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "q",
+       "x_pt": 311.414,
+       "advance_pt": 5.892,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "q",
+       "x_pt": 317.275,
+       "advance_pt": 5.892,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 325.86,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 329.936,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 336.737,
+       "advance_pt": 4.319,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 341.035,
+       "advance_pt": 4.319,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 348.057,
+       "advance_pt": 3.654,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 351.69,
+       "advance_pt": 3.654,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 358.047,
+       "advance_pt": 5.966,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 363.982,
+       "advance_pt": 5.966,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 372.641,
+       "advance_pt": 5.122,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 377.731,
+       "advance_pt": 5.122,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 385.545,
+       "advance_pt": 7.614,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 393.117,
+       "advance_pt": 7.614,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "x",
+       "x_pt": 403.413,
+       "advance_pt": 4.995,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "x",
+       "x_pt": 408.387,
+       "advance_pt": 4.995,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 416.085,
+       "advance_pt": 5.143,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 421.196,
+       "advance_pt": 5.143,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "z",
+       "x_pt": 429.031,
+       "advance_pt": 4.9,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "z",
+       "x_pt": 433.899,
+       "advance_pt": 4.9,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Aabbccddeegghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz"
+    },
+    {
+     "baseline_pt": 269.28,
+     "characters": [
+      {
+       "text": "A",
+       "x_pt": 84.96,
+       "advance_pt": 7.466,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "a",
+       "x_pt": 92.384,
+       "advance_pt": 5.058,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 100.135,
+       "advance_pt": 5.882,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "b",
+       "x_pt": 105.985,
+       "advance_pt": 5.882,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 114.56,
+       "advance_pt": 4.889,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "c",
+       "x_pt": 119.417,
+       "advance_pt": 4.889,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 126.999,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 132.892,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 141.509,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 146.651,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 154.519,
+       "advance_pt": 5.533,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "g",
+       "x_pt": 160.02,
+       "advance_pt": 5.533,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 168.247,
+       "advance_pt": 5.977,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "h",
+       "x_pt": 174.192,
+       "advance_pt": 5.977,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 182.862,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "i",
+       "x_pt": 185.882,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "j",
+       "x_pt": 191.627,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "j",
+       "x_pt": 194.647,
+       "advance_pt": 3.031,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 200.391,
+       "advance_pt": 5.343,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "k",
+       "x_pt": 205.703,
+       "advance_pt": 5.343,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 213.739,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 216.559,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 222.103,
+       "advance_pt": 8.987,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "m",
+       "x_pt": 231.037,
+       "advance_pt": 8.987,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 242.695,
+       "advance_pt": 6.135,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 248.798,
+       "advance_pt": 6.135,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 257.627,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 263.244,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 271.587,
+       "advance_pt": 5.998,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "p",
+       "x_pt": 277.553,
+       "advance_pt": 5.998,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "q",
+       "x_pt": 286.244,
+       "advance_pt": 5.892,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "q",
+       "x_pt": 292.105,
+       "advance_pt": 5.892,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 300.69,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 304.766,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 311.567,
+       "advance_pt": 4.319,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "s",
+       "x_pt": 315.865,
+       "advance_pt": 4.319,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 322.887,
+       "advance_pt": 3.654,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "t",
+       "x_pt": 326.52,
+       "advance_pt": 3.654,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 332.877,
+       "advance_pt": 5.966,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "u",
+       "x_pt": 338.812,
+       "advance_pt": 5.966,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 347.471,
+       "advance_pt": 5.122,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "v",
+       "x_pt": 352.561,
+       "advance_pt": 5.122,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 360.375,
+       "advance_pt": 7.614,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "w",
+       "x_pt": 367.947,
+       "advance_pt": 7.614,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "x",
+       "x_pt": 378.243,
+       "advance_pt": 4.995,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "x",
+       "x_pt": 383.217,
+       "advance_pt": 4.995,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 390.915,
+       "advance_pt": 5.143,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 396.026,
+       "advance_pt": 5.143,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "z",
+       "x_pt": 403.861,
+       "advance_pt": 4.9,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "z",
+       "x_pt": 408.729,
+       "advance_pt": 4.9,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 444.054,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "n",
+       "x_pt": 449.2,
+       "advance_pt": 6.135,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 455.298,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "Aabbccddeegghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzzend"
+    },
+    {
+     "baseline_pt": 291.84,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 84.96,
+       "advance_pt": 8.691,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "e",
+       "x_pt": 93.604,
+       "advance_pt": 5.174,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 98.753,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 101.569,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 104.384,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "W",
+       "x_pt": 112.739,
+       "advance_pt": 10.38,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "o",
+       "x_pt": 122.429,
+       "advance_pt": 5.65,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "r",
+       "x_pt": 128.053,
+       "advance_pt": 4.097,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "l",
+       "x_pt": 132.125,
+       "advance_pt": 2.83,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "d",
+       "x_pt": 134.94,
+       "advance_pt": 5.924,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "x",
+       "x_pt": 143.546,
+       "advance_pt": 4.995,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      },
+      {
+       "text": "y",
+       "x_pt": 151.244,
+       "advance_pt": 5.143,
+       "font": "YuMincho-Regular",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "HelloWorldxy"
+    }
+   ]
+  }
+ ]
+}
