@@ -14359,6 +14359,20 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        // Text deleted inside one body paragraph, with no paragraph joined, is
+        // the same edit as typing there.
+        let edits_one_body_paragraph = selected_object.is_none()
+            && inline_delete_target.is_none()
+            && !merged_paragraphs
+            && !will_merge_with_previous
+            && selection_before.anchor.paragraph == selection_before.focus.paragraph
+            && dirty_from == edited_paragraph_index
+            && self
+                .state
+                .borrow()
+                .word_doc
+                .as_ref()
+                .is_some_and(|doc| doc.is_body_paragraph_surface(edited_paragraph_index));
         let mut renderer = self.renderer.borrow_mut();
         // Respect host-provided visible range if configured (viewport virtualization).
         // Ensure the edited page stays visible even if the range is stale.
@@ -14383,7 +14397,15 @@ impl OffscreenDocumentView {
             } else {
                 renderer.prefer_visible_window_seek_once();
             }
-            renderer.invalidate_layout_from(dirty_from);
+            // As for typing, the completed layout after the paragraph stays
+            // until the render shows whether the paragraph kept its geometry.
+            let retained_completed_pagination = edits_one_body_paragraph
+                && old_height.is_some_and(|height| {
+                    renderer.prepare_completed_pagination_edit(edited_paragraph_index, height)
+                });
+            if !retained_completed_pagination {
+                renderer.invalidate_layout_from(dirty_from);
+            }
         }
         renderer.invalidate_paragraph_wrap_cache_from(dirty_from);
 
