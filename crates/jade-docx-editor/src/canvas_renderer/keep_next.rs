@@ -224,6 +224,7 @@ where
         measurer
             .paragraph_border_box_continues
             .clone_from(&self.paragraph_border_box_continues);
+        measurer.spacing_scan_from_story = self.spacing_scan_from_story;
         measurer.paragraph_wrap_cache = Rc::clone(&self.paragraph_wrap_cache);
         measurer.render_skip_draw = true;
         measurer.measuring_keep_next = true;
