@@ -1695,8 +1695,16 @@ pub fn east_asian_justification_gap(prev: &str, next: &str) -> Option<EastAsianJ
             em_share: 0.25 * constants::AUTO_SPACE_LATIN_TO_EAST_ASIAN_SHARE,
         });
     }
-    (is_non_whitespace_east_asian_grapheme(prev) && is_non_whitespace_east_asian_grapheme(next))
-        .then_some(EastAsianJustificationGap::InterCharacter)
+    // Word also stretches the boundary between East Asian text and a
+    // single-byte bracket or punctuation mark (`、(c)受`), though not the
+    // gaps inside `(c)` (trust-beneficiary-sale-keep-next page 14).
+    let is_single_byte_punctuation =
+        |grapheme: &str| grapheme.len() == 1 && grapheme.as_bytes()[0].is_ascii_punctuation();
+    let east_asian = is_non_whitespace_east_asian_grapheme;
+    ((east_asian(prev) && east_asian(next))
+        || (east_asian(prev) && is_single_byte_punctuation(next))
+        || (is_single_byte_punctuation(prev) && east_asian(next)))
+    .then_some(EastAsianJustificationGap::InterCharacter)
 }
 
 /// Whether justification widens `grapheme` as a word space. Word for Mac
@@ -10903,6 +10911,23 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn justification_stretches_east_asian_text_beside_single_byte_punctuation() {
+        // trust-beneficiary-sale-keep-next page 14 `、(c)受`: Word widens the
+        // gaps on either side of the parenthesised letter, not inside it.
+        use EastAsianJustificationGap::InterCharacter;
+        assert_eq!(
+            east_asian_justification_gap("、", "("),
+            Some(InterCharacter)
+        );
+        assert_eq!(
+            east_asian_justification_gap(")", "受"),
+            Some(InterCharacter)
+        );
+        assert_eq!(east_asian_justification_gap("(", "c"), None);
+        assert_eq!(east_asian_justification_gap("c", ")"), None);
     }
 
     #[test]
