@@ -429,14 +429,14 @@ impl NativeDocument {
         };
 
         let mut selection = self.selection.take();
-        let mut moved = false;
-        {
-            let mut ctx = CommandContext::new(&mut self.word_document, &mut selection);
+        let moved = self.edit_in_place(|this| {
+            let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+            let mut moved = false;
             for _ in 0..steps {
                 let stepped = if backwards {
-                    self.executor.undo(&mut ctx)
+                    this.executor.undo(&mut ctx)
                 } else {
-                    self.executor.redo(&mut ctx)
+                    this.executor.redo(&mut ctx)
                 }
                 .map_err(|err| format!("history failed: {err:?}"))?;
                 if !stepped {
@@ -444,8 +444,10 @@ impl NativeDocument {
                 }
                 moved = true;
             }
-        }
+            Ok::<bool, String>(moved)
+        });
         self.selection = selection;
+        let moved = moved?;
         if !moved {
             return Ok(None);
         }
@@ -586,15 +588,18 @@ impl NativeDocument {
                 text: text.to_string(),
             }
         };
-        self.selection = apply_headless_commands_with_executor_to_document(
-            &mut self.word_document,
-            &mut self.executor,
-            self.selection.take(),
-            &HeadlessEditRequest {
-                commands: vec![command],
-            },
-        )
-        .map_err(|error| format!("header/footer edit failed: {error:?}"))?;
+        self.selection = self
+            .edit_in_place(|this| {
+                apply_headless_commands_with_executor_to_document(
+                    &mut this.word_document,
+                    &mut this.executor,
+                    this.selection.take(),
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+            })
+            .map_err(|error| format!("header/footer edit failed: {error:?}"))?;
         self.repaint_all()?;
         self.header_footer_undo.push(HeaderFooterEdit { previous });
         self.header_footer_redo.clear();
@@ -653,12 +658,11 @@ impl NativeDocument {
             // painting the intermediate state would flicker the picture back to
             // where it was between every pair of moves.
             let mut selection = self.selection.take();
-            {
-                let mut ctx = CommandContext::new(&mut self.word_document, &mut selection);
-                self.executor
-                    .undo(&mut ctx)
-                    .map_err(|err| format!("history failed: {err:?}"))?;
-            }
+            self.edit_in_place(|this| {
+                let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+                this.executor.undo(&mut ctx)
+            })
+            .map_err(|err| format!("history failed: {err:?}"))?;
             self.selection = selection;
             self.history.pop();
         }
@@ -675,15 +679,14 @@ impl NativeDocument {
             rotation_deg: 0.0,
         };
         let mut selection = self.selection.take();
-        {
-            let mut ctx = CommandContext::new(&mut self.word_document, &mut selection);
-            self.executor
-                .execute(
-                    Box::new(TransformObjectCommand::new(target, transform)),
-                    &mut ctx,
-                )
-                .map_err(|err| format!("transform failed: {err:?}"))?;
-        }
+        self.edit_in_place(|this| {
+            let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+            this.executor.execute(
+                Box::new(TransformObjectCommand::new(target, transform)),
+                &mut ctx,
+            )
+        })
+        .map_err(|err| format!("transform failed: {err:?}"))?;
         self.selection = selection;
         self.redo_history.clear();
         self.history
@@ -1985,14 +1988,16 @@ impl NativeDocument {
         self.redo_history.clear();
         self.history
             .push(HistoryStep::Command { executor_steps: 1 });
-        let after = apply_headless_commands_with_executor_to_document(
-            &mut self.word_document,
-            &mut self.executor,
-            self.selection.take(),
-            &HeadlessEditRequest {
-                commands: vec![command],
-            },
-        );
+        let after = self.edit_in_place(|this| {
+            apply_headless_commands_with_executor_to_document(
+                &mut this.word_document,
+                &mut this.executor,
+                this.selection.take(),
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+        });
         let after = match after {
             Ok(after) => after,
             Err(err) => {
@@ -2011,6 +2016,24 @@ impl NativeDocument {
         self.repaint_all().map(|_| ())
     }
 
+    /// Runs `edit` on the document with the renderer's hold on it let go,
+    /// then points the renderer at the result.
+    ///
+    /// The renderer keeps the document it last laid out, so changing a
+    /// paragraph through the shared `Rc` copied the whole document first —
+    /// on every keystroke, at a cost that grew with the document. Let go of,
+    /// the document is changed where it is, as `canvas_view` does. Letting go
+    /// also forgets the paragraph hashes the renderer keys by address, which
+    /// an edit in place would otherwise leave stale; the copy forgot them too.
+    fn edit_in_place<R>(&mut self, edit: impl FnOnce(&mut Self) -> R) -> R {
+        self.renderer.drop_document_cache();
+        let result = edit(self);
+        if let Some(document) = &self.word_document.document {
+            self.renderer.restore_document_cache(Rc::clone(document));
+        }
+        result
+    }
+
     /// [`Self::apply_command`] for several commands that are one action — a
     /// paste of formatted runs, a replace of matches the engine's own replace
     /// cannot find — applied in order and undone as one step. When one of
@@ -2027,21 +2050,29 @@ impl NativeDocument {
         let before = self.selection;
         let recorded = self.executor.history_revision();
         self.executor.begin_group();
-        let after = apply_headless_commands_with_executor_to_document(
-            &mut self.word_document,
-            &mut self.executor,
-            self.selection.take(),
-            &HeadlessEditRequest { commands },
-        );
-        let after = match after {
-            Ok(after) => {
-                self.executor.end_group();
-                after
+        let after = self.edit_in_place(|this| {
+            let result = apply_headless_commands_with_executor_to_document(
+                &mut this.word_document,
+                &mut this.executor,
+                this.selection.take(),
+                &HeadlessEditRequest { commands },
+            );
+            match result {
+                Ok(after) => {
+                    this.executor.end_group();
+                    Ok(after)
+                }
+                Err(err) => {
+                    let mut selection = before;
+                    let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+                    this.executor.abort_group(&mut ctx);
+                    Err(err)
+                }
             }
+        });
+        let after = match after {
+            Ok(after) => after,
             Err(err) => {
-                let mut selection = before;
-                let mut ctx = CommandContext::new(&mut self.word_document, &mut selection);
-                self.executor.abort_group(&mut ctx);
                 self.selection = before;
                 self.repaint_all()?;
                 return Err(format!("edit failed: {err:?}"));
@@ -2061,10 +2092,10 @@ impl NativeDocument {
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let mut selection = self.selection;
-        let result = {
-            let mut ctx = CommandContext::new(&mut self.word_document, &mut selection);
-            self.executor.execute(command, &mut ctx)
-        };
+        let result = self.edit_in_place(|this| {
+            let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+            this.executor.execute(command, &mut ctx)
+        });
         if let Err(err) = result {
             self.selection = before;
             return Err(format!("edit failed: {err:?}"));
@@ -2124,15 +2155,18 @@ impl NativeDocument {
         // A fresh edit drops the redo branch, the same way the executor does.
         self.redo_history.clear();
         self.history.push(HistoryStep::Command { executor_steps });
-        self.selection = apply_headless_commands_with_executor_to_document(
-            &mut self.word_document,
-            &mut self.executor,
-            self.selection.take(),
-            &HeadlessEditRequest {
-                commands: vec![command],
-            },
-        )
-        .map_err(|err| format!("edit failed: {err:?}"))?;
+        self.selection = self
+            .edit_in_place(|this| {
+                apply_headless_commands_with_executor_to_document(
+                    &mut this.word_document,
+                    &mut this.executor,
+                    this.selection.take(),
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+            })
+            .map_err(|err| format!("edit failed: {err:?}"))?;
 
         let edited = self
             .word_document
