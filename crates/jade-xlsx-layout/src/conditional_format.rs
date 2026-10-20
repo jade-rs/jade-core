@@ -20,6 +20,160 @@ struct PreparedRule<'a> {
     ranges: &'a [CellRange],
     rule: &'a ConditionalRule,
     visual: Option<Result<PreparedVisual, String>>,
+    /// What a rule ranking cells against the rest of its range compares
+    /// with: `top10`, `aboveAverage`, `duplicateValues`, `uniqueValues`.
+    ranked: Option<Ranked>,
+}
+
+enum Ranked {
+    /// Numbers at or past this one match.
+    Threshold { value: f64, bottom: bool },
+    /// Above (or below) this, or equal to it as well.
+    Average {
+        value: f64,
+        below: bool,
+        inclusive: bool,
+    },
+    /// Values seen more than once in the range, compared as Excel does:
+    /// numbers exactly, text without case.
+    Repeated { keys: Vec<String>, unique: bool },
+    /// No numbers to rank: nothing matches.
+    Nothing,
+}
+
+impl Ranked {
+    fn new(rule: &ConditionalRule, ranges: &[CellRange], sheet: &Sheet) -> Option<Self> {
+        let cells = || {
+            sheet
+                .rows
+                .iter()
+                .flat_map(|row| &row.cells)
+                .filter(|cell| ranges.iter().any(|range| range.contains(cell.reference)))
+                .map(|cell| &cell.value)
+        };
+        let numbers = || {
+            let mut values: Vec<f64> = cells()
+                .filter_map(|value| match value {
+                    CellValue::Number(number) if number.is_finite() => Some(*number),
+                    _ => None,
+                })
+                .collect();
+            values.sort_by(f64::total_cmp);
+            values
+        };
+        let ranking = &rule.ranking;
+        Some(match rule.rule_type.as_str() {
+            "top10" => {
+                let values = numbers();
+                let rank = ranking.rank.unwrap_or(10) as usize;
+                // A percent counts down to whole cells, but always one.
+                let count = if ranking.percent {
+                    (values.len() * rank / 100).max(1)
+                } else {
+                    rank.max(1)
+                }
+                .min(values.len());
+                if count == 0 {
+                    Ranked::Nothing
+                } else if ranking.bottom {
+                    Ranked::Threshold {
+                        value: values[count - 1],
+                        bottom: true,
+                    }
+                } else {
+                    Ranked::Threshold {
+                        value: values[values.len() - count],
+                        bottom: false,
+                    }
+                }
+            }
+            "aboveAverage" => {
+                let values = numbers();
+                if values.is_empty() {
+                    return Some(Ranked::Nothing);
+                }
+                let count = values.len() as f64;
+                let mean = values.iter().sum::<f64>() / count;
+                let offset = match ranking.std_dev {
+                    Some(deviations) if values.len() > 1 => {
+                        let variance = values
+                            .iter()
+                            .map(|value| (value - mean).powi(2))
+                            .sum::<f64>()
+                            / (count - 1.0);
+                        f64::from(deviations) * variance.sqrt()
+                    }
+                    _ => 0.0,
+                };
+                Ranked::Average {
+                    value: if ranking.below_average {
+                        mean - offset
+                    } else {
+                        mean + offset
+                    },
+                    below: ranking.below_average,
+                    inclusive: ranking.equal_average,
+                }
+            }
+            "duplicateValues" | "uniqueValues" => {
+                let mut keys: Vec<String> = cells().filter_map(repeat_key).collect();
+                keys.sort();
+                let mut repeated: Vec<String> = keys
+                    .windows(2)
+                    .filter(|pair| pair[0] == pair[1])
+                    .map(|pair| pair[0].clone())
+                    .collect();
+                repeated.dedup();
+                Ranked::Repeated {
+                    keys: repeated,
+                    unique: rule.rule_type == "uniqueValues",
+                }
+            }
+            _ => return None,
+        })
+    }
+
+    fn matches(&self, value: &CellValue) -> bool {
+        match self {
+            Ranked::Nothing => false,
+            Ranked::Threshold { value: at, bottom } => match value {
+                CellValue::Number(number) if number.is_finite() => {
+                    if *bottom {
+                        number <= at
+                    } else {
+                        number >= at
+                    }
+                }
+                _ => false,
+            },
+            Ranked::Average {
+                value: at,
+                below,
+                inclusive,
+            } => match value {
+                CellValue::Number(number) if number.is_finite() => {
+                    (*inclusive && number == at) || if *below { number < at } else { number > at }
+                }
+                _ => false,
+            },
+            Ranked::Repeated { keys, unique } => match repeat_key(value) {
+                Some(key) => keys.binary_search(&key).is_ok() != *unique,
+                None => false,
+            },
+        }
+    }
+}
+
+/// How `duplicateValues` tells values apart; blanks are never counted.
+fn repeat_key(value: &CellValue) -> Option<String> {
+    match value {
+        CellValue::Empty => None,
+        CellValue::Number(number) => Some(format!("n{number}")),
+        CellValue::Text(text) if text.is_empty() => None,
+        CellValue::Text(text) => Some(format!("t{}", text.to_lowercase())),
+        CellValue::Bool(value) => Some(format!("b{value}")),
+        CellValue::Error(error) => Some(format!("e{error}")),
+    }
 }
 
 pub struct ConditionalStyles<'a> {
@@ -75,6 +229,7 @@ impl<'a> ConditionalStyles<'a> {
                     ranges,
                     rule,
                     visual,
+                    ranked: Ranked::new(rule, ranges, sheet),
                 }
             })
             .collect();
@@ -115,7 +270,12 @@ impl<'a> ConditionalStyles<'a> {
                     Some(matches!(value,CellValue::Number(number) if number.is_finite()))
                 }
                 Some(Err(_)) => None,
-                None => matches_rule(rule, value),
+                None => match &prepared.ranked {
+                    Some(ranked) if rule.issues.is_empty() => {
+                        Some(matches_rule(rule, value).is_none() && ranked.matches(value))
+                    }
+                    _ => matches_rule(rule, value),
+                },
             };
             match matching {
                 Some(true) => {}
@@ -275,6 +435,15 @@ pub fn matches_rule(rule: &ConditionalRule, value: &CellValue) -> Option<bool> {
         "notContainsBlanks" => Some(!blank),
         "containsErrors" => Some(matches!(value, CellValue::Error(_))),
         "notContainsErrors" => Some(!matches!(value, CellValue::Error(_))),
+        // Ranked against the rest of the range, which `ConditionalStyles`
+        // knows: here, only that a blank is never in it.
+        "top10" | "aboveAverage" | "duplicateValues" | "uniqueValues" => {
+            if blank {
+                Some(false)
+            } else {
+                None
+            }
+        }
         "containsText" | "notContainsText" | "beginsWith" | "endsWith" => {
             let needle = rule.text.as_ref()?.to_lowercase();
             let text = crate::number_format::format_value(

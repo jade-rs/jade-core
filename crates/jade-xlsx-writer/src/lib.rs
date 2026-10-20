@@ -37,6 +37,7 @@ pub mod auto_filter;
 mod calc;
 pub mod chart_cache;
 pub mod clipboard;
+pub mod conditional_formats;
 pub mod dimensions;
 pub mod drawing;
 mod filter;
@@ -55,6 +56,10 @@ pub mod styles;
 pub mod table;
 
 pub use calc::{request_full_recalculation, withdraw_full_recalculation};
+pub use conditional_formats::{
+    add_conditional_format, clear_conditional_formats, delete_conditional_format, ConditionalStyle,
+    NewConditionalRule,
+};
 pub use drawing::{set_shape_text, shift_chart, shift_comments, shift_drawing, shift_vml};
 pub use format_axes::{format_axes, AxisFormatResult};
 pub use header_footer::set_header_footer;
@@ -154,6 +159,12 @@ pub enum WriteError {
     /// A sheet position past the end of the tab list.
     #[error("sheet position {index} is outside the {count} sheets")]
     SheetPositionOutOfRange { index: usize, count: usize },
+    /// A conditional format past the end of the sheet's rules.
+    #[error("the sheet has no conditional format {0}")]
+    NoSuchConditionalFormat(usize),
+    /// A part with no root element to write into.
+    #[error("the {0} part has no root element")]
+    NoRoot(&'static str),
 }
 
 pub type Result<T> = std::result::Result<T, WriteError>;
