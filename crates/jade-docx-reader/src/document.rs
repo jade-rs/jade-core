@@ -5535,6 +5535,32 @@ pub struct DocumentComment {
 
 /// Paragraph spacing details, expressed either in points or line-based
 /// multipliers depending on the originating Word attribute.
+/// Word's spacing for `w:beforeAutospacing`/`w:afterAutospacing`, which HTML
+/// imports set ("auto" in the paragraph dialog): 14pt, whatever the
+/// `w:before`/`w:after` value beside it says.
+pub const WORD_AUTO_PARAGRAPH_SPACING_PT: f32 = 14.0;
+
+/// Whether an OOXML on/off attribute value is on.
+pub(crate) fn ooxml_on(value: &[u8]) -> bool {
+    matches!(value, b"1" | b"true" | b"on")
+}
+
+impl Spacing {
+    /// Applies `w:beforeAutospacing`/`w:afterAutospacing` once every other
+    /// attribute of the element is read: auto spacing replaces the authored
+    /// points and lines on its side.
+    pub(crate) fn apply_autospacing(&mut self, before: bool, after: bool) {
+        if before {
+            self.before = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
+            self.before_lines = None;
+        }
+        if after {
+            self.after = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
+            self.after_lines = None;
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct Spacing {
     pub before: Option<f32>,
