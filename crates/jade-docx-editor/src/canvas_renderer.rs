@@ -14196,13 +14196,16 @@ where
         };
 
         let metrics = layout.metrics;
-        let line_height = metrics.ascent + metrics.descent;
-        let spacing_before = points_to_px(4.0);
-        let spacing_after = points_to_px(4.0);
-        self.ensure_space(spacing_before + line_height + spacing_after)?;
-
-        self.current_y += spacing_before;
-        let baseline_y = self.current_y + metrics.ascent;
+        let (line_box, after) = self.place_math_block(
+            math,
+            jade_docx_layout::math_layout::MathMetrics {
+                width: metrics.width,
+                ascent: metrics.ascent,
+                descent: metrics.descent,
+            },
+            self.body_math_style(math).size_px,
+        )?;
+        let baseline_y = self.current_y + line_box.baseline;
         let math_x = MathParagraphAlignment::from_math_paragraph(math).x(
             column_x,
             column_width,
@@ -14216,7 +14219,7 @@ where
                 .render_layout(&layout, math_x, baseline_y)
                 .map_err(PainterError::into_js_value)?;
         }
-        let line_height = metrics.ascent + metrics.descent;
+        let line_height = line_box.height;
 
         let paragraph_index = self.paragraph_counter;
         self.paragraph_counter += 1;
@@ -14255,23 +14258,30 @@ where
         };
         self.selection.record_line(paragraph_index, line_layout);
 
-        self.current_y += line_height + spacing_after;
-        self.last_line_baseline = self.current_y;
+        self.current_y += line_height + after;
+        self.trailing_spacing_after = Some((
+            self.current_page_number,
+            self.column_index,
+            self.current_y,
+            after,
+        ));
+        self.last_line_baseline = baseline_y;
         Ok(())
     }
 
-    #[cfg(feature = "opentype-math")]
-    fn render_font_math_block<'a>(
+    /// Sizes a display-math line by the paragraph's rules (line spacing and
+    /// the document grid), applies its spacing before, and returns the line
+    /// box with the spacing after. Word for Mac gives the `math` fixture's
+    /// equations two 18pt grid lines each.
+    fn place_math_block(
         &mut self,
-        math: &'a MathParagraph,
-        style: jade_docx_layout::math_layout::styled::MathTextStyle<'a>,
-        plan: jade_docx_layout::math_layout::styled::StyledMathLayout<'a>,
-        char_unit_pt: f64,
-    ) -> Result<(), JsValue> {
-        let painter = self.host.painter();
+        math: &MathParagraph,
+        metrics: jade_docx_layout::math_layout::MathMetrics,
+        size_px: f64,
+    ) -> Result<(jade_docx_layout::math_layout::MathBlockLineBox, f64), JsValue> {
         let line_box = jade_docx_layout::math_layout::math_block_line_box(
-            plan.line_metrics,
-            (style.size_px * 72.0 / 96.0) as f32,
+            metrics,
+            (size_px * 72.0 / 96.0) as f32,
             math.properties.as_deref(),
             self.current_doc_grid.as_ref(),
             self.document_snap_to_grid_default,
@@ -14302,6 +14312,19 @@ where
         let before = collapsed_spacing_before(before, preceding_after);
         self.ensure_space(before + line_box.height + after)?;
         self.current_y += before;
+        Ok((line_box, after))
+    }
+
+    #[cfg(feature = "opentype-math")]
+    fn render_font_math_block<'a>(
+        &mut self,
+        math: &'a MathParagraph,
+        style: jade_docx_layout::math_layout::styled::MathTextStyle<'a>,
+        plan: jade_docx_layout::math_layout::styled::StyledMathLayout<'a>,
+        char_unit_pt: f64,
+    ) -> Result<(), JsValue> {
+        let painter = self.host.painter();
+        let (line_box, after) = self.place_math_block(math, plan.line_metrics, style.size_px)?;
         // Pagination may have changed the column or physical page/mirror side.
         let (column_x, column_width) = jade_docx_layout::math_layout::math_block_content_box(
             math.properties.as_deref(),
@@ -25060,7 +25083,6 @@ where
         Ok(rendered)
     }
 
-    #[cfg(feature = "opentype-math")]
     fn body_math_style<'a>(
         &self,
         math: &'a MathParagraph,
