@@ -938,3 +938,179 @@ fn insert_body(
     package.replace(part, format!("<p:sld xmlns:p=\"{}\" xmlns:a=\"{}\"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>",p_ns(strict),super::drawing_ns(strict)).into_bytes());
     Ok(())
 }
+
+/// Copies objects `ids` of the slide part `from` (whose XML is `source`)
+/// into the slide part `to` (whose XML is `into`), in front of its own
+/// objects and where they were — each with the place it takes from its
+/// layout, if it has none of its own. Each object's relationships go with it: a
+/// picture's or a video's media is shared, a hyperlink keeps its target, and
+/// a chart's or diagram's parts are copied for the copy alone. Returns the
+/// slide XML and the copies' ids, in order.
+pub(crate) fn copy_objects(
+    package: &mut OpcPackage,
+    from: &str,
+    source: &str,
+    ids: &[(u32, Option<jade_pptx_reader::Transform>)],
+    to: &str,
+    into: &str,
+) -> Result<(String, Vec<u32>)> {
+    let from_rels = match package.part_str(&rels_part_name(from))? {
+        Some(xml) => parse_relationships(&xml)?,
+        None => Default::default(),
+    };
+    let to_rels_part = rels_part_name(to);
+    let mut to_rels = package.part_str(&to_rels_part)?.unwrap_or_else(|| {
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"></Relationships>".to_owned()
+    });
+    let mut mapping = BTreeMap::new();
+    let mut into = into.to_owned();
+    let mut copied = Vec::with_capacity(ids.len());
+    for &(id, baseline) in ids {
+        let (fragment, new_id) = super::objects::copy_out(source, id, baseline, &into)?;
+        let fragment = relink(
+            package,
+            from,
+            &from_rels,
+            to,
+            &mut to_rels,
+            &fragment,
+            &mut mapping,
+        )?;
+        into = super::objects::insert_fragment(&into, &fragment)?;
+        copied.push(new_id);
+    }
+    package.replace(&to_rels_part, to_rels.into_bytes());
+    content_types(package, &mapping, &BTreeSet::new(), None)?;
+    Ok((into, copied))
+}
+
+/// `fragment`'s relationship ids, which are the slide `from`'s, made the
+/// slide `to`'s: each relationship added to `to_rels` — or one already there
+/// to the same target reused — its part shared or copied.
+fn relink(
+    package: &mut OpcPackage,
+    from: &str,
+    from_rels: &jade_opc::Relationships,
+    to: &str,
+    to_rels: &mut String,
+    fragment: &str,
+    mapping: &mut BTreeMap<String, String>,
+) -> Result<String> {
+    let nodes = parse_document_nodes(fragment)?;
+    let mut patches = Vec::new();
+    let mut relinked = BTreeMap::<String, String>::new();
+    for node in &nodes {
+        let mut values = Vec::new();
+        for (key, value) in &node.attrs {
+            let Some((prefix, _)) = key.split_once(':') else {
+                continue;
+            };
+            // An empty id — a media action's — points at nothing to take.
+            if prefix == "xmlns" || value.is_empty() || !in_relationships_ns(&nodes, node, prefix) {
+                continue;
+            }
+            let rid = match relinked.get(value) {
+                Some(rid) => rid.clone(),
+                None => {
+                    let relationship = from_rels
+                        .relationship(value)
+                        .ok_or_else(|| xml_error(format!("missing relationship {value}")))?;
+                    let target = if relationship.external {
+                        relationship.target.clone()
+                    } else {
+                        let resolved = resolve_target(from, &relationship.target);
+                        let part = if shared(&relationship.relationship_type) {
+                            resolved
+                        } else {
+                            clone_part(package, &resolved, mapping)?
+                        };
+                        format!("/{part}")
+                    };
+                    let rid = add_relationship(
+                        to,
+                        to_rels,
+                        &relationship.relationship_type,
+                        &target,
+                        relationship.external,
+                    )?;
+                    relinked.insert(value.clone(), rid.clone());
+                    rid
+                }
+            };
+            values.push((key.as_str(), rid));
+        }
+        if !values.is_empty() {
+            patches.push((
+                node.opening.clone(),
+                edit_tag(&fragment[node.opening.clone()], &values)?,
+            ));
+        }
+    }
+    Ok(apply_patches(fragment, patches))
+}
+
+/// Whether `prefix` is bound to the relationships namespace where `node` is.
+fn in_relationships_ns(nodes: &[Node], node: &Node, prefix: &str) -> bool {
+    let binding = format!("xmlns:{prefix}");
+    let mut at = Some(node);
+    while let Some(n) = at {
+        if let Some(uri) = n.attr(&binding) {
+            return uri == R || uri == r_ns(true);
+        }
+        at = n.parent.map(|i| &nodes[i]);
+    }
+    false
+}
+
+/// The id of a relationship of part `owner` of `kind` to `target`: one its
+/// `.rels` XML has already, or a new one added to it.
+fn add_relationship(
+    owner: &str,
+    rels: &mut String,
+    kind: &str,
+    target: &str,
+    external: bool,
+) -> Result<String> {
+    let parsed = parse_relationships(rels)?;
+    let same = |r: &jade_opc::Relationship| {
+        r.relationship_type == kind
+            && r.external == external
+            && if external {
+                r.target == target
+            } else {
+                resolve_target(owner, &r.target) == target.trim_start_matches('/')
+            }
+    };
+    let nodes = parse_document_nodes(rels)?;
+    let ids: BTreeSet<&str> = nodes
+        .iter()
+        .filter(|n| n.is(4, "Relationship"))
+        .filter_map(|n| n.attr("Id"))
+        .collect();
+    if let Some(existing) = ids
+        .iter()
+        .filter_map(|id| parsed.relationship(id))
+        .find(|r| same(r))
+    {
+        return Ok(existing.id.clone());
+    }
+    let rid = (1..)
+        .map(|i| format!("rId{i}"))
+        .find(|id| !ids.contains(id.as_str()))
+        .expect("relationship id");
+    let mode = if external {
+        " TargetMode=\"External\""
+    } else {
+        ""
+    };
+    let element = format!(
+        "<jadePkg:Relationship xmlns:jadePkg=\"http://schemas.openxmlformats.org/package/2006/relationships\" Id=\"{rid}\" Type=\"{}\" Target=\"{}\"{mode}/>",
+        escape(kind),
+        escape(target),
+    );
+    let root = nodes
+        .first()
+        .ok_or_else(|| xml_error("relationships without a root"))?;
+    *rels = append_child(rels, root, &element);
+    Ok(rid)
+}
