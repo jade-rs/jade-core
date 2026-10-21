@@ -39,6 +39,7 @@ pub mod phonetic;
 pub mod rich_text;
 pub mod shared_strings;
 pub mod sheet;
+pub mod sparkline;
 pub mod styles;
 pub mod table;
 mod theme;
@@ -257,10 +258,28 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
     if let Some(theme) = &theme {
         for sheet in &mut sheets {
             conditional_format::apply_theme(&mut sheet.conditional_formats, theme);
-            for run in sheet.rich_text.values_mut().flatten() {
+            let colors = sheet
+                .rich_text
+                .values_mut()
+                .flatten()
+                .map(|run| &mut run.font.color)
+                .chain(std::iter::once(&mut sheet.tab_color))
+                .chain(sheet.sparkline_groups.iter_mut().flat_map(|group| {
+                    [
+                        &mut group.color_series,
+                        &mut group.color_negative,
+                        &mut group.color_axis,
+                        &mut group.color_markers,
+                        &mut group.color_first,
+                        &mut group.color_last,
+                        &mut group.color_high,
+                        &mut group.color_low,
+                    ]
+                }));
+            for color in colors {
                 if let Some(Color::Theme {
                     index, resolved, ..
-                }) = run.font.color.as_mut()
+                }) = color.as_mut()
                 {
                     *resolved = theme.color(*index);
                 }

@@ -89,6 +89,8 @@ fn wrapped_layout_with_height(
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     };
 
@@ -230,6 +232,8 @@ fn a_cell_that_does_not_wrap_still_draws_one_line() {
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     };
     let layout = layout_sheet(
