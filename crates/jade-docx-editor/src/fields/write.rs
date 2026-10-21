@@ -134,15 +134,12 @@ pub(crate) fn at_path_mut<'a>(
     Some(element)
 }
 
-pub(crate) fn find_element<'a>(root: &'a XmlElement, id: XmlNodeId) -> Option<&'a XmlElement> {
+pub(crate) fn find_element(root: &XmlElement, id: XmlNodeId) -> Option<&XmlElement> {
     let path = find_path(root, id)?;
     at_path(root, &path)
 }
 
-pub(crate) fn find_element_mut<'a>(
-    root: &'a mut XmlElement,
-    id: XmlNodeId,
-) -> Option<&'a mut XmlElement> {
+pub(crate) fn find_element_mut(root: &mut XmlElement, id: XmlNodeId) -> Option<&mut XmlElement> {
     let path = find_path(root, id)?;
     at_path_mut(root, &path)
 }
@@ -235,7 +232,7 @@ fn clear_complex_result(
     let (from, to) = (start[common] + 1, finish[common]);
     if to > from {
         let removed: Vec<XmlNode> = container.children.drain(from..to).collect();
-        let anchors: Vec<XmlNode> = removed.into_iter().filter(|node| is_anchor(node)).collect();
+        let anchors: Vec<XmlNode> = removed.into_iter().filter(is_anchor).collect();
         // Anchors between paragraphs belong in a paragraph; keep them only
         // when the container holds runs.
         if container.name == "w:p" || container.name == "w:hyperlink" {

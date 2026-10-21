@@ -728,7 +728,7 @@ fn format_numeric_picture_section(
             let len = filled.len();
             for (index, character) in filled.iter().enumerate() {
                 let from_right = len - index;
-                if index > 0 && from_right % 3 == 0 {
+                if index > 0 && from_right.is_multiple_of(3) {
                     let previous = filled[index - 1];
                     integer.push(if previous == ' ' { ' ' } else { ',' });
                 }

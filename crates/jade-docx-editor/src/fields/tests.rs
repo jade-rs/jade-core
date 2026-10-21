@@ -9,9 +9,7 @@ use std::io::Write as _;
 const W: &str = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"";
 
 fn package(body: &str, extra: &[(&str, &str)]) -> Vec<u8> {
-    let document = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document {W}><w:body>{body}<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/></w:sectPr></w:body></w:document>"
-    );
+    let document = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document {W}><w:body>{body}<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/></w:sectPr></w:body></w:document>");
     let mut parts: Vec<(String, String)> = vec![
         (
             "[Content_Types].xml".into(),
@@ -52,15 +50,11 @@ fn package(body: &str, extra: &[(&str, &str)]) -> Vec<u8> {
         ),
         (
             "word/styles.xml".into(),
-            format!(
-                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:styles {W}><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"a\"><w:name w:val=\"Normal\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"1\"><w:name w:val=\"heading 1\"/><w:basedOn w:val=\"a\"/><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr></w:style></w:styles>"
-            ),
+            format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:styles {W}><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"a\"><w:name w:val=\"Normal\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"1\"><w:name w:val=\"heading 1\"/><w:basedOn w:val=\"a\"/><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr></w:style></w:styles>"),
         ),
         (
             "word/settings.xml".into(),
-            format!(
-                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:settings {W}><w:zoom w:percent=\"100\"/><w:docVars><w:docVar w:name=\"Client\" w:val=\"ACME\"/></w:docVars></w:settings>"
-            ),
+            format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:settings {W}><w:zoom w:percent=\"100\"/><w:docVars><w:docVar w:name=\"Client\" w:val=\"ACME\"/></w:docVars></w:settings>"),
         ),
         (
             "docProps/core.xml".into(),
@@ -256,9 +250,7 @@ fn update_evaluates_each_kind_as_word_does() {
 #[test]
 fn sequences_lists_styles_and_references_count_in_document_order() {
     let body = [
-        format!(
-            "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>第一章</w:t></w:r></w:p>"
-        ),
+        "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>第一章</w:t></w:r></w:p>".to_string(),
         paragraph(&format!(
             "<w:r><w:t xml:space=\"preserve\">図 </w:t></w:r>{}",
             field("SEQ Figure \\* ARABIC", "9")
@@ -280,9 +272,7 @@ fn sequences_lists_styles_and_references_count_in_document_order() {
         paragraph(&field("LISTNUM LegalDefault \\l 2", "x")),
         paragraph(&field("STYLEREF \"見出し 1\"", "x")),
         paragraph(&field("STYLEREF 1", "x")),
-        paragraph(&format!(
-            "<w:bookmarkStart w:id=\"2\" w:name=\"Price\"/><w:r><w:t>1,200</w:t></w:r><w:bookmarkEnd w:id=\"2\"/>"
-        )),
+        paragraph("<w:bookmarkStart w:id=\"2\" w:name=\"Price\"/><w:r><w:t>1,200</w:t></w:r><w:bookmarkEnd w:id=\"2\"/>"),
         paragraph(&field("REF Price", "x")),
         paragraph(&field("REF Price \\p", "x")),
         paragraph(&field("Price", "x")),
@@ -513,7 +503,7 @@ fn headers_update_with_the_document_and_include_text_reads_local_files() {
         field("STYLEREF 1", "old")
     );
     let body = [
-        format!("<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>概要</w:t></w:r></w:p>"),
+        "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>概要</w:t></w:r></w:p>".to_string(),
         paragraph(&field("INCLUDETEXT \"notes.txt\"", "cached")),
         paragraph(&field("INCLUDETEXT \"missing.txt\"", "cached")),
         paragraph(&field("INCLUDEPICTURE \"logo.png\" \\d", "")),

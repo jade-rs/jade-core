@@ -38,6 +38,9 @@ use scan::{Role, Story};
 use std::collections::{HashMap, HashSet};
 use write::NewResult;
 
+/// Reads a file a field names, relative to the document's folder.
+pub type FileReader = Box<dyn Fn(&str) -> Option<Vec<u8>>>;
+
 /// What field evaluation needs from outside the document.
 pub struct FieldEnvironment {
     /// Local date and time now (DATE, TIME).
@@ -63,7 +66,7 @@ pub struct FieldEnvironment {
     pub prompt_answers: HashMap<String, String>,
     /// Reads a local file a field names (INCLUDETEXT), relative to the
     /// document's folder.
-    pub read_file: Option<Box<dyn Fn(&str) -> Option<Vec<u8>>>>,
+    pub read_file: Option<FileReader>,
     /// Whether results and messages are Japanese (Word's language).
     pub japanese: bool,
 }
@@ -167,7 +170,7 @@ fn field_anchor(field: &scan::ScannedField) -> Option<XmlNodeId> {
 pub fn field_code_display(
     doc: &WordDocument,
     view: &FieldCodeView,
-) -> HashMap<XmlNodeId, (XmlNodeId, std::rc::Rc<str>)> {
+) -> crate::canvas_renderer::FieldCodeDisplay {
     let mut display = HashMap::new();
     let Some(raw) = doc.raw_document.as_ref() else {
         return display;
@@ -1299,11 +1302,7 @@ fn clamp_range(doc: &WordDocument, range: SelectionRange) -> Option<SelectionRan
         doc.clamp_rendered_text_position(position)
             .unwrap_or(position)
     };
-    Some(SelectionRange {
-        anchor: clamp(range.anchor),
-        focus: clamp(range.focus),
-        ..range
-    })
+    Some(SelectionRange::new(clamp(range.anchor), clamp(range.focus)))
 }
 
 impl Command for FieldCommand {
