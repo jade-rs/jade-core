@@ -29264,6 +29264,59 @@ impl WordDocument {
         }
     }
 
+    /// The tags (`w:sdtPr/w:tag/@w:val`) of the block-level content
+    /// controls (`w:sdt`, ECMA-376 Part 1 §17.5.2) the body paragraph at
+    /// surface `index` is inside, outermost first. Read from the XML the
+    /// paragraph is bound to, so they follow edits; empty for a paragraph
+    /// bound to none (a note's, or one only just split off and not yet
+    /// synced).
+    pub fn block_content_control_tags(&self, index: usize) -> Vec<String> {
+        let mut tags = Vec::new();
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) {
+            return tags;
+        }
+        let (Some(id), Some(raw)) = (
+            self.paragraph(index)
+                .and_then(|paragraph| paragraph.node_id),
+            self.raw_document.as_ref(),
+        ) else {
+            return tags;
+        };
+        let Some(path) = raw.path(id) else {
+            return tags;
+        };
+        let mut element = raw.root();
+        for &position in path.as_slice() {
+            let Some(XmlNode::Element(child)) = element.children.get(position) else {
+                break;
+            };
+            if child.name == "w:sdt" {
+                let tag = child
+                    .children
+                    .iter()
+                    .filter_map(|node| match node {
+                        XmlNode::Element(element) if element.name == "w:sdtPr" => Some(element),
+                        _ => None,
+                    })
+                    .flat_map(|properties| properties.children.iter())
+                    .find_map(|node| match node {
+                        XmlNode::Element(element) if element.name == "w:tag" => element
+                            .attributes
+                            .iter()
+                            .find(|attribute| attribute.name == "w:val")
+                            .map(|attribute| attribute.value.clone()),
+                        _ => None,
+                    });
+                tags.push(tag.unwrap_or_default());
+            }
+            element = child;
+        }
+        tags
+    }
+
     pub fn paragraph(&self, index: usize) -> Option<&Paragraph> {
         let surface = self.paragraph_surfaces.get(index)?;
         match surface {

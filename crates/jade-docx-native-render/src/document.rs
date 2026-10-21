@@ -118,6 +118,14 @@ pub struct PdfExportOptions {
     pub rendering: PdfRenderingMode,
     /// Pixels per CSS pixel for editor appearance mode, from 0.5 through 4.
     pub scale: f64,
+    /// Whether tracked changes and comments print (Word's 変更履歴/コメント
+    /// の印刷): `Some(false)` prints the document as it reads with every
+    /// change accepted and no comments; `None` prints what the view shows.
+    pub markup: Option<bool>,
+    /// A tagged PDF: its structure tree — headings, paragraphs, tables,
+    /// figures with their alternative text — in reading order, bookmarks
+    /// from the headings and the document's title. Tagged pages are vector.
+    pub tagged: bool,
 }
 
 impl Default for PdfExportOptions {
@@ -125,6 +133,8 @@ impl Default for PdfExportOptions {
         Self {
             rendering: PdfRenderingMode::Editor,
             scale: 1.0,
+            markup: None,
+            tagged: false,
         }
     }
 }
@@ -409,8 +419,12 @@ impl NativeDocument {
     /// Exports at a chosen raster density or with scalable vector text.
     pub fn export_pdf_with_options(
         &self,
-        pdf_options: PdfExportOptions,
+        mut pdf_options: PdfExportOptions,
     ) -> Result<Vec<u8>, String> {
+        if pdf_options.tagged {
+            // Marks survive only in vector drawing.
+            pdf_options.rendering = PdfRenderingMode::Vector;
+        }
         if !pdf_options.scale.is_finite() || !(0.5..=4.0).contains(&pdf_options.scale) {
             return Err("PDF scale must be finite and between 0.5 and 4".to_string());
         }
@@ -432,7 +446,15 @@ impl NativeDocument {
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
         options.show_crop_marks = false;
+        if let Some(markup) = pdf_options.markup {
+            options.render_changes = markup;
+            options.render_comments = markup;
+            if !markup {
+                options.render_original = false;
+            }
+        }
         renderer.set_spelling_export_mode(true);
+        renderer.set_structure_tagging(pdf_options.tagged);
         renderer.mark_full_repaint();
         renderer
             .render_with_numbering(
@@ -478,8 +500,22 @@ impl NativeDocument {
                 })
             })
             .collect::<Vec<_>>();
-        let output = SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links);
+        let output = if pdf_options.tagged {
+            let entries = renderer.take_structure_entries();
+            let tagging = crate::tagging::tagging(&self.word_document, &entries);
+            SkiaPainter::encode_tagged_pdf(&pages.borrow()[..count.get()], &links, &tagging)
+        } else {
+            SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links)
+        };
         output
+    }
+
+    /// Each page's section (from 0) and the number its `PAGE` field shows:
+    /// what a print range such as `p1s2-p3s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        let mut labels = self.renderer.page_labels();
+        labels.truncate(self.page_count());
+        labels
     }
 
     pub fn can_undo(&self) -> bool {
@@ -1226,6 +1262,17 @@ impl NativeDocument {
     /// Shows or hides Word's formatting marks.
     pub fn set_formatting_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_formatting_marks = show;
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Shows the document with its tracked changes and comments, or as it
+    /// reads with every change accepted (Word's 変更履歴なし), and repaints.
+    pub fn set_markup_visible(&mut self, visible: bool) -> Result<(), String> {
+        self.options.render_changes = visible;
+        self.options.render_comments = visible;
+        if !visible {
+            self.options.render_original = false;
+        }
         self.repaint_all().map(|_| ())
     }
 
@@ -1984,6 +2031,25 @@ impl NativeDocument {
             width: metrics.width.max(1.0),
             height: metrics.height,
         })
+    }
+
+    /// Where a caret at `(paragraph, offset)` would be, without moving the
+    /// caret or the selection there — for an overlay that marks a place,
+    /// such as the box around a master document's subdocument.
+    pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        let selection = self.selection;
+        self.renderer
+            .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
+                paragraph, offset,
+            ))));
+        let rect = self.renderer.caret_metrics().map(|metrics| CaretRect {
+            x: metrics.x,
+            document_y: metrics.absolute_top,
+            width: metrics.width.max(1.0),
+            height: metrics.height,
+        });
+        self.renderer.set_selection_range(selection);
+        rect
     }
 
     /// The text position under a point, in the renderer's document coordinate

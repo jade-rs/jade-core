@@ -249,6 +249,7 @@ mod paragraph_join;
 mod recording_host;
 #[cfg(test)]
 mod section_tests;
+mod structure;
 mod table;
 mod text_regions;
 use self::table::{
@@ -256,6 +257,7 @@ use self::table::{
     layout_vertical_paragraph_with_wrap_context as table_layout_vertical_paragraph,
     parse_border_kind, BorderKind, TextAlign as TableTextAlign,
 };
+pub use structure::{StructureEntry, StructureKind};
 pub use text_regions::TextRegion;
 
 const PAGE_GAP_PX: f64 = 16.0;
@@ -3539,6 +3541,8 @@ where
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
+    /// The structure a tagged PDF is given, as it is drawn (`structure`).
+    structure: RefCell<structure::StructureState>,
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
     object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
@@ -7516,6 +7520,14 @@ where
     }
 
     fn render_pending_footnotes_for_current_page(&mut self) -> Result<(), JsValue> {
+        // Notes are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_pending_footnotes_for_current_page_untagged();
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_pending_footnotes_for_current_page_untagged(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode || self.rendering_page_footnotes {
             return Ok(());
         }
@@ -8055,6 +8067,7 @@ where
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
+            structure: RefCell::new(Default::default()),
             text_box_debug_regions: RefCell::new(Vec::new()),
             grouped_shape_text_regions: RefCell::new(Vec::new()),
             object_debug_regions: RefCell::new(Vec::new()),
@@ -13973,6 +13986,45 @@ where
     #[allow(clippy::too_many_arguments)]
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
     fn render_body_element(
+        &mut self,
+        element: &BodyElement,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
+        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+        body_element_index: usize,
+        section_index: usize,
+    ) -> Result<(), JsValue> {
+        // A paragraph of the body is a node of a tagged PDF's structure.
+        let tagged = match element {
+            BodyElement::Paragraph(_)
+                if body_element_index != usize::MAX
+                    && section_index != usize::MAX
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story =>
+            {
+                self.begin_structure(StructureKind::Paragraph {
+                    paragraph_index: self.paragraph_counter,
+                    body_element_index,
+                })
+            }
+            _ => None,
+        };
+        let result = self.render_body_element_untagged(
+            element,
+            options,
+            numbering_part,
+            numbering_counter,
+            deleted_numbering_offsets,
+            body_element_index,
+            section_index,
+        );
+        self.end_structure(tagged);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_body_element_untagged(
         &mut self,
         element: &BodyElement,
         options: &Options,
@@ -26607,6 +26659,24 @@ where
             painter.restore();
             return Ok(());
         }
+        // A picture is a figure in a tagged PDF, with its alternative text.
+        let tagged = self.begin_structure(StructureKind::Figure {
+            alt: image
+                .description
+                .clone()
+                .or_else(|| image.title.clone())
+                .filter(|alt| !alt.trim().is_empty()),
+        });
+        let result = self.draw_image_element_untagged(image, draw_spec);
+        self.end_structure(tagged);
+        result
+    }
+
+    fn draw_image_element_untagged(
+        &self,
+        image: &RunImage,
+        draw_spec: ImageDrawSpec,
+    ) -> Result<(), JsValue> {
         let data_uri = match &image.data_uri {
             Some(uri) => uri.as_str(),
             None => return Ok(()),
@@ -30927,7 +30997,9 @@ where
         switch: impl FnOnce(&mut crate::render_host::BoxedRenderHost<HostPainter>) -> R,
     ) -> R {
         self.restore_band_clip_if_active();
-        switch(&mut self.host)
+        let result = switch(&mut self.host);
+        self.resume_structure_on_new_page();
+        result
     }
 
     fn begin_next_page_backing(&mut self, next_page: usize) -> Result<(), JsValue> {
@@ -33448,6 +33520,27 @@ where
         draw: bool,
         capture_story: Option<&'static str>,
     ) -> Result<f64, JsValue> {
+        // Headers and footers are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_header_footer_body_at_untagged(
+            body,
+            start_y,
+            paragraph_base,
+            draw,
+            capture_story,
+        );
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_header_footer_body_at_untagged(
+        &mut self,
+        body: &Body,
+        start_y: f64,
+        paragraph_base: usize,
+        draw: bool,
+        capture_story: Option<&'static str>,
+    ) -> Result<f64, JsValue> {
         let saved_current_y = self.current_y;
         let saved_note_separator_offset = self.automatic_note_separator_offset.take();
         let saved_last_line_baseline = self.last_line_baseline;
@@ -34279,10 +34372,9 @@ where
         section_page_count(&self.page_section_indices, self.current_page_number)
     }
 
-    /// Maps a 1-based physical page to the string a `PAGE` field should display,
-    /// applying the section's `w:pgNumType` start offset and numeral format.
-    /// ECMA-376 Part 1 §17.6.12.
-    /// The number a page shows (sections' starts applied), unformatted.
+    /// The number a `PAGE` field shows on a 1-based physical page, the
+    /// sections' `w:pgNumType` starts applied, before its numeral format
+    /// (ECMA-376 Part 1 §17.6.12).
     fn page_number_value(&self, physical_page: usize) -> usize {
         if self.section_page_numbering.is_empty() {
             let start = self.page_number_start.unwrap_or(1) as usize;
@@ -34318,27 +34410,22 @@ where
         }
         let page = physical_page.max(1);
         let section = self.section_index_for_page(page);
-        // Walk the sections up to this one, carrying the running number: a
-        // `w:start` resets it at that section's first page, otherwise it
-        // continues from wherever the previous section ended.
-        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
-        let mut first_page_of_section = 1usize;
-        for index in 0..=section {
-            let first_page = self.first_page_of_section_index(index).unwrap_or(page);
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self
-                .section_page_numbering
-                .get(index)
-                .and_then(|numbering| numbering.as_ref())
-                .and_then(|numbering| numbering.start)
-            {
-                number_at_section_start = start as usize;
-            }
-        }
-        let displayed = number_at_section_start + page.saturating_sub(first_page_of_section);
+        let displayed = self.page_number_value(page);
+        self.page_number_with_format(page, section, displayed)
+    }
+
+    /// Each laid-out page's section (from 0) and the number its `PAGE`
+    /// field shows, as a number: what a print range's `p2s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        (1..=self.page_count())
+            .map(|page| {
+                let section = self.section_index_for_page(page);
+                (section, self.page_number_value(page))
+            })
+            .collect()
+    }
+
+    fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
         let numbering = self
             .section_page_numbering
             .get(section)
