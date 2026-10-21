@@ -374,6 +374,10 @@ impl CanvasRenderHost for SkiaRenderHost {
         self.painter().set_font(font_descriptor);
     }
 
+    fn supports_deferred_painting(&self) -> bool {
+        true
+    }
+
     fn draw_image_data_uri(
         &self,
         data_uri: &str,
