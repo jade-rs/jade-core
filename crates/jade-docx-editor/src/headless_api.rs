@@ -59,6 +59,9 @@ use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, Special
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
 use crate::commands::set_run_format::SetRunFormatCommand;
+use crate::commands::set_typography::{
+    SetJapaneseTypographyCommand, SetParagraphTypographyCommand,
+};
 use crate::commands::set_watermark::SetWatermarkCommand;
 use crate::commands::snapshot_edit::{EditScope, PackageSnapshotCommand, SnapshotEditCommand};
 use crate::commands::split_table::SplitTableCommand;
@@ -2765,6 +2768,32 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(SetRunFormatCommand::new(range, (**format).clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphTypography {
+                start_paragraph,
+                end_paragraph,
+                typography,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphTypographyCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            typography.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetJapaneseTypography { typography } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetJapaneseTypographyCommand::new(typography.clone())),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;

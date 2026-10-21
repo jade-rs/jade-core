@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod run_format;
+mod typography;
 pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
+pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
@@ -1278,6 +1280,16 @@ pub enum HeadlessCommand {
         end_offset: usize,
         format: Box<HeadlessRunFormat>,
     },
+    /// The 段落 dialog's 体裁 tab on a paragraph range.
+    SetParagraphTypography {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        typography: HeadlessParagraphTypography,
+    },
+    /// The document's 文字体裁: kinsoku level and sets, and compression.
+    SetJapaneseTypography {
+        typography: HeadlessJapaneseTypography,
+    },
     StartChangeTracking {
         author: Option<String>,
         initials: Option<String>,
@@ -2057,6 +2069,8 @@ impl HeadlessCommand {
             HeadlessCommand::SetFontColor { .. } => "set_font_color",
             HeadlessCommand::SetHighlightColor { .. } => "set_highlight_color",
             HeadlessCommand::SetRunFormat { .. } => "set_run_format",
+            HeadlessCommand::SetParagraphTypography { .. } => "set_paragraph_typography",
+            HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",
