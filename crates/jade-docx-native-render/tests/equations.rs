@@ -3,6 +3,7 @@
 //! fields drawn from their switches, and an equation edited in place.
 mod common;
 
+use jade_docx_headless_api::HeadlessCommand;
 use std::io::Write;
 
 const M: &str = r#"xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math""#;
@@ -72,6 +73,48 @@ fn an_inline_equation_is_an_object_in_its_line_and_typing_after_it_works() {
     let saved = document.export_docx().unwrap();
     let reopened = common::open_bytes(&saved);
     assert_eq!(reopened.renderer().math_zones().len(), 1);
+}
+
+#[test]
+fn display_and_inline_equations_are_replaced_through_the_command() {
+    let body = format!(
+        r#"<w:p><w:r><w:t>x</w:t></w:r>{FRACTION}</w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>y=1</m:t></m:r></m:oMath></m:oMathPara></w:p>"#
+    );
+    let mut document = common::open_bytes(&docx(&body));
+    let zones = document.renderer().math_zones().to_vec();
+    let display = zones.iter().find(|z| z.display).unwrap();
+    let inline = zones.iter().find(|z| !z.display).unwrap();
+    let omml =
+        format!(r#"<m:oMathPara {M}><m:oMath><m:r><m:t>z=2</m:t></m:r></m:oMath></m:oMathPara>"#);
+    document
+        .apply_command(
+            HeadlessCommand::ReplaceEquation {
+                paragraph: display.paragraph,
+                run_index: None,
+                omml,
+            },
+            false,
+        )
+        .unwrap();
+    let omml = format!(r#"<m:oMath {M}><m:r><m:t>w</m:t></m:r></m:oMath>"#);
+    document
+        .apply_command(
+            HeadlessCommand::ReplaceEquation {
+                paragraph: inline.paragraph,
+                run_index: inline.run_index,
+                omml,
+            },
+            false,
+        )
+        .unwrap();
+    let texts: Vec<String> = document
+        .renderer()
+        .math_zones()
+        .iter()
+        .map(|z| z.plan.text.clone())
+        .collect();
+    assert!(texts.iter().any(|t| t == "𝑧=2"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "𝑤"), "{texts:?}");
 }
 
 #[test]

@@ -2617,6 +2617,19 @@ const COMMANDS: &[Variant] = &[
             ),
         ],
     ),
+    variant(
+        "replace_equation",
+        "Replace an existing equation's OMML in place: a display equation (its paragraph, an m:oMathPara root) or an inline one (the math run of a paragraph, an m:oMath root).",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based paragraph index."),
+            opt(
+                "run_index",
+                ArgType::Index,
+                "The inline equation's run in the paragraph; omit for a display equation.",
+            ),
+            req("omml", ArgType::Text, "The equation's new m:oMath or m:oMathPara XML."),
+        ],
+    ),
     span(
         "insert_blank_page",
         "Replace the current text selection with a blank Word page bounded by page breaks.",

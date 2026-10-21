@@ -32,6 +32,7 @@ use crate::commands::insert_table::InsertTableCommand;
 use crate::commands::insert_text::InsertTextCommand;
 use crate::commands::insert_toc::{InsertTableOfContentsCommand, UpdateTableOfContentsCommand};
 use crate::commands::merge_table_cells::{MergeTableCellsCommand, TableCellSelection};
+use crate::commands::replace_equation::ReplaceEquationCommand;
 use crate::commands::resize_table_column::ResizeTableColumnCommand;
 use crate::commands::resize_table_row::ResizeTableRowCommand;
 use crate::commands::set_bold::SetBoldCommand;
@@ -3650,6 +3651,23 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(InsertEquationCommand::new(range, omml.clone(), placement)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::ReplaceEquation {
+                paragraph,
+                run_index,
+                omml,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(ReplaceEquationCommand::new(
+                            *paragraph,
+                            *run_index,
+                            omml.clone(),
+                        )),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
