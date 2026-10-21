@@ -233,6 +233,8 @@ pub enum ContentControlAction {
     SetFormCheckBox { field: usize, checked: bool },
     /// A form drop-down's entry.
     ChooseFormEntry { field: usize, entry: usize },
+    /// A form text box's result: what is typed over it.
+    SetFormText { field: usize, text: String },
     /// A form field's オプション: its bookmark, default, length, entries.
     SetFormFieldOptions {
         field: usize,
@@ -287,6 +289,7 @@ impl ContentControlAction {
             ContentControlAction::InsertFormField { .. } => "insert_form_field",
             ContentControlAction::SetFormCheckBox { .. } => "set_form_check_box",
             ContentControlAction::ChooseFormEntry { .. } => "choose_form_entry",
+            ContentControlAction::SetFormText { .. } => "set_form_text",
             ContentControlAction::SetFormFieldOptions { .. } => "set_form_field_options",
             ContentControlAction::ProtectForms(_) => "protect_forms",
             ContentControlAction::DesignMode(_) => "forms_design_mode",
@@ -774,6 +777,24 @@ impl WordDocument {
                 }
                 set_form_result(xml, *field, &text);
                 Ok(CaretAfter::Keep)
+            }
+            ContentControlAction::SetFormText { field, text } => {
+                let fields = self.legacy_form_fields();
+                let current = fields.get(*field).ok_or("the form field is not there")?;
+                if current.kind != FormFieldKind::Text {
+                    return Err("the form field is not a text box".to_string());
+                }
+                let text = if current.max_length > 0 {
+                    text.chars().take(current.max_length).collect::<String>()
+                } else {
+                    text.clone()
+                };
+                let start = self.rendered_to_model_text_position(current.result_start);
+                set_form_result(xml, *field, &text);
+                Ok(CaretAfter::At(TextPosition::new(
+                    start.paragraph,
+                    start.offset + text.len(),
+                )))
             }
             ContentControlAction::SetFormFieldOptions { field, options } => {
                 let fields = self.legacy_form_fields();
@@ -1277,7 +1298,59 @@ fn split_at(
         // An empty paragraph: after its properties and anything else.
         Mark::End(runs.paragraph_id)
     };
-    Ok(lift(xml, mark, runs.paragraph_id))
+    let mark = lift(xml, mark, runs.paragraph_id);
+    Ok(out_of_field_result(xml, mark))
+}
+
+/// The field character a run holds, if it is one: `begin`, `separate` or
+/// `end`.
+fn field_char(node: &XmlNode) -> Option<&str> {
+    let XmlNode::Element(run) = node else {
+        return None;
+    };
+    if run.name != "w:r" {
+        return None;
+    }
+    child(Some(run), "w:fldChar").and_then(|element| attribute(element, "w:fldCharType"))
+}
+
+/// A mark at either end of a field's result moves out of the field, so
+/// what is put there goes beside the field rather than into its result.
+fn out_of_field_result(xml: &DocxXmlDocument, mark: Mark) -> Mark {
+    let Some((parent, index)) = mark.location(xml) else {
+        return mark;
+    };
+    let Some(element) = xml.element(parent) else {
+        return mark;
+    };
+    let children = &element.children;
+    let id_of = |node: &XmlNode| match node {
+        XmlNode::Element(element) => Some(element.id),
+        _ => None,
+    };
+    // At the end of a result: after the field's end.
+    if children.get(index).and_then(field_char) == Some("end") {
+        if let Some(id) = children.get(index).and_then(id_of) {
+            return Mark::After(id);
+        }
+    }
+    // At the start of a result: before the field's begin.
+    if index > 0 && children.get(index - 1).and_then(field_char) == Some("separate") {
+        let mut depth = 0usize;
+        for at in (0..index - 1).rev() {
+            match children.get(at).and_then(field_char) {
+                Some("end") => depth += 1,
+                Some("begin") if depth == 0 => {
+                    if let Some(id) = children.get(at).and_then(id_of) {
+                        return Mark::Before(id);
+                    }
+                }
+                Some("begin") => depth -= 1,
+                _ => {}
+            }
+        }
+    }
+    mark
 }
 
 /// A mark at the edge of a revision, a smart tag or a content control
