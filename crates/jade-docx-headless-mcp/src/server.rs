@@ -1342,6 +1342,8 @@ enum ArgType {
     DocumentTheme,
     /// `[{"row": …, "column": …, "column_span": …}, …]`
     CellList,
+    /// `[{"column": …, "kind": "text"|"number"|"date", "descending": …}, …]`
+    SortKeyList,
     /// Free-form JSON object.
     Object,
     /// One table border edge: `{ style, width, color }`, or null.
@@ -1472,6 +1474,19 @@ impl ArgType {
                         "column_span": { "type": "integer", "minimum": 1, "description": "How many grid columns the cell occupies (1 when it is not merged)." }
                     },
                     "required": ["row", "column", "column_span"],
+                    "additionalProperties": false
+                }
+            }),
+            ArgType::SortKeyList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "column": { "type": "integer", "minimum": 0, "description": "Zero-based logical-grid column the key reads." },
+                        "kind": { "type": "string", "enum": ["text", "number", "date"], "description": "How the column compares (Word's 種類). Defaults to text." },
+                        "descending": { "type": "boolean", "description": "Sort this key from largest to smallest. Defaults to false." }
+                    },
+                    "required": ["column"],
                     "additionalProperties": false
                 }
             }),
@@ -2990,7 +3005,7 @@ const COMMANDS: &[Variant] = &[
     ),
     variant(
         "set_table_look",
-        "Toggle the first-row and banded-row conditional regions stored in Word's table-look properties.",
+        "Toggle the conditional regions (header row, total row, first/last column, row and column bands) stored in Word's table-look properties.",
         &[
             req(
                 "table_order_index",
@@ -3006,6 +3021,26 @@ const COMMANDS: &[Variant] = &[
                 "banded_rows",
                 ArgType::Flag,
                 "Whether the named table style's alternating row bands are active.",
+            ),
+            opt(
+                "last_row",
+                ArgType::Flag,
+                "Whether the named table style's last-row (total row) formatting is active.",
+            ),
+            opt(
+                "first_column",
+                ArgType::Flag,
+                "Whether the named table style's first-column formatting is active.",
+            ),
+            opt(
+                "last_column",
+                ArgType::Flag,
+                "Whether the named table style's last-column formatting is active.",
+            ),
+            opt(
+                "banded_columns",
+                ArgType::Flag,
+                "Whether the named table style's alternating column bands are active.",
             ),
         ],
     ),
@@ -3433,6 +3468,96 @@ const COMMANDS: &[Variant] = &[
                 "Logical-grid positions currently held by the merged master cells.",
             ),
         ],
+    ),
+    variant(
+        "set_table_cell_spacing",
+        "Set the space between cells (Word's Table Properties ▸ Options ▸ cell spacing), or remove it.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            opt("spacing", ArgType::NullableNumber, "Spacing in points as stored in w:tblCellSpacing; null removes it."),
+        ],
+    ),
+    variant(
+        "set_table_cell_text_direction",
+        "Set the text direction of one cell (Word's Text Direction), e.g. tbRl for vertical Japanese.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("row", ArgType::Index, "Zero-based row index."),
+            req("column", ArgType::Index, "Zero-based logical-grid column index."),
+            opt(
+                "direction",
+                ArgType::NullableChoice(&["lrTb", "tbRl", "btLr", "lrTbV", "tbRlV", "btLrV"]),
+                "The w:textDirection value; null restores horizontal text.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_indent",
+        "Set the table's indent from the left margin (w:tblInd).",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("indent", ArgType::Number, "Indent in points."),
+        ],
+    ),
+    variant(
+        "set_table_position",
+        "Float the table and position it (Word's Table Positioning): alignment or offset on each axis, anchors, distance from surrounding text, overlap.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            opt("horizontal_align", ArgType::NullableChoice(&["left", "center", "right", "inside", "outside"]), "Horizontal alignment; wins over the offset."),
+            opt("horizontal_offset", ArgType::NullableNumber, "Horizontal offset from the anchor in points."),
+            req("horizontal_anchor", ArgType::Choice(&["margin", "page", "text"]), "What the horizontal position is measured from."),
+            opt("vertical_align", ArgType::NullableChoice(&["top", "center", "bottom", "inside", "outside"]), "Vertical alignment; wins over the offset."),
+            opt("vertical_offset", ArgType::NullableNumber, "Vertical offset from the anchor in points."),
+            req("vertical_anchor", ArgType::Choice(&["margin", "page", "text"]), "What the vertical position is measured from; text moves the table with its paragraph."),
+            opt("distance_top", ArgType::Number, "Distance from the text above, in points."),
+            opt("distance_bottom", ArgType::Number, "Distance from the text below, in points."),
+            opt("distance_left", ArgType::Number, "Distance from the text on the left, in points."),
+            opt("distance_right", ArgType::Number, "Distance from the text on the right, in points."),
+            opt("allow_overlap", ArgType::Flag, "Whether the table may overlap other floating tables. Defaults to true."),
+        ],
+    ),
+    variant(
+        "convert_text_to_table",
+        "Turn paragraphs into a table (Word's Convert Text to Table), splitting each at a separator.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph to convert."),
+            req("end_paragraph", ArgType::Index, "Last paragraph to convert (inclusive)."),
+            req("separator", ArgType::Text, "tab, comma, paragraph (one paragraph per cell), or one other character."),
+            opt("columns", ArgType::Index, "Number of columns; defaults to the widest row."),
+        ],
+    ),
+    variant(
+        "convert_table_to_text",
+        "Turn a table into paragraphs (Word's Convert to Text), one per row with the cells joined by a separator.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("separator", ArgType::Text, "tab, comma, paragraph (one paragraph per cell), or one other character."),
+        ],
+    ),
+    variant(
+        "sort_table",
+        "Sort a table's rows by one or more columns (Word's Sort), keeping header rows in place.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("keys", ArgType::SortKeyList, "Sort keys, most significant first."),
+            opt("header_rows", ArgType::Index, "How many leading rows are headers and stay put."),
+        ],
+    ),
+    variant(
+        "insert_table_formula",
+        "Insert a formula field into a table cell (Word's Formula, e.g. =SUM(ABOVE)), with its result computed.",
+        &[
+            req("paragraph", ArgType::Index, "Cell paragraph to insert into."),
+            req("offset", ArgType::Index, "UTF-8 byte offset in that paragraph."),
+            req("formula", ArgType::Text, "The expression, with or without the leading =."),
+            opt("number_format", ArgType::NullableText, "Word's numeric picture, e.g. #,##0 or 0.00."),
+        ],
+    ),
+    variant(
+        "update_table_formulas",
+        "Recompute every formula field in the document's tables (Word's Update Field).",
+        &[],
     ),
     // -- table of contents --------------------------------------------------
     variant(
@@ -5608,6 +5733,7 @@ mod tests {
                 "accent6": "70AD47"
             }),
             ArgType::CellList => json!([{ "row": 0, "column": 0, "column_span": 1 }]),
+            ArgType::SortKeyList => json!([{ "column": 0, "kind": "number", "descending": true }]),
             ArgType::BorderEdge => json!({ "style": "single", "width": 0.5, "color": "#000000" }),
             ArgType::Object
             | ArgType::CommandList

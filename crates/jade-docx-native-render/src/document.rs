@@ -692,6 +692,22 @@ impl NativeDocument {
             .map(|_| ())
     }
 
+    /// Selects whole cells, as Word does when a drag crosses from one cell
+    /// into another or a row, a column or the table is selected: the
+    /// rectangle the two cells span, by their ids in the last paint's cell
+    /// registry. The text range runs from the first cell's start to the last
+    /// one's end, which is what commands act on; the highlight is the cells.
+    pub fn select_cells(&mut self, anchor_cell: usize, focus_cell: usize) -> Result<(), String> {
+        let range = self
+            .renderer
+            .cell_selection_range(anchor_cell, focus_cell)
+            .ok_or_else(|| "the cells are not in one table".to_string())?;
+        self.selection = Some(range);
+        self.renderer.set_selection_range(Some(range));
+        self.renderer.set_cell_selection(anchor_cell, focus_cell);
+        self.repaint_all().map(|_| ())
+    }
+
     /// Sets the text of a header or footer paragraph.
     ///
     /// Headers and footers are their own parts, addressed by paragraph within

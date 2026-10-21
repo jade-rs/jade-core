@@ -692,6 +692,12 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/table_tools.rs"]
+mod table_tools;
+pub use table_tools::{
+    TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
+};
+
 /// A border change. Every edge is optional: the ones left out keep whatever
 /// they had, so switching off the inside lines does not disturb the frame.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -20650,6 +20656,21 @@ impl WordDocument {
         table_order_index: usize,
         style_id: Option<&str>,
     ) -> Result<(), String> {
+        // Word adds a built-in style's definition the first time it is used.
+        let builtin;
+        let style_id = match style_id {
+            Some(requested)
+                if self
+                    .styles_part
+                    .as_ref()
+                    .and_then(|styles| styles.resolve_table_style_id(requested))
+                    .is_none() =>
+            {
+                builtin = self.ensure_builtin_table_style(requested);
+                builtin.as_deref().or(Some(requested))
+            }
+            other => other,
+        };
         let resolved = match style_id {
             Some(requested) => {
                 let styles = self
@@ -20705,7 +20726,24 @@ impl WordDocument {
         first_row: Option<bool>,
         banded_rows: Option<bool>,
     ) -> Result<(), String> {
-        if first_row.is_none() && banded_rows.is_none() {
+        self.set_table_look_options(
+            table_order_index,
+            TableLookUpdate {
+                first_row,
+                banded_rows,
+                ..TableLookUpdate::default()
+            },
+        )
+    }
+
+    /// Word's 表スタイルのオプション: each switch that is `Some` is set, the
+    /// others keep their effective value.
+    pub fn set_table_look_options(
+        &mut self,
+        table_order_index: usize,
+        update: TableLookUpdate,
+    ) -> Result<(), String> {
+        if update == TableLookUpdate::default() {
             return Err("set_table_look needs at least one flag".to_string());
         }
         let (table_id, look) = {
@@ -20715,11 +20753,23 @@ impl WordDocument {
             // Start from the effective switches, which already include Word's
             // 0x04A0 default for an omitted `w:tblLook`.
             let mut look = crate::document::TableLook::from_mask(table.look.effective_mask());
-            if let Some(enabled) = first_row {
+            if let Some(enabled) = update.first_row {
                 look.first_row = Some(enabled);
             }
-            if let Some(enabled) = banded_rows {
+            if let Some(enabled) = update.last_row {
+                look.last_row = Some(enabled);
+            }
+            if let Some(enabled) = update.first_column {
+                look.first_column = Some(enabled);
+            }
+            if let Some(enabled) = update.last_column {
+                look.last_column = Some(enabled);
+            }
+            if let Some(enabled) = update.banded_rows {
                 look.no_h_band = Some(!enabled);
+            }
+            if let Some(enabled) = update.banded_columns {
+                look.no_v_band = Some(!enabled);
             }
             table.look = look;
             table.class_name = Some(format!("{:04X}", look.effective_mask()));
@@ -34797,6 +34847,10 @@ impl WordDocument {
                 if instruction.trim().eq_ignore_ascii_case("FILENAME") =>
             {
                 " FILENAME ".to_string()
+            }
+            // A table formula (計算式): written as it was given.
+            RunFieldKind::Unsupported { instruction } if instruction.trim().starts_with('=') => {
+                format!(" {} ", instruction.trim())
             }
             RunFieldKind::Ref {
                 name, hyperlink, ..

@@ -3741,9 +3741,20 @@ pub fn apply_headless_commands_with_executor_to_document(
                 table_order_index,
                 first_row,
                 banded_rows,
+                last_row,
+                first_column,
+                last_column,
+                banded_columns,
             } => {
-                let (table_order_index, first_row, banded_rows) =
-                    (*table_order_index, *first_row, *banded_rows);
+                let table_order_index = *table_order_index;
+                let update = crate::word_document::TableLookUpdate {
+                    first_row: *first_row,
+                    last_row: *last_row,
+                    first_column: *first_column,
+                    last_column: *last_column,
+                    banded_rows: *banded_rows,
+                    banded_columns: *banded_columns,
+                };
                 execute_snapshot_edit(
                     word_doc,
                     command_executor,
@@ -3751,7 +3762,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     index,
                     "set_table_look",
                     EditScope::Document,
-                    move |doc| doc.set_table_look(table_order_index, first_row, banded_rows),
+                    move |doc| doc.set_table_look_options(table_order_index, update),
                 )?;
             }
             HeadlessCommand::SetTableBorders {
@@ -4317,6 +4328,207 @@ pub fn apply_headless_commands_with_executor_to_document(
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetTableCellSpacing {
+                table_order_index,
+                spacing,
+            } => {
+                let (table_order_index, spacing) = (*table_order_index, *spacing);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_spacing",
+                    EditScope::Document,
+                    move |doc| doc.set_table_cell_spacing(table_order_index, spacing),
+                )?;
+            }
+            HeadlessCommand::SetTableCellTextDirection {
+                table_order_index,
+                row,
+                column,
+                direction,
+            } => {
+                let (table_order_index, row, column) = (*table_order_index, *row, *column);
+                let direction = direction.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_text_direction",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.set_table_cell_text_direction(
+                            table_order_index,
+                            row,
+                            column,
+                            direction.as_deref(),
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::SetTableIndent {
+                table_order_index,
+                indent,
+            } => {
+                let (table_order_index, indent) = (*table_order_index, *indent);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_indent",
+                    EditScope::Document,
+                    move |doc| doc.set_table_indent(table_order_index, indent),
+                )?;
+            }
+            HeadlessCommand::SetTablePosition {
+                table_order_index,
+                horizontal_align,
+                horizontal_offset,
+                horizontal_anchor,
+                vertical_align,
+                vertical_offset,
+                vertical_anchor,
+                distance_top,
+                distance_bottom,
+                distance_left,
+                distance_right,
+                allow_overlap,
+            } => {
+                let table_order_index = *table_order_index;
+                let spec = crate::word_document::TablePositionSpec {
+                    horizontal_align: horizontal_align.clone(),
+                    horizontal_offset: *horizontal_offset,
+                    horizontal_anchor: horizontal_anchor.clone(),
+                    vertical_align: vertical_align.clone(),
+                    vertical_offset: *vertical_offset,
+                    vertical_anchor: vertical_anchor.clone(),
+                    distance_top: *distance_top,
+                    distance_bottom: *distance_bottom,
+                    distance_left: *distance_left,
+                    distance_right: *distance_right,
+                    allow_overlap: *allow_overlap,
+                };
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_position",
+                    EditScope::Document,
+                    move |doc| doc.set_table_position(table_order_index, &spec),
+                )?;
+            }
+            HeadlessCommand::ConvertTextToTable {
+                start_paragraph,
+                end_paragraph,
+                separator,
+                columns,
+            } => {
+                let (start, end, columns) = (*start_paragraph, *end_paragraph, *columns);
+                let separator = separator.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "convert_text_to_table",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.convert_text_to_table(start, end, &separator, columns)
+                            .map(|_| ())
+                    },
+                )?;
+            }
+            HeadlessCommand::ConvertTableToText {
+                table_order_index,
+                separator,
+            } => {
+                let table_order_index = *table_order_index;
+                let separator = separator.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "convert_table_to_text",
+                    EditScope::Document,
+                    move |doc| doc.convert_table_to_text(table_order_index, &separator),
+                )?;
+            }
+            HeadlessCommand::SortTable {
+                table_order_index,
+                keys,
+                header_rows,
+            } => {
+                let (table_order_index, header_rows) = (*table_order_index, *header_rows);
+                let keys: Vec<crate::word_document::TableSortKey> = keys
+                    .iter()
+                    .map(|key| crate::word_document::TableSortKey {
+                        column: key.column,
+                        kind: match key.kind {
+                            jade_docx_headless_api::HeadlessTableSortKind::Text => {
+                                crate::word_document::TableSortKind::Text
+                            }
+                            jade_docx_headless_api::HeadlessTableSortKind::Number => {
+                                crate::word_document::TableSortKind::Number
+                            }
+                            jade_docx_headless_api::HeadlessTableSortKind::Date => {
+                                crate::word_document::TableSortKind::Date
+                            }
+                        },
+                        descending: key.descending,
+                    })
+                    .collect();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "sort_table",
+                    EditScope::Document,
+                    move |doc| doc.sort_table(table_order_index, &keys, header_rows),
+                )?;
+            }
+            HeadlessCommand::InsertTableFormula {
+                paragraph,
+                offset,
+                formula,
+                number_format,
+            } => {
+                let (paragraph, offset) = (*paragraph, *offset);
+                validate_text_offset(word_doc, index, paragraph, offset)?;
+                let (formula, number_format) = (formula.clone(), number_format.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "insert_table_formula",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.insert_table_formula(
+                            paragraph,
+                            offset,
+                            &formula,
+                            number_format.as_deref(),
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::UpdateTableFormulas => {
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "update_table_formulas",
+                    EditScope::Document,
+                    move |doc| doc.update_table_formulas().map(|_| ()),
+                )?;
             }
         }
     }
@@ -9695,6 +9907,10 @@ mod tests {
                     table_order_index: 0,
                     first_row: None,
                     banded_rows: Some(false),
+                    last_row: None,
+                    first_column: None,
+                    last_column: None,
+                    banded_columns: None,
                 }],
             },
         )
