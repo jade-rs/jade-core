@@ -401,6 +401,138 @@ fn is_theme_color_slot(name: &[u8]) -> bool {
     )
 }
 
+std::thread_local! {
+    /// The colour scheme of the document being read, while one is: text
+    /// that names a theme colour (`w:color w:themeColor`) takes its colour
+    /// from it, as Word draws it, rather than from the cached `w:val`.
+    static READING_COLORS: std::cell::RefCell<Option<HashMap<String, String>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// While alive, run colours that name a theme slot resolve against
+/// `theme`'s colour scheme (see [`text_theme_color`]). Dropping it restores
+/// whatever scope was there before.
+pub struct ThemeColorScope {
+    previous: Option<HashMap<String, String>>,
+}
+
+impl ThemeColorScope {
+    pub fn enter(theme: Option<&ThemePart>) -> Self {
+        let colors = theme.map(|theme| theme.colors.clone());
+        let previous = READING_COLORS.with(|cell| cell.replace(colors));
+        ThemeColorScope { previous }
+    }
+}
+
+impl Drop for ThemeColorScope {
+    fn drop(&mut self) {
+        let previous = self.previous.take();
+        READING_COLORS.with(|cell| *cell.borrow_mut() = previous);
+    }
+}
+
+/// `w:color`'s theme reference (ECMA-376 Part 1 §17.3.2.6) in the colour
+/// scheme being read: `themeColor` names the slot (`accent1`, `text1`, …,
+/// mapped as Word's default `w:clrSchemeMapping` does), `themeTint` and
+/// `themeShade` (hex bytes) lighten and darken it in HSL, as Word does.
+/// `None` outside a [`ThemeColorScope`] or for an unknown slot.
+pub fn text_theme_color(
+    theme_color: &str,
+    tint: Option<&str>,
+    shade: Option<&str>,
+) -> Option<String> {
+    let slot = match theme_color {
+        "dark1" | "text1" => "dk1",
+        "light1" | "background1" => "lt1",
+        "dark2" | "text2" => "dk2",
+        "light2" | "background2" => "lt2",
+        "hyperlink" => "hlink",
+        "followedHyperlink" => "folHlink",
+        other if other.starts_with("accent") => other,
+        _ => return None,
+    };
+    let base = READING_COLORS.with(|cell| {
+        cell.borrow()
+            .as_ref()
+            .and_then(|colors| colors.get(slot).cloned())
+    })?;
+    let hex = base.trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).ok();
+    let (r, g, b) = (channel(0)?, channel(2)?, channel(4)?);
+    let fraction = |value: Option<&str>| {
+        value
+            .and_then(|value| u8::from_str_radix(value.trim(), 16).ok())
+            .map(|value| value as f64 / 255.0)
+    };
+    let (h, s, mut l) = rgb_to_hsl(r, g, b);
+    if let Some(tint) = fraction(tint) {
+        l = l * tint + (1.0 - tint);
+    }
+    if let Some(shade) = fraction(shade) {
+        l *= shade;
+    }
+    let (r, g, b) = hsl_to_rgb(h, s, l.clamp(0.0, 1.0));
+    Some(format!("#{r:02X}{g:02X}{b:02X}"))
+}
+
+fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
+    let (r, g, b) = (r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0);
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let l = (max + min) / 2.0;
+    if (max - min).abs() < f64::EPSILON {
+        return (0.0, 0.0, l);
+    }
+    let d = max - min;
+    let s = if l > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
+    let h = if max == r {
+        (g - b) / d + if g < b { 6.0 } else { 0.0 }
+    } else if max == g {
+        (b - r) / d + 2.0
+    } else {
+        (r - g) / d + 4.0
+    } / 6.0;
+    (h, s, l)
+}
+
+fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (u8, u8, u8) {
+    let to = |value: f64| (value * 255.0).round().clamp(0.0, 255.0) as u8;
+    if s <= f64::EPSILON {
+        return (to(l), to(l), to(l));
+    }
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+    let hue = |mut t: f64| {
+        if t < 0.0 {
+            t += 1.0;
+        }
+        if t > 1.0 {
+            t -= 1.0;
+        }
+        if t < 1.0 / 6.0 {
+            p + (q - p) * 6.0 * t
+        } else if t < 0.5 {
+            q
+        } else if t < 2.0 / 3.0 {
+            p + (q - p) * (2.0 / 3.0 - t) * 6.0
+        } else {
+            p
+        }
+    };
+    (to(hue(h + 1.0 / 3.0)), to(hue(h)), to(hue(h - 1.0 / 3.0)))
+}
+
 fn normalize_hex_color(value: String) -> Option<String> {
     let value = value.trim().trim_start_matches('#');
     (value.len() == 6 && value.bytes().all(|byte| byte.is_ascii_hexdigit()))
@@ -410,6 +542,31 @@ fn normalize_hex_color(value: String) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_theme_colours_follow_the_scheme_being_read() {
+        let mut theme = ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        theme.colors.insert("dk1".into(), "#000000".into());
+        assert_eq!(text_theme_color("accent1", None, None), None);
+        {
+            let _scope = ThemeColorScope::enter(Some(&theme));
+            assert_eq!(
+                text_theme_color("accent1", None, None).as_deref(),
+                Some("#4472C4")
+            );
+            // Word's heading 1: accent1 at shade BF.
+            assert_eq!(
+                text_theme_color("accent1", None, Some("BF")).as_deref(),
+                Some("#2F5496")
+            );
+            assert_eq!(
+                text_theme_color("text1", Some("80"), None).as_deref(),
+                Some("#7F7F7F")
+            );
+        }
+        assert_eq!(text_theme_color("accent1", None, None), None);
+    }
 
     #[test]
     fn inherited_theme_faces_resolve_once_without_replacing_explicit_faces() {

@@ -1381,7 +1381,17 @@ impl StylesPart {
                 }
             }
             b"w:color" => {
-                let color = attr_value(element, b"w:val").and_then(normalize_ooxml_color);
+                // A theme colour in the scheme being read (see
+                // `theme::ThemeColorScope`), else the cached value.
+                let color = attr_value(element, b"w:themeColor")
+                    .and_then(|theme| {
+                        crate::theme::text_theme_color(
+                            &theme,
+                            attr_value(element, b"w:themeTint").as_deref(),
+                            attr_value(element, b"w:themeShade").as_deref(),
+                        )
+                    })
+                    .or_else(|| attr_value(element, b"w:val").and_then(normalize_ooxml_color));
                 apply_to_active_run_properties(self, current_style, state, |props| {
                     props.color = color.map(Into::into);
                 });

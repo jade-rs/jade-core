@@ -2205,6 +2205,26 @@ impl WordDocument {
 
         // Parse the document XML if loaded
         if let Some(doc_part) = document.document_part.clone() {
+            // Text that names a theme colour takes it from the theme, as Word
+            // draws it: read the theme first and keep its colours in scope
+            // while the stories and the styles are read.
+            let reading_theme = match doc_part
+                .relationships
+                .iter()
+                .find(|rel| rel.r#type == RelationshipTypes::Theme.as_str())
+            {
+                Some(rel) => {
+                    let target_path = Self::resolve_target_path(&doc_part.path, &rel.target);
+                    document.load_part(&target_path)?;
+                    document
+                        .parts
+                        .get(&target_path)
+                        .and_then(|part| ThemePart::from_xml(&part.content).ok())
+                }
+                None => None,
+            };
+            let _theme_colors =
+                jade_docx_reader::theme::ThemeColorScope::enter(reading_theme.as_ref());
             let parser = DocumentParser::new();
             // When the raw tree is needed, one tokenization feeds both the
             // layout model and the lossless tree patched on save. Initial
