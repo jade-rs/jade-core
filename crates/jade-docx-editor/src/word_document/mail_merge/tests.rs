@@ -288,7 +288,7 @@ fn checks_a_merge_for_missing_columns() {
         field("MERGEFIELD 姓", "«姓»"),
         field("MERGEFIELD 部署", "«部署»")
     );
-    let mut document = open(&body, "");
+    let document = open(&body, "");
     let problems = document.merge_problems(&MergeRequest::all(data())).unwrap();
     assert_eq!(
         problems,
