@@ -36,6 +36,7 @@ pub(super) struct DrawingExtras {
     pub text_warp: Option<TextWarp>,
     pub link: Option<TextBoxLink>,
     pub wordart: Option<WordArtText>,
+    pub ink_relationship_id: Option<String>,
 
     in_blip: bool,
     in_effect_list: bool,
@@ -185,6 +186,9 @@ impl DrawingExtras {
             _ if name.starts_with(b"a14:artistic") => {
                 self.corrections.artistic_effect =
                     Some(String::from_utf8_lossy(&name[4..]).into_owned());
+            }
+            b"w14:contentPart" => {
+                self.ink_relationship_id = attribute(element, b"r:id");
             }
             b"asvg:svgBlip" => {
                 self.svg_relationship_id = attribute(element, b"r:embed");
@@ -403,6 +407,7 @@ impl DrawingExtras {
             || self.corrections.original_relationship_id.is_some())
         .then_some(self.corrections);
         format.svg_relationship_id = self.svg_relationship_id;
+        format.ink_relationship_id = self.ink_relationship_id;
         format.reflection = self.reflection;
         format.bevel = self.bevel;
         image.format = (!format.is_empty()).then(|| Box::new(format));

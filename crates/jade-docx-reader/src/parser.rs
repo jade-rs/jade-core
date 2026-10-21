@@ -1739,6 +1739,14 @@ impl DocumentParser {
                                         .unwrap_or(false)
                             });
                         }
+                        b"w:drawing"
+                            if current_run_image.as_ref().is_some_and(|image| {
+                                image.format().ink_relationship_id.is_some()
+                            }) =>
+                        {
+                            // Ink's fallback picture: the choice is read.
+                            Self::consume_element(reader, b"w:drawing")?;
+                        }
                         b"w:drawing" => {
                             if let Some(drawing) = self.parse_drawing(reader)? {
                                 match drawing {
@@ -5663,7 +5671,8 @@ impl DocumentParser {
             image.placeholder_label = Some("SmartArt".to_string());
         }
 
-        if has_embed || has_chart || has_group || has_smartart {
+        let has_ink = extras.ink_relationship_id.is_some();
+        if has_embed || has_chart || has_group || has_smartart || has_ink {
             let mut format = PictureFormat::default();
             if has_embed && !has_chart && !has_group && !has_smartart {
                 // A picture's own outline, effects and shape.

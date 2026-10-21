@@ -7052,6 +7052,19 @@ impl WordDocument {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
                     if let Some(image) = run.image.as_mut() {
+                        // Ink: its InkML part's strokes, which are drawn.
+                        if let Some(id) = image.format().ink_relationship_id.clone() {
+                            if image.format().ink.is_none() {
+                                let ink = rel_map
+                                    .get(id.as_str())
+                                    .map(|rel| Self::resolve_target_path(&doc_part.path, &rel.target))
+                                    .and_then(|path| package.get(&path))
+                                    .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                                    .and_then(crate::ink::parse_inkml);
+                                image.format_mut().ink = ink;
+                            }
+                            continue;
+                        }
                         if image.data_uri.is_some() {
                             continue;
                         }

@@ -219,6 +219,38 @@ impl WordDocument {
             Self::assign_unassigned_ids(raw, &mut drawing);
             let run = raw.element_mut(run_id).ok_or("the object's run is missing")?;
             match drawing_slot(run).ok_or("the object has no drawing")? {
+                DrawingSlot::Direct(index)
+                    if crate::drawing_xml::descendant(&drawing, "w14:contentPart").is_some() =>
+                {
+                    // Ink is a Word 2010 element: Word writes it as the
+                    // choice of an `mc:AlternateContent` requiring `wpi`.
+                    let attribute = |name: &str, value: &str| XmlAttribute {
+                        name: name.to_string(),
+                        value: value.to_string(),
+                    };
+                    let choice = new_element_with(
+                        "mc:Choice",
+                        vec![attribute("Requires", "wpi")],
+                        vec![drawing],
+                    );
+                    let mut alternate = new_element_with(
+                        "mc:AlternateContent",
+                        vec![
+                            attribute(
+                                "xmlns:mc",
+                                "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                            ),
+                            attribute(
+                                "xmlns:wpi",
+                                "http://schemas.microsoft.com/office/word/2010/wordprocessingInk",
+                            ),
+                        ],
+                        vec![choice],
+                    );
+                    Self::assign_unassigned_ids(raw, &mut alternate);
+                    let run = raw.element_mut(run_id).ok_or("the object's run is missing")?;
+                    run.children[index] = XmlNode::Element(alternate);
+                }
                 DrawingSlot::Direct(index) => run.children[index] = XmlNode::Element(drawing),
                 DrawingSlot::Choice {
                     alternate,
