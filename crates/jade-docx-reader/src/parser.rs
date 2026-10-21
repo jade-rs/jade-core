@@ -4244,6 +4244,11 @@ impl DocumentParser {
                 Ok(Event::Text(e)) => {
                     writer.write_event(Event::Text(e.to_owned()))?;
                 }
+                // `&lt;` in an equation's `x<0` arrives as a reference of its
+                // own; dropping it loses the character.
+                Ok(Event::GeneralRef(e)) => {
+                    writer.write_event(Event::GeneralRef(e.to_owned()))?;
+                }
                 Ok(Event::CData(e)) => {
                     writer.write_event(Event::CData(e.to_owned()))?;
                 }
@@ -14173,6 +14178,24 @@ mod tests {
         let props = run.properties.as_ref().expect("run properties");
 
         assert_eq!(props.underline, Some(false));
+    }
+
+    #[test]
+    fn equation_text_keeps_escaped_characters() {
+        let body = r#"<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>x&lt;0 &amp; y&gt;1</m:t></m:r></m:oMath></w:p>"#;
+        let document = parse_document_from_body(body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let math = paragraph.runs[0].math.as_ref().expect("math");
+        assert!(
+            math.raw_omml.contains("x&lt;0 &amp; y&gt;1"),
+            "{}",
+            math.raw_omml
+        );
+        let text = &math.elements[0].children[0].children[0];
+        assert_eq!(text.text.as_deref(), Some("x<0 & y>1"));
     }
 
     #[test]

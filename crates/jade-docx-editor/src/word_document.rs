@@ -636,6 +636,9 @@ pub struct ReferenceMarkerSpan {
     pub is_footnote: bool,
 }
 
+/// The rendered length of the object character an inline equation shows as.
+const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
+
 /// Previous page margins (points) captured before a margin edit, for undo.
 #[derive(Debug, Clone)]
 pub struct PageMarginsBackup {
@@ -28342,11 +28345,96 @@ impl WordDocument {
             offset = offset.saturating_sub(consumed);
             rendered += span.rendered_len;
         }
+        // An inline equation is one object character the model does not
+        // hold; an offset past it is that much ahead of the model's.
+        let mut delta = 0isize;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            let start = (model_offset as isize + delta).max(0) as usize;
+            if offset <= start {
+                break;
+            }
+            if offset < start + OBJECT_CHAR_LEN {
+                return TextPosition::new(position.paragraph, model_offset);
+            }
+            delta += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let offset = (offset as isize - delta).max(0) as usize;
         TextPosition::new(position.paragraph, offset)
     }
 
+    /// The inline equations of a body paragraph (math runs, and EQ fields
+    /// the renderer draws as equations) as (model offset, model length):
+    /// each renders as one object character.
+    fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) {
+            return Vec::new();
+        }
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let mut spans = Vec::new();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            let equation = run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+                || run
+                    .field
+                    .as_ref()
+                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind));
+            if equation {
+                spans.push((model_offset, run.text.len()));
+            }
+            model_offset += run.text.len();
+        }
+        spans
+    }
+
+    /// Whether an EQ instruction uses a structure switch (`\f`, `\r`, `\s`,
+    /// `\b`, `\a`, `\l`, `\o`, `\x`, `\i`, `\d`): the renderer lays those
+    /// out as an equation (`jade_docx_layout::math_layout::eq_field`).
+    fn eq_has_structure_switch(instruction: &str) -> bool {
+        let chars: Vec<char> = instruction.chars().collect();
+        chars.windows(3).any(|w| {
+            w[0] == '\\' && "frsbaloxidFRSBALOXID".contains(w[1]) && !w[2].is_ascii_alphabetic()
+        }) || chars.len() >= 2
+            && chars[chars.len() - 2] == '\\'
+            && "frsbaloxidFRSBALOXID".contains(chars[chars.len() - 1])
+    }
+
+    /// An EQ field the renderer lays out as an equation.
+    pub(crate) fn is_eq_equation_field(kind: &crate::document::RunFieldKind) -> bool {
+        use crate::document::RunFieldKind;
+        match kind {
+            RunFieldKind::Unsupported { instruction } => {
+                instruction
+                    .trim_start()
+                    .get(..2)
+                    .is_some_and(|name| name.eq_ignore_ascii_case("EQ"))
+                    && Self::eq_has_structure_switch(instruction)
+            }
+            RunFieldKind::Locked { kind } => Self::is_eq_equation_field(kind),
+            _ => false,
+        }
+    }
+
     pub fn model_to_rendered_text_position(&self, position: TextPosition) -> TextPosition {
-        let mut offset = position.offset + self.rendered_note_marker_len(position.paragraph);
+        let mut objects = 0isize;
+        let mut model = position.offset;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            if model_offset >= position.offset {
+                break;
+            }
+            if position.offset < model_offset + model_len {
+                // Inside an EQ field's saved result: before the equation.
+                model = model_offset;
+                break;
+            }
+            objects += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let mut offset = (model as isize + objects).max(0) as usize
+            + self.rendered_note_marker_len(position.paragraph);
         for span in self.reference_marker_spans(position.paragraph) {
             // A mark at the model offset itself renders before the caret only
             // when the caret follows it, which a model offset cannot say; keep
@@ -36232,6 +36320,7 @@ impl MtefParser<'_> {
                         children: Vec::new(),
                         text: Some(character.to_string()),
                         attributes: BTreeMap::new(),
+                        namespace: None,
                     });
                     if options & 0x02 != 0 {
                         let _ = self.parse_list_at_depth(depth + 1)?;
@@ -36346,6 +36435,7 @@ impl MtefParser<'_> {
                 children,
                 text: None,
                 attributes: BTreeMap::new(),
+                namespace: None,
             })
             .collect();
         Some(MathElement {
@@ -36354,6 +36444,7 @@ impl MtefParser<'_> {
             children,
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         })
     }
 
@@ -47033,6 +47124,7 @@ mod tests {
             children: Vec::new(),
             text: Some("E = mc^2".to_string()),
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let math_node = MathElement {
             kind: MathElementKind::Math,
@@ -47040,6 +47132,7 @@ mod tests {
             children: vec![text_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let root = MathElement {
             kind: MathElementKind::MathParagraph,
@@ -47047,6 +47140,7 @@ mod tests {
             children: vec![math_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
 
         let math_paragraph = MathParagraph {
@@ -53592,7 +53686,8 @@ mod tests {
             &format!(
                 r#"<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:rPr><w:b/><w:lang w:val="fr-FR"/></w:rPr><w:t>CD</w:t></w:r></w:p>"#
             ),
-            vec![insert_text("ABCD".len(), "Z")],
+            // Rendered offsets count the equation as one object character.
+            vec![insert_text("AB\u{fffc}CD".len(), "Z")],
         );
         assert_eq!(
             body,
@@ -53631,7 +53726,8 @@ mod tests {
             (
                 "delete across it",
                 format!("<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:t>CD</w:t></w:r></w:p>"),
-                vec![delete_range(1, 3)],
+                // Rendered offsets: B, the equation's object character, C.
+                vec![delete_range(1, "AB\u{fffc}C".len())],
                 format!("<w:p><w:r><w:t>A</w:t></w:r>{eq}<w:r><w:t>D</w:t></w:r></w:p>"),
             ),
             (
@@ -53639,7 +53735,7 @@ mod tests {
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CD</w:t></w:r></w:p>"#
                 ),
-                vec![insert_text("ABEFCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}EFCD".len(), "Z")],
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CDZ</w:t></w:r></w:p>"#
                 ),
@@ -53649,7 +53745,7 @@ mod tests {
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CD</w:t></w:r></w:p>"
                 ),
-                vec![insert_text("ABCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}CD".len(), "Z")],
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CDZ</w:t></w:r></w:p>"
                 ),

@@ -4,6 +4,7 @@
 //! Font-specific OpenType MATH shaping remains separate work; this plan makes
 //! measurement and painting use one geometry and measures each emitted text once.
 
+pub mod eq_field;
 #[cfg(feature = "opentype-math")]
 pub mod font;
 pub mod styled;
