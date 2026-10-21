@@ -28165,6 +28165,15 @@ impl WordDocument {
         )
     }
 
+    /// Whether surface `index` is a text box's paragraph, which Find
+    /// searches with the main text.
+    pub fn is_text_box_paragraph_surface(&self, index: usize) -> bool {
+        matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::TextBox { .. })
+        )
+    }
+
     /// The zero-width runs an edit inside the paragraph at surface `index`
     /// keeps (see [`ZeroWidthRuns`]): those bound to a `w:r` that holds more
     /// than its properties and an empty `w:t`. Read before the edit's sync,
@@ -28307,7 +28316,7 @@ impl WordDocument {
         })
     }
 
-    pub(crate) fn is_note_paragraph_surface(&self, index: usize) -> bool {
+    pub fn is_note_paragraph_surface(&self, index: usize) -> bool {
         matches!(
             self.paragraph_surfaces.get(index),
             Some(ParagraphSurface::Note { .. })
