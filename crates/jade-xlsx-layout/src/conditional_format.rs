@@ -1,7 +1,8 @@
 //! Evaluate supported conditional rules once through the shared layout path.
 
-use crate::visual_format::{PreparedVisual, ResolvedDataBar};
+use crate::visual_format::{PreparedVisual, VisualOutcome};
 use crate::{ResolvedFill, ResolvedFont};
+pub use jade_xlsx_calc::conditional::FormulaRuleMatches;
 use jade_xlsx_reader::{
     conditional_format::{ConditionalRule, DifferentialBorder, DifferentialStyle},
     Border, CellRange, CellRef, CellValue, Sheet, StyleTable,
@@ -14,6 +15,19 @@ pub struct BlankConditionalRule {
     pub ranges: Vec<CellRange>,
     pub style: DifferentialStyle,
     pub stop_if_true: bool,
+    /// A formula rule holds only at these cells of its ranges (sorted).
+    #[serde(default)]
+    pub cells: Option<Vec<CellRef>>,
+}
+
+impl BlankConditionalRule {
+    fn applies_to(&self, reference: CellRef) -> bool {
+        self.ranges.iter().any(|range| range.contains(reference))
+            && self
+                .cells
+                .as_ref()
+                .is_none_or(|cells| cells.binary_search(&reference).is_ok())
+    }
 }
 
 struct PreparedRule<'a> {
@@ -23,6 +37,10 @@ struct PreparedRule<'a> {
     /// What a rule ranking cells against the rest of its range compares
     /// with: `top10`, `aboveAverage`, `duplicateValues`, `uniqueValues`.
     ranked: Option<Ranked>,
+    /// Where a formula rule holds, once evaluated.
+    formula: Option<FormulaRuleMatches>,
+    /// A formula rule that was evaluated but would not parse.
+    formula_failed: bool,
 }
 
 enum Ranked {
@@ -181,23 +199,51 @@ pub struct ConditionalStyles<'a> {
     styles: &'a StyleTable,
 }
 
+/// Whether a rule is decided by a formula the layout cannot evaluate itself:
+/// `expression`, `timePeriod`, or `cellIs` against a reference.
+pub fn is_formula_rule(rule: &ConditionalRule) -> bool {
+    jade_xlsx_calc::conditional::rule_formula(rule, CellRef::new(0, 0)).is_some()
+}
+
 impl<'a> ConditionalStyles<'a> {
+    /// Rules a formula decides are left undecided.
     pub fn new(sheet: &'a Sheet, styles: &'a StyleTable) -> Self {
+        Self::with_formula_matches(sheet, styles, None)
+    }
+
+    /// With the formula rules evaluated (see
+    /// [`jade_xlsx_calc::conditional::conditional_formula_matches`]).
+    pub fn with_formula_matches(
+        sheet: &'a Sheet,
+        styles: &'a StyleTable,
+        matches: Option<Vec<FormulaRuleMatches>>,
+    ) -> Self {
+        let evaluated = matches.is_some();
+        let mut matches = matches.unwrap_or_default();
         let mut rules: Vec<_> = sheet
             .conditional_formats
             .iter()
-            .flat_map(|format| {
+            .enumerate()
+            .flat_map(|(format_index, format)| {
                 format
                     .rules
                     .iter()
-                    .map(|rule| (format.ranges.as_slice(), rule))
+                    .enumerate()
+                    .map(move |(rule_index, rule)| {
+                        (format.ranges.as_slice(), rule, (format_index, rule_index))
+                    })
             })
             .collect();
-        rules.sort_by_key(|(_, rule)| rule.priority);
+        rules.sort_by_key(|(_, rule, _)| rule.priority);
         let mut samples: Vec<(&[CellRange], Vec<f64>)> = Vec::new();
         let rules = rules
             .into_iter()
-            .map(|(ranges, rule)| {
+            .map(|(ranges, rule, (format_index, rule_index))| {
+                let formula = matches
+                    .iter()
+                    .position(|found| found.format == format_index && found.rule == rule_index)
+                    .map(|index| matches.swap_remove(index));
+                let formula_failed = evaluated && formula.is_none() && is_formula_rule(rule);
                 let visual = rule.visual.as_ref().map(|_| {
                     if let Some(issue) = support_issue(rule, styles) {
                         return Err(issue);
@@ -230,6 +276,8 @@ impl<'a> ConditionalStyles<'a> {
                     rule,
                     visual,
                     ranked: Ranked::new(rule, ranges, sheet),
+                    formula,
+                    formula_failed,
                 }
             })
             .collect();
@@ -238,10 +286,14 @@ impl<'a> ConditionalStyles<'a> {
 
     pub fn issue(&self, rule: &ConditionalRule) -> Option<String> {
         support_issue(rule, self.styles).or_else(|| {
-            self.rules
+            let prepared = self
+                .rules
                 .iter()
-                .find(|prepared| std::ptr::eq(prepared.rule, rule))
-                .and_then(|prepared| prepared.visual.as_ref()?.as_ref().err().cloned())
+                .find(|prepared| std::ptr::eq(prepared.rule, rule))?;
+            if prepared.formula_failed {
+                return Some("the rule's formula could not be evaluated".into());
+            }
+            prepared.visual.as_ref()?.as_ref().err().cloned()
         })
     }
 
@@ -253,9 +305,9 @@ impl<'a> ConditionalStyles<'a> {
         &self,
         reference: CellRef,
         value: &CellValue,
-    ) -> (DifferentialStyle, Option<ResolvedDataBar>) {
+    ) -> (DifferentialStyle, VisualOutcome) {
         let mut result = DifferentialStyle::default();
-        let mut bar = None;
+        let mut visuals = VisualOutcome::default();
         for prepared in &self.rules {
             let rule = prepared.rule;
             if !prepared
@@ -270,6 +322,10 @@ impl<'a> ConditionalStyles<'a> {
                     Some(matches!(value,CellValue::Number(number) if number.is_finite()))
                 }
                 Some(Err(_)) => None,
+                None if prepared.formula.is_some() => prepared
+                    .formula
+                    .as_ref()
+                    .map(|found| found.matched.binary_search(&reference).is_ok()),
                 None => match &prepared.ranked {
                     Some(ranked) if rule.issues.is_empty() => {
                         Some(matches_rule(rule, value).is_none() && ranked.matches(value))
@@ -283,16 +339,19 @@ impl<'a> ConditionalStyles<'a> {
                 _ => continue,
             }
             if let Some(Ok(visual)) = &prepared.visual {
-                let (fill, data_bar) = visual.for_cell(value);
+                let outcome = visual.outcome(value);
                 if result.fill.is_none() {
-                    result.fill = fill.map(|color| jade_xlsx_reader::Fill {
+                    result.fill = outcome.fill.map(|color| jade_xlsx_reader::Fill {
                         pattern: Some("solid".into()),
                         foreground: Some(color),
                         background: None,
                     });
                 }
-                if bar.is_none() {
-                    bar = data_bar;
+                if visuals.bar.is_none() {
+                    visuals.bar = outcome.bar;
+                }
+                if visuals.icon.is_none() {
+                    visuals.icon = outcome.icon;
                 }
             }
             if let Some(style) = rule
@@ -305,7 +364,7 @@ impl<'a> ConditionalStyles<'a> {
                 break;
             }
         }
-        (result, bar)
+        (result, visuals)
     }
 
     pub fn blank_rules(&self) -> Vec<BlankConditionalRule> {
@@ -314,6 +373,21 @@ impl<'a> ConditionalStyles<'a> {
             .filter_map(|prepared| {
                 let ranges = prepared.ranges;
                 let rule = prepared.rule;
+                if let Some(found) = &prepared.formula {
+                    if found.matched.is_empty() {
+                        return None;
+                    }
+                    return Some(BlankConditionalRule {
+                        ranges: found.evaluated.clone(),
+                        style: rule
+                            .differential_style_index
+                            .and_then(|index| self.styles.differential_styles.get(index as usize))
+                            .cloned()
+                            .unwrap_or_default(),
+                        stop_if_true: rule.stop_if_true,
+                        cells: Some(found.matched.clone()),
+                    });
+                }
                 let matches = matches_rule(rule, &CellValue::Empty);
                 if matches == Some(false) || (matches.is_none() && !rule.stop_if_true) {
                     return None;
@@ -331,6 +405,7 @@ impl<'a> ConditionalStyles<'a> {
                     ranges: ranges.to_vec(),
                     style,
                     stop_if_true: rule.stop_if_true,
+                    cells: None,
                 })
             })
             .collect()
@@ -340,7 +415,7 @@ impl<'a> ConditionalStyles<'a> {
 pub fn blank_style(rules: &[BlankConditionalRule], reference: CellRef) -> DifferentialStyle {
     let mut result = DifferentialStyle::default();
     for rule in rules {
-        if !rule.ranges.iter().any(|range| range.contains(reference)) {
+        if !rule.applies_to(reference) {
             continue;
         }
         inherit_missing(&mut result, &rule.style);
@@ -424,7 +499,10 @@ pub fn matches_rule(rule: &ConditionalRule, value: &CellValue) -> Option<bool> {
     }
     let blank = matches!(value, CellValue::Empty)
         || matches!(value, CellValue::Text(text) if text.trim_matches(' ').is_empty());
-    if matches!(rule.rule_type.as_str(), "colorScale" | "dataBar") {
+    if matches!(
+        rule.rule_type.as_str(),
+        "colorScale" | "dataBar" | "iconSet"
+    ) {
         if rule.visual.is_none() || crate::visual_format::issue(rule).is_some() {
             return None;
         }
@@ -523,7 +601,7 @@ pub fn support_issue(rule: &ConditionalRule, styles: &StyleTable) -> Option<Stri
     if let Some(issue) = crate::visual_format::issue(rule) {
         return Some(issue);
     }
-    if matches_rule(rule, &CellValue::Empty).is_none() {
+    if matches_rule(rule, &CellValue::Empty).is_none() && !is_formula_rule(rule) {
         return Some("rule type, operator, or formula operands are not supported".into());
     }
     if let Some(index) = rule.differential_style_index {
