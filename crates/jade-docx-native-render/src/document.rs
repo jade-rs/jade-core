@@ -245,6 +245,35 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// The math face the renderers bind (Cambria Math), when installed.
+    math_face: Option<FontFace>,
+}
+
+/// Binds the math face among `faces` (Cambria Math, from Office's fonts) to
+/// the renderer, so equations use its MATH table and outlines. Without it they
+/// are laid out on Cambria Math's constants and drawn through the painter.
+fn register_math_face(renderer: &mut CanvasRenderer<SkiaPainter>, faces: &[FontFace]) {
+    let Some(face) = math_face_of(faces) else {
+        return;
+    };
+    let Ok(bytes) = std::fs::read(&face.path) else {
+        return;
+    };
+    let _ = renderer.register_math_face(
+        crate::system_fonts::MATH_FAMILY.to_string(),
+        bytes,
+        face.index,
+    );
+}
+
+fn math_face_of(faces: &[FontFace]) -> Option<FontFace> {
+    faces
+        .iter()
+        .find(|face| {
+            face.family
+                .eq_ignore_ascii_case(crate::system_fonts::MATH_FAMILY)
+        })
+        .cloned()
 }
 
 impl NativeDocument {
@@ -304,6 +333,7 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
+        register_math_face(&mut renderer, faces);
         renderer.sync_word_document(&word_document);
 
         let document = word_document
@@ -355,6 +385,7 @@ impl NativeDocument {
             fonts,
             field_datetime: None,
             field_codes: FieldCodeView::default(),
+            math_face: math_face_of(faces),
         })
     }
 
@@ -396,6 +427,7 @@ impl NativeDocument {
         let count = host.rendered_pages();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "PDF renderer setup failed".to_string())?;
+        register_math_face(&mut renderer, self.math_face.as_slice());
         renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
@@ -616,6 +648,7 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
+        register_math_face(&mut renderer, self.math_face.as_slice());
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
         renderer.set_selection_range(self.selection);
@@ -2017,6 +2050,7 @@ impl NativeDocument {
         register_faces(&mut host, faces)?;
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
+        register_math_face(&mut renderer, faces);
         renderer.sync_word_document(word_document);
         let document = word_document
             .document

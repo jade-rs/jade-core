@@ -12,10 +12,10 @@ publish = false
 # with `--all-features`, which would make every run pay for that.
 
 [dependencies]
-jade-docx-editor = { path = "../jade-docx-editor" }
+jade-docx-editor = { path = "../jade-docx-editor", features = ["opentype-math"] }
 jade-painter = { path = "../jade-painter" }
 jade-skia-painter = { path = "../jade-skia-painter" }
-jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping"] }
+jade-docx-layout = { path = "../jade-docx-layout", features = ["native-shaping", "opentype-math"] }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 web-sys = "0.3"
