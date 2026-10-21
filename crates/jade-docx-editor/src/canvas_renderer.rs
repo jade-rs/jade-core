@@ -240,6 +240,8 @@ where
 }
 
 mod float_lookahead;
+#[cfg(test)]
+mod hyphenation_tests;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
@@ -3553,6 +3555,8 @@ where
     document_snap_to_grid_default: bool,
     document_default_tab_width: Option<f64>,
     document_no_tab_hanging_indent: bool,
+    /// The document's automatic hyphenation (`w:autoHyphenation`, …).
+    document_hyphenation: jade_docx_reader::HyphenationSettings,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -8017,6 +8021,7 @@ where
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
+            document_hyphenation: jade_docx_reader::HyphenationSettings::default(),
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -9199,6 +9204,16 @@ where
             .doc_grid_char_space_px
             .map(|value| value.to_bits())
             .hash(&mut hasher);
+        paragraph_style
+            .hyphenation
+            .map(|hyphenation| {
+                (
+                    hyphenation.zone_px.to_bits(),
+                    hyphenation.consecutive_limit,
+                    hyphenation.hyphenate_caps,
+                )
+            })
+            .hash(&mut hasher);
         for segment in &paragraph_style.float_line_segments {
             segment.start_x.to_bits().hash(&mut hasher);
             segment.width.to_bits().hash(&mut hasher);
@@ -10123,6 +10138,7 @@ where
             indent.and_then(|i| i.first_line_chars).hash(&mut hasher);
             indent.and_then(|i| i.hanging_chars).hash(&mut hasher);
             props.mirror_indents.hash(&mut hasher);
+            props.suppress_auto_hyphens.hash(&mut hasher);
             props.keep_lines.hash(&mut hasher);
             props.keep_next.hash(&mut hasher);
             props.page_break_before.hash(&mut hasher);
@@ -13032,6 +13048,13 @@ where
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
+        if self.document_hyphenation != document.hyphenation {
+            // Every paragraph's lines may end elsewhere.
+            self.document_hyphenation = document.hyphenation;
+            self.clear_paragraph_wrap_cache();
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+        }
         let new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
         if self.document_east_asian_rules != new_east_asian_rules {
@@ -16471,6 +16494,15 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        paragraph_style.hyphenation =
+            jade_docx_layout::line_wrap::ParagraphHyphenation::for_paragraph(
+                &self.document_hyphenation,
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.suppress_auto_hyphens)
+                    .unwrap_or(false),
+            );
         let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
@@ -21309,6 +21341,45 @@ where
                     &prepared.glyph_steps,
                 )
                 .map_err(PainterError::into_js_value)?;
+                // Automatic hyphenation's hyphen, after the line's last
+                // letter in its run's style: not in the text, only drawn.
+                if let (Some(hyphen), Some(last_step), true) = (
+                    wrapped_line.hyphen,
+                    prepared.glyph_steps.last(),
+                    segment_index + 1 == prepared_segments.len(),
+                ) {
+                    let letter = wrapped_line
+                        .clusters
+                        .last()
+                        .and_then(|cluster| cluster.layout.as_ref())
+                        .map_or(0.0, |layout| layout.glyph_box_width - hyphen.width);
+                    let hyphen_x = *start_x + last_step.x_offset + letter.max(0.0);
+                    let hyphen_step = [PlannedGlyphLayoutStep {
+                        text_start: 0,
+                        text_end: 1,
+                        font_slot: ResolvedFontSlot::LatinAscii,
+                        x_offset: 0.0,
+                    }];
+                    if let Some(buf) = commands_out.as_deref_mut() {
+                        self.push_text_commands_for_plan(
+                            buf,
+                            hyphen_x,
+                            text_y,
+                            &text_style,
+                            "-",
+                            &hyphen_step,
+                        );
+                    }
+                    self.draw_planned_text(
+                        &context,
+                        hyphen_x,
+                        text_y,
+                        &text_style,
+                        ("-", style.resolved.as_ref()),
+                        &hyphen_step,
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                }
                 let width = prepared.width;
                 if style.strike || style.double_strike {
                     self.draw_strike_through(
@@ -44364,6 +44435,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -44392,6 +44464,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -44571,6 +44644,7 @@ mod tests {
                     leaders: Vec::new(),
                     tab_stops: Vec::new(),
                     clusters: Vec::new(),
+                    hyphen: None,
                 })
                 .collect()
         }
@@ -53428,6 +53502,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "b", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -53441,6 +53516,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, ",", false, true, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];
@@ -53507,6 +53583,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "(", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -53520,6 +53597,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, "b", false, false, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];

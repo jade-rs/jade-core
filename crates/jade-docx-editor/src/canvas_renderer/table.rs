@@ -14393,6 +14393,7 @@ mod tests {
             break_properties: None,
             leaders: Vec::new(),
             tab_stops: Vec::new(),
+            hyphen: None,
         };
         let mut style = ParagraphStyle {
             word_east_asian_font_line_box: true,

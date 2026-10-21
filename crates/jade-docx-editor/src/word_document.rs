@@ -709,6 +709,9 @@ mod table_tools;
 
 #[path = "word_document/references.rs"]
 mod references;
+
+#[path = "word_document/hyphenation.rs"]
+mod hyphenation;
 pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
@@ -2595,6 +2598,7 @@ impl WordDocument {
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.hyphenation = doc_settings.hyphenation;
             parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
             parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =

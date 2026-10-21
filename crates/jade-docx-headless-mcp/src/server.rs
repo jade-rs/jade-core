@@ -3703,6 +3703,16 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_hyphenation",
+        "Set Word's automatic hyphenation (the Hyphenation dialog): on or off, the hyphenation zone, the consecutive-hyphen limit and whether words in capitals are hyphenated. Fields left out are kept. One history step.",
+        &[
+            opt("auto", ArgType::Flag, "Automatically hyphenate the document (w:autoHyphenation)."),
+            opt("zone", ArgType::Number, "Hyphenation zone in points (w:hyphenationZone)."),
+            opt("consecutive_limit", ArgType::Index, "At most this many consecutive lines end in a hyphen; 0 for no limit."),
+            opt("hyphenate_caps", ArgType::Flag, "Hyphenate words in capitals (w:doNotHyphenateCaps off)."),
+        ],
+    ),
+    variant(
         "set_paragraph_snap_to_grid",
         "Set whether paragraphs snap to the section's line grid (w:snapToGrid).",
         &[

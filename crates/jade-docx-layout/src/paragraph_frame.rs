@@ -375,6 +375,7 @@ mod tests {
                     inline_object: None,
                 })
                 .collect(),
+            hyphen: None,
         }
     }
 

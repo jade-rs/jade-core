@@ -249,6 +249,39 @@ pub struct ParagraphStyle {
     /// renderer consumes the same plan after wrapping so glyphs, selection,
     /// and caret hit-testing stay in one coordinate system.
     pub float_line_segments: Vec<FloatLineSegment>,
+    /// Automatic hyphenation, when the document turns it on and the paragraph
+    /// does not suppress it (`w:suppressAutoHyphens`).
+    pub hyphenation: Option<ParagraphHyphenation>,
+}
+
+/// Word's automatic hyphenation as one paragraph applies it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParagraphHyphenation {
+    /// Hyphenation zone in px: a line leaving at least this much room at its
+    /// end has the word after it hyphenated.
+    pub zone_px: f64,
+    /// At most this many consecutive lines end in a hyphen.
+    pub consecutive_limit: Option<usize>,
+    /// Whether words in capitals are hyphenated too.
+    pub hyphenate_caps: bool,
+}
+
+impl ParagraphHyphenation {
+    /// The paragraph's hyphenation under the document's settings: `None`
+    /// when hyphenation is off or the paragraph suppresses it.
+    pub fn for_paragraph(
+        settings: &jade_docx_reader::HyphenationSettings,
+        suppress_auto_hyphens: bool,
+    ) -> Option<Self> {
+        (settings.auto && !suppress_auto_hyphens).then(|| Self {
+            zone_px: points_to_px(settings.zone_pt()),
+            consecutive_limit: settings
+                .consecutive_limit
+                .filter(|limit| *limit > 0)
+                .map(|limit| limit as usize),
+            hyphenate_caps: !settings.do_not_hyphenate_caps,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -287,6 +320,7 @@ impl Default for ParagraphStyle {
             word_proportional_line_sizing: None,
             drop_cap: None,
             float_line_segments: Vec::new(),
+            hyphenation: None,
         }
     }
 }
@@ -2733,6 +2767,18 @@ pub struct WrappedLine {
     pub leaders: Vec<TabLeaderSegment>,
     pub tab_stops: Vec<TabStopSegment>,
     pub clusters: Vec<InlineCluster>,
+    /// The hyphen automatic hyphenation ends this line with, drawn after its
+    /// last character in that character's run style. Its width is already
+    /// in the last cluster's advance, so alignment and justification count it.
+    pub hyphen: Option<LineHyphen>,
+}
+
+/// A hyphen Word's automatic hyphenation adds at a line end: not in the
+/// document's text, only drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LineHyphen {
+    /// Advance of the hyphen in px.
+    pub width: f64,
 }
 
 impl WrappedLine {
@@ -3855,6 +3901,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![cluster],
+            hyphen: None,
         });
     }
 
@@ -3872,6 +3919,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: Vec::new(),
+            hyphen: None,
         });
     }
 
@@ -4330,6 +4378,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
                     } else {
                         Vec::new()
                     },
+                    hyphen: None,
                 });
             }
         }
@@ -5847,6 +5896,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -5968,6 +6018,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -6010,6 +6061,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -6110,6 +6162,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             leaders: std::mem::take(&mut current_line_leaders),
                             tab_stops: std::mem::take(&mut current_line_tab_stops),
                             clusters: std::mem::take(&mut current_line_clusters),
+                            hyphen: None,
                         });
                         current_width = 0.0;
                         previous_width = 0.0;
@@ -6382,6 +6435,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         leaders: std::mem::take(&mut current_line_leaders),
                         tab_stops: std::mem::take(&mut current_line_tab_stops),
                         clusters: std::mem::take(&mut current_line_clusters),
+                        hyphen: None,
                     });
                     current_width = 0.0;
                     current_available = paragraph_style
@@ -6548,6 +6602,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         leaders: current_line_leaders,
         tab_stops: current_line_tab_stops,
         clusters: current_line_clusters,
+        hyphen: None,
     });
 
     if let Some(last) = lines.last_mut() {
@@ -6580,6 +6635,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     // does not leave its matching opening punctuation at the previous line end.
     enforce_line_start_rules(paragraph_style, &mut lines);
     drop_line_start_auto_space(&mut lines);
+    hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
     // avoid another full segment walk (and one more during justification).
@@ -7819,6 +7875,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     leaders: Vec::new(),
                     tab_stops: Vec::new(),
                     clusters: Vec::new(),
+                    hyphen: None,
                 });
             }
             let (head, tail) = lines.split_at_mut(line_index + 1);
@@ -8532,6 +8589,8 @@ fn is_east_asian_punctuation(ch: char) -> bool {
             | 0x31C0..=0x31EF // CJK Strokes (wide forms)
     )
 }
+
+mod hyphenate;
 
 #[cfg(test)]
 mod float_exclusion_tests {
@@ -11441,6 +11500,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![object],
+            hyphen: None,
         };
         let mark = crate::line_metrics::word_font_vertical_metrics_px("10.50pt Arial").unwrap();
         assert_eq!(
@@ -12065,6 +12125,7 @@ mod tests {
             break_properties: None,
             leaders: vec![],
             tab_stops: vec![],
+            hyphen: None,
         };
         assert_eq!(
             wrapped_line_turned_baseline_offset(&line, 24.0, true),
@@ -17424,6 +17485,7 @@ mod tests {
                     InlineCluster::grapheme(index, index + 1, 1.0, "a", false, false, false)
                 })
                 .collect(),
+            hyphen: None,
         };
         let second = WrappedLine {
             segments: Vec::new(),
@@ -17433,6 +17495,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: Vec::new(),
+            hyphen: None,
         };
         let mut lines = vec![first, second];
         ensure_lines_fit_available_width(
@@ -17760,6 +17823,7 @@ mod tests {
                     InlineCluster::grapheme(6, 9, 0.0, "が", false, false, false),
                     InlineCluster::grapheme(9, 10, 0.0, "3", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -17780,6 +17844,7 @@ mod tests {
                     InlineCluster::grapheme(10, 13, 0.0, "月", false, false, false),
                     InlineCluster::grapheme(13, 16, 0.0, "を", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -18198,6 +18263,7 @@ mod tests {
                 clusters: vec![InlineCluster::grapheme(
                     0, 3, 0.0, "あ", false, false, false,
                 )],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -18217,6 +18283,7 @@ mod tests {
                 clusters: vec![InlineCluster::grapheme(
                     9, 12, 0.0, "。", false, true, false,
                 )],
+                hyphen: None,
             },
         ];
         let paragraph = ParagraphStyle {
@@ -20985,6 +21052,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 4, 1.0, "X", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21006,6 +21074,7 @@ mod tests {
                     InlineCluster::grapheme(5, 6, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(6, 7, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21049,6 +21118,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![InlineCluster::grapheme(0, 1, 1.0, "x", false, false, false)],
+            hyphen: None,
         };
         let final_text = "ab cd";
         let second = WrappedLine {
@@ -21082,6 +21152,7 @@ mod tests {
                     )
                 })
                 .collect(),
+            hyphen: None,
         };
         let mut lines = vec![first, second];
 
@@ -21139,6 +21210,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: vec![InlineCluster::grapheme(0, 1, 3.0, "a", false, false, false)],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21159,6 +21231,7 @@ mod tests {
                     InlineCluster::grapheme(1, 2, 4.0, "b", false, false, false),
                     InlineCluster::grapheme(2, 3, 4.0, "c", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21214,6 +21287,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 4, 1.0, "X", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21235,6 +21309,7 @@ mod tests {
                     InlineCluster::grapheme(5, 6, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(6, 7, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21292,6 +21367,7 @@ mod tests {
                         ..InlineCluster::grapheme(3, 6, 1.0, "。", false, true, false)
                     },
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21313,6 +21389,7 @@ mod tests {
                     InlineCluster::grapheme(7, 8, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(8, 9, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21362,6 +21439,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: vec![InlineCluster::grapheme(0, 1, 1.0, "a", false, false, false)],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21383,6 +21461,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 6, 1.0, "字", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21459,6 +21538,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters,
+            hyphen: None,
         }
     }
 
