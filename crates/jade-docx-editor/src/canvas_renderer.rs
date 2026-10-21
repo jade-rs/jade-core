@@ -6334,8 +6334,16 @@ where
                 .flatten()
                 .filter(|height| *height > 0.0)
                 .map(|height| (available_bottom - separator_height - height).max(self.current_y));
+            // `w:pos="beneathText"`: the notes follow the page's last line
+            // rather than sitting at the bottom of the body area.
+            let beneath_text =
+                document.resolved_footnote_beneath_text(Some(self.active_section_index));
             self.current_y = fragment_top.unwrap_or_else(|| {
-                note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                if beneath_text {
+                    self.current_y
+                } else {
+                    note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                }
             });
             self.last_line_baseline = self.current_y;
             if self.current_y + note_block_height > available_bottom + 0.5 {

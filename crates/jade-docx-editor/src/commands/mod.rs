@@ -27,6 +27,7 @@ pub mod composite;
 pub mod delete_object;
 pub mod delete_table;
 pub mod delete_text;
+pub mod document_edit;
 mod edit_offset;
 pub mod format_image;
 pub mod format_text_box;
