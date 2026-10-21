@@ -252,6 +252,8 @@ pub struct ParagraphStyle {
     /// Automatic hyphenation, when the document turns it on and the paragraph
     /// does not suppress it (`w:suppressAutoHyphens`).
     pub hyphenation: Option<ParagraphHyphenation>,
+    /// `ADVANCE` fields' horizontal moves, by layout-text offset, in order.
+    pub advances: Vec<crate::advance_field::ParagraphAdvance>,
 }
 
 /// Word's automatic hyphenation as one paragraph applies it.
@@ -321,6 +323,7 @@ impl Default for ParagraphStyle {
             drop_cap: None,
             float_line_segments: Vec::new(),
             hyphenation: None,
+            advances: Vec::new(),
         }
     }
 }
@@ -362,6 +365,20 @@ impl ParagraphStyle {
             .is_some_and(|kind| kind.eq_ignore_ascii_case("snapToChars"));
         self.doc_grid_char_space_px = grid.char_space.map(points_to_px);
     }
+}
+
+/// The move `ADVANCE` fields at `offset` give the character there: `\r`
+/// and `\l` by their points, `\x` to its distance from the line's start.
+fn advance_field_shift(paragraph_style: &ParagraphStyle, offset: usize, current_width: f64) -> f64 {
+    paragraph_style
+        .advances
+        .iter()
+        .filter(|advance| advance.offset == offset)
+        .fold(0.0, |shift, advance| match advance.x_px {
+            Some(x) => x - current_width,
+            None => shift + advance.dx_px,
+        })
+        .max(-current_width)
 }
 
 /// Returns the single `char` of `text` when it is exactly one code point.
@@ -6305,11 +6322,23 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         computed.advance.adjusted_glyph_width > f64::EPSILON,
                     )
                 });
+                // An `ADVANCE` field right before this character moves it,
+                // and the text after it, along the line.
+                let advance_shift = if paragraph_style.advances.is_empty() {
+                    0.0
+                } else {
+                    advance_field_shift(
+                        paragraph_style,
+                        grapheme_start_abs.saturating_sub(base_offset),
+                        current_width,
+                    )
+                };
                 let candidate_width = (marker_gap
                     + computed.advance.total_advance
                     + fitted_gap
                     + ruby_leading
-                    + ruby_trailing)
+                    + ruby_trailing
+                    + advance_shift)
                     .max(0.0);
                 let trailing_overhang = if computed.monospace_cell {
                     // Fixed-pitch glyphs stay inside their cell.
@@ -6512,7 +6541,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         + computed.advance.implicit_numeric_gap
                         + computed.advance.kerning_adjustment
                         + computed.advance.snap_leading
-                        + ruby_leading,
+                        + ruby_leading
+                        + advance_shift,
                     glyph_box_width: computed.advance.glyph_box_width + fitted_gap + ruby_trailing,
                     measured_glyph_width: computed.measured_glyph_width,
                     adjusted_glyph_width: computed.advance.adjusted_glyph_width,

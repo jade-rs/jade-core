@@ -239,6 +239,8 @@ where
     }
 }
 
+#[cfg(test)]
+mod advance_field_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod hyphenation_tests;
@@ -9204,6 +9206,11 @@ where
             .doc_grid_char_space_px
             .map(|value| value.to_bits())
             .hash(&mut hasher);
+        for advance in &paragraph_style.advances {
+            advance.offset.hash(&mut hasher);
+            advance.dx_px.to_bits().hash(&mut hasher);
+            advance.x_px.map(f64::to_bits).hash(&mut hasher);
+        }
         paragraph_style
             .hyphenation
             .map(|hyphenation| {
@@ -17006,6 +17013,7 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
@@ -17019,6 +17027,33 @@ where
                 }
                 shown_field_codes.push(*field);
             }
+            // An ADVANCE field moves the text after it: along the line from
+            // here, and up or down from here on.
+            if field_code.is_none() {
+                if let Some(advance) =
+                    run.field
+                        .as_ref()
+                        .and_then(|field| match field.kind.base_kind() {
+                            RunFieldKind::Unsupported { instruction } => {
+                                jade_docx_layout::advance_field::AdvanceField::parse(instruction)
+                            }
+                            _ => None,
+                        })
+                {
+                    // \x is measured from the text's left edge on the line.
+                    let x_px = advance.x.map(points_to_px);
+                    paragraph_style.advances.push(
+                        jade_docx_layout::advance_field::ParagraphAdvance {
+                            offset: current_pos,
+                            dx_px: points_to_px(advance.dx()),
+                            x_px: x_px.map(|x| x.max(0.0)),
+                            y_px: advance.y.map(points_to_px),
+                        },
+                    );
+                    advance_raise_pt += advance.raise();
+                    continue;
+                }
+            }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
@@ -17027,6 +17062,18 @@ where
             if run_properties_are_hidden(resolved_run_properties.as_deref()) {
                 continue;
             }
+            // Text after an ADVANCE \u or \d sits that much higher or lower.
+            let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                properties.text_position =
+                    Some(properties.text_position.unwrap_or(0.0) + advance_raise_pt);
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
 
             // Final-preview state (changes not shown): tracked deletions and
             // move-source runs are removed from the layout entirely so they
@@ -20426,6 +20473,31 @@ where
             ));
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
+            // ADVANCE \y puts the line holding it at a position down the page
+            // (Word ignores it in headers, footers and notes).
+            let advance_line_shift = if paragraph_style
+                .advances
+                .iter()
+                .any(|advance| advance.y_px.is_some())
+                && !self.rendering_header_footer_story
+                && !self.rendering_note_story
+            {
+                let line_end = wrapped_line
+                    .segments
+                    .iter()
+                    .map(|segment| segment.end)
+                    .max()
+                    .unwrap_or(line_start);
+                paragraph_style
+                    .advances
+                    .iter()
+                    .filter(|advance| (line_start..=line_end).contains(&advance.offset))
+                    .filter_map(|advance| advance.y_px)
+                    .last()
+                    .map_or(0.0, |y| y - top)
+            } else {
+                0.0
+            };
             // Band-mode ink coverage guard: the band rect was computed from the
             // PRE-edit layout cache via `band_local_bounds`, whose bottom split
             // assumes normal spacing. Verify against the ACTUAL measured ink of
@@ -21218,7 +21290,7 @@ where
                     );
                 }
                 let text_style = self.cmd_text_style(prepared.segment.properties.as_deref(), style);
-                let text_y = baseline + style.baseline_shift_px;
+                let text_y = baseline + style.baseline_shift_px + advance_line_shift;
                 // Draw highlight background behind the text when present.
                 if let Some(hl_color) = text_style.highlight_color.as_deref() {
                     let (hl_top, hl_height) = Self::text_highlight_vertical_bounds(
