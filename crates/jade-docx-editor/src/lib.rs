@@ -25,6 +25,7 @@ pub mod serializer;
 pub mod shortcuts;
 pub(crate) mod snapshot_plan;
 pub(crate) mod typed_autoformat;
+pub mod fields;
 pub mod word_document;
 
 use crate::canvas_view::OffscreenDocumentView;
