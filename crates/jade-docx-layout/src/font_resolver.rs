@@ -411,6 +411,7 @@ fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher
         props.language.hash(hasher);
         props.east_asia_language.hash(hasher);
         props.color.hash(hasher);
+        opentype_features_token(props, false).hash(hasher);
         if let Some(fonts) = props.fonts.as_ref() {
             fonts.ascii.hash(hasher);
             fonts.h_ansi.hash(hasher);
@@ -730,6 +731,93 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
     }
 }
 
+/// The OpenType features a run's Word 2010 typography asks for, as the
+/// descriptor token [`jade_painter::font_features`] defines — `None` when the
+/// run asks for none, so ordinary text keeps its descriptor (and every cache
+/// keyed on it) unchanged.
+///
+/// Word applies only what the フォント dialog's 詳細設定 tab turns on: with
+/// any of it set, the shaper's own defaults (`liga`, `clig`, `calt`, and
+/// `kern` without `w:kern`) are turned off so they do not join or shift
+/// letters Word leaves alone.
+pub fn opentype_features_token(props: &RunProperties, pair_kerning: bool) -> Option<String> {
+    use jade_painter::font_features::{token, FontFeature};
+    let effects = props.text_effects.as_deref()?;
+    let on = |tag: &[u8; 4]| FontFeature {
+        tag: *tag,
+        value: 1,
+    };
+    let off = |tag: &[u8; 4]| FontFeature {
+        tag: *tag,
+        value: 0,
+    };
+    let mut features: Vec<FontFeature> = Vec::new();
+    let ligatures = effects.ligatures.as_deref().unwrap_or("none");
+    let all = ligatures == "all";
+    let lower = ligatures.to_ascii_lowercase();
+    let standard = all || lower.contains("standard");
+    let contextual = all || lower.contains("contextual");
+    let historical = all || lower.contains("historical");
+    let discretional = all || lower.contains("discretional");
+    if standard {
+        features.push(on(b"liga"));
+    }
+    if contextual {
+        features.push(on(b"clig"));
+    }
+    if historical {
+        features.push(on(b"hlig"));
+    }
+    if discretional {
+        features.push(on(b"dlig"));
+    }
+    match effects.number_form.as_deref() {
+        Some("lining") => features.push(on(b"lnum")),
+        Some("oldStyle") => features.push(on(b"onum")),
+        _ => {}
+    }
+    match effects.number_spacing.as_deref() {
+        Some("proportional") => features.push(on(b"pnum")),
+        Some("tabular") => features.push(on(b"tnum")),
+        _ => {}
+    }
+    if let Some(set) = effects.stylistic_set.filter(|set| (1..=20).contains(set)) {
+        let tag = format!("ss{set:02}");
+        let bytes = tag.as_bytes();
+        features.push(on(&[bytes[0], bytes[1], bytes[2], bytes[3]]));
+    }
+    let alternates = effects.contextual_alternates == Some(true);
+    if alternates {
+        features.push(on(b"calt"));
+    }
+    if features.is_empty() {
+        return None;
+    }
+    if !standard {
+        features.push(off(b"liga"));
+    }
+    if !contextual {
+        features.push(off(b"clig"));
+    }
+    if !alternates {
+        features.push(off(b"calt"));
+    }
+    if !pair_kerning {
+        features.push(off(b"kern"));
+    }
+    token(&features)
+}
+
+/// Whether a resolved style's descriptors carry features that join letters
+/// (ligatures, contextual alternates), so a pair of letters can measure other
+/// than the sum of the two.
+pub fn descriptor_joins_characters(descriptor: &str) -> bool {
+    jade_painter::font_features::has_features(descriptor)
+        && jade_painter::font_features::joins_characters(&jade_painter::font_features::parse(
+            descriptor,
+        ))
+}
+
 /// Returns a `ResolvedRunStyle` containing descriptors and letter spacing for layout pipelines.
 pub fn resolve_run_style_for_wrap(
     properties: Option<&RunProperties>,
@@ -808,6 +896,11 @@ fn resolve_run_style_for_wrap_uncached(
             }
         }
 
+        if let Some(token) = opentype_features_token(props, enable_pair_kerning) {
+            font_style.insert_str(0, &format!("{token} "));
+            complex_font_style.insert_str(0, &format!("{token} "));
+        }
+
         if let Some("superscript" | "super" | "subscript" | "sub") = props.baseline.as_deref() {
             let families = resolve_font_families(properties);
             let stack = families.latin_ascii_stack();
@@ -883,12 +976,23 @@ pub struct ResolvedRunStyle {
     pub text_scale_x: f64,
     pub enable_pair_kerning: bool,
     pub font_hint: Option<FontHint>,
+    /// Whether the descriptors ask for ligatures or contextual alternates
+    /// (see [`descriptor_joins_characters`]): letter pairs are then measured
+    /// as kerning is, so a ligature's width reaches layout.
+    pub joins_characters: bool,
     fixed_ascii_metrics: std::cell::OnceCell<CachedAsciiMetrics>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
 }
 
 impl ResolvedRunStyle {
+    /// Whether adjacent letters are measured as a pair: for `w:kern`, or for
+    /// OpenType features that join letters.
+    #[inline]
+    pub fn measures_letter_pairs(&self) -> bool {
+        self.enable_pair_kerning || self.joins_characters
+    }
+
     #[inline]
     pub fn font_slot_for_grapheme(
         &self,
@@ -928,6 +1032,9 @@ impl ResolvedRunStyle {
         let font_descriptor_latin_hansi: Rc<str> = font_descriptor_latin_hansi.into();
         let font_descriptor_east_asia: Rc<str> = font_descriptor_east_asia.into();
         let font_descriptor_complex: Rc<str> = font_descriptor_complex.into();
+        let joins_characters = descriptor_joins_characters(&font_descriptor_latin_ascii)
+            || descriptor_joins_characters(&font_descriptor_latin_hansi)
+            || descriptor_joins_characters(&font_descriptor_east_asia);
         let font_descriptor_latin_ascii_hash = hash_font_descriptor(&font_descriptor_latin_ascii);
         let font_descriptor_latin_hansi_hash = hash_font_descriptor(&font_descriptor_latin_hansi);
         let font_descriptor_east_asia_hash = hash_font_descriptor(&font_descriptor_east_asia);
@@ -958,6 +1065,7 @@ impl ResolvedRunStyle {
             text_scale_x,
             enable_pair_kerning,
             font_hint,
+            joins_characters,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
             fixed_east_asia_descriptor,
             fixed_east_asia_em_px,

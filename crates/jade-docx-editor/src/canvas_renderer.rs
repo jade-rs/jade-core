@@ -243,6 +243,8 @@ mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
+#[cfg(test)]
+mod opentype_features_tests;
 mod paragraph_join;
 #[cfg(test)]
 mod recording_host;
@@ -28001,6 +28003,15 @@ where
                 }
             }
 
+            // Word 2010 typography (ligatures, figure styles, stylistic
+            // sets) travels in the descriptor, as layout's does.
+            if let Some(token) =
+                jade_docx_layout::font_resolver::opentype_features_token(props, enable_pair_kerning)
+            {
+                font_style.insert_str(0, &format!("{token} "));
+                complex_font_style.insert_str(0, &format!("{token} "));
+            }
+
             if props.strike.unwrap_or(false) {
                 strike = true;
             }
@@ -28496,6 +28507,38 @@ where
                 context.restore();
             }
         } else {
+            if resolved_style.joins_characters
+                || jade_painter::font_features::has_features(
+                    &resolved_style.font_descriptor_latin_ascii,
+                )
+                || jade_painter::font_features::has_features(
+                    &resolved_style.font_descriptor_east_asia,
+                )
+            {
+                let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> =
+                    glyph_steps
+                        .iter()
+                        .map(|step| crate::draw_command::executor::PlacedCharacter {
+                            start: step.text_start as usize,
+                            end: step.text_end as usize,
+                            font: resolved_style.descriptor_for_slot(step.font_slot).as_ref(),
+                            x_offset: step.x_offset,
+                        })
+                        .collect();
+                if crate::draw_command::executor::try_fill_featured_text(
+                    context,
+                    segment_text,
+                    x,
+                    y,
+                    &characters,
+                    &mut |context, font| {
+                        self.set_font_if_changed(context, font);
+                    },
+                )? {
+                    self.record_glyph_batch_run(glyph_steps.len() as u64);
+                    return Ok(());
+                }
+            }
             if self.try_draw_planned_text_batch(
                 context,
                 x,
@@ -28754,6 +28797,20 @@ where
             &resolved_override
         };
 
+        // A run asking for OpenType features (Word's ligatures, figure
+        // styles) is placed a character at a time as usual, then drawn
+        // shaped once its characters' x are known.
+        let shaped = draw_enabled
+            && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+            && (resolved_run_style.joins_characters
+                || jade_painter::font_features::has_features(
+                    &resolved_run_style.font_descriptor_latin_ascii,
+                )
+                || jade_painter::font_features::has_features(
+                    &resolved_run_style.font_descriptor_east_asia,
+                ));
+        let mut placed: Vec<(usize, usize, Rc<str>, f64)> = Vec::new();
+        let start_x = x;
         let end_state = walk_text_advance_steps(
             self,
             text,
@@ -28763,6 +28820,29 @@ where
             next_grapheme_after_segment,
             &mut snap_to_chars_cell_width_cache,
             |step| {
+                if shaped {
+                    let leading_advance = step.advance.implicit_latin_gap
+                        + step.advance.implicit_numeric_gap
+                        + step.advance.kerning_adjustment
+                        + step.advance.snap_leading;
+                    x += leading_advance;
+                    width += leading_advance;
+                    let font = match placed.last() {
+                        Some((_, _, last, _)) if last.as_ref() == step.font_descriptor => {
+                            Rc::clone(last)
+                        }
+                        _ => Rc::from(step.font_descriptor),
+                    };
+                    placed.push((
+                        step.rel_offset,
+                        step.rel_offset + step.grapheme.len(),
+                        font,
+                        x - start_x,
+                    ));
+                    x += step.advance.glyph_box_width;
+                    width += step.advance.glyph_box_width;
+                    return Ok(());
+                }
                 // Advances come from the measurer, which sets its own font, so
                 // an undrawn line (band cull, undrawn page) needs no painter font.
                 if draw_enabled {
@@ -28800,6 +28880,42 @@ where
                 Ok(())
             },
         )?;
+        if shaped && !placed.is_empty() {
+            let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> = placed
+                .iter()
+                .map(|(start, end, font, x_offset)| {
+                    crate::draw_command::executor::PlacedCharacter {
+                        start: *start,
+                        end: *end,
+                        font: font.as_ref(),
+                        x_offset: *x_offset,
+                    }
+                })
+                .collect();
+            let drawn = crate::draw_command::executor::try_fill_featured_text(
+                context,
+                text,
+                start_x,
+                y,
+                &characters,
+                &mut |context, font| {
+                    self.set_font_if_changed(context, font);
+                },
+            )
+            .map_err(PainterError::into_js_value)?;
+            if !drawn {
+                for character in &characters {
+                    self.set_font_if_changed(context, character.font);
+                    context
+                        .fill_text(
+                            &text[character.start..character.end],
+                            start_x + character.x_offset,
+                            y,
+                        )
+                        .map_err(PainterError::into_js_value)?;
+                }
+            }
+        }
 
         Ok((width, end_state))
     }

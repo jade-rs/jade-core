@@ -1551,6 +1551,7 @@ dependencies = [
  "futures",
  "indexmap",
  "jade-docx-reader",
+ "jade-painter",
  "jade-selection",
  "jade-text-layout",
  "proptest",

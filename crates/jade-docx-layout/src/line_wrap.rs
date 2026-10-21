@@ -2330,7 +2330,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let kerning_adjustment = if let Some(adjustment) = punctuation_adjustment {
         adjustment * style.text_scale_x.max(0.01)
     } else if !measured_width_is_oracle
-        && style.enable_pair_kerning
+        && style.measures_letter_pairs()
         && state.prev_grapheme.is_some()
         && state.prev_font_descriptor_hash == Some(font_descriptor_hash)
         && state.prev_raw_glyph_width.is_some()
@@ -16071,7 +16071,7 @@ mod tests {
                     font_desc_hash,
                     font_desc_id,
                 )?;
-                let kerning_adjustment = if style.enable_pair_kerning
+                let kerning_adjustment = if style.measures_letter_pairs()
                     && char_index_in_run > 0
                     && prev_run_grapheme.is_some()
                     && prev_run_font_desc == Some(font_desc)
