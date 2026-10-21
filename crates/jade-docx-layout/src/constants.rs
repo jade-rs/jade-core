@@ -1,18 +1,6 @@
 /// Default tab width (points) applied when paragraph tabs are absent.
 pub(crate) const DEFAULT_TAB_WIDTH_PT: f32 = 36.0;
 
-/// Common East Asian punctuation that should not start or end a line.
-///
-/// The tables live in `jade-text-layout` because they are a property of the
-/// script rather than of DOCX: a spreadsheet cell and a slide text box break
-/// under the same rule. What stays here is Word's part — the per-document
-/// toggles and overrides that decide whether and how the rule applies, which
-/// only a `.docx` can express.
-pub(crate) use jade_text_layout::kinsoku::{
-    NO_LINE_BREAK_AFTER as DEFAULT_NO_LINE_BREAK_AFTER,
-    NO_LINE_BREAK_BEFORE as DEFAULT_NO_LINE_BREAK_BEFORE,
-};
-
 /// Heuristic expansion for SBCS glyphs when `balanceSingleByteDoubleByteWidth` is enabled.
 ///
 /// 0.23 keeps wrap positions closer to Word for fallback fonts (Yu/Noto families)
