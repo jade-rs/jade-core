@@ -8,6 +8,7 @@ pub mod embedded_font;
 pub mod field_datetime;
 pub mod field_format;
 pub mod font_table;
+pub mod inkml;
 pub mod numbering;
 pub mod package_limits;
 pub mod parser;

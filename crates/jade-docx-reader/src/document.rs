@@ -2835,6 +2835,10 @@ pub struct RunImage {
     /// Layout information describing whether the image participates in text
     /// flow or floats at an absolute position.
     pub layout: RunImageLayout,
+    /// Word ink (`w14:contentPart` over an InkML part): the strokes this
+    /// drawing holds, which are drawn in place of its fallback picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink: Option<Box<crate::inkml::InkContent>>,
 }
 
 /// Coordinate system and supported child shapes from a DrawingML group.
@@ -3893,8 +3897,9 @@ mod tests {
         assert_eq!(std::mem::size_of::<RunField>(), 176);
         // 8 bytes of it: the insertion a tracked deletion sits in
         // (`RevisionMark::insertion`); 24 the boxed theme colour, East Asian
-        // layout and text effects the フォント dialog sets.
-        assert_eq!(std::mem::size_of::<Run>(), 3056);
+        // layout and text effects the フォント dialog sets; 8 a picture's
+        // boxed Word ink strokes (`RunImage::ink`).
+        assert_eq!(std::mem::size_of::<Run>(), 3064);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {

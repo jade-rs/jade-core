@@ -311,6 +311,7 @@ mod tests {
                     kind: RunImageKind::Floating,
                     ..RunImageLayout::default()
                 },
+                ink: None,
             }),
             text_box: None,
             math: None,
