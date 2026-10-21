@@ -458,6 +458,37 @@ impl NativeDocument {
         !self.redo_history.is_empty() || self.executor.can_redo()
     }
 
+    /// How many undoable steps there are: a mark for [`Self::merge_history_since`].
+    pub fn history_len(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Makes every command step taken since `mark` one step, so a single
+    /// undo takes them all back — what formatting several ranges at once,
+    /// or a drag-and-drop made of several edits, needs. Steps of another
+    /// kind (a header edit) are left as they are.
+    pub fn merge_history_since(&mut self, mark: usize) {
+        if mark >= self.history.len() {
+            return;
+        }
+        let tail = &self.history[mark..];
+        if !tail
+            .iter()
+            .all(|step| matches!(step, HistoryStep::Command { .. }))
+        {
+            return;
+        }
+        let executor_steps = tail
+            .iter()
+            .map(|step| match step {
+                HistoryStep::Command { executor_steps } => *executor_steps,
+                HistoryStep::HeaderFooter => 0,
+            })
+            .sum();
+        self.history.truncate(mark);
+        self.history.push(HistoryStep::Command { executor_steps });
+    }
+
     /// Undoes the last edit and repaints, reporting the selection it restored.
     ///
     /// The whole document is repainted: an undo can move content anywhere,
