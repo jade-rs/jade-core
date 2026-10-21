@@ -138,6 +138,30 @@ impl SkiaRenderHost {
         }
     }
 
+    /// A raster host of `width` x `height` CSS px at `raster_scale`, with
+    /// the faces another host already parsed: what a document builds again
+    /// when its page box changes.
+    pub(crate) fn with_fonts(
+        width: f64,
+        height: f64,
+        fonts: &FontEnvironment,
+        raster_scale: f64,
+    ) -> Option<Self> {
+        let first = SkiaPainter::new_scaled(width, height, raster_scale)?;
+        for (family, weight, face) in &fonts.faces {
+            first.register_face(family, *weight, face.clone());
+        }
+        let mut host = Self::new(1.0, 1.0)?;
+        host.pages = Rc::new(RefCell::new(vec![first]));
+        host.page_sizes = vec![(width, height)];
+        host.measurer = Rc::clone(&fonts.measurer);
+        host.faces = RefCell::new(fonts.faces.clone());
+        host.page_width = width;
+        host.page_height = height;
+        host.raster_scale = raster_scale;
+        Some(host)
+    }
+
     fn recording_with_fonts(
         width: f64,
         height: f64,
