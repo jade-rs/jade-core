@@ -152,6 +152,7 @@ mod tests {
                     kind: RunImageKind::Floating,
                     ..RunImageLayout::default()
                 },
+                ..Default::default()
             }),
             text_box: None,
             math: None,
@@ -217,6 +218,7 @@ mod tests {
                 insets: Default::default(),
                 vertical_alignment: Default::default(),
                 shape: Default::default(),
+                ..Default::default()
             }),
             math: None,
             field: None,

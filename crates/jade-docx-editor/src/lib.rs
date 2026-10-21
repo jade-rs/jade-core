@@ -24,6 +24,7 @@ pub(crate) mod tracing_stub;
 pub mod serializer;
 pub mod shortcuts;
 pub mod drawing_xml;
+pub mod picture_effects;
 pub(crate) mod snapshot_plan;
 pub(crate) mod typed_autoformat;
 pub mod word_document;
