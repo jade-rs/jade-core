@@ -647,6 +647,8 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png 0.18.1",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -711,6 +713,7 @@ dependencies = [
  "cfb",
  "console_error_panic_hook",
  "emf-core",
+ "image",
  "indexmap",
  "jade-canvas-painter",
  "jade-docx-annotations",
@@ -720,6 +723,8 @@ dependencies = [
  "jade-docx-writer",
  "jade-painter",
  "jade-preview-plugin-api",
+ "jade-xlsx-layout",
+ "jade-xlsx-reader",
  "js-sys",
  "png 0.17.16",
  "rustc-hash",
@@ -846,6 +851,28 @@ name = "jade-text-layout"
 version = "0.1.0"
 dependencies = [
  "unicode-segmentation",
+]
+
+[[package]]
+name = "jade-xlsx-layout"
+version = "0.1.0"
+dependencies = [
+ "jade-text-layout",
+ "jade-xlsx-reader",
+ "serde",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "jade-xlsx-reader"
+version = "0.1.0"
+dependencies = [
+ "jade-opc",
+ "quick-xml",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
 ]
 
 [[package]]
@@ -2045,4 +2072,19 @@ dependencies = [
  "crc32fast",
  "log",
  "simd-adler32",
+]
+
+[[package]]
+name = "zune-core"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
+dependencies = [
+ "zune-core",
 ]

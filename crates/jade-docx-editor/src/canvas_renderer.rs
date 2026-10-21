@@ -20909,7 +20909,7 @@ where
                 // clicked on the page.
                 self.object_debug_regions
                     .borrow_mut()
-                    .extend((!image.layout.hidden()).then(|| ObjectDebugInfo {
+                    .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -21647,7 +21647,7 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .extend((!image.layout.hidden()).then(|| ObjectDebugInfo {
+            .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                 kind: FloatingObjectKind::Image,
                 paragraph_index,
                 run_index,

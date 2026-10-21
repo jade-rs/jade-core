@@ -299,7 +299,7 @@ pub fn remove_background(pixels: &mut image::RgbaImage, marquee: [f64; 4]) -> us
         }
         seen[index] = true;
         let pixel = *pixels.get_pixel(x as u32, y as u32);
-        if !similar(&pixel) && !(outside(x, y) && pixel[3] == 0) {
+        if !similar(&pixel) && (!outside(x, y) || pixel[3] != 0) {
             continue;
         }
         if pixel[3] != 0 {

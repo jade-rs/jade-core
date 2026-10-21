@@ -145,7 +145,7 @@ pub fn paint_wordart<P: Painter>(
     let total: f64 = advances.iter().sum::<f64>().max(0.1);
     // The glyphs' box: ascent about 0.88 of the size, descent 0.24.
     let (ascent, line) = (paint.size_px * 0.88, paint.size_px * 1.12);
-    if let Some(_) = path_point(preset, 0.5, width, height) {
+    if path_point(preset, 0.5, width, height).is_some() {
         // Along a path: the text stretched over the path's length.
         let samples = 64;
         let mut length = 0.0;
@@ -163,8 +163,7 @@ pub fn paint_wordart<P: Painter>(
         // size (smaller only when the box is too low for them).
         let scale = (height * 0.5 / line)
             .min(length * 0.95 / total)
-            .min(1.0)
-            .max(0.05);
+            .clamp(0.05, 1.0);
         let mut cursor = 0.0;
         for (ch, advance) in characters.iter().zip(&advances) {
             let u = (cursor + advance / 2.0) / total;

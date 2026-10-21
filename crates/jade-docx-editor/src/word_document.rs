@@ -31648,8 +31648,8 @@ impl WordDocument {
         let mut kept = Vec::new();
         let mut graphic = None;
         for node in old_container.children {
-            match node {
-                XmlNode::Element(element) => match element.name.as_str() {
+            if let XmlNode::Element(element) = node {
+                match element.name.as_str() {
                     "a:graphic" => graphic = Some(element),
                     "wp:simplePos"
                     | "wp:positionH"
@@ -31661,8 +31661,7 @@ impl WordDocument {
                     | "wp:wrapThrough"
                     | "wp:wrapTopAndBottom" => {}
                     _ => kept.push(element),
-                },
-                _ => {}
+                }
             }
         }
         let mut graphic = graphic.expect("the container was chosen for its graphic");
