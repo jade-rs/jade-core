@@ -2870,6 +2870,21 @@ pub struct RunGroupShape {
     /// `None` and use the text-box defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_style: Option<GroupShapeTextStyle>,
+    /// A picture in the group (`pic:pic`), drawn in the child's box.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<Box<GroupPicture>>,
+}
+
+/// A grouped picture: its media relationship, the data URI loading
+/// resolves it to, and its crop.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupPicture {
+    pub relationship_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop: Option<ImageCrop>,
 }
 
 /// Uniform formatting for a grouped shape's DrawingML text body. Taken from

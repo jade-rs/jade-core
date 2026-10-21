@@ -5922,7 +5922,7 @@ impl DocumentParser {
                             continue;
                         }
                         b"wpg:grpSpPr" => in_group_properties = true,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             current_shape = Some(RunGroupShape {
                                 z_order: next_z_order,
                                 ..RunGroupShape::default()
@@ -5930,7 +5930,12 @@ impl DocumentParser {
                             next_z_order += 1;
                             active_theme_color = None;
                         }
-                        b"wps:spPr" if current_shape.is_some() => in_shape_properties = true,
+                        b"wps:spPr" | b"pic:spPr" if current_shape.is_some() => {
+                            in_shape_properties = true
+                        }
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
                         b"w:txbxContent" | b"wp:txbxContent" if current_shape.is_some() => {
                             let inner =
                                 self.extract_inner_xml(&mut reader, element.name().as_ref())?;
@@ -6261,6 +6266,17 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
+                        b"a:srcRect" if current_shape.as_ref().is_some_and(|shape| shape.picture.is_some()) => {
+                            let mut image = RunImage::default();
+                            let mut embed = false;
+                            Self::extract_drawing_attributes(&mut image, element, &mut embed);
+                            if let Some(picture) = current_shape.as_mut().and_then(|shape| shape.picture.as_mut()) {
+                                picture.crop = image.crop;
+                            }
+                        }
                         b"a:chOff" if in_group_properties => {
                             group.child_offset_x = coordinate(element, b"x").unwrap_or(0.0);
                             group.child_offset_y = coordinate(element, b"y").unwrap_or(0.0);
@@ -6567,13 +6583,13 @@ impl DocumentParser {
                     }
                     match element.name().as_ref() {
                         b"wpg:grpSpPr" => in_group_properties = false,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             if let Some(shape) = current_shape.take() {
                                 group.children.push(shape);
                             }
                             active_theme_color = None;
                         }
-                        b"wps:spPr" => in_shape_properties = false,
+                        b"wps:spPr" | b"pic:spPr" => in_shape_properties = false,
                         b"a:xfrm" => in_transform = false,
                         b"a:ln" => {
                             in_line = false;
@@ -6660,6 +6676,24 @@ impl DocumentParser {
             group.child_extent_height = shape_max.max(group_max) - group.child_offset_y;
         }
         Ok(group)
+    }
+
+    /// A grouped picture's `a:blip`: its media relationship.
+    fn group_picture_blip(shape: Option<&mut RunGroupShape>, element: &BytesStart<'_>) {
+        let Some(shape) = shape else {
+            return;
+        };
+        let relationship = element
+            .attributes()
+            .flatten()
+            .find(|attribute| attribute.key.as_ref() == b"r:embed")
+            .map(|attribute| String::from_utf8_lossy(&attribute.value).into_owned());
+        if let Some(relationship_id) = relationship {
+            shape.picture = Some(Box::new(GroupPicture {
+                relationship_id,
+                ..GroupPicture::default()
+            }));
+        }
     }
 
     fn drawingml_color_value(element: &BytesStart<'_>) -> Option<String> {
