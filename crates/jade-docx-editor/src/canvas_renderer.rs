@@ -33247,12 +33247,7 @@ where
             on_page.first().copied()
         };
         found
-            .or_else(|| {
-                matching
-                    .clone()
-                    .filter(|(start, _, _)| *start < page)
-                    .last()
-            })
+            .or_else(|| matching.clone().rfind(|(start, _, _)| *start < page))
             .or_else(|| matching.clone().find(|(start, _, _)| *start > page))
             .map(|(_, _, text)| text.trim().to_string())
     }
