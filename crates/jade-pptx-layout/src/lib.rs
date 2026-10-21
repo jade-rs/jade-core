@@ -12,6 +12,8 @@ mod color;
 mod geometry;
 mod interaction;
 mod measure;
+mod number_format;
+pub use number_format::format_chart_number;
 mod paragraph_format;
 mod placeholder;
 mod preset_shapes;
@@ -1008,8 +1010,6 @@ fn place_items(
 
 /// The frame colour a chart draws with until charts draw as charts.
 const CHART_FRAME_COLOR: &str = "#BFBFBF";
-/// PowerPoint's default chart title size.
-const CHART_TITLE_SIZE_PT: f32 = 14.0;
 
 /// A chart places as its frame with the title across the top, then its
 /// plot — bars, lines or sectors from the cached series.
@@ -1029,18 +1029,23 @@ fn place_chart(
         .is_some_and(|title| !title.trim().is_empty());
     let lines = match &chart.title {
         Some(title) if !title.trim().is_empty() => {
+            let (size_pt, bold, color) = chart::title_style(chart);
             let body = jade_pptx_reader::TextBody {
-                paragraphs: vec![jade_pptx_reader::TextParagraph {
-                    align: Some(jade_pptx_reader::TextAlign::Center),
-                    runs: vec![jade_pptx_reader::TextRun {
-                        text: title.clone(),
-                        bold: true,
-                        bold_stated: Some(true),
-                        size_pt: Some(CHART_TITLE_SIZE_PT),
-                        ..jade_pptx_reader::TextRun::default()
-                    }],
-                    ..jade_pptx_reader::TextParagraph::default()
-                }],
+                paragraphs: title
+                    .split('\n')
+                    .map(|line| jade_pptx_reader::TextParagraph {
+                        align: Some(jade_pptx_reader::TextAlign::Center),
+                        runs: vec![jade_pptx_reader::TextRun {
+                            text: line.to_string(),
+                            bold,
+                            bold_stated: Some(bold),
+                            size_pt: Some(size_pt),
+                            color: color.clone(),
+                            ..jade_pptx_reader::TextRun::default()
+                        }],
+                        ..jade_pptx_reader::TextParagraph::default()
+                    })
+                    .collect(),
                 ..jade_pptx_reader::TextBody::default()
             };
             let text_context = style::text_context_for_table(context);

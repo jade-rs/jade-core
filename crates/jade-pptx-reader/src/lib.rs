@@ -22,7 +22,10 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
-pub use chart::{parse_chart_xml, ChartContent, ChartSeries, ChartStyle};
+pub use chart::{
+    parse_chart_xml, ChartAxis, ChartContent, ChartMarker, ChartPlot, ChartSeries, ChartStyle,
+    DataLabels,
+};
 pub use error::{PptxError, Result};
 pub use shape_guides::ShapeGuides;
 pub use slide::{
