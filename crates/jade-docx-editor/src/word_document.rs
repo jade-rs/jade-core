@@ -53,6 +53,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
+#[path = "word_document/objects.rs"]
+pub mod objects;
+
 
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
@@ -3029,6 +3032,9 @@ impl WordDocument {
                             }
                             Self::force_apply_theme_to_elements(&mut text_box.blocks, theme);
                         }
+                        if let Some(image) = run.image.as_mut() {
+                            Self::apply_theme_to_picture(image, theme, true);
+                        }
                         if let Some(group) = run
                             .image
                             .as_mut()
@@ -3948,6 +3954,9 @@ impl WordDocument {
                 }
                 Self::apply_theme_to_elements(&mut text_box.blocks, theme);
             }
+            if let Some(image) = run.image.as_mut() {
+                Self::apply_theme_to_picture(image, theme, false);
+            }
             if let Some(group) = run
                 .image
                 .as_mut()
@@ -4012,6 +4021,62 @@ impl WordDocument {
         }
         for nested in &mut group.groups {
             Self::apply_theme_to_shape_group(nested, theme, force);
+        }
+    }
+
+    /// Resolves the theme colours of a picture's outline, effects and colour
+    /// adjustments; `force` replaces colours already resolved (a theme
+    /// change).
+    fn apply_theme_to_picture(image: &mut RunImage, theme: &ThemePart, force: bool) {
+        let resolve = |color: &mut Option<String>, key: Option<&str>, transforms: &[ThemeColorTransform]| {
+            if force || color.is_none() {
+                if let Some(resolved) =
+                    key.and_then(|key| Self::resolve_shape_theme_color(theme, key, transforms))
+                {
+                    *color = Some(resolved);
+                }
+            }
+        };
+        let Some(format) = image.format.as_deref_mut() else {
+            return;
+        };
+        if let Some(outline) = format.outline.as_mut() {
+            resolve(
+                &mut outline.color,
+                outline.theme_color.as_deref(),
+                &outline.theme_transforms,
+            );
+        }
+        for shadow in [format.shadow.as_mut(), format.inner_shadow.as_mut()]
+            .into_iter()
+            .flatten()
+        {
+            resolve(
+                &mut shadow.color,
+                shadow.theme_color.as_deref(),
+                &shadow.theme_transforms,
+            );
+        }
+        if let Some(glow) = format.glow.as_mut() {
+            resolve(&mut glow.color, glow.theme_color.as_deref(), &glow.theme_transforms);
+        }
+        for effect in &mut format.blip_effects {
+            let colors: Vec<&mut crate::document::DrawingColor> = match effect {
+                crate::document::BlipEffect::Duotone { dark, light } => vec![dark, light],
+                crate::document::BlipEffect::ColorChange { from, to } => vec![from, to],
+                _ => Vec::new(),
+            };
+            for color in colors {
+                resolve(&mut color.rgb, color.theme.as_deref(), &color.transforms);
+                if color.rgb.is_some() && !color.transforms.is_empty() && color.theme.is_none() {
+                    if let Some(rgb) = color.rgb.as_deref().and_then(|rgb| {
+                        jade_docx_reader::color::apply_color_transforms(rgb, &color.transforms)
+                    }) {
+                        color.rgb = Some(rgb);
+                        color.transforms.clear();
+                    }
+                }
+            }
         }
     }
 
@@ -6952,6 +7017,22 @@ impl WordDocument {
                 for run in &mut paragraph.runs {
                     if let Some(image) = run.image.as_mut() {
                         if image.data_uri.is_some() {
+                            continue;
+                        }
+                        // Word 2016 and later draw a picture's SVG
+                        // (`asvg:svgBlip`) rather than its PNG fallback.
+                        if let Some(svg) = image
+                            .format()
+                            .svg_relationship_id
+                            .as_deref()
+                            .and_then(|id| rel_map.get(id))
+                            .filter(|rel| rel.r#type == RelationshipTypes::Image.as_str())
+                            .and_then(|rel| {
+                                package.get(&Self::resolve_target_path(&doc_part.path, &rel.target))
+                            })
+                        {
+                            image.data_uri =
+                                Some(format!("data:image/svg+xml;base64,{}", BASE64.encode(svg)));
                             continue;
                         }
                         if let Some(rel_id) = image.relationship_id.as_deref() {
@@ -12859,6 +12940,7 @@ impl WordDocument {
             },
             vertical_alignment: Default::default(),
             shape: spec.shape,
+            ..Default::default()
         };
 
         let inserted_run_index = {
@@ -13175,6 +13257,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -13331,6 +13414,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -16742,6 +16826,7 @@ impl WordDocument {
                         behind_doc: false,
                         ..RunImageLayout::default()
                     },
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -39394,6 +39479,7 @@ mod tests {
             dist_bottom: Some(4.0),
             dist_left: Some(5.0),
             dist_right: Some(6.0),
+            ..Default::default()
         };
         word_doc.paragraph_mut(0).unwrap().runs[0].node_id = None;
         word_doc.sync_paragraph_text(0);
@@ -39602,6 +39688,7 @@ mod tests {
                     dist_bottom: Some(3.0),
                     dist_left: Some(4.0),
                     dist_right: Some(5.0),
+                    ..Default::default()
                 };
             }
             word_doc.paragraph_mut(0).unwrap().runs[0].node_id = None;
@@ -41021,6 +41108,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -41105,6 +41193,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -41455,6 +41544,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -49003,6 +49093,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape,
+            ..Default::default()
         });
         WordDocument::from_document(Document {
             body: Some(Body {
@@ -49090,6 +49181,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape: Default::default(),
+            ..Default::default()
         };
 
         let host_paragraph = Paragraph {

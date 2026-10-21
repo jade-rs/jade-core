@@ -20894,9 +20894,10 @@ where
             for (run_index, image, image_x, image_y, image_width, image_height) in
                 &inline_image_draws
             {
-                self.object_debug_regions
-                    .borrow_mut()
-                    .push(ObjectDebugInfo {
+                // A hidden object (the Selection Pane's eye) cannot be
+                // clicked on the page.
+                self.object_debug_regions.borrow_mut().extend(
+                    (!image.layout.hidden()).then(|| ObjectDebugInfo {
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -20906,7 +20907,8 @@ where
                         width: *image_width,
                         height: *image_height,
                         rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
-                    });
+                    }),
+                );
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
                     y: *image_y,
@@ -21634,7 +21636,7 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
+            .extend((!image.layout.hidden()).then(|| ObjectDebugInfo {
                 kind: FloatingObjectKind::Image,
                 paragraph_index,
                 run_index,
@@ -21644,7 +21646,7 @@ where
                 width: transform.width,
                 height: transform.height,
                 rotation_deg: transform.rotation_deg,
-            });
+            }));
 
         let draw_spec = ImageDrawSpec {
             x: transform.x,
@@ -24246,7 +24248,7 @@ where
         line_height: f64,
         render_changes: bool,
     ) -> Result<Option<f64>, JsValue> {
-        if !matches!(text_box.layout.kind, RunImageKind::Floating) {
+        if !matches!(text_box.layout.kind, RunImageKind::Floating) || text_box.layout.hidden() {
             return Ok(None);
         }
 
@@ -25805,7 +25807,7 @@ where
         image: &RunImage,
         draw_spec: ImageDrawSpec,
     ) -> Result<(), JsValue> {
-        if !self.should_draw_current_page_for_render() {
+        if !self.should_draw_current_page_for_render() || image.layout.hidden() {
             return Ok(());
         }
         let data_uri = match &image.data_uri {
@@ -25841,6 +25843,12 @@ where
         // A host that can draw the image itself gets first refusal. The path
         // below needs a canvas and an event loop for the decode; a host with
         // neither would reach for a context that does not exist.
+        //
+        // The picture is drawn with its colour adjustments and soft edges
+        // applied, inside its effects: reflection, glow and shadow under
+        // it, its shape as a clip, its outline and bevel over it.
+        let effective = crate::picture_effects::effective_data_uri(image);
+        let data_uri = effective.as_deref().unwrap_or(data_uri);
         let painter = self.host.painter();
         painter.save();
         let transform = Self::apply_centered_transform(
@@ -25851,15 +25859,35 @@ where
             draw_spec.flip_horizontal,
             draw_spec.flip_vertical,
         );
-        let handled = transform.is_ok()
-            && self.host.draw_image_data_uri(
-                data_uri,
-                draw_spec.x,
-                draw_spec.y,
-                draw_spec.width,
-                draw_spec.height,
-                image_crop_mapping(draw_spec.crop),
-            );
+        let crop = image_crop_mapping(draw_spec.crop);
+        let draw = |x: f64, y: f64| {
+            self.host
+                .draw_image_data_uri(data_uri, x, y, draw_spec.width, draw_spec.height, crop)
+        };
+        let handled = transform.is_ok() && {
+            self.paint_picture_underlay(&painter, image, draw_spec, &draw)
+                .map_err(PainterError::into_js_value)?;
+            painter.save();
+            if let Some(shape) = image.format().geometry {
+                Self::trace_text_box_shape(
+                    &painter,
+                    shape,
+                    draw_spec.x,
+                    draw_spec.y,
+                    draw_spec.width,
+                    draw_spec.height,
+                )
+                .map_err(PainterError::into_js_value)?;
+                painter.clip();
+            }
+            let drawn = draw(draw_spec.x, draw_spec.y);
+            painter.restore();
+            if drawn {
+                Self::paint_picture_overlay(&painter, image, draw_spec)
+                    .map_err(PainterError::into_js_value)?;
+            }
+            drawn
+        };
         painter.restore();
         transform.map_err(PainterError::into_js_value)?;
         if handled {
@@ -25935,6 +25963,154 @@ where
 
         self.pending_image_promises.borrow_mut().push(draw_promise);
 
+        Ok(())
+    }
+
+    /// What goes under a picture: its reflection, glow and shadow. Each
+    /// follows the picture's shape — its own pixels when it is a plain
+    /// rectangle, so a picture with a transparent background casts the
+    /// shadow of what is in it, as in Word.
+    fn paint_picture_underlay<P: Painter>(
+        &self,
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+        draw: &dyn Fn(f64, f64) -> bool,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        if let Some(reflection) = image.format().reflection.as_ref() {
+            // A copy mirrored below the picture, fading from `start_opacity`
+            // at the picture's foot to `end_opacity` at `end_position` of
+            // its height. The painters have no gradient mask, so the fade is
+            // drawn as bands of falling opacity.
+            const BANDS: usize = 16;
+            let reach = (height * reflection.end_position.clamp(0.0, 1.0)).max(1.0);
+            let top = y + height + reflection.distance_px.max(0.0);
+            for band in 0..BANDS {
+                let from = reach * band as f64 / BANDS as f64;
+                let to = reach * (band + 1) as f64 / BANDS as f64;
+                let opacity = reflection.start_opacity
+                    + (reflection.end_opacity - reflection.start_opacity)
+                        * (band as f64 + 0.5)
+                        / BANDS as f64;
+                if opacity <= 0.0 {
+                    continue;
+                }
+                painter.save();
+                painter.begin_path();
+                painter.rect(x, top + from, width, to - from + 0.5);
+                painter.clip();
+                painter.set_global_alpha(opacity.clamp(0.0, 1.0));
+                painter.translate(0.0, top * 2.0)?;
+                painter.scale(1.0, -1.0)?;
+                draw(x, top - height);
+                painter.restore();
+            }
+        }
+        let shadow_pass = |color: String, blur: f64, offset_x: f64, offset_y: f64| {
+            painter.save();
+            match image.format().geometry {
+                Some(shape) => {
+                    // The shape filled far off the page casts its shadow
+                    // back onto it, so only the shadow shows.
+                    const AWAY: f64 = 100_000.0;
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x + AWAY);
+                    painter.set_shadow_offset_y(offset_y);
+                    painter.set_fill_style_str("#000000");
+                    let traced =
+                        Self::trace_text_box_shape(painter, shape, x - AWAY, y, width, height);
+                    if traced.is_ok() {
+                        painter.fill();
+                    }
+                }
+                None => {
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x);
+                    painter.set_shadow_offset_y(offset_y);
+                    draw(x, y);
+                }
+            }
+            painter.restore();
+        };
+        if let Some(glow) = image.format().glow.as_ref() {
+            shadow_pass(
+                Self::shape_glow_color(glow),
+                glow.radius_px * 2.0,
+                0.0,
+                0.0,
+            );
+        }
+        if let Some(shadow) = image.format().shadow.as_ref() {
+            let direction = shadow.direction_deg.to_radians();
+            shadow_pass(
+                Self::shape_shadow_color(shadow),
+                shadow.blur_radius_px,
+                shadow.distance_px * direction.cos(),
+                shadow.distance_px * direction.sin(),
+            );
+        }
+        Ok(())
+    }
+
+    /// What goes over a picture: its inner shadow, bevel and outline.
+    fn paint_picture_overlay<P: Painter>(
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        let shape = image.format().geometry.unwrap_or(TextBoxShape::Rectangle);
+        if let Some(shadow) = image.format().inner_shadow.as_ref() {
+            Self::paint_shape_inner_shadow(painter, shadow, shape, x, y, width, height, 1.0, 1.0)?;
+        }
+        if let Some(bevel) = image.format().bevel.as_ref() {
+            // Light falls from the top left: a bright band along the top and
+            // left edges, a dark one along the bottom and right, as wide as
+            // the bevel.
+            let band = bevel.width_px.min(width / 2.0).min(height / 2.0).max(1.0);
+            painter.save();
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.clip();
+            painter.set_line_width(band);
+            painter.set_stroke_style_str("rgba(255, 255, 255, 0.45)");
+            painter.begin_path();
+            painter.move_to(x + band / 2.0, y + height);
+            painter.line_to(x + band / 2.0, y + band / 2.0);
+            painter.line_to(x + width, y + band / 2.0);
+            painter.stroke();
+            painter.set_stroke_style_str("rgba(0, 0, 0, 0.3)");
+            painter.begin_path();
+            painter.move_to(x + band, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + band);
+            painter.stroke();
+            painter.restore();
+        }
+        if let Some(outline) = image
+            .format()
+            .outline
+            .as_ref()
+            .filter(|outline| outline.style != TextBoxBorderStyle::None)
+            .filter(|outline| outline.color.is_some() || outline.width_px.is_some())
+        {
+            let line_width = outline
+                .width_px
+                .unwrap_or(DEFAULT_TEXT_BOX_BORDER_WIDTH_PX)
+                .max(0.5);
+            painter.save();
+            painter.set_stroke_style_str(&Self::shape_border_color(outline));
+            painter.set_line_width(line_width);
+            if let Some(pattern) = Self::border_dash_pattern(outline.style.clone(), line_width) {
+                painter.set_line_dash(&pattern);
+            }
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.stroke();
+            painter.set_line_dash(&[]);
+            painter.restore();
+        }
         Ok(())
     }
 

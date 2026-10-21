@@ -103,6 +103,7 @@ struct PendingRuby {
 }
 
 mod diagram;
+mod drawing_extras;
 pub mod math;
 mod table;
 use math::{parse_math_elements, parse_math_paragraph};
@@ -4878,10 +4879,12 @@ impl DocumentParser {
         let mut in_glow = false;
         let mut current_border = TextBoxBorder::default();
         let mut active_shape_theme_color: Option<ShapeThemeColorTarget> = None;
+        let mut extras = drawing_extras::DrawingExtras::default();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
+                    extras.start(e, false);
                     match e.name().as_ref() {
                         // Stored properties of an invisible line must not
                         // become the visible shape's fill or effects.
@@ -5230,6 +5233,7 @@ impl DocumentParser {
                     depth = depth.saturating_add(1);
                 }
                 Ok(Event::Empty(ref e)) => {
+                    extras.start(e, true);
                     match e.name().as_ref() {
                         b"wp:inline" => {
                             image.layout.kind = RunImageKind::Inline;
@@ -5510,6 +5514,7 @@ impl DocumentParser {
                     Self::extract_drawing_attributes(&mut image, e, &mut has_embed);
                 }
                 Ok(Event::End(ref e)) => {
+                    extras.end(e.name().as_ref());
                     match e.name().as_ref() {
                         b"wp:positionH" => {
                             in_position_h = false;
@@ -5658,6 +5663,19 @@ impl DocumentParser {
         }
 
         if has_embed || has_chart || has_group || has_smartart {
+            let mut format = PictureFormat::default();
+            if has_embed && !has_chart && !has_group && !has_smartart {
+                // A picture's own outline, effects and shape.
+                format.outline = text_box_border;
+                format.shadow = text_box_shadow;
+                format.inner_shadow = text_box_inner_shadow;
+                format.glow = text_box_glow;
+                format.soft_edge_radius_px = text_box_soft_edge_radius_px;
+                format.geometry = (text_box_shape != TextBoxShape::Rectangle
+                    && !text_box_shape.is_line())
+                .then_some(text_box_shape);
+            }
+            extras.apply_to_image(&mut image, format);
             Ok(Some(DrawingObject::Image(image)))
         } else if text_box_text.is_some() || has_wordprocessing_shape {
             let text_box = RunTextBox {
@@ -5679,7 +5697,10 @@ impl DocumentParser {
                 insets: text_box_insets,
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
+                ..Default::default()
             };
+            let mut text_box = text_box;
+            extras.apply_to_text_box(&mut text_box);
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
             Ok(None)
@@ -7316,6 +7337,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
+            ..Default::default()
         })))
     }
 

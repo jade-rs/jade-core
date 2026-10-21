@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+mod drawing;
 mod math;
 mod table;
+pub use drawing::*;
 mod table_conditional;
 pub use math::{MathElement, MathElementKind, MathParagraph, MathRun};
 pub use table::{
@@ -2762,6 +2764,10 @@ pub struct RunImage {
     /// Layout information describing whether the image participates in text
     /// flow or floats at an absolute position.
     pub layout: RunImageLayout,
+    /// The picture's outline, effects, shape and colour adjustments — kept
+    /// apart so a run without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<Box<PictureFormat>>,
 }
 
 /// Coordinate system and supported child shapes from a DrawingML group.
@@ -3582,6 +3588,10 @@ pub struct RunTextBox {
     /// represent shapes that do not contain `wps:txbx`.
     #[serde(default)]
     pub shape: TextBoxShape,
+    /// Reflection, bevel, freeform paths, connector ends, WordArt warp and
+    /// text box links — kept apart so a run without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extras: Option<Box<ShapeExtras>>,
 }
 
 /// Text box inner margins in CSS pixels. The defaults mirror Word's standard
@@ -3814,8 +3824,10 @@ mod tests {
         // (`RunField::word_mac_body_result`).
         assert_eq!(std::mem::size_of::<RunField>(), 176);
         // 8 bytes of it: the insertion a tracked deletion sits in
-        // (`RevisionMark::insertion`).
-        assert_eq!(std::mem::size_of::<Run>(), 3032);
+        // (`RevisionMark::insertion`). 32 more: a drawing's boxed format,
+        // shape extras and anchor options (`RunImage::format`,
+        // `RunTextBox::extras`, `RunImageLayout::options`, twice).
+        assert_eq!(std::mem::size_of::<Run>(), 3064);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -4255,6 +4267,10 @@ pub struct RunImageLayout {
     pub dist_left: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dist_right: Option<f64>,
+    /// The anchor's options and the object's name — kept apart so a run
+    /// without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<Box<AnchorOptions>>,
 }
 
 /// Absolute page coordinates used by DrawingML's simple-positioning mode.
