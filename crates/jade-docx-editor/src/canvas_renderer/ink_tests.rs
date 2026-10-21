@@ -105,3 +105,34 @@ fn word_ink_is_saved_again_as_word_ink() {
     assert_eq!(drawings.len(), 1);
     assert_eq!(drawings[0].traces[0].points.len(), 4);
 }
+
+#[test]
+fn a_resized_ink_drawing_scales_its_strokes() {
+    let mut model =
+        futures::executor::block_on(WordDocument::load(&word_ink_docx(), &Options::default()))
+            .expect("load");
+    // How far right the red stroke reaches from the drawing's left edge.
+    let extent = |ops: &[Op]| {
+        let start = ops
+            .iter()
+            .position(|op| matches!(op, Op::SetStrokeStyle(color) if color == "#E71224"))
+            .expect("the stroke");
+        ops[start..]
+            .iter()
+            .take_while(|op| !matches!(op, Op::Stroke))
+            .filter_map(|op| match op {
+                Op::MoveTo(x, _) | Op::LineTo(x, _) => Some(*x),
+                _ => None,
+            })
+            .fold(f64::MIN, f64::max)
+            - 200.0
+    };
+    let before = extent(&render(&model));
+    let image = model.paragraph_mut(0).unwrap().runs[1]
+        .image
+        .as_mut()
+        .expect("the ink drawing");
+    image.width_px = image.width_px.map(|width| width * 2.0);
+    let after = extent(&render(&model));
+    assert!((after - 2.0 * before).abs() < 2.0, "{before} -> {after}");
+}
