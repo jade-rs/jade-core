@@ -12,6 +12,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 [dependencies]
 base64 = "0.22"
 cfb = "0.7"
+sha2 = "0.10"
 png = "0.17"
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 jade-selection = { path = "../jade-selection" }
