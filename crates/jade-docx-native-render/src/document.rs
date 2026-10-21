@@ -193,13 +193,17 @@ impl NativeDocument {
         page_height: f64,
         faces: &[FaceSpec<'_>],
     ) -> Result<Self, String> {
-        let options = Options::default();
+        let mut options = Options::default();
 
         let word_document = block_on(WordDocument::load(docx_bytes, &options))
             .map_err(|err| format!("parse failed: {err}"))?;
-        if word_document.document.is_none() {
+        let Some(document) = word_document.document.as_ref() else {
             return Err("no main document part".to_string());
-        }
+        };
+        // Tracked changes as Word shows them: with their markup — insertions
+        // coloured and underlined, deletions struck through — unless the
+        // document was saved with a view that leaves them out.
+        options.set_render_changes(document.display_content_revisions.unwrap_or(true));
 
         // Section properties decide the page box, and it is not necessarily the
         // one the caller asked for — this fixture is A4 while the shell asks
