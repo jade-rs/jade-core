@@ -21,6 +21,7 @@ pub mod navigation;
 pub mod number_format;
 pub mod resize;
 pub mod selection;
+pub mod shape_style;
 pub mod table_style;
 pub mod units;
 mod visual_format;
@@ -215,6 +216,10 @@ pub struct PlacedShape {
     /// that has a text body.
     pub lines: Vec<String>,
     pub font: ResolvedFont,
+    /// A shape's geometry, fill, outline and text placement; `None` for a
+    /// picture, chart or group.
+    #[serde(default)]
+    pub style: Option<shape_style::PlacedShapeStyle>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1754,10 +1759,23 @@ fn place_shapes(
                 width: (right - x).max(0.0),
                 height: (bottom - y).max(0.0),
             };
-            let font = options.default_font.clone();
+            let mut font = options.default_font.clone();
+            let style = shape.style.as_ref().map(|style| {
+                shape_style::place(
+                    style,
+                    rect.width,
+                    rect.height,
+                    styles,
+                    &mut font,
+                    shape.kind == ShapeKind::Connector,
+                )
+            });
             let lines = match &shape.text {
                 Some(text) if !text.is_empty() => {
-                    let width = (rect.width - options.cell_padding_px * 2.0).max(1.0);
+                    let inset = style
+                        .as_ref()
+                        .map_or(options.cell_padding_px, |style| style.inset_x);
+                    let width = (rect.width - inset * 2.0).max(1.0);
                     let measure = Rc::clone(&options.measure);
                     let font_for_measure = font.clone();
                     text.split('\n')
@@ -1826,6 +1844,7 @@ fn place_shapes(
                 }),
                 lines,
                 font,
+                style,
             })
         })
         .collect()
