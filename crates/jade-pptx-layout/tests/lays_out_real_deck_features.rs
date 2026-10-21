@@ -1136,7 +1136,12 @@ fn table() -> Table {
             },
         ],
         id: None,
-        style: Default::default(),
+        // "No Style, No Grid": only the cells' own borders draw. A table
+        // naming no style at all gets the grid instead.
+        style: jade_pptx_reader::TableStyleFlags {
+            style_id: Some("{2D5ABB26-0587-4C30-8999-92F81FD0307C}".into()),
+            ..Default::default()
+        },
     }
 }
 

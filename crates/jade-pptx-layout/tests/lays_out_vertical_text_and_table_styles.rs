@@ -57,7 +57,7 @@ fn theme() -> ThemeColors {
     let xml = r#"<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:themeElements><a:clrScheme name="t">
       <a:dk1><a:srgbClr val="000000"/></a:dk1>
       <a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>
-      <a:accent1><a:srgbClr val="4472C4"/></a:accent1>
+      <a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
     </a:clrScheme></a:themeElements></a:theme>"#;
     jade_pptx_reader::parse_theme_colors(xml).expect("theme")
 }
@@ -282,13 +282,11 @@ fn an_explicit_cell_fill_and_border_beat_the_table_style() {
 }
 
 #[test]
-fn a_table_without_a_style_or_with_an_unknown_one_stays_plain() {
-    let mut plain = styled_table("{NOT-A-KNOWN-STYLE}", 2);
-    plain.style.style_id = None;
+fn a_table_with_an_unknown_style_stays_plain() {
     let unknown = styled_table("{NOT-A-KNOWN-STYLE}", 2);
     let laid_out = layout_slide(
         slide_size(),
-        &slide_with(vec![ShapeItem::Table(plain), ShapeItem::Table(unknown)]),
+        &slide_with(vec![ShapeItem::Table(unknown)]),
         &theme(),
         &HeuristicMeasure,
     );
@@ -297,6 +295,107 @@ fn a_table_without_a_style_or_with_an_unknown_one_stays_plain() {
         .shapes
         .iter()
         .any(|s| s.geometry == PlacedGeometry::Line));
+}
+
+#[test]
+fn a_table_naming_no_style_draws_a_thin_grid_as_powerpoint_does() {
+    // PowerPoint draws a table without `a:tableStyleId` like "No Style,
+    // Table Grid": a 1pt text-coloured line on every cell edge, no fills
+    // and no header emphasis (its own PDF of such a deck shows the grid).
+    let mut plain = styled_table("", 2);
+    plain.style.style_id = None;
+    plain.style.first_row = true;
+    let laid_out = layout_slide(
+        slide_size(),
+        &slide_with(vec![ShapeItem::Table(plain)]),
+        &theme(),
+        &HeuristicMeasure,
+    );
+    assert!(cells(&laid_out).iter().all(|c| c.fill.is_none()));
+    let lines: Vec<_> = laid_out
+        .shapes
+        .iter()
+        .filter(|s| s.geometry == PlacedGeometry::Line)
+        .collect();
+    // 2 × 2 cells, each with its four edges.
+    assert_eq!(lines.len(), 16,"{:?}", lines.iter().map(|l| &l.name).collect::<Vec<_>>());
+    for line in lines {
+        let outline = line.outline.as_ref().unwrap();
+        assert_eq!(outline.color, "#000000");
+        assert!((outline.width_px - 96.0 / 72.0).abs() < 1e-9);
+    }
+    let header = cells(&laid_out)[0];
+    assert!(!header.lines[0].runs[0].bold);
+}
+
+#[test]
+fn all_of_powerpoints_built_in_table_styles_resolve() {
+    let ids: Vec<&str> = jade_pptx_layout::builtin_table_style_ids().collect();
+    assert_eq!(ids.len(), 74);
+    let mut names = std::collections::HashSet::new();
+    for id in &ids {
+        let style = jade_pptx_layout::builtin_table_style(id).expect(id);
+        assert!(names.insert(style.name.clone().unwrap()), "{:?}", style.name);
+    }
+    // GUIDs match whatever case a deck writes them in.
+    let lower = jade_pptx_layout::builtin_table_style("{bc89ef96-8cea-46ff-86c4-4ce0e7609802}")
+        .expect("Light Style 3 - Accent 1");
+    assert_eq!(lower.name.as_deref(), Some("Light Style 3 - Accent 1"));
+    assert_eq!(
+        jade_pptx_layout::builtin_table_style("{0660B408-B3CF-4A94-85FC-2B1E0A45F4A2}")
+            .and_then(|s| s.name),
+        Some("Dark Style 2 - Accent 1/Accent 2".to_string())
+    );
+}
+
+#[test]
+fn light_style_1_rules_the_header_and_washes_banded_rows() {
+    // Light Style 1 - Accent 2, with a header and banded rows.
+    let mut table = styled_table("{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}", 4);
+    table.style.first_row = true;
+    table.style.band_rows = true;
+    let laid_out = layout_slide(
+        slide_size(),
+        &slide_with(vec![ShapeItem::Table(table)]),
+        &theme(),
+        &HeuristicMeasure,
+    );
+    let cells = cells(&laid_out);
+    // The header: bold, unfilled.
+    assert!(cells[0].lines[0].runs[0].bold);
+    assert_eq!(cells[0].fill, None);
+    // Data rows alternate: the first band is a wash of accent 2, the
+    // second clear.
+    let band = cells[2].fill.as_deref().expect("band 1 fill");
+    assert!(band.starts_with("rgba(237,125,49,"), "{band}");
+    assert_eq!(cells[4].fill, None);
+    // Rules: under the header and around the table in the accent, none
+    // between body rows or columns.
+    let rule = |name: &str| laid_out.shapes.iter().find(|s| s.name == name);
+    let accent = |name: &str| rule(name).and_then(|s| s.outline.as_ref()).map(|o| o.color.clone());
+    assert_eq!(accent("T!A1:bottom").as_deref(), Some("#ED7D31"));
+    assert_eq!(accent("T!A1:top").as_deref(), Some("#ED7D31"));
+    assert!(rule("T!A1:left").is_none());
+    assert!(rule("T!A2:bottom").is_none());
+}
+
+#[test]
+fn dark_style_2_pairs_its_header_with_the_next_accent() {
+    let mut table = styled_table("{0660B408-B3CF-4A94-85FC-2B1E0A45F4A2}", 3);
+    table.style.first_row = true;
+    let laid_out = layout_slide(
+        slide_size(),
+        &slide_with(vec![ShapeItem::Table(table)]),
+        &theme(),
+        &HeuristicMeasure,
+    );
+    let cells = cells(&laid_out);
+    assert_eq!(cells[0].fill.as_deref(), Some("#ED7D31"));
+    assert_eq!(cells[0].lines[0].runs[0].color, "#FFFFFF");
+    // The body is accent 1 tinted.
+    let body = cells[2].fill.as_deref().unwrap();
+    assert_ne!(body, "#4472C4");
+    assert!(body.starts_with('#'));
 }
 
 #[test]
