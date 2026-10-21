@@ -139,6 +139,9 @@ pub struct CaretRect {
 }
 
 pub struct NativeDocument {
+    /// The page box the host and the renderer were built to: see
+    /// [`Self::follow_page_box`].
+    page_width: f64,
     page_height: f64,
     /// Edit history. Edits go through this so they can be undone; the
     /// executor records the inverse of each command as it applies it.
@@ -251,6 +254,7 @@ impl NativeDocument {
 
         Ok(Self {
             // The box the document asked for, not the one the caller guessed.
+            page_width,
             page_height,
             executor: CommandExecutor::default(),
             header_footer_undo: Vec::new(),
@@ -494,7 +498,70 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        self.follow_page_box()?;
         Ok(started.elapsed())
+    }
+
+    /// When an edit has changed the page box — the page turned, another
+    /// paper — the host and the renderer are built again to it, as opening
+    /// the document builds them. Built to the old box, the renderer went on
+    /// wrapping lines to its width: turned to landscape, the text kept its
+    /// portrait width, the pages their portrait pitch, and lines ran over
+    /// each other.
+    fn follow_page_box(&mut self) -> Result<(), String> {
+        let (width, height) = self.renderer.layout_page_size();
+        if (width, height) == (self.page_width, self.page_height) || width <= 1.0 || height <= 1.0 {
+            return Ok(());
+        }
+        // The density the pages were painted at, from the renderer about to
+        // be let go.
+        let raster_scale = self
+            .renderer
+            .set_raster_scale(1.0)
+            .map_err(|_| "raster scale lookup failed".to_string())?;
+        let host = SkiaRenderHost::with_fonts(width, height, &self.fonts, raster_scale)
+            .ok_or_else(|| "could not allocate the raster surface".to_string())?;
+        host.dark_paper().set(self.dark_paper.get());
+        if let Some(first) = host.pages().borrow().first() {
+            first.set_dark_paper(self.dark_paper.get());
+        }
+        let pages = host.pages();
+        let rendered_pages = host.rendered_pages();
+        let pass_covers_whole_document = host.pass_covers_whole_document();
+        let dark_paper = host.dark_paper();
+        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
+            .map_err(|_| "renderer setup failed".to_string())?;
+        renderer.sync_document_header_footer_stories(&self.word_document);
+        renderer.set_use_selection_overlay(false);
+        renderer.set_selection_range(self.selection);
+        renderer.mark_full_repaint();
+        let document = self
+            .word_document
+            .document
+            .as_ref()
+            .ok_or_else(|| "document went missing".to_string())?
+            .clone();
+        renderer
+            .render_with_numbering(
+                &document,
+                &self.options,
+                self.word_document.numbering_part.as_ref(),
+                self.word_document.header_lines.as_deref(),
+                self.word_document.footer_lines.as_deref(),
+                Some(&self.word_document.comments),
+            )
+            .map_err(|_| "repaint failed".to_string())?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        self.renderer = renderer;
+        self.pages = pages;
+        self.rendered_pages = rendered_pages;
+        self.pass_covers_whole_document = pass_covers_whole_document;
+        self.dark_paper = dark_paper;
+        self.page_width = width;
+        self.page_height = height;
+        Ok(())
     }
 
     /// Rasterises the pages at `scale` device pixels per CSS pixel — the
