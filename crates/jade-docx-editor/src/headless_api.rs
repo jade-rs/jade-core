@@ -3578,6 +3578,19 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetHyphenation { patch } => {
+                let patch = patch.clone();
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_hyphenation",
+                            move |document| document.set_hyphenation(&patch),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetParagraphSnapToGrid {
                 start_paragraph,
                 end_paragraph,
