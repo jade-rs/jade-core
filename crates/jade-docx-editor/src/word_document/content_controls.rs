@@ -532,6 +532,23 @@ impl WordDocument {
                 let at = TextPosition::new(*paragraph, *offset);
                 (at, at, text)
             }
+            HeadlessCommand::DeleteText {
+                paragraph,
+                offset,
+                direction,
+                count,
+            } => {
+                let at = TextPosition::new(*paragraph, *offset);
+                let other = self.step_characters(
+                    at,
+                    *count,
+                    matches!(
+                        direction,
+                        jade_docx_headless_api::HeadlessDeleteDirection::Backward
+                    ),
+                );
+                (at.min(other), at.max(other), &String::new())
+            }
             _ => return None,
         };
         if text.contains('\n') || !self.paragraph_may_hold_controls(start.paragraph) {
@@ -552,6 +569,21 @@ impl WordDocument {
             });
         }
         let control = self.content_control_at(start)?;
+        // Its whole content deleted: the control stays, with its
+        // placeholder, as Word keeps it.
+        if text.is_empty()
+            && !control.showing_placeholder
+            && !control.cannot_edit
+            && !control.block
+            && control.kind.takes_typing()
+            && control.start == start
+            && control.end == end
+            && start != end
+        {
+            return Some(ContentControlAction::ShowPlaceholder {
+                control: control.index,
+            });
+        }
         (control.showing_placeholder
             && control.kind.takes_typing()
             && !control.cannot_edit

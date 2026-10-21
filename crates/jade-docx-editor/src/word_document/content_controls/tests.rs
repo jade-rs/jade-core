@@ -876,3 +876,53 @@ fn a_selection_saved_to_the_gallery_goes_into_a_gallery_control() {
             .unwrap();
     assert_eq!(reopened.building_blocks(None), vec!["Closing"]);
 }
+
+#[test]
+fn emptying_a_control_keeps_it() {
+    let mut document = open(
+        r#"<w:p><w:r><w:t xml:space="preserve">A </w:t></w:r><w:sdt><w:sdtPr><w:id w:val="5"/><w:lock w:val="sdtLocked"/></w:sdtPr><w:sdtContent><w:r><w:t>xy</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space="preserve"> B</w:t></w:r></w:p>"#,
+        "",
+    );
+    let mut executor = CommandExecutor::new();
+    apply_headless_commands_with_executor_to_document(
+        &mut document,
+        &mut executor,
+        None,
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 2,
+                end_paragraph: 0,
+                end_offset: 4,
+                text: String::new(),
+            }],
+        },
+    )
+    .expect("the content can be deleted");
+    // The control stays, its placeholder back.
+    let xml = document_xml(&document);
+    assert!(xml.contains("<w:sdt>"), "{xml}");
+    let controls = document.content_controls();
+    assert_eq!(controls.len(), 1);
+    assert!(controls[0].showing_placeholder);
+    assert_eq!(controls[0].text, "Click or tap here to enter text.");
+    assert_eq!(controls[0].start, TextPosition::new(0, 2));
+    // Typing over it puts text in again.
+    let control = controls[0].clone();
+    apply_headless_commands_with_executor_to_document(
+        &mut document,
+        &mut executor,
+        Some(SelectionRange::new(control.start, control.end)),
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: control.start.offset,
+                end_paragraph: 0,
+                end_offset: control.end.offset,
+                text: "z".to_string(),
+            }],
+        },
+    )
+    .expect("typed over");
+    assert_eq!(text_of(&document, 0), "A z B");
+}
