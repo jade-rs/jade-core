@@ -612,9 +612,54 @@ pub(super) enum BorderKind {
     Dotted,
     DotDash,
     DotDotDash,
-    /// `wave` / `doubleWave` — approximated with a dashed pattern since the
-    /// Canvas API has no built-in wavy-stroke primitive.
+    /// `wave`: one wavy line.
     Wave,
+    /// `doubleWave`: two wavy lines.
+    DoubleWave,
+    /// `dashDotStroked`: dashes separated by diagonal strokes.
+    DashDotStroked,
+    ThinThickSmallGap,
+    ThickThinSmallGap,
+    ThinThickThinSmallGap,
+    ThinThickMediumGap,
+    ThickThinMediumGap,
+    ThinThickThinMediumGap,
+    ThinThickLargeGap,
+    ThickThinLargeGap,
+    ThinThickThinLargeGap,
+    ThreeDEmboss,
+    ThreeDEngrave,
+    Outset,
+    Inset,
+    /// A page-border art style (`apples`, `hearts`, …): an index into
+    /// [`super::art_borders::ART_BORDERS`].
+    Art(u16),
+}
+
+impl BorderKind {
+    /// The styles drawn through [`super::border_styles`]: several rules,
+    /// shading or a pattern that is not a dash.
+    pub(super) fn is_banded_style(self) -> bool {
+        matches!(
+            self,
+            BorderKind::Wave
+                | BorderKind::DoubleWave
+                | BorderKind::DashDotStroked
+                | BorderKind::ThinThickSmallGap
+                | BorderKind::ThickThinSmallGap
+                | BorderKind::ThinThickThinSmallGap
+                | BorderKind::ThinThickMediumGap
+                | BorderKind::ThickThinMediumGap
+                | BorderKind::ThinThickThinMediumGap
+                | BorderKind::ThinThickLargeGap
+                | BorderKind::ThickThinLargeGap
+                | BorderKind::ThinThickThinLargeGap
+                | BorderKind::ThreeDEmboss
+                | BorderKind::ThreeDEngrave
+                | BorderKind::Outset
+                | BorderKind::Inset
+        )
+    }
 }
 
 /// Fully resolved drawing parameters for one side of a table cell border.
@@ -5933,14 +5978,16 @@ where
             } else {
                 y - bands.top
             }),
+            super::border_styles::BorderSide::Top,
         )?;
-        self.draw_cell_border_side(
+        self.draw_border_side(
             context,
             x + width,
             y,
             x + width,
             y + height,
             &cell.border_right,
+            super::border_styles::BorderSide::Right,
         )?;
         self.draw_horizontal_cell_border(
             context,
@@ -5950,8 +5997,17 @@ where
             &cell.border_bottom,
             &cell.border_bottom_segments,
             (bands.bottom > 0.0).then_some(y + height - bands.bottom),
+            super::border_styles::BorderSide::Bottom,
         )?;
-        self.draw_cell_border_side(context, x, y, x, y + height, &cell.border_left)?;
+        self.draw_border_side(
+            context,
+            x,
+            y,
+            x,
+            y + height,
+            &cell.border_left,
+            super::border_styles::BorderSide::Left,
+        )?;
         if let Some(border) = cell.border_tl2br.as_ref() {
             self.draw_cell_border_side(context, x, y, x + width, y + height, border)?;
         }
@@ -6000,18 +6056,50 @@ where
         context.save();
         if frame.draw_top {
             if let Some(spec) = edge(TableBorderSide::Top) {
-                self.draw_cell_border_side(context, left, top, right, top, &spec)?;
+                self.draw_border_side(
+                    context,
+                    left,
+                    top,
+                    right,
+                    top,
+                    &spec,
+                    super::border_styles::BorderSide::Top,
+                )?;
             }
         }
         if let Some(spec) = edge(TableBorderSide::Left) {
-            self.draw_cell_border_side(context, left, top, left, bottom, &spec)?;
+            self.draw_border_side(
+                context,
+                left,
+                top,
+                left,
+                bottom,
+                &spec,
+                super::border_styles::BorderSide::Left,
+            )?;
         }
         if let Some(spec) = edge(TableBorderSide::Right) {
-            self.draw_cell_border_side(context, right, top, right, bottom, &spec)?;
+            self.draw_border_side(
+                context,
+                right,
+                top,
+                right,
+                bottom,
+                &spec,
+                super::border_styles::BorderSide::Right,
+            )?;
         }
         if frame.draw_bottom {
             if let Some(spec) = edge(TableBorderSide::Bottom) {
-                self.draw_cell_border_side(context, left, bottom, right, bottom, &spec)?;
+                self.draw_border_side(
+                    context,
+                    left,
+                    bottom,
+                    right,
+                    bottom,
+                    &spec,
+                    super::border_styles::BorderSide::Bottom,
+                )?;
             }
         }
         context.restore();
@@ -6045,15 +6133,17 @@ where
                 &cell.border_top,
                 &cell.border_top_segments,
                 None,
+                super::border_styles::BorderSide::Top,
             )?;
         }
-        self.draw_cell_border_side(
+        self.draw_border_side(
             context,
             x + width,
             y,
             x + width,
             y + height,
             &cell.border_right,
+            super::border_styles::BorderSide::Right,
         )?;
         if sides.bottom {
             self.draw_horizontal_cell_border(
@@ -6064,9 +6154,18 @@ where
                 &cell.border_bottom,
                 &cell.border_bottom_segments,
                 None,
+                super::border_styles::BorderSide::Bottom,
             )?;
         }
-        self.draw_cell_border_side(context, x, y + height, x, y, &cell.border_left)?;
+        self.draw_border_side(
+            context,
+            x,
+            y + height,
+            x,
+            y,
+            &cell.border_left,
+            super::border_styles::BorderSide::Left,
+        )?;
         context.restore();
 
         Ok(())
@@ -6082,17 +6181,18 @@ where
         fallback: &CellBorderSpec,
         segments: &[HorizontalBorderSegment],
         band_top: Option<f64>,
+        side: super::border_styles::BorderSide,
     ) -> Result<(), JsValue> {
         if segments.is_empty() {
             let y = band_top.map_or(y, |top| top + visible_border_width(fallback) * 0.5);
-            return self.draw_cell_border_side(context, x, y, x + width, y, fallback);
+            return self.draw_border_side(context, x, y, x + width, y, fallback, side);
         }
         for segment in segments {
             let y = band_top.map_or(y, |top| top + visible_border_width(&segment.border) * 0.5);
             let start = segment.start_px.clamp(0.0, width);
             let end = segment.end_px.clamp(start, width);
             if end - start > f64::EPSILON {
-                self.draw_cell_border_side(context, x + start, y, x + end, y, &segment.border)?;
+                self.draw_border_side(context, x + start, y, x + end, y, &segment.border, side)?;
             }
         }
         Ok(())
@@ -6112,6 +6212,30 @@ where
         end_x: f64,
         end_y: f64,
         spec: &CellBorderSpec,
+    ) -> Result<(), JsValue> {
+        // A cell edge does not say which side of the box it closes; a
+        // horizontal one is drawn as a top and a vertical one as a left, which
+        // only matters for the styles whose two sides differ.
+        let side = if (end_x - start_x).abs() >= (end_y - start_y).abs() {
+            super::border_styles::BorderSide::Top
+        } else {
+            super::border_styles::BorderSide::Left
+        };
+        self.draw_border_side(context, start_x, start_y, end_x, end_y, spec, side)
+    }
+
+    /// [`Self::draw_cell_border_side`] for an edge whose side of the box is
+    /// known, as a page border's is.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_border_side<P: Painter<Error: PainterError>>(
+        &self,
+        context: &P,
+        start_x: f64,
+        start_y: f64,
+        end_x: f64,
+        end_y: f64,
+        spec: &CellBorderSpec,
+        side: super::border_styles::BorderSide,
     ) -> Result<(), JsValue> {
         if matches!(spec.kind, BorderKind::None) {
             // Word-like guide line: thin dashed stroke in pale gray so an
@@ -6244,17 +6368,116 @@ where
                 .map_err(PainterError::into_js_value)?;
                 Self::stroke_segment(context, start_x, start_y, end_x, end_y);
             }
-            BorderKind::Wave => {
-                // Canvas has no wave primitive. Approximate with a short
-                // alternating dash pattern so `wave`/`doubleWave` still
-                // renders visually distinct from `single`.
+            kind if kind.is_banded_style() => {
+                Self::stroke_border_band(
+                    context,
+                    (start_x, start_y),
+                    (end_x, end_y),
+                    base_width * super::border_styles::band_units(kind),
+                    kind,
+                    stroke_color.as_ref(),
+                    side,
+                )
+                .map_err(PainterError::into_js_value)?;
+            }
+            BorderKind::Art(index) => {
+                // Art belongs on page borders; anywhere else Word shows its
+                // motif row too.
+                super::art_borders::paint_art_border_edge(
+                    context,
+                    (start_x, start_y),
+                    (end_x, end_y),
+                    spec.width_px,
+                    index,
+                    stroke_color.as_ref(),
+                    side,
+                )
+                .map_err(PainterError::into_js_value)?;
+            }
+            _ => {
                 context.set_line_width(base_width);
-                Self::apply_line_dash(context, &[base_width * 2.0, base_width * 2.0])
-                    .map_err(PainterError::into_js_value)?;
+                Self::apply_line_dash(context, &[]).map_err(PainterError::into_js_value)?;
                 Self::stroke_segment(context, start_x, start_y, end_x, end_y);
             }
         }
 
+        Ok(())
+    }
+
+    /// Strokes a border of a [`BorderKind::is_banded_style`] style along the
+    /// line from `start` to `end`, its band `thickness` wide and centred on
+    /// the line, the band's outer edge facing away from the box on `side`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn stroke_border_band<P: Painter>(
+        context: &P,
+        start: (f64, f64),
+        end: (f64, f64),
+        thickness: f64,
+        kind: BorderKind,
+        color: &str,
+        side: super::border_styles::BorderSide,
+    ) -> Result<(), P::Error> {
+        use super::border_styles::{self, Pattern};
+        let (dx, dy) = (end.0 - start.0, end.1 - start.1);
+        let length = (dx * dx + dy * dy).sqrt();
+        if length <= f64::EPSILON || thickness <= 0.0 {
+            return Ok(());
+        }
+        let (tx, ty) = (dx / length, dy / length);
+        // Unit vector pointing out of the bordered box.
+        let (ox, oy) = match side {
+            border_styles::BorderSide::Top => (0.0, -1.0),
+            border_styles::BorderSide::Bottom => (0.0, 1.0),
+            border_styles::BorderSide::Left => (-1.0, 0.0),
+            border_styles::BorderSide::Right => (1.0, 0.0),
+        };
+        // A point `along` the edge and `across` the band from its outer edge.
+        let at = |along: f64, across: f64| {
+            let out = thickness / 2.0 - across;
+            (
+                start.0 + tx * along + ox * out,
+                start.1 + ty * along + oy * out,
+            )
+        };
+        context.save();
+        context.set_line_dash(&[]);
+        let pattern = border_styles::pattern(kind);
+        let (line_width, polylines) = border_styles::pattern_polylines(pattern, length, thickness);
+        if !polylines.is_empty() {
+            context.set_stroke_style_str(color);
+            context.set_line_width(line_width);
+            for line in polylines {
+                context.begin_path();
+                for (index, (along, across)) in line.into_iter().enumerate() {
+                    let (x, y) = at(along, across);
+                    if index == 0 {
+                        context.move_to(x, y);
+                    } else {
+                        context.line_to(x, y);
+                    }
+                }
+                context.stroke();
+            }
+        } else {
+            for stripe in border_styles::stripes(kind) {
+                let width = (stripe.width * thickness).max(0.5);
+                let across = (stripe.start + stripe.width / 2.0) * thickness;
+                context.set_stroke_style_str(&border_styles::tone_color(color, stripe.tone, side));
+                context.set_line_width(width);
+                if let Pattern::Dash(lengths) = pattern {
+                    let unit = thickness.max(1.0);
+                    let dashes: Vec<f64> = lengths.iter().map(|value| value * unit).collect();
+                    context.set_line_dash(&dashes);
+                }
+                let (x0, y0) = at(0.0, across);
+                let (x1, y1) = at(length, across);
+                context.begin_path();
+                context.move_to(x0, y0);
+                context.line_to(x1, y1);
+                context.stroke();
+            }
+        }
+        context.restore();
         Ok(())
     }
 
@@ -8285,6 +8508,8 @@ fn visible_border_width(border: &CellBorderSpec) -> f64 {
             jade_docx_layout::line_metrics::word_layout_platform(),
         )
         .layout_width
+    } else if border.kind.is_banded_style() {
+        border.width_px * super::border_styles::band_units(border.kind)
     } else {
         border.width_px
     }
@@ -9225,10 +9450,27 @@ pub(super) fn parse_border_kind(style: Option<&String>) -> BorderKind {
         "dashed" | "dashlarge" | "dashlonglarge" | "dashlong" => BorderKind::Dashed,
         "dashsmallgap" => BorderKind::DashSmallGap,
         "dotted" | "dottedlarge" => BorderKind::Dotted,
-        "dotdash" | "dashdotstroked" => BorderKind::DotDash,
+        "dotdash" => BorderKind::DotDash,
+        "dashdotstroked" => BorderKind::DashDotStroked,
         "dotdotdash" => BorderKind::DotDotDash,
-        "wave" | "doublewave" => BorderKind::Wave,
-        _ => BorderKind::Single,
+        "wave" => BorderKind::Wave,
+        "doublewave" => BorderKind::DoubleWave,
+        "thinthicksmallgap" => BorderKind::ThinThickSmallGap,
+        "thickthinsmallgap" => BorderKind::ThickThinSmallGap,
+        "thinthickthinsmallgap" => BorderKind::ThinThickThinSmallGap,
+        "thinthickmediumgap" => BorderKind::ThinThickMediumGap,
+        "thickthinmediumgap" => BorderKind::ThickThinMediumGap,
+        "thinthickthinmediumgap" => BorderKind::ThinThickThinMediumGap,
+        "thinthicklargegap" => BorderKind::ThinThickLargeGap,
+        "thickthinlargegap" => BorderKind::ThickThinLargeGap,
+        "thinthickthinlargegap" => BorderKind::ThinThickThinLargeGap,
+        "threedemboss" => BorderKind::ThreeDEmboss,
+        "threedengrave" => BorderKind::ThreeDEngrave,
+        "outset" => BorderKind::Outset,
+        "inset" => BorderKind::Inset,
+        other => super::art_borders::art_border_index(other)
+            .map(BorderKind::Art)
+            .unwrap_or(BorderKind::Single),
     }
 }
 
@@ -9283,9 +9525,16 @@ pub(super) fn border_edge_to_spec(edge: &crate::document::BorderEdge) -> CellBor
     if matches!(kind, BorderKind::None) {
         return CellBorderSpec::hidden();
     }
+    // An art border's `w:sz` is its tile size in whole points (§17.18.2),
+    // not eighths of a point.
+    let points_per_unit = if matches!(kind, BorderKind::Art(_)) {
+        1.0
+    } else {
+        1.0 / 8.0
+    };
     let width_px = edge
         .size_eighths
-        .map(|eighths| points_to_px(eighths as f32 / 8.0))
+        .map(|size| points_to_px(size as f32 * points_per_unit))
         .filter(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(1.0);
     let color = edge
@@ -16179,7 +16428,21 @@ mod tests {
             ("dotDash", BorderKind::DotDash),
             ("dotDotDash", BorderKind::DotDotDash),
             ("wave", BorderKind::Wave),
-            ("doubleWave", BorderKind::Wave),
+            ("doubleWave", BorderKind::DoubleWave),
+            ("dashDotStroked", BorderKind::DashDotStroked),
+            ("thinThickSmallGap", BorderKind::ThinThickSmallGap),
+            ("thickThinSmallGap", BorderKind::ThickThinSmallGap),
+            ("thinThickThinSmallGap", BorderKind::ThinThickThinSmallGap),
+            ("thinThickMediumGap", BorderKind::ThinThickMediumGap),
+            ("thickThinMediumGap", BorderKind::ThickThinMediumGap),
+            ("thinThickThinMediumGap", BorderKind::ThinThickThinMediumGap),
+            ("thinThickLargeGap", BorderKind::ThinThickLargeGap),
+            ("thickThinLargeGap", BorderKind::ThickThinLargeGap),
+            ("thinThickThinLargeGap", BorderKind::ThinThickThinLargeGap),
+            ("threeDEmboss", BorderKind::ThreeDEmboss),
+            ("threeDEngrave", BorderKind::ThreeDEngrave),
+            ("outset", BorderKind::Outset),
+            ("inset", BorderKind::Inset),
             ("unknown-token", BorderKind::Single),
         ];
         for (input, expected) in cases {

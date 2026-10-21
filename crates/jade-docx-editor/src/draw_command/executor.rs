@@ -642,6 +642,27 @@ pub fn execute_command_with_font_state<P: Painter>(
             context.fill_rect(*x, *y, *width, *height);
             font_state.invalidate_fill_style();
         }
+        DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color,
+        } => {
+            context.save();
+            context.set_line_dash(&[]);
+            context.set_stroke_style_str(color);
+            context.set_line_width(*line_width);
+            context.begin_path();
+            for (index, &(x, y)) in points.iter().enumerate() {
+                if index == 0 {
+                    context.move_to(x, y);
+                } else {
+                    context.line_to(x, y);
+                }
+            }
+            context.stroke();
+            context.restore();
+            font_state.invalidate();
+        }
         DrawCommand::ClearRect {
             x,
             y,

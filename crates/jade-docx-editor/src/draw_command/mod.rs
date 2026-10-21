@@ -291,6 +291,13 @@ pub enum DrawCommand {
         color: Rc<str>,
     },
 
+    /// Stroke an open polyline (wavy and stroked border rules).
+    StrokePolyline {
+        points: Rc<[(f64, f64)]>,
+        line_width: f64,
+        color: Rc<str>,
+    },
+
     /// Clear a rectangle back to transparent.
     ClearRect {
         x: f64,
@@ -472,6 +479,15 @@ impl DrawCommand {
                 y: *y + offset,
                 width: *width,
                 height: *height,
+                color: color.clone(),
+            },
+            DrawCommand::StrokePolyline {
+                points,
+                line_width,
+                color,
+            } => DrawCommand::StrokePolyline {
+                points: points.iter().map(|&(x, y)| (x, y + offset)).collect(),
+                line_width: *line_width,
                 color: color.clone(),
             },
             DrawCommand::ClearRect {

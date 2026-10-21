@@ -240,6 +240,8 @@ where
     }
 }
 
+mod art_borders;
+mod border_styles;
 mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
@@ -2073,69 +2075,30 @@ struct ResolvedBorderEdge {
     kind: BorderKind,
 }
 
-/// Splits a border's total thickness into one or more parallel sub-bands along
-/// the thickness axis, returning `(offset_from_near_edge, sub_thickness)` pairs
-/// in px. `Double` draws two equal lines separated by an equal gap (1/3 each);
-/// `Triple` draws three equal lines with equal gaps (1/5 each). Every other
-/// kind collapses to a single solid band spanning the full thickness, so the
-/// caller paints it exactly as before. Axis-agnostic: the caller decides
-/// whether the offset applies to X (vertical rule) or Y (horizontal rule).
+/// Splits a border's total thickness into its rules across the thickness
+/// axis, returning `(offset_from_outer_edge, sub_thickness)` pairs in px:
+/// [`border_styles::stripes`] in pixels. `Double` draws two equal lines
+/// separated by an equal gap (1/3 each); `Triple` three with equal gaps (1/5
+/// each).
+#[cfg(test)]
 fn border_band_offsets(kind: BorderKind, thickness: f64) -> Vec<(f64, f64)> {
     if thickness <= 0.0 {
         return Vec::new();
     }
-    match kind {
-        BorderKind::Double => {
-            let unit = thickness / 3.0;
-            vec![(0.0, unit), (2.0 * unit, unit)]
-        }
-        BorderKind::Triple => {
-            let unit = thickness / 5.0;
-            vec![(0.0, unit), (2.0 * unit, unit), (4.0 * unit, unit)]
-        }
-        _ => vec![(0.0, thickness)],
-    }
+    border_styles::stripes(kind)
+        .into_iter()
+        .map(|stripe| (stripe.start * thickness, stripe.width * thickness))
+        .collect()
 }
 
 /// Splits a border edge into "lit" run segments along its length axis,
-/// returning `(start_offset, run_length)` pairs in px. Solid kinds (Single,
-/// Thick, Double, Triple, None) return a single full-length run so the caller
-/// paints them exactly as before; dash/dot kinds emit a repeating on/off
-/// pattern scaled to the edge thickness (so thicker rules get longer dashes,
-/// matching Word's proportional dashing). Axis-agnostic: `length` is the edge's
-/// running direction (Y for vertical rules, X for horizontal rules), and
-/// `thickness` is the cross-axis weight used to scale the pattern.
+/// returning `(start_offset, run_length)` pairs in px. Solid kinds return a
+/// single full-length run; dash/dot kinds emit a repeating on/off pattern
+/// scaled to the edge thickness (so thicker rules get longer dashes, matching
+/// Word's proportional dashing).
+#[cfg(test)]
 fn border_dash_segments(kind: BorderKind, length: f64, thickness: f64) -> Vec<(f64, f64)> {
-    if length <= 0.0 {
-        return Vec::new();
-    }
-    // Pattern is a sequence of (on_units, off_units) repeated; one "unit" is the
-    // edge thickness clamped to a 1px floor so hairline rules still dash.
-    let pattern: &[(f64, f64)] = match kind {
-        BorderKind::Dashed => &[(3.0, 2.0)],
-        BorderKind::DashSmallGap => &[(3.0, 1.0)],
-        BorderKind::Dotted => &[(1.0, 1.0)],
-        BorderKind::DotDash => &[(4.0, 2.0), (1.0, 2.0)],
-        BorderKind::DotDotDash => &[(4.0, 2.0), (1.0, 2.0), (1.0, 2.0)],
-        // Canvas has no wave primitive; approximate with an even dash.
-        BorderKind::Wave => &[(2.0, 2.0)],
-        // Solid kinds span the full length in one run.
-        _ => return vec![(0.0, length)],
-    };
-    let unit = thickness.max(1.0);
-    let mut segments = Vec::new();
-    let mut pos = 0.0;
-    let mut idx = 0usize;
-    while pos < length {
-        let (on, off) = pattern[idx % pattern.len()];
-        let on_len = (on * unit).min(length - pos);
-        if on_len > 0.0 {
-            segments.push((pos, on_len));
-        }
-        pos += (on + off) * unit;
-        idx += 1;
-    }
-    segments
+    border_styles::pattern_runs(border_styles::pattern(kind), length, thickness)
 }
 
 /// Renderer-ready paragraph borders. `bar` is Word's additional vertical rule
@@ -10011,22 +9974,25 @@ where
         context.save();
         // Reuse the table-cell border drawing pipeline so page borders honor
         // line styles (single/double/dashed/dotted/…), not just solid.
-        let draw_edge =
-            |edge: &jade_docx_reader::document::BorderEdge, x0: f64, y0: f64, x1: f64, y1: f64| {
-                let spec = border_edge_to_spec(edge);
-                let _ = self.draw_cell_border_side(&context, x0, y0, x1, y1, &spec);
-            };
+        use border_styles::BorderSide;
+        let draw_edge = |edge: &jade_docx_reader::document::BorderEdge,
+                         side: BorderSide,
+                         (x0, y0): (f64, f64),
+                         (x1, y1): (f64, f64)| {
+            let spec = border_edge_to_spec(edge);
+            let _ = self.draw_border_side(&context, x0, y0, x1, y1, &spec, side);
+        };
         if let Some(edge) = borders.top.as_ref() {
-            draw_edge(edge, left, top, right, top);
+            draw_edge(edge, BorderSide::Top, (left, top), (right, top));
         }
         if let Some(edge) = borders.bottom.as_ref() {
-            draw_edge(edge, left, bottom, right, bottom);
+            draw_edge(edge, BorderSide::Bottom, (left, bottom), (right, bottom));
         }
         if let Some(edge) = borders.left.as_ref() {
-            draw_edge(edge, left, top, left, bottom);
+            draw_edge(edge, BorderSide::Left, (left, top), (left, bottom));
         }
         if let Some(edge) = borders.right.as_ref() {
-            draw_edge(edge, right, top, right, bottom);
+            draw_edge(edge, BorderSide::Right, (right, top), (right, bottom));
         }
         // `context.restore()` resets the line-dash / stroke state mutated by
         // `draw_cell_border_side`, keeping subsequent page chrome (crop marks)
@@ -19451,89 +19417,173 @@ where
         let box_right = right_limit + right_space + right_w;
         let box_width = (box_right - box_left).max(0.0);
 
-        // Vertical rules: the thickness axis is X. The band starts at the outer
-        // edge and `border_band_offsets` distributes it across X for double/triple.
+        use border_styles::BorderSide;
+        // Vertical rules run down this line's box; their bands are given by
+        // their outer edge.
         if let Some(edge) = &borders.left {
-            for (off, sub) in border_band_offsets(edge.kind, left_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, left_w) {
-                    self.fill_border_rect(
-                        box_left + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                box_left,
+                left_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.bar {
-            for (off, sub) in border_band_offsets(edge.kind, bar_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, bar_w) {
-                    self.fill_border_rect(
-                        base_x - left_space - left_w - edge.space_px - bar_w + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                base_x - left_space - left_w - edge.space_px - bar_w,
+                bar_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.right {
-            for (off, sub) in border_band_offsets(edge.kind, right_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, right_w)
-                {
-                    self.fill_border_rect(
-                        right_limit + right_space + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Right,
+                top,
+                line_box_height,
+                right_limit + right_space + right_w,
+                right_w,
+                commands_out,
+            );
         }
-        // Horizontal rules: the thickness axis is Y.
+        // Horizontal rules span the box.
         if is_first_line {
             if let Some(edge) = &borders.top {
-                let band_top = top - edge.space_px - edge.width_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
-                }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Top,
+                    box_left,
+                    box_width,
+                    top - edge.space_px - edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
             }
         }
         if is_last_line {
             if let Some(edge) = &borders.bottom {
-                let band_top = top + line_box_height + edge.space_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Bottom,
+                    box_left,
+                    box_width,
+                    top + line_box_height + edge.space_px + edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
+            }
+        }
+    }
+
+    /// Paints one paragraph border rule in its line style. The rule runs
+    /// `length` from `start` along its edge (x for top and bottom, y for
+    /// left and right); its band is `thickness` across, from `outer` — the
+    /// band edge away from the text — inwards.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_paragraph_border_edge(
+        &self,
+        edge: &ResolvedBorderEdge,
+        side: border_styles::BorderSide,
+        start: f64,
+        length: f64,
+        outer: f64,
+        thickness: f64,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        use border_styles::BorderSide;
+        if length <= 0.0 || thickness <= 0.0 {
+            return;
+        }
+        // Position across the band, measured inwards from its outer edge.
+        let across = |from_outer: f64| match side {
+            BorderSide::Top | BorderSide::Left => outer + from_outer,
+            BorderSide::Bottom | BorderSide::Right => outer - from_outer,
+        };
+        let horizontal = matches!(side, BorderSide::Top | BorderSide::Bottom);
+        let pattern = border_styles::pattern(edge.kind);
+        let (line_width, polylines) = border_styles::pattern_polylines(pattern, length, thickness);
+        if !polylines.is_empty() {
+            let color = Rc::clone(&edge.color);
+            for line in polylines {
+                let points: Rc<[(f64, f64)]> = line
+                    .into_iter()
+                    .map(|(along, from_outer)| {
+                        if horizontal {
+                            (start + along, across(from_outer))
+                        } else {
+                            (across(from_outer), start + along)
+                        }
+                    })
+                    .collect();
+                self.stroke_border_polyline(points, line_width, &color, commands_out);
+            }
+            return;
+        }
+        for stripe in border_styles::stripes(edge.kind) {
+            let near = stripe.start * thickness;
+            let far = (stripe.start + stripe.width) * thickness;
+            let band_start = across(near).min(across(far));
+            let band = far - near;
+            let color: Rc<str> = match stripe.tone {
+                border_styles::Tone::Line => Rc::clone(&edge.color),
+                tone => Rc::from(border_styles::tone_color(&edge.color, tone, side)),
+            };
+            for (offset, run) in border_styles::pattern_runs(pattern, length, thickness) {
+                if horizontal {
+                    self.fill_border_rect(
+                        start + offset,
+                        band_start,
+                        run,
+                        band,
+                        &color,
+                        commands_out,
+                    );
+                } else {
+                    self.fill_border_rect(
+                        band_start,
+                        start + offset,
+                        band,
+                        run,
+                        &color,
+                        commands_out,
+                    );
                 }
             }
+        }
+    }
+
+    /// Strokes one polyline of a border rule, recording it for cache replay.
+    fn stroke_border_polyline(
+        &self,
+        points: Rc<[(f64, f64)]>,
+        line_width: f64,
+        color: &Rc<str>,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+        let command = DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color: Rc::clone(color),
+        };
+        if self.should_draw_current_page_for_render() {
+            let _ = crate::draw_command::executor::execute_commands(
+                &self.host.painter(),
+                std::slice::from_ref(&command),
+            );
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.push(command);
         }
     }
 
