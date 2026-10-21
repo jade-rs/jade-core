@@ -2099,6 +2099,16 @@ const COMMANDS: &[Variant] = &[
                 "Character-based right indent (w:rightChars, 100 = one character).",
             ),
             opt(
+                "first_line_chars",
+                ArgType::Int,
+                "Character-based first-line indent (w:firstLineChars, 100 = one character), as a Japanese document's paragraph dialog writes it. Clears any hanging indent.",
+            ),
+            opt(
+                "hanging_chars",
+                ArgType::Int,
+                "Character-based hanging indent (w:hangingChars, 100 = one character).",
+            ),
+            opt(
                 "clear_special",
                 ArgType::Flag,
                 "Word's 特殊インデント「なし」: remove any first-line or hanging indent (character twins included) while keeping the left/right edges.",
@@ -2125,6 +2135,16 @@ const COMMANDS: &[Variant] = &[
         "toggle_paragraph_space_before",
         "Word's Ctrl+0: add 12pt of space before every paragraph in the range, or remove it (set 0) when every paragraph already carries exactly 12pt. One undo step.",
         &[],
+    ),
+    paragraphs(
+        "set_paragraph_pagination",
+        "The paragraph dialog's line and page break options, as direct formatting on the range: keep with next (w:keepNext), keep lines together (w:keepLines), page break before (w:pageBreakBefore) and widow/orphan control (w:widowControl). Omitted options stay as they are; false writes the option off, overriding a style. One undo step.",
+        &[
+            opt("keep_next", ArgType::Flag, "Keep the paragraph on the page of the one after it."),
+            opt("keep_lines", ArgType::Flag, "Keep the paragraph's lines on one page."),
+            opt("page_break_before", ArgType::Flag, "Start the paragraph on a new page."),
+            opt("widow_control", ArgType::Flag, "Never leave a single line of the paragraph alone at the top or bottom of a page."),
+        ],
     ),
     paragraphs(
         "reset_paragraph_formatting",

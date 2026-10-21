@@ -1150,6 +1150,15 @@ pub enum HeadlessCommand {
         left_chars: Option<i32>,
         #[serde(default)]
         right_chars: Option<i32>,
+        /// 特殊インデント「字下げ」 in hundredths of a character
+        /// (`w:firstLineChars`), as the paragraph dialog of a Japanese
+        /// document writes it.
+        #[serde(default)]
+        first_line_chars: Option<i32>,
+        /// 特殊インデント「ぶら下げ」 in hundredths of a character
+        /// (`w:hangingChars`).
+        #[serde(default)]
+        hanging_chars: Option<i32>,
         /// Word's paragraph dialog 特殊インデント「なし」: remove any
         /// first-line or hanging indent (character twins included) while
         /// leaving the left/right edges alone.
@@ -1169,6 +1178,27 @@ pub enum HeadlessCommand {
         /// it is and never touching list levels.
         #[serde(default)]
         target: HeadlessIndentTarget,
+    },
+    /// The paragraph dialog's 改ページと改行 options (ECMA-376 Part 1
+    /// §17.3.1.14 `w:keepNext`, §17.3.1.15 `w:keepLines`, §17.3.1.23
+    /// `w:pageBreakBefore`, §17.3.1.44 `w:widowControl`), written as direct
+    /// formatting. `None` leaves an option as it is; `false` writes it off
+    /// (`w:val="0"`), overriding a style that turns it on.
+    SetParagraphPagination {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        /// 次の段落と分離しない.
+        #[serde(default)]
+        keep_next: Option<bool>,
+        /// 段落を分割しない.
+        #[serde(default)]
+        keep_lines: Option<bool>,
+        /// 段落前で改ページする.
+        #[serde(default)]
+        page_break_before: Option<bool>,
+        /// 改ページ時 1 行残して段落を区切らない.
+        #[serde(default)]
+        widow_control: Option<bool>,
     },
     /// Word's Ctrl+0: add 12pt of space before each paragraph in the range,
     /// or remove it when every paragraph already has exactly 12pt.
@@ -1959,6 +1989,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",
+            HeadlessCommand::SetParagraphPagination { .. } => "set_paragraph_pagination",
             HeadlessCommand::ResetParagraphFormatting { .. } => "reset_paragraph_formatting",
             HeadlessCommand::AdjustFontSize { .. } => "adjust_font_size",
             HeadlessCommand::SetParagraphMetrics { .. } => "set_paragraph_metrics",

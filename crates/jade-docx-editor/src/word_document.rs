@@ -14512,6 +14512,23 @@ impl WordDocument {
         Ok(())
     }
 
+    /// Where the bookmark `name` starts — what an internal hyperlink
+    /// (`w:hyperlink/@w:anchor`, ECMA-376 Part 1 §17.16.22) takes the caret
+    /// to — as a paragraph surface and an offset into its text. `None` when
+    /// the document has no such bookmark, or it is not in the body.
+    pub fn bookmark_position(&self, name: &str) -> Option<TextPosition> {
+        let bookmark = self
+            .document
+            .as_ref()?
+            .bookmarks
+            .iter()
+            .find(|bookmark| bookmark.name == name)?;
+        let paragraph = self.bookmark_surface_index(bookmark.start_paragraph)?;
+        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+        let model = TextPosition::new(paragraph, bookmark.start_offset.min(length));
+        Some(self.model_to_rendered_text_position(model))
+    }
+
     /// Converts the top-level body coordinates stored in bookmarks to the
     /// flattened paragraph surfaces used by the canvas and public selection API.
     pub(crate) fn bookmark_surface_index(&self, body_element: usize) -> Option<usize> {
@@ -18267,6 +18284,8 @@ impl WordDocument {
                     hanging,
                     left_chars,
                     right_chars,
+                    first_line_chars,
+                    hanging_chars,
                     clear_special,
                     ..
                 } => {
@@ -18276,6 +18295,8 @@ impl WordDocument {
                         || hanging.is_some()
                         || left_chars.is_some()
                         || right_chars.is_some()
+                        || first_line_chars.is_some()
+                        || hanging_chars.is_some()
                         || *clear_special;
                 }
                 HeadlessCommand::SetParagraphLineSpacing {
@@ -42449,6 +42470,8 @@ mod tests {
                             hanging: None,
                             left_chars: None,
                             right_chars: None,
+                            first_line_chars: None,
+                            hanging_chars: None,
                             clear_special: true,
                         }]
                     )
