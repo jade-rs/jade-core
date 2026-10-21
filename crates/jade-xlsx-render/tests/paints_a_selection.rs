@@ -61,6 +61,8 @@ fn laid_out(rows: u32) -> SheetLayout {
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     };
     layout_sheet(
@@ -224,6 +226,8 @@ fn selecting_a_merged_cell_borders_the_whole_merge_and_its_bands() {
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     };
     sheet.rows[1].cells.push(Cell {

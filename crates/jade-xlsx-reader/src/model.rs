@@ -260,6 +260,12 @@ pub struct Sheet {
     /// joined text, the runs how to draw it.
     #[serde(default)]
     pub rich_text: std::collections::BTreeMap<CellRef, Vec<crate::rich_text::TextRun>>,
+    /// `sheetPr/tabColor`: the colour of the sheet's tab.
+    #[serde(default)]
+    pub tab_color: Option<Color>,
+    /// Sparklines (`x14:sparklineGroups`).
+    #[serde(default)]
+    pub sparkline_groups: Vec<crate::sparkline::SparklineGroup>,
     /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
     /// protected: what it still allows.
     #[serde(default)]

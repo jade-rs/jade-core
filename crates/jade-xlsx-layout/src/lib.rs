@@ -22,6 +22,7 @@ pub mod number_format;
 pub mod resize;
 pub mod selection;
 pub mod shape_style;
+pub mod sparkline;
 pub mod table_style;
 pub mod units;
 mod visual_format;
@@ -343,6 +344,9 @@ pub struct SheetLayout {
     /// Tables with a table style, which paints their unstored cells too.
     #[serde(default)]
     pub tables: Vec<table_style::StyledTable>,
+    /// Sparklines, each in its cell.
+    #[serde(default)]
+    pub sparklines: Vec<sparkline::PlacedSparkline>,
     pub show_grid_lines: bool,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
@@ -956,6 +960,15 @@ fn layout_sheet_with_workbook(
         .max(merge_extent(sheet, Axis::Column))
         .max(shape_extent(sheet, Axis::Column))
         .max(
+            sheet
+                .sparkline_groups
+                .iter()
+                .flat_map(|group| &group.sparklines)
+                .map(|sparkline| sparkline.cell.column + 1)
+                .max()
+                .unwrap_or(0),
+        )
+        .max(
             filter_definitions
                 .values()
                 .map(|button| button.reference.column + 1)
@@ -967,6 +980,15 @@ fn layout_sheet_with_workbook(
         .max(options.min_row_count)
         .max(merge_extent(sheet, Axis::Row))
         .max(shape_extent(sheet, Axis::Row))
+        .max(
+            sheet
+                .sparkline_groups
+                .iter()
+                .flat_map(|group| &group.sparklines)
+                .map(|sparkline| sparkline.cell.row + 1)
+                .max()
+                .unwrap_or(0),
+        )
         .max(
             filter_definitions
                 .values()
@@ -1466,6 +1488,7 @@ fn layout_sheet_with_workbook(
             })
         })
         .collect();
+    let sparklines = sparkline::place(sheet, workbook, &columns, &rows);
     SheetLayout {
         columns,
         rows,
@@ -1477,6 +1500,7 @@ fn layout_sheet_with_workbook(
         shapes,
         notes,
         tables: styled_tables,
+        sparklines,
         show_grid_lines: sheet.show_grid_lines,
         content_width,
         max_digit_width_px: options.max_digit_width_px,

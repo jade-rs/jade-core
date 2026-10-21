@@ -293,6 +293,25 @@ fn render_body<P: Painter>(
         render_borders(painter, &cell.border, cell.rect, options);
     }
 
+    for sparkline in layout
+        .sparklines
+        .iter()
+        .filter(|sparkline| sparkline.rect.intersects(&viewport))
+    {
+        painter.save();
+        painter.begin_path();
+        painter.rect(
+            sparkline.rect.x,
+            sparkline.rect.y,
+            sparkline.rect.width,
+            sparkline.rect.height,
+        );
+        painter.clip();
+        let result = paint_chart_ops(painter, &sparkline.ops);
+        painter.restore();
+        result?;
+    }
+
     for cell in layout.cells_in(viewport) {
         if let Some(icon) = &cell.icon {
             icons::render_icon(painter, &icon.icon_set, icon.index, icon.rect)?;
@@ -400,6 +419,91 @@ fn render_note_marker<P: Painter>(painter: &P, rect: Rect) {
 /// A drawing object over the grid. A text box or shape is drawn as Excel's
 /// default — a white box with a grey line — and its text. Pictures and charts
 /// consume shared layout; unavailable objects retain named frames.
+/// Paints chart operations: a chart's, or a sparkline's.
+fn paint_chart_ops<P: Painter>(
+    painter: &P,
+    ops: &[jade_xlsx_layout::chart::ChartOp],
+) -> Result<(), P::Error> {
+    for op in ops {
+        use jade_xlsx_layout::chart::ChartOp;
+        match op {
+            ChartOp::Clip { rect } => {
+                painter.save();
+                painter.begin_path();
+                painter.rect(rect.x, rect.y, rect.width, rect.height);
+                painter.clip();
+            }
+            ChartOp::Restore => painter.restore(),
+            ChartOp::Rectangle { rect, fill, stroke } => {
+                if let Some(fill) = fill {
+                    painter.set_fill_style_str(fill);
+                    painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
+                }
+                if let Some(stroke) = stroke {
+                    painter.set_stroke_style_str(stroke);
+                    painter.set_line_width(1.0);
+                    painter.set_line_dash(&[]);
+                    painter.stroke_rect(rect.x, rect.y, rect.width, rect.height);
+                }
+            }
+            ChartOp::Path {
+                points,
+                closed,
+                fill,
+                stroke,
+                width,
+                dash,
+            } => {
+                painter.begin_path();
+                if let Some((x, y)) = points.first() {
+                    painter.move_to(*x, *y);
+                }
+                for (x, y) in points.iter().skip(1) {
+                    painter.line_to(*x, *y);
+                }
+                if *closed {
+                    painter.close_path();
+                }
+                if let Some(fill) = fill {
+                    painter.set_fill_style_str(fill);
+                    painter.fill();
+                }
+                if let Some(stroke) = stroke {
+                    painter.set_stroke_style_str(stroke);
+                    painter.set_line_width(*width);
+                    painter.set_line_dash(dash);
+                    painter.stroke();
+                    painter.set_line_dash(&[]);
+                }
+            }
+            ChartOp::Text {
+                text,
+                x,
+                y,
+                font,
+                color,
+                align: _,
+                rotation,
+            } => {
+                painter.set_font(&font_shorthand(font));
+                painter.set_text_baseline("alphabetic");
+                painter.set_fill_style_str(color);
+                if *rotation == 0.0 {
+                    painter.fill_text(text, *x, *y)?;
+                } else {
+                    painter.save();
+                    painter.translate(*x, *y)?;
+                    painter.rotate(*rotation)?;
+                    let result = painter.fill_text(text, 0.0, 0.0);
+                    painter.restore();
+                    result?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn render_shape<P: Painter>(
     painter: &P,
     shape: &PlacedShape,
@@ -415,83 +519,7 @@ fn render_shape<P: Painter>(
             shape.rect.height,
         );
         painter.clip();
-        for op in &chart.ops {
-            use jade_xlsx_layout::chart::ChartOp;
-            match op {
-                ChartOp::Clip { rect } => {
-                    painter.save();
-                    painter.begin_path();
-                    painter.rect(rect.x, rect.y, rect.width, rect.height);
-                    painter.clip();
-                }
-                ChartOp::Restore => painter.restore(),
-                ChartOp::Rectangle { rect, fill, stroke } => {
-                    if let Some(fill) = fill {
-                        painter.set_fill_style_str(fill);
-                        painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                    if let Some(stroke) = stroke {
-                        painter.set_stroke_style_str(stroke);
-                        painter.set_line_width(1.0);
-                        painter.set_line_dash(&[]);
-                        painter.stroke_rect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                }
-                ChartOp::Path {
-                    points,
-                    closed,
-                    fill,
-                    stroke,
-                    width,
-                    dash,
-                } => {
-                    painter.begin_path();
-                    if let Some((x, y)) = points.first() {
-                        painter.move_to(*x, *y);
-                    }
-                    for (x, y) in points.iter().skip(1) {
-                        painter.line_to(*x, *y);
-                    }
-                    if *closed {
-                        painter.close_path();
-                    }
-                    if let Some(fill) = fill {
-                        painter.set_fill_style_str(fill);
-                        painter.fill();
-                    }
-                    if let Some(stroke) = stroke {
-                        painter.set_stroke_style_str(stroke);
-                        painter.set_line_width(*width);
-                        painter.set_line_dash(dash);
-                        painter.stroke();
-                        painter.set_line_dash(&[]);
-                    }
-                }
-                ChartOp::Text {
-                    text,
-                    x,
-                    y,
-                    font,
-                    color,
-                    align: _,
-                    rotation,
-                } => {
-                    painter.set_font(&font_shorthand(font));
-                    painter.set_text_baseline("alphabetic");
-                    painter.set_fill_style_str(color);
-                    if *rotation == 0.0 {
-                        painter.fill_text(text, *x, *y)?;
-                    } else {
-                        painter.save();
-                        painter.translate(*x, *y)?;
-                        painter.rotate(*rotation)?;
-                        let result = painter.fill_text(text, 0.0, 0.0);
-                        painter.restore();
-                        result?;
-                    }
-                }
-            }
-        }
+        paint_chart_ops(painter, &chart.ops)?;
         return Ok(());
     }
     let mut rect = shape.rect;
