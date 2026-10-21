@@ -22,7 +22,10 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
-pub use chart::{parse_chart_xml, ChartContent, ChartSeries, ChartStyle};
+pub use chart::{
+    parse_chart_xml, ChartAxis, ChartContent, ChartMarker, ChartPlot, ChartSeries, ChartStyle,
+    DataLabels,
+};
 pub use error::{PptxError, Result};
 pub use shape_guides::ShapeGuides;
 pub use slide::{
@@ -31,7 +34,7 @@ pub use slide::{
 };
 pub use slide::{parse_default_text_style, parse_slide_xml, TextVertical};
 pub use slide::{
-    Autofit, Bullet, CellBorders, Color, Fill, GradientStop, GroupShape, GroupTransform, Hyperlink,
+    Autofit, Bullet, CellBorders, Color, Effects, Fill, Glow, Reflection, GradientStop, GroupShape, GroupTransform, Hyperlink,
     LevelStyle, ListStyle, Outline, Picture, Placeholder, RunProps, Shadow, Shape, ShapeItem,
     ShapeStyle, SlideContent, SourceRect, Spacing, Table, TableCell, TableRow, TextAlign,
     TextAnchor, TextBody, TextBodyPropertyPresence, TextInsets, TextParagraph, TextRun, TextStyles,
@@ -230,6 +233,7 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
         background_fill_styles: theme_background_fill_styles.clone(),
         line_styles: theme_line_styles.clone(),
         effect_styles: Vec::new(),
+        effect_style_effects: Vec::new(),
     });
     let mut themes = slide_theme::ThemeResolver::default();
     let mut slides = Vec::new();
@@ -478,6 +482,88 @@ fn resolve_content_images(
             .map(|target| jade_opc::resolve_target(part, target));
     }
     resolve_image_parts(&mut content.shapes, relationships, part);
+    // Picture bullets, in the paragraphs and in every list style the part
+    // states (its shapes' own and, on a master, the text styles).
+    let mut resolve = |bullet: &mut Bullet| {
+        if let Bullet::Picture { rel_id, image_part } = bullet {
+            *image_part = relationships
+                .target(rel_id)
+                .map(|target| jade_opc::resolve_target(part, target));
+        }
+    };
+    if let Some(styles) = &mut content.text_styles {
+        for list in [&mut styles.title, &mut styles.body, &mut styles.other] {
+            visit_list_bullets(list, &mut resolve);
+        }
+    }
+    visit_shape_bullets(&mut content.shapes, &mut resolve);
+}
+
+impl SlideContent {
+    /// The image parts its picture bullets draw, each once: what a host
+    /// that loads media up front needs besides its shapes' pictures.
+    pub fn bullet_image_parts(&self) -> Vec<String> {
+        let mut copy = self.clone();
+        let mut parts: Vec<String> = Vec::new();
+        let mut collect = |bullet: &mut Bullet| {
+            if let Bullet::Picture {
+                image_part: Some(part),
+                ..
+            } = bullet
+            {
+                if !parts.contains(part) {
+                    parts.push(part.clone());
+                }
+            }
+        };
+        if let Some(styles) = &mut copy.text_styles {
+            for list in [&mut styles.title, &mut styles.body, &mut styles.other] {
+                visit_list_bullets(list, &mut collect);
+            }
+        }
+        visit_shape_bullets(&mut copy.shapes, &mut collect);
+        parts
+    }
+}
+
+fn visit_list_bullets(list: &mut ListStyle, visit: &mut dyn FnMut(&mut Bullet)) {
+    for level in list.levels.iter_mut().flatten() {
+        if let Some(bullet) = &mut level.bullet {
+            visit(bullet);
+        }
+    }
+}
+
+fn visit_body_bullets(body: &mut TextBody, visit: &mut dyn FnMut(&mut Bullet)) {
+    if let Some(list) = &mut body.list_style {
+        visit_list_bullets(list, visit);
+    }
+    for paragraph in &mut body.paragraphs {
+        if let Some(bullet) = &mut paragraph.bullet {
+            visit(bullet);
+        }
+    }
+}
+
+fn visit_shape_bullets(shapes: &mut [ShapeItem], visit: &mut dyn FnMut(&mut Bullet)) {
+    for item in shapes {
+        match item {
+            ShapeItem::Shape(shape) => {
+                if let Some(body) = &mut shape.text {
+                    visit_body_bullets(body, visit);
+                }
+            }
+            ShapeItem::Group(group) => visit_shape_bullets(&mut group.children, visit),
+            ShapeItem::Table(table) => {
+                for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                    if let Some(body) = &mut cell.text {
+                        visit_body_bullets(body, visit);
+                    }
+                }
+            }
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+        }
+    }
 }
 
 fn resolve_image_parts(
@@ -624,9 +710,9 @@ fn read_theme(package: &OpcPackage) -> Result<ThemeParts> {
 pub(crate) fn read_master_effect_styles(
     package: &OpcPackage,
     master_part: Option<&str>,
-) -> Result<Vec<Option<Shadow>>> {
+) -> Result<(Vec<Option<Shadow>>, Vec<Effects>)> {
     let Some(master) = master_part else {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     };
     let theme_part = match package.part_str(&jade_opc::rels_part_name(master))? {
         Some(xml) => jade_opc::parse_relationships(&xml)?
@@ -637,8 +723,11 @@ pub(crate) fn read_master_effect_styles(
         None => None,
     };
     match theme_part.and_then(|part| package.part_str(&part).ok().flatten()) {
-        Some(xml) => parse_theme_effect_styles(&xml),
-        None => Ok(Vec::new()),
+        Some(xml) => Ok((
+            parse_theme_effect_styles(&xml)?,
+            theme::parse_theme_effect_style_effects(&xml)?,
+        )),
+        None => Ok((Vec::new(), Vec::new())),
     }
 }
 

@@ -18,6 +18,10 @@ pub struct SlideTheme {
     /// `effectStyleLst` outer shadows, for `effectRef idx` 1–3.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effect_styles: Vec<Option<crate::Shadow>>,
+    /// The same entries' other effects (glow, reflection, soft edge, inner
+    /// shadow), index for index.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effect_style_effects: Vec<crate::Effects>,
 }
 /// One source for rendering and authoring-state queries, with legacy deck fallback.
 #[derive(Debug, Clone, Copy)]
@@ -28,6 +32,7 @@ pub struct ThemeRef<'a> {
     pub background_fill_styles: &'a [Fill],
     pub line_styles: &'a [Outline],
     pub effect_styles: &'a [Option<crate::Shadow>],
+    pub effect_style_effects: &'a [crate::Effects],
 }
 impl Deck {
     pub fn theme_for_slide(&self, index: usize) -> ThemeRef<'_> {
@@ -43,6 +48,7 @@ impl Deck {
                 background_fill_styles: &theme.background_fill_styles,
                 line_styles: &theme.line_styles,
                 effect_styles: &theme.effect_styles,
+                effect_style_effects: &theme.effect_style_effects,
             }
         } else {
             ThemeRef {
@@ -52,6 +58,7 @@ impl Deck {
                 background_fill_styles: &self.theme_background_fill_styles,
                 line_styles: &self.theme_line_styles,
                 effect_styles: &[],
+                effect_style_effects: &[],
             }
         }
     }
@@ -140,6 +147,8 @@ impl ThemeResolver {
             if !self.masters.contains_key(master) {
                 let (colors, fonts, fill_styles, background_fill_styles, line_styles) =
                     crate::read_master_theme(package, Some(master))?;
+                let (effect_styles, effect_style_effects) =
+                    crate::read_master_effect_styles(package, Some(master))?;
                 self.masters.insert(
                     master.into(),
                     Arc::new(SlideTheme {
@@ -148,7 +157,8 @@ impl ThemeResolver {
                         fill_styles,
                         background_fill_styles,
                         line_styles,
-                        effect_styles: crate::read_master_effect_styles(package, Some(master))?,
+                        effect_styles,
+                        effect_style_effects,
                     }),
                 );
             }

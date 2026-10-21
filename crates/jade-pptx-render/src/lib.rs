@@ -11,8 +11,8 @@ use std::cell::RefCell;
 
 use jade_painter::Painter;
 use jade_pptx_layout::{
-    HeuristicMeasure, PathFill, PlacedGeometry, PlacedLineEnd, PlacedOutline, PlacedPath,
-    PlacedPattern, PlacedShape, RunStyle, SlideLayout, TextMeasure, PX_PER_PT,
+    HeuristicMeasure, PathFill, PlacedGeometry, PlacedGlow, PlacedLineEnd, PlacedOutline,
+    PlacedPath, PlacedPattern, PlacedReflection, PlacedShadow, PlacedShape, RunStyle, SlideLayout, TextMeasure, PX_PER_PT,
 };
 
 #[derive(Debug, Clone)]
@@ -138,13 +138,18 @@ fn render_shape<P: Painter>(
             tail_end: None,
         };
         let outline = shape.outline.as_ref().unwrap_or(&default_outline);
+        if let Some(glow) = &shape.effects.glow {
+            // A line glows along its stroke.
+            painter.save();
+            painter.set_stroke_style_str(&glow.color);
+            painter.set_line_width(outline.width_px + glow.radius_px);
+            painter.set_blur_filter(glow.radius_px / 4.0);
+            line_path(painter, shape);
+            painter.stroke();
+            painter.restore();
+        }
         apply_outline(painter, outline);
-        painter.begin_path();
-        painter.move_to(shape.paint_rect().x, shape.paint_rect().y);
-        painter.line_to(
-            shape.paint_rect().x + shape.paint_rect().width,
-            shape.paint_rect().y + shape.paint_rect().height,
-        );
+        line_path(painter, shape);
         painter.stroke();
         clear_outline(painter, outline);
         let rect = shape.paint_rect();
@@ -162,9 +167,15 @@ fn render_shape<P: Painter>(
         return Ok(());
     }
 
+    let has_body = shape.fill.is_some() || shape.gradient.is_some() || shape.image_part.is_some();
+
+    // Back to front: the reflection, the outer shadow and the glow sit
+    // under the shape itself.
+    if let Some(reflection) = &shape.effects.reflection {
+        draw_reflection(painter, shape, reflection, options, draw_image)?;
+    }
+
     if let Some(shadow) = &shape.shadow {
-        let has_body =
-            shape.fill.is_some() || shape.gradient.is_some() || shape.image_part.is_some();
         if has_body {
             // The silhouette, offset and softened, under everything else.
             painter.save();
@@ -178,6 +189,79 @@ fn render_shape<P: Painter>(
         }
     }
 
+    if let Some(glow) = &shape.effects.glow {
+        if has_body || shape.outline.is_some() {
+            draw_glow(painter, shape, glow, has_body)?;
+        }
+    }
+
+    match shape.effects.soft_edge_px {
+        Some(radius) => draw_soft_edged(painter, shape, radius, options, draw_image)?,
+        None => draw_content(painter, shape, options, draw_image, 1.0)?,
+    }
+
+    if transformed {
+        painter.restore();
+    }
+    Ok(())
+}
+
+/// The connector's straight stroke as the current path.
+fn line_path<P: Painter>(painter: &P, shape: &PlacedShape) {
+    let rect = shape.paint_rect();
+    painter.begin_path();
+    painter.move_to(rect.x, rect.y);
+    painter.line_to(rect.x + rect.width, rect.y + rect.height);
+}
+
+/// The shape proper — its fill or picture, inner shadow, outline and text —
+/// at `opacity`. Effects drawn around the shape call this again under
+/// their own transforms and clips.
+fn draw_content<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+    opacity: f64,
+) -> Result<(), P::Error> {
+    if opacity <= 0.0 {
+        return Ok(());
+    }
+    if opacity < 1.0 {
+        painter.save();
+        painter.set_global_alpha(opacity);
+    }
+    draw_body(painter, shape, options, draw_image, opacity)?;
+    // The inner shadow darkens what the shape covers; an unfilled shape
+    // covers nothing for it to fall on.
+    let has_body = shape.fill.is_some() || shape.gradient.is_some() || shape.image_part.is_some();
+    if let Some(inner) = shape.effects.inner_shadow.as_ref().filter(|_| has_body) {
+        draw_inner_shadow(painter, shape, inner)?;
+    }
+    // A soft edge fades the outline away with the rest of the rim.
+    if shape.effects.soft_edge_px.is_none() {
+        if let Some(outline) = &shape.outline {
+            apply_outline(painter, outline);
+            stroke_geometry(painter, shape)?;
+            clear_outline(painter, outline);
+        }
+    }
+    draw_text(painter, shape, options, draw_image)?;
+    if opacity < 1.0 {
+        painter.restore();
+    }
+    Ok(())
+}
+
+/// The shape's fill: the host's picture, a gradient, a flat colour with
+/// any hatch over it.
+fn draw_body<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+    opacity: f64,
+) -> Result<(), P::Error> {
     // A picture is the host's to draw; when it cannot, its footprint shows
     // as the placeholder colour rather than nothing.
     let host_drew = if shape.image_part.is_some() {
@@ -186,7 +270,7 @@ fn render_shape<P: Painter>(
         // and carry the picture's own transparency in the global alpha.
         painter.set_fill_style_str("#000000");
         if let Some(alpha) = shape.image_alpha {
-            painter.set_global_alpha(alpha);
+            painter.set_global_alpha(alpha * opacity);
         }
         geometry_path(painter, shape)?;
         painter.clip();
@@ -227,13 +311,17 @@ fn render_shape<P: Painter>(
             painter.restore();
         }
     }
+    Ok(())
+}
 
-    if let Some(outline) = &shape.outline {
-        apply_outline(painter, outline);
-        stroke_geometry(painter, shape)?;
-        clear_outline(painter, outline);
-    }
-
+/// The shape's text, each run with its highlight, glow, shadow, outline and
+/// decorations.
+fn draw_text<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+) -> Result<(), P::Error> {
     // Vertical text: the lines were laid out in a frame turned inside the
     // shape, so turn the canvas the same way around the shape's centre and
     // draw them in frame coordinates.
@@ -251,10 +339,74 @@ fn render_shape<P: Painter>(
     } else {
         (shape.paint_rect().x, shape.paint_rect().y)
     };
+    // A shape with neither fill nor line glows through its text, as
+    // PowerPoint draws a text box's effects on the glyphs.
+    let shape_glow = shape.effects.glow.as_ref().filter(|_| {
+        shape.fill.is_none()
+            && shape.gradient.is_none()
+            && shape.image_part.is_none()
+            && shape.outline.is_none()
+    });
+    if let Some(warp) = shape
+        .effects
+        .text_warp
+        .as_deref()
+        .and_then(ArcWarp::from_preset)
+    {
+        draw_warped_text(painter, shape, warp, (origin_x, origin_y), options)?;
+        if turned {
+            painter.restore();
+        }
+        return Ok(());
+    }
+    if let Some(glow) = shape_glow {
+        for line in &shape.lines {
+            for run in line.runs.iter().filter(|run| run.text_glow.is_none()) {
+                draw_text_glow(painter, run, glow, origin_x, origin_y, options)?;
+            }
+        }
+    }
+    for line in &shape.lines {
+        for run in &line.runs {
+            if let Some(glow) = &run.text_glow {
+                draw_text_glow(painter, run, glow, origin_x, origin_y, options)?;
+            }
+        }
+    }
     for line in &shape.lines {
         for run in &line.runs {
             let x = origin_x + run.x;
             let baseline = origin_y + run.baseline_y;
+            if let Some(part) = &run.bullet_image {
+                // A picture bullet: the host draws it in the run's square,
+                // sitting on the baseline; the glyph stands in otherwise.
+                let side = run.width;
+                let mut bullet = shape.clone();
+                bullet.lines = Vec::new();
+                bullet.name = format!("{} bullet", shape.name);
+                bullet.rect = jade_pptx_layout::Rect {
+                    x,
+                    y: baseline - side,
+                    width: side,
+                    height: side,
+                };
+                bullet.local_rect = None;
+                bullet.group_transforms = Vec::new();
+                bullet.rotation_rad = 0.0;
+                bullet.flip_h = false;
+                bullet.flip_v = false;
+                bullet.geometry = PlacedGeometry::Rect;
+                bullet.image_part = Some(part.clone());
+                bullet.source_rect = None;
+                bullet.image_alpha = None;
+                painter.save();
+                painter.set_fill_style_str("#000000");
+                let drew = draw_image(&bullet);
+                painter.restore();
+                if drew {
+                    continue;
+                }
+            }
             if let Some(highlight) = &run.highlight {
                 let size_px = run.size_pt as f64 * PX_PER_PT;
                 painter.set_fill_style_str(highlight);
@@ -322,11 +474,506 @@ fn render_shape<P: Painter>(
     if turned {
         painter.restore();
     }
+    Ok(())
+}
 
-    if transformed {
+/// The WordArt transforms that bend text along an ellipse inscribed in the
+/// shape: the upper arch, the lower arch, and the whole circle (the
+/// `…Pour` variants pour every line along the same path).
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ArcWarp {
+    Up,
+    Down,
+    Circle,
+}
+
+impl ArcWarp {
+    fn from_preset(preset: &str) -> Option<Self> {
+        match preset {
+            "textArchUp" | "textArchUpPour" => Some(Self::Up),
+            "textArchDown" | "textArchDownPour" => Some(Self::Down),
+            "textCircle" | "textCirclePour" => Some(Self::Circle),
+            _ => None,
+        }
+    }
+
+    /// The angle (radians, clockwise from +x) at fraction `t` of the text's
+    /// width, and the glyph's turn there.
+    fn at(self, t: f64) -> (f64, f64) {
+        use std::f64::consts::{FRAC_PI_2, PI, TAU};
+        match self {
+            // Over the top, left to right, glyphs standing out of the arc.
+            Self::Up => {
+                let angle = PI + t * PI;
+                (angle, angle + FRAC_PI_2)
+            }
+            // Along the bottom, left to right, glyphs standing into it.
+            Self::Down => {
+                let angle = PI - t * PI;
+                (angle, angle - FRAC_PI_2)
+            }
+            Self::Circle => {
+                let angle = PI + t * TAU;
+                (angle, angle + FRAC_PI_2)
+            }
+        }
+    }
+}
+
+/// Lines laid out flat, bent onto the warp's ellipse a glyph at a time:
+/// each glyph's centre goes to the point at its share of the frame's
+/// width, turned to the curve, and lines after the first (before the last,
+/// for the lower arch) move in toward the centre by their spacing.
+fn draw_warped_text<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    warp: ArcWarp,
+    (origin_x, origin_y): (f64, f64),
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
+    let (width, height) = shape.text_frame();
+    if width <= 0.0 || height <= 0.0 {
+        return Ok(());
+    }
+    let baselines: Vec<f64> = shape
+        .lines
+        .iter()
+        .filter_map(|line| line.runs.first().map(|run| run.baseline_y))
+        .collect();
+    let (Some(&first), Some(&last)) = (baselines.first(), baselines.last()) else {
+        return Ok(());
+    };
+    let first_size = shape
+        .lines
+        .first()
+        .and_then(|line| line.runs.first())
+        .map_or(0.0, |run| run.size_pt as f64 * PX_PER_PT);
+    let last_size = shape
+        .lines
+        .last()
+        .and_then(|line| line.runs.first())
+        .map_or(0.0, |run| run.size_pt as f64 * PX_PER_PT);
+    let center = (origin_x + width / 2.0, origin_y + height / 2.0);
+    let (rx, ry) = (width / 2.0, height / 2.0);
+    for line in &shape.lines {
+        // A warp maps the line's own extent onto the whole path, as WordArt
+        // stretches its text along it: measure every glyph first, then
+        // place each at its share of the line.
+        let mut glyphs: Vec<(&jade_pptx_layout::PlacedRun, char, f64)> = Vec::new();
+        for run in &line.runs {
+            painter.set_font(&font_shorthand(run, options));
+            let mut buffer = [0u8; 4];
+            for character in run.text.trim_end_matches('\t').chars() {
+                let glyph = character.encode_utf8(&mut buffer);
+                let advance = painter.measure_text_width(glyph)? + run.letter_spacing_px;
+                glyphs.push((run, character, advance));
+            }
+        }
+        let mut span: f64 = glyphs.iter().map(|(_, _, advance)| advance).sum();
+        if span <= 0.0 {
+            // A painter that cannot measure: share each run's laid-out
+            // width among its glyphs.
+            for (run, _, advance) in &mut glyphs {
+                let count = run.text.trim_end_matches('\t').chars().count().max(1);
+                *advance = run.width / count as f64;
+            }
+            span = glyphs.iter().map(|(_, _, advance)| advance).sum();
+            if span <= 0.0 {
+                continue;
+            }
+        }
+        let mut pen = 0.0;
+        for (run, character, advance) in glyphs {
+            // How far in from the ellipse this run's baseline sits.
+            let inset = match warp {
+                ArcWarp::Down => (last - run.baseline_y) + last_size * 0.2,
+                _ => (run.baseline_y - first) + first_size * jade_pptx_layout::ASCENT_RATIO,
+            };
+            let t = ((pen + advance / 2.0) / span).clamp(0.0, 1.0);
+            pen += advance;
+            if character.is_whitespace() {
+                continue;
+            }
+            painter.set_font(&font_shorthand(run, options));
+            painter.set_fill_style_str(&run.color);
+            let mut buffer = [0u8; 4];
+            let glyph = character.encode_utf8(&mut buffer);
+            let (angle, turn) = warp.at(t);
+            let x = center.0 + (rx - inset).max(0.0) * angle.cos();
+            let y = center.1 + (ry - inset).max(0.0) * angle.sin();
+            painter.save();
+            painter.translate(x, y)?;
+            painter.rotate(turn)?;
+            painter.fill_text(glyph, -advance / 2.0, 0.0)?;
+            if let Some(outline) = &run.text_outline {
+                apply_outline(painter, outline);
+                painter.stroke_text(glyph, -advance / 2.0, 0.0)?;
+                clear_outline(painter, outline);
+            }
+            painter.restore();
+        }
+    }
+    Ok(())
+}
+
+/// A run's glyphs thickened by the glow's radius and blurred, in the glow's
+/// colour, under where the run will draw.
+fn draw_text_glow<P: Painter>(
+    painter: &P,
+    run: &jade_pptx_layout::PlacedRun,
+    glow: &PlacedGlow,
+    origin_x: f64,
+    origin_y: f64,
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
+    let text = run.text.trim_end_matches('\t');
+    if text.trim().is_empty() {
+        return Ok(());
+    }
+    painter.save();
+    painter.set_font(&font_shorthand(run, options));
+    painter.set_fill_style_str(&glow.color);
+    painter.set_stroke_style_str(&glow.color);
+    painter.set_line_width(glow.radius_px);
+    painter.set_blur_filter(glow.radius_px / 4.0);
+    let (x, y) = (origin_x + run.x, origin_y + run.baseline_y);
+    painter.fill_text(text, x, y)?;
+    painter.stroke_text(text, x, y)?;
+    painter.restore();
+    Ok(())
+}
+
+/// `<a:glow>`: the silhouette grown by half the radius and blurred, so the
+/// colour is near full strength at the edge and gone a radius beyond it.
+fn draw_glow<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    glow: &PlacedGlow,
+    has_body: bool,
+) -> Result<(), P::Error> {
+    painter.save();
+    painter.set_fill_style_str(&glow.color);
+    painter.set_stroke_style_str(&glow.color);
+    painter.set_blur_filter(glow.radius_px / 4.0);
+    let line = shape.outline.as_ref().map_or(0.0, |outline| outline.width_px);
+    painter.set_line_width(glow.radius_px + line);
+    painter.begin_path();
+    for points in outline_polygons(shape) {
+        add_polygon(painter, &points);
+    }
+    if has_body {
+        painter.fill();
+    }
+    painter.stroke();
+    painter.restore();
+    Ok(())
+}
+
+/// `<a:innerShdw>`: everything outside the silhouette moved by the offset,
+/// blurred, and seen only through the silhouette — dark along the edges
+/// facing away from the light.
+fn draw_inner_shadow<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    shadow: &PlacedShadow,
+) -> Result<(), P::Error> {
+    let rect = shape.paint_rect();
+    let margin = shadow.blur_px * 2.0 + shadow.dx.abs().max(shadow.dy.abs()) + 2.0;
+    painter.save();
+    geometry_path(painter, shape)?;
+    painter.clip();
+    painter.set_fill_style_str(&shadow.color);
+    painter.set_blur_filter(shadow.blur_px / 2.0);
+    painter.begin_path();
+    // The frame clockwise, the silhouette inside it anticlockwise: non-zero
+    // filling leaves the silhouette a hole.
+    let frame = vec![
+        (rect.x - margin, rect.y - margin),
+        (rect.x + rect.width + margin, rect.y - margin),
+        (rect.x + rect.width + margin, rect.y + rect.height + margin),
+        (rect.x - margin, rect.y + rect.height + margin),
+    ];
+    add_polygon(painter, &frame);
+    let frame_sign = signed_area(&frame).signum();
+    for mut points in outline_polygons(shape) {
+        if signed_area(&points).signum() == frame_sign {
+            points.reverse();
+        }
+        let shifted: Vec<(f64, f64)> = points
+            .iter()
+            .map(|(x, y)| (x + shadow.dx, y + shadow.dy))
+            .collect();
+        add_polygon(painter, &shifted);
+    }
+    painter.fill();
+    painter.restore();
+    Ok(())
+}
+
+/// How many rings a soft edge fades through. Each is one more pass over the
+/// shape, so this trades smoothness for time.
+const SOFT_EDGE_RINGS: usize = 16;
+
+/// `<a:softEdge>`: the shape fading from clear at its edge to opaque a
+/// radius in. The painter has no masks, so the shape is drawn once per ring,
+/// each pass clipped to the silhouette shrunk a step further and at the
+/// alpha that brings the ring's accumulated coverage to its share of the
+/// ramp.
+fn draw_soft_edged<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    radius: f64,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+) -> Result<(), P::Error> {
+    let rect = shape.paint_rect();
+    let (cx, cy) = (rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+    let flat = shape.image_part.is_none() && shape.gradient.is_none() && shape.pattern.is_none();
+    if let (true, Some(fill)) = (flat, shape.fill.as_deref()) {
+        // A flat fill is exactly a blur of the silhouette shrunk by half
+        // the radius: clear at the edge, solid a radius in.
+        let sx = ((rect.width - radius) / rect.width).max(0.0);
+        let sy = ((rect.height - radius) / rect.height).max(0.0);
+        if sx > 0.0 && sy > 0.0 && sx.is_finite() && sy.is_finite() {
+            painter.save();
+            painter.translate(cx, cy)?;
+            painter.scale(sx, sy)?;
+            painter.translate(-cx, -cy)?;
+            // The blur is in device px, and the scale above applies to it
+            // only through the path, so the radius stays as stated.
+            painter.set_blur_filter(radius / 4.0);
+            painter.set_fill_style_str(fill);
+            geometry_path(painter, shape)?;
+            painter.fill();
+            painter.restore();
+        }
+        if let Some(inner) = &shape.effects.inner_shadow {
+            draw_inner_shadow(painter, shape, inner)?;
+        }
+        return draw_text(painter, shape, options, draw_image);
+    }
+    let rings = SOFT_EDGE_RINGS;
+    let mut covered = 0.0;
+    for ring in 0..=rings {
+        // Coverage this ring should end with: the ramp's midpoint for each
+        // ring, whole for the core inside the radius.
+        let target = if ring == rings {
+            1.0
+        } else {
+            (ring as f64 + 0.5) / rings as f64
+        };
+        let alpha = (target - covered) / (1.0 - covered);
+        covered = target;
+        let inset = radius * ring as f64 / rings as f64;
+        let sx = ((rect.width - 2.0 * inset) / rect.width).max(0.0);
+        let sy = ((rect.height - 2.0 * inset) / rect.height).max(0.0);
+        if sx <= 0.0 || sy <= 0.0 || !sx.is_finite() || !sy.is_finite() {
+            break;
+        }
+        painter.save();
+        painter.translate(cx, cy)?;
+        painter.scale(sx, sy)?;
+        painter.translate(-cx, -cy)?;
+        geometry_path(painter, shape)?;
+        painter.clip();
+        painter.translate(cx, cy)?;
+        painter.scale(1.0 / sx, 1.0 / sy)?;
+        painter.translate(-cx, -cy)?;
+        draw_content(painter, shape, options, draw_image, alpha)?;
         painter.restore();
     }
     Ok(())
+}
+
+/// How many bands a reflection's fade is drawn in.
+const REFLECTION_BANDS: usize = 32;
+
+/// `<a:reflection>`: the shape drawn again, mirrored about its anchor and
+/// moved by the offset, in bands across the copy whose alpha follows the
+/// fade.
+fn draw_reflection<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    reflection: &PlacedReflection,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+) -> Result<(), P::Error> {
+    let rect = shape.paint_rect();
+    let anchor = (
+        rect.x + reflection.anchor.0 * rect.width,
+        rect.y + reflection.anchor.1 * rect.height,
+    );
+    let map = |(x, y): (f64, f64)| {
+        (
+            anchor.0 + reflection.scale_x * (x - anchor.0) + reflection.dx,
+            anchor.1 + reflection.scale_y * (y - anchor.1) + reflection.dy,
+        )
+    };
+    let corners = [
+        map((rect.x, rect.y)),
+        map((rect.x + rect.width, rect.y)),
+        map((rect.x + rect.width, rect.y + rect.height)),
+        map((rect.x, rect.y + rect.height)),
+    ];
+    // The fade runs along its direction across the copy's box: project the
+    // corners on that axis and on the one across it.
+    let angle = reflection.fade_direction_deg.to_radians();
+    let along = (angle.cos(), angle.sin());
+    let across = (-along.1, along.0);
+    let project = |axis: (f64, f64)| {
+        corners
+            .iter()
+            .map(|(x, y)| x * axis.0 + y * axis.1)
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+                (lo.min(v), hi.max(v))
+            })
+    };
+    let (start, end) = project(along);
+    let (low, high) = project(across);
+    if !(end > start) || !(high > low) {
+        return Ok(());
+    }
+    let point = |a: f64, c: f64| {
+        (
+            along.0 * a + across.0 * c,
+            along.1 * a + across.1 * c,
+        )
+    };
+    // Abutting bands would each antialias their shared edge and leave a
+    // seam; instead every pass covers from the opaque end of the fade up to
+    // its band, so each boundary is crossed by exactly one clip edge, and
+    // each pass's alpha brings what lies under it to the band's value.
+    let fading = reflection.start_alpha >= reflection.end_alpha;
+    let bands = REFLECTION_BANDS;
+    let band_alpha = |band: usize| {
+        reflection.alpha_at((band as f64 + 0.5) / bands as f64)
+    };
+    // Passes from the faint end in: each later pass lies inside all earlier.
+    let order: Vec<usize> = if fading {
+        (0..bands).rev().collect()
+    } else {
+        (0..bands).collect()
+    };
+    let mut beneath = 0.0;
+    for band in order {
+        let target = band_alpha(band);
+        if target <= beneath + 1e-4 {
+            continue;
+        }
+        let alpha = (target - beneath) / (1.0 - beneath);
+        beneath = target;
+        let (t0, t1) = if fading {
+            (0.0, (band + 1) as f64 / bands as f64)
+        } else {
+            (band as f64 / bands as f64, 1.0)
+        };
+        let a0 = start + (end - start) * t0;
+        let a1 = start + (end - start) * t1;
+        painter.save();
+        painter.begin_path();
+        add_polygon(
+            painter,
+            &[point(a0, low), point(a1, low), point(a1, high), point(a0, high)],
+        );
+        painter.clip();
+        painter.translate(anchor.0 + reflection.dx, anchor.1 + reflection.dy)?;
+        painter.scale(reflection.scale_x, reflection.scale_y)?;
+        painter.translate(-anchor.0, -anchor.1)?;
+        if reflection.blur_px > 0.0 {
+            painter.set_blur_filter(reflection.blur_px / 2.0);
+        }
+        draw_content(painter, shape, options, draw_image, alpha)?;
+        painter.restore();
+    }
+    Ok(())
+}
+
+/// Adds one closed polygon to the current path.
+fn add_polygon<P: Painter>(painter: &P, points: &[(f64, f64)]) {
+    for (index, (x, y)) in points.iter().enumerate() {
+        if index == 0 {
+            painter.move_to(*x, *y);
+        } else {
+            painter.line_to(*x, *y);
+        }
+    }
+    painter.close_path();
+}
+
+/// Twice the polygon's signed area; its sign is the winding direction.
+fn signed_area(points: &[(f64, f64)]) -> f64 {
+    let mut sum = 0.0;
+    for (index, (x0, y0)) in points.iter().enumerate() {
+        let (x1, y1) = points[(index + 1) % points.len()];
+        sum += x0 * y1 - x1 * y0;
+    }
+    sum
+}
+
+/// The silhouette as flattened closed polygons in paint px, for effects
+/// that need its outline as points: curves become short segments.
+fn outline_polygons(shape: &PlacedShape) -> Vec<Vec<(f64, f64)>> {
+    let rect = shape.paint_rect();
+    let to_px = |(nx, ny): &(f64, f64)| (rect.x + nx * rect.width, rect.y + ny * rect.height);
+    let arc = |out: &mut Vec<(f64, f64)>, cx: f64, cy: f64, rx: f64, ry: f64, from: f64| {
+        const STEPS: usize = 12;
+        for step in 0..=STEPS {
+            let t = from + std::f64::consts::FRAC_PI_2 * step as f64 / STEPS as f64;
+            out.push((cx + rx * t.cos(), cy + ry * t.sin()));
+        }
+    };
+    match &shape.geometry {
+        PlacedGeometry::Rect | PlacedGeometry::Line => vec![vec![
+            (rect.x, rect.y),
+            (rect.x + rect.width, rect.y),
+            (rect.x + rect.width, rect.y + rect.height),
+            (rect.x, rect.y + rect.height),
+        ]],
+        PlacedGeometry::Ellipse => {
+            let (rx, ry) = (rect.width / 2.0, rect.height / 2.0);
+            let (cx, cy) = (rect.x + rx, rect.y + ry);
+            let mut points = Vec::new();
+            for quarter in 0..4 {
+                arc(
+                    &mut points,
+                    cx,
+                    cy,
+                    rx,
+                    ry,
+                    quarter as f64 * std::f64::consts::FRAC_PI_2,
+                );
+            }
+            vec![points]
+        }
+        PlacedGeometry::RoundRect { adjust } => {
+            let r = round_rect_radius(shape, *adjust)
+                .min(rect.width / 2.0)
+                .min(rect.height / 2.0)
+                .max(0.0);
+            let (x, y, w, h) = (rect.x, rect.y, rect.width, rect.height);
+            let mut points = Vec::new();
+            use std::f64::consts::{FRAC_PI_2, PI};
+            arc(&mut points, x + w - r, y + h - r, r, r, 0.0);
+            arc(&mut points, x + r, y + h - r, r, r, FRAC_PI_2);
+            arc(&mut points, x + r, y + r, r, r, PI);
+            arc(&mut points, x + w - r, y + r, r, r, PI + FRAC_PI_2);
+            vec![points]
+        }
+        PlacedGeometry::Polygon(points) => vec![points.iter().map(to_px).collect()],
+        PlacedGeometry::Path(subpaths) => subpaths
+            .iter()
+            .map(|points| points.iter().map(to_px).collect())
+            .collect(),
+        PlacedGeometry::Paths(paths) => paths
+            .iter()
+            .filter(|path| path.fill != PathFill::None)
+            .flat_map(|path| path.subpaths.iter())
+            .map(|sub| sub.points.iter().map(to_px).collect())
+            .collect(),
+    }
+    .into_iter()
+    .filter(|points: &Vec<(f64, f64)>| points.len() >= 3)
+    .collect()
 }
 
 /// A canvas font shorthand: the Latin face first, the East Asian face as its

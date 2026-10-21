@@ -178,6 +178,22 @@ pub fn parse_color_map(xml: &str) -> Result<HashMap<String, String>> {
         .unwrap_or_default())
 }
 
+/// The effects other than the outer shadow of each `effectStyleLst` entry.
+pub fn parse_theme_effect_style_effects(xml: &str) -> Result<Vec<crate::Effects>> {
+    let root = parse_tree(xml)?;
+    Ok(root
+        .descendant("fmtScheme")
+        .and_then(|s| s.child("effectStyleLst"))
+        .map(|list| {
+            list.children
+                .iter()
+                .filter(|n| n.name == "effectStyle")
+                .map(crate::slide::parse_effects)
+                .collect()
+        })
+        .unwrap_or_default())
+}
+
 /// The theme's `effectStyleLst`, what a shape style's `effectRef idx` 1–3
 /// names: each entry's outer shadow, when it has one.
 pub fn parse_theme_effect_styles(xml: &str) -> Result<Vec<Option<crate::Shadow>>> {
