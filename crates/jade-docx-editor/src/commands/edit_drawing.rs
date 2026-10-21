@@ -29,3 +29,18 @@ pub fn edit_drawing_command(
         },
     )
 }
+
+/// [`edit_drawing_command`] for an edit that can change what the object is
+/// — a shape becoming a group or a picture, a text box losing its text —
+/// and so the paragraphs the document has: undo keeps the whole document.
+pub fn replace_drawing_command(
+    name: &'static str,
+    target: FloatingObjectTarget,
+    mut edit: impl FnMut(&mut WordDocument, &mut XmlElement) -> Result<(), String> + 'static,
+) -> SnapshotEditCommand {
+    SnapshotEditCommand::with_scope(name, EditScope::Document, move |document: &mut WordDocument| {
+        let mut drawing = document.object_drawing(target)?;
+        edit(document, &mut drawing)?;
+        document.replace_object_drawing(target, drawing)
+    })
+}
