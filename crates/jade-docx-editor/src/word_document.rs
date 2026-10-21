@@ -33335,6 +33335,29 @@ impl WordDocument {
         // fragment) gets them back. `create_element` allocates fresh node ids,
         // avoiding collisions with the original run's element ids.
         if let Some(props) = run.properties.as_ref() {
+            // 校正言語 and スペル チェックと文章校正を行わない are edited through
+            // the preserved children: the XML follows them, a changed value
+            // replacing the old and a removed one going.
+            for managed in ["w:lang", "w:noProof"] {
+                let wanted = props.preserved_rpr.0.iter().find_map(|node| match node {
+                    XmlNode::Element(child) if child.name == managed => Some(child),
+                    _ => None,
+                });
+                match wanted {
+                    Some(wanted) => {
+                        for existing in element.children.iter_mut() {
+                            if let XmlNode::Element(existing) = existing {
+                                if existing.name == managed {
+                                    existing.attributes = wanted.attributes.clone();
+                                }
+                            }
+                        }
+                    }
+                    None => element.children.retain(|existing| {
+                        !matches!(existing, XmlNode::Element(existing) if existing.name == managed)
+                    }),
+                }
+            }
             for node in props.preserved_rpr.0.iter() {
                 if let XmlNode::Element(child) = node {
                     let already_present = element.children.iter().any(|existing| {
