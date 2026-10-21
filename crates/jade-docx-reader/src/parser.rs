@@ -9502,6 +9502,19 @@ impl DocumentParser {
             }
             "SECTION" => Some(RunFieldKind::SectionNumber),
             "SECTIONPAGES" => Some(RunFieldKind::SectionPages),
+            "STYLEREF" => {
+                let style = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .map(|token| token.trim_matches('"'))
+                    .find(|token| !token.is_empty() && !token.starts_with('\\'))?;
+                let from_bottom = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .any(|token| token.eq_ignore_ascii_case("\\l"));
+                Some(RunFieldKind::StyleRef {
+                    style: style.to_string(),
+                    from_bottom,
+                })
+            }
             "DOCPROPERTY" => {
                 let name = raw_tokens[name_idx + 1..]
                     .iter()

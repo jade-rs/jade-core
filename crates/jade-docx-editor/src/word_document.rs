@@ -7404,6 +7404,7 @@ impl WordDocument {
                         | crate::document::RunFieldKind::DocumentProperty { .. }
                         | crate::document::RunFieldKind::DocumentVariable { .. }
                         | crate::document::RunFieldKind::Compare { .. }
+                        | crate::document::RunFieldKind::StyleRef { .. }
                         | crate::document::RunFieldKind::If { .. } => {
                             // Structural, package, and comparison fields are
                             // resolved at load time; prefer that value over
@@ -34801,6 +34802,10 @@ impl WordDocument {
             {
                 " FILENAME ".to_string()
             }
+            RunFieldKind::StyleRef { style, from_bottom } => format!(
+                " STYLEREF \"{style}\"{} ",
+                if *from_bottom { " \\l" } else { "" }
+            ),
             RunFieldKind::Ref {
                 name, hyperlink, ..
             } => format!(" REF {name}{} ", if *hyperlink { " \\h" } else { "" }),

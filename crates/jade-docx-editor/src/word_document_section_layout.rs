@@ -736,4 +736,38 @@ impl WordDocument {
         }
         Ok(())
     }
+
+    /// The text of the first body paragraph in the style named `style` (by
+    /// name, as Word writes built-in ones, or by id): what a STYLEREF to it
+    /// shows before a page lays it out.
+    pub fn first_paragraph_text_in_style(&self, style: &str) -> Option<String> {
+        let id = self
+            .styles_part
+            .as_ref()
+            .and_then(|styles| {
+                styles
+                    .paragraph_style_definitions()
+                    .find(|definition| {
+                        definition
+                            .name
+                            .as_deref()
+                            .is_some_and(|name| name.eq_ignore_ascii_case(style))
+                    })
+                    .map(|definition| definition.style_id.clone())
+                    .or_else(|| styles.resolve_paragraph_style_id(style).map(str::to_string))
+            })
+            .unwrap_or_else(|| style.to_string());
+        (0..self.paragraph_count()).find_map(|index| {
+            let paragraph = self.paragraph(index)?;
+            let paragraph_style = paragraph.properties.as_ref()?.style.as_deref()?;
+            paragraph_style.eq_ignore_ascii_case(&id).then(|| {
+                paragraph
+                    .runs
+                    .iter()
+                    .flat_map(|run| run.text.chars())
+                    .filter(|ch| !ch.is_control())
+                    .collect()
+            })
+        })
+    }
 }
