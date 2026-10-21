@@ -58,6 +58,7 @@ use crate::commands::set_paragraph_line_spacing::SetParagraphLineSpacingCommand;
 use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, SpecialIndent};
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+use crate::commands::set_run_format::SetRunFormatCommand;
 use crate::commands::set_watermark::SetWatermarkCommand;
 use crate::commands::snapshot_edit::{EditScope, PackageSnapshotCommand, SnapshotEditCommand};
 use crate::commands::split_table::SplitTableCommand;
@@ -841,6 +842,13 @@ fn snapshot_effect(
             end_paragraph,
             end_offset,
             ..
+        }
+        | HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            ..
         } => {
             let first = snapshot_position(word_doc, index, *start_paragraph, *start_offset)?;
             let second = snapshot_position(word_doc, index, *end_paragraph, *end_offset)?;
@@ -1492,6 +1500,29 @@ fn rebase_snapshot_command(
                 end_paragraph: end.paragraph,
                 end_offset: end.offset,
                 color,
+            }
+        }
+        HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            format,
+        } => {
+            let (start, end) = rebase_snapshot_range(
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                index,
+                transforms,
+            )?;
+            HeadlessCommand::SetRunFormat {
+                start_paragraph: start.paragraph,
+                start_offset: start.offset,
+                end_paragraph: end.paragraph,
+                end_offset: end.offset,
+                format,
             }
         }
         unsupported => {
@@ -2716,6 +2747,24 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(SetHighlightColorCommand::new(range, color.clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetRunFormat {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                format,
+            } => {
+                let range =
+                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                selection = Some(range);
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRunFormatCommand::new(range, (**format).clone())),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -6633,6 +6682,8 @@ mod tests {
                     output.extend(character.to_uppercase());
                 }
                 HeadlessChangeCaseMode::Sentence => output.extend(character.to_lowercase()),
+                // The property tests only draw the four case modes.
+                _ => output.push(character),
             }
             if mode == HeadlessChangeCaseMode::Title {
                 if character.is_alphabetic() {

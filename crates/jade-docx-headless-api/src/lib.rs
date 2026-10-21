@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod run_format;
+pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
     #[serde(default)]
@@ -656,6 +659,16 @@ pub enum HeadlessChangeCaseMode {
     Lower,
     Title,
     Sentence,
+    /// 大文字と小文字を入れ替える.
+    Toggle,
+    /// 半角: full-width ASCII, katakana and spaces to their half-width forms.
+    HalfWidth,
+    /// 全角: ASCII, half-width katakana and spaces to their full-width forms.
+    FullWidth,
+    /// カタカナ: hiragana to katakana.
+    Katakana,
+    /// ひらがな: katakana to hiragana.
+    Hiragana,
 }
 
 /// DrawingML preset geometries that Jade can currently render and round-trip
@@ -1255,6 +1268,15 @@ pub enum HeadlessCommand {
         end_paragraph: usize,
         end_offset: usize,
         color: String,
+    },
+    /// Applies Word's フォント dialog to a range: every field `format` sets,
+    /// and nothing else, as one step.
+    SetRunFormat {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        format: Box<HeadlessRunFormat>,
     },
     StartChangeTracking {
         author: Option<String>,
@@ -2034,6 +2056,7 @@ impl HeadlessCommand {
             HeadlessCommand::ApplyCustomMultilevelList { .. } => "apply_custom_multilevel_list",
             HeadlessCommand::SetFontColor { .. } => "set_font_color",
             HeadlessCommand::SetHighlightColor { .. } => "set_highlight_color",
+            HeadlessCommand::SetRunFormat { .. } => "set_run_format",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",

@@ -1424,6 +1424,33 @@ impl DocumentParser {
                                 );
                             }
                         }
+                        b"w:eastAsianLayout" => {
+                            if parsing_run_props {
+                                let layout = EastAsianLayout::from_attributes(
+                                    e.attributes().flatten().map(|attr| {
+                                        (
+                                            match attr.key.as_ref() {
+                                                b"w:id" => &b"w:id"[..],
+                                                b"w:combine" => &b"w:combine"[..],
+                                                b"w:combineBrackets" => &b"w:combineBrackets"[..],
+                                                b"w:vert" => &b"w:vert"[..],
+                                                b"w:vertCompress" => &b"w:vertCompress"[..],
+                                                _ => &b""[..],
+                                            },
+                                            String::from_utf8_lossy(&attr.value).to_string(),
+                                        )
+                                    }),
+                                );
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.east_asian_layout = Some(Box::new(layout.clone()));
+                                    },
+                                );
+                            }
+                        }
                         b"w:em" => {
                             if parsing_run_props {
                                 let value = e
@@ -1602,6 +1629,15 @@ impl DocumentParser {
                         }
                         b"w:color" => {
                             if parsing_run_props {
+                                let theme = Self::run_theme_color(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.theme_color = theme.clone().map(Box::new);
+                                    },
+                                );
                                 for attr in e.attributes().flatten() {
                                     if attr.key.as_ref() == b"w:val" {
                                         let color_val =
@@ -2797,6 +2833,33 @@ impl DocumentParser {
                             );
                         }
                     }
+                    b"w:eastAsianLayout" => {
+                        if parsing_run_props {
+                            let layout = EastAsianLayout::from_attributes(
+                                e.attributes().flatten().map(|attr| {
+                                    (
+                                        match attr.key.as_ref() {
+                                            b"w:id" => &b"w:id"[..],
+                                            b"w:combine" => &b"w:combine"[..],
+                                            b"w:combineBrackets" => &b"w:combineBrackets"[..],
+                                            b"w:vert" => &b"w:vert"[..],
+                                            b"w:vertCompress" => &b"w:vertCompress"[..],
+                                            _ => &b""[..],
+                                        },
+                                        String::from_utf8_lossy(&attr.value).to_string(),
+                                    )
+                                }),
+                            );
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.east_asian_layout = Some(Box::new(layout.clone()));
+                                },
+                            );
+                        }
+                    }
                     b"w:em" => {
                         if parsing_run_props {
                             let value = e
@@ -3040,6 +3103,15 @@ impl DocumentParser {
                     }
                     b"w:color" => {
                         if parsing_run_props {
+                            let theme = Self::run_theme_color(e.attributes());
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.theme_color = theme.clone().map(Box::new);
+                                },
+                            );
                             for attr in e.attributes().flatten() {
                                 if attr.key.as_ref() == b"w:val" {
                                     let color_val =
@@ -8662,6 +8734,31 @@ impl DocumentParser {
         }
 
         Ok(borders)
+    }
+
+    /// The theme colour a `w:color` names, if it names one.
+    pub(crate) fn run_theme_color(attributes: Attributes<'_>) -> Option<RunThemeColor> {
+        let mut theme: Option<RunThemeColor> = None;
+        let (mut tint, mut shade) = (None, None);
+        for attr in attributes.flatten() {
+            let value = String::from_utf8_lossy(&attr.value).trim().to_string();
+            match attr.key.as_ref() {
+                b"w:themeColor" if !value.is_empty() => {
+                    theme = Some(RunThemeColor {
+                        name: Rc::from(value.as_str()),
+                        ..Default::default()
+                    })
+                }
+                b"w:themeTint" if !value.is_empty() => tint = Some(Rc::from(value.as_str())),
+                b"w:themeShade" if !value.is_empty() => shade = Some(Rc::from(value.as_str())),
+                _ => {}
+            }
+        }
+        theme.map(|theme| RunThemeColor {
+            tint,
+            shade,
+            ..theme
+        })
     }
 
     /// Builds a single [`BorderEdge`] from an edge element's attributes. `w:val`
