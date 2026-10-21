@@ -15109,7 +15109,9 @@ mod tests {
                 Op::Save => saved.push(fill.clone()),
                 Op::Restore => fill = saved.pop().unwrap_or_default(),
                 Op::SetFillStyle(value) => fill = value,
-                Op::FillText(text, _, _) if "縦書き".contains(text.as_str()) && !text.is_empty() => {
+                Op::FillText(text, _, _)
+                    if "縦書き".contains(text.as_str()) && !text.is_empty() =>
+                {
                     drawn.push(fill.clone())
                 }
                 _ => {}
@@ -15117,7 +15119,9 @@ mod tests {
         }
         assert!(!drawn.is_empty(), "the vertical text was drawn");
         assert!(
-            drawn.iter().all(|fill| !fill.eq_ignore_ascii_case("#FFF2CC")),
+            drawn
+                .iter()
+                .all(|fill| !fill.eq_ignore_ascii_case("#FFF2CC")),
             "drawn in the shading colour: {drawn:?}"
         );
     }

@@ -200,7 +200,9 @@ impl WordDocument {
         let parsed = match direction {
             None => None,
             Some(value) => Some(TextDirection::try_from_str(value).ok_or_else(|| {
-                format!("text direction must be lrTb, tbRl, btLr, lrTbV, tbRlV or btLrV, not {value:?}")
+                format!(
+                    "text direction must be lrTb, tbRl, btLr, lrTbV, tbRlV or btLrV, not {value:?}"
+                )
             })?),
         };
         let parsed = parsed.filter(|direction| *direction != TextDirection::LrTb);
@@ -210,15 +212,21 @@ impl WordDocument {
             cell.node_id
         };
         match direction.filter(|_| parsed.is_some()) {
-            Some(value) => {
-                self.set_cell_property_element(cell_id, "w:textDirection", vec![attr("w:val", value)])
-            }
+            Some(value) => self.set_cell_property_element(
+                cell_id,
+                "w:textDirection",
+                vec![attr("w:val", value)],
+            ),
             None => self.remove_cell_property_element(cell_id, "w:textDirection"),
         }
     }
 
     /// 左端からのインデント (`w:tblInd`), in points.
-    pub fn set_table_indent(&mut self, table_order_index: usize, indent: f32) -> Result<(), String> {
+    pub fn set_table_indent(
+        &mut self,
+        table_order_index: usize,
+        indent: f32,
+    ) -> Result<(), String> {
         if !indent.is_finite() || indent.abs() > 1584.0 {
             return Err("the table indent must be within ±1584 points".to_string());
         }
@@ -255,7 +263,9 @@ impl WordDocument {
         let vertical_anchor = anchor(&spec.vertical_anchor)?;
         if let Some(align) = spec.horizontal_align.as_deref() {
             if !matches!(align, "left" | "center" | "right" | "inside" | "outside") {
-                return Err(format!("horizontal position {align:?} is not one Word knows"));
+                return Err(format!(
+                    "horizontal position {align:?} is not one Word knows"
+                ));
             }
         }
         if let Some(align) = spec.vertical_align.as_deref() {
@@ -287,7 +297,10 @@ impl WordDocument {
                 table.style.insert(key.to_string(), value);
             };
             set("table-position", "floating".to_string());
-            set("table-position-horizontal-anchor", horizontal_anchor.clone());
+            set(
+                "table-position-horizontal-anchor",
+                horizontal_anchor.clone(),
+            );
             set("table-position-vertical-anchor", vertical_anchor.clone());
             match spec.horizontal_align.as_ref() {
                 Some(align) => set("table-position-x-align", align.clone()),
@@ -326,7 +339,10 @@ impl WordDocument {
         ];
         match spec.horizontal_align.as_ref() {
             Some(align) => attributes.push(attr("w:tblpXSpec", align.clone())),
-            None => attributes.push(attr("w:tblpX", twips(spec.horizontal_offset.unwrap_or(0.0)))),
+            None => attributes.push(attr(
+                "w:tblpX",
+                twips(spec.horizontal_offset.unwrap_or(0.0)),
+            )),
         }
         match spec.vertical_align.as_ref() {
             Some(align) => attributes.push(attr("w:tblpYSpec", align.clone())),
@@ -452,7 +468,8 @@ impl WordDocument {
                     }
                     _ => {
                         return Err(
-                            "the text to convert must be paragraphs only, without a table".to_string(),
+                            "the text to convert must be paragraphs only, without a table"
+                                .to_string(),
                         )
                     }
                 }
@@ -492,7 +509,10 @@ impl WordDocument {
                 pieces_per_paragraph.push(1usize);
                 continue;
             };
-            let offsets: Vec<usize> = text.match_indices(separator.as_str()).map(|(at, _)| at).collect();
+            let offsets: Vec<usize> = text
+                .match_indices(separator.as_str())
+                .map(|(at, _)| at)
+                .collect();
             for &offset in offsets.iter().rev() {
                 self.delete_model_text(surface, offset, offset + separator.len())?;
                 if !self.split_paragraph_at(surface, offset) {
@@ -581,10 +601,10 @@ impl WordDocument {
                         else {
                             continue;
                         };
-                        let Some(node) = nodes[*piece].take() else { continue };
-                        let cell = raw
-                            .element_mut(*cell_id)
-                            .ok_or("a new cell has no XML")?;
+                        let Some(node) = nodes[*piece].take() else {
+                            continue;
+                        };
+                        let cell = raw.element_mut(*cell_id).ok_or("a new cell has no XML")?;
                         cell.children.retain(
                             |child| !matches!(child, XmlNode::Element(element) if element.name == "w:p"),
                         );
@@ -616,7 +636,10 @@ impl WordDocument {
             };
             for (row, cells) in grid.iter().enumerate() {
                 for (column, piece) in cells.iter().enumerate() {
-                    let Some(cell) = table.rows.get_mut(row).and_then(|row| row.cells.get_mut(column))
+                    let Some(cell) = table
+                        .rows
+                        .get_mut(row)
+                        .and_then(|row| row.cells.get_mut(column))
                     else {
                         continue;
                     };
@@ -639,15 +662,20 @@ impl WordDocument {
         separator: &str,
     ) -> Result<(), String> {
         let separator = Separator::parse(separator)?;
-        let body_index = self.body_index_of_table_order(table_order_index).ok_or_else(|| {
-            if self.table_by_order(table_order_index).is_some() {
-                "a table inside a cell is converted from its own cell; select the outer table".to_string()
-            } else {
-                format!("table {table_order_index} was not found")
-            }
-        })?;
+        let body_index = self
+            .body_index_of_table_order(table_order_index)
+            .ok_or_else(|| {
+                if self.table_by_order(table_order_index).is_some() {
+                    "a table inside a cell is converted from its own cell; select the outer table"
+                        .to_string()
+                } else {
+                    format!("table {table_order_index} was not found")
+                }
+            })?;
         // The paragraphs each row gives, cell by cell.
-        let (table_id, rows): (Option<XmlNodeId>, Vec<Vec<Vec<Option<XmlNodeId>>>>) = {
+        // Per row, per cell kept, the cell's paragraphs' XML ids.
+        type RowParagraphs = Vec<Vec<Option<XmlNodeId>>>;
+        let (table_id, rows): (Option<XmlNodeId>, Vec<RowParagraphs>) = {
             let table = self
                 .table_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
@@ -664,7 +692,8 @@ impl WordDocument {
                             BodyElement::Paragraph(paragraph) => paragraphs.push(paragraph.node_id),
                             BodyElement::Table(_) => {
                                 return Err(
-                                    "a cell holds a table; convert that table to text first".to_string(),
+                                    "a cell holds a table; convert that table to text first"
+                                        .to_string(),
                                 )
                             }
                             BodyElement::Math(_) => {
@@ -850,7 +879,11 @@ impl WordDocument {
             rows.sort_by(|(a, _), (b, _)| {
                 for (index, key) in keys.iter().enumerate() {
                     let order = a[index].compare(&b[index]);
-                    let order = if key.descending { order.reverse() } else { order };
+                    let order = if key.descending {
+                        order.reverse()
+                    } else {
+                        order
+                    };
                     if order != std::cmp::Ordering::Equal {
                         return order;
                     }
@@ -960,14 +993,16 @@ impl WordDocument {
                     .runs
                     .iter()
                     .enumerate()
-                    .filter_map(|(index, run)| match run.field.as_ref().map(|field| &field.kind) {
-                        Some(RunFieldKind::Unsupported { instruction })
-                            if instruction.trim_start().starts_with('=') =>
-                        {
-                            Some((index, instruction.clone()))
-                        }
-                        _ => None,
-                    })
+                    .filter_map(
+                        |(index, run)| match run.field.as_ref().map(|field| &field.kind) {
+                            Some(RunFieldKind::Unsupported { instruction })
+                                if instruction.trim_start().starts_with('=') =>
+                            {
+                                Some((index, instruction.clone()))
+                            }
+                            _ => None,
+                        },
+                    )
                     .collect(),
                 None => continue,
             };
@@ -1009,7 +1044,10 @@ impl WordDocument {
 
 /// `=SUM(ABOVE) \# "#,##0"`, as the field code is written.
 fn formula_instruction(formula: &str, number_format: Option<&str>) -> String {
-    match number_format.map(str::trim).filter(|format| !format.is_empty()) {
+    match number_format
+        .map(str::trim)
+        .filter(|format| !format.is_empty())
+    {
         Some(format) => format!("={formula} \\# \"{format}\""),
         None => format!("={formula}"),
     }
@@ -1062,7 +1100,9 @@ impl SortValue {
             (SortValue::Missing, SortValue::Missing) => Ordering::Equal,
             (SortValue::Missing, _) => Ordering::Less,
             (_, SortValue::Missing) => Ordering::Greater,
-            (SortValue::Number(a), SortValue::Number(b)) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
+            (SortValue::Number(a), SortValue::Number(b)) => {
+                a.partial_cmp(b).unwrap_or(Ordering::Equal)
+            }
             (SortValue::Text(a), SortValue::Text(b)) => a.cmp(b),
             (SortValue::Number(_), SortValue::Text(_)) => Ordering::Less,
             (SortValue::Text(_), SortValue::Number(_)) => Ordering::Greater,
@@ -1173,7 +1213,9 @@ pub(crate) mod formula_eval {
             })
             .collect();
         let chars: Vec<char> = text.chars().collect();
-        let start = chars.iter().position(|ch| ch.is_ascii_digit() || *ch == '.')?;
+        let start = chars
+            .iter()
+            .position(|ch| ch.is_ascii_digit() || *ch == '.')?;
         let negative = chars[..start]
             .iter()
             .rev()
@@ -1195,8 +1237,7 @@ pub(crate) mod formula_eval {
         let value: f64 = number.trim_end_matches('.').parse().ok()?;
         let percent = chars[start..]
             .iter()
-            .skip_while(|ch| ch.is_ascii_digit() || matches!(ch, ',' | '.'))
-            .next()
+            .find(|ch| !(ch.is_ascii_digit() || matches!(ch, ',' | '.')))
             .is_some_and(|ch| *ch == '%');
         let value = if percent { value / 100.0 } else { value };
         Some(if negative { -value } else { value })
@@ -1224,12 +1265,15 @@ pub(crate) mod formula_eval {
                 ' ' | '\t' | '\u{3000}' => index += 1,
                 '0'..='9' | '.' => {
                     let start = index;
-                    while index < chars.len() && (chars[index].is_ascii_digit() || chars[index] == '.') {
+                    while index < chars.len()
+                        && (chars[index].is_ascii_digit() || chars[index] == '.')
+                    {
                         index += 1;
                     }
                     let text: String = chars[start..index].iter().collect();
                     out.push(Token::Number(
-                        text.parse().map_err(|_| format!("{text} is not a number"))?,
+                        text.parse()
+                            .map_err(|_| format!("{text} is not a number"))?,
                     ));
                 }
                 'a'..='z' | 'A'..='Z' => {
@@ -1237,7 +1281,12 @@ pub(crate) mod formula_eval {
                     while index < chars.len() && chars[index].is_ascii_alphanumeric() {
                         index += 1;
                     }
-                    out.push(Token::Name(chars[start..index].iter().collect::<String>().to_uppercase()));
+                    out.push(Token::Name(
+                        chars[start..index]
+                            .iter()
+                            .collect::<String>()
+                            .to_uppercase(),
+                    ));
                 }
                 '+' | '-' | '*' | '/' | '^' | '%' => {
                     out.push(Token::Operator(ch));
@@ -1288,14 +1337,18 @@ pub(crate) mod formula_eval {
 
     /// `A1` as (row, column), zero-based.
     fn cell_reference(name: &str) -> Option<(usize, usize)> {
-        let letters: String = name.chars().take_while(|ch| ch.is_ascii_alphabetic()).collect();
+        let letters: String = name
+            .chars()
+            .take_while(|ch| ch.is_ascii_alphabetic())
+            .collect();
         let digits = &name[letters.len()..];
-        if letters.is_empty() || digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+        if letters.is_empty() || digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit())
+        {
             return None;
         }
-        let column = letters
-            .chars()
-            .fold(0usize, |total, ch| total * 26 + (ch as usize - 'A' as usize + 1));
+        let column = letters.chars().fold(0usize, |total, ch| {
+            total * 26 + (ch as usize - 'A' as usize + 1)
+        });
         let row: usize = digits.parse().ok()?;
         (row >= 1 && column >= 1).then_some((row - 1, column - 1))
     }
@@ -1341,7 +1394,11 @@ pub(crate) mod formula_eval {
             while let Some(Token::Operator(op @ ('+' | '-'))) = self.peek().cloned() {
                 self.at += 1;
                 let right = self.multiplicative()?;
-                value = if op == '+' { value + right } else { value - right };
+                value = if op == '+' {
+                    value + right
+                } else {
+                    value - right
+                };
             }
             Ok(value)
         }
@@ -1422,7 +1479,8 @@ pub(crate) mod formula_eval {
         /// The numbers a direction, a cell or a range covers.
         fn reference_values(&mut self, name: &str) -> Result<Vec<f64>, String> {
             let grid = self.grid;
-            let number_at = |row: usize, column: usize| grid.text(row, column).and_then(first_number);
+            let number_at =
+                |row: usize, column: usize| grid.text(row, column).and_then(first_number);
             let walk = |cells: Vec<(usize, usize)>| -> Vec<f64> {
                 // Word's direction ranges run from the next cell out until a
                 // cell without a number, skipping blank cells before the first.
@@ -1431,7 +1489,10 @@ pub(crate) mod formula_eval {
                     match number_at(row, column) {
                         Some(value) => values.push(value),
                         None if values.is_empty() => {
-                            if grid.text(row, column).is_some_and(|text| !text.trim().is_empty()) {
+                            if grid
+                                .text(row, column)
+                                .is_some_and(|text| !text.trim().is_empty())
+                            {
                                 break;
                             }
                         }
@@ -1544,7 +1605,9 @@ pub(crate) mod formula_eval {
                     let factor = 10f64.powi(places);
                     (first() * factor).round() / factor
                 }
-                "AND" => (values.iter().all(|value| *value != 0.0) && !values.is_empty()) as i32 as f64,
+                "AND" => {
+                    (values.iter().all(|value| *value != 0.0) && !values.is_empty()) as i32 as f64
+                }
                 "OR" => values.iter().any(|value| *value != 0.0) as i32 as f64,
                 "NOT" => (first() == 0.0) as i32 as f64,
                 "IF" => {
@@ -1563,7 +1626,12 @@ pub(crate) mod formula_eval {
     }
 
     /// Evaluates `formula` (without its `=`) for the cell at `(row, column)`.
-    pub fn evaluate<G: Grid>(formula: &str, grid: &G, row: usize, column: usize) -> Result<f64, String> {
+    pub fn evaluate<G: Grid>(
+        formula: &str,
+        grid: &G,
+        row: usize,
+        column: usize,
+    ) -> Result<f64, String> {
         let formula = formula.trim().trim_start_matches('=');
         let mut parser = Parser {
             tokens: tokens(formula)?,
@@ -1604,7 +1672,10 @@ pub(crate) mod formula_eval {
         let Some(first) = chars.iter().position(|ch| is_digit(*ch)) else {
             return format!("{sign}{section}");
         };
-        let last = chars.iter().rposition(|ch| is_digit(*ch) || *ch == '.' || *ch == ',').unwrap_or(first);
+        let last = chars
+            .iter()
+            .rposition(|ch| is_digit(*ch) || *ch == '.' || *ch == ',')
+            .unwrap_or(first);
         let prefix: String = chars[..first].iter().filter(|ch| **ch != '\'').collect();
         let suffix: String = chars[last + 1..].iter().filter(|ch| **ch != '\'').collect();
         let digits: String = chars[first..=last].iter().collect();
@@ -1632,7 +1703,7 @@ pub(crate) mod formula_eval {
             let digits: Vec<char> = integer.chars().collect();
             let mut grouped = String::new();
             for (index, ch) in digits.iter().enumerate() {
-                if index > 0 && (digits.len() - index) % 3 == 0 {
+                if index > 0 && (digits.len() - index).is_multiple_of(3) {
                     grouped.push(',');
                 }
                 grouped.push(*ch);
@@ -1650,7 +1721,11 @@ pub(crate) mod formula_eval {
             fraction.pop();
         }
         let number = if fraction.is_empty() {
-            if integer.is_empty() { "0".to_string() } else { integer }
+            if integer.is_empty() {
+                "0".to_string()
+            } else {
+                integer
+            }
         } else {
             format!("{integer}.{}", fraction.iter().collect::<String>())
         };
@@ -1707,7 +1782,10 @@ pub(crate) mod formula_eval {
             assert_eq!(format_number(1234.5, Some("#,##0.00")), "1,234.50");
             assert_eq!(format_number(0.256, Some("0%")), "26%");
             assert_eq!(format_number(1500.0, Some("¥#,##0")), "¥1,500");
-            assert_eq!(format_number(-5.0, Some("$#,##0.00;($#,##0.00)")), "($5.00)");
+            assert_eq!(
+                format_number(-5.0, Some("$#,##0.00;($#,##0.00)")),
+                "($5.00)"
+            );
             assert_eq!(format_number(2.5, Some("0.0#")), "2.5");
         }
 
@@ -1787,14 +1865,70 @@ fn builtin_table_style(requested: &str) -> Option<BuiltinTableStyle> {
         "PlainTable1" => style(41, Some("BFBFBF"), None, Some("F2F2F2"), true, true),
         "PlainTable3" => style(43, None, None, Some("F2F2F2"), true, false),
         "GridTable1Light" => style(46, Some("999999"), None, None, true, true),
-        "GridTable4" => style(49, Some("666666"), Some(("000000", "FFFFFF")), Some("CCCCCC"), true, true),
-        "GridTable4-Accent1" => style(49, Some("8EAADB"), Some(("4472C4", "FFFFFF")), Some("D9E2F3"), true, true),
-        "GridTable4-Accent2" => style(49, Some("F4B083"), Some(("ED7D31", "FFFFFF")), Some("FBE4D5"), true, true),
-        "GridTable4-Accent6" => style(49, Some("A8D08D"), Some(("70AD47", "FFFFFF")), Some("E2EFD9"), true, true),
-        "GridTable5Dark-Accent1" => style(50, Some("FFFFFF"), Some(("4472C4", "FFFFFF")), Some("B4C6E7"), true, true),
-        "ListTable3-Accent1" => style(48, Some("4472C4"), Some(("4472C4", "FFFFFF")), None, true, false),
-        "ListTable4-Accent1" => style(49, Some("8EAADB"), Some(("4472C4", "FFFFFF")), Some("D9E2F3"), true, false),
-        "ListTable4-Accent2" => style(49, Some("F4B083"), Some(("ED7D31", "FFFFFF")), Some("FBE4D5"), true, false),
+        "GridTable4" => style(
+            49,
+            Some("666666"),
+            Some(("000000", "FFFFFF")),
+            Some("CCCCCC"),
+            true,
+            true,
+        ),
+        "GridTable4-Accent1" => style(
+            49,
+            Some("8EAADB"),
+            Some(("4472C4", "FFFFFF")),
+            Some("D9E2F3"),
+            true,
+            true,
+        ),
+        "GridTable4-Accent2" => style(
+            49,
+            Some("F4B083"),
+            Some(("ED7D31", "FFFFFF")),
+            Some("FBE4D5"),
+            true,
+            true,
+        ),
+        "GridTable4-Accent6" => style(
+            49,
+            Some("A8D08D"),
+            Some(("70AD47", "FFFFFF")),
+            Some("E2EFD9"),
+            true,
+            true,
+        ),
+        "GridTable5Dark-Accent1" => style(
+            50,
+            Some("FFFFFF"),
+            Some(("4472C4", "FFFFFF")),
+            Some("B4C6E7"),
+            true,
+            true,
+        ),
+        "ListTable3-Accent1" => style(
+            48,
+            Some("4472C4"),
+            Some(("4472C4", "FFFFFF")),
+            None,
+            true,
+            false,
+        ),
+        "ListTable4-Accent1" => style(
+            49,
+            Some("8EAADB"),
+            Some(("4472C4", "FFFFFF")),
+            Some("D9E2F3"),
+            true,
+            false,
+        ),
+        "ListTable4-Accent2" => style(
+            49,
+            Some("F4B083"),
+            Some(("ED7D31", "FFFFFF")),
+            Some("FBE4D5"),
+            true,
+            false,
+        ),
         _ => return None,
     })
 }
@@ -1803,14 +1937,18 @@ impl BuiltinTableStyle {
     /// The style's `w:pPr`, `w:tblPr` and `w:tblStylePr` elements.
     fn body(&self) -> String {
         let edge = |name: &str, color: &str, size: u32, value: &str| {
-            format!("<w:{name} w:val=\"{value}\" w:sz=\"{size}\" w:space=\"0\" w:color=\"{color}\"/>")
+            format!(
+                "<w:{name} w:val=\"{value}\" w:sz=\"{size}\" w:space=\"0\" w:color=\"{color}\"/>"
+            )
         };
         let mut out = String::from(
             "<w:pPr><w:spacing w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/></w:pPr>",
         );
         out.push_str("<w:tblPr>");
         if self.band.is_some() {
-            out.push_str("<w:tblStyleRowBandSize w:val=\"1\"/><w:tblStyleColBandSize w:val=\"1\"/>");
+            out.push_str(
+                "<w:tblStyleRowBandSize w:val=\"1\"/><w:tblStyleColBandSize w:val=\"1\"/>",
+            );
         }
         if let Some(color) = self.border {
             out.push_str("<w:tblBorders>");
@@ -1860,7 +1998,12 @@ impl BuiltinTableStyle {
         out.push_str(&format!(
             "<w:tblStylePr w:type=\"lastRow\"><w:rPr><w:b/><w:bCs/></w:rPr><w:tblPr/><w:tcPr>\
              <w:tcBorders>{}</w:tcBorders></w:tcPr></w:tblStylePr>",
-            edge("top", self.header.map_or(rule, |(fill, _)| fill), 4, "double")
+            edge(
+                "top",
+                self.header.map_or(rule, |(fill, _)| fill),
+                4,
+                "double"
+            )
         ));
         if self.bold_columns {
             for kind in ["firstCol", "lastCol"] {
@@ -1939,7 +2082,11 @@ mod tests {
     fn part(bytes: &[u8], name: &str) -> String {
         let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
         let mut text = String::new();
-        archive.by_name(name).unwrap().read_to_string(&mut text).unwrap();
+        archive
+            .by_name(name)
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
         text
     }
 
@@ -1955,7 +2102,12 @@ mod tests {
 
     fn texts(document: &WordDocument) -> Vec<String> {
         (0..document.paragraph_count())
-            .map(|index| document.paragraph(index).map(paragraph_plain_text).unwrap_or_default())
+            .map(|index| {
+                document
+                    .paragraph(index)
+                    .map(paragraph_plain_text)
+                    .unwrap_or_default()
+            })
             .collect()
     }
 
@@ -1968,7 +2120,12 @@ mod tests {
         let grid: String = (0..columns).map(|_| "<w:gridCol w:w=\"2000\"/>").collect();
         let body: String = rows
             .iter()
-            .map(|row| format!("<w:tr>{}</w:tr>", row.iter().map(|text| cell(text)).collect::<String>()))
+            .map(|row| {
+                format!(
+                    "<w:tr>{}</w:tr>",
+                    row.iter().map(|text| cell(text)).collect::<String>()
+                )
+            })
             .collect();
         format!("<w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/></w:tblPr><w:tblGrid>{grid}</w:tblGrid>{body}</w:tbl>")
     }
@@ -1987,7 +2144,10 @@ mod tests {
 
     #[test]
     fn style_options_write_every_switch_and_read_back() {
-        let bytes = package(&format!("{}<w:p/>", table(&[&["a", "b"], &["c", "d"]])), Some(NORMAL_TABLE));
+        let bytes = package(
+            &format!("{}<w:p/>", table(&[&["a", "b"], &["c", "d"]])),
+            Some(NORMAL_TABLE),
+        );
         let mut document = load(&bytes);
         apply(
             &mut document,
@@ -2021,7 +2181,10 @@ mod tests {
 
     #[test]
     fn a_built_in_style_is_added_on_first_use_and_drawn_from() {
-        let bytes = package(&format!("{}<w:p/>", table(&[&["a", "b"], &["c", "d"]])), Some(NORMAL_TABLE));
+        let bytes = package(
+            &format!("{}<w:p/>", table(&[&["a", "b"], &["c", "d"]])),
+            Some(NORMAL_TABLE),
+        );
         let mut document = load(&bytes);
         for _ in 0..2 {
             apply(
@@ -2041,14 +2204,23 @@ mod tests {
             cell_count: 2,
         });
         assert_eq!(
-            header.fill.as_deref().map(|fill| fill.trim_start_matches('#').to_ascii_uppercase()).as_deref(),
+            header
+                .fill
+                .as_deref()
+                .map(|fill| fill.trim_start_matches('#').to_ascii_uppercase())
+                .as_deref(),
             Some("4472C4")
         );
         let exported = document.export_docx().unwrap();
         let styles = part(&exported, "word/styles.xml");
-        assert_eq!(styles.matches("w:styleId=\"GridTable4-Accent1\"").count(), 1, "{styles}");
+        assert_eq!(
+            styles.matches("w:styleId=\"GridTable4-Accent1\"").count(),
+            1,
+            "{styles}"
+        );
         assert!(styles.contains("<w:basedOn w:val=\"TableNormal\"/>"));
-        assert!(part(&exported, "word/document.xml").contains("<w:tblStyle w:val=\"GridTable4-Accent1\"/>"));
+        assert!(part(&exported, "word/document.xml")
+            .contains("<w:tblStyle w:val=\"GridTable4-Accent1\"/>"));
         let reloaded = load(&exported);
         assert!(reloaded.table_by_order(0).unwrap().resolved_style.is_some());
         // Table Grid by its id too.
@@ -2059,19 +2231,31 @@ mod tests {
                 style_id: Some("TableGrid".to_string()),
             },
         );
-        assert!(document.table_by_order(0).unwrap().resolved_style.as_ref().unwrap().borders.is_some());
+        assert!(document
+            .table_by_order(0)
+            .unwrap()
+            .resolved_style
+            .as_ref()
+            .unwrap()
+            .borders
+            .is_some());
     }
 
     #[test]
     fn an_inserted_table_takes_table_grid_as_words_insert_does() {
         use crate::commands::insert_table::InsertTableCommand;
-        let mut document = load(&package("<w:p><w:r><w:t>本文</w:t></w:r></w:p>", Some(NORMAL_TABLE)));
+        let mut document = load(&package(
+            "<w:p><w:r><w:t>本文</w:t></w:r></w:p>",
+            Some(NORMAL_TABLE),
+        ));
         let before = document.export_docx().unwrap();
         let mut executor = CommandExecutor::new();
         let mut selection = None;
         executor
             .execute(
-                Box::new(InsertTableCommand::at_caret(0, 6, 2, 2, Vec::new()).with_style("Table Grid")),
+                Box::new(
+                    InsertTableCommand::at_caret(0, 6, 2, 2, Vec::new()).with_style("Table Grid"),
+                ),
                 &mut CommandContext::new(&mut document, &mut selection),
             )
             .expect("insert");
@@ -2092,17 +2276,29 @@ mod tests {
 
     #[test]
     fn spacing_direction_indent_and_position_round_trip() {
-        let bytes = package(&format!("<w:p><w:r><w:t>before</w:t></w:r></w:p>{}<w:p/>", table(&[&["縦書き", "b"], &["c", "d"]])), None);
+        let bytes = package(
+            &format!(
+                "<w:p><w:r><w:t>before</w:t></w:r></w:p>{}<w:p/>",
+                table(&[&["縦書き", "b"], &["c", "d"]])
+            ),
+            None,
+        );
         let mut document = load(&bytes);
         for command in [
-            HeadlessCommand::SetTableCellSpacing { table_order_index: 0, spacing: Some(2.0) },
+            HeadlessCommand::SetTableCellSpacing {
+                table_order_index: 0,
+                spacing: Some(2.0),
+            },
             HeadlessCommand::SetTableCellTextDirection {
                 table_order_index: 0,
                 row: 0,
                 column: 0,
                 direction: Some("tbRl".to_string()),
             },
-            HeadlessCommand::SetTableIndent { table_order_index: 0, indent: 18.0 },
+            HeadlessCommand::SetTableIndent {
+                table_order_index: 0,
+                indent: 18.0,
+            },
             HeadlessCommand::SetTablePosition {
                 table_order_index: 0,
                 horizontal_align: Some("center".to_string()),
@@ -2122,27 +2318,65 @@ mod tests {
         }
         let exported = document.export_docx().unwrap();
         let xml = part(&exported, "word/document.xml");
-        assert!(xml.contains("<w:tblCellSpacing w:w=\"40\" w:type=\"dxa\"/>"), "{xml}");
+        assert!(
+            xml.contains("<w:tblCellSpacing w:w=\"40\" w:type=\"dxa\"/>"),
+            "{xml}"
+        );
         assert!(xml.contains("<w:textDirection w:val=\"tbRl\"/>"), "{xml}");
-        assert!(xml.contains("<w:tblInd w:w=\"360\" w:type=\"dxa\"/>"), "{xml}");
-        assert!(xml.contains("w:tblpXSpec=\"center\"") && xml.contains("w:tblpY=\"720\""), "{xml}");
+        assert!(
+            xml.contains("<w:tblInd w:w=\"360\" w:type=\"dxa\"/>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains("w:tblpXSpec=\"center\"") && xml.contains("w:tblpY=\"720\""),
+            "{xml}"
+        );
         assert!(xml.contains("<w:tblOverlap w:val=\"never\"/>"), "{xml}");
         let reloaded = load(&exported);
         let table = reloaded.table_by_order(0).unwrap();
         assert_eq!(table.cell_spacing, Some(2.0));
-        assert_eq!(table.rows[0].cells[0].text_direction, Some(TextDirection::TbRl));
-        assert_eq!(table.style.get("margin-left").map(String::as_str), Some("18.00pt"));
-        assert_eq!(table.style.get("table-position").map(String::as_str), Some("floating"));
-        assert_eq!(table.style.get("table-position-vertical-anchor").map(String::as_str), Some("text"));
+        assert_eq!(
+            table.rows[0].cells[0].text_direction,
+            Some(TextDirection::TbRl)
+        );
+        assert_eq!(
+            table.style.get("margin-left").map(String::as_str),
+            Some("18.00pt")
+        );
+        assert_eq!(
+            table.style.get("table-position").map(String::as_str),
+            Some("floating")
+        );
+        assert_eq!(
+            table
+                .style
+                .get("table-position-vertical-anchor")
+                .map(String::as_str),
+            Some("text")
+        );
         // Back to horizontal text and no spacing.
         let mut document = reloaded;
-        apply(&mut document, HeadlessCommand::SetTableCellSpacing { table_order_index: 0, spacing: None });
         apply(
             &mut document,
-            HeadlessCommand::SetTableCellTextDirection { table_order_index: 0, row: 0, column: 0, direction: None },
+            HeadlessCommand::SetTableCellSpacing {
+                table_order_index: 0,
+                spacing: None,
+            },
+        );
+        apply(
+            &mut document,
+            HeadlessCommand::SetTableCellTextDirection {
+                table_order_index: 0,
+                row: 0,
+                column: 0,
+                direction: None,
+            },
         );
         let xml = part(&document.export_docx().unwrap(), "word/document.xml");
-        assert!(!xml.contains("tblCellSpacing") && !xml.contains("textDirection"), "{xml}");
+        assert!(
+            !xml.contains("tblCellSpacing") && !xml.contains("textDirection"),
+            "{xml}"
+        );
     }
 
     #[test]
@@ -2204,9 +2438,15 @@ mod tests {
                 columns: None,
             },
         );
-        assert_eq!(cell_texts(&document, 0), vec![vec!["a", "b"], vec!["c", "d"]]);
+        assert_eq!(
+            cell_texts(&document, 0),
+            vec![vec!["a", "b"], vec!["c", "d"]]
+        );
         let reloaded = load(&document.export_docx().unwrap());
-        assert_eq!(cell_texts(&reloaded, 0), vec![vec!["a", "b"], vec!["c", "d"]]);
+        assert_eq!(
+            cell_texts(&reloaded, 0),
+            vec![vec!["a", "b"], vec!["c", "d"]]
+        );
         // One cell per paragraph, two to a row.
         let body = "<w:p><w:r><w:t>1</w:t></w:r></w:p><w:p><w:r><w:t>2</w:t></w:r></w:p><w:p><w:r><w:t>3</w:t></w:r></w:p><w:p/>";
         let mut document = load(&package(body, None));
@@ -2219,7 +2459,10 @@ mod tests {
                 columns: Some(2),
             },
         );
-        assert_eq!(cell_texts(&document, 0), vec![vec!["1", "2"], vec!["3", ""]]);
+        assert_eq!(
+            cell_texts(&document, 0),
+            vec![vec!["1", "2"], vec!["3", ""]]
+        );
     }
 
     #[test]
@@ -2231,26 +2474,47 @@ mod tests {
         let mut document = load(&package(&body, None));
         apply(
             &mut document,
-            HeadlessCommand::ConvertTableToText { table_order_index: 0, separator: "tab".to_string() },
+            HeadlessCommand::ConvertTableToText {
+                table_order_index: 0,
+                separator: "tab".to_string(),
+            },
         );
-        assert_eq!(texts(&document), vec!["title", "a\tb\tc", "d\t\tf", "after"]);
+        assert_eq!(
+            texts(&document),
+            vec!["title", "a\tb\tc", "d\t\tf", "after"]
+        );
         assert!(document.table_by_order(0).is_none());
         let reloaded = load(&document.export_docx().unwrap());
-        assert_eq!(texts(&reloaded), vec!["title", "a\tb\tc", "d\t\tf", "after"]);
+        assert_eq!(
+            texts(&reloaded),
+            vec!["title", "a\tb\tc", "d\t\tf", "after"]
+        );
 
         let mut document = load(&package(&body, None));
         apply(
             &mut document,
-            HeadlessCommand::ConvertTableToText { table_order_index: 0, separator: "paragraph".to_string() },
+            HeadlessCommand::ConvertTableToText {
+                table_order_index: 0,
+                separator: "paragraph".to_string(),
+            },
         );
-        assert_eq!(texts(&document), vec!["title", "a", "b", "c", "d", "", "f", "after"]);
+        assert_eq!(
+            texts(&document),
+            vec!["title", "a", "b", "c", "d", "", "f", "after"]
+        );
     }
 
     #[test]
     fn rows_sort_by_their_keys_below_the_header() {
         let body = format!(
             "{}<w:p/>",
-            table(&[&["名前", "点"], &["b", "10"], &["a", "9"], &["c", "10"], &["d", ""]])
+            table(&[
+                &["名前", "点"],
+                &["b", "10"],
+                &["a", "9"],
+                &["c", "10"],
+                &["d", ""]
+            ])
         );
         let mut document = load(&package(&body, None));
         apply(
@@ -2258,8 +2522,16 @@ mod tests {
             HeadlessCommand::SortTable {
                 table_order_index: 0,
                 keys: vec![
-                    HeadlessTableSortKey { column: 1, kind: HeadlessTableSortKind::Number, descending: true },
-                    HeadlessTableSortKey { column: 0, kind: HeadlessTableSortKind::Text, descending: false },
+                    HeadlessTableSortKey {
+                        column: 1,
+                        kind: HeadlessTableSortKind::Number,
+                        descending: true,
+                    },
+                    HeadlessTableSortKey {
+                        column: 0,
+                        kind: HeadlessTableSortKind::Text,
+                        descending: false,
+                    },
                 ],
                 header_rows: 1,
             },
@@ -2272,15 +2544,25 @@ mod tests {
             vec!["d", ""],
         ];
         assert_eq!(cell_texts(&document, 0), expected);
-        assert_eq!(cell_texts(&load(&document.export_docx().unwrap()), 0), expected);
+        assert_eq!(
+            cell_texts(&load(&document.export_docx().unwrap()), 0),
+            expected
+        );
         // Text ascending, dates.
-        let body = format!("{}<w:p/>", table(&[&["2024/3/1"], &["2023年12月5日"], &["2024-01-31"]]));
+        let body = format!(
+            "{}<w:p/>",
+            table(&[&["2024/3/1"], &["2023年12月5日"], &["2024-01-31"]])
+        );
         let mut document = load(&package(&body, None));
         apply(
             &mut document,
             HeadlessCommand::SortTable {
                 table_order_index: 0,
-                keys: vec![HeadlessTableSortKey { column: 0, kind: HeadlessTableSortKind::Date, descending: false }],
+                keys: vec![HeadlessTableSortKey {
+                    column: 0,
+                    kind: HeadlessTableSortKind::Date,
+                    descending: false,
+                }],
                 header_rows: 0,
             },
         );
@@ -2292,12 +2574,23 @@ mod tests {
 
     #[test]
     fn a_formula_is_computed_saved_and_updated() {
-        let body = format!("{}<w:p/>", table(&[&["品目", "数量"], &["りんご", "3"], &["みかん", "5"], &["合計", ""]]));
+        let body = format!(
+            "{}<w:p/>",
+            table(&[
+                &["品目", "数量"],
+                &["りんご", "3"],
+                &["みかん", "5"],
+                &["合計", ""]
+            ])
+        );
         let mut document = load(&package(&body, None));
         // The paragraph of the last row's second cell.
         let paragraph = (0..document.paragraph_count())
-            .filter(|index| document.table_cell_of_surface(*index).is_some_and(|(_, row, column)| (row, column) == (3, 1)))
-            .next()
+            .find(|index| {
+                document
+                    .table_cell_of_surface(*index)
+                    .is_some_and(|(_, row, column)| (row, column) == (3, 1))
+            })
             .expect("total cell");
         apply(
             &mut document,
@@ -2311,13 +2604,22 @@ mod tests {
         assert_eq!(cell_texts(&document, 0)[3][1], "8");
         let exported = document.export_docx().unwrap();
         let xml = part(&exported, "word/document.xml");
-        assert!(xml.contains("=SUM(ABOVE) \\# &quot;#,##0&quot;") || xml.contains("=SUM(ABOVE) \\# \"#,##0\""), "{xml}");
+        assert!(
+            xml.contains("=SUM(ABOVE) \\# &quot;#,##0&quot;")
+                || xml.contains("=SUM(ABOVE) \\# \"#,##0\""),
+            "{xml}"
+        );
 
         let mut document = load(&exported);
         assert_eq!(cell_texts(&document, 0)[3][1], "8");
         apply(
             &mut document,
-            HeadlessCommand::SetTableCellText { table_order_index: 0, row: 1, column: 1, text: "1200".to_string() },
+            HeadlessCommand::SetTableCellText {
+                table_order_index: 0,
+                row: 1,
+                column: 1,
+                text: "1200".to_string(),
+            },
         );
         apply(&mut document, HeadlessCommand::UpdateTableFormulas);
         assert_eq!(cell_texts(&document, 0)[3][1], "1,205");
