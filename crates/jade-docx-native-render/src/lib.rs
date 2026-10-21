@@ -31,8 +31,9 @@
 //! stops being `JsValue`.
 
 pub mod document;
+pub mod system_fonts;
 pub use document::{
-    CaretAffinity, CaretRect, CharacterFormat, FaceSpec, NativeDocument, ObjectHit,
+    CaretAffinity, CaretRect, CharacterFormat, FaceSpec, FontFace, NativeDocument, ObjectHit,
     PdfExportOptions, PdfRenderingMode, SearchHit, TableCell,
 };
 
@@ -76,7 +77,7 @@ pub struct SkiaRenderHost {
     /// Parsed faces kept so a page created mid-render can be given the same
     /// ones; a fresh Skia surface starts with none, and a page whose faces were
     /// missing would lay out correctly and then draw nothing.
-    faces: RefCell<Vec<(String, u16, jade_skia_painter::Typeface)>>,
+    faces: RefCell<Vec<(String, u16, bool, jade_skia_painter::Typeface)>>,
     /// How many times the renderer asked this host to measure, and how long
     /// that took in total. Rendering natively is measurement-heavy, and a
     /// repaint that is not getting cheaper is usually not spending its time in
@@ -100,7 +101,7 @@ pub struct SkiaRenderHost {
 #[derive(Clone)]
 pub(crate) struct FontEnvironment {
     measurer: Rc<ShapingMeasurer>,
-    faces: Vec<(String, u16, jade_skia_painter::Typeface)>,
+    faces: Vec<(String, u16, bool, jade_skia_painter::Typeface)>,
 }
 
 impl SkiaRenderHost {
@@ -148,8 +149,8 @@ impl SkiaRenderHost {
         raster_scale: f64,
     ) -> Option<Self> {
         let first = SkiaPainter::new_scaled(width, height, raster_scale)?;
-        for (family, weight, face) in &fonts.faces {
-            first.register_face(family, *weight, face.clone());
+        for (family, weight, italic, face) in &fonts.faces {
+            first.register_face_styled(family, *weight, *italic, face.clone());
         }
         let mut host = Self::new(1.0, 1.0)?;
         host.pages = Rc::new(RefCell::new(vec![first]));
@@ -175,8 +176,8 @@ impl SkiaRenderHost {
             }
             PdfRenderingMode::Vector => SkiaPainter::new_recording(width, height)?,
         };
-        for (family, weight, face) in &fonts.faces {
-            first.register_face(family, *weight, face.clone());
+        for (family, weight, italic, face) in &fonts.faces {
+            first.register_face_styled(family, *weight, *italic, face.clone());
         }
         Some(Self {
             pages: Rc::new(RefCell::new(vec![first])),
@@ -246,8 +247,8 @@ impl SkiaRenderHost {
         // document that paginates mid-render creates surfaces on the hot path —
         // re-parsing megabytes of font file per page put half a repaint in
         // `memmove`. A `Typeface` is a refcounted handle, so this is a refcount.
-        for (family, weight, typeface) in self.faces.borrow().iter() {
-            surface.register_face(family.as_str(), *weight, typeface.clone());
+        for (family, weight, italic, typeface) in self.faces.borrow().iter() {
+            surface.register_face_styled(family.as_str(), *weight, *italic, typeface.clone());
         }
         Some(surface)
     }
@@ -279,12 +280,25 @@ impl SkiaRenderHost {
         weight: u16,
         path: impl AsRef<Path>,
     ) -> Result<(), String> {
+        self.register_font_styled(family, weight, false, path, 0)
+    }
+
+    /// [`Self::register_font`] for an italic face, or face `index` of a
+    /// collection (`.ttc`).
+    pub fn register_font_styled(
+        &mut self,
+        family: &str,
+        weight: u16,
+        italic: bool,
+        path: impl AsRef<Path>,
+        index: u32,
+    ) -> Result<(), String> {
         let path = path.as_ref();
         let bytes = std::fs::read(path).map_err(|err| format!("{}: {err}", path.display()))?;
         // Every existing surface, and `new_surface` copies from the first, so a
         // page created later still knows the faces.
         for page in self.pages.borrow().iter() {
-            page.register_font_bytes(family, weight, &bytes)
+            page.register_font_bytes_styled(family, weight, italic, &bytes, index as usize)
                 .ok_or_else(|| format!("{}: skia rejected the face", path.display()))?;
         }
         // Taken back from the surface that just parsed them, so the bytes are
@@ -297,16 +311,16 @@ impl SkiaRenderHost {
         if let Some((_, _, typeface)) = just_registered {
             self.faces
                 .borrow_mut()
-                .push((family.to_string(), weight, typeface));
+                .push((family.to_string(), weight, italic, typeface));
         }
+        let style = if italic {
+            jade_docx_layout::font_measurer::RegisteredFontStyle::Italic
+        } else {
+            jade_docx_layout::font_measurer::RegisteredFontStyle::Normal
+        };
         Rc::get_mut(&mut self.measurer)
             .ok_or_else(|| "register fonts before sharing the font environment".to_string())?
-            .register_font_path(
-                family,
-                weight,
-                jade_docx_layout::font_measurer::RegisteredFontStyle::Normal,
-                path,
-            )
+            .register_font_bytes_with_collection_index(family, weight, style, &bytes, index)
             .map_err(|err| format!("{}: {err:?}", path.display()))?;
         Ok(())
     }
