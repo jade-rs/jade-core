@@ -118,6 +118,53 @@ pub fn parse_core_property_datetime(value: &str) -> Option<FieldDateTime> {
     })
 }
 
+/// Japanese eras as Word's 和暦 counts them: the first day of each, and its
+/// name and initial.
+/// An era: the day it began (year, month, day), its name, its initial and
+/// its Latin letter.
+type Era = ((i32, u32, u32), &'static str, &'static str, &'static str);
+
+const ERAS: [Era; 5] = [
+    ((2019, 5, 1), "令和", "令", "R"),
+    ((1989, 1, 8), "平成", "平", "H"),
+    ((1926, 12, 25), "昭和", "昭", "S"),
+    ((1912, 7, 30), "大正", "大", "T"),
+    ((1868, 1, 25), "明治", "明", "M"),
+];
+
+const JAPANESE_WEEKDAYS: [&str; 7] = ["日", "月", "火", "水", "木", "金", "土"];
+
+/// The Japanese tokens of a Word date picture at the start of `rest`, with
+/// how many characters they take: `aaaa` / `aaa` (水曜日 / 水), `ggg` / `gg`
+/// / `g` (令和 / 令 / R) and `ee` / `e` (the year of the era, 元 not used).
+pub fn japanese_date_token(rest: &str, dt: &FieldDateTime) -> Option<(usize, String)> {
+    let weekday = JAPANESE_WEEKDAYS[(dt.weekday % 7) as usize];
+    if rest.starts_with("aaaa") {
+        return Some((4, format!("{weekday}曜日")));
+    }
+    if rest.starts_with("aaa") {
+        return Some((3, weekday.to_string()));
+    }
+    let era = ERAS
+        .iter()
+        .find(|((year, month, day), ..)| (dt.year, dt.month, dt.day) >= (*year, *month, *day));
+    let ((start, _, _), name, initial, latin) = era.copied()?;
+    let year = dt.year - start + 1;
+    if rest.starts_with("ggg") {
+        Some((3, name.to_string()))
+    } else if rest.starts_with("gg") {
+        Some((2, initial.to_string()))
+    } else if rest.starts_with('g') {
+        Some((1, latin.to_string()))
+    } else if rest.starts_with("ee") {
+        Some((2, format!("{year:02}")))
+    } else if rest.starts_with('e') {
+        Some((1, year.to_string()))
+    } else {
+        None
+    }
+}
+
 /// Formats a value using the common Word `\@` picture tokens. Longest tokens
 /// win, single-quoted text is literal, and unknown characters pass through.
 pub fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
@@ -143,48 +190,49 @@ pub fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
             continue;
         }
         let rest: String = chars[i..].iter().collect();
-        let matched: Option<(usize, String)> =
-            if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
-                Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
-            } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
-                Some((4, format!("{:04}", dt.year)))
-            } else if rest.starts_with("yy") || rest.starts_with("YY") {
-                Some((2, format!("{:02}", dt.year.rem_euclid(100))))
-            } else if rest.starts_with("MMMM") {
-                Some((4, MONTH_NAMES[month_idx].to_string()))
-            } else if rest.starts_with("MMM") {
-                Some((3, MONTH_NAMES[month_idx][..3].to_string()))
-            } else if rest.starts_with("MM") {
-                Some((2, format!("{:02}", dt.month)))
-            } else if rest.starts_with('M') {
-                Some((1, dt.month.to_string()))
-            } else if rest.starts_with("dddd") || rest.starts_with("DDDD") {
-                Some((4, WEEKDAY_NAMES[weekday_idx].to_string()))
-            } else if rest.starts_with("ddd") || rest.starts_with("DDD") {
-                Some((3, WEEKDAY_NAMES[weekday_idx][..3].to_string()))
-            } else if rest.starts_with("dd") || rest.starts_with("DD") {
-                Some((2, format!("{:02}", dt.day)))
-            } else if rest.starts_with('d') || rest.starts_with('D') {
-                Some((1, dt.day.to_string()))
-            } else if rest.starts_with("HH") {
-                Some((2, format!("{:02}", dt.hour)))
-            } else if rest.starts_with('H') {
-                Some((1, dt.hour.to_string()))
-            } else if rest.starts_with("hh") {
-                Some((2, format!("{:02}", hour12)))
-            } else if rest.starts_with('h') {
-                Some((1, hour12.to_string()))
-            } else if rest.starts_with("mm") {
-                Some((2, format!("{:02}", dt.minute)))
-            } else if rest.starts_with('m') {
-                Some((1, dt.minute.to_string()))
-            } else if rest.starts_with("ss") {
-                Some((2, format!("{:02}", dt.second)))
-            } else if rest.starts_with('s') {
-                Some((1, dt.second.to_string()))
-            } else {
-                None
-            };
+        let matched: Option<(usize, String)> = if let Some(token) = japanese_date_token(&rest, dt) {
+            Some(token)
+        } else if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
+            Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
+        } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
+            Some((4, format!("{:04}", dt.year)))
+        } else if rest.starts_with("yy") || rest.starts_with("YY") {
+            Some((2, format!("{:02}", dt.year.rem_euclid(100))))
+        } else if rest.starts_with("MMMM") {
+            Some((4, MONTH_NAMES[month_idx].to_string()))
+        } else if rest.starts_with("MMM") {
+            Some((3, MONTH_NAMES[month_idx][..3].to_string()))
+        } else if rest.starts_with("MM") {
+            Some((2, format!("{:02}", dt.month)))
+        } else if rest.starts_with('M') {
+            Some((1, dt.month.to_string()))
+        } else if rest.starts_with("dddd") || rest.starts_with("DDDD") {
+            Some((4, WEEKDAY_NAMES[weekday_idx].to_string()))
+        } else if rest.starts_with("ddd") || rest.starts_with("DDD") {
+            Some((3, WEEKDAY_NAMES[weekday_idx][..3].to_string()))
+        } else if rest.starts_with("dd") || rest.starts_with("DD") {
+            Some((2, format!("{:02}", dt.day)))
+        } else if rest.starts_with('d') || rest.starts_with('D') {
+            Some((1, dt.day.to_string()))
+        } else if rest.starts_with("HH") {
+            Some((2, format!("{:02}", dt.hour)))
+        } else if rest.starts_with('H') {
+            Some((1, dt.hour.to_string()))
+        } else if rest.starts_with("hh") {
+            Some((2, format!("{:02}", hour12)))
+        } else if rest.starts_with('h') {
+            Some((1, hour12.to_string()))
+        } else if rest.starts_with("mm") {
+            Some((2, format!("{:02}", dt.minute)))
+        } else if rest.starts_with('m') {
+            Some((1, dt.minute.to_string()))
+        } else if rest.starts_with("ss") {
+            Some((2, format!("{:02}", dt.second)))
+        } else if rest.starts_with('s') {
+            Some((1, dt.second.to_string()))
+        } else {
+            None
+        };
         if let Some((len, text)) = matched {
             out.push_str(&text);
             i += len;
@@ -241,6 +289,34 @@ fn civil_from_days(days: i64) -> (i32, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn formats_japanese_weekdays_and_eras() {
+        let datetime = FieldDateTime {
+            year: 2026,
+            month: 10,
+            day: 21,
+            hour: 9,
+            minute: 5,
+            second: 0,
+            weekday: 3,
+        };
+        assert_eq!(
+            format_word_date("ggge年M月d日 (aaa)", &datetime),
+            "令和8年10月21日 (水)"
+        );
+        assert_eq!(
+            format_word_date("gee/MM/dd aaaa", &datetime),
+            "R08/10/21 水曜日"
+        );
+        let heisei = FieldDateTime {
+            year: 2019,
+            month: 4,
+            day: 30,
+            ..datetime
+        };
+        assert_eq!(format_word_date("ggge年", &heisei), "平成31年");
+    }
 
     #[test]
     fn formats_word_picture_tokens_and_literals() {

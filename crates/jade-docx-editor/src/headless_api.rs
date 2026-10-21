@@ -58,6 +58,11 @@ use crate::commands::set_paragraph_line_spacing::SetParagraphLineSpacingCommand;
 use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, SpecialIndent};
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+use crate::commands::set_ruby::SetRubyCommand;
+use crate::commands::set_run_format::SetRunFormatCommand;
+use crate::commands::set_typography::{
+    SetJapaneseTypographyCommand, SetParagraphTypographyCommand,
+};
 use crate::commands::set_watermark::SetWatermarkCommand;
 use crate::commands::snapshot_edit::{EditScope, PackageSnapshotCommand, SnapshotEditCommand};
 use crate::commands::split_table::SplitTableCommand;
@@ -841,6 +846,13 @@ fn snapshot_effect(
             end_paragraph,
             end_offset,
             ..
+        }
+        | HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            ..
         } => {
             let first = snapshot_position(word_doc, index, *start_paragraph, *start_offset)?;
             let second = snapshot_position(word_doc, index, *end_paragraph, *end_offset)?;
@@ -1492,6 +1504,29 @@ fn rebase_snapshot_command(
                 end_paragraph: end.paragraph,
                 end_offset: end.offset,
                 color,
+            }
+        }
+        HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            format,
+        } => {
+            let (start, end) = rebase_snapshot_range(
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                index,
+                transforms,
+            )?;
+            HeadlessCommand::SetRunFormat {
+                start_paragraph: start.paragraph,
+                start_offset: start.offset,
+                end_paragraph: end.paragraph,
+                end_offset: end.offset,
+                format,
             }
         }
         unsupported => {
@@ -2740,6 +2775,96 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetRunFormat {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                format,
+            } => {
+                let range =
+                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                selection = Some(range);
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRunFormatCommand::new(range, (**format).clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphTypography {
+                start_paragraph,
+                end_paragraph,
+                typography,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphTypographyCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            typography.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertEnclosedCharacter {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                text,
+                enclosure,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertFieldCommand::of_kind(
+                            range,
+                            crate::document::RunFieldKind::EqEnclosed {
+                                text: text.clone(),
+                                enclosure: enclosure.clone(),
+                            },
+                            text.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetRuby {
+                paragraph,
+                start_offset,
+                end_offset,
+                ruby,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRubyCommand::new(
+                            *paragraph,
+                            *start_offset,
+                            *end_offset,
+                            ruby.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetJapaneseTypography { typography } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetJapaneseTypographyCommand::new(typography.clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetDocumentSetting { name, enabled } => {
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -3475,6 +3600,35 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(InsertFieldCommand::new(range, *kind, cached_text.clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertDateTimeField {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                time,
+                format,
+                cached_text,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let kind = if *time {
+                    jade_docx_headless_api::HeadlessFieldKind::Time
+                } else {
+                    jade_docx_headless_api::HeadlessFieldKind::Date
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            InsertFieldCommand::new(range, kind, cached_text.clone())
+                                .with_format(Some(format.clone())),
+                        ),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -6926,6 +7080,8 @@ mod tests {
                     output.extend(character.to_uppercase());
                 }
                 HeadlessChangeCaseMode::Sentence => output.extend(character.to_lowercase()),
+                // The property tests only draw the four case modes.
+                _ => output.push(character),
             }
             if mode == HeadlessChangeCaseMode::Title {
                 if character.is_alphabetic() {
