@@ -33614,12 +33614,18 @@ impl WordDocument {
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
                 }
-                PAGE_BREAK_CHAR => {
+                PAGE_BREAK_CHAR | crate::document::COLUMN_BREAK_CHAR => {
                     push_text_node(doc, &mut nodes, &mut buffer, &mut first_text_id);
                     let element = page_break_templates
                         .and_then(|templates| templates.get(page_break_index))
                         .cloned()
-                        .unwrap_or_else(|| Self::create_page_break_element(doc));
+                        .unwrap_or_else(|| {
+                            let mut element = Self::create_page_break_element(doc);
+                            if ch == crate::document::COLUMN_BREAK_CHAR {
+                                element.attributes[0].value = "column".to_string();
+                            }
+                            element
+                        });
                     page_break_index += 1;
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
@@ -47342,11 +47348,11 @@ mod tests {
         let mut word_doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
 
-        // The reader approximates a column break with the shared page-break
-        // control for layout, but saving must retain the original OOXML type.
+        // A column break reads as its own control character, and saving
+        // retains the original OOXML type.
         let paragraph = word_doc.paragraph_mut(0).expect("column paragraph");
-        assert_eq!(paragraph.runs[0].text, format!("A{PAGE_BREAK_STR}B"));
-        paragraph.runs[0].text = format!("Column{PAGE_BREAK_STR}B");
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}B");
+        paragraph.runs[0].text = "Column\u{000E}B".to_string();
 
         // Future/extension break types are intentionally absent from editable
         // text, but lossless editing must still preserve their raw marker.

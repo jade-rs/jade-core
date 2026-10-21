@@ -3329,6 +3329,24 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetParagraphSnapToGrid {
+                start_paragraph,
+                end_paragraph,
+                snap,
+            } => {
+                let (start, end, snap) = (*start_paragraph, *end_paragraph, *snap);
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::with_scope(
+                            "set_paragraph_snap_to_grid",
+                            EditScope::Paragraphs(Some((start.min(end), start.max(end)))),
+                            move |document| document.set_paragraphs_snap_to_grid(start, end, snap),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetHeaderFooterLink {
                 section,
                 role,

@@ -1409,6 +1409,14 @@ pub enum HeadlessCommand {
         scope: HeadlessSectionScope,
         patch: HeadlessSectionLayoutPatch,
     },
+    /// The 段落 dialog's 1 ページの行数を指定時に文字を行グリッド線に合わせる
+    /// (`w:snapToGrid`): whether the paragraphs follow the section's line
+    /// grid.
+    SetParagraphSnapToGrid {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        snap: bool,
+    },
     /// Word's 前と同じヘッダー/フッター: links a section's story to the
     /// previous section's (dropping its own reference) or gives it a copy of
     /// its own.
@@ -1998,6 +2006,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetFooterParagraphText { .. } => "set_footer_paragraph_text",
             HeadlessCommand::SetHeaderFooterVariants { .. } => "set_header_footer_variants",
             HeadlessCommand::SetSectionLayout { .. } => "set_section_layout",
+            HeadlessCommand::SetParagraphSnapToGrid { .. } => "set_paragraph_snap_to_grid",
             HeadlessCommand::SetHeaderFooterLink { .. } => "set_header_footer_link",
             HeadlessCommand::InsertTable { .. } => "insert_table",
             HeadlessCommand::InsertTableOfContents { .. } => "insert_table_of_contents",

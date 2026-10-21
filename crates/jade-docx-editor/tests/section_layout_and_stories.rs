@@ -338,3 +338,40 @@ fn a_section_without_a_footer_gets_one_from_its_story() {
     let xml = part(&bytes, "word/document.xml").unwrap();
     assert!(xml.contains(r#"w:type="first""#), "{xml}");
 }
+
+#[test]
+fn paragraphs_leave_and_rejoin_the_grid() {
+    let mut document = load("header.docx");
+    apply(
+        &mut document,
+        None,
+        vec![HeadlessCommand::SetParagraphSnapToGrid {
+            start_paragraph: 0,
+            end_paragraph: 0,
+            snap: false,
+        }],
+    );
+    assert_eq!(
+        document
+            .paragraph(0)
+            .unwrap()
+            .properties
+            .as_ref()
+            .unwrap()
+            .snap_to_grid,
+        Some(false)
+    );
+    let xml = part(&document.export_docx().unwrap(), "word/document.xml").unwrap();
+    assert!(xml.contains(r#"<w:snapToGrid w:val="0"/>"#), "{xml}");
+    apply(
+        &mut document,
+        None,
+        vec![HeadlessCommand::SetParagraphSnapToGrid {
+            start_paragraph: 0,
+            end_paragraph: 0,
+            snap: true,
+        }],
+    );
+    let xml = part(&document.export_docx().unwrap(), "word/document.xml").unwrap();
+    assert!(!xml.contains("w:snapToGrid"));
+}

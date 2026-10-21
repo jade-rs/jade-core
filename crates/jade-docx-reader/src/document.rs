@@ -2106,6 +2106,14 @@ pub const PAGE_BREAK_CHAR: char = '\u{000C}';
 /// 文字列版の手動改ページ。テストや文字列操作向けに用意する。
 pub const PAGE_BREAK_STR: &str = "\u{000C}";
 
+/// 段区切り (`<w:br w:type="column"/>`, ECMA-376 Part 1 §17.3.3.1): the
+/// text continues at the top of the next column, or of the next page after
+/// the last column. Word's own text model uses the same control character.
+pub const COLUMN_BREAK_CHAR: char = '\u{000E}';
+
+/// [`COLUMN_BREAK_CHAR`] as a string.
+pub const COLUMN_BREAK_STR: &str = "\u{000E}";
+
 /// Metadata describing a hyperlink applied to a run.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

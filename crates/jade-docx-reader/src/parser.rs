@@ -2001,12 +2001,14 @@ impl DocumentParser {
                                 // unhandled break type desynced `paragraph_text_len`
                                 // from the run text and shifted later offsets.
                                 match break_type.as_deref() {
-                                    // `column` has no dedicated column-advance
-                                    // yet; a page break is exactly correct for the
-                                    // common single-column case (Word moves to the
-                                    // next page when the only column ends).
-                                    Some("page") | Some("column") => {
+                                    Some("page") => {
                                         run.text.push(PAGE_BREAK_CHAR);
+                                        paragraph_text_len += 1;
+                                    }
+                                    // The next column, or the next page after
+                                    // the last one.
+                                    Some("column") => {
+                                        run.text.push(crate::document::COLUMN_BREAK_CHAR);
                                         paragraph_text_len += 1;
                                     }
                                     Some("textwrapping") | None => {
@@ -13696,8 +13698,9 @@ mod tests {
             BodyElement::Paragraph(p) => p.as_ref(),
             _ => panic!("expected paragraph"),
         };
-        // Column break → page-break char; the unknown break adds nothing.
-        assert_eq!(paragraph.runs[0].text, "A\u{000C}BC");
+        // A column break has its own character; the unknown break adds
+        // nothing.
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}BC");
     }
 
     #[test]

@@ -1102,7 +1102,9 @@ fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
 fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     // A source run keeps its raw XML identity, including whether Word encoded
     // an existing newline as w:cr or w:br. Newly authored runs are split below.
-    if (!run.text.contains('\n') && !run.text.contains(PAGE_BREAK_STR))
+    if (!run.text.contains('\n')
+        && !run.text.contains(PAGE_BREAK_STR)
+        && !run.text.contains(crate::document::COLUMN_BREAK_CHAR))
         || run.node_id.is_some()
         || run.image.is_some()
         || run.text_box.is_some()
@@ -1120,7 +1122,7 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     let mut buffer = String::new();
 
     for ch in run.text.chars() {
-        if ch == '\n' || ch == PAGE_BREAK_CHAR {
+        if ch == '\n' || ch == PAGE_BREAK_CHAR || ch == crate::document::COLUMN_BREAK_CHAR {
             if !buffer.is_empty() {
                 let mut text_run = template.clone();
                 text_run.text = std::mem::take(&mut buffer);
@@ -1150,10 +1152,11 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
 /// ランに含まれるソフト改行 (`\n`) や手動改ページ (`PAGE_BREAK_CHAR`) を専用ランへ分割する。
 #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
 pub fn normalize_break_runs(runs: &mut Vec<Run>) {
-    if runs
-        .iter()
-        .all(|run| !run.text.contains('\n') && !run.text.contains(PAGE_BREAK_STR))
-    {
+    if runs.iter().all(|run| {
+        !run.text.contains('\n')
+            && !run.text.contains(PAGE_BREAK_STR)
+            && !run.text.contains(crate::document::COLUMN_BREAK_CHAR)
+    }) {
         return;
     }
 

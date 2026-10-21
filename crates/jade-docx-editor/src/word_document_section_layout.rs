@@ -709,4 +709,31 @@ impl WordDocument {
         }
         self.set_sect_pr_element(section, "w:pgNumType", Some(attributes))
     }
+
+    /// 1 ページの行数を指定時に文字を行グリッド線に合わせる: whether the
+    /// paragraphs `start..=end` snap to the section's document grid.
+    pub fn set_paragraphs_snap_to_grid(
+        &mut self,
+        start: usize,
+        end: usize,
+        snap: bool,
+    ) -> Result<(), String> {
+        let (start, end) = (start.min(end), start.max(end));
+        if end >= self.paragraph_count() {
+            return Err("paragraph out of range".to_string());
+        }
+        for index in start..=end {
+            let paragraph = self
+                .paragraph_mut(index)
+                .ok_or_else(|| "paragraph out of range".to_string())?;
+            paragraph
+                .properties
+                .get_or_insert_with(ParagraphProperties::default)
+                .snap_to_grid = (!snap).then_some(false);
+            crate::commands::paragraph_property_sync::sync_paragraph_snap_to_grid_xml(
+                self, index, snap,
+            );
+        }
+        Ok(())
+    }
 }
