@@ -712,6 +712,8 @@ pub use table_tools::{
 
 #[path = "word_document/content_controls.rs"]
 pub mod content_controls;
+#[path = "word_document/mail_merge.rs"]
+pub mod mail_merge;
 #[path = "word_document/rewrite.rs"]
 pub mod rewrite;
 

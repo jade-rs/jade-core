@@ -754,7 +754,7 @@ impl ControlWalker<'_> {
                 previous = Some(place.paragraph);
                 if let Some(slice) = document
                     .paragraph(place.paragraph)
-                    .map(|paragraph| paragraph_model_text(paragraph))
+                    .map(paragraph_model_text)
                     .and_then(|whole| whole.get(place.start..place.end).map(str::to_string))
                 {
                     text.push_str(&slice);
@@ -944,4 +944,4 @@ fn read_properties(properties: Option<&XmlElement>, index: usize) -> ContentCont
 
 #[cfg(test)]
 #[path = "content_controls/tests.rs"]
-mod tests;
+pub(crate) mod tests;
