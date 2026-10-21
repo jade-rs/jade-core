@@ -438,20 +438,112 @@ impl WordDocument {
         Ok(relationship.id)
     }
 
-    /// The bytes of the media part relationship `relationship_id` points at.
+    /// The bytes of the part relationship `relationship_id` points at: a
+    /// picture's media, a chart's or a diagram's XML.
     pub fn object_media(&self, relationship_id: &str) -> Option<Vec<u8>> {
+        let path = self.object_part_path(relationship_id)?;
+        self.binary_parts
+            .get(&path)
+            .cloned()
+            .or_else(|| {
+                self.parts
+                    .get(&path)
+                    .map(|part| part.content.clone().into_bytes())
+            })
+            .or_else(|| {
+                self.package
+                    .as_ref()
+                    .and_then(|package| package.get(&path))
+                    .cloned()
+            })
+    }
+
+    fn object_part_path(&self, relationship_id: &str) -> Option<String> {
         let document_part = self.document_part.as_ref()?;
         let relationship = document_part
             .relationships
             .iter()
             .find(|relationship| relationship.id == relationship_id)?;
-        let path = Self::resolve_target_path(&document_part.path, &relationship.target);
-        self.binary_parts.get(&path).cloned().or_else(|| {
-            self.package
-                .as_ref()
-                .and_then(|package| package.get(&path))
-                .cloned()
-        })
+        Some(Self::resolve_target_path(&document_part.path, &relationship.target))
+    }
+
+    /// Adds a part at `{stem}{n}.{extension}` (the first free `n`), related
+    /// to the document with `relationship_type` and declared with
+    /// `content_type`; returns the relationship's id. For a SmartArt
+    /// graphic's data, layout, style, colours and drawing.
+    pub fn add_object_part(
+        &mut self,
+        stem: &str,
+        extension: &str,
+        bytes: &[u8],
+        content_type: &str,
+        relationship_type: &str,
+    ) -> Result<String, String> {
+        let path = (1..)
+            .map(|index| format!("{stem}{index}.{extension}"))
+            .find(|candidate| {
+                !self.parts.contains_key(candidate)
+                    && !self.binary_parts.contains_key(candidate)
+                    && !self
+                        .package
+                        .as_ref()
+                        .is_some_and(|package| package.files.contains_key(candidate))
+            })
+            .expect("an unbounded search finds a free name");
+        let relationship = {
+            let document_part = self
+                .document_part
+                .as_mut()
+                .ok_or_else(|| "main document part is unavailable".to_string())?;
+            let relationship = Relationship {
+                id: Self::next_relationship_id(&document_part.relationships),
+                r#type: relationship_type.to_string(),
+                target: path.strip_prefix("word/").unwrap_or(path.as_str()).to_string(),
+                target_mode: None,
+            };
+            document_part.relationships.push(relationship.clone());
+            relationship
+        };
+        if let Some(document_part) = self.document_part.as_ref() {
+            if let Some(part) = self.parts.get_mut(&document_part.path) {
+                part.relationships = document_part.relationships.clone();
+            }
+        }
+        self.ensure_document_relationships_part_has_relationship(&relationship)?;
+        self.ensure_content_types_has_override(&path, content_type)?;
+        self.removed_parts.remove(&path);
+        self.write_object_part(&path, bytes)?;
+        Ok(relationship.id)
+    }
+
+    /// Writes new contents for the part `relationship_id` points at.
+    pub fn replace_object_part(&mut self, relationship_id: &str, bytes: &[u8]) -> Result<(), String> {
+        let path = self
+            .object_part_path(relationship_id)
+            .ok_or("the part is not related to the document")?;
+        self.write_object_part(&path, bytes)
+    }
+
+    fn write_object_part(&mut self, path: &str, bytes: &[u8]) -> Result<(), String> {
+        if path.ends_with(".xml") {
+            let text = String::from_utf8(bytes.to_vec()).map_err(|error| error.to_string())?;
+            self.binary_parts.remove(path);
+            self.upsert_xml_part_content(path, text);
+        } else {
+            self.binary_parts.insert(path.to_string(), bytes.to_vec());
+        }
+        Ok(())
+    }
+
+    /// A SmartArt graphic's drawing part relationship, which its data part
+    /// names (`dsp:dataModelExt@relId`); `kind` is `diagramDrawing`.
+    pub fn related_part_relationship(&self, data_relationship: &str, kind: &str) -> Option<String> {
+        if kind != "diagramDrawing" {
+            return None;
+        }
+        let data = self.object_media(data_relationship)?;
+        super::diagram_drawing_relationship_id(std::str::from_utf8(&data).ok()?)
+            .filter(|id| self.object_part_path(id).is_some())
     }
 
     /// A fresh `wp:docPr` / `cNvPr` id, unique in the document.

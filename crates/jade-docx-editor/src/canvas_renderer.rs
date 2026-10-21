@@ -22138,6 +22138,120 @@ where
         }
     }
 
+    /// A shape's outline: its freeform paths when it has them, its preset
+    /// otherwise.
+    #[allow(clippy::too_many_arguments)]
+    fn trace_text_box_geometry<P: Painter>(
+        context: &P,
+        text_box: &RunTextBox,
+        head_end: Option<TextBoxLineEnd>,
+        tail_end: Option<TextBoxLineEnd>,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        match text_box.extras().custom_geometry.as_ref() {
+            Some(geometry) => {
+                Self::trace_custom_geometry(context, geometry, x, y, width, height);
+                Ok(())
+            }
+            None => Self::trace_text_box_shape_with_line_ends(
+                context,
+                text_box.shape,
+                head_end,
+                tail_end,
+                x,
+                y,
+                width,
+                height,
+            ),
+        }
+    }
+
+    /// `a:custGeom`'s paths, scaled from each path's own space into the box.
+    fn trace_custom_geometry<P: Painter>(
+        context: &P,
+        geometry: &crate::document::CustomGeometry,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) {
+        use crate::document::PathCommand;
+        context.begin_path();
+        for path in &geometry.paths {
+            // A path without its own size is in the shape's EMU.
+            let scale_x = if path.width > 0.0 { width / path.width } else { 1.0 / 9525.0 };
+            let scale_y = if path.height > 0.0 { height / path.height } else { 1.0 / 9525.0 };
+            let at = |px: f64, py: f64| (x + px * scale_x, y + py * scale_y);
+            let mut current = (x, y);
+            for command in &path.commands {
+                match *command {
+                    PathCommand::MoveTo(px, py) => {
+                        current = at(px, py);
+                        context.move_to(current.0, current.1);
+                    }
+                    PathCommand::LineTo(px, py) => {
+                        current = at(px, py);
+                        context.line_to(current.0, current.1);
+                    }
+                    PathCommand::CubicTo(x1, y1, x2, y2, px, py) => {
+                        let (c1, c2) = (at(x1, y1), at(x2, y2));
+                        current = at(px, py);
+                        context.bezier_curve_to(c1.0, c1.1, c2.0, c2.1, current.0, current.1);
+                    }
+                    PathCommand::QuadTo(x1, y1, px, py) => {
+                        let control = at(x1, y1);
+                        current = at(px, py);
+                        context.quadratic_curve_to(control.0, control.1, current.0, current.1);
+                    }
+                    PathCommand::ArcTo {
+                        width_radius,
+                        height_radius,
+                        start_deg,
+                        sweep_deg,
+                    } => {
+                        // The arc starts at the current point, at angle
+                        // `start_deg` of an ellipse with these radii.
+                        let (rx, ry) = (width_radius * scale_x, height_radius * scale_y);
+                        let start = start_deg.to_radians();
+                        let (cx, cy) = (current.0 - rx * start.cos(), current.1 - ry * start.sin());
+                        const STEPS: usize = 24;
+                        for step in 1..=STEPS {
+                            let angle = start + sweep_deg.to_radians() * step as f64 / STEPS as f64;
+                            current = (cx + rx * angle.cos(), cy + ry * angle.sin());
+                            context.line_to(current.0, current.1);
+                        }
+                    }
+                    PathCommand::Close => context.close_path(),
+                }
+            }
+        }
+    }
+
+    /// Mirrors what is drawn next about the box's centre for a shape's
+    /// `flipH`/`flipV`; the caller restores.
+    fn apply_shape_flips<P: Painter>(
+        context: &P,
+        layout: &RunImageLayout,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        if !layout.flip_horizontal && !layout.flip_vertical {
+            return Ok(());
+        }
+        let (center_x, center_y) = (x + width / 2.0, y + height / 2.0);
+        context.translate(center_x, center_y)?;
+        context.scale(
+            if layout.flip_horizontal { -1.0 } else { 1.0 },
+            if layout.flip_vertical { -1.0 } else { 1.0 },
+        )?;
+        context.translate(-center_x, -center_y)
+    }
+
     fn trace_text_box_shape<P: Painter>(
         context: &P,
         shape: TextBoxShape,
@@ -22362,10 +22476,12 @@ where
                 context.rect(x, y, width, height);
             }
             TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble => {
+                // DrawingML's line runs from the frame's top left to its
+                // bottom right; `flipH`/`flipV` turn it the other ways.
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(end_x, end_y);
                 // Word keeps arrowheads legible even when a straight
@@ -22396,13 +22512,13 @@ where
             }
             TextBoxShape::LineBent => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let lower_elbow_x = x + width / 2.0;
-                let lower_elbow_y = y + height;
+                let lower_elbow_y = y;
                 let upper_elbow_x = x + width / 2.0;
-                let upper_elbow_y = y;
+                let upper_elbow_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(lower_elbow_x, lower_elbow_y);
                 context.line_to(upper_elbow_x, upper_elbow_y);
@@ -22433,13 +22549,13 @@ where
             }
             TextBoxShape::LineCurved => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let first_control_x = x + width * 0.6;
-                let first_control_y = y + height;
+                let first_control_y = y;
                 let second_control_x = x + width * 0.4;
-                let second_control_y = y;
+                let second_control_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.bezier_curve_to(
                     first_control_x,
@@ -24390,9 +24506,15 @@ where
                     1.0,
                     1.0,
                 );
-                Self::trace_text_box_shape(&context, text_box.shape, draw_x, draw_y, width, height)
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
                     .map_err(PainterError::into_js_value)?;
+                Self::trace_text_box_geometry(
+                    &context, text_box, None, None, draw_x, draw_y, width, height,
+                )
+                .map_err(PainterError::into_js_value)?;
                 context.fill();
+                context.restore();
                 if blur_effect {
                     context.restore();
                 }
@@ -24476,6 +24598,22 @@ where
         let mut cursor_y = content_y;
         let mut remaining_line_gaps = line_count.saturating_sub(1);
         let first_text_box_paragraph = self.paragraph_counter;
+        // WordArt: the text is laid out as usual — the caret and hit test
+        // need its lines — but drawn by `wordart_paint`, with its effects
+        // and transform.
+        let wordart = draw_enabled
+            && !text_box.shape.is_line()
+            && (text_box.extras().wordart.is_some()
+                || text_box
+                    .extras()
+                    .text_warp
+                    .as_ref()
+                    .is_some_and(|warp| warp.preset != "textNoShape"));
+        if wordart {
+            let context = self.host.painter();
+            context.save();
+            context.set_global_alpha(0.0);
+        }
         let rendered = if text_box.shape.is_line() {
             // Connectors are stroke-only WordprocessingShapes. They expose a
             // grab region but must not synthesize an editable empty paragraph.
@@ -24498,6 +24636,75 @@ where
         if !rendered {
             self.render_empty_text_box_paragraph(content_left, &mut cursor_y, box_bottom)?;
         }
+        if wordart {
+            let context = self.host.painter();
+            context.restore();
+            self.invalidate_context_state_tracking();
+            let first_run = text_box.blocks.iter().find_map(|block| match block {
+                BodyElement::Paragraph(paragraph) => paragraph
+                    .runs
+                    .iter()
+                    .find(|run| !run.text.is_empty())
+                    .and_then(|run| run.properties.as_ref()),
+                _ => None,
+            });
+            let resolved = jade_docx_layout::font_resolver::resolve_run_style_for_wrap(first_run, None);
+            let font = if text_box.text.is_ascii() {
+                resolved.font_descriptor_latin_hansi.to_string()
+            } else {
+                resolved.font_descriptor_east_asia.to_string()
+            };
+            let size_px = parse_font_descriptor_size_pt(&font).unwrap_or(36.0) * 96.0 / 72.0;
+            let effects = text_box.extras().wordart.clone().unwrap_or_default();
+            let run_color = first_run
+                .and_then(|properties| properties.color.as_deref())
+                .filter(|color| !color.eq_ignore_ascii_case("auto"))
+                .map(|color| format!("#{}", color.trim_start_matches('#')));
+            let paint = crate::wordart_paint::WordArtPaint {
+                font,
+                size_px,
+                fill: if effects.no_fill {
+                    None
+                } else {
+                    effects
+                        .fill
+                        .as_ref()
+                        .and_then(|fill| fill.rgb.clone())
+                        .or(run_color)
+                        .or_else(|| Some("#000000".to_string()))
+                },
+                outline: effects
+                    .outline
+                    .as_ref()
+                    .and_then(|(color, width)| color.rgb.clone().map(|rgb| (rgb, *width))),
+                shadow: effects.shadow,
+                glow: effects.glow.as_ref().and_then(|(color, radius)| {
+                    color
+                        .rgb
+                        .as_deref()
+                        .map(|rgb| (Self::shape_effect_color(Some(rgb), 0.6), *radius))
+                }),
+            };
+            let preset = text_box
+                .extras()
+                .text_warp
+                .as_ref()
+                .map(|warp| warp.preset.as_str())
+                .unwrap_or("textNoShape");
+            crate::wordart_paint::paint_wordart(
+                &context,
+                &text_box.text,
+                preset,
+                (
+                    content_left,
+                    content_top,
+                    (content_right - content_left).max(1.0),
+                    (box_bottom - content_top).max(1.0),
+                ),
+                &paint,
+            );
+            self.invalidate_context_state_tracking();
+        }
 
         if self.auxiliary_story_capture_mode.enabled() {
             let lines =
@@ -24513,6 +24720,9 @@ where
         if draw_enabled {
             let context = self.host.painter();
             if border.style != TextBoxBorderStyle::None {
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
+                    .map_err(PainterError::into_js_value)?;
                 context.set_stroke_style_str(&stroke_style);
                 let blur_effect = Self::begin_shape_blur_effects(
                     &context,
@@ -24526,9 +24736,9 @@ where
                         Self::apply_line_dash(&context, &[])
                             .map_err(PainterError::into_js_value)?;
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24567,9 +24777,9 @@ where
                                 .map_err(PainterError::into_js_value)?;
                         }
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24584,6 +24794,7 @@ where
                 if blur_effect {
                     context.restore();
                 }
+                context.restore();
             }
             context.restore();
             // The box's paragraphs set fonts inside this save.
@@ -25847,6 +26058,36 @@ where
         // The picture is drawn with its colour adjustments and soft edges
         // applied, inside its effects: reflection, glow and shadow under
         // it, its shape as a clip, its outline and bevel over it.
+        // A chart is drawn from its part: plot, axes, title and legend.
+        if let Some(chart) = image.chart.as_ref() {
+            let xml = chart.xml.clone().or_else(|| {
+                crate::chart::build_chart_xml(chart, None)
+                    .ok()
+                    .map(|xml| std::rc::Rc::from(xml.as_str()))
+            });
+            if let Some(xml) = xml {
+                let painter = self.host.painter();
+                painter.save();
+                let transformed = Self::apply_centered_transform(
+                    &painter,
+                    draw_spec.x + draw_spec.width / 2.0,
+                    draw_spec.y + draw_spec.height / 2.0,
+                    draw_spec.rotation_deg,
+                    draw_spec.flip_horizontal,
+                    draw_spec.flip_vertical,
+                );
+                let drawn = transformed.is_ok()
+                    && crate::chart_paint::paint_chart(
+                        &painter,
+                        &xml,
+                        (draw_spec.x, draw_spec.y, draw_spec.width, draw_spec.height),
+                    );
+                painter.restore();
+                if drawn {
+                    return Ok(());
+                }
+            }
+        }
         let effective = crate::picture_effects::effective_data_uri(image);
         let data_uri = effective.as_deref().unwrap_or(data_uri);
         let painter = self.host.painter();
@@ -40180,6 +40421,8 @@ mod tests {
 
     #[test]
     fn connector_line_ends_keep_the_authored_side_and_geometry() {
+        // DrawingML lines run from the frame's top left to its bottom right
+        // unless flipped.
         use jade_painter::recording::Op;
 
         let head_only = jade_painter::recording::RecordingPainter::new();
@@ -40196,7 +40439,7 @@ mod tests {
         .expect("infallible");
         let ops = head_only.ops();
         assert_eq!(
-            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "the head marker must start at the connector's authored start point: {ops:?}"
         );
@@ -40237,12 +40480,12 @@ mod tests {
         )
         .expect("infallible");
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "a bent connector's head marker must use its start endpoint"
         );
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 0.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 40.0)),
             0,
             "head-only bent connectors must not gain a tail marker"
         );
@@ -40261,7 +40504,7 @@ mod tests {
         .expect("infallible");
         assert!(
             curved_tail.ops().iter().any(
-                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 0.0)
+                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 40.0)
             ),
             "a curved connector's tail marker must follow its ending tangent"
         );

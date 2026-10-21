@@ -31,6 +31,10 @@ pub mod drawing_xml;
 #[path = "../../jade-docx-editor/src/picture_effects.rs"]
 pub mod picture_effects;
 
+/// SmartArt laid out from its data, and its parts written.
+#[path = "../../jade-docx-editor/src/smartart.rs"]
+pub mod smartart;
+
 /// Parsed WordprocessingML document model.
 pub mod document {
     pub use jade_docx_reader::document::*;

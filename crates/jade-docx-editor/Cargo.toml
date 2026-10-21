@@ -34,6 +34,9 @@ indexmap = "2.7"
 rustc-hash = "2.1"
 jade-docx-writer = { path = "../jade-docx-writer" }
 jade-docx-reader = { path = "../jade-docx-reader" }
+# Word charts drawn by the chart layout the spreadsheet renderer uses.
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+jade-xlsx-layout = { path = "../jade-xlsx-layout" }
 jade-docx-annotations = { path = "../jade-docx-annotations" }
 jade-docx-layout = { path = "../jade-docx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }

@@ -35,6 +35,7 @@ pub(super) struct DrawingExtras {
     pub connector: ConnectorEnds,
     pub text_warp: Option<TextWarp>,
     pub link: Option<TextBoxLink>,
+    pub wordart: Option<WordArtText>,
 
     in_blip: bool,
     in_effect_list: bool,
@@ -419,6 +420,7 @@ impl DrawingExtras {
             connector: (self.connector != ConnectorEnds::default()).then_some(self.connector),
             text_warp: self.text_warp,
             link: self.link,
+            wordart: self.wordart,
         };
         text_box.extras = (!extras.is_empty()).then(|| Box::new(extras));
     }

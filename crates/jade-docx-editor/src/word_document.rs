@@ -3030,6 +3030,7 @@ impl WordDocument {
                                     &text_box.border.theme_transforms,
                                 );
                             }
+                            Self::apply_theme_to_wordart(text_box, theme);
                             Self::force_apply_theme_to_elements(&mut text_box.blocks, theme);
                         }
                         if let Some(image) = run.image.as_mut() {
@@ -3952,6 +3953,7 @@ impl WordDocument {
                         });
                     }
                 }
+                Self::apply_theme_to_wordart(text_box, theme);
                 Self::apply_theme_to_elements(&mut text_box.blocks, theme);
             }
             if let Some(image) = run.image.as_mut() {
@@ -4077,6 +4079,39 @@ impl WordDocument {
                     }
                 }
             }
+        }
+    }
+
+    /// Resolves WordArt's text effect colours.
+    fn apply_theme_to_wordart(text_box: &mut RunTextBox, theme: &ThemePart) {
+        let Some(art) = text_box
+            .extras
+            .as_deref_mut()
+            .and_then(|extras| extras.wordart.as_mut())
+        else {
+            return;
+        };
+        let resolve = |color: &mut crate::document::DrawingColor| {
+            if let Some(key) = color.theme.as_deref() {
+                // `w14` uses the long names (`accent1`, `tx1` as `text1`…).
+                let key = match key {
+                    "text1" | "dark1" => "dk1",
+                    "background1" | "light1" => "lt1",
+                    "text2" | "dark2" => "dk2",
+                    "background2" | "light2" => "lt2",
+                    other => other,
+                };
+                color.rgb = Self::resolve_shape_theme_color(theme, key, &color.transforms);
+            }
+        };
+        if let Some(fill) = art.fill.as_mut() {
+            resolve(fill);
+        }
+        if let Some((outline, _)) = art.outline.as_mut() {
+            resolve(outline);
+        }
+        if let Some((glow, _)) = art.glow.as_mut() {
+            resolve(glow);
         }
     }
 
@@ -6859,22 +6894,23 @@ impl WordDocument {
                         .or_else(|| (drawings.len() == 1).then(|| &drawings[0]))
                         .copied()
                 });
-            let Some(drawing_relationship) = drawing_relationship else {
-                return;
-            };
-            let drawing_path =
-                Self::resolve_target_path(&doc_part.path, &drawing_relationship.target);
-            let Some(xml) = package
-                .get(&drawing_path)
-                .and_then(|bytes| std::str::from_utf8(bytes).ok())
-            else {
-                return;
-            };
             let extent = (
                 image.width_px.unwrap_or(0.0) * 9_525.0,
                 image.height_px.unwrap_or(0.0) * 9_525.0,
             );
-            if let Ok(Some(group)) = parser.parse_diagram_drawing(xml, extent) {
+            let cached = drawing_relationship
+                .map(|relationship| Self::resolve_target_path(&doc_part.path, &relationship.target))
+                .and_then(|path| package.get(&path))
+                .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                .and_then(|xml| parser.parse_diagram_drawing(xml, extent).ok().flatten());
+            // A graphic without Word's cached drawing is laid out from its
+            // data, as Word would lay it out.
+            let group = cached.or_else(|| {
+                let diagram = crate::smartart::parse_data(data_xml?, None)?;
+                let xml = crate::smartart::drawing_xml(&diagram, extent.0.max(1.0), extent.1.max(1.0));
+                parser.parse_diagram_drawing(&xml, extent).ok().flatten()
+            });
+            if let Some(group) = group {
                 image.shape_group = Some(group);
                 image.placeholder_label = None;
             }
@@ -13202,6 +13238,9 @@ impl WordDocument {
             title: spec.title.clone(),
             categories: spec.categories.clone(),
             series: spec.series.clone(),
+            // Word puts a new chart's legend under it.
+            legend: Some("b".to_string()),
+            xml: None,
         };
         validate_chart(&chart)?;
 
