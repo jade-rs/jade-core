@@ -40,6 +40,39 @@ pub enum PdfLinkTarget {
     Page { page_index: usize, x: f64, y: f64 },
 }
 
+/// A node of a tagged PDF's structure tree (ISO 32000 §14.7): its standard
+/// structure type (`Document`, `P`, `H1`, `Table`, `TR`, `TD`, `Figure`),
+/// the node id the drawing was marked with ([`jade_painter::Painter::set_structure_node`]),
+/// a figure's alternative text, and the nodes inside it in reading order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTag {
+    pub kind: String,
+    pub node_id: i32,
+    pub alt: Option<String>,
+    pub children: Vec<PdfTag>,
+}
+
+/// What makes an exported PDF tagged: its structure, title and language.
+/// The headings among the structure become the PDF's bookmarks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTagging {
+    pub root: PdfTag,
+    pub title: Option<String>,
+    pub language: Option<String>,
+}
+
+fn structure_node(tag: &PdfTag) -> skia_safe::pdf::StructureElementNode {
+    let mut node = skia_safe::pdf::StructureElementNode::new(&tag.kind);
+    node.set_node_id(tag.node_id);
+    if let Some(alt) = &tag.alt {
+        node.set_alt(alt);
+    }
+    for child in &tag.children {
+        node.append_child(structure_node(child));
+    }
+    node
+}
+
 use skia_safe::{
     path::AddPathMode, surfaces, Canvas, Color, Color4f, Font, FontMgr, Matrix, Paint, Path,
     Picture, PictureRecorder, Rect, Surface,
@@ -363,16 +396,45 @@ impl SkiaPainter {
 
     /// Adds link annotations without changing the recorded page drawing.
     pub fn encode_pdf_with_links(pages: &[Self], links: &[PdfLink]) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, None)
+    }
+
+    /// A tagged PDF (PDF/UA's structure): the vector pages' drawing marked
+    /// with the nodes of `tagging`'s structure tree, the headings as
+    /// bookmarks, and the document's title shown as the window's.
+    pub fn encode_tagged_pdf(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: &PdfTagging,
+    ) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, Some(tagging))
+    }
+
+    fn encode_pdf_with(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: Option<&PdfTagging>,
+    ) -> Result<Vec<u8>, String> {
         if pages.is_empty() {
             return Err("no PDF pages".to_string());
         }
         let mut bytes = Vec::new();
         let mut sizes = Vec::with_capacity(pages.len());
-        let metadata = skia_safe::pdf::Metadata {
+        let mut metadata = skia_safe::pdf::Metadata {
             creator: "Jade".into(),
             raster_dpi: Some(96.0),
             ..Default::default()
         };
+        if let Some(tagging) = tagging {
+            metadata.structure_element_tree_root = Some(structure_node(&tagging.root));
+            metadata.outline = skia_safe::pdf::Outline::StructureElementHeaders;
+            if let Some(title) = &tagging.title {
+                metadata.title = title.clone();
+            }
+            if let Some(language) = &tagging.language {
+                metadata.lang = language.clone();
+            }
+        }
         let mut document = skia_safe::pdf::new_document(&mut bytes, Some(&metadata));
         for painter in pages {
             let mut surface = painter.shared.surface.borrow_mut();
@@ -516,6 +578,15 @@ impl SkiaPainter {
                 .and_then(lopdf::Object::as_array_mut)
                 .map_err(|err| err.to_string())?
                 .push(id.into());
+        }
+        if tagging.is_some_and(|tagging| tagging.title.is_some()) {
+            // A tagged document's window shows its title, not its file name.
+            if let Ok(catalog) = pdf.catalog_mut() {
+                catalog.set(
+                    "ViewerPreferences",
+                    lopdf::dictionary! { "DisplayDocTitle" => true },
+                );
+            }
         }
         pdf.prune_objects();
         pdf.compress();
@@ -1401,6 +1472,22 @@ fn pdf_rect_axis_spans(start: f32, end: f32) -> Vec<(f32, f32, f32)> {
 }
 
 impl Painter for SkiaPainter {
+    fn set_structure_node(&self, node: i32) {
+        // Only a vector recording keeps the marks: a raster one draws its
+        // page as a picture.
+        let vector = matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                picture: None,
+                ..
+            }
+        );
+        if vector {
+            self.with_canvas(|canvas| skia_safe::pdf::set_node_id(canvas, node));
+        }
+    }
+
     fn draw_image(
         &self,
         image: jade_painter::ImageSource<'_>,

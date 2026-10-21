@@ -1818,6 +1818,27 @@ where
         options: &Options,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
+        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+    ) -> Result<(), JsValue> {
+        // A table's cells are nodes of a tagged PDF's structure.
+        self.begin_structure_table();
+        let result = self.render_table_with_numbering_untagged(
+            table,
+            options,
+            numbering_part,
+            numbering_counter,
+            deleted_numbering_offsets,
+        );
+        self.end_structure_table();
+        result
+    }
+
+    fn render_table_with_numbering_untagged(
+        &mut self,
+        table: &Table,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
         _deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
     ) -> Result<(), JsValue> {
         // 表の描画は本文と経路が分かれていて Options を持ち回っていない。
@@ -2966,6 +2987,7 @@ where
             }
 
             let start_paragraph = self.paragraph_counter;
+            self.set_structure_row(row_index);
             self.render_cell_blocks(
                 cell,
                 cell_rect.x,
@@ -3030,7 +3052,39 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn render_cell_blocks(
+        &mut self,
+        cell: &mut PreparedCell,
+        x_start: f64,
+        y_top: f64,
+        cell_width: f64,
+        row_height: f64,
+        line_height: f64,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
+        ancestor_clip: Option<(f64, f64)>,
+        bottom_band: f64,
+    ) -> Result<f64, JsValue> {
+        let tagged = self.begin_structure_cell(cell.column_index);
+        let result = self.render_cell_blocks_untagged(
+            cell,
+            x_start,
+            y_top,
+            cell_width,
+            row_height,
+            line_height,
+            numbering_part,
+            numbering_counter,
+            ancestor_clip,
+            bottom_band,
+        );
+        self.end_structure(tagged);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_cell_blocks_untagged(
         &mut self,
         cell: &mut PreparedCell,
         x_start: f64,
@@ -5754,6 +5808,7 @@ where
                     )?;
                 }
 
+                self.set_structure_row(row_index);
                 self.render_cell_blocks(
                     cell,
                     cell_rect.x,
