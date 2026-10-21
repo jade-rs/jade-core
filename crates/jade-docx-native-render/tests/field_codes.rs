@@ -37,11 +37,10 @@ fn one_field_toggles_against_the_rest() {
     let mut document = common::open_fixture("public/fixtures/document-property-fields.docx");
     let whole = |document: &common::Doc, index: usize| {
         let length = document.paragraph_text(index).map_or(0, |text| text.len());
-        SelectionRange {
-            anchor: TextPosition::new(index, 0),
-            focus: TextPosition::new(index, length),
-            ..SelectionRange::collapsed(TextPosition::new(index, 0))
-        }
+        SelectionRange::new(
+            TextPosition::new(index, 0),
+            TextPosition::new(index, length),
+        )
     };
     let paragraph = (0..document.paragraph_count())
         .find(|&index| {

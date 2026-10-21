@@ -1134,7 +1134,8 @@ impl NativeDocument {
     /// Gives the renderer the clock and, while codes are shown, what each
     /// field's runs show. Edits move runs, so the codes are found afresh.
     fn refresh_field_display(&mut self) {
-        self.renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
+        self.renderer
+            .set_current_datetime(self.field_datetime.map(renderer_datetime));
         if self.field_codes == FieldCodeView::default() {
             return;
         }

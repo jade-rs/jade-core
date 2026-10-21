@@ -1131,8 +1131,7 @@ impl<'a> Evaluation<'a> {
             .and_then(|history| {
                 history
                     .iter()
-                    .filter(|(paragraph, _)| *paragraph <= target.paragraph)
-                    .last()
+                    .rfind(|(paragraph, _)| *paragraph <= target.paragraph)
                     .map(|(_, value)| *value)
             })
             .unwrap_or(0);
@@ -1451,7 +1450,8 @@ impl<'a> Evaluation<'a> {
             .map(str::to_string)
             .unwrap_or_else(|| ", ".to_string());
         let list_separator = code.switch_value("l").unwrap_or(", ").to_string();
-        let mut grouped: Vec<((String, String), Option<String>, Vec<usize>)> = Vec::new();
+        type Entry = ((String, String), Option<String>, Vec<usize>);
+        let mut grouped: Vec<Entry> = Vec::new();
         for (main, sub, paragraph, reading) in entries {
             let key = (
                 reading.unwrap_or_else(|| main.clone()).to_lowercase(),

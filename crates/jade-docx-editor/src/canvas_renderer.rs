@@ -927,6 +927,10 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
         || group.groups.iter().any(shape_group_contains_text)
 }
 
+/// What each body run shows while field codes are on: the field (by its
+/// first run) and its `{ CODE }`.
+pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -3475,7 +3479,7 @@ where
     /// While field codes are shown (⌥F9, ⇧F9): what a body run shows in
     /// place of its field — `(field, code)`, the field named by its first
     /// run. A field's runs show its code once.
-    field_code_display: Option<Rc<HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>>>,
+    field_code_display: Option<Rc<FieldCodeDisplay>>,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -33069,7 +33073,7 @@ where
     /// `None`. Paint and layout caches are dropped, as the text changes.
     pub fn set_field_code_display(
         &mut self,
-        display: Option<HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>>,
+        display: Option<FieldCodeDisplay>,
     ) {
         let display = display.filter(|map| !map.is_empty());
         if display.as_ref() == self.field_code_display.as_deref() {
