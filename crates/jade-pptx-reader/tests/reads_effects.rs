@@ -27,7 +27,9 @@ fn every_effect_of_a_shape_is_read_with_its_defaults() {
     let effects = &shape.effects;
     let glow = effects.glow.as_ref().expect("glow");
     assert_eq!(glow.radius_emu, 228_600);
-    assert!(matches!(&glow.color, Color::Adjusted { alpha: Some(a), .. } if (*a - 0.4).abs() < 1e-6));
+    assert!(
+        matches!(&glow.color, Color::Adjusted { alpha: Some(a), .. } if (*a - 0.4).abs() < 1e-6)
+    );
     let inner = effects.inner_shadow.as_ref().expect("inner shadow");
     assert_eq!((inner.blur_emu, inner.distance_emu), (63_500, 50_800));
     assert_eq!(inner.direction_deg, 45.0);
@@ -62,10 +64,7 @@ fn a_picture_and_a_run_read_their_effects() {
     let reflection = picture.effects.reflection.as_ref().expect("reflection");
     // Every attribute at its schema default: a full-strength copy fading to
     // nothing, mirrored nowhere (sy 100%), anchored at the bottom.
-    assert_eq!(
-        (reflection.start_alpha, reflection.end_alpha),
-        (1.0, 0.0)
-    );
+    assert_eq!((reflection.start_alpha, reflection.end_alpha), (1.0, 0.0));
     assert_eq!(reflection.end_position, 1.0);
     assert_eq!(reflection.align, "b");
     assert_eq!(picture.effects.soft_edge_emu, Some(63_500));

@@ -311,7 +311,9 @@ pub fn parse_chart_xml(xml: &str) -> Result<ChartContent> {
         .map(|area| {
             area.children
                 .iter()
-                .filter(|child| matches!(child.name.as_str(), "catAx" | "valAx" | "dateAx" | "serAx"))
+                .filter(|child| {
+                    matches!(child.name.as_str(), "catAx" | "valAx" | "dateAx" | "serAx")
+                })
                 .filter_map(parse_axis)
                 .collect()
         })
@@ -411,7 +413,11 @@ fn text_properties(body: &XmlElement) -> Option<crate::RunProps> {
 }
 
 fn parse_plot(plot: &XmlElement) -> ChartPlot {
-    let value = |name: &str| plot.child(name).and_then(|e| e.attr("val")).map(str::to_string);
+    let value = |name: &str| {
+        plot.child(name)
+            .and_then(|e| e.attr("val"))
+            .map(str::to_string)
+    };
     ChartPlot {
         kind: plot.name.clone(),
         grouping: value("grouping"),

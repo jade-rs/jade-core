@@ -173,10 +173,9 @@ pub(crate) fn layout_text_in_region(
         Autofit::Normal {
             font_scale,
             line_spacing_reduction,
-        } => shrink_to_fit(
+        } => flow_text_scaled(
             text,
             box_width_px,
-            box_height_px,
             &frame,
             context,
             stored_scale(font_scale, line_spacing_reduction),
@@ -187,7 +186,10 @@ pub(crate) fn layout_text_in_region(
     (lines, content_bottom + frame.inset_bottom)
 }
 
-/// The stored `fontScale`/`lnSpcReduction`, sanitised.
+/// The stored `fontScale`/`lnSpcReduction`, sanitised. PowerPoint draws a
+/// `normAutofit` body at the scale it last recorded and works out a new one
+/// only when the text is edited — a deck saved without one opens unshrunk,
+/// overflowing — so that is what is drawn here too.
 fn stored_scale(font_scale: f32, line_spacing_reduction: f32) -> (f32, f64) {
     (
         if font_scale > 0.0 && font_scale.is_finite() {
@@ -201,50 +203,6 @@ fn stored_scale(font_scale: f32, line_spacing_reduction: f32) -> (f32, f64) {
             0.0
         },
     )
-}
-
-/// The shrink steps PowerPoint's "shrink text on overflow" walks: line
-/// spacing first, 10% then 20%, then the font down 7.5% at a time with the
-/// spacing kept 20% tighter, to a quarter of its size — the pairs it
-/// records as `fontScale`/`lnSpcReduction`.
-fn autofit_steps() -> impl Iterator<Item = (f32, f64)> {
-    [(1.0, 0.0), (1.0, 0.1), (1.0, 0.2), (0.925, 0.1)]
-        .into_iter()
-        .chain((0..=9).map(|step| (0.925 - 0.075 * step as f32, 0.2)))
-}
-
-/// `normAutofit`: the text at its stored scale when that fits; otherwise
-/// the first of PowerPoint's shrink steps beyond the stored one that does
-/// (or the last). A stored scale is where PowerPoint left the text, so a
-/// deck opens as it was saved; text that has since grown — or that never
-/// had a scale recorded — shrinks on from there.
-fn shrink_to_fit(
-    text: &TextBody,
-    box_width_px: f64,
-    box_height_px: f64,
-    frame: &TextFrame,
-    context: &TextContext<'_>,
-    stored: (f32, f64),
-) -> (Vec<PlacedLine>, f64) {
-    // A hair of slack: substitute faces measure a little differently from
-    // the ones PowerPoint fitted with, and a deck it saved unshrunk fit.
-    let inner = (box_height_px - frame.inset_top - frame.inset_bottom).max(0.0);
-    let limit = box_height_px - frame.inset_bottom + (inner * 0.02).max(0.5);
-    let first = flow_text_scaled(text, box_width_px, frame, context, stored);
-    if first.1 <= limit {
-        return first;
-    }
-    let mut last = first;
-    for step in autofit_steps().filter(|(scale, reduction)| {
-        // Only steps that shrink further than what is stored.
-        *scale < stored.0 - 1e-4 || (*scale <= stored.0 + 1e-4 && *reduction > stored.1 + 1e-4)
-    }) {
-        last = flow_text_scaled(text, box_width_px, frame, context, step);
-        if last.1 <= limit {
-            break;
-        }
-    }
-    last
 }
 
 /// `numCol` text: flowed at one column's width, then dealt into columns

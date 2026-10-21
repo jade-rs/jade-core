@@ -318,7 +318,12 @@ fn a_table_naming_no_style_draws_a_thin_grid_as_powerpoint_does() {
         .filter(|s| s.geometry == PlacedGeometry::Line)
         .collect();
     // 2 × 2 cells, each with its four edges.
-    assert_eq!(lines.len(), 16,"{:?}", lines.iter().map(|l| &l.name).collect::<Vec<_>>());
+    assert_eq!(
+        lines.len(),
+        16,
+        "{:?}",
+        lines.iter().map(|l| &l.name).collect::<Vec<_>>()
+    );
     for line in lines {
         let outline = line.outline.as_ref().unwrap();
         assert_eq!(outline.color, "#000000");
@@ -335,7 +340,11 @@ fn all_of_powerpoints_built_in_table_styles_resolve() {
     let mut names = std::collections::HashSet::new();
     for id in &ids {
         let style = jade_pptx_layout::builtin_table_style(id).expect(id);
-        assert!(names.insert(style.name.clone().unwrap()), "{:?}", style.name);
+        assert!(
+            names.insert(style.name.clone().unwrap()),
+            "{:?}",
+            style.name
+        );
     }
     // GUIDs match whatever case a deck writes them in.
     let lower = jade_pptx_layout::builtin_table_style("{bc89ef96-8cea-46ff-86c4-4ce0e7609802}")
@@ -372,7 +381,11 @@ fn light_style_1_rules_the_header_and_washes_banded_rows() {
     // Rules: under the header and around the table in the accent, none
     // between body rows or columns.
     let rule = |name: &str| laid_out.shapes.iter().find(|s| s.name == name);
-    let accent = |name: &str| rule(name).and_then(|s| s.outline.as_ref()).map(|o| o.color.clone());
+    let accent = |name: &str| {
+        rule(name)
+            .and_then(|s| s.outline.as_ref())
+            .map(|o| o.color.clone())
+    };
     assert_eq!(accent("T!A1:bottom").as_deref(), Some("#ED7D31"));
     assert_eq!(accent("T!A1:top").as_deref(), Some("#ED7D31"));
     assert!(rule("T!A1:left").is_none());

@@ -68,7 +68,9 @@ fn a_glow_is_the_blurred_silhouette_under_the_shape() {
     // wide so the colour reaches a radius past the edge.
     let blur = ops[colour..]
         .iter()
-        .position(|op| matches!(op, Op::SetBlurFilter(b) if (*b - 127000.0 / 9525.0 / 4.0).abs() < 1e-6))
+        .position(
+            |op| matches!(op, Op::SetBlurFilter(b) if (*b - 127000.0 / 9525.0 / 4.0).abs() < 1e-6),
+        )
         .expect("blurred");
     assert!(ops[colour..].contains(&Op::Stroke));
     assert!(colour + blur < red_fill(&ops), "the glow is under the fill");
@@ -123,7 +125,9 @@ fn a_reflection_draws_the_shape_mirrored_and_faded_below_it() {
         })
         .collect();
     assert!(!alphas.is_empty());
-    assert!(alphas.iter().all(|alpha| *alpha > 0.0 && *alpha <= 0.5 + 1e-9));
+    assert!(alphas
+        .iter()
+        .all(|alpha| *alpha > 0.0 && *alpha <= 0.5 + 1e-9));
 }
 
 #[test]

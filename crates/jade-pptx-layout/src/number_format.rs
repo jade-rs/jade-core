@@ -280,8 +280,8 @@ fn format_pattern(pattern: &str, mut value: f64) -> Option<String> {
         int_digits = group_thousands(&int_digits);
     }
     let mut out = String::new();
-    let zero = int_digits.chars().all(|c| c == '0' || c == ',')
-        && frac_digits.chars().all(|c| c == '0');
+    let zero =
+        int_digits.chars().all(|c| c == '0' || c == ',') && frac_digits.chars().all(|c| c == '0');
     if negative && !zero {
         out.push('-');
     }
@@ -311,7 +311,7 @@ fn exponent_string(pattern: &str, power: i32) -> String {
 fn group_thousands(digits: &str) -> String {
     let mut out = String::new();
     for (index, c) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
             out.push(',');
         }
         out.push(c);

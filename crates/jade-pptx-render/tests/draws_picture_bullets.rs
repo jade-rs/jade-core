@@ -20,7 +20,10 @@ fn laid_out(image_part: Option<&str>) -> jade_pptx_layout::SlideLayout {
     let paragraph = &mut shape.text.as_mut().unwrap().paragraphs[0];
     // What read_deck resolves through the slide's relationships.
     match &mut paragraph.bullet {
-        Some(Bullet::Picture { rel_id, image_part: part }) => {
+        Some(Bullet::Picture {
+            rel_id,
+            image_part: part,
+        }) => {
             assert_eq!(rel_id, "rId3");
             *part = image_part.map(str::to_string);
         }

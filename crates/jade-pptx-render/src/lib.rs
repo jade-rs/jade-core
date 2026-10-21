@@ -12,7 +12,8 @@ use std::cell::RefCell;
 use jade_painter::Painter;
 use jade_pptx_layout::{
     HeuristicMeasure, PathFill, PlacedGeometry, PlacedGlow, PlacedLineEnd, PlacedOutline,
-    PlacedPath, PlacedPattern, PlacedReflection, PlacedShadow, PlacedShape, RunStyle, SlideLayout, TextMeasure, PX_PER_PT,
+    PlacedPath, PlacedPattern, PlacedReflection, PlacedShadow, PlacedShape, RunStyle, SlideLayout,
+    TextMeasure, PX_PER_PT,
 };
 
 #[derive(Debug, Clone)]
@@ -655,7 +656,10 @@ fn draw_glow<P: Painter>(
     painter.set_fill_style_str(&glow.color);
     painter.set_stroke_style_str(&glow.color);
     painter.set_blur_filter(glow.radius_px / 4.0);
-    let line = shape.outline.as_ref().map_or(0.0, |outline| outline.width_px);
+    let line = shape
+        .outline
+        .as_ref()
+        .map_or(0.0, |outline| outline.width_px);
     painter.set_line_width(glow.radius_px + line);
     painter.begin_path();
     for points in outline_polygons(shape) {
@@ -830,24 +834,19 @@ fn draw_reflection<P: Painter>(
     };
     let (start, end) = project(along);
     let (low, high) = project(across);
-    if !(end > start) || !(high > low) {
+    // NaN extents (no points) fail both comparisons, and draw nothing.
+    let spans = |a: f64, b: f64| b.partial_cmp(&a) == Some(std::cmp::Ordering::Greater);
+    if !spans(start, end) || !spans(low, high) {
         return Ok(());
     }
-    let point = |a: f64, c: f64| {
-        (
-            along.0 * a + across.0 * c,
-            along.1 * a + across.1 * c,
-        )
-    };
+    let point = |a: f64, c: f64| (along.0 * a + across.0 * c, along.1 * a + across.1 * c);
     // Abutting bands would each antialias their shared edge and leave a
     // seam; instead every pass covers from the opaque end of the fade up to
     // its band, so each boundary is crossed by exactly one clip edge, and
     // each pass's alpha brings what lies under it to the band's value.
     let fading = reflection.start_alpha >= reflection.end_alpha;
     let bands = REFLECTION_BANDS;
-    let band_alpha = |band: usize| {
-        reflection.alpha_at((band as f64 + 0.5) / bands as f64)
-    };
+    let band_alpha = |band: usize| reflection.alpha_at((band as f64 + 0.5) / bands as f64);
     // Passes from the faint end in: each later pass lies inside all earlier.
     let order: Vec<usize> = if fading {
         (0..bands).rev().collect()
@@ -873,7 +872,12 @@ fn draw_reflection<P: Painter>(
         painter.begin_path();
         add_polygon(
             painter,
-            &[point(a0, low), point(a1, low), point(a1, high), point(a0, high)],
+            &[
+                point(a0, low),
+                point(a1, low),
+                point(a1, high),
+                point(a0, high),
+            ],
         );
         painter.clip();
         painter.translate(anchor.0 + reflection.dx, anchor.1 + reflection.dy)?;

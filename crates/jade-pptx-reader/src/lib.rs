@@ -34,11 +34,11 @@ pub use slide::{
 };
 pub use slide::{parse_default_text_style, parse_slide_xml, TextVertical};
 pub use slide::{
-    Autofit, Bullet, CellBorders, Color, Effects, Fill, Glow, Reflection, GradientStop, GroupShape, GroupTransform, Hyperlink,
-    LevelStyle, ListStyle, Outline, Picture, Placeholder, RunProps, Shadow, Shape, ShapeItem,
-    ShapeStyle, SlideContent, SourceRect, Spacing, Table, TableCell, TableRow, TextAlign,
-    TextAnchor, TextBody, TextBodyPropertyPresence, TextInsets, TextParagraph, TextRun, TextStyles,
-    Transform,
+    Autofit, Bullet, CellBorders, Color, Effects, Fill, Glow, GradientStop, GroupShape,
+    GroupTransform, Hyperlink, LevelStyle, ListStyle, Outline, Picture, Placeholder, Reflection,
+    RunProps, Shadow, Shape, ShapeItem, ShapeStyle, SlideContent, SourceRect, Spacing, Table,
+    TableCell, TableRow, TextAlign, TextAnchor, TextBody, TextBodyPropertyPresence, TextInsets,
+    TextParagraph, TextRun, TextStyles, Transform,
 };
 pub use table_style::{parse_table_styles, TablePartStyle, TableStyle, TableStyleFlags};
 pub use theme::{

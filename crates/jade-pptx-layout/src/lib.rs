@@ -341,7 +341,10 @@ pub(crate) fn place_effects(
 ) -> PlacedEffects {
     PlacedEffects {
         inner_shadow: place_shadow(effects.inner_shadow.as_ref(), theme),
-        glow: effects.glow.as_ref().and_then(|glow| place_glow(glow, theme)),
+        glow: effects
+            .glow
+            .as_ref()
+            .and_then(|glow| place_glow(glow, theme)),
         reflection: effects.reflection.as_ref().and_then(|r| {
             let anchor = match r.align.as_str() {
                 "tl" => (0.0, 0.0),
@@ -375,10 +378,7 @@ pub(crate) fn place_effects(
                 && placed.scale_y != 0.0)
                 .then_some(placed)
         }),
-        soft_edge_px: effects
-            .soft_edge_emu
-            .map(emu_to_px)
-            .filter(|px| *px > 0.0),
+        soft_edge_px: effects.soft_edge_emu.map(emu_to_px).filter(|px| *px > 0.0),
         text_warp: None,
     }
 }

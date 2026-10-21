@@ -9,16 +9,15 @@
 //! labels — and PowerPoint's automatic choices where it states nothing.
 
 use jade_pptx_reader::{
-    Chart, ChartAxis, ChartMarker, ChartPlot, ChartSeries, Color, DataLabels, RunProps,
-    TextAlign, TextBody, TextParagraph, TextRun,
+    Chart, ChartAxis, ChartMarker, ChartPlot, ChartSeries, Color, DataLabels, RunProps, TextAlign,
+    TextBody, TextParagraph, TextRun,
 };
 
 use crate::number_format::format_chart_number;
 use crate::style::text_context_for_table;
 use crate::{
     resolve_color, resolve_fill, resolve_outline, text, Context, PathFill, PlacedGeometry,
-    PlacedOrigin, PlacedOutline, PlacedPath, PlacedShape, PlacedSubpath, Rect, RunStyle,
-    PX_PER_PT,
+    PlacedOrigin, PlacedOutline, PlacedPath, PlacedShape, PlacedSubpath, Rect, RunStyle, PX_PER_PT,
 };
 
 /// Room under the plot for category labels, in px.
@@ -239,7 +238,13 @@ impl Kit<'_> {
     }
 
     /// A straight segment from `a` to `b` as a line shape.
-    fn segment(&self, name: String, a: (f64, f64), b: (f64, f64), outline: PlacedOutline) -> PlacedShape {
+    fn segment(
+        &self,
+        name: String,
+        a: (f64, f64),
+        b: (f64, f64),
+        outline: PlacedOutline,
+    ) -> PlacedShape {
         let mut segment = self.shape(
             name,
             Rect {
@@ -258,7 +263,13 @@ impl Kit<'_> {
     }
 
     /// An open polyline through `points` (px) as one stroked path.
-    fn polyline(&self, name: String, points: &[(f64, f64)], outline: PlacedOutline, closed: bool) -> PlacedShape {
+    fn polyline(
+        &self,
+        name: String,
+        points: &[(f64, f64)],
+        outline: PlacedOutline,
+        closed: bool,
+    ) -> PlacedShape {
         let bounds = bounds_of(points);
         let normalized = normalize(points, bounds);
         let mut shape = self.shape(
@@ -462,15 +473,13 @@ pub(crate) fn plot_chart(
     let kind = chart.kind.as_deref().unwrap_or("");
     let style = &chart.style;
     let base = TextStyle {
-        size_pt: style
-            .text
-            .as_ref()
-            .and_then(|text| text.size_pt)
-            .unwrap_or(if style.plots.is_empty() {
+        size_pt: style.text.as_ref().and_then(|text| text.size_pt).unwrap_or(
+            if style.plots.is_empty() {
                 LABEL_SIZE_PT
             } else {
                 DEFAULT_TEXT_PT
-            }),
+            },
+        ),
         bold: false,
         color: Color::Srgb(TEXT_COLOR.to_string()),
     }
@@ -531,7 +540,10 @@ pub(crate) fn title_style(chart: &Chart) -> (f32, bool, Option<Color>) {
 }
 
 fn chart_title_height(chart: &Chart) -> f64 {
-    let lines = chart.title.as_deref().map_or(1, |t| t.lines().count().max(1));
+    let lines = chart
+        .title
+        .as_deref()
+        .map_or(1, |t| t.lines().count().max(1));
     title_style(chart).0 as f64 * PX_PER_PT * 1.2 * lines as f64
 }
 
@@ -874,8 +886,14 @@ fn place_marker(
             PlacedGeometry::Polygon(vec![(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
             true,
         ),
-        "x" => (strokes(&[[(0.0, 0.0), (1.0, 1.0)], [(1.0, 0.0), (0.0, 1.0)]]), false),
-        "plus" => (strokes(&[[(0.5, 0.0), (0.5, 1.0)], [(0.0, 0.5), (1.0, 0.5)]]), false),
+        "x" => (
+            strokes(&[[(0.0, 0.0), (1.0, 1.0)], [(1.0, 0.0), (0.0, 1.0)]]),
+            false,
+        ),
+        "plus" => (
+            strokes(&[[(0.5, 0.0), (0.5, 1.0)], [(0.0, 0.5), (1.0, 0.5)]]),
+            false,
+        ),
         "star" => (
             strokes(&[
                 [(0.0, 0.0), (1.0, 1.0)],
@@ -906,7 +924,12 @@ fn series_stroke(kit: &Kit<'_>, series: &ChartSeries, color: &str) -> Option<Pla
         .and_then(|line| resolve_outline(Some(line), None, kit.context.theme, None));
     Some(match resolved {
         Some(mut outline) => {
-            if series.line.as_ref().and_then(|line| line.color.as_ref()).is_none() {
+            if series
+                .line
+                .as_ref()
+                .and_then(|line| line.color.as_ref())
+                .is_none()
+            {
                 outline.color = color.to_string();
             }
             outline
@@ -936,7 +959,9 @@ fn plot_categories(
     if categories == 0 || chart.series.is_empty() {
         return;
     }
-    let horizontal = plots.iter().any(|plot| plot.kind.starts_with("bar") && plot.horizontal);
+    let horizontal = plots
+        .iter()
+        .any(|plot| plot.kind.starts_with("bar") && plot.horizontal);
     // The axes each plot uses: its category axis and its value axis. A
     // chart built without axes has one labelled the way its style says.
     let synthetic_value = ChartAxis {
@@ -952,13 +977,15 @@ fn plot_categories(
             .filter_map(|id| style.axis(*id))
             .find(|axis| kinds.contains(&axis.kind.as_str()))
     };
-    let value_axis = |plot: &ChartPlot| -> &ChartAxis {
-        axis_of(plot, &["valAx"]).unwrap_or(&synthetic_value)
-    };
+    let value_axis =
+        |plot: &ChartPlot| -> &ChartAxis { axis_of(plot, &["valAx"]).unwrap_or(&synthetic_value) };
     let category_axis = plots
         .first()
         .and_then(|plot| axis_of(plot, &["catAx", "dateAx"]));
-    let primary_id = plots.first().map(|plot| value_axis(plot).id).unwrap_or(u32::MAX);
+    let primary_id = plots
+        .first()
+        .map(|plot| value_axis(plot).id)
+        .unwrap_or(u32::MAX);
     // Value axes in the order first used: primary, then secondary.
     let mut axis_ids: Vec<u32> = Vec::new();
     for plot in plots {
@@ -975,7 +1002,8 @@ fn plot_categories(
             .flatten()
             .filter(|v| v.is_finite())
     };
-    let grouping_of = |plot: &ChartPlot| plot.grouping.as_deref().unwrap_or("clustered").to_string();
+    let grouping_of =
+        |plot: &ChartPlot| plot.grouping.as_deref().unwrap_or("clustered").to_string();
     // Each plot's per-category totals, for stacking and percentages.
     let plot_totals: Vec<Vec<(f64, f64)>> = plots
         .iter()
@@ -1014,8 +1042,7 @@ fn plot_categories(
             let grouping = grouping_of(plot);
             let stacked = matches!(grouping.as_str(), "stacked" | "percentStacked");
             if stacked {
-                for c in 0..categories {
-                    let (pos, neg) = plot_totals[p][c];
+                for (c, &(pos, neg)) in plot_totals[p].iter().enumerate().take(categories) {
                     let (pos, neg) = if grouping == "percentStacked" {
                         (percent_of(p, c, pos), percent_of(p, c, neg))
                     } else {
@@ -1068,9 +1095,9 @@ fn plot_categories(
             .unwrap_or_else(|| Scale::fit(0.0, 1.0, None, false))
     };
     let percent_axis = |id: u32| {
-        plots
-            .iter()
-            .any(|plot| value_axis(plot).id == id && plot.grouping.as_deref() == Some("percentStacked"))
+        plots.iter().any(|plot| {
+            value_axis(plot).id == id && plot.grouping.as_deref() == Some("percentStacked")
+        })
     };
     // A value axis' tick text: its own format, the source's when linked,
     // else digits for the step.
@@ -1079,7 +1106,11 @@ fn plot_categories(
         let source = chart
             .series
             .iter()
-            .find(|series| plots.get(series.plot_index).is_some_and(|plot| value_axis(plot).id == id))
+            .find(|series| {
+                plots
+                    .get(series.plot_index)
+                    .is_some_and(|plot| value_axis(plot).id == id)
+            })
             .and_then(|series| series.format_code.as_deref());
         let code = match (&axis.number_format, axis.source_linked) {
             (Some(code), false) => Some(code.as_str()),
@@ -1126,17 +1157,21 @@ fn plot_categories(
     };
     let primary = axis_by_id(primary_id);
     let secondary_id = axis_ids.get(1).copied();
-    let title_bold = TextStyle { bold: true, ..base.clone() };
+    let title_bold = TextStyle {
+        bold: true,
+        ..base.clone()
+    };
     if !horizontal {
         let mut left = side_room(primary_id) + title_room(Some(primary), &title_bold);
         if primary_id == u32::MAX && style.value_labels {
             left = left.max((frame.width * 0.08).max(40.0));
         }
-        let left_edge = frame.x + if style.plots.is_empty() {
-            frame.width * LEFT_INSET
-        } else {
-            8.0
-        };
+        let left_edge = frame.x
+            + if style.plots.is_empty() {
+                frame.width * LEFT_INSET
+            } else {
+                8.0
+            };
         let x = (frame.x + left + 4.0).max(left_edge);
         plot.width = (plot.width - (x - plot.x)).max(1.0);
         plot.x = x;
@@ -1156,7 +1191,9 @@ fn plot_categories(
         } else {
             0.0
         } + title_room(category_axis, &title_bold);
-        let x = (frame.x + left).max(plot.x).min(frame.x + frame.width * 0.45);
+        let x = (frame.x + left)
+            .max(plot.x)
+            .min(frame.x + frame.width * 0.45);
         plot.width = (plot.width - (x - plot.x)).max(1.0);
         plot.x = x;
         let bottom_title = title_room(Some(primary), &title_bold);
@@ -1282,7 +1319,10 @@ fn plot_categories(
         let grouping = grouping_of(plot_element);
         let stacked = matches!(grouping.as_str(), "stacked" | "percentStacked");
         let percent = grouping == "percentStacked";
-        let zero = at(&scale, 0.0_f64.clamp(scale.low.min(scale.high), scale.high.max(scale.low)));
+        let zero = at(
+            &scale,
+            0.0_f64.clamp(scale.low.min(scale.high), scale.high.max(scale.low)),
+        );
         let members: Vec<usize> = (0..chart.series.len())
             .filter(|&s| chart.series[s].plot_index == p)
             .collect();
@@ -1298,7 +1338,11 @@ fn plot_categories(
         } else {
             plot_element.overlap.unwrap_or(0.0).clamp(-100.0, 100.0) / 100.0
         };
-        let lanes = if stacked { 1.0 } else { bars - (bars - 1.0) * overlap };
+        let lanes = if stacked {
+            1.0
+        } else {
+            bars - (bars - 1.0) * overlap
+        };
         let bar_width = slot / (lanes + gap);
         for (position, &s) in members.iter().enumerate() {
             let series = &chart.series[s];
@@ -1307,7 +1351,11 @@ fn plot_categories(
                 .clone()
                 .unwrap_or_else(|| format!("series {}", s + 1));
             let series_kind = series_kind(series, plots);
-            let kind = if series_kind.is_empty() { kind } else { series_kind };
+            let kind = if series_kind.is_empty() {
+                kind
+            } else {
+                series_kind
+            };
             let is_line = is_line_kind(kind);
             let is_area = kind.starts_with("area");
             let color = kit.series_color(s, series, is_line);
@@ -1332,14 +1380,14 @@ fn plot_categories(
                 // One polygon from the lower edge up to the values and back.
                 let mut top = Vec::new();
                 let mut bottom = Vec::new();
-                for c in 0..categories {
+                for (c, stack) in stack_pos.iter_mut().enumerate().take(categories) {
                     let v = scaled(c, value_at(s, c).unwrap_or(0.0));
-                    let base_value = if stacked { stack_pos[c] } else { 0.0 };
+                    let base_value = if stacked { *stack } else { 0.0 };
                     let upper = base_value + v;
                     top.push(center(c, upper));
                     bottom.push(center(c, base_value));
                     if stacked {
-                        stack_pos[c] = upper;
+                        *stack = upper;
                     }
                     if let (Some(labels), Some(text_style), Some(raw)) =
                         (labels, text_style.as_ref(), value_at(s, c))
@@ -1347,7 +1395,15 @@ fn plot_categories(
                         if !labels.hidden_points.contains(&c) {
                             let text = label_text(labels, series, &category(c), raw, None, None);
                             let mid = center(c, base_value + v / 2.0);
-                            place_label(kit, kit.tag(&format!("{series_name} label {c}")), &text, mid, (0.5, 0.5), text_style, &mut labels_out);
+                            place_label(
+                                kit,
+                                kit.tag(&format!("{series_name} label {c}")),
+                                &text,
+                                mid,
+                                (0.5, 0.5),
+                                text_style,
+                                &mut labels_out,
+                            );
                         }
                     }
                 }
@@ -1380,7 +1436,11 @@ fn plot_categories(
                     };
                     let value = scaled(c, raw);
                     let value = if stacked {
-                        let base_value = if value >= 0.0 { stack_pos[c] } else { stack_neg[c] };
+                        let base_value = if value >= 0.0 {
+                            stack_pos[c]
+                        } else {
+                            stack_neg[c]
+                        };
                         if value >= 0.0 {
                             stack_pos[c] += value;
                         } else {
@@ -1395,7 +1455,10 @@ fn plot_categories(
                     if let (Some(labels), Some(text_style)) = (labels, text_style.as_ref()) {
                         if !labels.hidden_points.contains(&c) {
                             let text = label_text(labels, series, &category(c), raw, None, None);
-                            let gap = 4.0 + marker.as_ref().map_or(0.0, |m| m.size.unwrap_or(DEFAULT_MARKER_PT) * PX_PER_PT / 2.0);
+                            let gap = 4.0
+                                + marker.as_ref().map_or(0.0, |m| {
+                                    m.size.unwrap_or(DEFAULT_MARKER_PT) * PX_PER_PT / 2.0
+                                });
                             let (offset, anchor) = match labels.position.as_deref().unwrap_or("r") {
                                 "t" => ((0.0, -gap), (0.5, 1.0)),
                                 "b" => ((0.0, gap), (0.5, 0.0)),
@@ -1464,7 +1527,11 @@ fn plot_categories(
                 };
                 let value = scaled(c, raw);
                 let (offset, start, end) = if stacked {
-                    let base_value = if value >= 0.0 { stack_pos[c] } else { stack_neg[c] };
+                    let base_value = if value >= 0.0 {
+                        stack_pos[c]
+                    } else {
+                        stack_neg[c]
+                    };
                     if value >= 0.0 {
                         stack_pos[c] += value;
                     } else {
@@ -1556,14 +1623,32 @@ fn plot_categories(
                         let direction = grows * hang;
                         (
                             (along_value + direction * pad, plot.y + mid_lane),
-                            (if direction > 0.0 { 0.0 } else if direction < 0.0 { 1.0 } else { 0.5 }, 0.5),
+                            (
+                                if direction > 0.0 {
+                                    0.0
+                                } else if direction < 0.0 {
+                                    1.0
+                                } else {
+                                    0.5
+                                },
+                                0.5,
+                            ),
                         )
                     } else {
                         // Up the screen is negative y.
                         let direction = -grows * hang;
                         (
                             (plot.x + mid_lane, along_value + direction * pad),
-                            (0.5, if direction < 0.0 { 1.0 } else if direction > 0.0 { 0.0 } else { 0.5 }),
+                            (
+                                0.5,
+                                if direction < 0.0 {
+                                    1.0
+                                } else if direction > 0.0 {
+                                    0.0
+                                } else {
+                                    0.5
+                                },
+                            ),
                         )
                     };
                     place_label(
@@ -1585,7 +1670,7 @@ fn plot_categories(
     let scale = scale_of(primary_id);
     let crossing = category_axis
         .and_then(|axis| axis.crosses_at)
-        .or_else(|| match primary.crosses.as_deref() {
+        .or(match primary.crosses.as_deref() {
             Some("max") => Some(scale.high),
             Some("min") => Some(scale.low),
             _ => None,
@@ -1657,7 +1742,13 @@ fn plot_categories(
             } else {
                 TextAlign::Center
             };
-            out.push(kit.label(kit.tag(&format!("label {label}")), rect, label, align, &category_style));
+            out.push(kit.label(
+                kit.tag(&format!("label {label}")),
+                rect,
+                label,
+                align,
+                &category_style,
+            ));
         }
     }
 
@@ -1740,7 +1831,12 @@ fn plot_xy(
     let plot_element = plots.first();
     let bubble = chart.kind.as_deref() == Some("bubbleChart");
     let axes: Vec<&ChartAxis> = plot_element
-        .map(|plot| plot.axis_ids.iter().filter_map(|id| style.axis(*id)).collect())
+        .map(|plot| {
+            plot.axis_ids
+                .iter()
+                .filter_map(|id| style.axis(*id))
+                .collect()
+        })
         .unwrap_or_default();
     let x_axis = axes
         .iter()
@@ -1799,7 +1895,11 @@ fn plot_xy(
     let y_scale = if y_axis.is_none() {
         Scale {
             low: y0.min(0.0),
-            high: if y1 > y0.min(0.0) { y1 } else { y0.min(0.0) + 1.0 },
+            high: if y1 > y0.min(0.0) {
+                y1
+            } else {
+                y0.min(0.0) + 1.0
+            },
             step: 1.0,
             reversed: false,
         }
@@ -1822,7 +1922,10 @@ fn plot_xy(
     let y_source = chart.series.first().and_then(|s| s.format_code.as_deref());
     let y_style = base.with(y_axis.and_then(|axis| axis.text.as_ref()));
     let x_style = base.with(x_axis.and_then(|axis| axis.text.as_ref()));
-    let title_bold = TextStyle { bold: true, ..base.clone() };
+    let title_bold = TextStyle {
+        bold: true,
+        ..base.clone()
+    };
     if labelled(y_axis) {
         let width = y_scale
             .ticks()
@@ -1830,7 +1933,9 @@ fn plot_xy(
             .map(|v| kit.measure(&tick_text(y_axis, *v, &y_scale, y_source), &y_style))
             .fold(0.0, f64::max)
             + 8.0;
-        let title = y_axis.and_then(|a| a.title.as_ref()).map_or(0.0, |_| title_bold.line_px() * 1.2 + 4.0);
+        let title = y_axis
+            .and_then(|a| a.title.as_ref())
+            .map_or(0.0, |_| title_bold.line_px() * 1.2 + 4.0);
         let x = (frame.x + width + title + 4.0).max(frame.x + 8.0);
         plot.width = (plot.width - (x - plot.x)).max(1.0);
         plot.x = x;
@@ -1850,14 +1955,22 @@ fn plot_xy(
             continue;
         }
         for (i, value) in scale.ticks().into_iter().enumerate() {
-            let (px, py) = if vertical { map(x_scale.low, value) } else { map(value, y_scale.low) };
+            let (px, py) = if vertical {
+                map(x_scale.low, value)
+            } else {
+                map(value, y_scale.low)
+            };
             if gridded(axis) {
                 let (a, b) = if vertical {
                     ((plot.x, py), (plot.x + plot.width, py))
                 } else {
                     ((px, plot.y), (px, plot.y + plot.height))
                 };
-                let name = if vertical { format!("gridline {i}") } else { format!("x gridline {i}") };
+                let name = if vertical {
+                    format!("gridline {i}")
+                } else {
+                    format!("x gridline {i}")
+                };
                 out.push(kit.segment(kit.tag(&name), a, b, kit.stroke(GRID_COLOR, 1.0)));
             }
             if labelled(axis) {
@@ -1887,7 +2000,11 @@ fn plot_xy(
                         TextAlign::Center,
                     )
                 };
-                let name = if vertical { format!("value {text}") } else { format!("x value {text}") };
+                let name = if vertical {
+                    format!("value {text}")
+                } else {
+                    format!("x value {text}")
+                };
                 out.push(kit.label(kit.tag(&name), rect, &text, align, text_style));
             }
         }
@@ -1907,10 +2024,15 @@ fn plot_xy(
     let scatter_style = plot_element
         .and_then(|plot| plot.scatter_style.as_deref())
         .unwrap_or("marker");
-    let max_size = all.iter().map(|(_, _, _, size)| size.abs()).fold(0.0, f64::max);
+    let max_size = all
+        .iter()
+        .map(|(_, _, _, size)| size.abs())
+        .fold(0.0, f64::max);
     let biggest = plot.width.min(plot.height)
         * BUBBLE_FRACTION
-        * plot_element.and_then(|plot| plot.bubble_scale).unwrap_or(100.0)
+        * plot_element
+            .and_then(|plot| plot.bubble_scale)
+            .unwrap_or(100.0)
         / 100.0;
     let mut labels_out = Vec::new();
     for (s, series) in chart.series.iter().enumerate() {
@@ -1956,7 +2078,15 @@ fn plot_xy(
                     if !labels.hidden_points.contains(i) {
                         let category = format_chart_number(*x, None);
                         let text = label_text(labels, series, &category, *y, None, Some(*size));
-                        place_label(kit, kit.tag(&format!("{name} label {i}")), &text, (px, py), (0.5, 0.5), text_style, &mut labels_out);
+                        place_label(
+                            kit,
+                            kit.tag(&format!("{name} label {i}")),
+                            &text,
+                            (px, py),
+                            (0.5, 0.5),
+                            text_style,
+                            &mut labels_out,
+                        );
                     }
                 }
             }
@@ -1967,16 +2097,29 @@ fn plot_xy(
             .map(|(i, x, y, _)| (*i, map(*x, *y)))
             .collect();
         let line_wanted = !matches!(scatter_style, "marker" | "none")
-            || series.line.as_ref().is_some_and(|line| !line.no_fill && line.color.is_some());
+            || series
+                .line
+                .as_ref()
+                .is_some_and(|line| !line.no_fill && line.color.is_some());
         if let Some(stroke) = series_stroke(kit, series, &color).filter(|_| line_wanted) {
             let path: Vec<(f64, f64)> = pixels.iter().map(|(_, p)| *p).collect();
             let smooth_line = series.smooth || scatter_style.starts_with("smooth");
             if smooth_line && path.len() > 2 {
-                out.push(kit.polyline(kit.tag(&format!("{name} line")), &smooth(&path), stroke, false));
+                out.push(kit.polyline(
+                    kit.tag(&format!("{name} line")),
+                    &smooth(&path),
+                    stroke,
+                    false,
+                ));
             } else {
                 for pair in pixels.windows(2) {
                     let (i, end) = pair[1];
-                    out.push(kit.segment(kit.tag(&format!("{name} {i}")), pair[0].1, end, stroke.clone()));
+                    out.push(kit.segment(
+                        kit.tag(&format!("{name} {i}")),
+                        pair[0].1,
+                        end,
+                        stroke.clone(),
+                    ));
                 }
             }
         }
@@ -1985,21 +2128,43 @@ fn plot_xy(
         let marker = marker_for(series, s, wants_markers).or_else(|| {
             // A chart built in code with no markers named still shows its
             // points as dots.
-            (series.marker.is_none() && plots.iter().all(|p| p.axis_ids.is_empty())).then(|| ChartMarker {
-                symbol: "circle".into(),
-                size: Some(5.25),
-                ..ChartMarker::default()
+            (series.marker.is_none() && plots.iter().all(|p| p.axis_ids.is_empty())).then(|| {
+                ChartMarker {
+                    symbol: "circle".into(),
+                    size: Some(5.25),
+                    ..ChartMarker::default()
+                }
             })
         });
         for (i, point) in &pixels {
             if let Some(marker) = &marker {
-                place_marker(kit, kit.tag(&format!("{name} point {i}")), marker, *point, &color, out);
+                place_marker(
+                    kit,
+                    kit.tag(&format!("{name} point {i}")),
+                    marker,
+                    *point,
+                    &color,
+                    out,
+                );
             }
             if let (Some(labels), Some(text_style)) = (labels, text_style.as_ref()) {
                 if !labels.hidden_points.contains(i) {
-                    let (_, x, y, _) = points[s].iter().find(|p| p.0 == *i).copied().unwrap_or((0, 0.0, 0.0, 0.0));
-                    let text = label_text(labels, series, &format_chart_number(x, None), y, None, None);
-                    place_label(kit, kit.tag(&format!("{name} label {i}")), &text, (point.0 + 5.0, point.1), (0.0, 0.5), text_style, &mut labels_out);
+                    let (_, x, y, _) = points[s]
+                        .iter()
+                        .find(|p| p.0 == *i)
+                        .copied()
+                        .unwrap_or((0, 0.0, 0.0, 0.0));
+                    let text =
+                        label_text(labels, series, &format_chart_number(x, None), y, None, None);
+                    place_label(
+                        kit,
+                        kit.tag(&format!("{name} label {i}")),
+                        &text,
+                        (point.0 + 5.0, point.1),
+                        (0.0, 0.5),
+                        text_style,
+                        &mut labels_out,
+                    );
                 }
             }
         }
@@ -2010,7 +2175,12 @@ fn plot_xy(
         let thick = style.line_px() * 1.2;
         out.push(kit.label_turned(
             kit.tag(&format!("axis title {title}")),
-            Rect { x: frame.x + 2.0, y: plot.y, width: thick, height: plot.height },
+            Rect {
+                x: frame.x + 2.0,
+                y: plot.y,
+                width: thick,
+                height: plot.height,
+            },
             title,
             TextAlign::Center,
             &style,
@@ -2068,8 +2238,13 @@ fn plot_radar(
             .filter_map(|id| style.axis(*id))
             .find(|axis| axis.kind == "catAx")
     });
-    let values = chart.series.iter().flat_map(|s| s.values.iter().flatten().copied());
-    let (low, high) = values.fold((f64::INFINITY, f64::NEG_INFINITY), |(l, h), v| (l.min(v), h.max(v)));
+    let values = chart
+        .series
+        .iter()
+        .flat_map(|s| s.values.iter().flatten().copied());
+    let (low, high) = values.fold((f64::INFINITY, f64::NEG_INFINITY), |(l, h), v| {
+        (l.min(v), h.max(v))
+    });
     if !low.is_finite() {
         return;
     }
@@ -2090,7 +2265,12 @@ fn plot_radar(
                 continue;
             }
             let ring: Vec<(f64, f64)> = (0..categories).map(|c| point(c, value)).collect();
-            out.push(kit.polyline(kit.tag(&format!("ring {i}")), &ring, kit.stroke(GRID_COLOR, 1.0), true));
+            out.push(kit.polyline(
+                kit.tag(&format!("ring {i}")),
+                &ring,
+                kit.stroke(GRID_COLOR, 1.0),
+                true,
+            ));
         }
     }
     for c in 0..categories {
@@ -2129,12 +2309,24 @@ fn plot_radar(
                 area.fill = Some(color.clone());
                 out.push(area);
             } else if let Some(stroke) = series_stroke(kit, series, &color) {
-                out.push(kit.polyline(kit.tag(&format!("{name} line")), &points, stroke, points.len() == categories));
+                out.push(kit.polyline(
+                    kit.tag(&format!("{name} line")),
+                    &points,
+                    stroke,
+                    points.len() == categories,
+                ));
             }
         }
         if let Some(marker) = marker_for(series, s, radar_style == "marker") {
             for (c, p) in &ring {
-                place_marker(kit, kit.tag(&format!("{name} marker {c}")), &marker, *p, &color, out);
+                place_marker(
+                    kit,
+                    kit.tag(&format!("{name} marker {c}")),
+                    &marker,
+                    *p,
+                    &color,
+                    out,
+                );
             }
         }
         if let Some(labels) = labels_for(series, plot_element) {
@@ -2146,7 +2338,15 @@ fn plot_radar(
                 let value = series.values.get(*c).copied().flatten().unwrap_or(0.0);
                 let category = series.categories.get(*c).cloned().unwrap_or_default();
                 let text = label_text(labels, series, &category, value, None, None);
-                place_label(kit, kit.tag(&format!("{name} label {c}")), &text, *p, (0.5, 1.1), &text_style, &mut labels_out);
+                place_label(
+                    kit,
+                    kit.tag(&format!("{name} label {c}")),
+                    &text,
+                    *p,
+                    (0.5, 1.1),
+                    &text_style,
+                    &mut labels_out,
+                );
             }
         }
     }
@@ -2164,17 +2364,35 @@ fn plot_radar(
             center.1 + (radius + 6.0) * sin,
         );
         let anchor = (0.5 - cos * 0.5, 0.5 - sin * 0.5);
-        place_label(kit, kit.tag(&format!("label {name}")), name, at, anchor, &name_style, out);
+        place_label(
+            kit,
+            kit.tag(&format!("label {name}")),
+            name,
+            at,
+            anchor,
+            &name_style,
+            out,
+        );
     }
     if value_axis.is_some_and(|axis| axis.labelled()) {
         let value_style = base.with(value_axis.and_then(|axis| axis.text.as_ref()));
         for value in scale.ticks() {
             let text = match value_axis.and_then(|axis| axis.number_format.as_deref()) {
-                Some(code) if !code.eq_ignore_ascii_case("general") => format_chart_number(value, Some(code)),
+                Some(code) if !code.eq_ignore_ascii_case("general") => {
+                    format_chart_number(value, Some(code))
+                }
                 _ => format_tick(value, scale.step, false),
             };
             let p = point(0, value);
-            place_label(kit, kit.tag(&format!("value {text}")), &text, (p.0 - 4.0, p.1), (1.0, 0.5), &value_style, out);
+            place_label(
+                kit,
+                kit.tag(&format!("value {text}")),
+                &text,
+                (p.0 - 4.0, p.1),
+                (1.0, 0.5),
+                &value_style,
+                out,
+            );
         }
     }
     out.extend(labels_out);
@@ -2215,7 +2433,9 @@ fn plot_pie(
     // Labels outside the pie need room around it.
     let outside = labels.is_some_and(|labels| labels.position.as_deref() == Some("outEnd"));
     let margin = if outside {
-        text_style.as_ref().map_or(0.0, |style| style.line_px() * 1.5)
+        text_style
+            .as_ref()
+            .map_or(0.0, |style| style.line_px() * 1.5)
     } else {
         0.0
     };
@@ -2287,7 +2507,10 @@ fn plot_pie(
                     Some("outEnd") => (1.0, (0.5 - middle.cos() * 0.5, 0.5 - middle.sin() * 0.5)),
                     // Best fit: inside, two thirds out (mid-ring for a
                     // doughnut).
-                    _ => (if hole > 0.0 { (1.0 + hole) / 2.0 } else { 0.65 }, (0.5, 0.5)),
+                    _ => (
+                        if hole > 0.0 { (1.0 + hole) / 2.0 } else { 0.65 },
+                        (0.5, 0.5),
+                    ),
                 };
                 let gap = if anchor == (0.5, 0.5) { 0.0 } else { 4.0 };
                 let at = (
