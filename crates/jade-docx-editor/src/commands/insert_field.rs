@@ -11,6 +11,7 @@ pub struct InsertFieldCommand {
     range: SelectionRange,
     kind: HeadlessFieldKind,
     cached_text: String,
+    format: Option<String>,
     previous_document: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
@@ -21,15 +22,27 @@ impl InsertFieldCommand {
             range,
             kind,
             cached_text,
+            format: None,
             previous_document: None,
             previous_selection: None,
         }
     }
 
+    /// A `DATE` or `TIME` field with a `\@` date picture, as Word's 日付と
+    /// 時刻 dialog inserts one with 自動的に更新する checked.
+    pub fn with_format(mut self, format: Option<String>) -> Self {
+        self.format = format.filter(|picture| !picture.trim().is_empty());
+        self
+    }
+
     fn run_field_kind(&self) -> RunFieldKind {
         match self.kind {
-            HeadlessFieldKind::Date => RunFieldKind::Date { format: None },
-            HeadlessFieldKind::Time => RunFieldKind::Time { format: None },
+            HeadlessFieldKind::Date => RunFieldKind::Date {
+                format: self.format.clone(),
+            },
+            HeadlessFieldKind::Time => RunFieldKind::Time {
+                format: self.format.clone(),
+            },
             HeadlessFieldKind::Page => RunFieldKind::PageNumber,
             HeadlessFieldKind::NumPages => RunFieldKind::NumPages,
             // Jade deliberately leaves FILENAME cached: the package contains

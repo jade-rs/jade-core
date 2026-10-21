@@ -3479,6 +3479,35 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertDateTimeField {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                time,
+                format,
+                cached_text,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let kind = if *time {
+                    jade_docx_headless_api::HeadlessFieldKind::Time
+                } else {
+                    jade_docx_headless_api::HeadlessFieldKind::Date
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            InsertFieldCommand::new(range, kind, cached_text.clone())
+                                .with_format(Some(format.clone())),
+                        ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::InsertEquation {
                 paragraph,
                 offset,

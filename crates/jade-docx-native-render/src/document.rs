@@ -2032,6 +2032,16 @@ impl NativeDocument {
         &self.renderer
     }
 
+    /// The clock `DATE` and `TIME` fields show from the next repaint, as
+    /// Word updates them when a document is opened or printed; `None` keeps
+    /// their saved results.
+    pub fn set_field_clock(
+        &mut self,
+        now: Option<jade_docx_editor::canvas_renderer::FieldDateTime>,
+    ) {
+        self.renderer.set_current_datetime(now);
+    }
+
     /// The selection as the engine holds it, a caret when collapsed.
     pub fn selection_range(&self) -> Option<SelectionRange> {
         self.selection

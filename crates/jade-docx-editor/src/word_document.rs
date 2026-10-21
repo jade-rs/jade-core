@@ -34798,6 +34798,12 @@ impl WordDocument {
             RunFieldKind::NumPages => " NUMPAGES ".to_string(),
             RunFieldKind::Date { format: None } => " DATE ".to_string(),
             RunFieldKind::Time { format: None } => " TIME ".to_string(),
+            RunFieldKind::Date {
+                format: Some(picture),
+            } => format!(" DATE \\@ \"{picture}\" \\* MERGEFORMAT "),
+            RunFieldKind::Time {
+                format: Some(picture),
+            } => format!(" TIME \\@ \"{picture}\" \\* MERGEFORMAT "),
             RunFieldKind::Unsupported { instruction }
                 if instruction.trim().eq_ignore_ascii_case("FILENAME") =>
             {
