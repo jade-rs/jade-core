@@ -630,6 +630,10 @@ pub struct TextBody {
     /// columns. `None` for a single column.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<(u32, i64)>,
+    /// `<a:prstTxWarp prst>` other than `textNoShape`: the WordArt
+    /// transform the text follows (`textArchUp`, `textCircle`, …).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warp: Option<String>,
 }
 
 impl Default for TextBody {
@@ -644,6 +648,7 @@ impl Default for TextBody {
             list_style: None,
             paragraphs: Vec::new(),
             columns: None,
+            warp: None,
         }
     }
 }
@@ -2045,6 +2050,11 @@ fn parse_text_body(tx_body: &XmlElement) -> TextBody {
             .child("lstStyle")
             .map(parse_list_style)
             .filter(|style| !style.is_empty()),
+        warp: body_pr
+            .and_then(|pr| pr.child("prstTxWarp"))
+            .and_then(|warp| warp.attr("prst"))
+            .filter(|prst| *prst != "textNoShape")
+            .map(str::to_string),
         columns: body_pr
             .and_then(|pr| pr.attr("numCol"))
             .and_then(|n| n.parse::<u32>().ok())

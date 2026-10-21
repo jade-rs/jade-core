@@ -347,6 +347,18 @@ fn draw_text<P: Painter>(
             && shape.image_part.is_none()
             && shape.outline.is_none()
     });
+    if let Some(warp) = shape
+        .effects
+        .text_warp
+        .as_deref()
+        .and_then(ArcWarp::from_preset)
+    {
+        draw_warped_text(painter, shape, warp, (origin_x, origin_y), options)?;
+        if turned {
+            painter.restore();
+        }
+        return Ok(());
+    }
     if let Some(glow) = shape_glow {
         for line in &shape.lines {
             for run in line.runs.iter().filter(|run| run.text_glow.is_none()) {
@@ -461,6 +473,145 @@ fn draw_text<P: Painter>(
     }
     if turned {
         painter.restore();
+    }
+    Ok(())
+}
+
+/// The WordArt transforms that bend text along an ellipse inscribed in the
+/// shape: the upper arch, the lower arch, and the whole circle (the
+/// `…Pour` variants pour every line along the same path).
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ArcWarp {
+    Up,
+    Down,
+    Circle,
+}
+
+impl ArcWarp {
+    fn from_preset(preset: &str) -> Option<Self> {
+        match preset {
+            "textArchUp" | "textArchUpPour" => Some(Self::Up),
+            "textArchDown" | "textArchDownPour" => Some(Self::Down),
+            "textCircle" | "textCirclePour" => Some(Self::Circle),
+            _ => None,
+        }
+    }
+
+    /// The angle (radians, clockwise from +x) at fraction `t` of the text's
+    /// width, and the glyph's turn there.
+    fn at(self, t: f64) -> (f64, f64) {
+        use std::f64::consts::{FRAC_PI_2, PI, TAU};
+        match self {
+            // Over the top, left to right, glyphs standing out of the arc.
+            Self::Up => {
+                let angle = PI + t * PI;
+                (angle, angle + FRAC_PI_2)
+            }
+            // Along the bottom, left to right, glyphs standing into it.
+            Self::Down => {
+                let angle = PI - t * PI;
+                (angle, angle - FRAC_PI_2)
+            }
+            Self::Circle => {
+                let angle = PI + t * TAU;
+                (angle, angle + FRAC_PI_2)
+            }
+        }
+    }
+}
+
+/// Lines laid out flat, bent onto the warp's ellipse a glyph at a time:
+/// each glyph's centre goes to the point at its share of the frame's
+/// width, turned to the curve, and lines after the first (before the last,
+/// for the lower arch) move in toward the centre by their spacing.
+fn draw_warped_text<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    warp: ArcWarp,
+    (origin_x, origin_y): (f64, f64),
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
+    let (width, height) = shape.text_frame();
+    if width <= 0.0 || height <= 0.0 {
+        return Ok(());
+    }
+    let baselines: Vec<f64> = shape
+        .lines
+        .iter()
+        .filter_map(|line| line.runs.first().map(|run| run.baseline_y))
+        .collect();
+    let (Some(&first), Some(&last)) = (baselines.first(), baselines.last()) else {
+        return Ok(());
+    };
+    let first_size = shape
+        .lines
+        .first()
+        .and_then(|line| line.runs.first())
+        .map_or(0.0, |run| run.size_pt as f64 * PX_PER_PT);
+    let last_size = shape
+        .lines
+        .last()
+        .and_then(|line| line.runs.first())
+        .map_or(0.0, |run| run.size_pt as f64 * PX_PER_PT);
+    let center = (origin_x + width / 2.0, origin_y + height / 2.0);
+    let (rx, ry) = (width / 2.0, height / 2.0);
+    for line in &shape.lines {
+        // A warp maps the line's own extent onto the whole path, as WordArt
+        // stretches its text along it: measure every glyph first, then
+        // place each at its share of the line.
+        let mut glyphs: Vec<(&jade_pptx_layout::PlacedRun, char, f64)> = Vec::new();
+        for run in &line.runs {
+            painter.set_font(&font_shorthand(run, options));
+            let mut buffer = [0u8; 4];
+            for character in run.text.trim_end_matches('\t').chars() {
+                let glyph = character.encode_utf8(&mut buffer);
+                let advance = painter.measure_text_width(glyph)? + run.letter_spacing_px;
+                glyphs.push((run, character, advance));
+            }
+        }
+        let mut span: f64 = glyphs.iter().map(|(_, _, advance)| advance).sum();
+        if span <= 0.0 {
+            // A painter that cannot measure: share each run's laid-out
+            // width among its glyphs.
+            for (run, _, advance) in &mut glyphs {
+                let count = run.text.trim_end_matches('\t').chars().count().max(1);
+                *advance = run.width / count as f64;
+            }
+            span = glyphs.iter().map(|(_, _, advance)| advance).sum();
+            if span <= 0.0 {
+                continue;
+            }
+        }
+        let mut pen = 0.0;
+        for (run, character, advance) in glyphs {
+            // How far in from the ellipse this run's baseline sits.
+            let inset = match warp {
+                ArcWarp::Down => (last - run.baseline_y) + last_size * 0.2,
+                _ => (run.baseline_y - first) + first_size * jade_pptx_layout::ASCENT_RATIO,
+            };
+            let t = ((pen + advance / 2.0) / span).clamp(0.0, 1.0);
+            pen += advance;
+            if character.is_whitespace() {
+                continue;
+            }
+            painter.set_font(&font_shorthand(run, options));
+            painter.set_fill_style_str(&run.color);
+            let mut buffer = [0u8; 4];
+            let glyph = character.encode_utf8(&mut buffer);
+            let (angle, turn) = warp.at(t);
+            let x = center.0 + (rx - inset).max(0.0) * angle.cos();
+            let y = center.1 + (ry - inset).max(0.0) * angle.sin();
+            painter.save();
+            painter.translate(x, y)?;
+            painter.rotate(turn)?;
+            painter.fill_text(glyph, -advance / 2.0, 0.0)?;
+            if let Some(outline) = &run.text_outline {
+                apply_outline(painter, outline);
+                painter.stroke_text(glyph, -advance / 2.0, 0.0)?;
+                clear_outline(painter, outline);
+            }
+            painter.restore();
+        }
     }
     Ok(())
 }
