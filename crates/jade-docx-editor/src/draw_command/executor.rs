@@ -1501,7 +1501,7 @@ fn execute_strike_through<P: Painter>(
 }
 
 /// Executes underline drawing.
-fn execute_underline<P: Painter>(
+pub(crate) fn execute_underline<P: Painter>(
     context: &P,
     start_x: f64,
     baseline_y: f64,

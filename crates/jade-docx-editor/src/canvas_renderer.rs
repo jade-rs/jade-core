@@ -21568,6 +21568,32 @@ where
                                     });
                                 }
                             }
+                            crate::plugins::DecorationStyle::DoubleUnderline { color } => {
+                                let deco_x = *start_x + x0;
+                                let deco_w = x1 - x0;
+                                if self.should_draw_current_page_for_render() {
+                                    crate::draw_command::executor::execute_underline(
+                                        &context,
+                                        deco_x,
+                                        text_y,
+                                        deco_w,
+                                        style.font_size_pt,
+                                        color,
+                                        Some("double"),
+                                    )
+                                    .map_err(PainterError::into_js_value)?;
+                                }
+                                if let Some(buf) = commands_out.as_deref_mut() {
+                                    buf.push(DrawCommand::Underline {
+                                        x: deco_x,
+                                        y: text_y,
+                                        width: deco_w,
+                                        font_size_pt: style.font_size_pt,
+                                        color: Rc::from(color.as_str()),
+                                        kind: Some(Rc::from("double")),
+                                    });
+                                }
+                            }
                             // Highlight is rendered in the behind-text
                             // pass above so that glyphs paint on top of
                             // the fill; nothing to do here.
@@ -31140,6 +31166,48 @@ where
             self.mark_full_repaint();
         }
         Ok(previous)
+    }
+
+    /// Turns proofing marks on or off. A new `generation` forgets every
+    /// result kept so far, so the next pass asks about every paragraph again
+    /// — after a word is ignored or learnt, say.
+    pub fn configure_spelling(&mut self, enabled: bool, generation: u32) {
+        self.spelling_cache
+            .borrow_mut()
+            .configure(enabled, generation);
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
+    /// Whether proofing marks are on, and the generation results must carry.
+    pub fn spelling_state(&self) -> (bool, u32) {
+        let cache = self.spelling_cache.borrow();
+        (cache.enabled, cache.generation)
+    }
+
+    /// The spans the last passes drew without knowing whether they are
+    /// spelt right: what a checker is to be asked about.
+    pub fn take_pending_spelling(&self) -> Vec<crate::plugins::spelling::SpellingRequest> {
+        self.spelling_cache.borrow_mut().take_pending()
+    }
+
+    /// What a checker found in request `key`; `true` when that changes what
+    /// the pages show, which the next pass then draws.
+    pub fn apply_proofing_issues(
+        &mut self,
+        generation: u32,
+        key: &str,
+        issues: &[crate::plugins::spelling::ProofingIssue],
+    ) -> bool {
+        let changed = self
+            .spelling_cache
+            .borrow_mut()
+            .apply_issues(generation, key, issues)
+            .is_some();
+        if changed {
+            self.clear_paragraph_render_cache();
+        }
+        changed
     }
 
     pub fn set_spelling_export_mode(&mut self, enabled: bool) {
@@ -44862,6 +44930,57 @@ mod tests {
             .ops()
             .contains(&Op::SetStrokeStyle("#e53935".into())));
         assert!(painter.count(|op| matches!(op, Op::FillText(..))) > 0);
+    }
+
+    #[test]
+    fn grammar_issues_draw_a_double_underline_in_their_colour() {
+        use crate::plugins::spelling::{ProofingIssue, ProofingKind, GRAMMAR_COLOR};
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let body = Body {
+            elements: vec![BodyElement::from_paragraph(note_test_paragraph(
+                "Their is a dog",
+                None,
+            ))],
+        };
+        renderer.configure_spelling(true, 7);
+        renderer
+            .render_header_footer_body_at(&body, 20.0, 100, true, None)
+            .unwrap();
+        let request = renderer
+            .take_pending_spelling()
+            .into_iter()
+            .find(|request| request.text.contains("Their"))
+            .unwrap();
+        assert!(renderer.apply_proofing_issues(
+            7,
+            &request.key,
+            &[ProofingIssue {
+                start: 0,
+                end: 5,
+                kind: ProofingKind::Grammar,
+            }],
+        ));
+        assert!(
+            !renderer.apply_proofing_issues(6, &request.key, &[]),
+            "stale"
+        );
+        painter.clear();
+        renderer
+            .render_header_footer_body_at(&body, 20.0, 100, true, None)
+            .unwrap();
+        let ops = painter.ops();
+        let at = ops
+            .iter()
+            .position(|op| *op == Op::SetStrokeStyle(GRAMMAR_COLOR.into()))
+            .expect("drawn in the grammar colour");
+        let lines = ops[at..]
+            .iter()
+            .take_while(|op| !matches!(op, Op::Restore))
+            .filter(|op| matches!(op, Op::Stroke))
+            .count();
+        assert!(lines >= 1, "{:?}", &ops[at..]);
+        assert_eq!(renderer.spelling_state(), (true, 7));
     }
 
     #[test]

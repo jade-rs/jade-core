@@ -170,6 +170,12 @@ pub enum DecorationStyle {
         /// CSS color string.
         color: String,
     },
+    /// Draw a double straight line under the matched range — how Word
+    /// marks a grammar or style issue.
+    DoubleUnderline {
+        /// CSS color string.
+        color: String,
+    },
 }
 
 /// Reads a configuration blob out of guest memory and hands it to

@@ -102,8 +102,8 @@ fn shows_text(paragraph: &Paragraph, options: &Options) -> bool {
     paragraph.runs.iter().any(|run| {
         !run.text.is_empty()
             && !run_is_hidden_revision(run, options.render_changes, options.render_original)
-            && !(options.render_changes
-                && run
+            && (!options.render_changes
+                || !run
                     .revision
                     .as_ref()
                     .is_some_and(|mark| options.revision_view().drops(mark)))

@@ -4438,8 +4438,10 @@ where
         let context = &painter;
         // The shared cell layout supplies every advance; painting does not measure spelling ranges.
         for decoration in decorations {
-            let crate::plugins::DecorationStyle::Squiggly { color } = &decoration.style else {
-                continue;
+            let (color, double) = match &decoration.style {
+                crate::plugins::DecorationStyle::Squiggly { color } => (color, false),
+                crate::plugins::DecorationStyle::DoubleUnderline { color } => (color, true),
+                _ => continue,
             };
             let mut spans: Vec<(f64, f64)> = Vec::new();
             for glyph in &line.glyphs {
@@ -4457,6 +4459,19 @@ where
                 spans.push((x0, x1));
             }
             for (x0, x1) in spans {
+                if double {
+                    crate::draw_command::executor::execute_underline(
+                        context,
+                        x0,
+                        line_top + line_height * 0.8,
+                        x1 - x0,
+                        12.0,
+                        color,
+                        Some("double"),
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                    continue;
+                }
                 self.draw_colored_squiggly(
                     context,
                     x0,
