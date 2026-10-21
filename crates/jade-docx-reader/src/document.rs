@@ -361,6 +361,21 @@ impl Document {
         }
     }
 
+    /// Whether a section's footnotes sit right under its text
+    /// (`w:footnotePr/w:pos="beneathText"`) rather than at the page bottom.
+    pub fn resolved_footnote_beneath_text(&self, section_index: Option<usize>) -> bool {
+        let section = match section_index {
+            Some(index) if !self.sections.is_empty() => self
+                .sections
+                .get(index)
+                .and_then(|section| section.properties.as_ref()),
+            _ => self.default_section.as_ref(),
+        };
+        section
+            .and_then(|section| section.footnote_beneath_text)
+            .unwrap_or(false)
+    }
+
     /// Resolves section placement over the document-wide endnote default.
     pub fn resolved_endnote_position(&self, section_index: Option<usize>) -> EndnotePosition {
         let section = match section_index {
@@ -5828,6 +5843,11 @@ pub struct SectionProperties {
     /// Section-wide endnote placement (`w:endnotePr/w:pos`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endnote_position: Option<EndnotePosition>,
+    /// Footnote placement (`w:footnotePr/w:pos`, §17.11.21): `Some(true)`
+    /// for `beneathText` — the notes right under the page's last line —
+    /// `Some(false)` for `pageBottom`, the default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub footnote_beneath_text: Option<bool>,
     /// Vertical justification of the section's text on the page
     /// (`w:vAlign`, ECMA-376 Part 1 §17.6.22 — ST_VerticalJc). One of
     /// `top` (default), `center`, `both` (justified), or `bottom`,
