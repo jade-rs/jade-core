@@ -528,6 +528,24 @@ impl WordDocument {
     }
 }
 
+impl WordDocument {
+    /// The names of the package's parts, as a save would write them: for
+    /// ドキュメント検査, which counts custom XML among them.
+    pub fn package_part_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .package
+            .as_ref()
+            .map(|package| package.files.keys().cloned().collect())
+            .unwrap_or_default();
+        names.extend(self.parts.keys().cloned());
+        names.extend(self.binary_parts.keys().cloned());
+        names.retain(|name| !self.removed_parts.contains(name));
+        names.sort();
+        names.dedup();
+        names
+    }
+}
+
 /// The formatting 文書の比較 compares: what a reader sees of a run.
 fn visible_formatting(properties: Option<&RunProperties>) -> RunProperties {
     let Some(properties) = properties else {
@@ -1016,6 +1034,21 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(same.mark_formatting_differences(&original, "Ann", "x"), 0);
+    }
+
+    #[test]
+    fn package_part_names_list_what_a_save_writes() {
+        let document = executor::block_on(WordDocument::load(
+            &docx_with_body("<w:p/>"),
+            &Options::default(),
+        ))
+        .unwrap();
+        let names = document.package_part_names();
+        assert!(
+            names.contains(&"word/document.xml".to_string()),
+            "{names:?}"
+        );
+        assert!(names.contains(&"_rels/.rels".to_string()), "{names:?}");
     }
 
     fn picture(document: &WordDocument) -> FloatingObjectTarget {
