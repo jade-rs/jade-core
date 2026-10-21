@@ -35,7 +35,7 @@ fn marks_show_by_kind() {
         })
         .unwrap();
     let spaces = document.page_pixels(0).unwrap().0;
-    assert_ne!(plain, spaces, "the space's dot is drawn");
+    assert!(plain != spaces, "the space's dot is drawn");
     document
         .set_formatting_mark_kinds(FormattingMarkKinds {
             tabs: true,
@@ -43,12 +43,15 @@ fn marks_show_by_kind() {
         })
         .unwrap();
     let tabs = document.page_pixels(0).unwrap().0;
-    assert_ne!(plain, tabs, "the tab's arrow is drawn");
-    assert_ne!(spaces, tabs);
+    assert!(plain != tabs, "the tab's arrow is drawn");
+    assert!(spaces != tabs);
     document
         .set_formatting_mark_kinds(FormattingMarkKinds::default())
         .unwrap();
-    assert_eq!(document.page_pixels(0).unwrap().0, plain, "and gone again");
+    assert!(
+        document.page_pixels(0).unwrap().0 == plain,
+        "and gone again"
+    );
 }
 
 #[test]
@@ -97,7 +100,7 @@ fn anchors_show_in_the_margin() {
         })
         .unwrap();
     let anchored = document.page_pixels(0).unwrap();
-    assert_ne!(plain.0, anchored.0, "the anchor is drawn");
+    assert!(plain.0 != anchored.0, "the anchor is drawn");
     // Only in the left margin: everything right of it is as it was.
     let (width, scale) = (
         plain.1 as usize,

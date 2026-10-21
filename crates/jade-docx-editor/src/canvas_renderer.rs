@@ -21704,6 +21704,26 @@ where
                     commands_out.as_deref_mut(),
                 );
             }
+            // スペース, タブ and 任意指定のハイフン marks, over the laid-out
+            // line.
+            // Inside the line's clip, as its text is, so a line painted again
+            // takes them as its text does.
+            if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
+                && draw_enabled
+                && !self.measuring_keep_next
+            {
+                let segments: Vec<&TextSegment> = prepared_segments
+                    .iter()
+                    .map(|prepared| prepared.segment)
+                    .collect();
+                self.draw_whitespace_marks(
+                    &segments,
+                    &line_layout,
+                    baseline,
+                    commands_out.as_deref_mut(),
+                )?;
+            }
+
             if draw_enabled {
                 context.restore();
                 // The line's first run sets its font inside this save, so the
@@ -21808,23 +21828,6 @@ where
                         });
                     }
                 }
-            }
-
-            // スペース, タブ and 任意指定のハイフン marks, over the laid-out
-            // line.
-            if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
-                && !self.measuring_keep_next
-            {
-                self.draw_whitespace_marks(
-                    &line_layout,
-                    text,
-                    base_offset,
-                    baseline,
-                    prepared_segments
-                        .first()
-                        .and_then(|prepared| prepared.segment.properties.as_deref()),
-                    commands_out.as_deref_mut(),
-                )?;
             }
 
             // Keep the logical caret extent in the same coordinate space as
@@ -30085,61 +30088,81 @@ where
     #[allow(clippy::too_many_arguments)]
     fn draw_whitespace_marks(
         &mut self,
+        segments: &[&TextSegment],
         line: &SelectionLineLayout,
-        text: &str,
-        base_offset: usize,
         baseline: f64,
-        properties: Option<&RunProperties>,
         mut commands_out: Option<&mut Vec<DrawCommand>>,
     ) -> Result<(), JsValue> {
-        let mut marks: Vec<(&'static str, f64, f64)> = Vec::new();
-        let char_at = |offset: usize| -> Option<char> {
-            offset
-                .checked_sub(base_offset)
-                .and_then(|local| text.get(local..))
-                .and_then(|rest| rest.chars().next())
-        };
+        // Each mark in the font of the run it marks, found through the
+        // segment the glyph belongs to.
+        let mut marks: Vec<(&'static str, f64, f64, Option<Rc<RunProperties>>)> = Vec::new();
         for fragment in line.fragments.iter() {
             for glyph in fragment.glyphs.iter() {
-                let symbol = match char_at(glyph.start) {
+                let Some(segment) = segments.iter().find(|segment| {
+                    segment.end.saturating_sub(segment.start) == segment.text.len()
+                        && glyph.start >= segment.start
+                        && glyph.start < segment.end
+                }) else {
+                    continue;
+                };
+                let ch = segment
+                    .text
+                    .get(glyph.start - segment.start..)
+                    .and_then(|rest| rest.chars().next());
+                let symbol = match ch {
                     Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
                     Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
                     Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
                     _ => continue,
                 };
-                marks.push((symbol, fragment.x + glyph.x, glyph.width));
+                marks.push((
+                    symbol,
+                    fragment.x + glyph.x,
+                    glyph.width,
+                    segment.properties.clone(),
+                ));
             }
         }
         if self.mark_kinds.tabs {
+            let properties = segments
+                .first()
+                .and_then(|segment| segment.properties.clone());
             for tab in line.tab_stops.iter() {
-                marks.push(("\u{2192}", tab.start_x, (tab.end_x - tab.start_x).max(0.0)));
+                marks.push((
+                    "\u{2192}",
+                    tab.start_x,
+                    (tab.end_x - tab.start_x).max(0.0),
+                    properties.clone(),
+                ));
             }
         }
-        if marks.is_empty() {
-            return Ok(());
-        }
-        let style = self.apply_run_style(properties)?;
-        let context = self.host.painter();
-        for (symbol, x, width) in marks {
+        for (symbol, x, width, properties) in marks {
+            let style = self.apply_run_style(properties.as_deref())?;
+            let context = self.host.painter();
             // Centred in what it marks: measured first, then drawn.
             let mark_width = self.text_width_with_spacing(
                 symbol,
                 style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
                 &style,
             )?;
-            let mark_x = if symbol == "\u{2192}" {
-                x + ((width - mark_width) / 2.0).max(0.0).min(width)
-            } else {
-                x + (width - mark_width) / 2.0
+            let mark_x = x + ((width - mark_width) / 2.0).max(0.0);
+            let command = DrawCommand::ControlMark {
+                symbol: Rc::from(symbol),
+                x: mark_x,
+                baseline,
+                style: self.cmd_control_mark_style(properties.as_deref(), &style),
             };
-            self.draw_control_mark(&context, symbol, mark_x, baseline, &style)?;
+            // Drawn as its command replays, so a painted line and a cached
+            // one show the same mark.
+            if self.should_draw_current_page_for_render() {
+                context.save();
+                crate::draw_command::executor::execute_command(&context, &command)
+                    .map_err(PainterError::into_js_value)?;
+                context.restore();
+                self.invalidate_context_state_tracking();
+            }
             if let Some(buf) = commands_out.as_deref_mut() {
-                buf.push(DrawCommand::ControlMark {
-                    symbol: Rc::from(symbol),
-                    x: mark_x,
-                    baseline,
-                    style: self.cmd_control_mark_style(properties, &style),
-                });
+                buf.push(command);
             }
         }
         Ok(())
