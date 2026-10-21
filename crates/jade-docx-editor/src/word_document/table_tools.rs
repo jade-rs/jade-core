@@ -342,6 +342,11 @@ impl WordDocument {
 
     // ---- built-in table styles ---------------------------------------------
 
+    /// Whether the package has a `styles.xml` to hold table styles.
+    pub fn has_styles_part(&self) -> bool {
+        self.styles_part.is_some() && self.styles_part_path().is_some()
+    }
+
     /// Resolves a built-in table style (`Table Grid`, `Grid Table 4 - Accent
     /// 1`, …) by id or name, adding Word's definition to `styles.xml` when the
     /// package does not define it yet — as Word does the first time one is
@@ -2055,6 +2060,34 @@ mod tests {
             },
         );
         assert!(document.table_by_order(0).unwrap().resolved_style.as_ref().unwrap().borders.is_some());
+    }
+
+    #[test]
+    fn an_inserted_table_takes_table_grid_as_words_insert_does() {
+        use crate::commands::insert_table::InsertTableCommand;
+        let mut document = load(&package("<w:p><w:r><w:t>本文</w:t></w:r></w:p>", Some(NORMAL_TABLE)));
+        let before = document.export_docx().unwrap();
+        let mut executor = CommandExecutor::new();
+        let mut selection = None;
+        executor
+            .execute(
+                Box::new(InsertTableCommand::at_caret(0, 6, 2, 2, Vec::new()).with_style("Table Grid")),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .expect("insert");
+        let table = document.table_by_order(0).unwrap();
+        assert_eq!(table.style_name.as_deref(), Some("TableGrid"));
+        assert!(table.resolved_style.as_ref().unwrap().borders.is_some());
+        let exported = document.export_docx().unwrap();
+        assert!(part(&exported, "word/document.xml").contains("<w:tblStyle w:val=\"TableGrid\"/>"));
+        executor
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .expect("undo");
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/styles.xml"),
+            part(&before, "word/styles.xml")
+        );
+        assert!(document.table_by_order(0).is_none());
     }
 
     #[test]
