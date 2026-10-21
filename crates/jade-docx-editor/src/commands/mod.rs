@@ -73,6 +73,7 @@ pub mod set_font_size;
 pub mod set_header_footer_variants;
 pub mod set_highlight_color;
 pub mod set_ink_annotations;
+pub mod set_ink_drawings;
 pub mod set_note_numbering;
 pub mod set_numbering;
 pub mod set_page_borders;

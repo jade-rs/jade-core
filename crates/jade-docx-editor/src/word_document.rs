@@ -712,6 +712,9 @@ mod references;
 
 #[path = "word_document/hyphenation.rs"]
 mod hyphenation;
+
+#[path = "word_document/ink_drawing.rs"]
+pub mod ink_drawing;
 pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
@@ -7077,6 +7080,7 @@ impl WordDocument {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
                     if let Some(image) = run.image.as_mut() {
+                        Self::resolve_ink_part(image, doc_part, package, rel_map);
                         if image.data_uri.is_some() {
                             continue;
                         }
@@ -13314,6 +13318,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ink: None,
                 }),
                 text_box: None,
                 math: None,
@@ -13473,6 +13478,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ink: None,
                 }),
                 text_box: None,
                 math: None,
@@ -16918,6 +16924,7 @@ impl WordDocument {
                         behind_doc: false,
                         ..RunImageLayout::default()
                     },
+                    ink: None,
                 }),
                 text_box: None,
                 math: None,
@@ -31619,6 +31626,24 @@ impl WordDocument {
     }
 
     fn create_image_drawing_element(doc: &mut DocxXmlDocument, image: &RunImage) -> XmlElement {
+        // Word ink: the drawing over its InkML part, with its picture as the
+        // fallback.
+        if let Some(relationship_id) = image
+            .ink
+            .as_ref()
+            .and_then(|ink| ink.relationship_id.clone())
+        {
+            let plain = RunImage {
+                ink: None,
+                ..image.clone()
+            };
+            let choice = Self::create_image_drawing_element(doc, &plain);
+            let fallback = plain
+                .relationship_id
+                .is_some()
+                .then(|| Self::create_image_drawing_element(doc, &plain));
+            return Self::create_ink_alternate_content(doc, &relationship_id, choice, fallback);
+        }
         const EMU_PER_PX: f64 = 9525.0;
 
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
@@ -41166,6 +41191,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ink: None,
                         }),
                         text_box: None,
                         math: None,
@@ -41250,6 +41276,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ink: None,
                         }),
                         text_box: None,
                         math: None,
@@ -41600,6 +41627,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ink: None,
                         }),
                         text_box: None,
                         math: None,

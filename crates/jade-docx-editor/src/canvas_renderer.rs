@@ -244,6 +244,9 @@ mod advance_field_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod hyphenation_tests;
+mod ink;
+#[cfg(test)]
+mod ink_tests;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
@@ -20493,7 +20496,7 @@ where
                     .iter()
                     .filter(|advance| (line_start..=line_end).contains(&advance.offset))
                     .filter_map(|advance| advance.y_px)
-                    .last()
+                    .next_back()
                     .map_or(0.0, |y| y - top)
             } else {
                 0.0
@@ -22000,7 +22003,17 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(Some(transform.y + transform.height));
         }
-        if image.data_uri.is_some() {
+        if let Some(ink) = image.ink.as_ref().filter(|ink| !ink.traces.is_empty()) {
+            // Word ink: its strokes, not its fallback picture.
+            self.draw_ink(
+                ink,
+                draw_spec,
+                (
+                    image.width_px.unwrap_or(transform.width),
+                    image.height_px.unwrap_or(transform.height),
+                ),
+            )?;
+        } else if image.data_uri.is_some() {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
             self.draw_shape_group(group, draw_spec)?;
