@@ -28,7 +28,18 @@ const PAGE: usize = 512;
 
 /// Writes `document` as a `.doc`.
 pub fn write_doc(document: &FlowDocument) -> Result<Vec<u8>, String> {
+    write(document, false)
+}
+
+/// Writes `document` as a Word 97–2003 template (`.dot`): a `.doc` whose
+/// FIB says it is a template.
+pub fn write_dot(document: &FlowDocument) -> Result<Vec<u8>, String> {
+    write(document, true)
+}
+
+fn write(document: &FlowDocument, template: bool) -> Result<Vec<u8>, String> {
     let mut builder = Builder::new(document);
+    builder.template = template;
     let empty = FlowSection::default();
     let sections: Vec<&FlowSection> = if document.sections.is_empty() {
         vec![&empty]
@@ -118,6 +129,8 @@ struct Builder {
     lists: Vec<[Option<bool>; 9]>,
     /// The list the paragraphs being written continue.
     current_list: Option<usize>,
+    /// fDot: the file is a template.
+    template: bool,
 }
 
 fn push_sprm(grpprl: &mut Vec<u8>, sprm: u16, operand: &[u8]) {
@@ -202,6 +215,7 @@ impl Builder {
             shapes: 0,
             lists: Vec::new(),
             current_list: None,
+            template: false,
         }
     }
 
@@ -819,7 +833,8 @@ impl Builder {
         fib.extend_from_slice(&lid.to_le_bytes());
         fib.extend_from_slice(&0u16.to_le_bytes());
         // fWhichTblStm and fExtChar, and fHasPic when there are pictures.
-        let flags: u16 = 0x0200 | 0x1000 | if self.has_pictures { 0x0008 } else { 0 };
+        let pictures: u16 = if self.has_pictures { 0x0008 } else { 0 };
+        let flags: u16 = 0x0200 | 0x1000 | pictures | u16::from(self.template);
         fib.extend_from_slice(&flags.to_le_bytes());
         fib.extend_from_slice(&0x00BFu16.to_le_bytes());
         fib.extend_from_slice(&0u32.to_le_bytes());
