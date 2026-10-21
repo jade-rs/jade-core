@@ -16,7 +16,7 @@ pub struct AltText {
     pub decorative: bool,
 }
 
-fn local(name: &str) -> &str {
+pub(super) fn local(name: &str) -> &str {
     name.rsplit(':').next().unwrap_or(name)
 }
 
@@ -228,7 +228,7 @@ pub struct ParagraphFormatChange {
     pub date: Option<String>,
 }
 
-fn child<'a>(element: &'a XmlElement, name: &str) -> Option<&'a XmlElement> {
+pub(super) fn child<'a>(element: &'a XmlElement, name: &str) -> Option<&'a XmlElement> {
     element.children.iter().find_map(|node| match node {
         XmlNode::Element(child) if local(&child.name) == name => Some(child),
         _ => None,
@@ -717,7 +717,7 @@ impl WordDocument {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use futures::executor;
 
@@ -742,7 +742,7 @@ mod tests {
         zip.finish().unwrap().into_inner()
     }
 
-    fn docx_with_body(body: &str) -> Vec<u8> {
+    pub(in crate::word_document) fn docx_with_body(body: &str) -> Vec<u8> {
         let document = format!(
             r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}<w:sectPr/></w:body></w:document>"#
         );

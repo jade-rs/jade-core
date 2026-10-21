@@ -120,10 +120,45 @@ impl Command for TableStructureCommand {
                 template_row,
             } => ctx
                 .document
-                .insert_table_row(self.table_order_index, row_index, template_row),
-            TableStructureOp::DeleteRow { row_index } => ctx
-                .document
-                .delete_table_row(self.table_order_index, row_index),
+                .insert_table_row(self.table_order_index, row_index, template_row)
+                .and_then(|()| {
+                    // With changes tracked the new row is an insertion.
+                    match ctx
+                        .document
+                        .new_row_revision(jade_docx_reader::RevisionKind::Inserted)
+                    {
+                        Some(mark) => ctx.document.set_table_row_revision(
+                            self.table_order_index,
+                            row_index,
+                            Some(mark),
+                        ),
+                        None => Ok(()),
+                    }
+                }),
+            TableStructureOp::DeleteRow { row_index } => {
+                // With changes tracked the row stays, marked deleted — unless
+                // it is itself a tracked insertion, which simply goes.
+                let inserted = ctx
+                    .document
+                    .table_by_order(self.table_order_index)
+                    .and_then(|table| table.rows.get(row_index))
+                    .and_then(|row| row.revision.as_deref())
+                    .is_some_and(|mark| !mark.is_deletion());
+                match ctx
+                    .document
+                    .new_row_revision(jade_docx_reader::RevisionKind::Deleted)
+                    .filter(|_| !inserted)
+                {
+                    Some(mark) => ctx.document.set_table_row_revision(
+                        self.table_order_index,
+                        row_index,
+                        Some(mark),
+                    ),
+                    None => ctx
+                        .document
+                        .delete_table_row(self.table_order_index, row_index),
+                }
+            }
             TableStructureOp::InsertColumn {
                 column_index,
                 width,
@@ -265,6 +300,7 @@ mod tests {
 
     fn make_row(texts: &[&str]) -> TableRow {
         TableRow {
+            revision: None,
             cells: texts.iter().map(|text| make_cell(text)).collect(),
             style: StyleMap::default(),
             class_name: None,

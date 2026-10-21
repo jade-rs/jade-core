@@ -259,6 +259,7 @@ mod tests {
     fn make_table(texts: &[&str]) -> Table {
         Table {
             rows: vec![TableRow {
+                revision: None,
                 cells: texts.iter().map(|text| make_cell(text)).collect(),
                 style: StyleMap::default(),
                 class_name: None,

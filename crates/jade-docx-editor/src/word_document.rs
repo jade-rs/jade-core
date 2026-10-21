@@ -711,6 +711,9 @@ mod review_tools;
 pub use protection::{
     hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
 };
+#[path = "word_document/table_revisions.rs"]
+mod table_revisions;
+pub use table_revisions::RowRevision;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 pub(crate) use review_tools::PARAGRAPH_FORMAT_COMMANDS;
@@ -11200,7 +11203,16 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        self.apply_revision_decision(
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // Rows are found before the paragraphs are decided, and taken out
+        // or unmarked after, by their places then.
+        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
+        let decided = self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11208,7 +11220,8 @@ impl WordDocument {
             id_filter,
             targets,
             true,
-        )
+        )?;
+        Ok(decided + self.decide_rows(rows)?)
     }
 
     /// [`Self::decide_revisions`] for a caller that puts the document back
@@ -11224,7 +11237,16 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        self.apply_revision_decision(
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // Rows are found before the paragraphs are decided, and taken out
+        // or unmarked after, by their places then.
+        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
+        let decided = self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11232,7 +11254,8 @@ impl WordDocument {
             id_filter,
             targets,
             false,
-        )
+        )?;
+        Ok(decided + self.decide_rows(rows)?)
     }
 
     /// What [`Self::decide_revisions`] would change: the package, the
@@ -11248,6 +11271,19 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> EditScope {
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // A row taken out changes the paragraphs after it.
+        if !self
+            .rows_to_decide(accept, kind_filter, id_filter, range, targets)
+            .is_empty()
+        {
+            return EditScope::Document;
+        }
         let paragraph_count = self.paragraph_count();
         let Ok(bounds) = self.revision_decision_bounds(start_paragraph, end_paragraph, targets)
         else {
@@ -23487,6 +23523,7 @@ impl WordDocument {
         Table {
             rows: (0..rows)
                 .map(|_| TableRow {
+                    revision: None,
                     cells: (0..columns)
                         .map(|column| {
                             Self::new_empty_table_cell_with_width(
@@ -49553,6 +49590,7 @@ mod tests {
 
         let table = Table {
             rows: vec![TableRow {
+                revision: None,
                 cells: vec![TableCell {
                     blocks: vec![BodyElement::from_paragraph(make_paragraph("Cell"))],
                     style: StyleMap::default(),
