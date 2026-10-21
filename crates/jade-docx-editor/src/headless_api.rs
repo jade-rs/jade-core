@@ -1667,6 +1667,49 @@ fn applied_snapshot_transform(
     }
 }
 
+/// Refuses a batch that would type into a content control whose contents
+/// cannot be edited, delete one that cannot be deleted, change a group's
+/// fixed text, or edit outside the forms of a document protected for them.
+fn refuse_locked_edits(
+    word_doc: &WordDocument,
+    commands: &[HeadlessCommand],
+) -> Result<(), HeadlessApiApplyError> {
+    for (index, command) in commands.iter().enumerate() {
+        if let Some(reason) = word_doc.headless_edit_refusal(command) {
+            return Err(HeadlessApiApplyError::Command {
+                index,
+                source: CommandError::Custom(reason.to_string()),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Text typed over a content control's placeholder, or over a form text
+/// box's whole result, replaces it as Word does — out of the placeholder's
+/// grey, inside the control or field — as one step. `None` when the batch
+/// is not that.
+fn type_over_placeholder(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    commands: &[HeadlessCommand],
+) -> Result<Option<Option<SelectionRange>>, HeadlessApiApplyError> {
+    let [command] = commands else {
+        return Ok(None);
+    };
+    let Some(action) = word_doc.placeholder_replacement(command) else {
+        return Ok(None);
+    };
+    let range = selection.unwrap_or_else(|| SelectionRange::collapsed(TextPosition::new(0, 0)));
+    let mut selection = Some(range);
+    let mut ctx = CommandContext::new(word_doc, &mut selection);
+    command_executor
+        .execute(Box::new(action.command(range)), &mut ctx)
+        .map_err(|source| HeadlessApiApplyError::Command { index: 0, source })?;
+    Ok(Some(selection))
+}
+
 /// Applies text commands whose coordinates all refer to the document state at
 /// the start of the batch.
 ///
@@ -1682,6 +1725,12 @@ pub fn apply_snapshot_headless_commands_with_executor_to_document(
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
+    }
+    refuse_locked_edits(word_doc, &request.commands)?;
+    if let Some(selection) =
+        type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
+    {
+        return Ok(selection);
     }
 
     let mut available_sources = word_doc
@@ -1856,6 +1905,12 @@ pub fn apply_headless_commands_with_executor_to_document(
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
+    }
+    refuse_locked_edits(word_doc, &request.commands)?;
+    if let Some(selection) =
+        type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
+    {
+        return Ok(selection);
     }
 
     for (index, command) in request.commands.iter().enumerate() {
