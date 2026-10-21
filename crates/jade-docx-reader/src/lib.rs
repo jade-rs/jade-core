@@ -6,6 +6,7 @@ pub mod document;
 pub mod docx_xml;
 pub mod embedded_font;
 pub mod field_datetime;
+pub mod field_format;
 pub mod font_table;
 pub mod numbering;
 pub mod package_limits;
