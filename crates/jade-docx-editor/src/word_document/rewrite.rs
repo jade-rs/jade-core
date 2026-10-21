@@ -237,3 +237,41 @@ pub(crate) fn xml_escape(text: &str) -> String {
     }
     escaped
 }
+
+/// An element as XML text: its attributes, children and text escaped.
+pub(crate) fn element_xml(element: &XmlElement) -> String {
+    fn write(element: &XmlElement, out: &mut String) {
+        out.push('<');
+        out.push_str(&element.name);
+        for attribute in &element.attributes {
+            out.push(' ');
+            out.push_str(&attribute.name);
+            out.push_str("=\"");
+            out.push_str(&xml_escape(&attribute.value));
+            out.push('"');
+        }
+        if element.children.is_empty() {
+            out.push_str("/>");
+            return;
+        }
+        out.push('>');
+        for node in &element.children {
+            match node {
+                XmlNode::Element(child) => write(child, out),
+                XmlNode::Text(text) => out.push_str(&xml_escape(text)),
+                XmlNode::CData(data) => {
+                    out.push_str("<![CDATA[");
+                    out.push_str(data);
+                    out.push_str("]]>");
+                }
+                XmlNode::Comment(_) => {}
+            }
+        }
+        out.push_str("</");
+        out.push_str(&element.name);
+        out.push('>');
+    }
+    let mut out = String::new();
+    write(element, &mut out);
+    out
+}

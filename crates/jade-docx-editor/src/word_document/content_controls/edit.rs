@@ -1164,6 +1164,47 @@ impl WordDocument {
     }
 }
 
+/// Where in the XML a model position of a paragraph is — an element and
+/// the index among its children — splitting a run there when it falls in
+/// one, and out of a field result or a control at their edges.
+pub(crate) fn place_at(
+    xml: &mut DocxXmlDocument,
+    places: &ModelPlaces,
+    paragraph_id: XmlNodeId,
+    paragraph: usize,
+    offset: usize,
+) -> Result<(XmlNodeId, usize), String> {
+    let mut runs = ParagraphRuns::new(xml, places, paragraph_id, paragraph);
+    let mark = split_at(xml, &mut runs, offset)?;
+    mark.location(xml)
+        .ok_or_else(|| "no place in the paragraph".to_string())
+}
+
+/// The properties of the last run before `index` among `parent`'s
+/// children, for new runs to take the format of the text before them.
+pub(crate) fn run_properties_before(
+    xml: &DocxXmlDocument,
+    parent: XmlNodeId,
+    index: usize,
+) -> Option<XmlElement> {
+    let parent = xml.element(parent)?;
+    parent.children[..index.min(parent.children.len())]
+        .iter()
+        .rev()
+        .find_map(|node| match node {
+            XmlNode::Element(run) if run.name == "w:r" => {
+                child(Some(run), "w:rPr").cloned().or(Some(XmlElement {
+                    id: XmlNodeId::new(0),
+                    name: "w:rPr".to_string(),
+                    attributes: Vec::new(),
+                    children: Vec::new(),
+                }))
+            }
+            _ => None,
+        })
+        .filter(|properties| !properties.children.is_empty())
+}
+
 /// A glossary document's building block.
 struct GlossaryPart {
     name: String,
@@ -1433,7 +1474,7 @@ fn split_run(xml: &mut DocxXmlDocument, id: XmlNodeId, at: usize) -> Option<XmlN
     };
     let mut first_children: Vec<XmlNode> = properties
         .clone()
-        .map(|properties| XmlNode::Element(properties))
+        .map(XmlNode::Element)
         .into_iter()
         .collect();
     first_children.push(text_element(xml, head));

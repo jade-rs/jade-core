@@ -114,7 +114,6 @@ fn type_text(
                 offset,
                 text: text.to_string(),
             }],
-            ..Default::default()
         },
     )
     .map(|_| ())
@@ -200,7 +199,6 @@ fn locks_refuse_typing_and_deleting() {
                 end_offset: 13,
                 text: String::new(),
             }],
-            ..Default::default()
         },
     );
     assert!(refused.is_err());
@@ -217,7 +215,6 @@ fn locks_refuse_typing_and_deleting() {
                 direction: HeadlessDeleteDirection::Backward,
                 count: 1,
             }],
-            ..Default::default()
         },
     );
     assert!(backspace.is_err());
@@ -232,7 +229,6 @@ fn locks_refuse_typing_and_deleting() {
                 offset: 8,
                 count: 1,
             }],
-            ..Default::default()
         },
     );
     assert!(enter.is_err());
@@ -810,7 +806,6 @@ fn a_headless_replacement_of_a_placeholder_types_into_the_control() {
                 end_offset: control.end.offset,
                 text: "あ".to_string(),
             }],
-            ..Default::default()
         },
     )
     .expect("typed over");
