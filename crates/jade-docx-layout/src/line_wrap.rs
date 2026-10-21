@@ -222,6 +222,9 @@ pub struct ParagraphStyle {
     /// Whether a negative first-line indent contributes the implicit custom
     /// tab stop required by OOXML `w:ind/@w:hanging`.
     pub use_hanging_indent_tab_stop: bool,
+    /// A justified line that ends in a manual line break is spread like any
+    /// other: Word does so unless the document sets `doNotExpandShiftReturn`.
+    pub expand_lines_ending_in_breaks: bool,
     pub east_asian_rules: EastAsianLineBreakingRules,
     pub enable_line_break_rules: bool,
     pub doc_grid_snap_to_chars: bool,
@@ -274,6 +277,7 @@ impl Default for ParagraphStyle {
             default_tab_width: points_to_px(DEFAULT_TAB_WIDTH_PT),
             tab_origin_offset: 0.0,
             use_hanging_indent_tab_stop: true,
+            expand_lines_ending_in_breaks: false,
             east_asian_rules: EastAsianLineBreakingRules::default(),
             enable_line_break_rules: false,
             doc_grid_snap_to_chars: false,
@@ -3008,7 +3012,16 @@ impl WrappedLine {
     /// edge. The trailing separator keeps its natural advance outside that
     /// edge. Consumers retain these cluster positions for painting and carets.
     pub fn justify_word_spaces_to_width(&mut self, available_width: f64) {
-        if self.break_kind != LineBreakKind::Soft || !self.tab_stops.is_empty() {
+        self.justify_word_spaces_to_width_with(available_width, false);
+    }
+
+    /// [`Self::justify_word_spaces_to_width`], spreading a line that ends in a
+    /// manual line break too when `expand_breaks` (see
+    /// [`ParagraphStyle::expand_lines_ending_in_breaks`]).
+    pub fn justify_word_spaces_to_width_with(&mut self, available_width: f64, expand_breaks: bool) {
+        let justified_break = self.break_kind == LineBreakKind::Soft
+            || expand_breaks && self.break_kind == LineBreakKind::Hard;
+        if !justified_break || !self.tab_stops.is_empty() {
             return;
         }
         let interior_end = self

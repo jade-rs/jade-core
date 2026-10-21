@@ -243,6 +243,8 @@ where
 mod art_borders;
 pub(crate) use art_borders::art_border_name;
 mod border_styles;
+#[cfg(test)]
+mod compat_tests;
 mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
@@ -3565,6 +3567,11 @@ where
     document_snap_to_grid_default: bool,
     document_default_tab_width: Option<f64>,
     document_no_tab_hanging_indent: bool,
+    /// Whether justified lines ending in a manual break are spread (no
+    /// `doNotExpandShiftReturn`).
+    document_expands_shift_return: bool,
+    /// `ulTrailSpace`: spaces at a line's end are underlined.
+    document_underlines_trailing_spaces: bool,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -8033,6 +8040,8 @@ where
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
+            document_expands_shift_return: false,
+            document_underlines_trailing_spaces: false,
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -13071,6 +13080,8 @@ where
         // built-in default for every document.
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
+        self.document_expands_shift_return = !document.compat.do_not_expand_shift_return();
+        self.document_underlines_trailing_spaces = document.compat.underline_trailing_spaces();
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
         let new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
@@ -16513,6 +16524,7 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        paragraph_style.expand_lines_ending_in_breaks = self.document_expands_shift_return;
         let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
@@ -19902,7 +19914,10 @@ where
         }
 
         let distribute_justification_to_whitespace =
-            |prepared_segments: &mut [PreparedSegment<'_, '_>], extra_total: f64| -> f64 {
+            |prepared_segments: &mut [PreparedSegment<'_, '_>],
+             extra_total: f64,
+             soft_break: bool|
+             -> f64 {
                 if extra_total <= 0.0 {
                     return 0.0;
                 }
@@ -19957,8 +19972,10 @@ where
                     opportunities
                         .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
                 }
+                // A line ending in a manual break has no trailing break
+                // space: its last space is dropped only when nothing follows.
                 if matches!(opportunities.last(), Some(&(last_segment, last_glyph))
-                    if !mac || only_whitespace_from(last_segment, last_glyph + 1))
+                    if !mac && soft_break || only_whitespace_from(last_segment, last_glyph + 1))
                 {
                     opportunities.pop();
                 }
@@ -20670,7 +20687,9 @@ where
 
             let available_for_line = right_limit - (base_x + first_line_offset);
             let justify = is_justified_alignment(&paragraph_style.alignment)
-                && matches!(break_kind, LineBreakKind::Soft);
+                && (matches!(break_kind, LineBreakKind::Soft)
+                    || paragraph_style.expand_lines_ending_in_breaks
+                        && matches!(break_kind, LineBreakKind::Hard));
 
             let has_inline_objects = wrapped_line
                 .clusters
@@ -21088,6 +21107,7 @@ where
                     distribute_justification_to_whitespace(
                         prepared_segments.as_mut_slice(),
                         extra_total,
+                        matches!(break_kind, LineBreakKind::Soft),
                     )
                 } else {
                     0.0
@@ -21268,6 +21288,19 @@ where
                 })
                 .collect::<Vec<_>>();
             let character_borders = merge_character_border_fragments(&character_border_fragments);
+            // Where the line's trailing spaces start, as (segment, x within
+            // it): Word underlines them only under `ulTrailSpace`.
+            let trailing_spaces_from = (!self.document_underlines_trailing_spaces)
+                .then(|| {
+                    trailing_whitespace_start(prepared_segments.iter().map(|prepared| {
+                        (
+                            prepared.segment.text.as_str(),
+                            prepared.glyph_steps.as_slice(),
+                            prepared.width,
+                        )
+                    }))
+                })
+                .flatten();
             for (segment_index, (prepared, start_x)) in
                 prepared_segments.iter().zip(positions.iter()).enumerate()
             {
@@ -21470,12 +21503,21 @@ where
                         .underline_color
                         .clone()
                         .unwrap_or_else(|| text_style.fill_color.clone());
+                    let underline_end = match trailing_spaces_from {
+                        Some((segment, _)) if segment_index > segment => 0.0,
+                        Some((segment, x)) if segment_index == segment => x,
+                        _ => f64::INFINITY,
+                    };
                     for (offset, underline_width) in underline_spans_for_planned_glyphs(
                         style.underline_kind.as_deref(),
                         &prepared.segment.text,
                         &prepared.glyph_steps,
                         width,
                     ) {
+                        let underline_width = underline_width.min(underline_end - offset);
+                        if underline_width <= 0.0 {
+                            continue;
+                        }
                         let underline_x = *start_x + offset;
                         self.draw_underline(
                             &context,
@@ -34009,6 +34051,30 @@ fn word_only_underline_spans(glyphs: &[(f64, bool)], segment_width: f64) -> Vec<
         }
     }
     spans
+}
+
+/// Where a line's trailing whitespace starts: the segment holding the first
+/// trailing blank and the x within it. `None` when the line ends in ink.
+fn trailing_whitespace_start<'a>(
+    segments: impl DoubleEndedIterator<Item = (&'a str, &'a [PlannedGlyphLayoutStep], f64)>
+        + ExactSizeIterator,
+) -> Option<(usize, f64)> {
+    let mut trailing = None;
+    for (index, (text, steps, width)) in segments.enumerate().rev() {
+        let last_ink = steps
+            .iter()
+            .rposition(|step| !step.text(text).chars().all(char::is_whitespace));
+        match last_ink {
+            Some(ink) => {
+                let end = steps.get(ink + 1).map_or(width, |next| next.x_offset);
+                return (end < width - 1e-6 || trailing.is_some())
+                    .then_some((index, end.min(width)));
+            }
+            None if steps.is_empty() && width <= 0.0 => {}
+            None => trailing = Some((index, 0.0)),
+        }
+    }
+    trailing
 }
 
 fn underline_spans_for_planned_glyphs(

@@ -69,6 +69,12 @@ pub struct Document {
     /// lines in table cells. Absent, table cells ignore the line grid.
     #[serde(default)]
     pub adjust_line_height_in_table: bool,
+    /// `w:compat`: every compatibility setting and legacy layout option.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::settings::CompatOptions::is_empty"
+    )]
+    pub compat: crate::settings::CompatOptions,
     /// Effective `w:docDefaults/w:rPrDefault/w:rPr/w:sz` font size in points.
     /// Empty paragraphs need this value even though they contain no run to
     /// carry the materialized style cascade.

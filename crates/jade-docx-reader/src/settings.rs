@@ -139,7 +139,83 @@ pub struct DocumentSettings {
     /// case-insensitive lookup Word applies to `DOCVARIABLE` instructions.
     #[serde(default)]
     pub document_variables: HashMap<String, String>,
+    /// Everything `w:compat` says: every `w:compatSetting` and every legacy
+    /// layout option, read whether jade acts on it or not.
+    #[serde(default)]
+    pub compat: CompatOptions,
 }
+
+/// The `w:compat` element (ECMA-376 Part 1 §17.15.1.21, §17.15.3).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompatOptions {
+    /// Every `w:compatSetting` as `(w:name, w:val)`, in document order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub settings: Vec<(String, String)>,
+    /// Every other child of `w:compat` (the legacy options such as
+    /// `spaceForUL`) as `(local name, on)`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<(String, bool)>,
+}
+
+impl CompatOptions {
+    pub fn is_empty(&self) -> bool {
+        self.settings.is_empty() && self.options.is_empty()
+    }
+
+    /// Whether the legacy option `name` is present and on.
+    pub fn option(&self, name: &str) -> bool {
+        self.options
+            .iter()
+            .rev()
+            .find(|(option, _)| option == name)
+            .is_some_and(|(_, on)| *on)
+    }
+
+    /// The value of the `w:compatSetting` named `name`.
+    pub fn setting(&self, name: &str) -> Option<&str> {
+        self.settings
+            .iter()
+            .rev()
+            .find(|(setting, _)| setting == name)
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// Whether the `w:compatSetting` named `name` is on.
+    pub fn setting_on(&self, name: &str) -> bool {
+        self.setting(name)
+            .is_some_and(|value| matches!(value, "1" | "true" | "on"))
+    }
+
+    /// `doNotExpandShiftReturn`: a justified line that ends in a manual line
+    /// break keeps its natural spacing. Without it Word spreads such a line.
+    pub fn do_not_expand_shift_return(&self) -> bool {
+        self.option("doNotExpandShiftReturn")
+    }
+
+    /// `ulTrailSpace`: spaces at the end of a line are underlined too.
+    pub fn underline_trailing_spaces(&self) -> bool {
+        self.option("ulTrailSpace")
+    }
+
+    /// `spaceForUL`: a line of underlined East Asian text reserves room for
+    /// the underline below its baseline.
+    pub fn space_for_underline(&self) -> bool {
+        self.option("spaceForUL")
+    }
+
+    /// `doNotUseHTMLParagraphAutoSpacing`: auto paragraph spacing is a fixed
+    /// amount rather than collapsing at the start and end of a table cell
+    /// the way HTML margins do.
+    pub fn do_not_use_html_paragraph_auto_spacing(&self) -> bool {
+        self.option("doNotUseHTMLParagraphAutoSpacing")
+    }
+}
+
+/// The compatibility mode Word assumes for a document that names none: the
+/// mode Word 2007 wrote implicitly, before `compatibilityMode` existed. Word
+/// opens such a file in Compatibility Mode.
+pub const UNDECLARED_COMPATIBILITY_MODE: u32 = 12;
 
 impl DocumentSettings {
     /// ISO/IEC 29500 §17.11.9: unlisted special notes must not be loaded.
@@ -210,6 +286,23 @@ impl DocumentSettings {
             b"docEnd" => Some(EndnotePosition::DocumentEnd),
             _ => None,
         }
+    }
+
+    /// A `compatSetting`'s `(w:name, w:val)`.
+    fn parse_compat_setting(
+        element: &quick_xml::events::BytesStart<'_>,
+    ) -> Option<(String, String)> {
+        let mut name = None;
+        let mut value = String::new();
+        for attr in element.attributes().flatten() {
+            let text = String::from_utf8_lossy(&attr.value).into_owned();
+            match local_name(attr.key.as_ref()) {
+                b"name" => name = Some(text),
+                b"val" => value = text,
+                _ => {}
+            }
+        }
+        Some((name?, value))
     }
 
     /// The `w:val` of a `compatSetting` named `compatibilityMode`.
@@ -434,6 +527,17 @@ impl DocumentSettings {
                             );
                         }
                     }
+                    if compat_depth > 0
+                        && !matches!(
+                            name,
+                            b"compat" | b"compatSetting" | b"characterSpacingControl"
+                        )
+                    {
+                        settings.compat.options.push((
+                            String::from_utf8_lossy(name).into_owned(),
+                            Self::parse_on_off_attribute(e.attributes().flatten()),
+                        ));
+                    }
                     if compat_depth > 0 {
                         match name {
                             b"useFELayout" => {
@@ -467,6 +571,9 @@ impl DocumentSettings {
                             b"compatSetting" => {
                                 if let Some(mode) = Self::parse_compatibility_mode(e) {
                                     settings.compatibility_mode = Some(mode);
+                                }
+                                if let Some(setting) = Self::parse_compat_setting(e) {
+                                    settings.compat.settings.push(setting);
                                 }
                             }
                             _ => {}
@@ -591,6 +698,17 @@ impl DocumentSettings {
                             );
                         }
                     }
+                    if compat_depth > 0
+                        && !matches!(
+                            name,
+                            b"compat" | b"compatSetting" | b"characterSpacingControl"
+                        )
+                    {
+                        settings.compat.options.push((
+                            String::from_utf8_lossy(name).into_owned(),
+                            Self::parse_on_off_attribute(e.attributes().flatten()),
+                        ));
+                    }
                     if compat_depth > 0 {
                         match name {
                             b"useFELayout" => {
@@ -624,6 +742,9 @@ impl DocumentSettings {
                             b"compatSetting" => {
                                 if let Some(mode) = Self::parse_compatibility_mode(e) {
                                     settings.compatibility_mode = Some(mode);
+                                }
+                                if let Some(setting) = Self::parse_compat_setting(e) {
+                                    settings.compat.settings.push(setting);
                                 }
                             }
                             _ => {}
@@ -673,6 +794,11 @@ impl DocumentSettings {
             }
         }
 
+        // Word 2007 wrote no `compatibilityMode`; Word lays such a file out
+        // as mode 12.
+        if settings.compatibility_mode.is_none() {
+            settings.compatibility_mode = Some(UNDECLARED_COMPATIBILITY_MODE);
+        }
         Ok(settings)
     }
 
@@ -1002,6 +1128,41 @@ mod tests {
         let converted = settings.to_line_breaking_settings();
         assert_eq!(converted.auto_space_de, Some(false));
         assert_eq!(converted.auto_space_dn, Some(true));
+    }
+
+    #[test]
+    fn reads_every_compat_setting_and_option_and_the_mode_word_assumes() {
+        let xml = r#"
+        <w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:compat>
+            <w:spaceForUL/>
+            <w:doNotExpandShiftReturn/>
+            <w:ulTrailSpace w:val="0"/>
+            <w:useFELayout/>
+            <w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="14"/>
+            <w:compatSetting w:name="overrideTableStyleFontSizeAndJustification" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/>
+          </w:compat>
+        </w:settings>"#;
+        let settings = DocumentSettings::from_xml(xml).expect("settings");
+        assert_eq!(settings.compatibility_mode, Some(14));
+        assert!(settings.compat.space_for_underline());
+        assert!(settings.compat.do_not_expand_shift_return());
+        assert!(!settings.compat.underline_trailing_spaces());
+        assert!(settings.compat.option("useFELayout"));
+        assert!(settings
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification"));
+        assert_eq!(settings.compat.setting("compatibilityMode"), Some("14"));
+
+        // Word 2007 wrote no mode; Word lays such a file out as mode 12.
+        let undeclared = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:compat><w:useFELayout/></w:compat></w:settings>"#,
+        )
+        .expect("settings");
+        assert_eq!(
+            undeclared.compatibility_mode,
+            Some(UNDECLARED_COMPATIBILITY_MODE)
+        );
     }
 
     #[test]
