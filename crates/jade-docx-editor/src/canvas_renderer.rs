@@ -249,12 +249,14 @@ mod recording_host;
 #[cfg(test)]
 mod section_tests;
 mod table;
+mod text_regions;
 use self::table::{
     border_edge_to_spec, layout_paragraph as table_layout_paragraph,
     layout_vertical_paragraph_with_wrap_context as table_layout_vertical_paragraph,
     parse_border_kind, BorderKind, TextAlign as TableTextAlign,
 };
 use math::{MathParagraphAlignment, MathRenderer};
+pub use text_regions::TextRegion;
 
 const PAGE_GAP_PX: f64 = 16.0;
 /// Padding (CSS px) added around the edited paragraph's band rect in "band

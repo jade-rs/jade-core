@@ -716,6 +716,13 @@ pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
 
+#[path = "word_document/content_controls.rs"]
+pub mod content_controls;
+#[path = "word_document/mail_merge.rs"]
+pub mod mail_merge;
+#[path = "word_document/rewrite.rs"]
+pub mod rewrite;
+
 /// A border change. Every edge is optional: the ones left out keep whatever
 /// they had, so switching off the inside lines does not disturb the frame.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -2271,6 +2278,7 @@ impl WordDocument {
                 // Capture unmodeled `w:rPr` children (e.g. w:lang, w:rtl) onto the
                 // model now that run node_ids are linked, so split-off run
                 // fragments (which lose node_id) can still re-emit them on export.
+                content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, raw_xml);
                 if let Some(body) = parsed_doc.body.as_mut() {
                     Self::capture_preserved_run_props(&mut body.elements, raw_xml);
                     Self::hide_last_rendered_page_breaks_from_edit_text(
@@ -2677,6 +2685,7 @@ impl WordDocument {
 
         let _ = attach_document_xml_ids(&mut parsed_doc, &raw_xml);
         attach_text_box_xml_ids(&mut parsed_doc, &raw_xml);
+        content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, &raw_xml);
         if let Some(body) = parsed_doc.body.as_mut() {
             Self::capture_preserved_run_props(&mut body.elements, &raw_xml);
         }
