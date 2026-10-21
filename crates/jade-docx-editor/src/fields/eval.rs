@@ -212,6 +212,28 @@ impl<'a> Evaluation<'a> {
     }
 
     /// The value field `index` contributes to an enclosing instruction.
+    /// A merge field's value for the recipient the merge previews, through
+    /// the mail-merge evaluator (`word_document::mail_merge::fields`); `None`
+    /// when no recipient is previewed or the field is not the merge's.
+    fn merge_value(&self, code: &FieldCode, instruction: &str) -> Option<String> {
+        const MERGE_FIELDS: [&str; 5] = [
+            "MERGEFIELD",
+            "ADDRESSBLOCK",
+            "GREETINGLINE",
+            "MERGEREC",
+            "MERGESEQ",
+        ];
+        let (request, record) = self.env.merge.as_ref()?;
+        if !MERGE_FIELDS.contains(&code.name.as_str()) {
+            return None;
+        }
+        crate::word_document::mail_merge::fields::evaluate_instruction(
+            request,
+            *record,
+            instruction,
+        )
+    }
+
     fn evaluate(&mut self, index: usize) -> String {
         if let Some(value) = &self.values[index] {
             return value.clone();
@@ -241,6 +263,8 @@ impl<'a> Evaluation<'a> {
         let locked = field.locked;
         let evaluated = if locked {
             Evaluated::Keep
+        } else if let Some(text) = self.merge_value(&code, &instruction) {
+            Evaluated::Final(text)
         } else {
             self.evaluate_code(index, &code)
         };

@@ -69,6 +69,11 @@ pub struct FieldEnvironment {
     pub read_file: Option<FileReader>,
     /// Whether results and messages are Japanese (Word's language).
     pub japanese: bool,
+    /// The merge a mail-merge main document previews, and the recipient (an
+    /// index into its records): MERGEFIELD, ADDRESSBLOCK, GREETINGLINE,
+    /// MERGEREC and MERGESEQ evaluate through the mail-merge evaluator for
+    /// it. Without one they show their «names».
+    pub merge: Option<(crate::word_document::mail_merge::MergeRequest, usize)>,
 }
 
 impl Default for FieldEnvironment {
@@ -95,6 +100,7 @@ impl Default for FieldEnvironment {
             prompt_answers: HashMap::new(),
             read_file: None,
             japanese: true,
+            merge: None,
         }
     }
 }
