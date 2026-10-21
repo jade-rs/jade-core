@@ -13,6 +13,24 @@ type ParseResult<T> = Result<T, Box<dyn std::error::Error>>;
 pub struct NumberingPart {
     pub abstract_nums: HashMap<String, AbstractNum>,
     pub numbering_instances: HashMap<String, NumberingInstance>,
+    /// Picture bullets (`w:numPicBullet`, ECMA-376 Part 1 §17.9.21) by
+    /// `w:numPicBulletId`, which a level names with `w:lvlPicBulletId`.
+    #[serde(default)]
+    pub picture_bullets: HashMap<String, PictureBullet>,
+}
+
+/// A picture a list level shows instead of its bullet glyph.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct PictureBullet {
+    /// The image's relationship in `numbering.xml`'s relationships.
+    pub relationship_id: Option<String>,
+    /// The picture's authored box, in points (`v:shape` style or
+    /// `wp:extent`), which gives its aspect.
+    pub width_pt: Option<f32>,
+    pub height_pt: Option<f32>,
+    /// The image itself, filled in by the loader that has the package.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_uri: Option<String>,
 }
 
 impl Default for NumberingPart {
@@ -52,6 +70,14 @@ pub struct NumberingLevel {
     /// Language of the numbering label from `w:lvl/w:rPr/w:lang/@w:val`.
     /// Language-dependent formats must not guess from the document body.
     pub language: Option<String>,
+    /// `w:lvlPicBulletId`: the picture bullet the level shows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture_bullet: Option<String>,
+    /// `w:isLgl` (ECMA-376 Part 1 §17.9.4): the level's text shows every
+    /// level it names in decimal — Word's 正規形式の番号を使用する, which
+    /// turns `第一章.1` into `1.1`.
+    #[serde(default)]
+    pub is_legal: bool,
 }
 
 /// Indentation offsets used when the numbering definition contributes its own
@@ -101,6 +127,7 @@ impl NumberingPart {
         Self {
             abstract_nums: HashMap::new(),
             numbering_instances: HashMap::new(),
+            picture_bullets: HashMap::new(),
         }
     }
 
@@ -112,8 +139,98 @@ impl NumberingPart {
         Ok(part)
     }
 
+    /// The `w:numPicBullet`s of a numbering part.
+    fn parse_picture_bullets(&mut self, xml: &str) {
+        let mut reader = Reader::from_str(xml);
+        reader.config_mut().trim_text(true);
+        let mut buf = Vec::new();
+        let mut current: Option<(String, PictureBullet)> = None;
+        let points = |value: &str| -> Option<f32> {
+            let value = value.trim();
+            let (number, scale) = if let Some(number) = value.strip_suffix("pt") {
+                (number, 1.0)
+            } else if let Some(number) = value.strip_suffix("in") {
+                (number, 72.0)
+            } else if let Some(number) = value.strip_suffix("px") {
+                (number, 0.75)
+            } else {
+                (value, 1.0)
+            };
+            number
+                .trim()
+                .parse::<f32>()
+                .ok()
+                .map(|number| number * scale)
+        };
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                    b"w:numPicBullet" => {
+                        current = attr_value(e, b"w:numPicBulletId")
+                            .map(|id| (id, PictureBullet::default()));
+                    }
+                    b"v:imagedata" => {
+                        if let Some((_, bullet)) = current.as_mut() {
+                            bullet.relationship_id = attr_value(e, b"r:id");
+                        }
+                    }
+                    b"a:blip" => {
+                        if let Some((_, bullet)) = current.as_mut() {
+                            bullet.relationship_id = attr_value(e, b"r:embed");
+                        }
+                    }
+                    b"v:shape" => {
+                        if let (Some((_, bullet)), Some(style)) =
+                            (current.as_mut(), attr_value(e, b"style"))
+                        {
+                            for declaration in style.split(';') {
+                                if let Some((key, value)) = declaration.split_once(':') {
+                                    match key.trim() {
+                                        "width" => bullet.width_pt = points(value),
+                                        "height" => bullet.height_pt = points(value),
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    b"wp:extent" => {
+                        if let Some((_, bullet)) = current.as_mut() {
+                            let emu = |key: &[u8]| {
+                                attr_value(e, key)
+                                    .and_then(|value| value.parse::<f32>().ok())
+                                    .map(|value| value / 12_700.0)
+                            };
+                            bullet.width_pt = emu(b"cx");
+                            bullet.height_pt = emu(b"cy");
+                        }
+                    }
+                    _ => {}
+                },
+                Ok(Event::End(ref e)) if e.name().as_ref() == b"w:numPicBullet" => {
+                    if let Some((id, bullet)) = current.take() {
+                        self.picture_bullets.insert(id, bullet);
+                    }
+                }
+                Ok(Event::Eof) | Err(_) => break,
+                _ => {}
+            }
+            buf.clear();
+        }
+    }
+
+    /// The picture a level shows for its bullet, if it shows one.
+    pub fn level_picture_bullet(&self, num_id: &str, level: u32) -> Option<&PictureBullet> {
+        let id = self
+            .get_level_info(num_id, level)?
+            .picture_bullet
+            .as_deref()?;
+        self.picture_bullets.get(id)
+    }
+
     /// Parses numbering information and mutates the existing structure.
     pub fn parse(&mut self, xml: &str) -> ParseResult<()> {
+        self.parse_picture_bullets(xml);
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
@@ -219,6 +336,8 @@ impl NumberingPart {
                         paragraph_props: None,
                         run_props: None,
                         language: None,
+                        is_legal: false,
+                        picture_bullet: None,
                     };
                     *current_level = Some(level);
                 }
@@ -256,6 +375,17 @@ impl NumberingPart {
                     if let Some(val) = attr_value(e, b"w:val") {
                         level.lvl_jc = Some(val);
                     }
+                }
+            }
+            b"w:lvlPicBulletId" => {
+                if let Some(level) = current_level.as_mut() {
+                    level.picture_bullet = attr_value(e, b"w:val");
+                }
+            }
+            b"w:isLgl" => {
+                if let Some(level) = current_level.as_mut() {
+                    level.is_legal = attr_value(e, b"w:val")
+                        .is_none_or(|value| !matches!(value.as_str(), "0" | "false" | "off"));
                 }
             }
             b"w:suff" => {
@@ -650,6 +780,8 @@ impl NumberingPart {
                 paragraph_props: None,
                 run_props,
                 language: None,
+                is_legal: false,
+                picture_bullet: None,
             }],
             preset: None,
         };
@@ -775,6 +907,9 @@ impl NumberingPart {
             .and_then(|info| info.lvl_text.clone())
             .unwrap_or(default_template);
 
+        let legal = self
+            .get_level_info(num_id, level)
+            .is_some_and(|info| info.is_legal);
         let mut result = String::new();
         let mut chars = template.chars().peekable();
 
@@ -817,7 +952,15 @@ impl NumberingPart {
                                 }
                             }
                         }
-                        let formatted = self.format_counter_value(num_id, placeholder_level, value);
+                        // A legal level writes the levels above it that
+                        // it names in decimal, whatever their own formats;
+                        // its own number keeps its format (Word's
+                        // `Section 1.01` under `Article I`).
+                        let formatted = if legal && placeholder_level != level {
+                            value.to_string()
+                        } else {
+                            self.format_counter_value(num_id, placeholder_level, value)
+                        };
                         result.push_str(&formatted);
                         continue;
                     }
@@ -1356,6 +1499,8 @@ fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel>
                 paragraph_props: None,
                 run_props,
                 language: None,
+                is_legal: false,
+                picture_bullet: None,
             }
         })
         .collect()
@@ -2679,5 +2824,85 @@ mod tests {
             numbering.format_number(second_num_id, second_level, &counter),
             "第2条"
         );
+    }
+}
+
+#[cfg(test)]
+mod legal_numbering_tests {
+    use super::{NumberingCounter, NumberingPart};
+
+    /// Word's 正規形式の番号を使用する (`w:isLgl`): a 第一章 heading's
+    /// second level reads `2.1`, not `二.1`; the level without it keeps the
+    /// first level's own format, and a legal level keeps its own (the
+    /// `Section 1.01` of Word's `Article I` list).
+    #[test]
+    fn a_legal_level_names_every_level_in_decimal() {
+        let xml = r#"
+            <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:abstractNum w:abstractNumId="7">
+                <w:lvl w:ilvl="0">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="japaneseCounting"/>
+                  <w:lvlText w:val="第%1章"/>
+                </w:lvl>
+                <w:lvl w:ilvl="1">
+                  <w:start w:val="1"/>
+                  <w:isLgl/>
+                  <w:numFmt w:val="decimal"/>
+                  <w:lvlText w:val="%1.%2"/>
+                </w:lvl>
+                <w:lvl w:ilvl="2">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="decimal"/>
+                  <w:lvlText w:val="%1-%3"/>
+                </w:lvl>
+              </w:abstractNum>
+              <w:abstractNum w:abstractNumId="8">
+                <w:lvl w:ilvl="0">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="upperRoman"/>
+                  <w:lvlText w:val="Article %1."/>
+                </w:lvl>
+                <w:lvl w:ilvl="1">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="decimalZero"/>
+                  <w:isLgl/>
+                  <w:lvlText w:val="Section %1.%2"/>
+                </w:lvl>
+              </w:abstractNum>
+              <w:num w:numId="7"><w:abstractNumId w:val="7"/></w:num>
+              <w:num w:numId="8"><w:abstractNumId w:val="8"/></w:num>
+            </w:numbering>
+        "#;
+        let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
+        assert!(numbering.get_level_info("7", 1).unwrap().is_legal);
+        assert!(!numbering.get_level_info("7", 0).unwrap().is_legal);
+        let mut counter = NumberingCounter::new();
+        for level in [0, 0, 1, 2] {
+            counter.increment_with(
+                Some(&numbering),
+                "7",
+                "7",
+                level,
+                numbering.start_value("7", level),
+                numbering.has_start_override("7", level),
+            );
+        }
+        assert_eq!(numbering.format_number("7", 0, &counter), "第二章");
+        assert_eq!(numbering.format_number("7", 1, &counter), "2.1");
+        assert_eq!(numbering.format_number("7", 2, &counter), "二-1");
+        let mut counter = NumberingCounter::new();
+        for level in [0, 0, 0, 1] {
+            counter.increment_with(
+                Some(&numbering),
+                "8",
+                "8",
+                level,
+                numbering.start_value("8", level),
+                numbering.has_start_override("8", level),
+            );
+        }
+        assert_eq!(numbering.format_number("8", 0, &counter), "Article III.");
+        assert_eq!(numbering.format_number("8", 1, &counter), "Section 3.01");
     }
 }

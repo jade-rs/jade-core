@@ -376,6 +376,7 @@ mod tests {
                 insets: Default::default(),
                 vertical_alignment: Default::default(),
                 shape: Default::default(),
+                effect_ref: None,
             }),
             math: None,
             field: None,

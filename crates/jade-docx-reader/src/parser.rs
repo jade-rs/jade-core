@@ -1689,20 +1689,15 @@ impl DocumentParser {
                                         props.theme_color = theme.clone().map(Box::new);
                                     },
                                 );
-                                for attr in e.attributes().flatten() {
-                                    if attr.key.as_ref() == b"w:val" {
-                                        let color_val =
-                                            String::from_utf8_lossy(&attr.value).to_string();
-                                        let formatted = format!("#{}", color_val);
-                                        Self::apply_to_active_run_props(
-                                            parsing_paragraph_run_props,
-                                            &mut current_paragraph_run_props,
-                                            &mut current_run_props,
-                                            |props| {
-                                                props.color = Some(Rc::from(formatted.as_str()));
-                                            },
-                                        );
-                                    }
+                                if let Some(formatted) = Self::run_color(e) {
+                                    Self::apply_to_active_run_props(
+                                        parsing_paragraph_run_props,
+                                        &mut current_paragraph_run_props,
+                                        &mut current_run_props,
+                                        |props| {
+                                            props.color = Some(Rc::from(formatted.as_str()));
+                                        },
+                                    );
                                 }
                             }
                         }
@@ -3203,20 +3198,15 @@ impl DocumentParser {
                                     props.theme_color = theme.clone().map(Box::new);
                                 },
                             );
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    let color_val =
-                                        String::from_utf8_lossy(&attr.value).to_string();
-                                    let formatted = format!("#{}", color_val);
-                                    Self::apply_to_active_run_props(
-                                        parsing_paragraph_run_props,
-                                        &mut current_paragraph_run_props,
-                                        &mut current_run_props,
-                                        |props| {
-                                            props.color = Some(Rc::from(formatted.as_str()));
-                                        },
-                                    );
-                                }
+                            if let Some(formatted) = Self::run_color(e) {
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.color = Some(Rc::from(formatted.as_str()));
+                                    },
+                                );
                             }
                         }
                     }
@@ -5049,6 +5039,7 @@ impl DocumentParser {
         let mut text_box_glow: Option<ShapeGlow> = None;
         let mut text_box_blur_radius_px: Option<f64> = None;
         let mut text_box_soft_edge_radius_px: Option<f64> = None;
+        let mut text_box_effect_ref: Option<u8> = None;
         let mut in_line_definition = false;
         let mut in_line_solid_fill = false;
         let mut in_shape_solid_fill = false;
@@ -5221,6 +5212,18 @@ impl DocumentParser {
                             }
                         }
                         b"a:effectLst" => in_effect_list = true,
+                        b"a:effectRef" => {
+                            text_box_effect_ref = e
+                                .attributes()
+                                .flatten()
+                                .find(|attribute| attribute.key.as_ref() == b"idx")
+                                .and_then(|attribute| {
+                                    String::from_utf8_lossy(&attribute.value)
+                                        .trim()
+                                        .parse()
+                                        .ok()
+                                });
+                        }
                         b"a:outerShdw" if in_effect_list => {
                             in_outer_shadow = true;
                             text_box_shadow = Some(Self::drawingml_outer_shadow(e));
@@ -5859,6 +5862,7 @@ impl DocumentParser {
                 insets: text_box_insets,
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
+                effect_ref: text_box_effect_ref,
             };
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
@@ -7496,6 +7500,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
+            effect_ref: None,
         })))
     }
 
@@ -8302,6 +8307,30 @@ impl DocumentParser {
             }
         }
         shading
+    }
+
+    /// A run's `w:color`, as `#RRGGBB` (or `#auto`): the theme colour it
+    /// names in the scheme being read, else its `w:val`.
+    fn run_color(e: &BytesStart) -> Option<String> {
+        let mut value = None;
+        let mut theme = None;
+        let mut tint = None;
+        let mut shade = None;
+        for attr in e.attributes().flatten() {
+            let text = String::from_utf8_lossy(&attr.value).to_string();
+            match attr.key.as_ref() {
+                b"w:val" => value = Some(text),
+                b"w:themeColor" => theme = Some(text),
+                b"w:themeTint" => tint = Some(text),
+                b"w:themeShade" => shade = Some(text),
+                _ => {}
+            }
+        }
+        theme
+            .and_then(|theme| {
+                crate::theme::text_theme_color(&theme, tint.as_deref(), shade.as_deref())
+            })
+            .or_else(|| value.map(|value| format!("#{value}")))
     }
 
     /// Normalizes an OOXML hex color (`RRGGBB` or `#RRGGBB`) to `#RRGGBB`.

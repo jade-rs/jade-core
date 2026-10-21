@@ -147,6 +147,72 @@ pub struct HeadlessBorderEdge {
     pub color: Option<String>,
 }
 
+/// A tab stop as Word's タブとリーダー dialog and the ruler set it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessTabStop {
+    /// From the paragraph's start edge (the page margin), in points.
+    pub position: f32,
+    /// `left` (default), `center`, `right`, `decimal` or `bar`.
+    #[serde(default)]
+    pub alignment: Option<String>,
+    /// `none` (default), `dot`, `hyphen`, `underscore`, `middleDot` or
+    /// `heavy`.
+    #[serde(default)]
+    pub leader: Option<String>,
+}
+
+/// One line of a paragraph's border box, as Word's 線種とページ罫線と網かけの
+/// 設定 dialog describes it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphBorderLine {
+    /// An `ST_Border` token: `single`, `double`, `dotted`, `dashed`,
+    /// `dashSmallGap`, `dotDash`, `thick`, `thickThinSmallGap`, `wave`, …
+    pub style: String,
+    /// Thickness in points.
+    pub width: f32,
+    /// `#RRGGBB`, or `None` for Word's 自動.
+    #[serde(default)]
+    pub color: Option<String>,
+    /// Distance from the text, in points (文字列との間隔).
+    #[serde(default)]
+    pub space: Option<f32>,
+}
+
+/// A paragraph's whole border box; a side left `None` has no line.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphBorderBox {
+    #[serde(default)]
+    pub top: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub bottom: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub left: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub right: Option<HeadlessParagraphBorderLine>,
+    /// Between paragraphs that share the box (`w:between`).
+    #[serde(default)]
+    pub between: Option<HeadlessParagraphBorderLine>,
+}
+
+/// Paragraph shading (`w:shd`): a fill under a pattern of `color`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphShading {
+    /// An `ST_Shd` token: `clear` (default, the fill alone), `solid`, `pct10`,
+    /// `horzStripe`, …
+    #[serde(default)]
+    pub pattern: Option<String>,
+    /// The pattern's colour, `#RRGGBB`, or `None` for 自動.
+    #[serde(default)]
+    pub color: Option<String>,
+    /// The background colour, `#RRGGBB`, or `None` for なし.
+    #[serde(default)]
+    pub fill: Option<String>,
+}
+
 /// Editable subset of the package-wide DrawingML document theme.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1171,6 +1237,30 @@ pub enum HeadlessCommand {
         kind: Option<HeadlessDropCapKind>,
         #[serde(default = "default_drop_cap_lines")]
         lines: u8,
+    },
+    /// Paragraph options Word sets from its タブとリーダー, 線種とページ罫線と
+    /// 網かけの設定 and 段落 dialogs. Each field left out stays as it is.
+    /// `tabs` replaces the paragraphs' effective tab stops (style tab stops
+    /// not listed are cleared); `borders` replaces the whole box; `shading`
+    /// `Some(None)` takes the shading off.
+    SetParagraphOptions {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        tabs: Option<Vec<HeadlessTabStop>>,
+        /// 同じスタイルの場合は段落間にスペースを追加しない.
+        #[serde(default)]
+        contextual_spacing: Option<bool>,
+        /// 行番号を表示しない.
+        #[serde(default)]
+        suppress_line_numbers: Option<bool>,
+        /// 段落の自動ハイフネーションを行わない.
+        #[serde(default)]
+        suppress_auto_hyphens: Option<bool>,
+        #[serde(default)]
+        borders: Option<HeadlessParagraphBorderBox>,
+        #[serde(default)]
+        shading: Option<Option<HeadlessParagraphShading>>,
     },
     /// Applies (or with `style_id: None` removes) a character style on a range.
     /// Offsets are the same rendered byte offsets the other range commands take.
@@ -2212,6 +2302,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphShading { .. } => "set_paragraph_shading",
             HeadlessCommand::SetParagraphBorders { .. } => "set_paragraph_borders",
             HeadlessCommand::SetDropCap { .. } => "set_drop_cap",
+            HeadlessCommand::SetParagraphOptions { .. } => "set_paragraph_options",
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",
