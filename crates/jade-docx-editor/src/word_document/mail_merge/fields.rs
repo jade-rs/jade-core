@@ -835,6 +835,28 @@ fn body_children(xml: &DocxXmlDocument) -> Option<&Vec<XmlNode>> {
     })
 }
 
+/// One merge field's value for a recipient, as the fields engine's update
+/// (F9) asks for it: `instruction` is the field's code with any nested
+/// fields already evaluated, `record` an index into the request's records.
+/// `None` for a field that is not the merge's.
+pub fn evaluate_instruction(
+    request: &MergeRequest,
+    record: usize,
+    instruction: &str,
+) -> Option<String> {
+    let mut env = Env {
+        request,
+        cursor: record,
+        sequence: record + 1,
+        bookmarks: HashMap::new(),
+        problems: Vec::new(),
+        skip: false,
+        mode: FieldMode::Preview,
+    };
+    let value = env.evaluate(&[Piece::Text(instruction.to_string())], "");
+    value.merge.then_some(value.text)
+}
+
 /// Rewrites the merge fields of the body for `record` (an index into the
 /// request's records): its values (preview) or the fields' «names».
 pub fn rewrite(xml: &mut DocxXmlDocument, request: &MergeRequest, record: usize, mode: FieldMode) {
