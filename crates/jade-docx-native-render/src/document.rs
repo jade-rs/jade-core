@@ -1914,6 +1914,25 @@ impl NativeDocument {
         })
     }
 
+    /// Where a caret at `(paragraph, offset)` would be, without moving the
+    /// caret or the selection there — for an overlay that marks a place,
+    /// such as the box around a master document's subdocument.
+    pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        let selection = self.selection;
+        self.renderer
+            .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
+                paragraph, offset,
+            ))));
+        let rect = self.renderer.caret_metrics().map(|metrics| CaretRect {
+            x: metrics.x,
+            document_y: metrics.absolute_top,
+            width: metrics.width.max(1.0),
+            height: metrics.height,
+        });
+        self.renderer.set_selection_range(selection);
+        rect
+    }
+
     /// The text position under a point, in the renderer's document coordinate
     /// space.
     ///
