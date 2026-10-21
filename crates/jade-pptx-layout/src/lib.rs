@@ -42,7 +42,7 @@ pub use interaction::{
 };
 pub use measure::{HeuristicMeasure, RunStyle, TextMeasure};
 pub use preset_shapes::is_known as is_known_preset;
-pub use table_style::{builtin_table_style, resolve_table_style};
+pub use table_style::{builtin_table_style, builtin_table_style_ids, resolve_table_style};
 pub use text::{format_number, PlacedLine, PlacedRun};
 pub use text_format::{text_format_for_deck_shape, TextFormatState};
 pub use text_selection::{Point, TextCaretMove, TextHit, TextSelectionGeometry};
