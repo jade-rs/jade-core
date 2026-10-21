@@ -37,6 +37,10 @@ impl InsertFieldCommand {
             HeadlessFieldKind::FileName => RunFieldKind::Unsupported {
                 instruction: "FILENAME".to_string(),
             },
+            HeadlessFieldKind::StyleRef => RunFieldKind::StyleRef {
+                style: "heading 1".to_string(),
+                from_bottom: false,
+            },
         }
     }
 }
@@ -199,6 +203,7 @@ mod tests {
             (HeadlessFieldKind::FileName, RunFieldKind::Unsupported { instruction }) => {
                 instruction.trim().eq_ignore_ascii_case("FILENAME")
             }
+            (HeadlessFieldKind::StyleRef, RunFieldKind::StyleRef { .. }) => true,
             _ => false,
         }
     }
@@ -210,6 +215,7 @@ mod tests {
             HeadlessFieldKind::Page => "PAGE",
             HeadlessFieldKind::NumPages => "NUMPAGES",
             HeadlessFieldKind::FileName => "FILENAME",
+            HeadlessFieldKind::StyleRef => "STYLEREF",
         }
     }
 

@@ -2346,6 +2346,17 @@ pub enum RunFieldKind {
     SectionPages,
     /// 1-based number of the section containing the field (`SECTION`).
     SectionNumber,
+    /// The text of the nearest paragraph in a style (`STYLEREF "name"`,
+    /// §17.16.5.66): in a header or footer, the first such paragraph on the
+    /// page (the last with `\l`), or else the nearest one before it — the
+    /// running chapter title of a dictionary-style header.
+    StyleRef {
+        /// The style as the instruction names it (`heading 1`, `見出し 1`,
+        /// or a style id).
+        style: String,
+        /// `\l`: the last paragraph on the page rather than the first.
+        from_bottom: bool,
+    },
     /// Value of a package document property (`DOCPROPERTY name`). The property
     /// name is retained exactly as written in the instruction; package lookup
     /// is ASCII case-insensitive and occurs after all OPC metadata parts load.

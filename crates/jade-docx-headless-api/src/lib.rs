@@ -612,6 +612,8 @@ pub enum HeadlessFieldKind {
     Page,
     NumPages,
     FileName,
+    /// `STYLEREF "heading 1"`: the running Heading 1 text, for a header.
+    StyleRef,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
