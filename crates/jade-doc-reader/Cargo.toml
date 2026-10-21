@@ -1,0 +1,15 @@
+[package]
+name = "jade-doc-reader"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# Word 97–2003 documents (.doc, [MS-DOC]): the compound file's WordDocument
+# and table streams read into jade-docx-convert's flow model — text and its
+# paragraphs, character formatting, tables, sections, headers and footers,
+# lists and pictures — so a .doc opens as a .docx would.
+
+[dependencies]
+jade-docx-convert = { path = "../jade-docx-convert" }
+cfb = "0.7"
+flate2 = "1"
