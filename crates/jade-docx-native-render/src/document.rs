@@ -399,6 +399,7 @@ impl NativeDocument {
         renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
+        options.set_formatting_mark_kinds(Default::default());
         options.show_crop_marks = false;
         renderer.set_spelling_export_mode(true);
         renderer.mark_full_repaint();
@@ -1217,6 +1218,24 @@ impl NativeDocument {
     /// Whether formatting marks are being drawn.
     pub fn formatting_marks(&self) -> bool {
         self.options.show_formatting_marks
+    }
+
+    /// Shows the formatting marks of some kinds whatever the ¶ toggle says
+    /// (Word のオプション → 表示 → 常に画面に表示する編集記号).
+    pub fn set_formatting_mark_kinds(
+        &mut self,
+        kinds: jade_docx_editor::FormattingMarkKinds,
+    ) -> Result<(), String> {
+        if self.options.formatting_mark_kinds() == kinds {
+            return Ok(());
+        }
+        self.options.set_formatting_mark_kinds(kinds);
+        self.repaint_all().map(|_| ())
+    }
+
+    /// The kinds shown beside the ¶ toggle.
+    pub fn formatting_mark_kinds(&self) -> jade_docx_editor::FormattingMarkKinds {
+        self.options.formatting_mark_kinds()
     }
 
     /// Sets the clock DATE and TIME fields show from the next repaint on.
