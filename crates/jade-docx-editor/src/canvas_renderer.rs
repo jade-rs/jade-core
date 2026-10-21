@@ -31694,6 +31694,29 @@ where
         Ok(())
     }
 
+    /// Installs what a render takes from a loaded document besides the body
+    /// it is handed: the style cascade and theme, the font table's substitute
+    /// names, every header/footer story, and the bookmark targets `PAGEREF`
+    /// and note references resolve to. The browser view installs these as it
+    /// loads; a host that drives the renderer itself calls this before its
+    /// first render, and on any renderer it builds for the same document.
+    ///
+    /// Without the style context a run reads only its own and its
+    /// paragraph's direct formatting: a style's character spacing, for one,
+    /// is lost, and lines break where the browser's do not. It also drops
+    /// every cached layout, so an edit that keeps the styles should resync
+    /// only what it changed.
+    pub fn sync_word_document(&mut self, document: &WordDocument) {
+        crate::canvas_view::install_document_font_substitutes(document);
+        self.set_style_context(
+            document.styles_part.clone().map(Rc::new),
+            document.loaded_theme_part().map(Rc::new),
+        );
+        self.sync_document_header_footer_stories(document);
+        self.set_bookmark_paragraphs(document.bookmark_render_map());
+        self.set_bookmark_note_targets(document.bookmark_note_targets());
+    }
+
     /// Installs every header/footer story, including section inheritance, for
     /// browser and native hosts from the same parsed document.
     pub fn sync_document_header_footer_stories(&mut self, document: &WordDocument) {
