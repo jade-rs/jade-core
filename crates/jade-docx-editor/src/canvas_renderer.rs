@@ -14588,6 +14588,14 @@ where
             }
             gutter_pt = settings.gutter.unwrap_or(0.0);
         }
+        // A sheet printed two pages up or folded into a booklet carries
+        // half-sheet pages, which is what Word lays out and shows.
+        (width_pt, height_pt) = jade_docx_layout::section_transition::folded_page_size(
+            width_pt,
+            height_pt,
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
 
         let odd_page_margins = resolve_page_margins(
             margin_left_pt,
@@ -14595,7 +14603,7 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             1,
         );
         margin_left_pt = odd_page_margins.left;
@@ -14620,7 +14628,8 @@ where
         let new_footer_distance = points_to_px(footer_distance_pt);
 
         // Clear wrap cache if layout-affecting settings have changed
-        let effective_mirror_margins = document.mirror_margins && !self.pageless_mode;
+        let effective_mirror_margins =
+            (document.mirror_margins || document.book_fold_printing) && !self.pageless_mode;
         let binding_layout_changed = !self.pageless_mode
             && (self.mirror_margins != effective_mirror_margins
                 || (self.odd_page_margin_left_pt - odd_page_margins.left).abs() > 0.01
@@ -14810,6 +14819,14 @@ where
             }
             gutter_pt = settings.gutter.unwrap_or(0.0);
         }
+        // A sheet printed two pages up or folded into a booklet carries
+        // half-sheet pages, which is what Word lays out and shows.
+        (width_pt, height_pt) = jade_docx_layout::section_transition::folded_page_size(
+            width_pt,
+            height_pt,
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
 
         let odd_page_margins = resolve_page_margins(
             margin_left_pt,
@@ -14817,7 +14834,7 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             1,
         );
         let current_page_margins = resolve_page_margins(
@@ -14826,7 +14843,7 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             self.current_page_number,
         );
         margin_left_pt = current_page_margins.left;
@@ -14891,7 +14908,7 @@ where
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
-                self.mirror_margins = document.mirror_margins;
+                self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.active_section_index = target_section_index;
                 self.record_page_section(self.current_page_number);
                 return Ok(());
@@ -14914,7 +14931,7 @@ where
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
-                self.mirror_margins = document.mirror_margins;
+                self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.record_page_section(self.current_page_number);
                 return Ok(());
             }
@@ -14944,7 +14961,7 @@ where
         self.margin_top = new_margin_top;
         self.odd_page_margin_left_pt = odd_page_margins.left;
         self.odd_page_margin_right_pt = odd_page_margins.right;
-        self.mirror_margins = document.mirror_margins;
+        self.mirror_margins = document.mirror_margins || document.book_fold_printing;
         self.margin_bottom = new_margin_bottom;
         self.header_distance = new_header_distance;
         self.footer_distance = new_footer_distance;
@@ -20312,9 +20329,7 @@ where
                 // float bands, note references and line-number state. Measurement
                 // consumes only the extent and baseline after this point.
                 self.last_line_baseline = baseline;
-                if matches!(break_kind, LineBreakKind::Page) {
-                    self.force_page_break()?;
-                }
+                self.advance_after_break(break_kind)?;
                 continue;
             }
 
@@ -21551,9 +21566,7 @@ where
             self.last_line_baseline = baseline;
             self.last_line_box = Some((baseline, top));
 
-            if matches!(break_kind, LineBreakKind::Page) {
-                self.force_page_break()?;
-            }
+            self.advance_after_break(break_kind)?;
         }
 
         self.band_redraw_in_edited_paragraph = saved_band_in_edited;
@@ -21564,10 +21577,38 @@ where
         &mut self,
         break_kind: LineBreakKind,
     ) -> Result<(), JsValue> {
-        if matches!(break_kind, LineBreakKind::Page) {
-            self.force_page_break()?;
+        self.advance_after_break(break_kind)
+    }
+
+    /// After a line that ends in a page or a column break: the next page,
+    /// or the next column (the next page after the last column).
+    fn advance_after_break(&mut self, break_kind: LineBreakKind) -> Result<(), JsValue> {
+        match break_kind {
+            LineBreakKind::Page => self.force_page_break(),
+            LineBreakKind::Column => self.force_column_break(),
+            _ => Ok(()),
         }
-        Ok(())
+    }
+
+    /// 段区切り: the top of the next column, as Word continues a section's
+    /// text; past the last column, the next page.
+    fn force_column_break(&mut self) -> Result<(), JsValue> {
+        if self.measuring_keep_next
+            || self.rendering_header_footer_story
+            || self.paragraph_frame_column.is_some()
+        {
+            return Ok(());
+        }
+        if !self.pageless_mode
+            && self.column_layout.count() > 1
+            && self.column_index + 1 < self.column_layout.count()
+        {
+            self.column_index += 1;
+            self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+            self.last_line_baseline = self.current_y;
+            return Ok(());
+        }
+        self.force_page_break()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -33919,7 +33960,7 @@ fn empty_keep_next_required_height(line_height: f64, keep_next_enabled: bool) ->
 fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
     match kind {
         LineBreakKind::Hard => Some("\u{2193}"),
-        LineBreakKind::Page => Some("\u{21D3}"),
+        LineBreakKind::Page | LineBreakKind::Column => Some("\u{21D3}"),
         LineBreakKind::ParagraphEnd => Some("\u{21B5}"),
         LineBreakKind::Soft => None,
     }

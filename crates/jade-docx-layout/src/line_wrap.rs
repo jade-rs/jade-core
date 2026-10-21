@@ -2683,6 +2683,8 @@ pub enum LineBreakKind {
     Soft,
     Hard,
     Page,
+    /// 段区切り: the next line starts the next column.
+    Column,
     ParagraphEnd,
 }
 
@@ -5679,7 +5681,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         && paragraph_style.float_line_segments.is_empty()
         && !paragraph_style.bidi
         && paragraph_style.tab_stops.is_empty()
-        && !text.contains(['\t', '\n', jade_docx_reader::PAGE_BREAK_CHAR])
+        && !text.contains([
+            '\t',
+            '\n',
+            jade_docx_reader::PAGE_BREAK_CHAR,
+            jade_docx_reader::COLUMN_BREAK_CHAR,
+        ])
         && text.chars().any(|ch| {
             matches!(
                 ch,
@@ -5918,7 +5925,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 continue;
             }
 
-            if grapheme == PAGE_BREAK_STR {
+            if grapheme == PAGE_BREAK_STR || grapheme == jade_docx_reader::COLUMN_BREAK_STR {
+                let page_or_column = if grapheme == PAGE_BREAK_STR {
+                    LineBreakKind::Page
+                } else {
+                    LineBreakKind::Column
+                };
                 if !buffer.is_empty() {
                     let segment_text = std::mem::take(&mut buffer);
                     push_text_segment(
@@ -5938,7 +5950,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
 
                 lines.push(WrappedLine {
                     segments: std::mem::take(&mut current_line),
-                    break_kind: LineBreakKind::Page,
+                    break_kind: page_or_column,
                     break_range: Some((grapheme_start_abs, grapheme_end_abs)),
                     break_properties: run_style.properties.clone(),
                     leaders: std::mem::take(&mut current_line_leaders),
@@ -7413,7 +7425,11 @@ fn measure_tab_segment<C: LineWrapContext>(
             if grapheme == "\r" {
                 continue;
             }
-            if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+            if grapheme == "\n"
+                || grapheme == PAGE_BREAK_STR
+                || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                || grapheme == "\t"
+            {
                 return Ok(width + character_border_extent_px(previous_border));
             }
             if first_grapheme_in_run {
@@ -15969,7 +15985,11 @@ mod tests {
                 if grapheme == "\r" {
                     continue;
                 }
-                if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+                if grapheme == "\n"
+                    || grapheme == PAGE_BREAK_STR
+                    || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                    || grapheme == "\t"
+                {
                     return Ok(width);
                 }
                 let grapheme_start_abs = base_offset + run_start + rel_offset;

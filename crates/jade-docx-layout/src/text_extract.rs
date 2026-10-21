@@ -2478,8 +2478,8 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.mirror_margins = settings.mirror_margins;
         document.book_fold_printing = settings.book_fold_printing;
         document.print_two_on_one = settings.print_two_on_one;
-    document.book_fold_printing = settings.book_fold_printing;
-    document.print_two_on_one = settings.print_two_on_one;
+        document.book_fold_printing = settings.book_fold_printing;
+        document.print_two_on_one = settings.print_two_on_one;
         if needs_style_defaults {
             // Word oracle comparisons need selected document-level compatibility
             // settings. The contract trace
