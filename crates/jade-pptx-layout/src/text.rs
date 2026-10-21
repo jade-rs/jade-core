@@ -82,6 +82,11 @@ pub struct PlacedRun {
     /// The glyphs' glow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_glow: Option<crate::PlacedGlow>,
+    /// A picture bullet's image part: the run is the bullet, drawn as this
+    /// picture in a square of `width` sitting on the baseline, its text
+    /// the fallback when the picture cannot be drawn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bullet_image: Option<String>,
     /// A non-single underline's `u` value (`dbl`, `wavy`, `dotted`, …).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub underline_style: Option<String>,
@@ -607,7 +612,14 @@ fn layout_paragraph(
             scheme,
             paragraph.number_start,
         )),
+        // A picture bullet takes a glyph's place; the run carries the
+        // picture, and the round bullet draws where it cannot.
+        Some(Bullet::Picture { .. }) => Some("\u{2022}".to_string()),
         Some(Bullet::None) | None => None,
+    };
+    let bullet_image = match &resolved.bullet {
+        Some(Bullet::Picture { image_part, .. }) => image_part.clone(),
+        _ => None,
     };
     let marker_style = RunStyle {
         size_pt: paragraph_size_pt * resolved.bullet_size_percent.unwrap_or(1.0).max(0.01),
@@ -619,10 +631,12 @@ fn layout_paragraph(
             .first()
             .and_then(|run| run.style.east_asian_font.clone()),
     };
-    let marker_width = marker
-        .as_deref()
-        .map(|marker| context.measure.measure(marker, &marker_style))
-        .unwrap_or(0.0);
+    let marker_width = match (&bullet_image, marker.as_deref()) {
+        // A picture bullet is a square as tall as the text's ascent.
+        (Some(_), Some(_)) => marker_style.size_pt as f64 * PX_PER_PT * crate::ASCENT_RATIO,
+        (None, Some(marker)) => context.measure.measure(marker, &marker_style),
+        _ => 0.0,
+    };
 
     // Where the bullet and the text go. With `marL`/`indent` known (the
     // paragraph's or an inherited level's), the bullet sits at the first
@@ -884,6 +898,7 @@ fn layout_paragraph(
                     text_glow: None,
                     underline_style: None,
                     double_strike: false,
+                    bullet_image: bullet_image.clone(),
                 });
             }
         }
@@ -959,6 +974,7 @@ fn layout_paragraph(
                 text_outline: run.outline.clone(),
                 text_shadow: run.shadow.clone(),
                 text_glow: run.glow.clone(),
+                bullet_image: None,
                 underline_style: run.underline_style.clone(),
                 double_strike: run.double_strike,
             });

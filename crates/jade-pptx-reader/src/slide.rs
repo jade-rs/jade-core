@@ -667,6 +667,13 @@ pub enum Bullet {
     AutoNumber { scheme: String },
     /// `<a:buNone/>`: explicitly no bullet, distinct from "inherit".
     None,
+    /// `<a:buBlip><a:blip r:embed/>`: a picture as the bullet. `image_part`
+    /// is filled in by `read_deck` from the part's relationships.
+    Picture {
+        rel_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        image_part: Option<String>,
+    },
 }
 
 /// A line or paragraph spacing value.
@@ -2293,9 +2300,20 @@ fn parse_bullet(p_pr: &XmlElement) -> Option<Bullet> {
                 });
             }
             "buNone" => return Some(Bullet::None),
-            // A picture bullet reads as the round bullet it usually stands
-            // in for, rather than no bullet at all.
-            "buBlip" => return Some(Bullet::Char("\u{2022}".to_string())),
+            "buBlip" => {
+                return Some(
+                    child
+                        .child("blip")
+                        .and_then(|blip| blip.attr("embed"))
+                        .map(|id| Bullet::Picture {
+                            rel_id: id.to_string(),
+                            image_part: None,
+                        })
+                        // A picture bullet without a picture reads as the
+                        // round bullet it stands in for.
+                        .unwrap_or_else(|| Bullet::Char("\u{2022}".to_string())),
+                );
+            }
             _ => {}
         }
     }

@@ -142,6 +142,7 @@ pub fn paragraph_format_for_deck_shape(
         let r = style::resolve_paragraph(p, text.list_style.as_ref(), &context);
         let (kind, character, scheme) = match &r.bullet {
             Some(Bullet::Char(c)) => ("character", Some(c.clone()), None),
+            Some(Bullet::Picture { .. }) => ("picture", None, None),
             Some(Bullet::AutoNumber { scheme }) => ("numbered", None, Some(scheme.clone())),
             _ => ("none", None, None),
         };

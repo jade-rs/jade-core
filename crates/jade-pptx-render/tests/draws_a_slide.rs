@@ -293,6 +293,7 @@ fn text_runs_draw_at_their_shape_relative_positions() {
             text_outline: None,
             text_shadow: None,
             text_glow: None,
+            bullet_image: None,
             underline_style: None,
             double_strike: false,
         }],
@@ -475,6 +476,7 @@ fn run(text: &str) -> PlacedRun {
         text_outline: None,
         text_shadow: None,
         text_glow: None,
+        bullet_image: None,
         underline_style: None,
         double_strike: false,
     }
