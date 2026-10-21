@@ -520,7 +520,13 @@ impl DocumentParser {
                             }
                         }
                         b"w:bidi" => {
-                            if parsing_paragraph_props {
+                            if parsing_section_props {
+                                // A section that reads right to left (`w:sectPr/w:bidi`), not
+                                // the paragraph whose `w:pPr` happens to carry the section.
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.bidi = Self::parse_on_off_attr(e.attributes());
+                                }
+                            } else if parsing_paragraph_props {
                                 let value = Self::parse_on_off_attr(e.attributes());
                                 current_paragraph_props
                                     .get_or_insert_with(ParagraphProperties::default)
@@ -911,6 +917,13 @@ impl DocumentParser {
                                             );
                                         }
                                     }
+                                }
+                            }
+                        }
+                        b"w:rtlGutter" => {
+                            if parsing_section_props {
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
                                 }
                             }
                         }
@@ -2235,6 +2248,13 @@ impl DocumentParser {
                             }
                         }
                     }
+                    b"w:rtlGutter" => {
+                        if parsing_section_props {
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
+                            }
+                        }
+                    }
                     b"w:titlePg" => {
                         // `<w:titlePg/>` (with no `w:val` or `w:val="true"|"1"|"on"`)
                         // enables the first-page header/footer for the current
@@ -3066,7 +3086,13 @@ impl DocumentParser {
                         }
                     }
                     b"w:bidi" => {
-                        if parsing_paragraph_props {
+                        if parsing_section_props {
+                            // A section that reads right to left (`w:sectPr/w:bidi`), not
+                            // the paragraph whose `w:pPr` happens to carry the section.
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.bidi = Self::parse_on_off_attr(e.attributes());
+                            }
+                        } else if parsing_paragraph_props {
                             let value = Self::parse_on_off_attr(e.attributes());
                             current_paragraph_props
                                 .get_or_insert_with(ParagraphProperties::default)
@@ -4278,6 +4304,17 @@ impl DocumentParser {
                 b"w:start" => {
                     if let Ok(v) = value.trim().parse::<u32>() {
                         pg_num.start = Some(v);
+                    }
+                }
+                b"w:chapStyle" => {
+                    if let Ok(v) = value.trim().parse::<u8>() {
+                        pg_num.chapter_style = Some(v);
+                    }
+                }
+                b"w:chapSep" => {
+                    let trimmed = value.trim();
+                    if !trimmed.is_empty() {
+                        pg_num.chapter_separator = Some(trimmed.to_string());
                     }
                 }
                 _ => {}

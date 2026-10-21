@@ -55270,10 +55270,12 @@ mod tests {
             Some(crate::document::PageNumberType {
                 format: Some("lowerroman".to_string()),
                 start: None,
+                ..Default::default()
             }),
             Some(crate::document::PageNumberType {
                 format: Some("decimal".to_string()),
                 start: Some(1),
+                ..Default::default()
             }),
             None,
         ]);
