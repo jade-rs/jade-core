@@ -159,6 +159,12 @@ pub struct DifferentialStyle {
     pub right: Option<DifferentialBorder>,
     pub top: Option<DifferentialBorder>,
     pub bottom: Option<DifferentialBorder>,
+    /// A table style's borders between its cells (`<vertical>`,
+    /// `<horizontal>`); conditional formats do not use them.
+    #[serde(default)]
+    pub inside_vertical: Option<DifferentialBorder>,
+    #[serde(default)]
+    pub inside_horizontal: Option<DifferentialBorder>,
     pub number_format_code: Option<String>,
     pub unsupported_properties: Vec<String>,
 }
@@ -595,7 +601,9 @@ pub fn parse_differential_styles(xml: &str) -> Result<Vec<DifferentialStyle>> {
                                 crate::styles::parse_color(element)?
                         }
                         b"border" => border = !empty,
-                        b"left" | b"right" | b"top" | b"bottom" if border => {
+                        b"left" | b"right" | b"top" | b"bottom" | b"vertical" | b"horizontal"
+                            if border =>
+                        {
                             let name = String::from_utf8_lossy(&name).into_owned();
                             let parsed = attribute(element, b"style")?
                                 .map(|style| BorderEdge { style, color: None });
@@ -632,7 +640,7 @@ pub fn parse_differential_styles(xml: &str) -> Result<Vec<DifferentialStyle>> {
                 b"font" => font = false,
                 b"fill" => fill = false,
                 b"border" => border = false,
-                b"left" | b"right" | b"top" | b"bottom" => {
+                b"left" | b"right" | b"top" | b"bottom" | b"vertical" | b"horizontal" => {
                     if let (Some(style), Some((name, edge))) = (style.as_mut(), edge.take()) {
                         set_edge(style, &name, edge);
                     }
@@ -657,6 +665,8 @@ fn set_edge(style: &mut DifferentialStyle, side: &str, edge: Option<BorderEdge>)
         "right" => style.right = edge,
         "top" => style.top = edge,
         "bottom" => style.bottom = edge,
+        "vertical" => style.inside_vertical = edge,
+        "horizontal" => style.inside_horizontal = edge,
         _ => {}
     }
 }
