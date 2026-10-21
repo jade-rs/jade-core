@@ -22005,14 +22005,15 @@ where
         }
         if let Some(ink) = image.ink.as_ref().filter(|ink| !ink.traces.is_empty()) {
             // Word ink: its strokes, not its fallback picture.
-            self.draw_ink(
-                ink,
-                draw_spec,
-                (
+            // The strokes fill the box they were laid in; a drawing resized
+            // since scales them onto its new one.
+            let natural = jade_docx_reader::inkml::InkContent::bounds(&ink.traces)
+                .map(|(_, _, right, bottom)| (right, bottom))
+                .unwrap_or((
                     image.width_px.unwrap_or(transform.width),
                     image.height_px.unwrap_or(transform.height),
-                ),
-            )?;
+                ));
+            self.draw_ink(ink, draw_spec, natural)?;
         } else if image.data_uri.is_some() {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
