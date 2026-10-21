@@ -234,6 +234,30 @@ pub enum HeadlessTableCellInsertDirection {
     ShiftDown,
 }
 
+/// How 並べ替え compares one column: Word's 種類.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum HeadlessTableSortKind {
+    /// 文字列: Unicode order, case-insensitively.
+    #[default]
+    Text,
+    /// 数値: the first number in the cell; cells without one sort first.
+    Number,
+    /// 日付: `yyyy/mm/dd`, `yyyy-mm-dd`, `yyyy年m月d日`; cells without one
+    /// sort first.
+    Date,
+}
+
+/// One 並べ替え key: a grid column, its kind and its direction.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HeadlessTableSortKey {
+    pub column: usize,
+    #[serde(default)]
+    pub kind: HeadlessTableSortKind,
+    #[serde(default)]
+    pub descending: bool,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum HeadlessTableFitMode {
@@ -1629,6 +1653,18 @@ pub enum HeadlessCommand {
         first_row: Option<bool>,
         #[serde(default)]
         banded_rows: Option<bool>,
+        /// 集計行: the style's last-row formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_row: Option<bool>,
+        /// 最初の列: the style's first-column formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        first_column: Option<bool>,
+        /// 最後の列: the style's last-column formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_column: Option<bool>,
+        /// 縞模様 (列): the style's alternating column bands.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        banded_columns: Option<bool>,
     },
     /// Where a cell's content sits in its box (`w:vAlign`): `top`, `center` or
     /// `bottom`.
@@ -1820,6 +1856,100 @@ pub enum HeadlessCommand {
         table_order_index: usize,
         target_cells: Vec<HeadlessTableCellSelection>,
     },
+    /// Word's 表のプロパティ ▸ オプション ▸ セルの間隔 (`w:tblCellSpacing`), in
+    /// points; `None` removes the spacing.
+    SetTableCellSpacing {
+        table_order_index: usize,
+        #[serde(default)]
+        spacing: Option<f32>,
+    },
+    /// Word's 文字列の方向 for one cell (`w:textDirection`): `lrTb` (横書き),
+    /// `tbRl` (縦書き), `btLr` (下から上), `tbRlV`, `lrTbV`, `btLrV`. `None`
+    /// goes back to horizontal text.
+    SetTableCellTextDirection {
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+        #[serde(default)]
+        direction: Option<String>,
+    },
+    /// Word's 左端からのインデント (`w:tblInd`), in points.
+    SetTableIndent {
+        table_order_index: usize,
+        indent: f32,
+    },
+    /// Word's 表の位置 for a floating table (`w:tblpPr`, `w:tblOverlap`). A
+    /// table that is not floating yet becomes one. Each axis takes either an
+    /// alignment (`left`/`center`/`right`/`inside`/`outside`, or
+    /// `top`/`center`/`bottom`/`inside`/`outside`) or an offset in points;
+    /// the anchors are `margin`, `page` and `text` (the column, or the
+    /// paragraph vertically). Distances from the surrounding text are in
+    /// points.
+    SetTablePosition {
+        table_order_index: usize,
+        #[serde(default)]
+        horizontal_align: Option<String>,
+        #[serde(default)]
+        horizontal_offset: Option<f32>,
+        horizontal_anchor: String,
+        #[serde(default)]
+        vertical_align: Option<String>,
+        #[serde(default)]
+        vertical_offset: Option<f32>,
+        vertical_anchor: String,
+        #[serde(default)]
+        distance_top: f32,
+        #[serde(default)]
+        distance_bottom: f32,
+        #[serde(default)]
+        distance_left: f32,
+        #[serde(default)]
+        distance_right: f32,
+        #[serde(default = "default_true")]
+        allow_overlap: bool,
+    },
+    /// Word's 文字列を表にする: the paragraphs `start_paragraph..=end_paragraph`
+    /// become one table. `separator` splits each paragraph into cells — `tab`,
+    /// `comma`, `paragraph` (one paragraph per cell, `columns` per row) or
+    /// any other single character. `columns` defaults to the widest row.
+    ConvertTextToTable {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        separator: String,
+        #[serde(default)]
+        columns: Option<usize>,
+    },
+    /// Word's 表の解除 (表を文字列に変換): each row becomes a paragraph whose
+    /// cells are joined by `separator` (`tab`, `comma`, `paragraph` — one
+    /// paragraph per cell — or any other single character). A nested table
+    /// is converted as well.
+    ConvertTableToText {
+        table_order_index: usize,
+        separator: String,
+    },
+    /// Word's 並べ替え: the rows after the first `header_rows` are ordered by
+    /// `keys` — the first key decides, ties go to the next. A row whose cells
+    /// are merged down cannot be moved and fails the command.
+    SortTable {
+        table_order_index: usize,
+        keys: Vec<HeadlessTableSortKey>,
+        #[serde(default)]
+        header_rows: usize,
+    },
+    /// Word's 計算式: an `=` field at the caret, whose result is computed now
+    /// from the table around it — `=SUM(ABOVE)`, `=AVERAGE(LEFT)`,
+    /// `=B2*C2`, … `number_format` is the `\#` picture (`0`, `#,##0`,
+    /// `0.00`, `0%`, `¥#,##0` …).
+    InsertTableFormula {
+        paragraph: usize,
+        offset: usize,
+        formula: String,
+        #[serde(default)]
+        number_format: Option<String>,
+    },
+    /// Word's フィールド更新 for the `=` fields of every table: each result is
+    /// computed again from the cells as they are now.
+    UpdateTableFormulas,
     /// Toggles a boolean on/off element directly under `<w:settings>` in
     /// `word/settings.xml` (e.g. `w:evenAndOddHeaders`, `w:autoHyphenation`,
     /// `w:mirrorMargins`, `w:trackChanges`). `name` is the fully qualified
@@ -2060,6 +2190,15 @@ impl HeadlessCommand {
             HeadlessCommand::ResizeTableRowBottomEdge { .. } => "resize_table_row_bottom_edge",
             HeadlessCommand::MergeTableCells { .. } => "merge_table_cells",
             HeadlessCommand::UnmergeTableCells { .. } => "unmerge_table_cells",
+            HeadlessCommand::SetTableCellSpacing { .. } => "set_table_cell_spacing",
+            HeadlessCommand::SetTableCellTextDirection { .. } => "set_table_cell_text_direction",
+            HeadlessCommand::SetTableIndent { .. } => "set_table_indent",
+            HeadlessCommand::SetTablePosition { .. } => "set_table_position",
+            HeadlessCommand::ConvertTextToTable { .. } => "convert_text_to_table",
+            HeadlessCommand::ConvertTableToText { .. } => "convert_table_to_text",
+            HeadlessCommand::SortTable { .. } => "sort_table",
+            HeadlessCommand::InsertTableFormula { .. } => "insert_table_formula",
+            HeadlessCommand::UpdateTableFormulas => "update_table_formulas",
             HeadlessCommand::SetNumbering { .. } => "set_numbering",
             HeadlessCommand::ApplyMultilevelList { .. } => "apply_multilevel_list",
             HeadlessCommand::ApplyCustomMultilevelList { .. } => "apply_custom_multilevel_list",
