@@ -16,20 +16,52 @@ pub const AUTHOR: &str = "ellisii";
 /// 変更履歴の日時。比較のたびに変わると差分が出るので固定する。
 pub const DATE: &str = "1970-01-01T00:00:00Z";
 
-/// `w:ins` / `w:del` に付ける属性。`id` は文書内で重複しなければよい。
-fn revision_attrs(id: usize) -> String {
-    format!(r#" w:id="{id}" w:author="{AUTHOR}" w:date="{DATE}""#)
+/// 連番と、変更に付ける作者と日時。番号は 1 つの文書の中で重ならなければよい。
+#[derive(Debug)]
+pub struct RevisionIds {
+    next: usize,
+    author: String,
+    date: String,
 }
 
-/// 連番。1 つの文書の中で重ならなければよい。
-#[derive(Debug, Default)]
-pub struct RevisionIds(usize);
+impl Default for RevisionIds {
+    fn default() -> Self {
+        Self::labelled(AUTHOR, DATE)
+    }
+}
 
 impl RevisionIds {
-    pub fn next(&mut self) -> usize {
-        self.0 += 1;
-        self.0
+    /// 変更を `author` の `date` のものとして記録する。Word の「変更の
+    /// 表示名」に当たる。
+    pub fn labelled(author: &str, date: &str) -> Self {
+        Self {
+            next: 0,
+            author: author.to_string(),
+            date: date.to_string(),
+        }
     }
+
+    pub fn next(&mut self) -> usize {
+        self.next += 1;
+        self.next
+    }
+
+    /// `w:ins` / `w:del` に付ける属性。
+    pub fn attrs(&self, id: usize) -> String {
+        format!(
+            r#" w:id="{id}" w:author="{}" w:date="{}""#,
+            escape_attr(&self.author),
+            escape_attr(&self.date)
+        )
+    }
+}
+
+fn escape_attr(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// 段落の中の run を、まるごと挿入または削除として包む。
@@ -52,7 +84,8 @@ pub fn mark_runs(xml: &str, mode: Mode, ids: &mut RevisionIds) -> Result<String>
                     in_para_props += 1;
                 }
                 if name == "w:r" && in_para_props == 0 && depth_in_run == 0 {
-                    write_raw(&mut writer, &open_tag(mode, ids.next()))?;
+                    let id = ids.next();
+                    write_raw(&mut writer, &open_tag(mode, &ids.attrs(id)))?;
                     depth_in_run = 1;
                     writer.write_event(Event::Start(e))?;
                     continue;
@@ -105,8 +138,14 @@ pub fn mark_runs(xml: &str, mode: Mode, ids: &mut RevisionIds) -> Result<String>
 pub fn mark_row(xml: &str, mode: Mode, ids: &mut RevisionIds) -> Result<String> {
     let marked = mark_runs(xml, mode, ids)?;
     let marker = match mode {
-        Mode::Insert => format!("<w:ins{}/>", revision_attrs(ids.next())),
-        Mode::Delete => format!("<w:del{}/>", revision_attrs(ids.next())),
+        Mode::Insert => {
+            let id = ids.next();
+            format!("<w:ins{}/>", ids.attrs(id))
+        }
+        Mode::Delete => {
+            let id = ids.next();
+            format!("<w:del{}/>", ids.attrs(id))
+        }
     };
     // `w:trPr` があればその先頭へ、無ければ `w:tr` の直後に作る。
     if let Some(at) = marked.find("<w:trPr>") {
@@ -130,10 +169,10 @@ pub enum Mode {
     Delete,
 }
 
-fn open_tag(mode: Mode, id: usize) -> String {
+fn open_tag(mode: Mode, attrs: &str) -> String {
     match mode {
-        Mode::Insert => format!("<w:ins{}>", revision_attrs(id)),
-        Mode::Delete => format!("<w:del{}>", revision_attrs(id)),
+        Mode::Insert => format!("<w:ins{attrs}>"),
+        Mode::Delete => format!("<w:del{attrs}>"),
     }
 }
 
