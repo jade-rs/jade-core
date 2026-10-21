@@ -5608,6 +5608,7 @@ where
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
             && last.dark_mode() == options.dark_mode()
+            && last.collapsed_blocks() == options.collapsed_blocks()
     }
 
     /// Returns true if it is safe to attempt unchecked paragraph render-cache replay.
@@ -5621,6 +5622,7 @@ where
             || options.render_changes
             || options.render_original
             || options.show_formatting_marks
+            || !options.collapsed_blocks().is_empty()
         {
             return false;
         }
@@ -13971,6 +13973,33 @@ where
         section_index: usize,
     ) -> Result<(), JsValue> {
         self.last_render_body_element_count += 1;
+        // Under a collapsed heading: laid out as if absent, its paragraphs
+        // keeping their indices but taking no room and no caret.
+        if body_element_index != usize::MAX
+            && section_index != usize::MAX
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && options
+                .collapsed_blocks()
+                .binary_search(&body_element_index)
+                .is_ok()
+        {
+            let count =
+                Self::body_element_paragraph_surface_count(std::slice::from_ref(element)).max(1);
+            for paragraph_index in self.paragraph_counter..self.paragraph_counter + count {
+                self.selection.ensure_paragraph(paragraph_index);
+                self.selection
+                    .set_paragraph_selectable(paragraph_index, false);
+            }
+            self.paragraph_counter += count;
+            if !self.footnote_surface_extras.is_empty() {
+                let anchor_index = self.paragraph_counter.saturating_sub(1);
+                if let Some(extra) = self.footnote_surface_extras.get(&anchor_index) {
+                    self.paragraph_counter = self.paragraph_counter.saturating_add(*extra);
+                }
+            }
+            return Ok(());
+        }
         match element {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph_index = self.paragraph_counter;
@@ -30192,6 +30221,13 @@ where
 
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         self.selection.caret_metrics()
+    }
+
+    /// Where a caret at `position` would be drawn, from the last layout,
+    /// without moving the selection: what a page number for a heading or a
+    /// bookmark's bracket is read from.
+    pub fn caret_metrics_at(&self, position: TextPosition) -> Option<CaretMetrics> {
+        self.selection.caret_metrics_at_position(position)
     }
 
     /// Which line a caret on a soft wrap is drawn on — the end of the line
