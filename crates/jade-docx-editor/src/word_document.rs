@@ -7297,7 +7297,7 @@ impl WordDocument {
                 // while this legacy form has literal text and no cache, which
                 // lets us preserve Word's inline prefix-before-field order.
                 let literal_precedes_page_field = run.field.as_ref().is_some_and(|field| {
-                    matches!(field.kind, crate::document::RunFieldKind::PageNumber)
+                    matches!(field.kind.without_format(), crate::document::RunFieldKind::PageNumber)
                         && field.cached_text.is_none()
                         && !run.text.is_empty()
                 });
@@ -7321,7 +7321,7 @@ impl WordDocument {
 
                 let mut emitted_field_text = false;
                 if let Some(field) = run.field.as_ref() {
-                    match &field.kind {
+                    match field.kind.without_format() {
                         crate::document::RunFieldKind::Locked { kind } => {
                             if matches!(
                                 kind.base_kind(),
@@ -7340,6 +7340,8 @@ impl WordDocument {
                                 emitted_field_text = true;
                             }
                         }
+                        // Stripped above: a format's number still shows live.
+                        crate::document::RunFieldKind::Formatted { .. } => {}
                         crate::document::RunFieldKind::PageNumber => {
                             Self::push_header_text(
                                 &mut segments[idx],

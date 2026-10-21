@@ -10538,6 +10538,7 @@ where
             if let Some(field) = run.field.as_ref() {
                 let field_tag: u8 = match &field.kind {
                     RunFieldKind::Locked { .. } => 255,
+                    RunFieldKind::Formatted { .. } => 254,
                     RunFieldKind::PageNumber => 1,
                     RunFieldKind::NumPages => 2,
                     RunFieldKind::NumWords => 14,
@@ -32883,6 +32884,26 @@ where
                     Some(field.cached_text.clone().unwrap_or_default())
                 }
             }
+            RunFieldKind::Formatted { kind, instruction } => {
+                let number = match kind.as_ref() {
+                    RunFieldKind::PageNumber => {
+                        Some(self.page_number_value(self.current_page_number))
+                    }
+                    RunFieldKind::NumPages => Some(self.resolved_total_page_count()),
+                    RunFieldKind::SectionPages => self.current_section_page_count(),
+                    RunFieldKind::SectionNumber => Some(self.active_section_index + 1),
+                    _ => None,
+                };
+                let format = jade_docx_reader::field_format::FieldCode::parse(instruction)
+                    .map(|code| code.format)
+                    .unwrap_or_default();
+                number.map(|number| {
+                    jade_docx_reader::field_format::apply_general_format(
+                        &jade_docx_reader::field_format::FieldValue::Number(number as f64),
+                        &format,
+                    )
+                })
+            }
             RunFieldKind::PageNumber => Some(self.displayed_page_number(self.current_page_number)),
             RunFieldKind::NumPages => Some(self.resolved_total_page_count().to_string()),
             RunFieldKind::SectionPages => self
@@ -33120,6 +33141,34 @@ where
     /// Maps a 1-based physical page to the string a `PAGE` field should display,
     /// applying the section's `w:pgNumType` start offset and numeral format.
     /// ECMA-376 Part 1 §17.6.12.
+    /// The number a page shows (sections' starts applied), unformatted.
+    fn page_number_value(&self, physical_page: usize) -> usize {
+        if self.section_page_numbering.is_empty() {
+            let start = self.page_number_start.unwrap_or(1) as usize;
+            return start + physical_page.saturating_sub(1);
+        }
+        let page = physical_page.max(1);
+        let section = self.section_index_for_page(page);
+        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
+        let mut first_page_of_section = 1usize;
+        for index in 0..=section {
+            let first_page = self.first_page_of_section_index(index).unwrap_or(page);
+            if index > 0 {
+                number_at_section_start += first_page.saturating_sub(first_page_of_section);
+            }
+            first_page_of_section = first_page;
+            if let Some(start) = self
+                .section_page_numbering
+                .get(index)
+                .and_then(|numbering| numbering.as_ref())
+                .and_then(|numbering| numbering.start)
+            {
+                number_at_section_start = start as usize;
+            }
+        }
+        number_at_section_start + page.saturating_sub(first_page_of_section)
+    }
+
     fn displayed_page_number(&self, physical_page: usize) -> String {
         if self.section_page_numbering.is_empty() {
             let start = self.page_number_start.unwrap_or(1) as usize;
@@ -41121,6 +41170,46 @@ mod tests {
         let (x, width) = rects[0];
         assert!((x - 20.0).abs() < 1e-6);
         assert!((width - 30.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn page_fields_draw_their_number_switches_live() {
+        let mut renderer = test_renderer();
+        renderer.current_page_number = 4;
+        for (instruction, expected) in [
+            ("PAGE \\* ROMAN", "IV"),
+            ("PAGE \\* alphabetic", "d"),
+            ("PAGE \\# \"00\"", "04"),
+            ("PAGE \\* KANJINUM1", "四"),
+            ("SECTION \\* ArabicDash", "- 1 -"),
+        ] {
+            let kind =
+                jade_docx_reader::parser::DocumentParser::parse_field_instruction(instruction)
+                    .expect("a field");
+            assert!(
+                matches!(kind, RunFieldKind::Formatted { .. }),
+                "{instruction}"
+            );
+            let field = RunField {
+                word_mac_body_result: None,
+                kind,
+                source_field_id: None,
+                cached_text: Some("stale".to_string()),
+                resolved_value: None,
+            };
+            assert_eq!(
+                renderer.resolve_run_field(&field).as_deref(),
+                Some(expected),
+                "{instruction}"
+            );
+        }
+        // Formatting switches alone change nothing.
+        assert_eq!(
+            jade_docx_reader::parser::DocumentParser::parse_field_instruction(
+                "PAGE \\* MERGEFORMAT"
+            ),
+            Some(RunFieldKind::PageNumber)
+        );
     }
 
     #[test]
