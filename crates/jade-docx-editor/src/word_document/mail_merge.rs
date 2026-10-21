@@ -786,12 +786,12 @@ impl WordDocument {
 
     /// The merged document: one copy of the body per recipient (or per
     /// page of labels), the merge fields as plain text, as a package.
-    pub fn merged_document(&mut self, request: &MergeRequest) -> Result<Vec<u8>, String> {
+    pub fn merged_document(&self, request: &MergeRequest) -> Result<Vec<u8>, String> {
         let kind = self
             .mail_merge_settings()
             .kind
             .unwrap_or(MainDocumentType::Letters);
-        let xml = self.current_raw_document()?.clone();
+        let xml = self.raw_document_or_parsed()?;
         let merged = fields::merge_body(&xml, request, kind)?;
         let mut copy = xml;
         let body_id = body_id(&copy).ok_or("the document has no body")?;
@@ -820,6 +820,20 @@ impl WordDocument {
         merged.package_bytes_with(document_xml)
     }
 
+    /// The round-trip XML, or `document.xml` parsed when the document was
+    /// opened for display only.
+    fn raw_document_or_parsed(&self) -> Result<DocxXmlDocument, String> {
+        if let Some(xml) = self.raw_document.as_ref() {
+            return Ok(xml.clone());
+        }
+        let part = self
+            .document_part
+            .as_ref()
+            .ok_or_else(|| "the document has no main part".to_string())?;
+        DocxXmlDocument::parse(&part.content)
+            .map_err(|error| format!("the document XML could not be read: {error:?}"))
+    }
+
     /// A copy of this document's package state, to write a new package
     /// from without touching this one.
     fn clone_for_output(&self) -> WordDocument {
@@ -835,8 +849,8 @@ impl WordDocument {
 
     /// What is wrong with merging `request` into this document: fields with
     /// no column, an empty data source, a data source with nothing chosen.
-    pub fn merge_problems(&mut self, request: &MergeRequest) -> Result<Vec<MergeProblem>, String> {
-        let xml = self.current_raw_document()?.clone();
+    pub fn merge_problems(&self, request: &MergeRequest) -> Result<Vec<MergeProblem>, String> {
+        let xml = self.raw_document_or_parsed()?;
         Ok(fields::problems(&xml, request))
     }
 
@@ -850,8 +864,8 @@ impl WordDocument {
 
     /// The body of a new document — an envelope or a sheet of labels — in
     /// this document's package: its styles, theme and settings, no merge.
-    pub fn document_with_body(&mut self, body_xml: &str) -> Result<Vec<u8>, String> {
-        let mut xml = self.current_raw_document()?.clone();
+    pub fn document_with_body(&self, body_xml: &str) -> Result<Vec<u8>, String> {
+        let mut xml = self.raw_document_or_parsed()?;
         let body_id = body_id(&xml).ok_or("the document has no body")?;
         let nodes = xml_fragment(&mut xml, body_xml);
         if let Some(body) = xml.element_mut(body_id) {
@@ -906,7 +920,25 @@ impl WordDocument {
                 if let Some((request, record)) = preview {
                     fields::rewrite(xml, request, *record, FieldMode::Preview);
                 }
-                Ok(CaretAfter::Keep)
+                // The caret goes after the field: past its result when the
+                // result is text the model keeps (a merge field's).
+                let shown = match field {
+                    MergeFieldSpec::Column(name) => Some(
+                        preview
+                            .as_ref()
+                            .and_then(|(request, record)| {
+                                let column = request.data.column(name)?;
+                                let index = *request.records.get(*record)?;
+                                Some(request.data.value(index, column).to_string())
+                            })
+                            .unwrap_or_else(|| format!("«{}»", field_name(name))),
+                    ),
+                    _ => None,
+                };
+                Ok(CaretAfter::At(TextPosition::new(
+                    start.paragraph,
+                    start.offset + shown.map_or(0, |text| text.len()),
+                )))
             }
             MailMergeAction::Preview(request, record) => {
                 fields::rewrite(xml, request, *record, FieldMode::Preview);
