@@ -33317,6 +33317,31 @@ where
         }
         let page = physical_page.max(1);
         let section = self.section_index_for_page(page);
+        let displayed = self.page_number_value(page);
+        self.page_number_with_format(page, section, displayed)
+    }
+
+    /// Each laid-out page's section (from 0) and the number its `PAGE`
+    /// field shows, as a number: what a print range's `p2s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        (1..=self.page_count())
+            .map(|page| {
+                let section = self.section_index_for_page(page);
+                let number = if self.section_page_numbering.is_empty() {
+                    self.page_number_start.unwrap_or(1) as usize + page - 1
+                } else {
+                    self.page_number_value(page)
+                };
+                (section, number)
+            })
+            .collect()
+    }
+
+    /// The number a `PAGE` field shows on a 1-based physical page, before
+    /// its numeral format.
+    fn page_number_value(&self, page: usize) -> usize {
+        let page = page.max(1);
+        let section = self.section_index_for_page(page);
         // Walk the sections up to this one, carrying the running number: a
         // `w:start` resets it at that section's first page, otherwise it
         // continues from wherever the previous section ended.
@@ -33337,7 +33362,10 @@ where
                 number_at_section_start = start as usize;
             }
         }
-        let displayed = number_at_section_start + page.saturating_sub(first_page_of_section);
+        number_at_section_start + page.saturating_sub(first_page_of_section)
+    }
+
+    fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
         let numbering = self
             .section_page_numbering
             .get(section)
