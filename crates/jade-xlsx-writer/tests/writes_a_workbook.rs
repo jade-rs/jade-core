@@ -565,3 +565,44 @@ fn a_self_closing_cell_restyled_in_place_stays_self_closing() {
     let xml = package.part_str(SHEET).expect("read").expect("sheet");
     assert!(xml.contains(r#"<c r="D10" s="3"/>"#), "{xml}");
 }
+
+/// Rows or cells out of order are a sheet Excel repairs by dropping its
+/// cells. A sheet left that way by another writer comes out of an edit in
+/// order, every cell kept, the edit among them.
+#[test]
+fn an_edit_puts_rows_and_cells_left_out_of_order_back_in_order() {
+    let xml = r#"<worksheet><sheetData>
+      <row r="1"><c r="A1"><v>1</v></c></row>
+      <row r="9"><c r="C9"><v>3</v></c><c r="A9"><v>2</v></c></row>
+      <row r="7" ht="20" customHeight="1"><c r="A7"><f>SUM(A1:A1)</f><v>1</v></c></row>
+    </sheetData></worksheet>"#;
+    let patched =
+        jade_xlsx_writer::patch_sheet(xml, &[edit("B8", NewValue::Number(5.0))]).expect("patch");
+
+    let position = |needle: &str| {
+        patched
+            .find(needle)
+            .unwrap_or_else(|| panic!("{needle} missing from {patched}"))
+    };
+    assert!(position(r#"<row r="1">"#) < position(r#"<row r="7""#));
+    assert!(position(r#"<row r="7""#) < position(r#"<c r="B8">"#));
+    assert!(position(r#"<c r="B8">"#) < position(r#"<row r="9">"#));
+    assert!(position(r#"<c r="A9">"#) < position(r#"<c r="C9">"#));
+    assert!(patched.contains(
+        r#"<row r="7" ht="20" customHeight="1"><c r="A7"><f>SUM(A1:A1)</f><v>1</v></c></row>"#
+    ));
+}
+
+#[test]
+fn a_sheet_already_in_order_is_left_as_it_was() {
+    let xml = r#"<worksheet><sheetData>
+      <row r="1"><c r="A1"><v>1</v></c></row>
+      <row r="3"><c r="A3"><v>2</v></c></row>
+    </sheetData></worksheet>"#;
+    let patched =
+        jade_xlsx_writer::patch_sheet(xml, &[edit("A3", NewValue::Number(4.0))]).expect("patch");
+    assert!(
+        patched.starts_with("<worksheet><sheetData>\n      <row r=\"1\">"),
+        "{patched}"
+    );
+}

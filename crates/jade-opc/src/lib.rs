@@ -53,6 +53,38 @@ impl ArchiveCommentResult for zip::result::ZipResult<()> {
     }
 }
 
+const CONTENT_TYPES_PART: &str = "[Content_Types].xml";
+
+/// The content type a package gives every part with `extension`, for the
+/// extensions whose parts are typed by extension alone.
+fn default_content_type(extension: &str) -> Option<&'static str> {
+    Some(match extension {
+        "rels" => "application/vnd.openxmlformats-package.relationships+xml",
+        "png" => "image/png",
+        "jpeg" | "jpg" | "jpe" | "jfif" => "image/jpeg",
+        "gif" => "image/gif",
+        "bmp" => "image/bmp",
+        "tif" | "tiff" => "image/tiff",
+        "emf" => "image/x-emf",
+        "wmf" => "image/x-wmf",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "wdp" => "image/vnd.ms-photo",
+        "vml" => "application/vnd.openxmlformats-officedocument.vmlDrawing",
+        "bin" => "application/vnd.openxmlformats-officedocument.oleObject",
+        "wav" => "audio/wav",
+        "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "mp4" | "m4v" => "video/mp4",
+        "mov" => "video/quicktime",
+        "wmv" => "video/x-ms-wmv",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "fntdata" => "application/x-fontdata",
+        "odttf" => "application/vnd.openxmlformats-officedocument.obfuscatedFont",
+        _ => return None,
+    })
+}
+
 /// Every part of the archive, keyed by its full name (`xl/workbook.xml`).
 ///
 /// The whole archive is read up front: the parts are small next to the document
@@ -122,10 +154,20 @@ impl PreservingOpcPackage<'_> {
                 .into_save_result()?;
             let options = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated);
+            let content_types = self.package.content_types_covering_new_parts();
             for name in &self.package.order {
                 let Some(contents) = self.package.parts.get(name) else {
                     continue;
                 };
+                if name == CONTENT_TYPES_PART {
+                    if let Some(patched) = &content_types {
+                        stats.recompressed_parts += 1;
+                        stats.recompressed_source_bytes += patched.len();
+                        writer.start_file(name, options)?;
+                        std::io::Write::write_all(&mut writer, patched)?;
+                        continue;
+                    }
+                }
                 if !self.package.modified.contains(name) {
                     let entry = original.by_name(name)?;
                     stats.copied_parts += 1;
@@ -236,16 +278,85 @@ impl OpcPackage {
             let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
             let options = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated);
+            let content_types = self.content_types_covering_new_parts();
             for name in &self.order {
-                let Some(contents) = self.parts.get(name) else {
+                let Some(mut contents) = self.parts.get(name).map(Vec::as_slice) else {
                     continue;
                 };
+                if name == CONTENT_TYPES_PART {
+                    if let Some(patched) = &content_types {
+                        contents = patched;
+                    }
+                }
                 writer.start_file(name, options)?;
                 std::io::Write::write_all(&mut writer, contents)?;
             }
             writer.finish()?;
         }
         Ok(buffer)
+    }
+
+    /// `[Content_Types].xml` with a `Default` added for each extension of a
+    /// part written here that it gives no type — a relationships part or a
+    /// picture added to a package that declares every part by `Override`,
+    /// as some writers do — or `None` when every part has one already.
+    /// Office refuses, or repairs, a package with a part it cannot type.
+    fn content_types_covering_new_parts(&self) -> Option<Vec<u8>> {
+        let xml = std::str::from_utf8(self.parts.get(CONTENT_TYPES_PART)?).ok()?;
+        let attribute = |element: &str, key: &str| -> Option<String> {
+            let at = element.find(&format!("{key}=\""))? + key.len() + 2;
+            let end = element[at..].find('"')?;
+            Some(element[at..at + end].to_string())
+        };
+        let mut defaults = HashSet::new();
+        let mut overrides = HashSet::new();
+        for element in xml.split('<').skip(1) {
+            if element.starts_with("Default") {
+                if let Some(extension) = attribute(element, "Extension") {
+                    defaults.insert(extension.to_ascii_lowercase());
+                }
+            } else if element.starts_with("Override") {
+                if let Some(part) = attribute(element, "PartName") {
+                    overrides.insert(part.to_ascii_lowercase());
+                }
+            }
+        }
+        let mut added = Vec::new();
+        for name in self
+            .order
+            .iter()
+            .filter(|name| self.modified.contains(*name))
+        {
+            if name == CONTENT_TYPES_PART
+                || overrides.contains(&format!("/{}", name.to_ascii_lowercase()))
+            {
+                continue;
+            }
+            let Some((_, extension)) = name.rsplit_once('.') else {
+                continue;
+            };
+            let extension = extension.to_ascii_lowercase();
+            if defaults.contains(&extension) {
+                continue;
+            }
+            if let Some(content_type) = default_content_type(&extension) {
+                defaults.insert(extension.clone());
+                added.push(format!(
+                    "<Default Extension=\"{extension}\" ContentType=\"{content_type}\"/>"
+                ));
+            }
+        }
+        if added.is_empty() {
+            return None;
+        }
+        let close = xml.rfind("</")?;
+        let mut patched = String::with_capacity(xml.len() + 100 * added.len());
+        patched.push_str(&xml[..close]);
+        for default in added {
+            patched.push_str(&default);
+        }
+        patched.push_str(&xml[close..]);
+        Some(patched.into_bytes())
     }
 
     pub fn part(&self, name: &str) -> Option<&[u8]> {
