@@ -33,6 +33,7 @@ jade-docx-writer = { path = "../jade-docx-writer" }
 jade-docx-reader = { path = "../jade-docx-reader" }
 jade-docx-annotations = { path = "../jade-docx-annotations" }
 jade-docx-layout = { path = "../jade-docx-layout" }
+jade-pptx-layout = { path = "../jade-pptx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }
 jade-painter = { path = "../jade-painter" }
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
