@@ -83,6 +83,7 @@ pub mod set_paragraph_line_spacing;
 pub mod set_paragraph_metrics;
 pub mod set_paragraph_style;
 pub mod set_paragraph_visuals;
+pub mod set_ruby;
 pub mod set_run_format;
 pub mod set_typography;
 pub mod set_watermark;

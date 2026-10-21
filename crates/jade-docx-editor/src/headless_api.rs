@@ -58,6 +58,7 @@ use crate::commands::set_paragraph_line_spacing::SetParagraphLineSpacingCommand;
 use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, SpecialIndent};
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+use crate::commands::set_ruby::SetRubyCommand;
 use crate::commands::set_run_format::SetRunFormatCommand;
 use crate::commands::set_typography::{
     SetJapaneseTypographyCommand, SetParagraphTypographyCommand,
@@ -2784,6 +2785,25 @@ pub fn apply_headless_commands_with_executor_to_document(
                             *start_paragraph,
                             *end_paragraph,
                             typography.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetRuby {
+                paragraph,
+                start_offset,
+                end_offset,
+                ruby,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRubyCommand::new(
+                            *paragraph,
+                            *start_offset,
+                            *end_offset,
+                            ruby.clone(),
                         )),
                         &mut ctx,
                     )
