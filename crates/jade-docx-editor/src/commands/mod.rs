@@ -50,6 +50,7 @@ pub mod insert_text;
 pub mod insert_text_box;
 pub mod insert_toc;
 pub mod merge_table_cells;
+pub mod range_notes;
 pub(crate) mod paragraph_property_sync;
 pub(crate) mod paragraph_undo;
 pub(crate) mod raw_xml_undo;
