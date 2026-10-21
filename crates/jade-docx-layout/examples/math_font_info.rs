@@ -38,6 +38,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(json!({"character": character.to_string(), "root": base,
                     "script": f.script_glyph_id(base, 1), "script_script": f.script_glyph_id(base, 2)}))
             }).collect::<Vec<_>>();
+    for ch in ['∫', '∑', '∏', '(', '√', '⏟', '\u{0302}', '‖'] {
+        if let Some(g) = f.glyph_id(ch) {
+            let mut sizes = Vec::new();
+            for target in [0u32, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 7000, 10000] {
+                let choice = f.stretch_choice(g, MathStretchAxis::Vertical, target);
+                let h = f.stretch_choice(g, MathStretchAxis::Horizontal, target);
+                sizes.push(format!("{target}:{choice:?}/{h:?}"));
+            }
+            let bounds = f.glyph_outline(g, 100000).ok().flatten().map(|o| o.bounds);
+            eprintln!(
+                "{ch} glyph {g} bounds {bounds:?} adv {:?}",
+                f.glyph_advance_units(g)
+            );
+            for s in sizes {
+                eprintln!("   {s}");
+            }
+        }
+    }
     println!(
         "{}",
         serde_json::to_string_pretty(&json!({
@@ -51,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "lower_limit_gap_min": c.lower_limit_gap_min, "lower_limit_baseline_drop_min": c.lower_limit_baseline_drop_min,
                 "space_after_script": c.space_after_script},
             "integral_base_glyph_id": base, "integral_display": display_geometry,
-            "script_glyphs": script_glyphs
+            "script_glyphs": script_glyphs, "all_constants": format!("{c:?}")
         }))?
     );
     Ok(())

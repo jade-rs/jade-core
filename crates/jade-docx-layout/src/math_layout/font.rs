@@ -35,6 +35,44 @@ pub struct MathFontConstants {
     pub lower_limit_gap_min: i16,
     pub lower_limit_baseline_drop_min: i16,
     pub space_after_script: i16,
+    pub accent_base_height: i16,
+    pub flattened_accent_base_height: i16,
+    pub superscript_shift_up_cramped: i16,
+    pub stack_top_shift_up: i16,
+    pub stack_top_display_style_shift_up: i16,
+    pub stack_bottom_shift_down: i16,
+    pub stack_bottom_display_style_shift_down: i16,
+    pub stack_gap_min: i16,
+    pub stack_display_style_gap_min: i16,
+    pub stretch_stack_top_shift_up: i16,
+    pub stretch_stack_bottom_shift_down: i16,
+    pub stretch_stack_gap_above_min: i16,
+    pub stretch_stack_gap_below_min: i16,
+    pub fraction_numerator_shift_up: i16,
+    pub fraction_numerator_display_style_shift_up: i16,
+    pub fraction_denominator_shift_down: i16,
+    pub fraction_denominator_display_style_shift_down: i16,
+    pub fraction_numerator_gap_min: i16,
+    pub fraction_num_display_style_gap_min: i16,
+    pub fraction_rule_thickness: i16,
+    pub fraction_denominator_gap_min: i16,
+    pub fraction_denom_display_style_gap_min: i16,
+    pub skewed_fraction_horizontal_gap: i16,
+    pub skewed_fraction_vertical_gap: i16,
+    pub overbar_vertical_gap: i16,
+    pub overbar_rule_thickness: i16,
+    pub overbar_extra_ascender: i16,
+    pub underbar_vertical_gap: i16,
+    pub underbar_rule_thickness: i16,
+    pub underbar_extra_descender: i16,
+    pub radical_vertical_gap: i16,
+    pub radical_display_style_vertical_gap: i16,
+    pub radical_rule_thickness: i16,
+    pub radical_extra_ascender: i16,
+    pub radical_kern_before_degree: i16,
+    pub radical_kern_after_degree: i16,
+    pub radical_degree_bottom_raise_percent: i16,
+    pub min_connector_overlap: u16,
 }
 impl MathFontConstants {
     /// Invalid percentages are reported rather than turned into guessed metrics.
@@ -102,6 +140,14 @@ impl MathGlyphAssembly<'_> {
         })
     }
 }
+/// What a character grown to a size is drawn with: one glyph, or parts at
+/// offsets (font units, from the bottom or the left) along the axis.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MathStretchChoice {
+    Variant(u16),
+    Assembly(Vec<(u16, u32)>),
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum MathStretchPlan<'a> {
     Glyph(MathGlyphVariant),
@@ -179,6 +225,48 @@ impl<'a> OpenTypeMathFont<'a> {
             lower_limit_gap_min: c.lower_limit_gap_min().value,
             lower_limit_baseline_drop_min: c.lower_limit_baseline_drop_min().value,
             space_after_script: c.space_after_script().value,
+            accent_base_height: c.accent_base_height().value,
+            flattened_accent_base_height: c.flattened_accent_base_height().value,
+            superscript_shift_up_cramped: c.superscript_shift_up_cramped().value,
+            stack_top_shift_up: c.stack_top_shift_up().value,
+            stack_top_display_style_shift_up: c.stack_top_display_style_shift_up().value,
+            stack_bottom_shift_down: c.stack_bottom_shift_down().value,
+            stack_bottom_display_style_shift_down: c.stack_bottom_display_style_shift_down().value,
+            stack_gap_min: c.stack_gap_min().value,
+            stack_display_style_gap_min: c.stack_display_style_gap_min().value,
+            stretch_stack_top_shift_up: c.stretch_stack_top_shift_up().value,
+            stretch_stack_bottom_shift_down: c.stretch_stack_bottom_shift_down().value,
+            stretch_stack_gap_above_min: c.stretch_stack_gap_above_min().value,
+            stretch_stack_gap_below_min: c.stretch_stack_gap_below_min().value,
+            fraction_numerator_shift_up: c.fraction_numerator_shift_up().value,
+            fraction_numerator_display_style_shift_up: c
+                .fraction_numerator_display_style_shift_up()
+                .value,
+            fraction_denominator_shift_down: c.fraction_denominator_shift_down().value,
+            fraction_denominator_display_style_shift_down: c
+                .fraction_denominator_display_style_shift_down()
+                .value,
+            fraction_numerator_gap_min: c.fraction_numerator_gap_min().value,
+            fraction_num_display_style_gap_min: c.fraction_num_display_style_gap_min().value,
+            fraction_rule_thickness: c.fraction_rule_thickness().value,
+            fraction_denominator_gap_min: c.fraction_denominator_gap_min().value,
+            fraction_denom_display_style_gap_min: c.fraction_denom_display_style_gap_min().value,
+            skewed_fraction_horizontal_gap: c.skewed_fraction_horizontal_gap().value,
+            skewed_fraction_vertical_gap: c.skewed_fraction_vertical_gap().value,
+            overbar_vertical_gap: c.overbar_vertical_gap().value,
+            overbar_rule_thickness: c.overbar_rule_thickness().value,
+            overbar_extra_ascender: c.overbar_extra_ascender().value,
+            underbar_vertical_gap: c.underbar_vertical_gap().value,
+            underbar_rule_thickness: c.underbar_rule_thickness().value,
+            underbar_extra_descender: c.underbar_extra_descender().value,
+            radical_vertical_gap: c.radical_vertical_gap().value,
+            radical_display_style_vertical_gap: c.radical_display_style_vertical_gap().value,
+            radical_rule_thickness: c.radical_rule_thickness().value,
+            radical_extra_ascender: c.radical_extra_ascender().value,
+            radical_kern_before_degree: c.radical_kern_before_degree().value,
+            radical_kern_after_degree: c.radical_kern_after_degree().value,
+            radical_degree_bottom_raise_percent: c.radical_degree_bottom_raise_percent(),
+            min_connector_overlap: table.variants.map_or(0, |v| v.min_connector_overlap),
         };
         let script_style = face.tables().gsub.and_then(|gsub| {
             for script_tag in [b"math", b"DFLT"] {
@@ -351,12 +439,100 @@ impl<'a> OpenTypeMathFont<'a> {
             .and_then(|v| v.get(GlyphId(glyph)))
             .map_or(0, |v| v.value)
     }
+    /// Where an accent sits over this glyph, in font units from its origin.
+    pub fn top_accent_attachment(&self, glyph: u16) -> Option<i16> {
+        self.table
+            .glyph_info
+            .and_then(|g| g.top_accent_attachments)
+            .and_then(|v| v.get(GlyphId(glyph)))
+            .map(|v| v.value)
+    }
     pub fn is_extended_shape(&self, glyph: u16) -> bool {
         self.table
             .glyph_info
             .and_then(|g| g.extended_shapes)
             .is_some_and(|c| c.get(GlyphId(glyph)).is_some())
     }
+    /// The smallest variant at least `target_units` long, else the assembly
+    /// grown to that length (parts repeated and their overlaps shared out),
+    /// else the largest variant there is.
+    pub fn stretch_choice(
+        &self,
+        glyph: u16,
+        axis: MathStretchAxis,
+        target_units: u32,
+    ) -> Option<MathStretchChoice> {
+        let variants = self.table.variants?;
+        let construction = match axis {
+            MathStretchAxis::Vertical => variants.vertical_constructions,
+            MathStretchAxis::Horizontal => variants.horizontal_constructions,
+        }
+        .get(GlyphId(glyph))?;
+        let glyphs = self.face.number_of_glyphs();
+        let mut largest = None;
+        for v in construction.variants {
+            if v.variant_glyph.0 >= glyphs {
+                continue;
+            }
+            if u32::from(v.advance_measurement) >= target_units {
+                return Some(MathStretchChoice::Variant(v.variant_glyph.0));
+            }
+            largest = Some(v.variant_glyph.0);
+        }
+        if let Some(assembly) = construction.assembly {
+            let parts: Vec<_> = assembly.parts.into_iter().collect();
+            if parts.iter().any(|p| p.glyph_id.0 >= glyphs) || parts.is_empty() {
+                return largest.map(MathStretchChoice::Variant);
+            }
+            let min_overlap = u32::from(variants.min_connector_overlap);
+            let mut sequence = Vec::new();
+            for repeats in 0..=64u32 {
+                sequence.clear();
+                for p in &parts {
+                    let count = if p.part_flags.extender() { repeats } else { 1 };
+                    for _ in 0..count {
+                        sequence.push(*p);
+                    }
+                }
+                if sequence.is_empty() {
+                    continue;
+                }
+                let sum: u32 = sequence.iter().map(|p| u32::from(p.full_advance)).sum();
+                let joints = sequence.len() as u32 - 1;
+                if sum.saturating_sub(min_overlap * joints) >= target_units {
+                    break;
+                }
+            }
+            let sum: u32 = sequence.iter().map(|p| u32::from(p.full_advance)).sum();
+            let maxima: Vec<u32> = sequence
+                .windows(2)
+                .map(|w| {
+                    u32::from(w[0].end_connector_length.min(w[1].start_connector_length))
+                        .max(min_overlap)
+                })
+                .collect();
+            let floor = min_overlap * maxima.len() as u32;
+            let ceiling: u32 = maxima.iter().sum();
+            let wanted = sum
+                .saturating_sub(target_units)
+                .clamp(floor, ceiling.max(floor));
+            let room = ceiling.saturating_sub(floor).max(1);
+            let mut placed = Vec::with_capacity(sequence.len());
+            let mut offset = 0u32;
+            for (i, part) in sequence.iter().enumerate() {
+                placed.push((part.glyph_id.0, offset));
+                if let Some(max) = maxima.get(i) {
+                    let share =
+                        u64::from(wanted - floor) * u64::from(max - min_overlap) / u64::from(room);
+                    let overlap = min_overlap + share as u32;
+                    offset += u32::from(part.full_advance).saturating_sub(overlap);
+                }
+            }
+            return Some(MathStretchChoice::Assembly(placed));
+        }
+        largest.map(MathStretchChoice::Variant)
+    }
+
     /// Smallest adequate prepared variant. A larger target requires an assembly;
     /// the last prepared glyph is never represented as satisfying that target.
     pub fn stretch_plan(

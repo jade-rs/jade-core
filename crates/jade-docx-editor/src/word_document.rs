@@ -62,6 +62,8 @@ mod section_layout {
 mod header_footer_story {
     include!("word_document_header_footer_story.rs");
 }
+#[path = "word_document/objects.rs"]
+pub mod objects;
 
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
@@ -636,6 +638,9 @@ pub struct ReferenceMarkerSpan {
     pub is_footnote: bool,
 }
 
+/// The rendered length of the object character an inline equation shows as.
+const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
+
 /// Previous page margins (points) captured before a margin edit, for undo.
 #[derive(Debug, Clone)]
 pub struct PageMarginsBackup {
@@ -713,6 +718,13 @@ pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
+
+#[path = "word_document/content_controls.rs"]
+pub mod content_controls;
+#[path = "word_document/mail_merge.rs"]
+pub mod mail_merge;
+#[path = "word_document/rewrite.rs"]
+pub mod rewrite;
 
 /// A border change. Every edge is optional: the ones left out keep whatever
 /// they had, so switching off the inside lines does not disturb the frame.
@@ -1296,7 +1308,11 @@ enum ParagraphSurface {
     Body {
         path: Vec<PathEntry>,
     },
-    Math,
+    /// A display equation: its body path when it is in the main body (an
+    /// equation in a text box or a note has none).
+    Math {
+        path: Option<Vec<PathEntry>>,
+    },
     TextBox {
         host_path: Vec<PathEntry>,
         run_index: usize,
@@ -2269,6 +2285,7 @@ impl WordDocument {
                 // Capture unmodeled `w:rPr` children (e.g. w:lang, w:rtl) onto the
                 // model now that run node_ids are linked, so split-off run
                 // fragments (which lose node_id) can still re-emit them on export.
+                content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, raw_xml);
                 if let Some(body) = parsed_doc.body.as_mut() {
                     Self::capture_preserved_run_props(&mut body.elements, raw_xml);
                     Self::hide_last_rendered_page_breaks_from_edit_text(
@@ -2590,6 +2607,7 @@ impl WordDocument {
             parsed_doc.snap_to_grid_default = doc_settings.snap_to_grid_default;
             parsed_doc.display_content_revisions = doc_settings.display_content_revisions;
             parsed_doc.default_tab_stop = doc_settings.default_tab_stop;
+            parsed_doc.math_properties = doc_settings.math.clone();
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
             parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
@@ -2675,6 +2693,7 @@ impl WordDocument {
 
         let _ = attach_document_xml_ids(&mut parsed_doc, &raw_xml);
         attach_text_box_xml_ids(&mut parsed_doc, &raw_xml);
+        content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, &raw_xml);
         if let Some(body) = parsed_doc.body.as_mut() {
             Self::capture_preserved_run_props(&mut body.elements, &raw_xml);
         }
@@ -3073,7 +3092,11 @@ impl WordDocument {
                                     &text_box.border.theme_transforms,
                                 );
                             }
+                            Self::apply_theme_to_wordart(text_box, theme);
                             Self::force_apply_theme_to_elements(&mut text_box.blocks, theme);
+                        }
+                        if let Some(image) = run.image.as_mut() {
+                            Self::apply_theme_to_picture(image, theme, true);
                         }
                         if let Some(group) = run
                             .image
@@ -4032,7 +4055,11 @@ impl WordDocument {
                         });
                     }
                 }
+                Self::apply_theme_to_wordart(text_box, theme);
                 Self::apply_theme_to_elements(&mut text_box.blocks, theme);
+            }
+            if let Some(image) = run.image.as_mut() {
+                Self::apply_theme_to_picture(image, theme, false);
             }
             if let Some(group) = run
                 .image
@@ -4098,6 +4125,100 @@ impl WordDocument {
         }
         for nested in &mut group.groups {
             Self::apply_theme_to_shape_group(nested, theme, force);
+        }
+    }
+
+    /// Resolves the theme colours of a picture's outline, effects and colour
+    /// adjustments; `force` replaces colours already resolved (a theme
+    /// change).
+    fn apply_theme_to_picture(image: &mut RunImage, theme: &ThemePart, force: bool) {
+        let resolve =
+            |color: &mut Option<String>, key: Option<&str>, transforms: &[ThemeColorTransform]| {
+                if force || color.is_none() {
+                    if let Some(resolved) =
+                        key.and_then(|key| Self::resolve_shape_theme_color(theme, key, transforms))
+                    {
+                        *color = Some(resolved);
+                    }
+                }
+            };
+        let Some(format) = image.format.as_deref_mut() else {
+            return;
+        };
+        if let Some(outline) = format.outline.as_mut() {
+            resolve(
+                &mut outline.color,
+                outline.theme_color.as_deref(),
+                &outline.theme_transforms,
+            );
+        }
+        for shadow in [format.shadow.as_mut(), format.inner_shadow.as_mut()]
+            .into_iter()
+            .flatten()
+        {
+            resolve(
+                &mut shadow.color,
+                shadow.theme_color.as_deref(),
+                &shadow.theme_transforms,
+            );
+        }
+        if let Some(glow) = format.glow.as_mut() {
+            resolve(
+                &mut glow.color,
+                glow.theme_color.as_deref(),
+                &glow.theme_transforms,
+            );
+        }
+        for effect in &mut format.blip_effects {
+            let colors: Vec<&mut crate::document::DrawingColor> = match effect {
+                crate::document::BlipEffect::Duotone { dark, light } => vec![dark, light],
+                crate::document::BlipEffect::ColorChange { from, to } => vec![from, to],
+                _ => Vec::new(),
+            };
+            for color in colors {
+                resolve(&mut color.rgb, color.theme.as_deref(), &color.transforms);
+                if color.rgb.is_some() && !color.transforms.is_empty() && color.theme.is_none() {
+                    if let Some(rgb) = color.rgb.as_deref().and_then(|rgb| {
+                        jade_docx_reader::color::apply_color_transforms(rgb, &color.transforms)
+                    }) {
+                        color.rgb = Some(rgb);
+                        color.transforms.clear();
+                    }
+                }
+            }
+        }
+    }
+
+    /// Resolves WordArt's text effect colours.
+    fn apply_theme_to_wordart(text_box: &mut RunTextBox, theme: &ThemePart) {
+        let Some(art) = text_box
+            .extras
+            .as_deref_mut()
+            .and_then(|extras| extras.wordart.as_mut())
+        else {
+            return;
+        };
+        let resolve = |color: &mut crate::document::DrawingColor| {
+            if let Some(key) = color.theme.as_deref() {
+                // `w14` uses the long names (`accent1`, `tx1` as `text1`…).
+                let key = match key {
+                    "text1" | "dark1" => "dk1",
+                    "background1" | "light1" => "lt1",
+                    "text2" | "dark2" => "dk2",
+                    "background2" | "light2" => "lt2",
+                    other => other,
+                };
+                color.rgb = Self::resolve_shape_theme_color(theme, key, &color.transforms);
+            }
+        };
+        if let Some(fill) = art.fill.as_mut() {
+            resolve(fill);
+        }
+        if let Some((outline, _)) = art.outline.as_mut() {
+            resolve(outline);
+        }
+        if let Some((glow, _)) = art.glow.as_mut() {
+            resolve(glow);
         }
     }
 
@@ -4728,7 +4849,13 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => {
+                    path.push(PathEntry::Element(idx));
+                    out.push(ParagraphSurface::Math {
+                        path: Some(path.clone()),
+                    });
+                    path.pop();
+                }
             }
         }
     }
@@ -4777,7 +4904,7 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
             }
         }
     }
@@ -4839,7 +4966,7 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
             }
         }
     }
@@ -5991,7 +6118,7 @@ impl WordDocument {
             if idx == surface_index {
                 return match surface {
                     ParagraphSurface::Body { .. } => Some(body_count),
-                    ParagraphSurface::Math
+                    ParagraphSurface::Math { .. }
                     | ParagraphSurface::TextBox { .. }
                     | ParagraphSurface::Note { .. } => None,
                 };
@@ -6075,7 +6202,7 @@ impl WordDocument {
         surface_index: usize,
     ) -> Option<ParagraphStoryPosition> {
         match self.paragraph_surfaces.get(surface_index)? {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { .. } => Some(ParagraphStoryPosition {
                 story: "body",
                 index: self.body_index_for_surface(surface_index)?,
@@ -6128,7 +6255,7 @@ impl WordDocument {
     /// equation outside any paragraph and past the last surface.
     pub fn paragraph_story(&self, surface: usize) -> Option<ParagraphStory> {
         match self.paragraph_surfaces.get(surface)? {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { .. } => Some(ParagraphStory::Body {
                 index: self.body_index_for_surface(surface)?,
             }),
@@ -6916,22 +7043,24 @@ impl WordDocument {
                         .or_else(|| (drawings.len() == 1).then(|| &drawings[0]))
                         .copied()
                 });
-            let Some(drawing_relationship) = drawing_relationship else {
-                return;
-            };
-            let drawing_path =
-                Self::resolve_target_path(&doc_part.path, &drawing_relationship.target);
-            let Some(xml) = package
-                .get(&drawing_path)
-                .and_then(|bytes| std::str::from_utf8(bytes).ok())
-            else {
-                return;
-            };
             let extent = (
                 image.width_px.unwrap_or(0.0) * 9_525.0,
                 image.height_px.unwrap_or(0.0) * 9_525.0,
             );
-            if let Ok(Some(group)) = parser.parse_diagram_drawing(xml, extent) {
+            let cached = drawing_relationship
+                .map(|relationship| Self::resolve_target_path(&doc_part.path, &relationship.target))
+                .and_then(|path| package.get(&path))
+                .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                .and_then(|xml| parser.parse_diagram_drawing(xml, extent).ok().flatten());
+            // A graphic without Word's cached drawing is laid out from its
+            // data, as Word would lay it out.
+            let group = cached.or_else(|| {
+                let diagram = crate::smartart::parse_data(data_xml?, None)?;
+                let xml =
+                    crate::smartart::drawing_xml(&diagram, extent.0.max(1.0), extent.1.max(1.0));
+                parser.parse_diagram_drawing(&xml, extent).ok().flatten()
+            });
+            if let Some(group) = group {
                 image.shape_group = Some(group);
                 image.placeholder_label = None;
             }
@@ -7072,8 +7201,70 @@ impl WordDocument {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
+                    if let Some(group) = run
+                        .image
+                        .as_mut()
+                        .and_then(|image| image.shape_group.as_mut())
+                    {
+                        fn walk(
+                            group: &mut RunShapeGroup,
+                            resolve: &mut dyn FnMut(&str) -> Option<String>,
+                        ) {
+                            for shape in &mut group.children {
+                                if let Some(picture) =
+                                    shape.picture.as_mut().filter(|p| p.data_uri.is_none())
+                                {
+                                    picture.data_uri = resolve(&picture.relationship_id);
+                                }
+                            }
+                            for nested in &mut group.groups {
+                                walk(nested, resolve);
+                            }
+                        }
+                        walk(group, &mut |id| {
+                            let rel = rel_map.get(id)?;
+                            let path = Self::resolve_target_path(&doc_part.path, &rel.target);
+                            let bytes = package.get(&path)?;
+                            Some(format!(
+                                "data:{};base64,{}",
+                                Self::guess_image_mime_type(&path),
+                                BASE64.encode(bytes)
+                            ))
+                        });
+                    }
                     if let Some(image) = run.image.as_mut() {
+                        // Ink: its InkML part's strokes, which are drawn.
+                        if let Some(id) = image.format().ink_relationship_id.clone() {
+                            if image.format().ink.is_none() {
+                                let ink = rel_map
+                                    .get(id.as_str())
+                                    .map(|rel| {
+                                        Self::resolve_target_path(&doc_part.path, &rel.target)
+                                    })
+                                    .and_then(|path| package.get(&path))
+                                    .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                                    .and_then(crate::ink::parse_inkml);
+                                image.format_mut().ink = ink;
+                            }
+                            continue;
+                        }
                         if image.data_uri.is_some() {
+                            continue;
+                        }
+                        // Word 2016 and later draw a picture's SVG
+                        // (`asvg:svgBlip`) rather than its PNG fallback.
+                        if let Some(svg) = image
+                            .format()
+                            .svg_relationship_id
+                            .as_deref()
+                            .and_then(|id| rel_map.get(id))
+                            .filter(|rel| rel.r#type == RelationshipTypes::Image.as_str())
+                            .and_then(|rel| {
+                                package.get(&Self::resolve_target_path(&doc_part.path, &rel.target))
+                            })
+                        {
+                            image.data_uri =
+                                Some(format!("data:image/svg+xml;base64,{}", BASE64.encode(svg)));
                             continue;
                         }
                         if let Some(rel_id) = image.relationship_id.as_deref() {
@@ -8242,7 +8433,7 @@ impl WordDocument {
     /// A note with no body reference has no section context.
     pub fn section_index_for_paragraph(&self, paragraph_index: usize) -> Option<usize> {
         let path = match self.paragraph_surfaces.get(paragraph_index)? {
-            ParagraphSurface::Math => return None,
+            ParagraphSurface::Math { .. } => return None,
             ParagraphSurface::Body { path } => path,
             ParagraphSurface::TextBox { host_path, .. } => host_path,
             ParagraphSurface::Note { kind, note_id, .. } => self
@@ -12993,7 +13184,7 @@ impl WordDocument {
             },
             vertical_alignment: Default::default(),
             shape: spec.shape,
-            effect_ref: None,
+            ..Default::default()
         };
 
         let inserted_run_index = {
@@ -13255,6 +13446,9 @@ impl WordDocument {
             title: spec.title.clone(),
             categories: spec.categories.clone(),
             series: spec.series.clone(),
+            // Word puts a new chart's legend under it.
+            legend: Some("b".to_string()),
+            xml: None,
         };
         validate_chart(&chart)?;
 
@@ -13310,6 +13504,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -13386,9 +13581,6 @@ impl WordDocument {
         image.title = Some(chart.title.clone());
         image.data_uri = Some(chart_preview_data_uri(&chart, width, height));
         image.chart = Some(chart);
-        run.node_id = None;
-        run.text_node_id = None;
-        run.revision_node_id = None;
         self.sync_paragraph_text(target.paragraph_index);
         Ok(())
     }
@@ -13469,6 +13661,7 @@ impl WordDocument {
                     diagram_data_relationship_id: None,
                     crop: None,
                     layout: RunImageLayout::default(),
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -13610,6 +13803,199 @@ impl WordDocument {
         }
     }
 
+    /// Replaces an equation's OMML in place: an inline one (`run_index`, a
+    /// math run of a body paragraph) or a display one (a math surface). The
+    /// model and the document XML change together; nothing else around the
+    /// equation is rewritten.
+    pub(crate) fn replace_equation_at(
+        &mut self,
+        paragraph: usize,
+        run_index: Option<usize>,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        match (self.paragraph_surfaces.get(paragraph).cloned(), run_index) {
+            (Some(ParagraphSurface::Math { path: Some(path) }), _) => {
+                self.replace_display_equation(paragraph, &path, raw_omml)
+            }
+            (Some(ParagraphSurface::Body { .. }), Some(run_index)) => {
+                self.replace_inline_equation(paragraph, run_index, raw_omml)
+            }
+            _ => Err("there is no editable equation there".to_string()),
+        }
+    }
+
+    fn replace_inline_equation(
+        &mut self,
+        paragraph_index: usize,
+        run_index: usize,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMath")?;
+        let elements = crate::parser::math::parse_math_elements(raw_omml)
+            .map_err(|error| error.to_string())?;
+        if elements.is_empty() {
+            return Err("equation OMML must contain a math element".to_string());
+        }
+        let paragraph = self
+            .paragraph(paragraph_index)
+            .ok_or_else(|| "target paragraph is missing".to_string())?;
+        if paragraph
+            .runs
+            .get(run_index)
+            .and_then(|run| run.math.as_ref())
+            .is_none()
+        {
+            return Err("the run is not an equation".to_string());
+        }
+        let ordinal = paragraph.runs[..run_index]
+            .iter()
+            .filter(|run| run.math.is_some())
+            .count();
+        let node_id = paragraph
+            .node_id
+            .ok_or_else(|| "the paragraph has no XML".to_string())?;
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+        let element = raw
+            .element(node_id)
+            .ok_or_else(|| "the paragraph XML is missing".to_string())?;
+        let mut found = Vec::new();
+        Self::collect_equation_elements(raw, element, false, &mut found);
+        let target = *found
+            .get(ordinal)
+            .ok_or_else(|| "the equation's XML is missing".to_string())?;
+        Self::replace_xml_element(raw, target, root)?;
+        let paragraph = self
+            .paragraph_mut(paragraph_index)
+            .ok_or_else(|| "target paragraph is missing".to_string())?;
+        paragraph.runs[run_index].math = Some(MathRun {
+            raw_omml: raw_omml.trim().to_string(),
+            elements,
+        });
+        Ok(())
+    }
+
+    fn replace_display_equation(
+        &mut self,
+        surface: usize,
+        path: &[PathEntry],
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMathPara")?;
+        let replacement = crate::parser::math::parse_math_paragraph(raw_omml.trim().to_string())
+            .map_err(|error| error.to_string())?;
+        if replacement.elements.is_empty() {
+            return Err("equation OMML must contain a math paragraph".to_string());
+        }
+        // The n-th display equation of the body is the n-th `m:oMathPara`
+        // of its XML.
+        let ordinal = self.paragraph_surfaces[..surface]
+            .iter()
+            .filter(|s| matches!(s, ParagraphSurface::Math { path: Some(_) }))
+            .count();
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+        let mut found = Vec::new();
+        let root_element = raw.root().clone();
+        Self::collect_equation_elements(raw, &root_element, true, &mut found);
+        let target = *found
+            .get(ordinal)
+            .ok_or_else(|| "the equation's XML is missing".to_string())?;
+        Self::replace_xml_element(raw, target, root)?;
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let body = document
+            .body
+            .as_mut()
+            .ok_or_else(|| "document body is unavailable".to_string())?;
+        let math = Self::locate_math_mut(&mut body.elements, path)
+            .ok_or_else(|| "the equation is missing from the body".to_string())?;
+        math.raw_omml = replacement.raw_omml;
+        math.elements = replacement.elements;
+        Ok(())
+    }
+
+    /// The equations under `element` in document order: inline `m:oMath`
+    /// (outside display equations) or display `m:oMathPara`. Text boxes and
+    /// fallback content are not this story's.
+    fn collect_equation_elements(
+        doc: &DocxXmlDocument,
+        element: &XmlElement,
+        display: bool,
+        out: &mut Vec<XmlNodeId>,
+    ) {
+        for child in &element.children {
+            let XmlNode::Element(child) = child else {
+                continue;
+            };
+            match child.name.as_str() {
+                "w:txbxContent" | "mc:Fallback" | "v:textbox" | "w:footnote" | "w:endnote" => {}
+                "m:oMathPara" => {
+                    if display {
+                        out.push(child.id);
+                    }
+                }
+                "m:oMath" => {
+                    if !display && Self::is_modeled_equation(doc, child) {
+                        out.push(child.id);
+                    }
+                }
+                _ => Self::collect_equation_elements(doc, child, display, out),
+            }
+        }
+    }
+
+    /// Puts `replacement` where the element `target` is.
+    fn replace_xml_element(
+        doc: &mut DocxXmlDocument,
+        target: XmlNodeId,
+        replacement: XmlElement,
+    ) -> Result<(), String> {
+        let path = doc
+            .path(target)
+            .ok_or_else(|| "the equation's XML path is missing".to_string())?;
+        let parent = doc
+            .parent_id(target)
+            .ok_or_else(|| "the equation's XML parent is missing".to_string())?;
+        let index = path.as_slice().last().copied().unwrap_or(0);
+        doc.remove_node(&path).map_err(|error| error.to_string())?;
+        let element = doc.create_element(
+            replacement.name,
+            replacement.attributes,
+            replacement.children,
+        );
+        doc.insert_node(parent, index, XmlNode::Element(element))
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn locate_math_mut<'a>(
+        elements: &'a mut [BodyElement],
+        path: &[PathEntry],
+    ) -> Option<&'a mut MathParagraph> {
+        let (first, rest) = path.split_first()?;
+        let PathEntry::Element(index) = *first else {
+            return None;
+        };
+        match elements.get_mut(index)? {
+            BodyElement::Math(math) if rest.is_empty() => Some(math.as_mut()),
+            BodyElement::Table(table) => {
+                let (cell, rest) = rest.split_first()?;
+                let PathEntry::TableCell { row, cell } = *cell else {
+                    return None;
+                };
+                let cell = table.rows.get_mut(row)?.cells.get_mut(cell)?;
+                Self::locate_math_mut(&mut cell.blocks, rest)
+            }
+            _ => None,
+        }
+    }
+
     fn insert_math_paragraph_after(
         &mut self,
         paragraph_index: usize,
@@ -13719,9 +14105,6 @@ impl WordDocument {
         image.placeholder_label = None;
         image.width_px = next_width;
         image.height_px = next_height;
-        run.node_id = None;
-        run.text_node_id = None;
-        run.revision_node_id = None;
 
         self.sync_paragraph_text(target.paragraph_index);
         self.rebuild_paragraph_surfaces();
@@ -16914,6 +17297,7 @@ impl WordDocument {
                         behind_doc: false,
                         ..RunImageLayout::default()
                     },
+                    ..Default::default()
                 }),
                 text_box: None,
                 math: None,
@@ -19163,7 +19547,7 @@ impl WordDocument {
                 .cloned()
                 .ok_or_else(|| "anchor paragraph is unavailable".to_string())?
             {
-                ParagraphSurface::Math => {
+                ParagraphSurface::Math { .. } => {
                     return Err("insert_table does not support math blocks".to_string())
                 }
                 ParagraphSurface::Body { path } => Some(path),
@@ -28314,12 +28698,45 @@ impl WordDocument {
         )
     }
 
+    /// The display equation at a math surface of the body.
+    pub fn math_paragraph(&self, surface: usize) -> Option<&MathParagraph> {
+        let Some(ParagraphSurface::Math { path: Some(path) }) =
+            self.paragraph_surfaces.get(surface)
+        else {
+            return None;
+        };
+        let body = self.document.as_ref()?.body.as_ref()?;
+        Self::locate_math(&body.elements, path)
+    }
+
+    fn locate_math<'a>(
+        elements: &'a [BodyElement],
+        path: &[PathEntry],
+    ) -> Option<&'a MathParagraph> {
+        let (first, rest) = path.split_first()?;
+        let PathEntry::Element(index) = *first else {
+            return None;
+        };
+        match elements.get(index)? {
+            BodyElement::Math(math) if rest.is_empty() => Some(math.as_ref()),
+            BodyElement::Table(table) => {
+                let (cell, rest) = rest.split_first()?;
+                let PathEntry::TableCell { row, cell } = *cell else {
+                    return None;
+                };
+                let cell = table.rows.get(row)?.cells.get(cell)?;
+                Self::locate_math(&cell.blocks, rest)
+            }
+            _ => None,
+        }
+    }
+
     /// An equation outside any paragraph (`m:oMathPara` as a block): it holds
     /// a paragraph index but has no paragraph behind it.
     pub(crate) fn is_math_surface(&self, index: usize) -> bool {
         matches!(
             self.paragraph_surfaces.get(index),
-            Some(ParagraphSurface::Math)
+            Some(ParagraphSurface::Math { .. })
         )
     }
 
@@ -28487,11 +28904,96 @@ impl WordDocument {
             offset = offset.saturating_sub(consumed);
             rendered += span.rendered_len;
         }
+        // An inline equation is one object character the model does not
+        // hold; an offset past it is that much ahead of the model's.
+        let mut delta = 0isize;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            let start = (model_offset as isize + delta).max(0) as usize;
+            if offset <= start {
+                break;
+            }
+            if offset < start + OBJECT_CHAR_LEN {
+                return TextPosition::new(position.paragraph, model_offset);
+            }
+            delta += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let offset = (offset as isize - delta).max(0) as usize;
         TextPosition::new(position.paragraph, offset)
     }
 
+    /// The inline equations of a body paragraph (math runs, and EQ fields
+    /// the renderer draws as equations) as (model offset, model length):
+    /// each renders as one object character.
+    fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) {
+            return Vec::new();
+        }
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let mut spans = Vec::new();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            let equation = run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+                || run
+                    .field
+                    .as_ref()
+                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind));
+            if equation {
+                spans.push((model_offset, run.text.len()));
+            }
+            model_offset += run.text.len();
+        }
+        spans
+    }
+
+    /// Whether an EQ instruction uses a structure switch (`\f`, `\r`, `\s`,
+    /// `\b`, `\a`, `\l`, `\o`, `\x`, `\i`, `\d`): the renderer lays those
+    /// out as an equation (`jade_docx_layout::math_layout::eq_field`).
+    fn eq_has_structure_switch(instruction: &str) -> bool {
+        let chars: Vec<char> = instruction.chars().collect();
+        chars.windows(3).any(|w| {
+            w[0] == '\\' && "frsbaloxidFRSBALOXID".contains(w[1]) && !w[2].is_ascii_alphabetic()
+        }) || chars.len() >= 2
+            && chars[chars.len() - 2] == '\\'
+            && "frsbaloxidFRSBALOXID".contains(chars[chars.len() - 1])
+    }
+
+    /// An EQ field the renderer lays out as an equation.
+    pub(crate) fn is_eq_equation_field(kind: &crate::document::RunFieldKind) -> bool {
+        use crate::document::RunFieldKind;
+        match kind {
+            RunFieldKind::Unsupported { instruction } => {
+                instruction
+                    .trim_start()
+                    .get(..2)
+                    .is_some_and(|name| name.eq_ignore_ascii_case("EQ"))
+                    && Self::eq_has_structure_switch(instruction)
+            }
+            RunFieldKind::Locked { kind } => Self::is_eq_equation_field(kind),
+            _ => false,
+        }
+    }
+
     pub fn model_to_rendered_text_position(&self, position: TextPosition) -> TextPosition {
-        let mut offset = position.offset + self.rendered_note_marker_len(position.paragraph);
+        let mut objects = 0isize;
+        let mut model = position.offset;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            if model_offset >= position.offset {
+                break;
+            }
+            if position.offset < model_offset + model_len {
+                // Inside an EQ field's saved result: before the equation.
+                model = model_offset;
+                break;
+            }
+            objects += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let mut offset = (model as isize + objects).max(0) as usize
+            + self.rendered_note_marker_len(position.paragraph);
         for span in self.reference_marker_spans(position.paragraph) {
             // A mark at the model offset itself renders before the caret only
             // when the caret follows it, which a model offset cannot say; keep
@@ -28755,7 +29257,7 @@ impl WordDocument {
                 .any(|entry| matches!(entry, PathEntry::TableCell { .. }))
         };
         match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { path } => contains_table_path(path),
             ParagraphSurface::TextBox { host_path, .. } => contains_table_path(host_path),
             ParagraphSurface::Note { path, .. } => contains_table_path(path),
@@ -28765,7 +29267,7 @@ impl WordDocument {
     pub fn paragraph(&self, index: usize) -> Option<&Paragraph> {
         let surface = self.paragraph_surfaces.get(index)?;
         match surface {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { path } => {
                 let doc = self.document.as_ref()?;
                 let body = doc.body.as_ref()?;
@@ -28795,7 +29297,7 @@ impl WordDocument {
     pub fn paragraph_mut(&mut self, index: usize) -> Option<&mut Paragraph> {
         let surface = self.paragraph_surfaces.get(index)?.clone();
         match surface {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { path } => {
                 let doc = self.document_mut()?;
                 let body = doc.body.as_mut()?;
@@ -28847,7 +29349,7 @@ impl WordDocument {
         };
 
         let removed = match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { path } => {
                 let Some(doc) = self.document_mut() else {
                     return false;
@@ -29085,7 +29587,7 @@ impl WordDocument {
         };
 
         match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { .. } => {
                 let Some(body_index) = self.body_index_for_surface(index) else {
                     return false;
@@ -29407,7 +29909,7 @@ impl WordDocument {
         // paragraph, kept it, and listed it twice.
         if original_text_boxes
             .iter()
-            .any(|surface| matches!(surface, ParagraphSurface::Math))
+            .any(|surface| matches!(surface, ParagraphSurface::Math { .. }))
         {
             return false;
         }
@@ -29448,7 +29950,7 @@ impl WordDocument {
         insert_index: usize,
     ) {
         match surface {
-            ParagraphSurface::Math => {}
+            ParagraphSurface::Math { .. } => {}
             ParagraphSurface::Body { path } => {
                 Self::bump_path_after_insert(path, prefix, insert_index);
             }
@@ -30876,7 +31378,7 @@ impl WordDocument {
         };
         let same_boxes = !another_box_follows
             && current.iter().zip(&hosted).all(|pair| match pair {
-                (ParagraphSurface::Math, ParagraphSurface::Math) => true,
+                (ParagraphSurface::Math { .. }, ParagraphSurface::Math { .. }) => true,
                 (
                     ParagraphSurface::TextBox {
                         host_path: current_host,
@@ -30912,7 +31414,7 @@ impl WordDocument {
         };
 
         match surface {
-            ParagraphSurface::Math => return,
+            ParagraphSurface::Math { .. } => return,
             ParagraphSurface::Body { .. } => {
                 let paragraph_ptr = match self.paragraph_mut(paragraph_index) {
                     Some(paragraph) => paragraph as *mut Paragraph,
@@ -31279,6 +31781,10 @@ impl WordDocument {
         // block it came out of, to be rebuilt in place.
         let mut existing_text_box_drawing: Option<XmlElement> = None;
         let mut text_box_alternate_content: Option<(XmlElement, usize, usize)> = None;
+        // The same for a picture, group, chart or SmartArt: patched in place
+        // (see `patch_image_drawing_element`) rather than rebuilt.
+        let mut existing_image_drawing: Option<XmlElement> = None;
+        let mut image_alternate_content: Option<(XmlElement, usize, usize)> = None;
         let mut preserved_text_box_drawing = false;
         let mut preserved_image_drawing = false;
         let mut break_templates = Vec::new();
@@ -31461,10 +31967,33 @@ impl WordDocument {
                             node: XmlNode::Element(element),
                             consumed_text: None,
                         });
+                    } else if existing_image_drawing.is_none() {
+                        // Object edits patch the modeled frame and transform
+                        // into it, so a drag or resize reaches the package and
+                        // the picture's effects, a group's shapes or a
+                        // SmartArt's references are still there.
+                        existing_image_drawing = Some(element);
                     }
-                    // Object edits regenerate modeled images. Keeping an
-                    // imported image's old drawing there would discard a
-                    // drag/resize on export.
+                }
+                XmlNode::Element(mut element)
+                    if !preserve_drawings
+                        && element.name == "mc:AlternateContent"
+                        && run.image.is_some()
+                        && run.text_box.is_none()
+                        && image_alternate_content.is_none()
+                        && Self::alternate_content_choice_drawing(&element).is_some() =>
+                {
+                    if let Some((choice_index, drawing_index)) =
+                        Self::alternate_content_choice_drawing(&element)
+                    {
+                        if let XmlNode::Element(choice) = &mut element.children[choice_index] {
+                            if let XmlNode::Element(drawing) = choice.children.remove(drawing_index)
+                            {
+                                existing_image_drawing = Some(drawing);
+                            }
+                            image_alternate_content = Some((element, choice_index, drawing_index));
+                        }
+                    }
                 }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:pict" && run.text_box.is_some() =>
@@ -31544,11 +32073,23 @@ impl WordDocument {
                 }
             }
             if let Some(image) = run.image.as_ref().filter(|_| !preserved_image_drawing) {
-                run_element
-                    .children
-                    .push(XmlNode::Element(Self::create_image_drawing_element(
-                        doc, image,
-                    )));
+                let drawing =
+                    Self::create_image_drawing_element(doc, image, existing_image_drawing.take());
+                match image_alternate_content.take() {
+                    Some((mut alternate, choice_index, drawing_index)) => {
+                        if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
+                            let at = drawing_index.min(choice.children.len());
+                            choice.children.insert(at, XmlNode::Element(drawing));
+                        }
+                        // As for a text box: the fallback describes the
+                        // object before this edit and would be read instead.
+                        alternate.children.retain(|child| {
+                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
+                        });
+                        run_element.children.push(XmlNode::Element(alternate));
+                    }
+                    None => run_element.children.push(XmlNode::Element(drawing)),
+                }
             }
             run_element.children.extend(
                 preserved_inline_children
@@ -31598,7 +32139,7 @@ impl WordDocument {
         }
         if let Some(image) = run.image.as_ref() {
             children.push(XmlNode::Element(Self::create_image_drawing_element(
-                doc, image,
+                doc, image, None,
             )));
         }
 
@@ -31614,7 +32155,322 @@ impl WordDocument {
         Some((run_element, text_id))
     }
 
-    fn create_image_drawing_element(doc: &mut DocxXmlDocument, image: &RunImage) -> XmlElement {
+    /// Writes the `w:drawing` of a picture, chart, group or SmartArt from the
+    /// model. With `existing` — the drawing the package had for it — that
+    /// drawing is patched instead (see [`Self::patch_image_drawing_element`]),
+    /// so what the model does not read survives the edit.
+    fn create_image_drawing_element(
+        doc: &mut DocxXmlDocument,
+        image: &RunImage,
+        existing: Option<XmlElement>,
+    ) -> XmlElement {
+        if let Some(existing) = existing {
+            match Self::patch_image_drawing_element(doc, image, existing) {
+                Ok(patched) => return patched,
+                Err(_unusable) => {}
+            }
+        }
+        Self::build_image_drawing_element(doc, image)
+    }
+
+    /// Brings a picture's existing drawing in line with the model: its frame
+    /// (position, extent, wrap, distances, stacking) is rebuilt as a new
+    /// drawing's would be, and in the graphic only the size, rotation, flips,
+    /// crop and picture reference are touched. Effects, outlines, theme
+    /// references, extension lists — and the whole of a group, chart or
+    /// SmartArt graphic — stay as authored. Returns the drawing back when it
+    /// has no container or graphic to patch.
+    fn patch_image_drawing_element(
+        doc: &mut DocxXmlDocument,
+        image: &RunImage,
+        existing: XmlElement,
+    ) -> Result<XmlElement, XmlElement> {
+        use crate::drawing_xml::{attr, child_mut, get_attr, put_child, set_attr};
+        fn upsert(attributes: &mut Vec<XmlAttribute>, name: &str, value: String) {
+            match attributes
+                .iter_mut()
+                .find(|attribute| attribute.name == name)
+            {
+                Some(attribute) => attribute.value = value,
+                None => attributes.push(attr(name, value)),
+            }
+        }
+        fn has(attributes: &[XmlAttribute], name: &str) -> bool {
+            attributes.iter().any(|attribute| attribute.name == name)
+        }
+        let Some(container_index) = existing.children.iter().position(|node| {
+            matches!(node, XmlNode::Element(element)
+                if (element.name == "wp:anchor" || element.name == "wp:inline")
+                    && crate::drawing_xml::child(element, "a:graphic").is_some())
+        }) else {
+            return Err(existing);
+        };
+        let mut drawing = existing;
+        let XmlNode::Element(old_container) = drawing.children.remove(container_index) else {
+            unreachable!("position matched an element");
+        };
+        let px_to_emu = crate::drawing_xml::px_to_emu;
+        let width_emu = px_to_emu(image.width_px.unwrap_or(1.0).max(1.0)).max(1);
+        let height_emu = px_to_emu(image.height_px.unwrap_or(1.0).max(1.0)).max(1);
+        let layout = &image.layout;
+
+        let mut attributes = old_container.attributes;
+        let mut kept = Vec::new();
+        let mut graphic = None;
+        for node in old_container.children {
+            if let XmlNode::Element(element) = node {
+                match element.name.as_str() {
+                    "a:graphic" => graphic = Some(element),
+                    "wp:simplePos"
+                    | "wp:positionH"
+                    | "wp:positionV"
+                    | "wp:extent"
+                    | "wp:wrapNone"
+                    | "wp:wrapSquare"
+                    | "wp:wrapTight"
+                    | "wp:wrapThrough"
+                    | "wp:wrapTopAndBottom" => {}
+                    _ => kept.push(element),
+                }
+            }
+        }
+        let mut graphic = graphic.expect("the container was chosen for its graphic");
+
+        // The graphic: size, rotation, flips, crop, picture.
+        if let Some(graphic_data) = child_mut(&mut graphic, "a:graphicData") {
+            if let Some(picture) = child_mut(graphic_data, "pic:pic") {
+                if let Some(sp_pr) = child_mut(picture, "pic:spPr") {
+                    Self::patch_drawing_transform(doc, sp_pr, layout, width_emu, height_emu);
+                }
+                if let Some(blip_fill) = child_mut(picture, "pic:blipFill") {
+                    if let (Some(blip), Some(relationship)) = (
+                        child_mut(blip_fill, "a:blip"),
+                        image
+                            .relationship_id
+                            .as_deref()
+                            .filter(|_| image.chart.is_none()),
+                    ) {
+                        if get_attr(blip, "r:embed") != Some(relationship) {
+                            set_attr(blip, "r:embed", Some(relationship.to_string()));
+                        }
+                    }
+                    match image.crop {
+                        Some(crop) => {
+                            let value = |value: f64| {
+                                if value.is_finite() {
+                                    (value * 100_000.0).round() as i64
+                                } else {
+                                    0
+                                }
+                            };
+                            let mut attributes = Vec::new();
+                            for (name, edge) in [
+                                ("l", crop.left),
+                                ("t", crop.top),
+                                ("r", crop.right),
+                                ("b", crop.bottom),
+                            ] {
+                                if value(edge) != 0 {
+                                    attributes.push(attr(name, value(edge)));
+                                }
+                            }
+                            let src_rect = doc.create_element("a:srcRect", attributes, Vec::new());
+                            put_child(
+                                blip_fill,
+                                src_rect,
+                                &["a:srcRect"],
+                                &["a:tile", "a:stretch"],
+                            );
+                        }
+                        None => {
+                            crate::drawing_xml::remove_children(blip_fill, &["a:srcRect"]);
+                        }
+                    }
+                }
+            } else if let Some(chart) = child_mut(graphic_data, "c:chart") {
+                if let Some(relationship) = image.relationship_id.as_deref() {
+                    if get_attr(chart, "r:id") != Some(relationship) {
+                        set_attr(chart, "r:id", Some(relationship.to_string()));
+                    }
+                }
+            } else if let Some(group) = child_mut(graphic_data, "wpg:wgp") {
+                if let Some(sp_pr) = child_mut(group, "wpg:grpSpPr") {
+                    Self::patch_drawing_transform(doc, sp_pr, layout, width_emu, height_emu);
+                }
+            }
+        }
+        let extent = doc.create_element(
+            "wp:extent",
+            vec![attr("cx", width_emu), attr("cy", height_emu)],
+            Vec::new(),
+        );
+        for (name, value) in [
+            ("distT", layout.dist_top),
+            ("distB", layout.dist_bottom),
+            ("distL", layout.dist_left),
+            ("distR", layout.dist_right),
+        ] {
+            upsert(
+                &mut attributes,
+                name,
+                px_to_emu(value.unwrap_or(0.0)).to_string(),
+            );
+        }
+        let mut children: Vec<XmlElement> = Vec::new();
+        let name = match layout.kind {
+            RunImageKind::Inline => {
+                attributes.retain(|attribute| {
+                    !matches!(
+                        attribute.name.as_str(),
+                        "simplePos"
+                            | "relativeHeight"
+                            | "behindDoc"
+                            | "locked"
+                            | "layoutInCell"
+                            | "allowOverlap"
+                            | "hidden"
+                    )
+                });
+                children.push(extent);
+                "wp:inline"
+            }
+            RunImageKind::Floating => {
+                let simple_position = layout.simple_position.unwrap_or_default();
+                children.push(doc.create_element(
+                    "wp:simplePos",
+                    vec![
+                        attr("x", px_to_emu(simple_position.x_px)),
+                        attr("y", px_to_emu(simple_position.y_px)),
+                    ],
+                    Vec::new(),
+                ));
+                children.push(Self::anchor_position_element(
+                    doc,
+                    "wp:positionH",
+                    layout.position_h.as_ref(),
+                    "column",
+                ));
+                children.push(Self::anchor_position_element(
+                    doc,
+                    "wp:positionV",
+                    layout.position_v.as_ref(),
+                    "paragraph",
+                ));
+                children.push(extent);
+                upsert(
+                    &mut attributes,
+                    "simplePos",
+                    if layout.simple_position.is_some() {
+                        "1"
+                    } else {
+                        "0"
+                    }
+                    .to_string(),
+                );
+                upsert(
+                    &mut attributes,
+                    "relativeHeight",
+                    layout.relative_height.unwrap_or(251659264).to_string(),
+                );
+                upsert(
+                    &mut attributes,
+                    "behindDoc",
+                    if layout.behind_doc { "1" } else { "0" }.to_string(),
+                );
+                for (name, default) in [
+                    ("locked", "0"),
+                    ("layoutInCell", "1"),
+                    ("allowOverlap", "1"),
+                ] {
+                    if !has(&attributes, name) {
+                        upsert(&mut attributes, name, default.to_string());
+                    }
+                }
+                "wp:anchor"
+            }
+        };
+        if layout.kind == RunImageKind::Floating {
+            // The wrap goes before `wp:docPr`; `kept` holds the effect extent
+            // first when there is one.
+            let wrap = Self::anchor_wrap_element(doc, layout);
+            let at = kept
+                .iter()
+                .position(|element| element.name != "wp:effectExtent")
+                .unwrap_or(kept.len());
+            kept.insert(at, wrap);
+        }
+        children.extend(kept.into_iter().filter(|element| {
+            // An anchor's wrap is rebuilt; an inline drawing has none.
+            !(layout.kind == RunImageKind::Inline && element.name.starts_with("wp:wrap"))
+        }));
+        children.push(graphic);
+        let container = doc.create_element_preserving_child_ids(
+            name,
+            attributes,
+            children.into_iter().map(XmlNode::Element).collect(),
+        );
+        drawing
+            .children
+            .insert(container_index, XmlNode::Element(container));
+        Ok(drawing)
+    }
+
+    /// Sets an `a:xfrm`'s rotation, flips and extent from a layout, keeping
+    /// its offset and any child offset and extent (a group's coordinate
+    /// space).
+    fn patch_drawing_transform(
+        doc: &mut DocxXmlDocument,
+        shape_properties: &mut XmlElement,
+        layout: &RunImageLayout,
+        width_emu: i64,
+        height_emu: i64,
+    ) {
+        use crate::drawing_xml::{attr, child_mut, put_child, set_attr};
+        if child_mut(shape_properties, "a:xfrm").is_none() {
+            let off = doc.create_element("a:off", vec![attr("x", 0), attr("y", 0)], Vec::new());
+            let ext = doc.create_element(
+                "a:ext",
+                vec![attr("cx", width_emu), attr("cy", height_emu)],
+                Vec::new(),
+            );
+            let xfrm = doc.create_element(
+                "a:xfrm",
+                Vec::new(),
+                vec![XmlNode::Element(off), XmlNode::Element(ext)],
+            );
+            put_child(shape_properties, xfrm, &["a:xfrm"], &[]);
+            shape_properties.children.rotate_right(1);
+        }
+        let xfrm = child_mut(shape_properties, "a:xfrm").expect("added above");
+        let rotation = layout
+            .rotation_deg
+            .filter(|value| value.is_finite() && value.abs() > f64::EPSILON)
+            .map(|rotation| ((rotation.rem_euclid(360.0)) * 60_000.0).round() as i64)
+            .filter(|rotation| *rotation != 0);
+        set_attr(xfrm, "rot", rotation.map(|value| value.to_string()));
+        set_attr(
+            xfrm,
+            "flipH",
+            layout.flip_horizontal.then(|| "1".to_string()),
+        );
+        set_attr(xfrm, "flipV", layout.flip_vertical.then(|| "1".to_string()));
+        match child_mut(xfrm, "a:ext") {
+            Some(ext) => {
+                set_attr(ext, "cx", Some(width_emu.to_string()));
+                set_attr(ext, "cy", Some(height_emu.to_string()));
+            }
+            None => {
+                let ext = doc.create_element(
+                    "a:ext",
+                    vec![attr("cx", width_emu), attr("cy", height_emu)],
+                    Vec::new(),
+                );
+                put_child(xfrm, ext, &["a:ext"], &["a:chOff", "a:chExt"]);
+            }
+        }
+    }
+
+    fn build_image_drawing_element(doc: &mut DocxXmlDocument, image: &RunImage) -> XmlElement {
         const EMU_PER_PX: f64 = 9525.0;
 
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
@@ -32722,7 +33578,7 @@ impl WordDocument {
     }
 
     /// `wp:positionH` / `wp:positionV` for an anchored drawing.
-    fn anchor_position_element(
+    pub(crate) fn anchor_position_element(
         doc: &mut DocxXmlDocument,
         name: &str,
         position: Option<&ImagePosition>,
@@ -32766,7 +33622,10 @@ impl WordDocument {
     }
 
     /// The `wp:wrap*` child an anchored drawing's layout calls for.
-    fn anchor_wrap_element(doc: &mut DocxXmlDocument, layout: &RunImageLayout) -> XmlElement {
+    pub(crate) fn anchor_wrap_element(
+        doc: &mut DocxXmlDocument,
+        layout: &RunImageLayout,
+    ) -> XmlElement {
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
             XmlAttribute {
                 name: name.to_string(),
@@ -36385,6 +37244,7 @@ impl MtefParser<'_> {
                         children: Vec::new(),
                         text: Some(character.to_string()),
                         attributes: BTreeMap::new(),
+                        namespace: None,
                     });
                     if options & 0x02 != 0 {
                         let _ = self.parse_list_at_depth(depth + 1)?;
@@ -36499,6 +37359,7 @@ impl MtefParser<'_> {
                 children,
                 text: None,
                 attributes: BTreeMap::new(),
+                namespace: None,
             })
             .collect();
         Some(MathElement {
@@ -36507,6 +37368,7 @@ impl MtefParser<'_> {
             children,
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         })
     }
 
@@ -39535,6 +40397,7 @@ mod tests {
             dist_bottom: Some(4.0),
             dist_left: Some(5.0),
             dist_right: Some(6.0),
+            ..Default::default()
         };
         word_doc.paragraph_mut(0).unwrap().runs[0].node_id = None;
         word_doc.sync_paragraph_text(0);
@@ -39743,6 +40606,7 @@ mod tests {
                     dist_bottom: Some(3.0),
                     dist_left: Some(4.0),
                     dist_right: Some(5.0),
+                    ..Default::default()
                 };
             }
             word_doc.paragraph_mut(0).unwrap().runs[0].node_id = None;
@@ -41162,6 +42026,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -41246,6 +42111,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -41596,6 +42462,7 @@ mod tests {
                             diagram_data_relationship_id: None,
                             crop: None,
                             layout: RunImageLayout::default(),
+                            ..Default::default()
                         }),
                         text_box: None,
                         math: None,
@@ -47188,6 +48055,7 @@ mod tests {
             children: Vec::new(),
             text: Some("E = mc^2".to_string()),
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let math_node = MathElement {
             kind: MathElementKind::Math,
@@ -47195,6 +48063,7 @@ mod tests {
             children: vec![text_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let root = MathElement {
             kind: MathElementKind::MathParagraph,
@@ -47202,6 +48071,7 @@ mod tests {
             children: vec![math_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
 
         let math_paragraph = MathParagraph {
@@ -47249,7 +48119,7 @@ mod tests {
             &mut note_surfaces,
         );
         assert_eq!(note_surfaces.len(), 3);
-        assert!(matches!(note_surfaces[1], ParagraphSurface::Math));
+        assert!(matches!(note_surfaces[1], ParagraphSurface::Math { .. }));
         assert!(matches!(note_surfaces[2], ParagraphSurface::Note { .. }));
 
         let mut text_box_surfaces = Vec::new();
@@ -47261,7 +48131,10 @@ mod tests {
             &mut text_box_surfaces,
         );
         assert_eq!(text_box_surfaces.len(), 3);
-        assert!(matches!(text_box_surfaces[1], ParagraphSurface::Math));
+        assert!(matches!(
+            text_box_surfaces[1],
+            ParagraphSurface::Math { .. }
+        ));
         assert!(matches!(
             text_box_surfaces[2],
             ParagraphSurface::TextBox { .. }
@@ -49148,7 +50021,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape,
-            effect_ref: None,
+            ..Default::default()
         });
         WordDocument::from_document(Document {
             body: Some(Body {
@@ -49236,7 +50109,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape: Default::default(),
-            effect_ref: None,
+            ..Default::default()
         };
 
         let host_paragraph = Paragraph {
@@ -53749,7 +54622,8 @@ mod tests {
             &format!(
                 r#"<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:rPr><w:b/><w:lang w:val="fr-FR"/></w:rPr><w:t>CD</w:t></w:r></w:p>"#
             ),
-            vec![insert_text("ABCD".len(), "Z")],
+            // Rendered offsets count the equation as one object character.
+            vec![insert_text("AB\u{fffc}CD".len(), "Z")],
         );
         assert_eq!(
             body,
@@ -53788,7 +54662,8 @@ mod tests {
             (
                 "delete across it",
                 format!("<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:t>CD</w:t></w:r></w:p>"),
-                vec![delete_range(1, 3)],
+                // Rendered offsets: B, the equation's object character, C.
+                vec![delete_range(1, "AB\u{fffc}C".len())],
                 format!("<w:p><w:r><w:t>A</w:t></w:r>{eq}<w:r><w:t>D</w:t></w:r></w:p>"),
             ),
             (
@@ -53796,7 +54671,7 @@ mod tests {
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CD</w:t></w:r></w:p>"#
                 ),
-                vec![insert_text("ABEFCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}EFCD".len(), "Z")],
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CDZ</w:t></w:r></w:p>"#
                 ),
@@ -53806,7 +54681,7 @@ mod tests {
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CD</w:t></w:r></w:p>"
                 ),
-                vec![insert_text("ABCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}CD".len(), "Z")],
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CDZ</w:t></w:r></w:p>"
                 ),

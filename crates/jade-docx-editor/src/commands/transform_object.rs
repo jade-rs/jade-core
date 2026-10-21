@@ -90,9 +90,6 @@ impl TransformObjectCommand {
                 image.width_px = Some(transform.width.max(1.0));
                 image.height_px = Some(transform.height.max(1.0));
                 Self::apply_layout_transform(&mut image.layout, transform, anchor_paragraph_top_px);
-                run.node_id = None;
-                run.text_node_id = None;
-                run.revision_node_id = None;
             }
             FloatingObjectKind::TextBox => {
                 let text_box = run.text_box.as_mut().ok_or_else(|| {
@@ -311,6 +308,7 @@ mod tests {
                     kind: RunImageKind::Floating,
                     ..RunImageLayout::default()
                 },
+                ..Default::default()
             }),
             text_box: None,
             math: None,
@@ -376,7 +374,7 @@ mod tests {
                 insets: Default::default(),
                 vertical_alignment: Default::default(),
                 shape: Default::default(),
-                effect_ref: None,
+                ..Default::default()
             }),
             math: None,
             field: None,

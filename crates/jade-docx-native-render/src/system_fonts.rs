@@ -17,6 +17,9 @@ use std::sync::OnceLock;
 
 use crate::document::FontFace;
 
+/// The face Word sets equations in.
+pub const MATH_FAMILY: &str = "Cambria Math";
+
 /// Where Office keeps the faces it ships, in the order they are searched.
 /// `JADE_OFFICE_FONT_DIR` (a list separated by `:`) comes first.
 pub fn office_font_directories() -> Vec<PathBuf> {
@@ -281,6 +284,9 @@ pub fn word_families(package: &[u8]) -> BTreeSet<String> {
     ] {
         stack_families(stack, &mut families);
     }
+    // Equations are set in Cambria Math whatever the document names, and its
+    // MATH table is what lays them out.
+    families.insert(MATH_FAMILY.to_string());
     for name in &named {
         let name: Rc<str> = Rc::from(name.as_str());
         for language in [None, Some("ja-JP")] {

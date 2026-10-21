@@ -1,13 +1,28 @@
-//! Styled OMML plans for auxiliary stories. The context supplies glyph metrics
-//! and script scaling; stretchy MATH glyph variants remain separate. Fallback geometry
-//! is explicit and does not turn structure into preview punctuation.
-use super::{find_child, is_property_tag, nary_symbol, MathMetrics, MathParagraphAlignment};
+//! Styled OMML plans: every structure of Office Math laid out the way Word
+//! lays it out, from one set of placement rules for measuring, painting and
+//! the caret.
+//!
+//! Placement follows the OpenType MATH model Word's own math engine uses. A
+//! host that binds the math face (Cambria Math) supplies its constants, glyph
+//! variants and assemblies; without one the same rules run on Cambria Math's
+//! published constants and the host's measured glyphs, and stretchy
+//! characters are drawn as paths.
+//!
+//! The plan also records where every element went ([`MathBox`]), which is
+//! what an equation editor needs to put a caret inside a fraction.
+use super::{is_property_tag, MathMetrics, MathParagraphAlignment};
 use jade_docx_reader::document::{MathElement, MathElementKind, MathParagraph};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
+pub mod alphabet;
 #[cfg(feature = "opentype-math")]
 pub mod font;
+mod lines;
+mod shapes;
+mod structures;
+
+pub use alphabet::{AtomClass, MathScript};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathVariant {
@@ -59,6 +74,25 @@ pub trait StyledMathMeasure {
     fn font_parameters(&self, _style: MathTextStyle<'_>) -> Option<font::MathFontParameters> {
         None
     }
+    /// A version of `text` at least `target_px` long along `axis`: a larger
+    /// variant from the face, or an assembly of its parts. `None` when the
+    /// face has no construction for it (the layout then draws a path).
+    #[cfg(feature = "opentype-math")]
+    fn stretch_glyph(
+        &self,
+        _text: &str,
+        _style: MathTextStyle<'_>,
+        _axis: super::font::MathStretchAxis,
+        _target_px: f64,
+    ) -> Result<Option<font::StretchedGlyph>, Self::Error> {
+        Ok(None)
+    }
+    /// Where an accent goes over `text`, from its left edge, when the face
+    /// records it.
+    #[cfg(feature = "opentype-math")]
+    fn top_accent_attachment(&self, _text: &str, _style: MathTextStyle<'_>) -> Option<f64> {
+        None
+    }
     /// Relative to the unscaled run size. This generic fallback uses 80%/60%;
     /// a bound MATH face supplies its actual percentages.
     fn script_scale(&self, _style: MathTextStyle<'_>, level: u32) -> f64 {
@@ -76,7 +110,14 @@ pub struct MathGlyph<'a> {
     pub x: f64,
     pub baseline: f64,
     pub width: f64,
+    /// Ink above and below the glyph's baseline.
+    pub ascent: f64,
+    pub descent: f64,
     pub style: MathTextStyle<'a>,
+    /// Whether the glyph is painted. A stretched delimiter is drawn by a
+    /// shape instead, and a hidden phantom or an alignment mark not at all;
+    /// their glyphs stay for the text and the caret.
+    pub visible: bool,
     #[cfg(feature = "opentype-math")]
     pub font_glyph: Option<font::PreparedMathGlyph>,
 }
@@ -88,16 +129,414 @@ pub struct MathRule<'a> {
     pub thickness: f64,
     pub color: &'a str,
 }
+
+/// One step of a shape's outline, in pixels from the plan's origin with y
+/// growing downwards.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MathPathCommand {
+    Move(f64, f64),
+    Line(f64, f64),
+    Quad(f64, f64, f64, f64),
+    Cubic(f64, f64, f64, f64, f64, f64),
+    Close,
+}
+
+impl MathPathCommand {
+    fn translate(&mut self, dx: f64, dy: f64) {
+        match self {
+            Self::Move(x, y) | Self::Line(x, y) => {
+                *x += dx;
+                *y += dy;
+            }
+            Self::Quad(a, b, c, d) => {
+                *a += dx;
+                *b += dy;
+                *c += dx;
+                *d += dy;
+            }
+            Self::Cubic(a, b, c, d, e, f) => {
+                *a += dx;
+                *b += dy;
+                *c += dx;
+                *d += dy;
+                *e += dx;
+                *f += dy;
+            }
+            Self::Close => {}
+        }
+    }
+}
+
+/// A drawn shape: a stretched delimiter or radical sign (the face's parts,
+/// or a path when there is no face), a wide accent, a box's border.
+#[derive(Debug, Clone)]
+pub struct MathShape<'a> {
+    pub commands: Vec<MathPathCommand>,
+    /// `None` fills the outline; `Some(width)` strokes it.
+    pub stroke: Option<f64>,
+    pub color: &'a str,
+}
+
+/// Where an element of the source tree was laid out.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MathBox {
+    /// Child indices from [`MathParagraph::elements`] down to the element,
+    /// counting property children.
+    pub path: Vec<u16>,
+    pub kind: MathElementKind,
+    pub x: f64,
+    pub baseline: f64,
+    pub width: f64,
+    pub ascent: f64,
+    pub descent: f64,
+    /// For an `m:t`, its glyphs, one per grapheme of its text.
+    pub glyphs: Range<usize>,
+    /// An argument with nothing in it: Word shows a placeholder square.
+    pub empty: bool,
+    /// The run size the element was laid out at.
+    pub size_px: f64,
+}
+
+/// One line of a display equation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MathLine {
+    /// The line's baseline below the first line's.
+    pub baseline: f64,
+    pub x: f64,
+    pub width: f64,
+    pub ascent: f64,
+    pub descent: f64,
+}
+
 #[derive(Debug)]
 pub struct StyledMathLayout<'a> {
     pub metrics: MathMetrics,
     /// Required paragraph box; ink geometry and glyph baselines stay separate.
-    #[cfg(feature = "opentype-math")]
     pub line_metrics: MathMetrics,
     pub alignment: MathParagraphAlignment,
     pub text: String,
     pub glyphs: Vec<MathGlyph<'a>>,
     pub rules: Vec<MathRule<'a>>,
+    pub shapes: Vec<MathShape<'a>>,
+    pub boxes: Vec<MathBox>,
+    pub lines: Vec<MathLine>,
+}
+
+impl StyledMathLayout<'_> {
+    /// The innermost box at a point relative to the plan's origin, preferring
+    /// the deepest element whose box holds it.
+    pub fn box_at(&self, x: f64, y: f64) -> Option<&MathBox> {
+        self.boxes
+            .iter()
+            .filter(|b| {
+                x >= b.x - 0.5
+                    && x <= b.x + b.width + 0.5
+                    && y >= b.baseline - b.ascent - 0.5
+                    && y <= b.baseline + b.descent + 0.5
+            })
+            .max_by_key(|b| b.path.len())
+    }
+
+    /// The box laid out for the element at `path`.
+    pub fn box_for(&self, path: &[u16]) -> Option<&MathBox> {
+        self.boxes.iter().find(|b| b.path == path)
+    }
+}
+
+/// Document-wide math settings (`m:mathPr` in the settings part).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MathSettings {
+    /// `m:intLim`: integrals take their limits at the side (the default).
+    pub integral_limits_side: bool,
+    /// `m:naryLim`: other n-ary operators take theirs over and under.
+    pub nary_limits_over: bool,
+    /// `m:smallFrac`: fractions in display math stay at text size... reduced.
+    pub small_fractions: bool,
+    /// `m:wrapIndent`, in pixels: how far a broken line's continuation is
+    /// indented. Word's default is one inch.
+    pub wrap_indent_px: f64,
+    /// `m:wrapRight`: continuation lines are set flush right instead.
+    pub wrap_right: bool,
+    /// `m:brkBin`: where a line breaks at a binary operator.
+    pub break_binary: BreakBinary,
+    /// `m:defJc`: the default justification of display math.
+    pub default_justification: MathJustification,
+}
+
+impl Default for MathSettings {
+    fn default() -> Self {
+        Self {
+            integral_limits_side: true,
+            nary_limits_over: true,
+            small_fractions: false,
+            wrap_indent_px: 96.0,
+            wrap_right: false,
+            break_binary: BreakBinary::Before,
+            default_justification: MathJustification::CenterGroup,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BreakBinary {
+    Before,
+    After,
+    Repeat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MathJustification {
+    Left,
+    Right,
+    Center,
+    CenterGroup,
+}
+
+impl MathJustification {
+    pub fn from_omml(value: &str) -> Option<Self> {
+        Some(match value {
+            "left" => Self::Left,
+            "right" => Self::Right,
+            "center" => Self::Center,
+            "centerGroup" => Self::CenterGroup,
+            _ => return None,
+        })
+    }
+}
+
+/// How a plan is laid out.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MathLayoutOptions<'a> {
+    /// Display math (an equation on its own line): large operators, limits
+    /// over and under, full-size fractions. Inline math shrinks them.
+    pub display: bool,
+    /// The width a display equation breaks its lines to fit.
+    pub max_width: Option<f64>,
+    /// The face `m:nor` (normal text) runs are drawn in.
+    pub text_family: Option<&'a str>,
+    pub settings: MathSettings,
+    /// An EQ field: one size throughout, upright, in the run's own face.
+    pub uniform: bool,
+    /// Script and script-script sizes relative to the run, overriding the
+    /// face's MATH percentages. Word sets scripts at 70% of the run whatever
+    /// the face says (Cambria Math's table says 73%).
+    pub script_scales: Option<(f64, f64)>,
+}
+
+impl Default for MathLayoutOptions<'_> {
+    fn default() -> Self {
+        Self {
+            display: true,
+            max_width: None,
+            text_family: None,
+            settings: MathSettings::default(),
+            uniform: false,
+            script_scales: None,
+        }
+    }
+}
+
+/// Word's script sizes: 70% of the run for scripts, as Word for Mac draws
+/// them at 8pt and 10.5pt (`math` oracle), and Cambria Math's 60% below that.
+pub const WORD_SCRIPT_SCALES: (f64, f64) = (0.70, 0.60);
+
+impl MathLayoutOptions<'_> {
+    pub fn inline() -> Self {
+        Self {
+            display: false,
+            ..Self::default()
+        }
+    }
+
+    /// An EQ field ([`super::eq_field`]): in its run's face and size,
+    /// upright, one size throughout.
+    pub fn eq_field() -> Self {
+        Self {
+            display: false,
+            uniform: true,
+            ..Self::default()
+        }
+    }
+}
+
+/// Font-unit placement constants at one size, in pixels.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MathConstants {
+    pub size_px: f64,
+    pub axis_height: f64,
+    pub accent_base_height: f64,
+    pub subscript_shift_down: f64,
+    pub subscript_top_max: f64,
+    pub subscript_baseline_drop_min: f64,
+    pub superscript_shift_up: f64,
+    pub superscript_shift_up_cramped: f64,
+    pub superscript_bottom_min: f64,
+    pub superscript_baseline_drop_max: f64,
+    pub sub_superscript_gap_min: f64,
+    pub superscript_bottom_max_with_subscript: f64,
+    pub space_after_script: f64,
+    pub upper_limit_gap_min: f64,
+    pub upper_limit_baseline_rise_min: f64,
+    pub lower_limit_gap_min: f64,
+    pub lower_limit_baseline_drop_min: f64,
+    pub stack_top_shift_up: f64,
+    pub stack_top_display_shift_up: f64,
+    pub stack_bottom_shift_down: f64,
+    pub stack_bottom_display_shift_down: f64,
+    pub stack_gap_min: f64,
+    pub stack_display_gap_min: f64,
+    pub stretch_stack_gap_above_min: f64,
+    pub stretch_stack_gap_below_min: f64,
+    pub fraction_numerator_shift_up: f64,
+    pub fraction_numerator_display_shift_up: f64,
+    pub fraction_denominator_shift_down: f64,
+    pub fraction_denominator_display_shift_down: f64,
+    pub fraction_numerator_gap_min: f64,
+    pub fraction_numerator_display_gap_min: f64,
+    pub fraction_rule_thickness: f64,
+    pub fraction_denominator_gap_min: f64,
+    pub fraction_denominator_display_gap_min: f64,
+    pub skewed_fraction_horizontal_gap: f64,
+    pub skewed_fraction_vertical_gap: f64,
+    pub overbar_vertical_gap: f64,
+    pub overbar_rule_thickness: f64,
+    pub overbar_extra_ascender: f64,
+    pub underbar_vertical_gap: f64,
+    pub underbar_rule_thickness: f64,
+    pub underbar_extra_descender: f64,
+    pub radical_vertical_gap: f64,
+    pub radical_display_vertical_gap: f64,
+    pub radical_rule_thickness: f64,
+    pub radical_extra_ascender: f64,
+    pub radical_kern_before_degree: f64,
+    pub radical_kern_after_degree: f64,
+    pub radical_degree_bottom_raise: f64,
+    pub delimited_min_height: f64,
+    pub display_operator_min_height: f64,
+    pub leading: f64,
+}
+
+impl MathConstants {
+    /// Cambria Math's MATH constants (2048 units per em), what Word lays
+    /// math out with, for a host that has not bound the face itself.
+    pub fn cambria(size_px: f64) -> Self {
+        let u = |v: f64| v * size_px / 2048.0;
+        Self {
+            size_px,
+            axis_height: u(585.0),
+            accent_base_height: u(976.0),
+            subscript_shift_down: u(418.0),
+            subscript_top_max: u(760.0),
+            subscript_baseline_drop_min: u(320.0),
+            superscript_shift_up: u(750.0),
+            superscript_shift_up_cramped: u(615.0),
+            superscript_bottom_min: u(239.0),
+            superscript_baseline_drop_max: u(460.0),
+            sub_superscript_gap_min: u(300.0),
+            superscript_bottom_max_with_subscript: u(765.0),
+            space_after_script: u(85.0),
+            upper_limit_gap_min: u(133.0),
+            upper_limit_baseline_rise_min: u(500.0),
+            lower_limit_gap_min: u(133.0),
+            lower_limit_baseline_drop_min: u(1240.0),
+            stack_top_shift_up: u(940.0),
+            stack_top_display_shift_up: u(1550.0),
+            stack_bottom_shift_down: u(770.0),
+            stack_bottom_display_shift_down: u(1370.0),
+            stack_gap_min: u(400.0),
+            stack_display_gap_min: u(660.0),
+            stretch_stack_gap_above_min: u(133.0),
+            stretch_stack_gap_below_min: u(133.0),
+            fraction_numerator_shift_up: u(1200.0),
+            fraction_numerator_display_shift_up: u(1550.0),
+            fraction_denominator_shift_down: u(1030.0),
+            fraction_denominator_display_shift_down: u(1370.0),
+            fraction_numerator_gap_min: u(133.0),
+            fraction_numerator_display_gap_min: u(260.0),
+            fraction_rule_thickness: u(133.0),
+            fraction_denominator_gap_min: u(133.0),
+            fraction_denominator_display_gap_min: u(260.0),
+            skewed_fraction_horizontal_gap: u(800.0),
+            skewed_fraction_vertical_gap: u(133.0),
+            overbar_vertical_gap: u(345.0),
+            overbar_rule_thickness: u(133.0),
+            overbar_extra_ascender: u(133.0),
+            underbar_vertical_gap: u(345.0),
+            underbar_rule_thickness: u(133.0),
+            underbar_extra_descender: u(133.0),
+            radical_vertical_gap: u(166.0),
+            radical_display_vertical_gap: u(345.0),
+            radical_rule_thickness: u(133.0),
+            radical_extra_ascender: u(133.0),
+            radical_kern_before_degree: u(133.0),
+            radical_kern_after_degree: u(-640.0),
+            radical_degree_bottom_raise: 0.65,
+            delimited_min_height: u(3000.0),
+            display_operator_min_height: u(2500.0),
+            leading: u(300.0),
+        }
+    }
+
+    #[cfg(feature = "opentype-math")]
+    pub fn from_font(c: &super::font::MathFontConstants, scale: f64, size_px: f64) -> Self {
+        let u = |v: i16| f64::from(v) * scale;
+        Self {
+            size_px,
+            axis_height: u(c.axis_height),
+            accent_base_height: u(c.accent_base_height),
+            subscript_shift_down: u(c.subscript_shift_down),
+            subscript_top_max: u(c.subscript_top_max),
+            subscript_baseline_drop_min: u(c.subscript_baseline_drop_min),
+            superscript_shift_up: u(c.superscript_shift_up),
+            superscript_shift_up_cramped: u(c.superscript_shift_up_cramped),
+            superscript_bottom_min: u(c.superscript_bottom_min),
+            superscript_baseline_drop_max: u(c.superscript_baseline_drop_max),
+            sub_superscript_gap_min: u(c.sub_superscript_gap_min),
+            superscript_bottom_max_with_subscript: u(c.superscript_bottom_max_with_subscript),
+            space_after_script: u(c.space_after_script),
+            upper_limit_gap_min: u(c.upper_limit_gap_min),
+            upper_limit_baseline_rise_min: u(c.upper_limit_baseline_rise_min),
+            lower_limit_gap_min: u(c.lower_limit_gap_min),
+            lower_limit_baseline_drop_min: u(c.lower_limit_baseline_drop_min),
+            stack_top_shift_up: u(c.stack_top_shift_up),
+            stack_top_display_shift_up: u(c.stack_top_display_style_shift_up),
+            stack_bottom_shift_down: u(c.stack_bottom_shift_down),
+            stack_bottom_display_shift_down: u(c.stack_bottom_display_style_shift_down),
+            stack_gap_min: u(c.stack_gap_min),
+            stack_display_gap_min: u(c.stack_display_style_gap_min),
+            stretch_stack_gap_above_min: u(c.stretch_stack_gap_above_min),
+            stretch_stack_gap_below_min: u(c.stretch_stack_gap_below_min),
+            fraction_numerator_shift_up: u(c.fraction_numerator_shift_up),
+            fraction_numerator_display_shift_up: u(c.fraction_numerator_display_style_shift_up),
+            fraction_denominator_shift_down: u(c.fraction_denominator_shift_down),
+            fraction_denominator_display_shift_down: u(
+                c.fraction_denominator_display_style_shift_down
+            ),
+            fraction_numerator_gap_min: u(c.fraction_numerator_gap_min),
+            fraction_numerator_display_gap_min: u(c.fraction_num_display_style_gap_min),
+            fraction_rule_thickness: u(c.fraction_rule_thickness),
+            fraction_denominator_gap_min: u(c.fraction_denominator_gap_min),
+            fraction_denominator_display_gap_min: u(c.fraction_denom_display_style_gap_min),
+            skewed_fraction_horizontal_gap: u(c.skewed_fraction_horizontal_gap),
+            skewed_fraction_vertical_gap: u(c.skewed_fraction_vertical_gap),
+            overbar_vertical_gap: u(c.overbar_vertical_gap),
+            overbar_rule_thickness: u(c.overbar_rule_thickness),
+            overbar_extra_ascender: u(c.overbar_extra_ascender),
+            underbar_vertical_gap: u(c.underbar_vertical_gap),
+            underbar_rule_thickness: u(c.underbar_rule_thickness),
+            underbar_extra_descender: u(c.underbar_extra_descender),
+            radical_vertical_gap: u(c.radical_vertical_gap),
+            radical_display_vertical_gap: u(c.radical_display_style_vertical_gap),
+            radical_rule_thickness: u(c.radical_rule_thickness),
+            radical_extra_ascender: u(c.radical_extra_ascender),
+            radical_kern_before_degree: u(c.radical_kern_before_degree),
+            radical_kern_after_degree: u(c.radical_kern_after_degree),
+            radical_degree_bottom_raise: f64::from(c.radical_degree_bottom_raise_percent) / 100.0,
+            delimited_min_height: f64::from(c.delimited_min_height) * scale,
+            display_operator_min_height: f64::from(c.display_operator_min_height) * scale,
+            leading: u(c.leading),
+        }
+    }
 }
 
 pub fn layout_styled_math<'a, C: StyledMathMeasure>(
@@ -105,481 +544,823 @@ pub fn layout_styled_math<'a, C: StyledMathMeasure>(
     math: &'a MathParagraph,
     style: MathTextStyle<'a>,
 ) -> Result<StyledMathLayout<'a>, C::Error> {
+    layout_styled_math_with_options(context, math, style, &MathLayoutOptions::default())
+}
+
+/// Lays `math` out as `options` says: inline or display, broken to a width.
+pub fn layout_styled_math_with_options<'a, C: StyledMathMeasure>(
+    context: &C,
+    math: &'a MathParagraph,
+    style: MathTextStyle<'a>,
+    options: &MathLayoutOptions<'a>,
+) -> Result<StyledMathLayout<'a>, C::Error> {
+    layout_styled_elements(context, &math.elements, style, options)
+}
+
+/// Lays out a list of math elements (an `m:oMath`, an `m:oMathPara`, or the
+/// content of one) as one plan.
+pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
+    context: &C,
+    elements: &'a [MathElement],
+    style: MathTextStyle<'a>,
+    options: &MathLayoutOptions<'a>,
+) -> Result<StyledMathLayout<'a>, C::Error> {
+    let alignment = elements
+        .iter()
+        .find_map(MathParagraphAlignment::from_element)
+        .unwrap_or(match options.settings.default_justification {
+            MathJustification::Left => MathParagraphAlignment::Left,
+            MathJustification::Right => MathParagraphAlignment::Right,
+            _ => MathParagraphAlignment::Center,
+        });
+    let justify = elements
+        .iter()
+        .find_map(paragraph_justification)
+        .unwrap_or(options.settings.default_justification);
     let mut builder = Builder {
         context,
+        justify,
         style,
+        base_size: style.size_px,
         level: 0,
+        display: options.display,
+        cramped: false,
+        options: *options,
+        prev: None,
+        first: None,
+        pending_italic: 0.0,
+        path: Vec::new(),
+        script: MathScript::Roman,
+        normal_text: false,
+        amps: None,
+        depth: 0,
+        breaks: None,
         #[cfg(feature = "opentype-math")]
         display_operator: false,
         plan: StyledMathLayout {
             metrics: MathMetrics::default(),
-            #[cfg(feature = "opentype-math")]
             line_metrics: MathMetrics::default(),
-            alignment: math
-                .elements
-                .iter()
-                .find_map(MathParagraphAlignment::from_element)
-                .unwrap_or(MathParagraphAlignment::Center),
+            alignment,
             text: String::new(),
             glyphs: Vec::new(),
             rules: Vec::new(),
+            shapes: Vec::new(),
+            boxes: Vec::new(),
+            lines: Vec::new(),
         },
     };
-    builder.plan.metrics = builder.elements(&math.elements)?;
-    #[cfg(feature = "opentype-math")]
-    {
-        builder.plan.line_metrics = context
-            .font_parameters(style)
-            .map_or(builder.plan.metrics, |font| {
-                font.line_metrics(builder.plan.metrics)
-            });
-    }
+    builder.plan.metrics = builder.root(elements)?;
+    builder.plan.line_metrics = builder.line_metrics(builder.plan.metrics);
     Ok(builder.plan)
 }
 
-struct Builder<'c, 'a, C> {
-    context: &'c C,
-    style: MathTextStyle<'a>,
-    level: u32,
+pub(crate) struct Builder<'c, 'a, C> {
+    pub(crate) context: &'c C,
+    /// `m:oMathParaPr/m:jc`, or the document's default.
+    pub(crate) justify: MathJustification,
+    pub(crate) style: MathTextStyle<'a>,
+    /// The size scripts are scaled from: the run size at the top level.
+    pub(crate) base_size: f64,
+    pub(crate) level: u32,
+    pub(crate) display: bool,
+    pub(crate) cramped: bool,
+    pub(crate) options: MathLayoutOptions<'a>,
+    /// The class of the atom before the next one in the current sequence.
+    pub(crate) prev: Option<AtomClass>,
+    /// The class the element being laid out shows to the atom before it.
+    pub(crate) first: Option<AtomClass>,
+    /// The italic correction of the italic letter just placed, owed to the
+    /// next glyph if it is upright (Word's `P(` and `f(`).
+    pub(crate) pending_italic: f64,
+    pub(crate) path: Vec<u16>,
+    pub(crate) script: MathScript,
+    pub(crate) normal_text: bool,
+    /// Inside an equation-array row: where its `&` marks are.
+    pub(crate) amps: Option<(u32, Vec<Mark>)>,
+    /// Structure nesting, for the marks that belong to a row or a line.
+    pub(crate) depth: u32,
+    /// Where the display line being laid out may break.
+    pub(crate) breaks: Option<Vec<lines::BreakCandidate>>,
     #[cfg(feature = "opentype-math")]
-    display_operator: bool,
-    plan: StyledMathLayout<'a>,
+    pub(crate) display_operator: bool,
+    pub(crate) plan: StyledMathLayout<'a>,
 }
-#[derive(Clone, Copy)]
-struct Mark {
-    glyphs: usize,
-    rules: usize,
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Mark {
+    pub(crate) glyphs: usize,
+    pub(crate) rules: usize,
+    pub(crate) shapes: usize,
+    pub(crate) boxes: usize,
 }
-#[cfg(feature = "opentype-math")]
-struct FontBase {
-    start: Mark,
-    end: Mark,
-    metrics: MathMetrics,
-    parameters: font::MathFontParameters,
-    italic: f64,
-    size_px: f64,
+
+/// Where a glyph's ink and advance came from.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct GlyphInfo {
+    pub(crate) italic: f64,
 }
-#[cfg(feature = "opentype-math")]
-struct ScriptBox {
-    start: Mark,
-    end: Mark,
-    metrics: MathMetrics,
-}
+
 impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
-    fn mark(&self) -> Mark {
+    pub(crate) fn mark(&self) -> Mark {
         Mark {
             glyphs: self.plan.glyphs.len(),
             rules: self.plan.rules.len(),
+            shapes: self.plan.shapes.len(),
+            boxes: self.plan.boxes.len(),
         }
     }
-    fn shift(&mut self, start: Mark, x: f64, y: f64) {
-        for g in &mut self.plan.glyphs[start.glyphs..] {
+
+    pub(crate) fn shift(&mut self, start: Mark, x: f64, y: f64) {
+        let end = self.mark();
+        self.shift_range(start, end, x, y);
+    }
+
+    pub(crate) fn shift_range(&mut self, start: Mark, end: Mark, x: f64, y: f64) {
+        if x == 0.0 && y == 0.0 {
+            return;
+        }
+        for g in &mut self.plan.glyphs[start.glyphs..end.glyphs] {
             g.x += x;
             g.baseline += y;
         }
-        for r in &mut self.plan.rules[start.rules..] {
+        for r in &mut self.plan.rules[start.rules..end.rules] {
             r.x += x;
             r.y += y;
         }
+        for s in &mut self.plan.shapes[start.shapes..end.shapes] {
+            for c in &mut s.commands {
+                c.translate(x, y);
+            }
+        }
+        for b in &mut self.plan.boxes[start.boxes..end.boxes] {
+            b.x += x;
+            b.baseline += y;
+        }
     }
-    fn text(&mut self, text: &str) -> Result<MathMetrics, C::Error> {
-        let mut total = MathMetrics::default();
+
+    /// The run size at the current script level.
+    pub(crate) fn size(&self) -> f64 {
+        if self.options.uniform {
+            return self.style.size_px;
+        }
+        if let Some((script, script_script)) = self.options.script_scales {
+            return self.style.size_px
+                * match self.level {
+                    0 => 1.0,
+                    1 => script,
+                    _ => script_script,
+                };
+        }
+        self.style.size_px * self.context.script_scale(self.style, self.level)
+    }
+
+    /// The scaled style glyphs at the current level are drawn in.
+    pub(crate) fn sized_style(&self) -> MathTextStyle<'a> {
         let mut style = self.style;
-        style.size_px *= self.context.script_scale(style, self.level);
+        style.size_px = self.size();
+        style
+    }
+
+    pub(crate) fn constants(&self) -> MathConstants {
+        let size = self.size();
+        #[cfg(feature = "opentype-math")]
+        {
+            let mut style = self.style;
+            style.size_px = size;
+            if let Some(p) = self.context.font_parameters(style) {
+                return MathConstants::from_font(&p.constants(), p.scale(), size);
+            }
+        }
+        MathConstants::cambria(size)
+    }
+
+    fn line_metrics(&self, ink: MathMetrics) -> MathMetrics {
+        #[cfg(feature = "opentype-math")]
+        if let Some(font) = self.context.font_parameters(self.style) {
+            return font.line_metrics(ink);
+        }
+        ink
+    }
+
+    /// The plan's top level: an `m:oMathPara`'s equations each on their own
+    /// line, an `m:oMath` broken to the width, or plain content.
+    fn root(&mut self, elements: &'a [MathElement]) -> Result<MathMetrics, C::Error> {
+        let mut placed = Vec::new();
+        let mut group = 0usize;
+        let mut index = 0usize;
+        while index < elements.len() {
+            let element = &elements[index];
+            if is_skipped(element) {
+                index += 1;
+                continue;
+            }
+            match element.kind {
+                MathElementKind::MathParagraph => {
+                    self.path.push(index as u16);
+                    for (child_index, child) in element.children.iter().enumerate() {
+                        if child.kind != MathElementKind::Math {
+                            continue;
+                        }
+                        self.path.push(child_index as u16);
+                        placed.extend(self.math_lines(child, group)?);
+                        group += 1;
+                        self.path.pop();
+                    }
+                    self.path.pop();
+                    index += 1;
+                }
+                MathElementKind::Math => {
+                    self.path.push(index as u16);
+                    placed.extend(self.math_lines(element, group)?);
+                    group += 1;
+                    self.path.pop();
+                    index += 1;
+                }
+                _ => {
+                    // Bare content (a field's equation, a test's run) is one
+                    // sequence on one line.
+                    let start = self.mark();
+                    self.prev = None;
+                    let mut total = MathMetrics::default();
+                    while index < elements.len()
+                        && !matches!(
+                            elements[index].kind,
+                            MathElementKind::Math | MathElementKind::MathParagraph
+                        )
+                    {
+                        let element = &elements[index];
+                        if !is_skipped(element) {
+                            self.path.push(index as u16);
+                            let at = self.mark();
+                            let metrics = self.element(element)?;
+                            self.path.pop();
+                            let x = total.width;
+                            self.shift(at, x, 0.0);
+                            total.include(metrics, x, 0.0);
+                            total.width = total.width.max(x + metrics.width);
+                        }
+                        index += 1;
+                    }
+                    placed.push(lines::PlacedLine {
+                        start,
+                        end: self.mark(),
+                        metrics: total,
+                        group,
+                        x: 0.0,
+                        align: None,
+                    });
+                    group += 1;
+                }
+            }
+        }
+        Ok(lines::stack(self, placed))
+    }
+
+    /// Records the start of an element's box; [`Self::close_box`] fills it.
+    pub(crate) fn open_box(&mut self, element: &MathElement, _start: Mark) -> usize {
+        let index = self.plan.boxes.len();
+        self.plan.boxes.push(MathBox {
+            path: self.path.clone(),
+            kind: element.kind.clone(),
+            x: 0.0,
+            baseline: 0.0,
+            width: 0.0,
+            ascent: 0.0,
+            descent: 0.0,
+            glyphs: self.plan.glyphs.len()..self.plan.glyphs.len(),
+            empty: false,
+            size_px: self.size(),
+        });
+        index
+    }
+
+    pub(crate) fn close_box(&mut self, index: usize, metrics: MathMetrics) {
+        let glyphs_end = self.plan.glyphs.len();
+        let b = &mut self.plan.boxes[index];
+        b.width = metrics.width;
+        b.ascent = metrics.ascent;
+        b.descent = metrics.descent;
+        b.glyphs.end = glyphs_end;
+    }
+
+    /// Lays out `text` grapheme by grapheme, spacing each by its class.
+    pub(crate) fn text(&mut self, text: &str) -> Result<MathMetrics, C::Error> {
+        let mut total = MathMetrics::default();
+        let style = self.sized_style();
+        let uniform = self.options.uniform;
         for grapheme in text.graphemes(true) {
             let start = self.plan.text.len();
+            let first_char = grapheme.chars().next().unwrap_or(' ');
+            // Alignment marks of an equation array take no room.
+            if grapheme == "&" && self.amps.as_ref().is_some_and(|(d, _)| *d == self.depth) {
+                self.plan.text.push('&');
+                let mark = self.mark();
+                self.plan.glyphs.push(MathGlyph {
+                    text_range: start..self.plan.text.len(),
+                    x: total.width,
+                    baseline: 0.0,
+                    width: 0.0,
+                    ascent: 0.0,
+                    descent: 0.0,
+                    style,
+                    visible: false,
+                    #[cfg(feature = "opentype-math")]
+                    font_glyph: None,
+                });
+                if let Some((_, amps)) = self.amps.as_mut() {
+                    amps.push(mark);
+                }
+                continue;
+            }
+            let plain = self.normal_text || uniform;
             for ch in grapheme.chars() {
-                self.plan.text.push(math_alphabetic(ch, style.variant));
+                let shown = if plain { ch } else { display_char(ch) };
+                let shown = if plain {
+                    shown
+                } else {
+                    alphabet::math_alphanumeric(shown, style.variant, self.script)
+                };
+                self.plan.text.push(shown);
             }
             let range = start..self.plan.text.len();
-            #[cfg(feature = "opentype-math")]
-            let font_glyph = self.context.prepare_glyph_at_script_level(
-                &self.plan.text[range.clone()],
-                style,
-                self.display_operator,
-                self.level,
-            )?;
-            #[cfg(feature = "opentype-math")]
-            let metrics = match &font_glyph {
-                Some(glyph) => glyph.metrics(),
-                None => self
-                    .context
-                    .measure_glyph(&self.plan.text[range.clone()], style)?,
-            };
+            // Spacing by class: none in normal text, in an EQ field, or
+            // around a space typed into the run.
+            let mut space = 0.0;
+            if !plain && !first_char.is_whitespace() {
+                let raw = if grapheme.chars().count() == 1 {
+                    alphabet::char_class(first_char)
+                } else {
+                    AtomClass::Ord
+                };
+                let class = alphabet::resolve_binary(self.prev, raw);
+                if let Some(prev) = self.prev {
+                    space = alphabet::atom_space(prev, class, self.level > 0) * self.size() / 18.0;
+                }
+                if self.first.is_none() {
+                    self.first = Some(class);
+                }
+                self.prev = Some(class);
+                if matches!(class, AtomClass::Bin | AtomClass::Rel) {
+                    self.break_candidate(class, false, None);
+                }
+            } else if plain {
+                self.prev = Some(AtomClass::Ord);
+                if self.first.is_none() {
+                    self.first = Some(AtomClass::Ord);
+                }
+            }
+            let (metrics, info, font_glyph) = self.measure(&range, style)?;
             #[cfg(not(feature = "opentype-math"))]
-            let metrics = self
-                .context
-                .measure_glyph(&self.plan.text[range.clone()], style)?;
-            let x = total.width;
+            let _ = &font_glyph;
+            let italic_letter = !plain
+                && matches!(style.variant, MathVariant::Italic | MathVariant::BoldItalic)
+                && first_char.is_alphabetic();
+            if !italic_letter {
+                space += self.pending_italic;
+            }
+            self.pending_italic = if italic_letter {
+                info.italic.max(0.0)
+            } else {
+                0.0
+            };
+            let x = total.width + space;
             self.plan.glyphs.push(MathGlyph {
                 text_range: range,
                 x,
                 baseline: 0.0,
                 width: metrics.width,
+                ascent: metrics.ascent,
+                descent: metrics.descent,
                 style,
+                visible: true,
                 #[cfg(feature = "opentype-math")]
                 font_glyph,
             });
             total.include(metrics, x, 0.0);
+            total.width = total.width.max(x + metrics.width);
         }
         Ok(total)
     }
-    fn elements(&mut self, elements: &'a [MathElement]) -> Result<MathMetrics, C::Error> {
+
+    /// Notes that the display line may break before the next glyph.
+    pub(crate) fn break_candidate(
+        &mut self,
+        class: AtomClass,
+        manual: bool,
+        align_at: Option<u32>,
+    ) {
+        if self.depth != 0 {
+            return;
+        }
+        let mark = self.mark();
+        if let Some(breaks) = self.breaks.as_mut() {
+            breaks.push(lines::BreakCandidate {
+                mark,
+                class,
+                manual,
+                align_at,
+                align_point: false,
+            });
+        }
+    }
+
+    /// Notes an alignment point (`m:aln`) before the next glyph.
+    pub(crate) fn align_point(&mut self) {
+        if self.depth != 0 {
+            return;
+        }
+        let mark = self.mark();
+        if let Some(breaks) = self.breaks.as_mut() {
+            breaks.push(lines::BreakCandidate {
+                mark,
+                class: AtomClass::Ord,
+                manual: false,
+                align_at: None,
+                align_point: true,
+            });
+        }
+    }
+
+    /// Measures (and, with a bound face, prepares) the glyph for the text
+    /// in `range` of the plan's text.
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn measure(
+        &mut self,
+        range: &Range<usize>,
+        style: MathTextStyle<'a>,
+    ) -> Result<(MathMetrics, GlyphInfo, GlyphHandle), C::Error> {
+        let text = &self.plan.text[range.clone()];
+        #[cfg(feature = "opentype-math")]
+        {
+            let prepared = self.context.prepare_glyph_at_script_level(
+                text,
+                style,
+                self.display_operator,
+                self.level,
+            )?;
+            if let Some(glyph) = prepared {
+                let info = GlyphInfo {
+                    italic: glyph.italic_correction_px,
+                };
+                return Ok((glyph.metrics(), info, Some(glyph)));
+            }
+        }
+        let metrics = self.context.measure_glyph(text, style)?;
+        Ok((metrics, GlyphInfo::default(), None))
+    }
+
+    /// Lays out a sequence of siblings left to right with TeX's spacing.
+    pub(crate) fn sequence(
+        &mut self,
+        children: &'a [MathElement],
+    ) -> Result<MathMetrics, C::Error> {
         let mut total = MathMetrics::default();
-        for e in elements {
-            if e.tag.as_deref().is_some_and(is_property_tag) {
+        for (index, child) in children.iter().enumerate() {
+            if is_skipped(child) {
                 continue;
             }
+            self.path.push(index as u16);
             let start = self.mark();
-            let metrics = self.element(e)?;
+            let metrics = self.element(child)?;
+            self.path.pop();
             let x = total.width;
             self.shift(start, x, 0.0);
             total.include(metrics, x, 0.0);
+            total.width = total.width.max(x + metrics.width);
         }
         Ok(total)
     }
-    fn child(&mut self, e: Option<&'a MathElement>, script: bool) -> Result<MathMetrics, C::Error> {
-        if script {
-            self.level += 1;
-        }
-        let result = e
-            .map(|e| self.element(e))
-            .transpose()
-            .map(Option::unwrap_or_default);
-        if script {
-            self.level -= 1;
-        }
-        result
-    }
-    fn element(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
-        use MathElementKind::*;
-        match e.kind {
-            Run => {
-                let previous = self.style;
-                self.style = run_style(e, previous);
-                let result = self.elements(&e.children);
-                self.style = previous;
-                result
-            }
-            Text => self.text(e.text.as_deref().unwrap_or_default()),
-            Superscript | Subscript => {
-                #[cfg(feature = "opentype-math")]
-                let base_start = self.mark();
-                let mut total = self.child(find_child(e, Base), false)?;
-                #[cfg(feature = "opentype-math")]
-                if let Some(base) = self.font_base(base_start, total) {
-                    return self.font_scripts(e, base, false, true);
-                }
-                let x = total.width;
-                let start = self.mark();
-                let superscript = e.kind == Superscript;
-                let metrics = self.child(
-                    find_child(
-                        e,
-                        if superscript {
-                            SuperArgument
-                        } else {
-                            SubArgument
-                        },
-                    ),
-                    true,
-                )?;
-                let y = self.style.size_px * if superscript { -0.6 } else { 0.4 };
-                self.shift(start, x, y);
-                total.include(metrics, x, y);
-                Ok(total)
-            }
-            Nary => self.nary(e),
-            Fraction => self.fraction(e),
-            Delimiter => {
-                let pr = e.children.iter().find(|c| c.tag.as_deref() == Some("dPr"));
-                let begin = property(pr, "begChr").unwrap_or("(");
-                let end = property(pr, "endChr").unwrap_or(")");
-                let mut total = self.text(begin)?;
-                for child in e.children.iter().filter(|c| c.kind == Base) {
-                    let start = self.mark();
-                    let metrics = self.element(child)?;
-                    let x = total.width;
-                    self.shift(start, x, 0.0);
-                    total.include(metrics, x, 0.0);
-                }
-                let start = self.mark();
-                let metrics = self.text(end)?;
-                let x = total.width;
-                self.shift(start, x, 0.0);
-                total.include(metrics, x, 0.0);
-                Ok(total)
-            }
-            Radical => {
-                let mut total = self.text("√")?;
-                let start = self.mark();
-                let metrics = self.child(find_child(e, Base), false)?;
-                let x = total.width;
-                self.shift(start, x, 0.0);
-                total.include(metrics, x, 0.0);
-                Ok(total)
-            }
-            #[cfg(feature = "opentype-math")]
-            Unknown if e.tag.as_deref() == Some("sSubSup") => {
-                // Only structured base-first scripts enter the optional path;
-                // preserve the original traversal for unsupported structures.
-                let mut children = e
-                    .children
-                    .iter()
-                    .filter(|c| !c.tag.as_deref().is_some_and(is_property_tag));
-                if children.next().is_none_or(|c| c.kind != Base)
-                    || children.any(|c| c.kind == Base)
-                {
-                    return self.elements(&e.children);
-                }
-                let start = self.mark();
-                let base = self.child(find_child(e, Base), false)?;
-                if let Some(base) = self.font_base(start, base) {
-                    self.font_scripts(e, base, false, true)
-                } else {
-                    // Retain the original unbound structural fallback without
-                    // measuring or appending its base a second time.
-                    let mut total = base;
-                    for child in e.children.iter().filter(|c| {
-                        c.kind != Base && !c.tag.as_deref().is_some_and(is_property_tag)
-                    }) {
-                        let start = self.mark();
-                        let metrics = self.element(child)?;
-                        let x = total.width;
-                        self.shift(start, x, 0.0);
-                        total.include(metrics, x, 0.0);
-                    }
-                    Ok(total)
-                }
-            }
-            // Containers retain their children. Unsupported stretchy constructs
-            // still need font-specific variants; do not invent preview labels.
-            _ => self.elements(&e.children),
-        }
-    }
-    fn nary(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
-        use MathElementKind::*;
-        #[cfg(feature = "opentype-math")]
-        let base_start = self.mark();
-        let symbol = nary_symbol(e).unwrap_or_else(|| "∫".to_string());
-        #[cfg(feature = "opentype-math")]
-        let mut total = {
-            self.display_operator = true;
-            let result = self.text(&symbol);
-            self.display_operator = false;
-            result?
-        };
-        #[cfg(not(feature = "opentype-math"))]
-        let mut total = self.text(&symbol)?;
-        let symbol_width = total.width;
-        let pr = e
-            .children
-            .iter()
-            .find(|c| c.tag.as_deref() == Some("naryPr"));
-        let side = property(pr, "limLoc") == Some("subSup");
-        #[cfg(feature = "opentype-math")]
-        if let Some(base) = self.font_base(base_start, total) {
-            return self.font_scripts(e, base, true, side);
-        }
-        let mut right = symbol_width;
-        for (kind, y) in [
-            (SuperArgument, -self.style.size_px * 0.8),
-            (SubArgument, self.style.size_px * 0.5),
-        ] {
-            let start = self.mark();
-            let metrics = self.child(find_child(e, kind), true)?;
-            let x = if side {
-                symbol_width
-            } else {
-                ((symbol_width - metrics.width) / 2.0).max(0.0)
-            };
-            self.shift(start, x, y);
-            total.include(metrics, x, y);
-            right = right.max(x + metrics.width);
-        }
-        let start = self.mark();
-        let metrics = self.child(find_child(e, Base), false)?;
-        let x = right + self.style.size_px * 0.1;
-        self.shift(start, x, 0.0);
-        total.include(metrics, x, 0.0);
-        Ok(total)
-    }
-    #[cfg(feature = "opentype-math")]
-    fn font_base(&self, start: Mark, metrics: MathMetrics) -> Option<FontBase> {
-        let end = self.mark();
-        let glyphs = &self.plan.glyphs[start.glyphs..end.glyphs];
-        let first = glyphs.first()?;
-        let prepared = first.font_glyph.as_ref()?;
-        if glyphs.iter().any(|g| g.style.family != first.style.family) {
-            return None;
-        }
-        Some(FontBase {
-            start,
-            end,
-            metrics,
-            parameters: self.context.font_parameters(first.style)?,
-            italic: if glyphs.len() == 1 && start.rules == end.rules {
-                prepared.italic_correction_px
-            } else {
-                0.0
-            },
-            size_px: first.style.size_px,
-        })
-    }
-    #[cfg(feature = "opentype-math")]
-    fn script_box(
+
+    /// Lays out one argument (`m:e`, `m:num`, `m:sup` …) as its own
+    /// sequence at `level`, recording its box. An empty argument keeps a
+    /// placeholder's room, as Word shows one.
+    pub(crate) fn slot(
         &mut self,
-        argument: Option<&'a MathElement>,
-    ) -> Result<Option<ScriptBox>, C::Error> {
-        let Some(argument) = argument else {
-            return Ok(None);
-        };
-        let start = self.mark();
-        let metrics = self.child(Some(argument), true)?;
-        Ok(Some(ScriptBox {
-            start,
-            end: self.mark(),
-            metrics,
-        }))
-    }
-    #[cfg(feature = "opentype-math")]
-    fn shift_range(&mut self, start: Mark, end: Mark, x: f64, y: f64) {
-        for glyph in &mut self.plan.glyphs[start.glyphs..end.glyphs] {
-            glyph.x += x;
-            glyph.baseline += y;
-        }
-        for rule in &mut self.plan.rules[start.rules..end.rules] {
-            rule.x += x;
-            rule.y += y;
-        }
-    }
-    #[cfg(feature = "opentype-math")]
-    fn font_scripts(
-        &mut self,
-        e: &'a MathElement,
-        base: FontBase,
-        nary: bool,
-        side: bool,
+        found: Option<(usize, &'a MathElement)>,
+        level_up: u32,
+        display: bool,
+        cramped: bool,
     ) -> Result<MathMetrics, C::Error> {
-        use MathElementKind::*;
-        let pr = e
+        let Some((index, element)) = found else {
+            return Ok(MathMetrics::default());
+        };
+        let saved = (
+            self.level,
+            self.display,
+            self.cramped,
+            self.prev.take(),
+            self.first,
+            std::mem::take(&mut self.pending_italic),
+        );
+        if !self.options.uniform {
+            self.level += level_up;
+        }
+        self.display = display;
+        self.cramped = cramped;
+        self.depth += 1;
+        self.path.push(index as u16);
+        let start = self.mark();
+        let b = self.open_box(element, start);
+        self.first = None;
+        let mut metrics = self.sequence(&element.children)?;
+        let empty = !element
             .children
             .iter()
-            .find(|c| c.tag.as_deref() == Some("naryPr"));
-        let upper = if e.kind == Subscript || (nary && on_property(pr, "supHide")) {
-            None
-        } else {
-            find_child(e, SuperArgument)
-        };
-        let lower = if e.kind == Superscript || (nary && on_property(pr, "subHide")) {
-            None
-        } else {
-            find_child(e, SubArgument)
-        };
-        // Preserve the semantic traversal used by each existing structure.
-        let (upper, lower) = if nary {
-            let upper = self.script_box(upper)?;
-            let lower = self.script_box(lower)?;
-            (upper, lower)
-        } else {
-            let lower = self.script_box(lower)?;
-            let upper = self.script_box(upper)?;
-            (upper, lower)
-        };
-        let shifts = if side {
-            base.parameters.script_shifts(
-                base.metrics,
-                upper.as_ref().map(|s| s.metrics),
-                lower.as_ref().map(|s| s.metrics),
-            )
-        } else {
-            base.parameters.limit_shifts(
-                base.metrics,
-                upper.as_ref().map(|s| s.metrics),
-                lower.as_ref().map(|s| s.metrics),
-            )
-        };
-        let upper_x = upper.as_ref().map_or(0.0, |s| {
-            if side {
-                base.metrics.width + if nary { 0.0 } else { base.italic }
-            } else {
-                (base.metrics.width - s.metrics.width) / 2.0 + base.italic / 2.0
+            .any(|c| !is_skipped(c) && has_content(c));
+        if empty && !self.options.uniform {
+            let size = self.size();
+            metrics = MathMetrics {
+                width: size * 0.6,
+                ascent: size * 0.7,
+                descent: 0.0,
+            };
+            self.plan.boxes[b].empty = true;
+        }
+        self.close_box(b, metrics);
+        self.path.pop();
+        self.depth -= 1;
+        self.level = saved.0;
+        self.display = saved.1;
+        self.cramped = saved.2;
+        self.prev = saved.3;
+        self.first = saved.4;
+        self.pending_italic = saved.5;
+        Ok(metrics)
+    }
+
+    /// Lays out one element of a sequence at the origin.
+    pub(crate) fn element(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
+        use MathElementKind::*;
+        let start = self.mark();
+        let b = self.open_box(e, start);
+        let class = structure_class(e);
+        // Structures space as one atom against their neighbours.
+        let mut lead = 0.0;
+        let structure = !matches!(e.kind, Run | Text | Math | MathParagraph | Unknown)
+            || e.local_name().starts_with("eq");
+        if structure {
+            if let Some(prev) = self.prev {
+                let left = class.0;
+                let left = alphabet::resolve_binary(Some(prev), left);
+                lead = alphabet::atom_space(prev, left, self.level > 0) * self.size() / 18.0;
             }
-        });
-        let lower_x = lower.as_ref().map_or(0.0, |s| {
-            if side {
-                base.metrics.width - if nary { base.italic } else { 0.0 }
-            } else {
-                (base.metrics.width - s.metrics.width) / 2.0 - base.italic / 2.0
+            lead += std::mem::take(&mut self.pending_italic);
+        }
+        self.first = None;
+        if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
+            self.break_candidate(class.0, false, None);
+        }
+        let metrics = match e.kind {
+            Run => self.run(e)?,
+            Text => {
+                let text = e.text.as_deref().unwrap_or_default();
+                self.text(text)?
             }
-        });
-        // Long limits may extend before the operator. Include that extent in
-        // the shared advance instead of clipping/centering them in a painter.
-        let origin = -0.0_f64.min(upper_x).min(lower_x);
-        self.shift_range(base.start, base.end, origin, 0.0);
+            Math | MathParagraph => {
+                self.depth += 1;
+                let m = self.sequence(&e.children)?;
+                self.depth -= 1;
+                m
+            }
+            Fraction => self.fraction(e)?,
+            Superscript | Subscript | SubSup => self.scripts(e)?,
+            PreSubSuper => self.prescripts(e)?,
+            Nary => self.nary(e)?,
+            Radical => self.radical(e)?,
+            Delimiter => self.delimiter(e)?,
+            Function => self.function(e)?,
+            Accent => self.accent(e)?,
+            Bar => self.bar(e)?,
+            GroupChar => self.group_char(e)?,
+            LimitLower | LimitUpper => self.limit(e)?,
+            Box => self.boxed(e)?,
+            BorderBox => self.border_box(e)?,
+            Phantom => self.phantom(e)?,
+            EquationArray => self.equation_array(e)?,
+            Matrix => self.matrix(e)?,
+            _ => match e.local_name() {
+                "eqShift" | "eqArray" | "eqOverstrike" | "eqDisplace" | "eqList" => {
+                    self.eq_structure(e)?
+                }
+                // Containers that are not structures (`w:ins`, `m:e` read on
+                // its own) keep their content in line.
+                _ => {
+                    self.depth += 1;
+                    let m = self.sequence(&e.children)?;
+                    self.depth -= 1;
+                    m
+                }
+            },
+        };
+        let mut metrics = metrics;
+        if structure {
+            if lead > 0.0 {
+                self.shift(start, lead, 0.0);
+                metrics.width += lead;
+            }
+            let left = alphabet::resolve_binary(self.prev, class.0);
+            self.prev = Some(class.1);
+            self.first = Some(left);
+            self.pending_italic = 0.0;
+        }
+        self.close_box(b, metrics);
+        if structure && lead > 0.0 {
+            // The box starts where the structure's ink does.
+            self.plan.boxes[b].x += lead;
+            self.plan.boxes[b].width -= lead;
+        }
+        Ok(metrics)
+    }
+
+    /// An `m:r`: its properties set the style of its text.
+    fn run(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
+        let saved = (self.style, self.script, self.normal_text);
+        let run = run_properties(e, self.style, self.options.text_family);
+        if let Some(align_at) = run.manual_break {
+            let class = first_char(e).map_or(AtomClass::Ord, alphabet::char_class);
+            self.break_candidate(class, true, align_at);
+        }
+        if run.align_point {
+            self.align_point();
+        }
+        self.style = run.style;
+        self.script = run.script;
+        self.normal_text = run.normal;
         let mut total = MathMetrics::default();
-        total.include(base.metrics, origin, 0.0);
-        if let Some(s) = &upper {
-            self.shift_range(s.start, s.end, upper_x + origin, -shifts.up);
-            total.include(s.metrics, upper_x + origin, -shifts.up);
-        }
-        if let Some(s) = &lower {
-            self.shift_range(s.start, s.end, lower_x + origin, shifts.down);
-            total.include(s.metrics, lower_x + origin, shifts.down);
-        }
-        if side && (upper.is_some() || lower.is_some()) {
-            total.width += base.parameters.space_after_script();
-        }
-        if nary {
+        for (index, child) in e.children.iter().enumerate() {
+            if is_skipped(child) || child.kind != MathElementKind::Text {
+                continue;
+            }
+            self.path.push(index as u16);
             let start = self.mark();
-            let body = self.child(find_child(e, Base), false)?;
-            // Operator-to-body spacing is still the existing fallback policy;
-            // SpaceAfterScript above is separate, font-defined whitespace.
-            let x = total.width + base.size_px * 0.1;
+            let b = self.open_box(child, start);
+            let metrics = self.text(child.text.as_deref().unwrap_or_default())?;
+            self.close_box(b, metrics);
+            self.path.pop();
+            let x = total.width;
             self.shift(start, x, 0.0);
-            total.include(body, x, 0.0);
+            total.include(metrics, x, 0.0);
+            total.width = total.width.max(x + metrics.width);
         }
+        self.style = saved.0;
+        self.script = saved.1;
+        self.normal_text = saved.2;
         Ok(total)
     }
-    fn fraction(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
-        use MathElementKind::*;
-        let num_start = self.mark();
-        let numerator = self.child(find_child(e, Numerator), false)?;
-        let num_end = self.mark();
-        let denominator = self.child(find_child(e, Denominator), false)?;
-        let padding = self.style.size_px * 0.2;
-        let thickness = (self.style.size_px / 16.0).max(0.5);
-        let width = numerator.width.max(denominator.width) + 2.0 * padding;
-        let up = -(numerator.descent + thickness + self.style.size_px * 0.15);
-        let down = denominator.ascent + thickness + self.style.size_px * 0.15;
-        // Restrict numerator translation to its commands before denominator.
-        for g in &mut self.plan.glyphs[num_start.glyphs..num_end.glyphs] {
-            g.x += (width - numerator.width) / 2.0;
-            g.baseline += up;
-        }
-        for r in &mut self.plan.rules[num_start.rules..num_end.rules] {
-            r.x += (width - numerator.width) / 2.0;
-            r.y += up;
-        }
-        self.shift(num_end, (width - denominator.width) / 2.0, down);
-        self.plan.rules.push(MathRule {
-            x: padding,
-            y: 0.0,
-            width: width - 2.0 * padding,
-            thickness,
-            color: self.style.color,
-        });
-        let mut total = MathMetrics {
-            width,
-            ascent: thickness / 2.0,
-            descent: thickness / 2.0,
-        };
-        total.include(numerator, 0.0, up);
-        total.include(denominator, 0.0, down);
-        Ok(total)
+
+    /// Lays out an `m:oMath`, broken into display lines.
+    fn math_lines(
+        &mut self,
+        math: &'a MathElement,
+        group: usize,
+    ) -> Result<Vec<lines::PlacedLine>, C::Error> {
+        lines::math_lines(self, math, group)
     }
 }
-fn property<'a>(element: Option<&'a MathElement>, name: &str) -> Option<&'a str> {
+
+/// The justification an `m:oMathPara` asks for.
+fn paragraph_justification(element: &MathElement) -> Option<MathJustification> {
+    if element.local_name() == "oMathParaPr" {
+        return element
+            .children
+            .iter()
+            .find(|c| c.local_name() == "jc")
+            .and_then(|jc| jc.attributes.get("val"))
+            .and_then(|v| MathJustification::from_omml(v));
+    }
+    if element.kind == MathElementKind::MathParagraph {
+        return element.children.iter().find_map(paragraph_justification);
+    }
+    None
+}
+
+/// A glyph prepared from a bound face, when there is one.
+#[cfg(feature = "opentype-math")]
+pub(crate) type GlyphHandle = Option<font::PreparedMathGlyph>;
+#[cfg(not(feature = "opentype-math"))]
+pub(crate) type GlyphHandle = Option<()>;
+
+/// What Word shows for a character typed into a math run: a hyphen is a
+/// minus sign, an asterisk the asterisk operator, an apostrophe a prime.
+fn display_char(ch: char) -> char {
+    match ch {
+        '-' => '−',
+        '*' => '∗',
+        '\'' => '′',
+        _ => ch,
+    }
+}
+
+/// Property and non-content children a layout passes over.
+pub(crate) fn is_skipped(element: &MathElement) -> bool {
+    if element.tag.as_deref().is_some_and(is_property_tag) {
+        return true;
+    }
+    match element.local_name() {
+        "mcs" | "ctrlPr" => true,
+        "bookmarkStart" | "bookmarkEnd" | "proofErr" | "commentRangeStart" | "commentRangeEnd"
+        | "permStart" | "permEnd" | "del" | "moveFrom" => element.namespace.is_some(),
+        _ => false,
+    }
+}
+
+/// Whether an element shows anything.
+pub(crate) fn has_content(element: &MathElement) -> bool {
+    match element.kind {
+        MathElementKind::Text => element.text.as_deref().is_some_and(|t| !t.is_empty()),
+        MathElementKind::Run => element
+            .children
+            .iter()
+            .any(|c| c.kind == MathElementKind::Text && has_content(c)),
+        MathElementKind::Unknown => element
+            .children
+            .iter()
+            .any(|c| !is_skipped(c) && has_content(c)),
+        _ => true,
+    }
+}
+
+/// The classes a structure shows to the atom before it and after it.
+fn structure_class(e: &MathElement) -> (AtomClass, AtomClass) {
+    use AtomClass::*;
+    use MathElementKind::*;
+    match e.kind {
+        Nary => (Op, Op),
+        Function => (Op, Ord),
+        Delimiter => (Open, Close),
+        Fraction => (Inner, Inner),
+        Box => {
+            if on(property_element(e, "boxPr"), "opEmu") {
+                let class = first_char(e).map_or(Bin, alphabet::char_class);
+                (class, class)
+            } else {
+                (Ord, Ord)
+            }
+        }
+        LimitLower | LimitUpper | GroupChar | Accent | Bar => {
+            let class = single_char(e).map_or(Ord, alphabet::char_class);
+            match class {
+                Rel | Bin | Op => (class, class),
+                _ => (Ord, Ord),
+            }
+        }
+        _ => (Ord, Ord),
+    }
+}
+
+fn first_char(e: &MathElement) -> Option<char> {
+    if let Some(text) = &e.text {
+        return text.chars().next();
+    }
+    e.children
+        .iter()
+        .filter(|c| !is_skipped(c))
+        .find_map(first_char)
+}
+
+/// The one character a structure's base holds, when it holds just one.
+fn single_char(e: &MathElement) -> Option<char> {
+    let base = child(e, MathElementKind::Base)?.1;
+    let mut text = String::new();
+    collect_text(base, &mut text);
+    let mut chars = text.chars();
+    let first = chars.next()?;
+    chars.next().is_none().then_some(first)
+}
+
+pub(crate) fn collect_text(e: &MathElement, out: &mut String) {
+    if is_skipped(e) {
+        return;
+    }
+    if let Some(text) = &e.text {
+        out.push_str(text);
+    }
+    for c in &e.children {
+        collect_text(c, out);
+    }
+}
+
+/// The first child of `kind`, with its index.
+pub(crate) fn child(e: &MathElement, kind: MathElementKind) -> Option<(usize, &MathElement)> {
+    e.children.iter().enumerate().find(|(_, c)| c.kind == kind)
+}
+
+/// Every child of `kind`, with their indices.
+pub(crate) fn children_of(
+    e: &MathElement,
+    kind: MathElementKind,
+) -> impl Iterator<Item = (usize, &MathElement)> {
+    e.children
+        .iter()
+        .enumerate()
+        .filter(move |(_, c)| c.kind == kind)
+}
+
+pub(crate) fn property_element<'e>(e: &'e MathElement, name: &str) -> Option<&'e MathElement> {
+    e.children.iter().find(|c| c.tag.as_deref() == Some(name))
+}
+
+pub(crate) fn property<'a>(element: Option<&'a MathElement>, name: &str) -> Option<&'a str> {
     element?
         .children
         .iter()
@@ -588,8 +1369,9 @@ fn property<'a>(element: Option<&'a MathElement>, name: &str) -> Option<&'a str>
         .get("val")
         .map(String::as_str)
 }
-#[cfg(feature = "opentype-math")]
-fn on_property(element: Option<&MathElement>, name: &str) -> bool {
+
+/// An on/off property: present without a value, or with 1/true/on.
+pub(crate) fn on(element: Option<&MathElement>, name: &str) -> bool {
     element
         .and_then(|pr| pr.children.iter().find(|c| c.tag.as_deref() == Some(name)))
         .is_some_and(|p| {
@@ -598,7 +1380,39 @@ fn on_property(element: Option<&MathElement>, name: &str) -> bool {
                 .is_none_or(|v| matches!(v.as_str(), "1" | "true" | "on"))
         })
 }
-fn run_style<'a>(run: &'a MathElement, mut style: MathTextStyle<'a>) -> MathTextStyle<'a> {
+
+/// An on/off property that is on unless it says off.
+pub(crate) fn on_unless_off(element: Option<&MathElement>, name: &str) -> bool {
+    match element.and_then(|pr| pr.children.iter().find(|c| c.tag.as_deref() == Some(name))) {
+        None => true,
+        Some(p) => p
+            .attributes
+            .get("val")
+            .is_none_or(|v| matches!(v.as_str(), "1" | "true" | "on")),
+    }
+}
+
+pub(crate) struct RunStyle<'a> {
+    pub(crate) style: MathTextStyle<'a>,
+    pub(crate) script: MathScript,
+    pub(crate) normal: bool,
+    /// `m:brk`: a manual line break before the run, aligned at the n-th
+    /// operator of the line above when it says so.
+    pub(crate) manual_break: Option<Option<u32>>,
+    /// `m:aln`: the run starts an alignment point.
+    pub(crate) align_point: bool,
+}
+
+fn run_properties<'a>(
+    run: &'a MathElement,
+    mut style: MathTextStyle<'a>,
+    text_family: Option<&'a str>,
+) -> RunStyle<'a> {
+    let mut script = MathScript::Roman;
+    let mut normal = false;
+    let mut authored_family = false;
+    let mut manual_break = None;
+    let mut align_point = false;
     // Math and Word run properties share the local name rPr; their children
     // identify them without dropping either source subtree.
     for pr in run
@@ -615,6 +1429,7 @@ fn run_style<'a>(run: &'a MathElement, mut style: MathTextStyle<'a>) -> MathText
                         .or_else(|| p.attributes.get("hAnsi"))
                     {
                         style.family = family;
+                        authored_family = true;
                     }
                 }
                 Some("sz") => {
@@ -644,135 +1459,52 @@ fn run_style<'a>(run: &'a MathElement, mut style: MathTextStyle<'a>) -> MathText
                         _ => MathVariant::Italic,
                     }
                 }
+                Some("brk") if p.namespace.is_none() => {
+                    manual_break = Some(
+                        p.attributes
+                            .get("alnAt")
+                            .and_then(|v| v.parse::<u32>().ok()),
+                    );
+                }
+                Some("aln") if p.namespace.is_none() => {
+                    align_point = !matches!(
+                        p.attributes.get("val").map(String::as_str),
+                        Some("0" | "false" | "off")
+                    );
+                }
+                Some("scr") => {
+                    script = MathScript::from_omml(
+                        p.attributes.get("val").map(String::as_str).unwrap_or(""),
+                    );
+                }
                 Some("nor")
                     if !matches!(
                         p.attributes.get("val").map(String::as_str),
                         Some("0" | "false" | "off")
                     ) =>
                 {
-                    style.variant = MathVariant::Plain
+                    style.variant = MathVariant::Plain;
+                    normal = true;
                 }
                 _ => {}
             }
         }
     }
-    style
-}
-fn math_alphabetic(ch: char, variant: MathVariant) -> char {
-    use MathVariant::*;
-    let base = match (variant, ch) {
-        (Italic, 'h') => return 'ℎ',
-        (Italic, 'A'..='Z') => Some((0x1D434, 'A')),
-        (Italic, 'a'..='z') => Some((0x1D44E, 'a')),
-        (Bold, 'A'..='Z') => Some((0x1D400, 'A')),
-        (Bold, 'a'..='z') => Some((0x1D41A, 'a')),
-        (BoldItalic, 'A'..='Z') => Some((0x1D468, 'A')),
-        (BoldItalic, 'a'..='z') => Some((0x1D482, 'a')),
-        (Bold | BoldItalic, '0'..='9') => Some((0x1D7CE, '0')),
-        _ => None,
-    };
-    base.and_then(|(start, first)| char::from_u32(start + ch as u32 - first as u32))
-        .unwrap_or(ch)
+    // Normal text is set in the document's text face unless the run names
+    // its own.
+    if normal && !authored_family {
+        if let Some(family) = text_family {
+            style.family = family;
+        }
+    }
+    RunStyle {
+        style,
+        script,
+        normal,
+        manual_break,
+        align_point,
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::cell::RefCell;
-    #[derive(Default)]
-    struct Measure {
-        calls: RefCell<Vec<(String, f64)>>,
-    }
-    impl StyledMathMeasure for Measure {
-        type Error = &'static str;
-        fn measure_glyph(
-            &self,
-            text: &str,
-            style: MathTextStyle<'_>,
-        ) -> Result<MathMetrics, Self::Error> {
-            self.calls
-                .borrow_mut()
-                .push((text.to_string(), style.size_px));
-            if text == "!" {
-                return Err("unavailable");
-            }
-            Ok(MathMetrics {
-                width: style.size_px * 0.5,
-                ascent: style.size_px * 0.8,
-                descent: style.size_px * 0.2,
-            })
-        }
-    }
-    fn parse(body: &str) -> MathParagraph {
-        jade_docx_reader::parser::math::parse_math_paragraph(format!(r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{body}</m:oMath>"#)).unwrap()
-    }
-    fn style() -> MathTextStyle<'static> {
-        MathTextStyle {
-            family: "Cambria Math",
-            size_px: 14.0,
-            color: "#000000",
-            variant: MathVariant::Italic,
-        }
-    }
-    #[test]
-    fn styled_runs_preserve_authored_font_color_and_unicode_math_alphabetics() {
-        let math = parse(
-            r#"<m:r><w:rPr><w:rFonts w:ascii="Other Math"/><w:sz w:val="18"/><w:color w:val="112233"/></w:rPr><m:rPr><m:sty m:val="bi"/></m:rPr><m:t>Az2</m:t></m:r><m:r><m:rPr><m:nor/></m:rPr><m:t>xy</m:t></m:r><m:r><m:t>h</m:t></m:r>"#,
-        );
-        let m = Measure::default();
-        let p = layout_styled_math(&m, &math, style()).unwrap();
-        assert_eq!(p.text, "𝑨𝒛𝟐xyℎ");
-        assert_eq!(m.calls.borrow().len(), p.glyphs.len());
-        assert_eq!(p.glyphs[0].style.family, "Other Math");
-        assert_eq!(p.glyphs[0].style.size_px, 12.0);
-        assert_eq!(p.glyphs[0].style.color, "112233");
-        assert_eq!(p.glyphs[3].style.size_px, 14.0);
-        for g in &p.glyphs {
-            assert!(!p.text[g.text_range.clone()].is_empty());
-        }
-    }
-    #[test]
-    fn structured_nary_delimiters_and_scripts_have_measured_utf8_glyph_ranges() {
-        let math = parse(
-            r#"<m:r><m:t>P</m:t></m:r><m:d><m:e><m:r><m:t>x</m:t></m:r></m:e></m:d><m:nary><m:naryPr><m:chr m:val="∑"/><m:limLoc m:val="subSup"/></m:naryPr><m:sub><m:r><m:t>a</m:t></m:r></m:sub><m:sup><m:r><m:t>b</m:t></m:r></m:sup><m:e><m:r><m:t>f</m:t></m:r></m:e></m:nary>"#,
-        );
-        let m = Measure::default();
-        let p = layout_styled_math(&m, &math, style()).unwrap();
-        assert_eq!(p.text, "𝑃(𝑥)∑𝑏𝑎𝑓");
-        let glyph = |text: &str| {
-            p.glyphs
-                .iter()
-                .find(|g| &p.text[g.text_range.clone()] == text)
-                .unwrap()
-        };
-        assert!(glyph("𝑏").baseline < glyph("∑").baseline);
-        assert!(glyph("𝑎").baseline > glyph("∑").baseline);
-        assert_eq!(glyph("𝑏").style.size_px, 14.0 * 0.8);
-        assert!(glyph("𝑏").x > glyph("∑").x);
-        assert_eq!(m.calls.borrow().len(), p.glyphs.len());
-        for g in &p.glyphs {
-            assert!(g.x >= 0.0 && g.x + g.width <= p.metrics.width + 1e-9);
-            assert!(g.baseline - g.style.size_px * 0.8 >= -p.metrics.ascent - 1e-9);
-            assert!(g.baseline + g.style.size_px * 0.2 <= p.metrics.descent + 1e-9);
-        }
-    }
-    #[test]
-    fn styled_fraction_rules_and_children_fit_bounds_and_errors_propagate() {
-        let math=parse("<m:f><m:num><m:r><m:t>ab</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f>");
-        let p = layout_styled_math(&Measure::default(), &math, style()).unwrap();
-        assert_eq!(p.rules.len(), 1);
-        assert!(p.glyphs[0].baseline < 0.0 && p.glyphs[2].baseline > 0.0);
-        for g in &p.glyphs {
-            assert!(g.x >= 0.0 && g.x + g.width <= p.metrics.width + 1e-9);
-        }
-        assert_eq!(
-            layout_styled_math(
-                &Measure::default(),
-                &parse("<m:r><m:t>!</m:t></m:r>"),
-                style()
-            )
-            .unwrap_err(),
-            "unavailable"
-        );
-    }
-}
+mod tests;

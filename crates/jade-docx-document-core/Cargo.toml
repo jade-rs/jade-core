@@ -13,6 +13,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 base64 = "0.22"
 cfb = "0.7"
 png = "0.17"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+rustc-hash = "2.1"
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 jade-selection = { path = "../jade-selection" }
 jade-docx-reader = { path = "../jade-docx-reader" }
