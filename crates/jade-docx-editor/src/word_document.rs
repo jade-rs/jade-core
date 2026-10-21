@@ -2376,7 +2376,10 @@ impl WordDocument {
                     document.load_part(&target_path)?;
 
                     if let Some(part) = document.parts.get(&target_path) {
-                        let numbering_part = NumberingPart::from_xml(&part.content)?;
+                        let mut numbering_part = NumberingPart::from_xml(&part.content)?;
+                        if let Some(package) = document.package.as_ref() {
+                            Self::resolve_picture_bullets(&mut numbering_part, part, package);
+                        }
                         document.numbering_part = Some(numbering_part);
                     }
                 } else if rel_type == RelationshipTypes::Styles.as_str() {
@@ -6425,6 +6428,35 @@ impl WordDocument {
         }
 
         Ok(())
+    }
+
+    /// The images of `numbering`'s picture bullets, through the numbering
+    /// part's relationships, as data URIs the renderer draws.
+    fn resolve_picture_bullets(
+        numbering: &mut NumberingPart,
+        part: &DocumentPart,
+        package: &OpenXmlPackage,
+    ) {
+        for bullet in numbering.picture_bullets.values_mut() {
+            let Some(relationship) = bullet.relationship_id.as_deref().and_then(|id| {
+                part.relationships
+                    .iter()
+                    .find(|relationship| relationship.id == id)
+            }) else {
+                continue;
+            };
+            let target = Self::resolve_target_path(&part.path, &relationship.target);
+            if !Self::is_supported_image_extension(&target) {
+                continue;
+            }
+            if let Some(bytes) = package.get(&target) {
+                bullet.data_uri = Some(format!(
+                    "data:{};base64,{}",
+                    Self::guess_image_mime_type(&target),
+                    BASE64.encode(bytes)
+                ));
+            }
+        }
     }
 
     fn resolve_images(document: &mut Document, doc_part: &DocumentPart, package: &OpenXmlPackage) {
