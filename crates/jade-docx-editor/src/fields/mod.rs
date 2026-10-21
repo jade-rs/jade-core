@@ -161,9 +161,13 @@ fn field_anchor(field: &scan::ScannedField) -> Option<XmlNodeId> {
     field.simple.or(field.begin.map(|marker| marker.run))
 }
 
-/// What each body run shows while codes are on: the field's first run
-/// shows `{ CODE }`, its other runs nothing.
-pub fn field_code_display(doc: &WordDocument, view: &FieldCodeView) -> HashMap<XmlNodeId, String> {
+/// What each body run shows while codes are on: every run of a shown field
+/// maps to the field (by its first run) and its `{ CODE }`, which the
+/// renderer draws once, at the first of them it lays out.
+pub fn field_code_display(
+    doc: &WordDocument,
+    view: &FieldCodeView,
+) -> HashMap<XmlNodeId, (XmlNodeId, std::rc::Rc<str>)> {
     let mut display = HashMap::new();
     let Some(raw) = doc.raw_document.as_ref() else {
         return display;
@@ -188,8 +192,8 @@ pub fn field_code_display(doc: &WordDocument, view: &FieldCodeView) -> HashMap<X
         if !shown || in_shown_result {
             continue;
         }
-        let code = format!("{{ {} }}", field.display_code(&story.fields).trim());
-        let mut first = true;
+        let code: std::rc::Rc<str> =
+            format!("{{ {} }}", field.display_code(&story.fields).trim()).into();
         let runs: Vec<XmlNodeId> = field
             .simple
             .map(|simple| {
@@ -208,8 +212,7 @@ pub fn field_code_display(doc: &WordDocument, view: &FieldCodeView) -> HashMap<X
             })
             .unwrap_or_else(|| field.span_runs.clone());
         for run in runs {
-            display.insert(run, if first { code.clone() } else { String::new() });
-            first = false;
+            display.insert(run, (anchor, code.clone()));
         }
     }
     display

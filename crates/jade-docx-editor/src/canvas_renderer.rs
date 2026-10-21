@@ -1,4 +1,5 @@
 use crate::document::*;
+use crate::docx_xml::XmlNodeId;
 use crate::draw_command::executor::{execute_commands_with_font_state, FontStateTracker};
 use crate::draw_command::{
     DrawCommand, GlyphRunStep, TabLeaderStyle as CmdTabLeaderStyle, TextStyle as CmdTextStyle,
@@ -3471,6 +3472,10 @@ where
     /// load time (wasm: `js_sys::Date`); `None` falls back to the field's
     /// cached result text so the field never renders blank.
     current_datetime: Option<FieldDateTime>,
+    /// While field codes are shown (⌥F9, ⇧F9): what a body run shows in
+    /// place of its field — `(field, code)`, the field named by its first
+    /// run. A field's runs show its code once.
+    field_code_display: Option<Rc<HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>>>,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -7970,6 +7975,7 @@ where
             bookmark_paragraphs: HashMap::new(),
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
+            field_code_display: None,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -16856,9 +16862,19 @@ where
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
         let track_footnote_placement = self.tracks_footnote_placement();
 
+        let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
+            }
+            // With field codes shown, a field's first run carries `{ CODE }`
+            // and its other runs nothing.
+            let field_code = self.field_code_for(run);
+            if let Some((field, _)) = &field_code {
+                if shown_field_codes.contains(field) {
+                    continue;
+                }
+                shown_field_codes.push(*field);
             }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
@@ -16880,7 +16896,7 @@ where
                 continue;
             }
 
-            if let Some(text_box) = run.text_box.as_ref() {
+            if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
                     floating_text_boxes.push((run_index, text_box.clone()));
                     continue;
@@ -16910,7 +16926,7 @@ where
                 continue;
             }
 
-            if let Some(image) = run.image.as_ref() {
+            if let Some(image) = run.image.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(image.layout.kind, RunImageKind::Floating) {
                     floating_images.push((run_index, image.clone()));
                     continue;
@@ -16956,7 +16972,9 @@ where
             } else {
                 resolved_run_properties
             };
-            if let Some(field) = run.field.as_ref() {
+            if let Some((_, code)) = &field_code {
+                segment.push_str(code);
+            } else if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
                 // the same visible byte space as ordinary text. A freshly
@@ -33044,6 +33062,31 @@ where
     /// Sets the host clock snapshot used to resolve `DATE`/`TIME` fields.
     pub fn set_current_datetime(&mut self, datetime: Option<FieldDateTime>) {
         self.current_datetime = datetime;
+    }
+
+    /// Shows field codes in place of results for the body runs in
+    /// `display` (see `fields::field_code_display`), or results again with
+    /// `None`. Paint and layout caches are dropped, as the text changes.
+    pub fn set_field_code_display(
+        &mut self,
+        display: Option<HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>>,
+    ) {
+        let display = display.filter(|map| !map.is_empty());
+        if display.as_ref() == self.field_code_display.as_deref() {
+            return;
+        }
+        self.field_code_display = display.map(Rc::new);
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// The field code a body run shows instead of its content.
+    fn field_code_for(&self, run: &Run) -> Option<(XmlNodeId, Rc<str>)> {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return None;
+        }
+        let display = self.field_code_display.as_ref()?;
+        display.get(&run.node_id?).cloned()
     }
 
     /// Best-effort total-page-count used for resolving `NUMPAGES` fields.

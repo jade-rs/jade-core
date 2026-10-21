@@ -590,8 +590,10 @@ fn code_display_shows_each_field_once_in_braces() {
             toggled: HashSet::new(),
         },
     );
-    let shown: Vec<&String> = all.values().filter(|text| !text.is_empty()).collect();
-    assert_eq!(shown, vec!["{ PAGE \\* MERGEFORMAT }"]);
+    let codes: HashSet<&str> = all.values().map(|(_, code)| &**code).collect();
+    assert_eq!(codes, HashSet::from(["{ PAGE \\* MERGEFORMAT }"]));
+    // Every run of the field maps to it: the markers, the code and the result.
+    assert_eq!(all.len(), 5);
     // ⇧F9 on the field turns it back.
     let ids = field_toggle_ids(&doc, SelectionRange::collapsed(TextPosition::new(0, 3)));
     assert_eq!(ids.len(), 1);
