@@ -32388,7 +32388,23 @@ impl WordDocument {
         } else {
             doc.create_element("a:noFill", Vec::new(), Vec::new())
         };
-        let av_lst = doc.create_element("a:avLst", Vec::new(), Vec::new());
+        // A preset's moved adjust handles go back as `a:gd` values.
+        let adjustments = match text_box.shape {
+            TextBoxShape::Preset(id) => id
+                .geometry()
+                .adjustments
+                .into_iter()
+                .map(|(name, value)| {
+                    XmlNode::Element(doc.create_element(
+                        "a:gd",
+                        vec![attr("name", name), attr("fmla", format!("val {value}"))],
+                        Vec::new(),
+                    ))
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let av_lst = doc.create_element("a:avLst", Vec::new(), adjustments);
         let prst_geom = doc.create_element(
             "a:prstGeom",
             vec![attr("prst", text_box.shape.preset_name())],

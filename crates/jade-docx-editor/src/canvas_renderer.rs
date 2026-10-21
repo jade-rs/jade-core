@@ -250,6 +250,8 @@ mod note_tests;
 mod page_layers;
 mod paragraph_join;
 #[cfg(test)]
+mod preset_shape_tests;
+#[cfg(test)]
 mod recording_host;
 #[cfg(test)]
 mod section_tests;
@@ -22405,6 +22407,13 @@ where
         width: f64,
         height: f64,
     ) -> Result<(), P::Error> {
+        if let TextBoxShape::Preset(id) = shape {
+            // The outline that is filled: a preset's stroke-only paths (a
+            // scroll's curls, a brace) are not part of its area.
+            context.begin_path();
+            Self::trace_preset_geometry(context, id, x, y, width, height, true);
+            return Ok(());
+        }
         Self::trace_text_box_shape_with_line_ends(context, shape, None, None, x, y, width, height)
     }
 
@@ -22597,6 +22606,52 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Traces a preset geometry from ECMA-376's shape-guide definitions,
+    /// honouring the shape's own adjust values; a rectangle when the preset is
+    /// unknown. `filled` picks the paths the preset fills (for a fill,
+    /// shadow or glow) rather than the ones it strokes (for its outline).
+    fn trace_preset_geometry<P: Painter>(
+        context: &P,
+        id: jade_docx_reader::document::PresetGeometryId,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        filled: bool,
+    ) {
+        let geometry = id.geometry();
+        let Some((paths, _)) = jade_pptx_layout::preset_shapes::outline(
+            &geometry.name,
+            &geometry.adjustments,
+            width,
+            height,
+        ) else {
+            context.rect(x, y, width, height);
+            return;
+        };
+        for path in paths.iter().filter(|path| {
+            if filled {
+                path.fill != jade_pptx_layout::PathFill::None
+            } else {
+                path.stroked
+            }
+        }) {
+            for subpath in &path.subpaths {
+                for (index, &(px, py)) in subpath.points.iter().enumerate() {
+                    let (px, py) = (x + px * width, y + py * height);
+                    if index == 0 {
+                        context.move_to(px, py);
+                    } else {
+                        context.line_to(px, py);
+                    }
+                }
+                if subpath.closed {
+                    context.close_path();
+                }
+            }
+        }
+    }
+
     fn trace_text_box_shape_with_line_ends<P: Painter>(
         context: &P,
         shape: TextBoxShape,
@@ -22619,6 +22674,9 @@ where
         match shape {
             TextBoxShape::Rectangle => {
                 context.rect(x, y, width, height);
+            }
+            TextBoxShape::Preset(id) => {
+                Self::trace_preset_geometry(context, id, x, y, width, height, false);
             }
             TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble => {
                 let start_x = x;
