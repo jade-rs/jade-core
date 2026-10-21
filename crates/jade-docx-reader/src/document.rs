@@ -10,7 +10,7 @@ use std::rc::Rc;
 mod math;
 mod table;
 mod table_conditional;
-pub use math::{MathElement, MathElementKind, MathParagraph, MathRun};
+pub use math::{math_elements_to_omml, MathElement, MathElementKind, MathParagraph, MathRun};
 pub use table::{
     resolve_cell_margin_edge_points, StyleMap, Table, TableBorders, TableCell, TableCellMargins,
     TableColumn, TableLayoutMode, TableRow, TableRowHeightRule, TableStyleDisplay,

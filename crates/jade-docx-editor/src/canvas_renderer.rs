@@ -253,7 +253,6 @@ use self::table::{
     layout_vertical_paragraph_with_wrap_context as table_layout_vertical_paragraph,
     parse_border_kind, BorderKind, TextAlign as TableTextAlign,
 };
-use math::{MathParagraphAlignment, MathRenderer};
 
 const PAGE_GAP_PX: f64 = 16.0;
 /// Padding (CSS px) added around the edited paragraph's band rect in "band
@@ -3100,6 +3099,36 @@ impl ParagraphRenderCache {
     }
 }
 
+/// The instruction of an EQ field this renderer draws as math: one the
+/// reader did not already model as ruby, an enclosure or distributed text.
+fn eq_field_instruction(kind: &RunFieldKind) -> Option<&str> {
+    match kind {
+        RunFieldKind::Unsupported { instruction } => {
+            let trimmed = instruction.trim_start();
+            trimmed
+                .get(..2)
+                .is_some_and(|name| name.eq_ignore_ascii_case("EQ"))
+                .then_some(instruction.as_str())
+        }
+        RunFieldKind::Locked { kind } => eq_field_instruction(kind),
+        _ => None,
+    }
+}
+
+/// The first family of a CSS font stack, unquoted.
+fn first_family(stack: &str) -> String {
+    stack
+        .split(',')
+        .next()
+        .unwrap_or("serif")
+        .trim()
+        .trim_matches(|c| c == '\'' || c == '"')
+        .to_string()
+}
+
+/// A paragraph's inline equations by their offset in its layout text, with
+/// their run and laid-out plan.
+type InlineMaths = HashMap<usize, (usize, Rc<math::OwnedMathPlan>)>;
 type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
@@ -3177,6 +3206,11 @@ where
         String,
         jade_docx_layout::math_layout::styled::font::MathFontData,
     >,
+    /// Where every equation was drawn at the last render, for an equation
+    /// editor's caret.
+    math_zones: Vec<math::MathZone>,
+    /// `m:mathPr` from the settings part.
+    math_settings: jade_docx_layout::math_layout::styled::MathSettings,
     pageless_mode: bool,
     page_width: f64,
     page_height: f64,
@@ -6883,6 +6917,7 @@ where
         run_styles: &mut [RunStyle],
         inline_images: &mut HashMap<usize, (usize, RunImage)>,
         inline_text_boxes: &mut HashMap<usize, (usize, RunTextBox)>,
+        inline_maths: &mut InlineMaths,
         neutral_ranges: &mut [(usize, usize)],
         separator_offsets: &mut [usize],
         unplaced: &mut [UnplacedFootnoteRef],
@@ -6925,6 +6960,10 @@ where
                 .map(|(at, value)| (shift(at), value))
                 .collect();
             *inline_text_boxes = std::mem::take(inline_text_boxes)
+                .into_iter()
+                .map(|(at, value)| (shift(at), value))
+                .collect();
+            *inline_maths = std::mem::take(inline_maths)
                 .into_iter()
                 .map(|(at, value)| (shift(at), value))
                 .collect();
@@ -7830,6 +7869,26 @@ where
         Ok(())
     }
 
+    /// Binds a math face read from a collection on disk (Cambria Math is
+    /// face 1 of Office's `Cambria.ttc`), so equations are laid out with its
+    /// MATH table and drawn from its outlines, as Word draws them.
+    #[cfg(feature = "opentype-math")]
+    pub fn register_math_face(
+        &mut self,
+        family: String,
+        bytes: Vec<u8>,
+        face_index: u32,
+    ) -> Result<(), jade_docx_layout::math_layout::styled::font::MathFontDataError> {
+        use jade_docx_layout::math_layout::styled::font::MathFontData;
+        use jade_docx_layout::math_layout::styled::font::MathFontDataError;
+        if self.math_fonts.contains_key(family.trim()) {
+            return Err(MathFontDataError::AlreadyRegistered);
+        }
+        let font = MathFontData::from_collection(family, bytes, face_index, 4096, 8192)?;
+        self.math_fonts.insert(font.family().to_owned(), font);
+        Ok(())
+    }
+
     #[cfg(feature = "opentype-math")]
     pub fn math_font_stats(&self) -> serde_json::Value {
         let mut fonts: Vec<_> = self
@@ -7881,6 +7940,8 @@ where
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
             math_fonts: std::collections::HashMap::new(),
+            math_zones: Vec::new(),
+            math_settings: Default::default(),
             pageless_mode,
             page_width,
             page_height,
@@ -14196,118 +14257,120 @@ where
             .and_then(|styles| styles.doc_default_font_size())
             .map(f64::from)
             .unwrap_or(DEFAULT_INDENT_CHAR_UNIT_PT);
-        let (column_x, column_width) = jade_docx_layout::math_layout::math_block_content_box(
+        let (_, column_width) = jade_docx_layout::math_layout::math_block_content_box(
             math.properties.as_deref(),
             self.current_column_x(),
             self.current_column_width(),
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
         );
-
-        #[cfg(feature = "opentype-math")]
-        {
-            let style = self.body_math_style(math);
-            let painter = self.host.painter();
-            let plan = self.math_fonts.get(style.family).map(|font| {
-                math::layout_boxed_math_with_font(&painter, math, style, font)
-                    .map_err(|error| match error {
-                        jade_docx_layout::math_layout::styled::font::MathFontLayoutError::Fallback(e) => e.into_js_value(),
-                        other => JsValue::from_str(&format!("MATH font preparation: {}", other.kind())),
-                    })
-            }).transpose()?;
-            if let Some(plan) = plan {
-                return self.render_font_math_block(math, style, plan, char_unit_pt);
-            }
-        }
-
-        let (layout, font_px) = {
-            let painter = self.host.painter();
-            let mut font_px = 16.0;
-            let mut renderer = self.math_renderer(&painter, font_px);
-            let mut layout = renderer.layout(math).map_err(PainterError::into_js_value)?;
-
-            if layout.metrics.width > column_width && layout.metrics.width > 0.0 {
-                let scale = (column_width / layout.metrics.width).clamp(0.5, 1.0);
-                font_px = (font_px * scale).clamp(10.0, 16.0);
-                renderer = self.math_renderer(&painter, font_px);
-                layout = renderer.layout(math).map_err(PainterError::into_js_value)?;
-            }
-
-            (layout, font_px)
+        let style = self.body_math_style(math);
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
+            display: true,
+            max_width: Some(column_width),
+            text_family: Some(self.math_text_family()),
+            settings: self.math_settings,
+            uniform: false,
+            script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
+        let plan = self.math_plan(&math.elements, style, &options)?;
+        self.render_font_math_block(math, style, plan, char_unit_pt)
+    }
 
-        let metrics = layout.metrics;
-        let (line_box, after) = self.place_math_block(
-            math,
-            jade_docx_layout::math_layout::MathMetrics {
-                width: metrics.width,
-                ascent: metrics.ascent,
-                descent: metrics.descent,
-            },
-            self.body_math_style(math).size_px,
-        )?;
-        let baseline_y = self.current_y + line_box.baseline;
-        let math_x = MathParagraphAlignment::from_math_paragraph(math).x(
-            column_x,
-            column_width,
-            metrics.width,
-        );
+    /// The face `m:nor` (normal text) runs are set in: the document's
+    /// default text face.
+    fn math_text_family(&self) -> &'static str {
+        "Cambria"
+    }
 
+    /// Lays out math in the bound face for the style's family, when one is
+    /// registered, else through the painter.
+    fn math_plan<'a>(
+        &self,
+        elements: &'a [jade_docx_reader::document::MathElement],
+        style: jade_docx_layout::math_layout::styled::MathTextStyle<'a>,
+        options: &jade_docx_layout::math_layout::styled::MathLayoutOptions<'a>,
+    ) -> Result<jade_docx_layout::math_layout::styled::StyledMathLayout<'a>, JsValue> {
         let painter = self.host.painter();
-        let renderer = self.math_renderer(&painter, font_px);
-        if self.should_draw_current_page_for_render() {
-            renderer
-                .render_layout(&layout, math_x, baseline_y)
-                .map_err(PainterError::into_js_value)?;
+        math::layout_math_elements(
+            &painter,
+            elements,
+            style,
+            options,
+            #[cfg(feature = "opentype-math")]
+            self.math_fonts.get(style.family),
+        )
+    }
+
+    /// An inline equation's plan at its run's size.
+    fn inline_math_plan(
+        &self,
+        elements: &[jade_docx_reader::document::MathElement],
+        properties: Option<&RunProperties>,
+    ) -> Result<math::OwnedMathPlan, JsValue> {
+        let mut style = self.boxed_math_style();
+        if let Some(size) = properties
+            .and_then(|p| p.font_size)
+            .filter(|size| size.is_finite() && *size > 0.0)
+        {
+            style.size_px = points_to_px(size);
         }
-        let line_height = line_box.height;
-
-        let paragraph_index = self.paragraph_counter;
-        self.paragraph_counter += 1;
-        // One invocation registers the whole math paragraph; a same-pass
-        // re-entry replaces it rather than appending a duplicate.
-        self.selection.reset_paragraph_registration(paragraph_index);
-        let math_text = math::math_text(math);
-        self.selection
-            .append_paragraph_text(paragraph_index, &math_text);
-        let fragment = SelectionFragmentLayout {
-            baseline_shift_px: 0.0,
-            start: 0,
-            end: math_text.len(),
-            x: math_x,
-            width: metrics.width,
-            glyphs: Rc::from([]),
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
+            display: false,
+            max_width: None,
+            text_family: Some(self.math_text_family()),
+            settings: self.math_settings,
+            uniform: false,
+            script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
-        let line_layout = SelectionLineLayout {
-            top: self.current_y,
-            absolute_top: self.page_offset_y + self.current_y,
-            height: line_height,
-            baseline: baseline_y,
-            start_x: math_x,
-            cursor_end_x: math_x + metrics.width,
-            allowed_trailing_overflow_width: 0.0,
-            content_top: self.current_y,
-            absolute_content_top: self.page_offset_y + self.current_y,
-            content_height: line_height,
-            fragments: Rc::from([fragment]),
-            break_range: None,
-            tab_leaders: Rc::from([]),
-            tab_stops: Rc::from([]),
-            column_index: self.column_index,
-            vertical: false,
-            vertical_reversed: false,
-        };
-        self.selection.record_line(paragraph_index, line_layout);
+        let plan = self.math_plan(elements, style, &options)?;
+        Ok(math::OwnedMathPlan::from_plan(&plan))
+    }
 
-        self.current_y += line_height + after;
-        self.trailing_spacing_after = Some((
-            self.current_page_number,
-            self.column_index,
-            self.current_y,
-            after,
-        ));
-        self.last_line_baseline = baseline_y;
-        Ok(())
+    /// An EQ field's plan: in its run's own face and size, upright.
+    fn eq_field_plan(
+        &self,
+        elements: &[jade_docx_reader::document::MathElement],
+        properties: Option<&RunProperties>,
+    ) -> Result<math::OwnedMathPlan, JsValue> {
+        let families = jade_docx_layout::font_resolver::resolve_font_families(properties);
+        let stack = families.latin_ascii_stack();
+        let family = first_family(stack);
+        let mut style = self.boxed_math_style();
+        style.family = &family;
+        style.variant = jade_docx_layout::math_layout::styled::MathVariant::Plain;
+        if let Some(size) = properties
+            .and_then(|p| p.font_size)
+            .filter(|size| size.is_finite() && *size > 0.0)
+        {
+            style.size_px = points_to_px(size);
+        }
+        if let Some(color) = properties
+            .and_then(|p| p.color.as_deref())
+            .filter(|c| c.len() == 6 && c.bytes().all(|b| b.is_ascii_hexdigit()))
+        {
+            style.color = color;
+        }
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions::eq_field();
+        let plan = self.math_plan(elements, style, &options)?;
+        Ok(math::OwnedMathPlan::from_plan(&plan))
+    }
+
+    /// Records where an equation was drawn, replacing what an earlier pass
+    /// recorded for the same place.
+    fn record_math_zone(&mut self, zone: math::MathZone) {
+        if let Some(existing) = self.math_zones.iter_mut().find(|z| {
+            z.paragraph == zone.paragraph && z.offset == zone.offset && z.display == zone.display
+        }) {
+            *existing = zone;
+        } else {
+            self.math_zones.push(zone);
+        }
+    }
+
+    /// Where every equation was drawn at the last render.
+    pub fn math_zones(&self) -> &[math::MathZone] {
+        &self.math_zones
     }
 
     /// Sizes a display-math line by the paragraph's rules (line spacing and
@@ -14356,7 +14419,6 @@ where
         Ok((line_box, after))
     }
 
-    #[cfg(feature = "opentype-math")]
     fn render_font_math_block<'a>(
         &mut self,
         math: &'a MathParagraph,
@@ -14376,12 +14438,26 @@ where
         );
         let baseline_y = self.current_y + line_box.baseline;
         let math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
+        let owned = Rc::new(math::OwnedMathPlan::from_plan(&plan));
         if self.should_draw_current_page_for_render() {
-            math::paint_boxed_math(&painter, &plan, math_x, baseline_y)
+            owned
+                .paint(&painter, math_x, baseline_y)
                 .map_err(PainterError::into_js_value)?;
             self.reset_fill_style_state();
         }
+        drop(painter);
         let line_height = line_box.height;
+        self.record_math_zone(math::MathZone {
+            paragraph: self.paragraph_counter,
+            offset: 0,
+            run_index: None,
+            display: true,
+            page: self.current_page_number,
+            x: math_x,
+            baseline: baseline_y,
+            absolute_baseline: self.page_offset_y + baseline_y,
+            plan: owned,
+        });
 
         let paragraph_index = self.paragraph_counter;
         self.paragraph_counter += 1;
@@ -16936,6 +17012,7 @@ where
         let mut floating_text_boxes: Vec<(usize, RunTextBox)> = Vec::new();
         let mut floating_images: Vec<(usize, RunImage)> = Vec::new();
         let mut inline_images: HashMap<usize, (usize, RunImage)> = HashMap::new();
+        let mut inline_maths: InlineMaths = HashMap::new();
         let mut inline_text_boxes: HashMap<usize, (usize, RunTextBox)> = HashMap::new();
         let mut segment = String::new();
         let mut note_marker_text = String::new();
@@ -16969,6 +17046,64 @@ where
                 continue;
             }
 
+            // An EQ field is drawn as its switches lay out (`\f` a fraction,
+            // `\r` a radical …), in place of its saved result.
+            if let Some(elements) = run
+                .field
+                .as_ref()
+                .and_then(|field| eq_field_instruction(&field.kind))
+                .and_then(jade_docx_layout::math_layout::eq_field::eq_field_elements)
+            {
+                let start_pos = current_pos;
+                if debug_text.is_none() {
+                    debug_text = Some(layout_text.clone());
+                }
+                let plan = self.eq_field_plan(&elements, resolved_run_properties.as_deref())?;
+                layout_text.push('\u{fffc}');
+                current_pos = layout_text.len();
+                run_styles.push(RunStyle {
+                    start: start_pos,
+                    end: current_pos,
+                    properties: resolved_run_properties,
+                    revision: run.revision.clone(),
+                    hyperlink: run.hyperlink.clone(),
+                    inline_object: Some(InlineObject {
+                        width: plan.metrics.width.max(1.0),
+                        height: plan.metrics.ascent.max(1.0),
+                        descent: plan.metrics.descent.max(0.0),
+                    }),
+                });
+                inline_maths.insert(start_pos, (run_index, Rc::new(plan)));
+                continue;
+            }
+
+            // An inline equation is an object in the line: laid out in two
+            // dimensions, as tall and as deep as its structure.
+            if let Some(math) = run.math.as_ref().filter(|m| !m.elements.is_empty()) {
+                let start_pos = current_pos;
+                if debug_text.is_none() {
+                    debug_text = Some(layout_text.clone());
+                }
+                let plan =
+                    self.inline_math_plan(&math.elements, resolved_run_properties.as_deref())?;
+                layout_text.push('\u{fffc}');
+                current_pos = layout_text.len();
+                run_styles.push(RunStyle {
+                    start: start_pos,
+                    end: current_pos,
+                    properties: resolved_run_properties,
+                    revision: run.revision.clone(),
+                    hyperlink: run.hyperlink.clone(),
+                    inline_object: Some(InlineObject {
+                        width: plan.metrics.width.max(1.0),
+                        height: plan.metrics.ascent.max(1.0),
+                        descent: plan.metrics.descent.max(0.0),
+                    }),
+                });
+                inline_maths.insert(start_pos, (run_index, Rc::new(plan)));
+                continue;
+            }
+
             if let Some(text_box) = run.text_box.as_ref() {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
                     floating_text_boxes.push((run_index, text_box.clone()));
@@ -16994,7 +17129,11 @@ where
                     properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
-                    inline_object: Some(InlineObject { width, height }),
+                    inline_object: Some(InlineObject {
+                        width,
+                        height,
+                        descent: 0.0,
+                    }),
                 });
                 continue;
             }
@@ -17020,7 +17159,11 @@ where
                     properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
-                    inline_object: Some(InlineObject { width, height }),
+                    inline_object: Some(InlineObject {
+                        width,
+                        height,
+                        descent: 0.0,
+                    }),
                 });
                 continue;
             }
@@ -17058,20 +17201,6 @@ where
                 }
             } else if !run.text.is_empty() {
                 segment.push_str(&run.text);
-            }
-
-            if let Some(math) = run.math.as_ref() {
-                let math_preview = math::math_text(&MathParagraph {
-                    properties: None,
-                    raw_omml: math.raw_omml.clone(),
-                    elements: math.elements.clone(),
-                });
-                if !math_preview.is_empty() {
-                    if !segment.is_empty() && !segment.ends_with(' ') {
-                        segment.push(' ');
-                    }
-                    segment.push_str(&math_preview);
-                }
             }
 
             if options.render_footnotes {
@@ -17644,6 +17773,7 @@ where
                     &line_height_neutral_ranges,
                     &inline_images,
                     &inline_text_boxes,
+                    &inline_maths,
                     column_right,
                     line_height,
                     options.show_formatting_marks,
@@ -17705,6 +17835,7 @@ where
                     &mut run_styles,
                     &mut inline_images,
                     &mut inline_text_boxes,
+                    &mut inline_maths,
                     &mut line_height_neutral_ranges,
                     &mut paragraph_style.inline_note_separator_offsets,
                     &mut self.unplaced_footnote_refs,
@@ -19488,6 +19619,7 @@ where
         line_height_neutral_ranges: &[(usize, usize)],
         inline_images: &HashMap<usize, (usize, RunImage)>,
         inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
+        inline_maths: &InlineMaths,
         column_right_edge: f64,
         line_height: f64,
         show_formatting_marks: bool,
@@ -20751,6 +20883,8 @@ where
 
             let mut positions = Vec::with_capacity(segment_count);
             let mut inline_image_draws: Vec<(usize, RunImage, f64, f64, f64, f64)> = Vec::new();
+            let mut inline_math_draws: Vec<(usize, usize, Rc<math::OwnedMathPlan>, f64)> =
+                Vec::new();
             let mut inline_text_box_draws: Vec<(usize, RunTextBox, FloatingObjectTransform)> =
                 Vec::new();
             let mut cursor_x = line_start_x;
@@ -20765,6 +20899,14 @@ where
                         segment_positions.entry(cluster.start).or_insert(cursor_x);
                     }
                     if matches!(cluster.kind, InlineClusterKind::InlineObject) {
+                        if let Some((run_index, plan)) = inline_maths.get(&cluster.start) {
+                            inline_math_draws.push((
+                                cluster.start,
+                                *run_index,
+                                Rc::clone(plan),
+                                cursor_x,
+                            ));
+                        }
                         if let (Some((run_index, image)), Some(object)) =
                             (inline_images.get(&cluster.start), cluster.inline_object)
                         {
@@ -21009,6 +21151,24 @@ where
                     y: clip_top,
                     width: clip_width,
                     height: clip_height,
+                });
+            }
+            for (offset, run_index, plan, math_x) in &inline_math_draws {
+                if draw_enabled {
+                    plan.paint(&context, *math_x, baseline)
+                        .map_err(PainterError::into_js_value)?;
+                    self.reset_fill_style_state();
+                }
+                self.record_math_zone(math::MathZone {
+                    paragraph: paragraph_index,
+                    offset: *offset,
+                    run_index: Some(*run_index),
+                    display: false,
+                    page: self.current_page_number,
+                    x: *math_x,
+                    baseline,
+                    absolute_baseline: self.page_offset_y + baseline,
+                    plan: Rc::clone(plan),
                 });
             }
             for (run_index, image, image_x, image_y, image_width, image_height) in
@@ -26564,19 +26724,6 @@ where
             Cow::Borrowed(DARK_MODE_TEXT_COLOR)
         } else {
             Cow::Borrowed(requested)
-        }
-    }
-
-    fn math_renderer<'a, P: Painter>(
-        &'a self,
-        painter: &'a P,
-        font_px: f64,
-    ) -> MathRenderer<'a, P> {
-        let renderer = MathRenderer::new(painter).with_font_size(font_px);
-        if self.dark_mode_text {
-            renderer.with_text_color(DARK_MODE_TEXT_COLOR)
-        } else {
-            renderer
         }
     }
 
@@ -38239,7 +38386,8 @@ mod tests {
                 .ops()
                 .into_iter()
                 .find_map(|op| match op {
-                    Op::FillText(text, x, _) if text == "x" => Some(x),
+                    // Word draws a math letter from the italic alphabet.
+                    Op::FillText(text, x, _) if text == "𝑥" => Some(x),
                     _ => None,
                 })
                 .unwrap();
@@ -43751,7 +43899,11 @@ mod tests {
                 properties: None,
                 revision: None,
                 hyperlink: None,
-                inline_object: Some(InlineObject { width, height }),
+                inline_object: Some(InlineObject {
+                    width,
+                    height,
+                    descent: 0.0,
+                }),
             }];
             renderer
                 .wrap_text_into_lines_cached(text, &runs, 0.0, &style, 0, 400.0)
@@ -43799,6 +43951,7 @@ mod tests {
                 inline_object: Some(InlineObject {
                     width: 100.0,
                     height: 40.0,
+                    descent: 0.0,
                 }),
             }];
             let lines = renderer
@@ -46777,6 +46930,7 @@ mod tests {
             &mut text,
             &mut debug,
             &mut [],
+            &mut HashMap::new(),
             &mut HashMap::new(),
             &mut HashMap::new(),
             &mut [],

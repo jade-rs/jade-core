@@ -779,6 +779,7 @@ dependencies = [
  "rustybuzz",
  "serde",
  "smallvec",
+ "ttf-parser",
  "unicode-bidi",
  "unicode-script",
  "unicode-segmentation",
