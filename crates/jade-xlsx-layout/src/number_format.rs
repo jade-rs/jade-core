@@ -1453,6 +1453,22 @@ pub fn is_calendar_date_valid(year: u32, month: u32, day: u32, dates: DateSystem
     civil_from_days(days_from_civil(i64::from(year), month, day)) == (i64::from(year), month, day)
 }
 
+/// The (year, month, day) a date serial falls on.
+pub(crate) fn serial_to_civil(serial: f64, dates: DateSystem) -> Option<(i32, u32, u32)> {
+    let [year, month, day, ..] = calendar_fields(serial, dates)?;
+    Some((year as i32, month, day))
+}
+
+/// The serial of a civil date (after February 1900).
+pub(crate) fn civil_to_serial(year: i32, month: u32, day: u32, dates: DateSystem) -> Option<f64> {
+    let epoch = match dates {
+        DateSystem::Nineteen00 => days_from_civil(1899, 12, 30),
+        DateSystem::Nineteen04 => days_from_civil(1904, 1, 1),
+    };
+    let days = days_from_civil(i64::from(year), month, day) - epoch;
+    (days >= 0).then_some(days as f64)
+}
+
 /// Days since 1970-01-01 for a civil date, and its inverse.
 ///
 /// Howard Hinnant's `days_from_civil`, which is exact for the whole proleptic

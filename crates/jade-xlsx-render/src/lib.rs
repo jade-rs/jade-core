@@ -443,6 +443,7 @@ fn render_shape<P: Painter>(
                     fill,
                     stroke,
                     width,
+                    dash,
                 } => {
                     painter.begin_path();
                     if let Some((x, y)) = points.first() {
@@ -461,8 +462,9 @@ fn render_shape<P: Painter>(
                     if let Some(stroke) = stroke {
                         painter.set_stroke_style_str(stroke);
                         painter.set_line_width(*width);
-                        painter.set_line_dash(&[]);
+                        painter.set_line_dash(dash);
                         painter.stroke();
+                        painter.set_line_dash(&[]);
                     }
                 }
                 ChartOp::Text {
@@ -472,11 +474,21 @@ fn render_shape<P: Painter>(
                     font,
                     color,
                     align: _,
+                    rotation,
                 } => {
                     painter.set_font(&font_shorthand(font));
                     painter.set_text_baseline("alphabetic");
                     painter.set_fill_style_str(color);
-                    painter.fill_text(text, *x, *y)?;
+                    if *rotation == 0.0 {
+                        painter.fill_text(text, *x, *y)?;
+                    } else {
+                        painter.save();
+                        painter.translate(*x, *y)?;
+                        painter.rotate(*rotation)?;
+                        let result = painter.fill_text(text, 0.0, 0.0);
+                        painter.restore();
+                        result?;
+                    }
                 }
             }
         }
