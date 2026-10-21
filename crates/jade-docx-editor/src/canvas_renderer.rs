@@ -33071,10 +33071,7 @@ where
     /// Shows field codes in place of results for the body runs in
     /// `display` (see `fields::field_code_display`), or results again with
     /// `None`. Paint and layout caches are dropped, as the text changes.
-    pub fn set_field_code_display(
-        &mut self,
-        display: Option<FieldCodeDisplay>,
-    ) {
+    pub fn set_field_code_display(&mut self, display: Option<FieldCodeDisplay>) {
         let display = display.filter(|map| !map.is_empty());
         if display.as_ref() == self.field_code_display.as_deref() {
             return;
