@@ -133,10 +133,23 @@ fn stack_percent_pie_doughnut_and_diagnostics_have_finite_geometry() {
         .any(|op| matches!(op,ChartOp::Path{points,closed:true,..} if points.len()>100)));
     let status = chart_status(&book);
     assert_eq!(status.len(), 10);
-    assert_eq!(status.iter().filter(|s| s.rendered).count(), 9);
-    assert!(status[7]
+    // The combination chart (columns and a line) draws too.
+    assert_eq!(status.iter().filter(|s| s.rendered).count(), 10);
+    assert!(!status[7]
         .unsupported_properties
         .contains(&"combined or missing plot".into()));
+    let combo = placed(&book, 7);
+    assert!(combo.ops.iter().any(
+        |op| matches!(op, ChartOp::Rectangle { rect, .. } if rect.width > 5.0 && rect.width < 100.0)
+    ));
+    assert!(combo.ops.iter().any(|op| matches!(
+        op,
+        ChartOp::Path {
+            closed: false,
+            width: 2.0,
+            ..
+        }
+    )));
 }
 #[test]
 fn unresolved_and_stale_sources_are_reported_without_claiming_fresh_results() {
