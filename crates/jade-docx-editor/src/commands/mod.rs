@@ -329,6 +329,15 @@ impl CommandExecutor {
         mut command: Box<dyn Command>,
         ctx: &mut CommandContext<'_>,
     ) -> CommandResult<()> {
+        // 編集の制限: a restricted document refuses what its restriction
+        // does not allow, outside the ranges everyone may edit.
+        let at = ctx.selection.map(|selection| {
+            let (start, _) = selection.normalized();
+            (start.paragraph, start.offset)
+        });
+        ctx.document
+            .restriction_allows(command.name(), at)
+            .map_err(CommandError::Custom)?;
         // With changes tracked, a paragraph formatting command's changes are
         // recorded as `w:pPrChange`s, which undo takes back out.
         let paragraph_formats = ctx

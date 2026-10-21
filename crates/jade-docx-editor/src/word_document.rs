@@ -704,8 +704,13 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/protection.rs"]
+mod protection;
 #[path = "word_document/review_tools.rs"]
 mod review_tools;
+pub use protection::{
+    hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
+};
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 pub(crate) use review_tools::PARAGRAPH_FORMAT_COMMANDS;
@@ -1184,6 +1189,10 @@ pub struct WordDocument {
     text_metrics_cache: RefCell<DocumentTextMetricsCache>,
     #[serde(skip)]
     revision_session: Option<RevisionSession>,
+    /// 保護の中止 with the password: the restriction does not hold until
+    /// the document is opened again.
+    #[serde(skip)]
+    protection_lifted: bool,
     #[serde(skip)]
     next_revision_id: u32,
     pub relationships: Vec<Relationship>,
@@ -2195,6 +2204,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
+            protection_lifted: false,
             next_revision_id: 1,
             document: None,
             numbering_part: Some(NumberingPart::new()),
@@ -4495,6 +4505,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
+            protection_lifted: false,
             next_revision_id: 1,
             document: Some(Rc::new(document)),
             numbering_part: None,
