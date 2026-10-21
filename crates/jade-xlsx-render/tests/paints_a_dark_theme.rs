@@ -112,6 +112,7 @@ fn laid_out() -> SheetLayout {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        rich_text: Default::default(),
         protection: None,
     };
     layout_sheet(

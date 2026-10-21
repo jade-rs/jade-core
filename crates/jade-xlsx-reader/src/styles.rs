@@ -179,6 +179,12 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                     b"strike" if section == Section::Fonts => {
                         set_font_flag(&mut font, element, |f| &mut f.strike)?
                     }
+                    b"vertAlign" if section == Section::Fonts => {
+                        if let Some(font) = font.as_mut() {
+                            font.vert_align = attribute_value(element, b"val")?
+                                .filter(|value| value != "baseline");
+                        }
+                    }
                     b"sz" if section == Section::Fonts => {
                         if let Some(font) = font.as_mut() {
                             font.size_points = attribute_value(element, b"val")?
