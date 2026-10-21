@@ -446,9 +446,11 @@ fn rebase_run_style_properties(
         char_spacing => declared("w:spacing"),
         fit_text => declared("w:fitText"),
         color => declared("w:color"),
+        theme_color => declared("w:color"),
         highlight => declared("w:highlight"),
         shading => declared("w:shd"),
         border => declared("w:bdr"),
+        east_asian_layout => declared("w:eastAsianLayout"),
     );
     rebase!(
         font_family => declared("w:rFonts"),
@@ -32935,6 +32937,30 @@ impl WordDocument {
                         "w:color",
                         color.trim_start_matches('#'),
                     );
+                    // A theme colour is written with the value it resolved
+                    // to, as Word writes a テーマの色 swatch; a plain colour
+                    // drops the theme attributes an earlier one left.
+                    let theme = props.theme_color.as_ref();
+                    for (attribute, value) in [
+                        ("w:themeColor", theme.map(|theme| theme.name.clone())),
+                        ("w:themeTint", theme.and_then(|theme| theme.tint.clone())),
+                        ("w:themeShade", theme.and_then(|theme| theme.shade.clone())),
+                    ] {
+                        match value {
+                            Some(value) => Self::upsert_run_property_child_attribute(
+                                doc,
+                                &mut element,
+                                "w:color",
+                                attribute,
+                                &value,
+                            ),
+                            None => Self::remove_run_property_child_attribute(
+                                &mut element,
+                                "w:color",
+                                attribute,
+                            ),
+                        }
+                    }
                 }
                 _ => {}
             }

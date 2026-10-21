@@ -1382,8 +1382,16 @@ impl StylesPart {
             }
             b"w:color" => {
                 let color = attr_value(element, b"w:val").and_then(normalize_ooxml_color);
+                let theme = attr_value(element, b"w:themeColor")
+                    .filter(|name| !name.is_empty())
+                    .map(|name| crate::document::RunThemeColor {
+                        name: name.as_str().into(),
+                        tint: attr_value(element, b"w:themeTint").map(|v| v.as_str().into()),
+                        shade: attr_value(element, b"w:themeShade").map(|v| v.as_str().into()),
+                    });
                 apply_to_active_run_properties(self, current_style, state, |props| {
                     props.color = color.map(Into::into);
+                    props.theme_color = theme.clone().map(Box::new);
                 });
             }
             b"w:sz" => {
