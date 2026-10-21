@@ -339,6 +339,7 @@ impl CellPicture {
         jade_docx_layout::line_wrap::InlineObject {
             width: self.image.width_px.unwrap_or(1.0).max(1.0),
             height: self.image.height_px.unwrap_or(1.0).max(1.0),
+            descent: 0.0,
         }
     }
 }

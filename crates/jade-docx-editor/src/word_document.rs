@@ -638,6 +638,9 @@ pub struct ReferenceMarkerSpan {
     pub is_footnote: bool,
 }
 
+/// The rendered length of the object character an inline equation shows as.
+const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
+
 /// Previous page margins (points) captured before a margin edit, for undo.
 #[derive(Debug, Clone)]
 pub struct PageMarginsBackup {
@@ -1305,7 +1308,11 @@ enum ParagraphSurface {
     Body {
         path: Vec<PathEntry>,
     },
-    Math,
+    /// A display equation: its body path when it is in the main body (an
+    /// equation in a text box or a note has none).
+    Math {
+        path: Option<Vec<PathEntry>>,
+    },
     TextBox {
         host_path: Vec<PathEntry>,
         run_index: usize,
@@ -2600,6 +2607,7 @@ impl WordDocument {
             parsed_doc.snap_to_grid_default = doc_settings.snap_to_grid_default;
             parsed_doc.display_content_revisions = doc_settings.display_content_revisions;
             parsed_doc.default_tab_stop = doc_settings.default_tab_stop;
+            parsed_doc.math_properties = doc_settings.math.clone();
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
             parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
@@ -4841,7 +4849,13 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => {
+                    path.push(PathEntry::Element(idx));
+                    out.push(ParagraphSurface::Math {
+                        path: Some(path.clone()),
+                    });
+                    path.pop();
+                }
             }
         }
     }
@@ -4890,7 +4904,7 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
             }
         }
     }
@@ -4952,7 +4966,7 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math),
+                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
             }
         }
     }
@@ -6104,7 +6118,7 @@ impl WordDocument {
             if idx == surface_index {
                 return match surface {
                     ParagraphSurface::Body { .. } => Some(body_count),
-                    ParagraphSurface::Math
+                    ParagraphSurface::Math { .. }
                     | ParagraphSurface::TextBox { .. }
                     | ParagraphSurface::Note { .. } => None,
                 };
@@ -6188,7 +6202,7 @@ impl WordDocument {
         surface_index: usize,
     ) -> Option<ParagraphStoryPosition> {
         match self.paragraph_surfaces.get(surface_index)? {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { .. } => Some(ParagraphStoryPosition {
                 story: "body",
                 index: self.body_index_for_surface(surface_index)?,
@@ -6241,7 +6255,7 @@ impl WordDocument {
     /// equation outside any paragraph and past the last surface.
     pub fn paragraph_story(&self, surface: usize) -> Option<ParagraphStory> {
         match self.paragraph_surfaces.get(surface)? {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { .. } => Some(ParagraphStory::Body {
                 index: self.body_index_for_surface(surface)?,
             }),
@@ -8419,7 +8433,7 @@ impl WordDocument {
     /// A note with no body reference has no section context.
     pub fn section_index_for_paragraph(&self, paragraph_index: usize) -> Option<usize> {
         let path = match self.paragraph_surfaces.get(paragraph_index)? {
-            ParagraphSurface::Math => return None,
+            ParagraphSurface::Math { .. } => return None,
             ParagraphSurface::Body { path } => path,
             ParagraphSurface::TextBox { host_path, .. } => host_path,
             ParagraphSurface::Note { kind, note_id, .. } => self
@@ -13786,6 +13800,199 @@ impl WordDocument {
                     .ok_or_else(|| "equation tail paragraph is unavailable".to_string())?;
                 Ok(self.model_to_rendered_text_position(TextPosition::new(tail_index, 0)))
             }
+        }
+    }
+
+    /// Replaces an equation's OMML in place: an inline one (`run_index`, a
+    /// math run of a body paragraph) or a display one (a math surface). The
+    /// model and the document XML change together; nothing else around the
+    /// equation is rewritten.
+    pub(crate) fn replace_equation_at(
+        &mut self,
+        paragraph: usize,
+        run_index: Option<usize>,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        match (self.paragraph_surfaces.get(paragraph).cloned(), run_index) {
+            (Some(ParagraphSurface::Math { path: Some(path) }), _) => {
+                self.replace_display_equation(paragraph, &path, raw_omml)
+            }
+            (Some(ParagraphSurface::Body { .. }), Some(run_index)) => {
+                self.replace_inline_equation(paragraph, run_index, raw_omml)
+            }
+            _ => Err("there is no editable equation there".to_string()),
+        }
+    }
+
+    fn replace_inline_equation(
+        &mut self,
+        paragraph_index: usize,
+        run_index: usize,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMath")?;
+        let elements = crate::parser::math::parse_math_elements(raw_omml)
+            .map_err(|error| error.to_string())?;
+        if elements.is_empty() {
+            return Err("equation OMML must contain a math element".to_string());
+        }
+        let paragraph = self
+            .paragraph(paragraph_index)
+            .ok_or_else(|| "target paragraph is missing".to_string())?;
+        if paragraph
+            .runs
+            .get(run_index)
+            .and_then(|run| run.math.as_ref())
+            .is_none()
+        {
+            return Err("the run is not an equation".to_string());
+        }
+        let ordinal = paragraph.runs[..run_index]
+            .iter()
+            .filter(|run| run.math.is_some())
+            .count();
+        let node_id = paragraph
+            .node_id
+            .ok_or_else(|| "the paragraph has no XML".to_string())?;
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+        let element = raw
+            .element(node_id)
+            .ok_or_else(|| "the paragraph XML is missing".to_string())?;
+        let mut found = Vec::new();
+        Self::collect_equation_elements(raw, element, false, &mut found);
+        let target = *found
+            .get(ordinal)
+            .ok_or_else(|| "the equation's XML is missing".to_string())?;
+        Self::replace_xml_element(raw, target, root)?;
+        let paragraph = self
+            .paragraph_mut(paragraph_index)
+            .ok_or_else(|| "target paragraph is missing".to_string())?;
+        paragraph.runs[run_index].math = Some(MathRun {
+            raw_omml: raw_omml.trim().to_string(),
+            elements,
+        });
+        Ok(())
+    }
+
+    fn replace_display_equation(
+        &mut self,
+        surface: usize,
+        path: &[PathEntry],
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMathPara")?;
+        let replacement = crate::parser::math::parse_math_paragraph(raw_omml.trim().to_string())
+            .map_err(|error| error.to_string())?;
+        if replacement.elements.is_empty() {
+            return Err("equation OMML must contain a math paragraph".to_string());
+        }
+        // The n-th display equation of the body is the n-th `m:oMathPara`
+        // of its XML.
+        let ordinal = self.paragraph_surfaces[..surface]
+            .iter()
+            .filter(|s| matches!(s, ParagraphSurface::Math { path: Some(_) }))
+            .count();
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+        let mut found = Vec::new();
+        let root_element = raw.root().clone();
+        Self::collect_equation_elements(raw, &root_element, true, &mut found);
+        let target = *found
+            .get(ordinal)
+            .ok_or_else(|| "the equation's XML is missing".to_string())?;
+        Self::replace_xml_element(raw, target, root)?;
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let body = document
+            .body
+            .as_mut()
+            .ok_or_else(|| "document body is unavailable".to_string())?;
+        let math = Self::locate_math_mut(&mut body.elements, path)
+            .ok_or_else(|| "the equation is missing from the body".to_string())?;
+        math.raw_omml = replacement.raw_omml;
+        math.elements = replacement.elements;
+        Ok(())
+    }
+
+    /// The equations under `element` in document order: inline `m:oMath`
+    /// (outside display equations) or display `m:oMathPara`. Text boxes and
+    /// fallback content are not this story's.
+    fn collect_equation_elements(
+        doc: &DocxXmlDocument,
+        element: &XmlElement,
+        display: bool,
+        out: &mut Vec<XmlNodeId>,
+    ) {
+        for child in &element.children {
+            let XmlNode::Element(child) = child else {
+                continue;
+            };
+            match child.name.as_str() {
+                "w:txbxContent" | "mc:Fallback" | "v:textbox" | "w:footnote" | "w:endnote" => {}
+                "m:oMathPara" => {
+                    if display {
+                        out.push(child.id);
+                    }
+                }
+                "m:oMath" => {
+                    if !display && Self::is_modeled_equation(doc, child) {
+                        out.push(child.id);
+                    }
+                }
+                _ => Self::collect_equation_elements(doc, child, display, out),
+            }
+        }
+    }
+
+    /// Puts `replacement` where the element `target` is.
+    fn replace_xml_element(
+        doc: &mut DocxXmlDocument,
+        target: XmlNodeId,
+        replacement: XmlElement,
+    ) -> Result<(), String> {
+        let path = doc
+            .path(target)
+            .ok_or_else(|| "the equation's XML path is missing".to_string())?;
+        let parent = doc
+            .parent_id(target)
+            .ok_or_else(|| "the equation's XML parent is missing".to_string())?;
+        let index = path.as_slice().last().copied().unwrap_or(0);
+        doc.remove_node(&path).map_err(|error| error.to_string())?;
+        let element = doc.create_element(
+            replacement.name,
+            replacement.attributes,
+            replacement.children,
+        );
+        doc.insert_node(parent, index, XmlNode::Element(element))
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn locate_math_mut<'a>(
+        elements: &'a mut [BodyElement],
+        path: &[PathEntry],
+    ) -> Option<&'a mut MathParagraph> {
+        let (first, rest) = path.split_first()?;
+        let PathEntry::Element(index) = *first else {
+            return None;
+        };
+        match elements.get_mut(index)? {
+            BodyElement::Math(math) if rest.is_empty() => Some(math.as_mut()),
+            BodyElement::Table(table) => {
+                let (cell, rest) = rest.split_first()?;
+                let PathEntry::TableCell { row, cell } = *cell else {
+                    return None;
+                };
+                let cell = table.rows.get_mut(row)?.cells.get_mut(cell)?;
+                Self::locate_math_mut(&mut cell.blocks, rest)
+            }
+            _ => None,
         }
     }
 
@@ -19340,7 +19547,7 @@ impl WordDocument {
                 .cloned()
                 .ok_or_else(|| "anchor paragraph is unavailable".to_string())?
             {
-                ParagraphSurface::Math => {
+                ParagraphSurface::Math { .. } => {
                     return Err("insert_table does not support math blocks".to_string())
                 }
                 ParagraphSurface::Body { path } => Some(path),
@@ -28491,12 +28698,45 @@ impl WordDocument {
         )
     }
 
+    /// The display equation at a math surface of the body.
+    pub fn math_paragraph(&self, surface: usize) -> Option<&MathParagraph> {
+        let Some(ParagraphSurface::Math { path: Some(path) }) =
+            self.paragraph_surfaces.get(surface)
+        else {
+            return None;
+        };
+        let body = self.document.as_ref()?.body.as_ref()?;
+        Self::locate_math(&body.elements, path)
+    }
+
+    fn locate_math<'a>(
+        elements: &'a [BodyElement],
+        path: &[PathEntry],
+    ) -> Option<&'a MathParagraph> {
+        let (first, rest) = path.split_first()?;
+        let PathEntry::Element(index) = *first else {
+            return None;
+        };
+        match elements.get(index)? {
+            BodyElement::Math(math) if rest.is_empty() => Some(math.as_ref()),
+            BodyElement::Table(table) => {
+                let (cell, rest) = rest.split_first()?;
+                let PathEntry::TableCell { row, cell } = *cell else {
+                    return None;
+                };
+                let cell = table.rows.get(row)?.cells.get(cell)?;
+                Self::locate_math(&cell.blocks, rest)
+            }
+            _ => None,
+        }
+    }
+
     /// An equation outside any paragraph (`m:oMathPara` as a block): it holds
     /// a paragraph index but has no paragraph behind it.
     pub(crate) fn is_math_surface(&self, index: usize) -> bool {
         matches!(
             self.paragraph_surfaces.get(index),
-            Some(ParagraphSurface::Math)
+            Some(ParagraphSurface::Math { .. })
         )
     }
 
@@ -28664,11 +28904,96 @@ impl WordDocument {
             offset = offset.saturating_sub(consumed);
             rendered += span.rendered_len;
         }
+        // An inline equation is one object character the model does not
+        // hold; an offset past it is that much ahead of the model's.
+        let mut delta = 0isize;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            let start = (model_offset as isize + delta).max(0) as usize;
+            if offset <= start {
+                break;
+            }
+            if offset < start + OBJECT_CHAR_LEN {
+                return TextPosition::new(position.paragraph, model_offset);
+            }
+            delta += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let offset = (offset as isize - delta).max(0) as usize;
         TextPosition::new(position.paragraph, offset)
     }
 
+    /// The inline equations of a body paragraph (math runs, and EQ fields
+    /// the renderer draws as equations) as (model offset, model length):
+    /// each renders as one object character.
+    fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) {
+            return Vec::new();
+        }
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let mut spans = Vec::new();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            let equation = run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+                || run
+                    .field
+                    .as_ref()
+                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind));
+            if equation {
+                spans.push((model_offset, run.text.len()));
+            }
+            model_offset += run.text.len();
+        }
+        spans
+    }
+
+    /// Whether an EQ instruction uses a structure switch (`\f`, `\r`, `\s`,
+    /// `\b`, `\a`, `\l`, `\o`, `\x`, `\i`, `\d`): the renderer lays those
+    /// out as an equation (`jade_docx_layout::math_layout::eq_field`).
+    fn eq_has_structure_switch(instruction: &str) -> bool {
+        let chars: Vec<char> = instruction.chars().collect();
+        chars.windows(3).any(|w| {
+            w[0] == '\\' && "frsbaloxidFRSBALOXID".contains(w[1]) && !w[2].is_ascii_alphabetic()
+        }) || chars.len() >= 2
+            && chars[chars.len() - 2] == '\\'
+            && "frsbaloxidFRSBALOXID".contains(chars[chars.len() - 1])
+    }
+
+    /// An EQ field the renderer lays out as an equation.
+    pub(crate) fn is_eq_equation_field(kind: &crate::document::RunFieldKind) -> bool {
+        use crate::document::RunFieldKind;
+        match kind {
+            RunFieldKind::Unsupported { instruction } => {
+                instruction
+                    .trim_start()
+                    .get(..2)
+                    .is_some_and(|name| name.eq_ignore_ascii_case("EQ"))
+                    && Self::eq_has_structure_switch(instruction)
+            }
+            RunFieldKind::Locked { kind } => Self::is_eq_equation_field(kind),
+            _ => false,
+        }
+    }
+
     pub fn model_to_rendered_text_position(&self, position: TextPosition) -> TextPosition {
-        let mut offset = position.offset + self.rendered_note_marker_len(position.paragraph);
+        let mut objects = 0isize;
+        let mut model = position.offset;
+        for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
+            if model_offset >= position.offset {
+                break;
+            }
+            if position.offset < model_offset + model_len {
+                // Inside an EQ field's saved result: before the equation.
+                model = model_offset;
+                break;
+            }
+            objects += OBJECT_CHAR_LEN as isize - model_len as isize;
+        }
+        let mut offset = (model as isize + objects).max(0) as usize
+            + self.rendered_note_marker_len(position.paragraph);
         for span in self.reference_marker_spans(position.paragraph) {
             // A mark at the model offset itself renders before the caret only
             // when the caret follows it, which a model offset cannot say; keep
@@ -28932,7 +29257,7 @@ impl WordDocument {
                 .any(|entry| matches!(entry, PathEntry::TableCell { .. }))
         };
         match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { path } => contains_table_path(path),
             ParagraphSurface::TextBox { host_path, .. } => contains_table_path(host_path),
             ParagraphSurface::Note { path, .. } => contains_table_path(path),
@@ -28942,7 +29267,7 @@ impl WordDocument {
     pub fn paragraph(&self, index: usize) -> Option<&Paragraph> {
         let surface = self.paragraph_surfaces.get(index)?;
         match surface {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { path } => {
                 let doc = self.document.as_ref()?;
                 let body = doc.body.as_ref()?;
@@ -28972,7 +29297,7 @@ impl WordDocument {
     pub fn paragraph_mut(&mut self, index: usize) -> Option<&mut Paragraph> {
         let surface = self.paragraph_surfaces.get(index)?.clone();
         match surface {
-            ParagraphSurface::Math => None,
+            ParagraphSurface::Math { .. } => None,
             ParagraphSurface::Body { path } => {
                 let doc = self.document_mut()?;
                 let body = doc.body.as_mut()?;
@@ -29024,7 +29349,7 @@ impl WordDocument {
         };
 
         let removed = match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { path } => {
                 let Some(doc) = self.document_mut() else {
                     return false;
@@ -29262,7 +29587,7 @@ impl WordDocument {
         };
 
         match surface {
-            ParagraphSurface::Math => false,
+            ParagraphSurface::Math { .. } => false,
             ParagraphSurface::Body { .. } => {
                 let Some(body_index) = self.body_index_for_surface(index) else {
                     return false;
@@ -29584,7 +29909,7 @@ impl WordDocument {
         // paragraph, kept it, and listed it twice.
         if original_text_boxes
             .iter()
-            .any(|surface| matches!(surface, ParagraphSurface::Math))
+            .any(|surface| matches!(surface, ParagraphSurface::Math { .. }))
         {
             return false;
         }
@@ -29625,7 +29950,7 @@ impl WordDocument {
         insert_index: usize,
     ) {
         match surface {
-            ParagraphSurface::Math => {}
+            ParagraphSurface::Math { .. } => {}
             ParagraphSurface::Body { path } => {
                 Self::bump_path_after_insert(path, prefix, insert_index);
             }
@@ -31053,7 +31378,7 @@ impl WordDocument {
         };
         let same_boxes = !another_box_follows
             && current.iter().zip(&hosted).all(|pair| match pair {
-                (ParagraphSurface::Math, ParagraphSurface::Math) => true,
+                (ParagraphSurface::Math { .. }, ParagraphSurface::Math { .. }) => true,
                 (
                     ParagraphSurface::TextBox {
                         host_path: current_host,
@@ -31089,7 +31414,7 @@ impl WordDocument {
         };
 
         match surface {
-            ParagraphSurface::Math => return,
+            ParagraphSurface::Math { .. } => return,
             ParagraphSurface::Body { .. } => {
                 let paragraph_ptr = match self.paragraph_mut(paragraph_index) {
                     Some(paragraph) => paragraph as *mut Paragraph,
@@ -36919,6 +37244,7 @@ impl MtefParser<'_> {
                         children: Vec::new(),
                         text: Some(character.to_string()),
                         attributes: BTreeMap::new(),
+                        namespace: None,
                     });
                     if options & 0x02 != 0 {
                         let _ = self.parse_list_at_depth(depth + 1)?;
@@ -37033,6 +37359,7 @@ impl MtefParser<'_> {
                 children,
                 text: None,
                 attributes: BTreeMap::new(),
+                namespace: None,
             })
             .collect();
         Some(MathElement {
@@ -37041,6 +37368,7 @@ impl MtefParser<'_> {
             children,
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         })
     }
 
@@ -47727,6 +48055,7 @@ mod tests {
             children: Vec::new(),
             text: Some("E = mc^2".to_string()),
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let math_node = MathElement {
             kind: MathElementKind::Math,
@@ -47734,6 +48063,7 @@ mod tests {
             children: vec![text_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
         let root = MathElement {
             kind: MathElementKind::MathParagraph,
@@ -47741,6 +48071,7 @@ mod tests {
             children: vec![math_node],
             text: None,
             attributes: BTreeMap::new(),
+            namespace: None,
         };
 
         let math_paragraph = MathParagraph {
@@ -47788,7 +48119,7 @@ mod tests {
             &mut note_surfaces,
         );
         assert_eq!(note_surfaces.len(), 3);
-        assert!(matches!(note_surfaces[1], ParagraphSurface::Math));
+        assert!(matches!(note_surfaces[1], ParagraphSurface::Math { .. }));
         assert!(matches!(note_surfaces[2], ParagraphSurface::Note { .. }));
 
         let mut text_box_surfaces = Vec::new();
@@ -47800,7 +48131,10 @@ mod tests {
             &mut text_box_surfaces,
         );
         assert_eq!(text_box_surfaces.len(), 3);
-        assert!(matches!(text_box_surfaces[1], ParagraphSurface::Math));
+        assert!(matches!(
+            text_box_surfaces[1],
+            ParagraphSurface::Math { .. }
+        ));
         assert!(matches!(
             text_box_surfaces[2],
             ParagraphSurface::TextBox { .. }
@@ -54288,7 +54622,8 @@ mod tests {
             &format!(
                 r#"<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:rPr><w:b/><w:lang w:val="fr-FR"/></w:rPr><w:t>CD</w:t></w:r></w:p>"#
             ),
-            vec![insert_text("ABCD".len(), "Z")],
+            // Rendered offsets count the equation as one object character.
+            vec![insert_text("AB\u{fffc}CD".len(), "Z")],
         );
         assert_eq!(
             body,
@@ -54327,7 +54662,8 @@ mod tests {
             (
                 "delete across it",
                 format!("<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:t>CD</w:t></w:r></w:p>"),
-                vec![delete_range(1, 3)],
+                // Rendered offsets: B, the equation's object character, C.
+                vec![delete_range(1, "AB\u{fffc}C".len())],
                 format!("<w:p><w:r><w:t>A</w:t></w:r>{eq}<w:r><w:t>D</w:t></w:r></w:p>"),
             ),
             (
@@ -54335,7 +54671,7 @@ mod tests {
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CD</w:t></w:r></w:p>"#
                 ),
-                vec![insert_text("ABEFCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}EFCD".len(), "Z")],
                 format!(
                     r#"<w:p><w:r><w:t>AB</w:t></w:r><w:hyperlink w:anchor="a">{eq}<w:r><w:t>EF</w:t></w:r></w:hyperlink><w:r><w:t>CDZ</w:t></w:r></w:p>"#
                 ),
@@ -54345,7 +54681,7 @@ mod tests {
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CD</w:t></w:r></w:p>"
                 ),
-                vec![insert_text("ABCD".len(), "Z")],
+                vec![insert_text("AB\u{fffc}CD".len(), "Z")],
                 format!(
                     "<w:p><w:r><w:t>AB</w:t></w:r><w:sdt><w:sdtContent>{eq}</w:sdtContent></w:sdt><w:r><w:t>CDZ</w:t></w:r></w:p>"
                 ),

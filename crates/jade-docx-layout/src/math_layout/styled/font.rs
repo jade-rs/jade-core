@@ -1,9 +1,9 @@
 //! Explicit host-bound static MATH face for the existing styled layout builder.
 //! The cache belongs to the host context and is reused across plans and sizes.
-use super::{MathMetrics, MathTextStyle, StyledMathMeasure};
+use super::{MathLayoutOptions, MathMetrics, MathPathCommand, MathTextStyle, StyledMathMeasure};
 use crate::math_layout::font::{
-    MathFontGlyph, MathGlyphOutline, MathOutlineError, MathStretchAxis, MathStretchPlan,
-    OpenTypeMathFont,
+    MathFontGlyph, MathGlyphOutline, MathOutlineCommand, MathOutlineError, MathStretchAxis,
+    MathStretchPlan, OpenTypeMathFont,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -25,6 +25,47 @@ impl PreparedMathGlyph {
             descent: (-self.geometry.ink_px.y_min).max(0.0),
         }
     }
+}
+
+/// One glyph of a stretched character, offset from its origin.
+#[derive(Debug, Clone)]
+pub struct StretchedPart {
+    pub glyph: PreparedMathGlyph,
+    pub dx: f64,
+    pub dy: f64,
+}
+
+/// A character grown along an axis: one larger variant, or an assembly of
+/// parts. Ink is measured from the origin's baseline, y up.
+#[derive(Debug, Clone)]
+pub struct StretchedGlyph {
+    pub parts: Vec<StretchedPart>,
+    pub advance: f64,
+    pub ascent: f64,
+    pub descent: f64,
+}
+
+/// A prepared glyph's outline as plan path commands, its origin at
+/// (`x`, `baseline`).
+pub fn outline_commands(glyph: &PreparedMathGlyph, x: f64, baseline: f64) -> Vec<MathPathCommand> {
+    let px = |v: f32| x + f64::from(v) * glyph.scale;
+    let py = |v: f32| baseline - f64::from(v) * glyph.scale;
+    glyph
+        .outline
+        .commands
+        .iter()
+        .map(|c| match *c {
+            MathOutlineCommand::Move(a, b) => MathPathCommand::Move(px(a), py(b)),
+            MathOutlineCommand::Line(a, b) => MathPathCommand::Line(px(a), py(b)),
+            MathOutlineCommand::Quad(a, b, c, d) => {
+                MathPathCommand::Quad(px(a), py(b), px(c), py(d))
+            }
+            MathOutlineCommand::Cubic(a, b, c, d, e, f) => {
+                MathPathCommand::Cubic(px(a), py(b), px(c), py(d), px(e), py(f))
+            }
+            MathOutlineCommand::Close => MathPathCommand::Close,
+        })
+        .collect()
 }
 
 #[derive(Debug)]
@@ -119,6 +160,7 @@ pub enum MathFontDataError {
 pub struct MathFontData {
     family: String,
     bytes: Box<[u8]>,
+    face_index: u32,
     cache: Rc<RefCell<HashMap<u16, CachedGlyph>>>,
     max_cached_glyphs: usize,
     max_outline_commands: usize,
@@ -157,6 +199,39 @@ impl MathFontData {
         Ok(Self {
             family,
             bytes: bytes.into_boxed_slice(),
+            face_index: 0,
+            cache: Rc::new(RefCell::new(HashMap::new())),
+            max_cached_glyphs,
+            max_outline_commands,
+            layouts: std::cell::Cell::new(0),
+        })
+    }
+    /// A face of a collection (`.ttc`) a native host read from disk, such as
+    /// Cambria Math in Office's `Cambria.ttc`. A browser registers standalone
+    /// faces through [`Self::new`].
+    pub fn from_collection(
+        family: String,
+        bytes: Vec<u8>,
+        face_index: u32,
+        max_cached_glyphs: usize,
+        max_outline_commands: usize,
+    ) -> Result<Self, MathFontDataError> {
+        let family = family.trim().to_owned();
+        if family.is_empty() {
+            return Err(MathFontDataError::InvalidFamily);
+        }
+        if bytes.len() > Self::MAX_BYTES * 4 {
+            return Err(MathFontDataError::TooLarge);
+        }
+        let font = OpenTypeMathFont::parse(&bytes, face_index).map_err(MathFontDataError::Font)?;
+        if font.constants().script_scale(1).is_none() || font.constants().script_scale(2).is_none()
+        {
+            return Err(MathFontDataError::InvalidConstants);
+        }
+        Ok(Self {
+            family,
+            bytes: bytes.into_boxed_slice(),
+            face_index,
             cache: Rc::new(RefCell::new(HashMap::new())),
             max_cached_glyphs,
             max_outline_commands,
@@ -183,7 +258,35 @@ impl MathFontData {
         style: MathTextStyle<'m>,
         display_style: bool,
     ) -> Result<super::StyledMathLayout<'m>, MathFontLayoutError<C::Error>> {
-        let face = OpenTypeMathFont::parse(&self.bytes, 0).map_err(MathFontLayoutError::Font)?;
+        let options = MathLayoutOptions {
+            display: true,
+            ..MathLayoutOptions::default()
+        };
+        self.layout_elements(fallback, &math.elements, style, display_style, &options)
+    }
+
+    /// Lays out with explicit options; the face's display operators follow
+    /// `options.display`.
+    pub fn layout_with_options<'m, C: StyledMathMeasure>(
+        &self,
+        fallback: C,
+        elements: &'m [jade_docx_reader::document::MathElement],
+        style: MathTextStyle<'m>,
+        options: &MathLayoutOptions<'m>,
+    ) -> Result<super::StyledMathLayout<'m>, MathFontLayoutError<C::Error>> {
+        self.layout_elements(fallback, elements, style, options.display, options)
+    }
+
+    fn layout_elements<'m, C: StyledMathMeasure>(
+        &self,
+        fallback: C,
+        elements: &'m [jade_docx_reader::document::MathElement],
+        style: MathTextStyle<'m>,
+        display_style: bool,
+        options: &MathLayoutOptions<'m>,
+    ) -> Result<super::StyledMathLayout<'m>, MathFontLayoutError<C::Error>> {
+        let face = OpenTypeMathFont::parse(&self.bytes, self.face_index)
+            .map_err(MathFontLayoutError::Font)?;
         let context = OpenTypeMathMeasure {
             font: &face,
             family: &self.family,
@@ -194,11 +297,162 @@ impl MathFontData {
             display_style,
         };
         self.layouts.set(self.layouts.get().saturating_add(1));
-        super::layout_styled_math(&context, math, style)
+        super::layout_styled_elements(&context, elements, style, options)
     }
 }
+impl<C: StyledMathMeasure> OpenTypeMathMeasure<'_, C> {
+    /// A glyph by id, from the cache or decoded into it.
+    fn prepare_id(
+        &self,
+        glyph: u16,
+        scale: f64,
+    ) -> Result<PreparedMathGlyph, MathFontLayoutError<C::Error>> {
+        let mut cache = self.cache.borrow_mut();
+        if !cache.contains_key(&glyph) {
+            if cache.len() >= self.max_cached_glyphs {
+                return Err(MathFontLayoutError::GlyphCacheBudgetExceeded);
+            }
+            let outline = self
+                .font
+                .glyph_outline(glyph, self.max_outline_commands)
+                .map_err(MathFontLayoutError::Outline)?
+                .unwrap_or(MathGlyphOutline {
+                    commands: Vec::new(),
+                    bounds: crate::math_layout::font::MathGlyphBounds {
+                        x_min: 0.0,
+                        y_min: 0.0,
+                        x_max: 0.0,
+                        y_max: 0.0,
+                    },
+                });
+            let advance_units = self
+                .font
+                .glyph_advance_units(glyph)
+                .ok_or(MathFontLayoutError::MissingOutline)?;
+            cache.insert(
+                glyph,
+                CachedGlyph {
+                    advance_units,
+                    italic_correction_units: self.font.italic_correction(glyph),
+                    outline: Arc::new(outline),
+                },
+            );
+        }
+        let cached = &cache[&glyph];
+        let bounds = cached.outline.bounds;
+        Ok(PreparedMathGlyph {
+            geometry: MathFontGlyph {
+                glyph_id: glyph,
+                advance_px: f64::from(cached.advance_units) * scale,
+                ink_px: crate::math_layout::font::MathGlyphBounds {
+                    x_min: bounds.x_min * scale,
+                    y_min: bounds.y_min * scale,
+                    x_max: bounds.x_max * scale,
+                    y_max: bounds.y_max * scale,
+                },
+            },
+            scale,
+            italic_correction_px: f64::from(cached.italic_correction_units) * scale,
+            outline: Arc::clone(&cached.outline),
+        })
+    }
+}
+
 impl<C: StyledMathMeasure> StyledMathMeasure for OpenTypeMathMeasure<'_, C> {
     type Error = MathFontLayoutError<C::Error>;
+
+    fn stretch_glyph(
+        &self,
+        text: &str,
+        style: MathTextStyle<'_>,
+        axis: MathStretchAxis,
+        target_px: f64,
+    ) -> Result<Option<StretchedGlyph>, Self::Error> {
+        if style.family != self.family {
+            return Ok(None);
+        }
+        let Some(scale) = self.font.scale(style.size_px) else {
+            return Ok(None);
+        };
+        let mut chars = text.chars();
+        let Some(character) = chars.next().filter(|_| chars.next().is_none()) else {
+            return Ok(None);
+        };
+        let Some(glyph) = self.font.glyph_id(character) else {
+            return Ok(None);
+        };
+        let target_units = (target_px / scale).ceil().max(0.0) as u32;
+        let Some(choice) = self.font.stretch_choice(glyph, axis, target_units) else {
+            return Ok(None);
+        };
+        match choice {
+            crate::math_layout::font::MathStretchChoice::Variant(id) => {
+                if id == glyph {
+                    return Ok(None);
+                }
+                let g = self.prepare_id(id, scale)?;
+                let ink = g.geometry.ink_px;
+                Ok(Some(StretchedGlyph {
+                    advance: g.geometry.advance_px,
+                    ascent: ink.y_max.max(0.0),
+                    descent: (-ink.y_min).max(0.0),
+                    parts: vec![StretchedPart {
+                        glyph: g,
+                        dx: 0.0,
+                        dy: 0.0,
+                    }],
+                }))
+            }
+            crate::math_layout::font::MathStretchChoice::Assembly(placed) => {
+                let mut parts = Vec::new();
+                let mut advance: f64 = 0.0;
+                let mut ascent: f64 = 0.0;
+                let mut descent: f64 = 0.0;
+                for (id, offset_units) in placed {
+                    let g = self.prepare_id(id, scale)?;
+                    let ink = g.geometry.ink_px;
+                    let offset = f64::from(offset_units) * scale;
+                    let (dx, dy) = match axis {
+                        // Bottom to top: the part's ink bottom at its offset.
+                        MathStretchAxis::Vertical => (0.0, -(offset - ink.y_min)),
+                        MathStretchAxis::Horizontal => (offset, 0.0),
+                    };
+                    match axis {
+                        MathStretchAxis::Vertical => {
+                            advance = advance.max(g.geometry.advance_px);
+                            ascent = ascent.max(-dy + ink.y_max);
+                            descent = descent.max(dy - ink.y_min);
+                        }
+                        MathStretchAxis::Horizontal => {
+                            advance = advance.max(dx + g.geometry.advance_px);
+                            ascent = ascent.max(ink.y_max);
+                            descent = descent.max(-ink.y_min);
+                        }
+                    }
+                    parts.push(StretchedPart { glyph: g, dx, dy });
+                }
+                Ok(Some(StretchedGlyph {
+                    parts,
+                    advance,
+                    ascent,
+                    descent,
+                }))
+            }
+        }
+    }
+
+    fn top_accent_attachment(&self, text: &str, style: MathTextStyle<'_>) -> Option<f64> {
+        if style.family != self.family {
+            return None;
+        }
+        let scale = self.font.scale(style.size_px)?;
+        let mut chars = text.chars();
+        let character = chars.next().filter(|_| chars.next().is_none())?;
+        let glyph = self.font.glyph_id(character)?;
+        self.font
+            .top_accent_attachment(glyph)
+            .map(|v| f64::from(v) * scale)
+    }
 
     fn measure_glyph(
         &self,
@@ -267,11 +521,18 @@ impl<C: StyledMathMeasure> StyledMathMeasure for OpenTypeMathMeasure<'_, C> {
         glyph = self.font.script_glyph_id(glyph, level);
         // Script styles never use the enclosing display-style operator height.
         if display_operator && self.display_style && level == 0 {
-            glyph = match self.font.stretch_plan(
-                glyph,
-                MathStretchAxis::Vertical,
-                u32::from(self.font.constants().display_operator_min_height),
-            ) {
+            // Word draws a display integral about two ems tall (Cambria
+            // Math's second variant), taller than the MATH minimum asks.
+            let minimum = u32::from(self.font.constants().display_operator_min_height);
+            let target = if "∫∬∭∮∯∰∱∲∳⨌".contains(character) {
+                minimum.max(2 * u32::from(self.font.units_per_em()))
+            } else {
+                minimum
+            };
+            glyph = match self
+                .font
+                .stretch_plan(glyph, MathStretchAxis::Vertical, target)
+            {
                 Some(MathStretchPlan::Glyph(v)) => v.glyph_id,
                 Some(MathStretchPlan::Assembly(_)) => {
                     return Err(MathFontLayoutError::AssemblyRequired)
@@ -360,6 +621,12 @@ impl MathFontParameters {
                 .max(ink.ascent + f64::from(self.constants.leading) * self.scale),
             descent: self.vertical.descent.max(ink.descent),
         }
+    }
+    pub fn constants(&self) -> crate::math_layout::font::MathFontConstants {
+        self.constants
+    }
+    pub fn scale(&self) -> f64 {
+        self.scale
     }
     pub fn space_after_script(self) -> f64 {
         f64::from(self.constants.space_after_script) * self.scale

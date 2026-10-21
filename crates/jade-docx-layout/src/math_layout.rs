@@ -4,8 +4,10 @@
 //! Font-specific OpenType MATH shaping remains separate work; this plan makes
 //! measurement and painting use one geometry and measures each emitted text once.
 
+pub mod eq_field;
 #[cfg(feature = "opentype-math")]
 pub mod font;
+pub mod linear;
 pub mod styled;
 
 use jade_docx_reader::document::{MathElement, MathElementKind, MathParagraph};

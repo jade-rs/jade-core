@@ -53,8 +53,59 @@ fn push_line_break_entries(target: &mut Vec<String>, raw: &str) {
     }
 }
 
+/// The document's math properties (`m:mathPr`, ECMA-376 §22.1.2.62):
+/// defaults every equation in the document lays out with.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct MathProperties {
+    /// `m:mathFont`: the default math face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub math_font: Option<String>,
+    /// `m:brkBin`: before, after or repeat.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub break_binary: Option<String>,
+    /// `m:brkBinSub`: --, -+ or +-.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub break_binary_subtraction: Option<String>,
+    /// `m:smallFrac`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub small_fractions: Option<bool>,
+    /// `m:dispDef`: display math by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_default: Option<bool>,
+    /// `m:lMargin` / `m:rMargin`, twips.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub left_margin: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right_margin: Option<f32>,
+    /// `m:defJc`: left, right, center or centerGroup.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_justification: Option<String>,
+    /// `m:preSp`, `m:postSp`, `m:interSp`, `m:intraSp`, twips.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_before: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_after: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inter_equation_space: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intra_equation_space: Option<f32>,
+    /// `m:wrapIndent`, twips, or `m:wrapRight`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap_indent: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap_right: Option<bool>,
+    /// `m:intLim` / `m:naryLim`: subSup or undOvr.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integral_limits: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nary_limits: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DocumentSettings {
+    /// `m:mathPr`.
+    #[serde(default)]
+    pub math: MathProperties,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_properties: Option<NoteNumbering>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -266,6 +317,43 @@ impl DocumentSettings {
         true
     }
 
+    /// One child of `m:mathPr`.
+    fn parse_math_property<'a>(
+        math: &mut MathProperties,
+        name: &[u8],
+        attributes: impl Iterator<Item = quick_xml::events::attributes::Attribute<'a>>,
+    ) {
+        let value = attributes
+            .filter(|attr| local_name(attr.key.as_ref()) == b"val")
+            .map(|attr| String::from_utf8_lossy(&attr.value).to_string())
+            .next();
+        let on = || {
+            value
+                .as_deref()
+                .is_none_or(|v| matches!(v, "1" | "true" | "on"))
+        };
+        let twips = || value.as_deref().and_then(|v| v.parse::<f32>().ok());
+        match name {
+            b"mathFont" => math.math_font = value.clone(),
+            b"brkBin" => math.break_binary = value.clone(),
+            b"brkBinSub" => math.break_binary_subtraction = value.clone(),
+            b"smallFrac" => math.small_fractions = Some(on()),
+            b"dispDef" => math.display_default = Some(on()),
+            b"lMargin" => math.left_margin = twips(),
+            b"rMargin" => math.right_margin = twips(),
+            b"defJc" => math.default_justification = value.clone(),
+            b"preSp" => math.space_before = twips(),
+            b"postSp" => math.space_after = twips(),
+            b"interSp" => math.inter_equation_space = twips(),
+            b"intraSp" => math.intra_equation_space = twips(),
+            b"wrapIndent" => math.wrap_indent = twips(),
+            b"wrapRight" => math.wrap_right = Some(on()),
+            b"intLim" => math.integral_limits = value.clone(),
+            b"naryLim" => math.nary_limits = value.clone(),
+            _ => {}
+        }
+    }
+
     fn parse_twips_attribute<'a, I>(attrs: I) -> Option<f32>
     where
         I: IntoIterator<Item = quick_xml::events::attributes::Attribute<'a>>,
@@ -346,6 +434,7 @@ impl DocumentSettings {
                         settings.display_content_revisions =
                             Self::parse_revision_content_visibility(e);
                     }
+                    Self::parse_math_property(&mut settings.math, name, e.attributes().flatten());
                     if name == b"compat" {
                         compat_depth += 1;
                     } else if name == b"kinsoku" {
@@ -528,6 +617,7 @@ impl DocumentSettings {
                         settings.top_line_punctuation =
                             Some(Self::parse_on_off_attribute(e.attributes().flatten()));
                     }
+                    Self::parse_math_property(&mut settings.math, name, e.attributes().flatten());
                     if name == b"autoSpaceDE" {
                         settings.auto_space_de =
                             Some(Self::parse_on_off_attribute(e.attributes().flatten()));
@@ -738,6 +828,20 @@ mod saved_revision_view_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn math_properties_are_read_from_math_pr() {
+        let xml = r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:mathPr><m:mathFont m:val="Cambria Math"/><m:brkBin m:val="after"/><m:brkBinSub m:val="--"/><m:smallFrac m:val="0"/><m:dispDef/><m:lMargin m:val="0"/><m:rMargin m:val="0"/><m:defJc m:val="centerGroup"/><m:wrapIndent m:val="1440"/><m:intLim m:val="undOvr"/><m:naryLim m:val="subSup"/></m:mathPr></w:settings>"#;
+        let math = DocumentSettings::from_xml(xml).unwrap().math;
+        assert_eq!(math.math_font.as_deref(), Some("Cambria Math"));
+        assert_eq!(math.break_binary.as_deref(), Some("after"));
+        assert_eq!(math.small_fractions, Some(false));
+        assert_eq!(math.display_default, Some(true));
+        assert_eq!(math.wrap_indent, Some(1440.0));
+        assert_eq!(math.integral_limits.as_deref(), Some("undOvr"));
+        assert_eq!(math.nary_limits.as_deref(), Some("subSup"));
+        assert_eq!(math.default_justification.as_deref(), Some("centerGroup"));
+    }
 
     #[test]
     fn special_note_lists_select_only_direct_matching_references() {

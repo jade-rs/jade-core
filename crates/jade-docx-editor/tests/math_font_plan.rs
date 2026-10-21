@@ -73,8 +73,11 @@ fn display_plan_uses_the_unencoded_glyph_advance_and_actual_script_scale() {
     assert_eq!(plan.glyphs[0].width, 5.5); // extension is 22px, not advance
     assert_eq!(plan.glyphs[1].style.size_px, 6.5);
     assert_eq!(plan.glyphs[1].width, 3.25);
-    assert!(plan.metrics.ascent >= 18.0);
-    assert!(plan.metrics.descent >= 4.0);
+    // The 22px display glyph is centred on the 2.5px axis, as Word centres
+    // n-ary operators: 13.5px above the baseline and 8.5px below.
+    assert!(plan.metrics.ascent >= 13.5);
+    assert!(plan.metrics.descent >= 8.5);
+    assert!((plan.glyphs[0].baseline - 4.5).abs() < 1e-9);
     assert_eq!(calls.get(), 0);
     assert_eq!(context.cached_glyphs(), 2);
     assert_eq!(serde_json::to_value(&source).unwrap(), before);
@@ -123,7 +126,10 @@ fn small_display_reserves_font_ink_beyond_a_single_18pt_paragraph_grid() {
     let fallback = layout_styled_math(&Fallback::default(), &source, small).unwrap();
     let prepared = layout_styled_math(&context, &source, small).unwrap();
     let grid_px = 18.0 * 96.0 / 72.0;
-    assert!(fallback.metrics.ascent + fallback.metrics.descent < grid_px);
+    // Without the face the display operator is still drawn larger than the
+    // text, as Word draws it; the face's display variant decides the size.
+    let fallback_operator = &fallback.glyphs[0];
+    assert!(fallback_operator.style.size_px > small.size_px);
     assert!(prepared.metrics.ascent + prepared.metrics.descent > grid_px);
     let plain_source = math("<m:r><m:t>x</m:t></m:r>");
     let plain = layout_styled_math(&context, &plain_source, small).unwrap();
@@ -239,8 +245,10 @@ fn generic_painter_draws_the_prepared_outline_with_y_inversion_without_remeasure
     let ops = painter.ops();
     assert_eq!(ops.first(), Some(&Op::Save));
     assert_eq!(ops.last(), Some(&Op::Restore));
-    assert!(ops.contains(&Op::MoveTo(99.6, 204.0)));
-    assert!(ops.contains(&Op::LineTo(103.2, 182.0)));
+    // Centred on the axis: the outline sits 4.5px below the glyph's own
+    // placement.
+    assert!(ops.contains(&Op::MoveTo(99.6, 208.5)));
+    assert!(ops.contains(&Op::LineTo(103.2, 186.5)));
     assert!(ops.contains(&Op::SetFillStyle("#112233".into())));
     assert_eq!(painter.count(|o| matches!(o, Op::Fill)), plan.glyphs.len());
     assert_eq!(
@@ -376,8 +384,10 @@ fn display_side_limits_use_selected_operator_ink_and_italic_correction() {
         .with_display_style(true);
     let source = math(NARY);
     let plan = layout_styled_math(&context, &source, style()).unwrap();
-    assert!((plan.glyphs[1].baseline + 16.0).abs() < 1e-9);
-    assert!((plan.glyphs[2].baseline - 5.0).abs() < 1e-9);
+    // The operator is centred on the axis first (ink 13.5 up, 8.5 down), then
+    // the limits clear its ink by the baseline drop constraints.
+    assert!((plan.glyphs[1].baseline + 11.5).abs() < 1e-9);
+    assert!((plan.glyphs[2].baseline - 9.5).abs() < 1e-9);
     assert!((plan.glyphs[1].x - 5.5).abs() < 1e-9);
     assert!((plan.glyphs[2].x - 4.8).abs() < 1e-9);
 }
@@ -389,15 +399,13 @@ fn stacked_limits_clear_operator_ink_with_font_gap_and_baseline_constraints() {
         .with_display_style(true);
     let source = math(&NARY.replace("subSup", "undOvr"));
     let plan = layout_styled_math(&context, &source, style()).unwrap();
-    assert!((plan.glyphs[1].baseline + 21.0).abs() < 1e-9);
-    assert!((plan.glyphs[2].baseline - 10.7).abs() < 1e-9);
+    assert!((plan.glyphs[1].baseline + 16.5).abs() < 1e-9);
+    assert!((plan.glyphs[2].baseline - 15.2).abs() < 1e-9);
     assert!((plan.glyphs[1].x - 1.475).abs() < 1e-9);
     assert!((plan.glyphs[2].x - 0.775).abs() < 1e-9);
-    assert!(
-        (plan.glyphs[1].baseline.abs()
-            - plan.glyphs[0].font_glyph.as_ref().unwrap().metrics().ascent)
-            >= 3.0
-    );
+    let operator_top =
+        plan.glyphs[0].baseline - plan.glyphs[0].font_glyph.as_ref().unwrap().metrics().ascent;
+    assert!((operator_top - plan.glyphs[1].baseline) >= 3.0 - 1e-9);
 }
 
 fn constants_changed(values: &[(usize, i16)]) -> Vec<u8> {
