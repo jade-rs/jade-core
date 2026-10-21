@@ -216,6 +216,7 @@ where
     P::Error: PainterError,
 {
     value: Option<BoxedRenderHost<P>>,
+    layers: page_layers::PageLayers,
 }
 impl<P: Painter> std::ops::Deref for RenderHostSlot<P>
 where
@@ -243,6 +244,7 @@ mod float_lookahead;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
+mod page_layers;
 mod paragraph_join;
 #[cfg(test)]
 mod recording_host;
@@ -7813,7 +7815,7 @@ where
         let page_height = points_to_px(DEFAULT_PAGE_HEIGHT_PT);
         let margin = points_to_px(DEFAULT_MARGIN_PT);
         Self {
-            host: RenderHostSlot { value: host },
+            host: RenderHostSlot::new(host),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -11507,6 +11509,25 @@ where
                 }
             }
         }
+        // Gate 4b: an object of another paragraph reaching into the band. The
+        // band is cleared and only the edited paragraph repainted, so the
+        // object would be erased there; and the page's layer order (objects
+        // behind and in front of text) can only be honoured by a page paint.
+        if self.object_debug_regions.borrow().iter().any(|object| {
+            let reach = if object.rotation_deg.abs() > f64::EPSILON {
+                object.width.max(object.height)
+            } else {
+                0.0
+            };
+            object.page == page
+                && object.paragraph_index != edited
+                && object.y - reach < paint_bottom
+                && object.y + object.height + reach > local_top
+        }) {
+            self.band_redraw_fallback_floating
+                .set(self.band_redraw_fallback_floating.get() + 1);
+            return None;
+        }
         Some(BandRedrawPlan {
             page,
             local_top,
@@ -12662,6 +12683,7 @@ where
         footer_lines: Option<&[HeaderLine]>,
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
+        self.reset_page_layers(&document_rc);
         let align_is_offset = |value| {
             matches!(
                 resolve_section_vertical_align(value),
@@ -17569,6 +17591,7 @@ where
             .iter()
             .filter(|object| object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -17594,6 +17617,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if !layout_text.is_empty() {
@@ -17951,6 +17975,7 @@ where
             .into_iter()
             .filter(|object| !object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -17976,6 +18001,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if let (true, Some(render_hash)) = (cache_eligible, cache_render_hash) {
@@ -30065,6 +30091,8 @@ where
         &mut self,
         switch: impl FnOnce(&mut crate::render_host::BoxedRenderHost<HostPainter>) -> R,
     ) -> R {
+        // Whatever the page held back is painted before leaving it.
+        let _ = self.composite_page_layers();
         self.restore_band_clip_if_active();
         switch(&mut self.host)
     }
@@ -32794,6 +32822,7 @@ where
     /// area carried onto the page is reserved here too (#294).
     fn render_header_simple(&mut self) -> Result<(), JsValue> {
         self.render_page_header()?;
+        self.begin_page_body_layer();
         self.reserve_carried_footnote_on_new_page()
     }
 
@@ -32925,6 +32954,13 @@ where
     }
 
     fn render_footer_simple(&mut self) -> Result<(), JsValue> {
+        let footer = self.render_page_footer_and_notes();
+        // Footnotes and footer are on the page: paint what it held back.
+        let layers = self.composite_page_layers();
+        footer.and(layers)
+    }
+
+    fn render_page_footer_and_notes(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode {
             return Ok(());
         }
@@ -32933,6 +32969,8 @@ where
         }
 
         self.render_pending_footnotes_for_current_page()?;
+        // The footer belongs under the body's floating objects.
+        self.end_page_body_layer();
 
         let draw_enabled = self.should_draw_current_page_for_render();
         if !draw_enabled && !self.auxiliary_story_capture_mode.enabled() {
@@ -36781,7 +36819,7 @@ mod tests {
             .filter(|&index| renderer.cached_paragraph_start_page(index) == Some(1))
             .count();
         assert!(on_first_page > 3);
-        let painter = renderer.host.painter();
+        let painter = (**renderer.host).painter();
         painter.clear();
         rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
             renderer.arm_fast_replay_for_complete_layout_edit(0, height);

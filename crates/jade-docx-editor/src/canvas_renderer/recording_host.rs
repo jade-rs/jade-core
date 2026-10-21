@@ -52,6 +52,9 @@ impl crate::render_host::CanvasRenderHost for RecordingHost {
     fn page_count(&self) -> usize {
         1
     }
+    fn supports_deferred_painting(&self) -> bool {
+        true
+    }
     fn page_dimensions(&self, _page_index: usize) -> Option<(f64, f64)> {
         Some((816.0, 1056.0))
     }
