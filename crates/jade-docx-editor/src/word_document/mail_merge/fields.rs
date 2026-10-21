@@ -655,6 +655,22 @@ fn walk(children: &mut Vec<XmlNode>, env: &mut Env) {
                             let value = env.evaluate(&open.pieces, &open.result);
                             match stack.last_mut() {
                                 Some(parent) if parent.separate.is_none() => {
+                                    // A merge field in another's instruction
+                                    // shows its value too, as Word keeps it:
+                                    // what the parent is read from on opening.
+                                    if value.merge && env.mode != FieldMode::Merge {
+                                        let text = match env.mode {
+                                            FieldMode::Codes => value.codes.clone(),
+                                            _ => Some(value.text.clone()),
+                                        };
+                                        if let (Some(text), Some(_)) = (text, open.separate) {
+                                            edits.push(Edit::Result {
+                                                separate: open.separate,
+                                                end: index,
+                                                text,
+                                            });
+                                        }
+                                    }
                                     parent.pieces.push(Piece::Nested(value.text))
                                 }
                                 Some(_) => {}
