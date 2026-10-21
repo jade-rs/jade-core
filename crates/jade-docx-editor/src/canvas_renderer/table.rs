@@ -1463,8 +1463,9 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
 fn justify_table_wrapped_lines(lines: &mut [WrappedLine], max_width: f64, style: &ParagraphStyle) {
     if jade_docx_layout::line_wrap::is_justified_alignment(&style.alignment) {
         for (index, line) in lines.iter_mut().enumerate() {
-            line.justify_word_spaces_to_width(
+            line.justify_word_spaces_to_width_with(
                 (max_width - style.line_indent(index) - style.right_indent).max(1.0),
+                style.expand_lines_ending_in_breaks,
             );
         }
     }

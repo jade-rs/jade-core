@@ -498,6 +498,7 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.default_tab_stop = settings.default_tab_stop;
     document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+    document.compat = settings.compat.clone();
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
     document.book_fold_printing = settings.book_fold_printing;
@@ -2494,6 +2495,7 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.default_tab_stop = settings.default_tab_stop;
         document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+        document.compat = settings.compat.clone();
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
         document.book_fold_printing = settings.book_fold_printing;
