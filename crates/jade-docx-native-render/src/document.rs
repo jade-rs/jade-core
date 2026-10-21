@@ -103,6 +103,10 @@ pub struct PdfExportOptions {
     pub rendering: PdfRenderingMode,
     /// Pixels per CSS pixel for editor appearance mode, from 0.5 through 4.
     pub scale: f64,
+    /// Whether tracked changes and comments print (Word's 変更履歴/コメント
+    /// の印刷): `Some(false)` prints the document as it reads with every
+    /// change accepted and no comments; `None` prints what the view shows.
+    pub markup: Option<bool>,
 }
 
 impl Default for PdfExportOptions {
@@ -110,6 +114,7 @@ impl Default for PdfExportOptions {
         Self {
             rendering: PdfRenderingMode::Editor,
             scale: 1.0,
+            markup: None,
         }
     }
 }
@@ -379,6 +384,13 @@ impl NativeDocument {
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
         options.show_crop_marks = false;
+        if let Some(markup) = pdf_options.markup {
+            options.render_changes = markup;
+            options.render_comments = markup;
+            if !markup {
+                options.render_original = false;
+            }
+        }
         renderer.set_spelling_export_mode(true);
         renderer.mark_full_repaint();
         renderer
@@ -427,6 +439,14 @@ impl NativeDocument {
             .collect::<Vec<_>>();
         let output = SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links);
         output
+    }
+
+    /// Each page's section (from 0) and the number its `PAGE` field shows:
+    /// what a print range such as `p1s2-p3s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        let mut labels = self.renderer.page_labels();
+        labels.truncate(self.page_count());
+        labels
     }
 
     pub fn can_undo(&self) -> bool {
@@ -1150,6 +1170,17 @@ impl NativeDocument {
     /// Shows or hides Word's formatting marks.
     pub fn set_formatting_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_formatting_marks = show;
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Shows the document with its tracked changes and comments, or as it
+    /// reads with every change accepted (Word's 変更履歴なし), and repaints.
+    pub fn set_markup_visible(&mut self, visible: bool) -> Result<(), String> {
+        self.options.render_changes = visible;
+        self.options.render_comments = visible;
+        if !visible {
+            self.options.render_original = false;
+        }
         self.repaint_all().map(|_| ())
     }
 
