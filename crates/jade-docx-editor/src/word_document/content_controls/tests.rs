@@ -822,3 +822,57 @@ fn a_headless_replacement_of_a_placeholder_types_into_the_control() {
     type_text(&mut document, 0, 8, "い").unwrap();
     assert_eq!(document.content_controls()[0].text, "あい");
 }
+
+#[test]
+fn a_selection_saved_to_the_gallery_goes_into_a_gallery_control() {
+    let mut document = open(
+        r#"<w:p><w:r><w:t>Kind regards,</w:t></w:r></w:p><w:p><w:r><w:t>Jade</w:t></w:r></w:p><w:p/>"#,
+        "",
+    );
+    let mut executor = CommandExecutor::new();
+    assert!(document.building_blocks(Some("Quick Parts")).is_empty());
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::SaveBuildingBlock {
+            name: "Closing".to_string(),
+            gallery: "Quick Parts".to_string(),
+        },
+        SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 4)),
+    )
+    .expect("save");
+    assert_eq!(
+        document.building_blocks(Some("Quick Parts")),
+        vec!["Closing"]
+    );
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::Insert {
+            kind: ContentControlKind::BuildingBlockGallery,
+            japanese: true,
+        },
+        at(2, 0),
+    )
+    .expect("gallery control");
+    let gallery = document.content_controls().remove(0);
+    assert!(gallery.showing_placeholder);
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::InsertBuildingBlock {
+            control: 0,
+            name: "Closing".to_string(),
+        },
+        at(2, 0),
+    )
+    .expect("insert the block");
+    let control = document.content_controls().remove(0);
+    assert_eq!(control.text, "Kind regards,\nJade");
+    // Saved and opened again, the glossary is still there.
+    let exported = document.export_docx().unwrap();
+    let reopened =
+        super::super::rewrite::run_ready(WordDocument::load(&exported, &Options::default()))
+            .unwrap();
+    assert_eq!(reopened.building_blocks(None), vec!["Closing"]);
+}

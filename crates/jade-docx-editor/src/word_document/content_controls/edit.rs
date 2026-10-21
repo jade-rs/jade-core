@@ -240,6 +240,9 @@ pub enum ContentControlAction {
         field: usize,
         options: FormFieldOptions,
     },
+    /// 選択範囲をギャラリーに保存: the selected paragraphs kept in the
+    /// document's glossary as a building block of `gallery`.
+    SaveBuildingBlock { name: String, gallery: String },
     /// フォームの保護: only the forms may be filled in.
     ProtectForms(bool),
     /// デザイン モード (`w:formsDesign`).
@@ -291,6 +294,7 @@ impl ContentControlAction {
             ContentControlAction::ChooseFormEntry { .. } => "choose_form_entry",
             ContentControlAction::SetFormText { .. } => "set_form_text",
             ContentControlAction::SetFormFieldOptions { .. } => "set_form_field_options",
+            ContentControlAction::SaveBuildingBlock { .. } => "save_building_block",
             ContentControlAction::ProtectForms(_) => "protect_forms",
             ContentControlAction::DesignMode(_) => "forms_design_mode",
         }
@@ -327,10 +331,12 @@ impl WordDocument {
             .filter(|part| {
                 gallery.is_none_or(|gallery| {
                     part.gallery.eq_ignore_ascii_case(gallery)
+                        || glossary_gallery(gallery).eq_ignore_ascii_case(&part.gallery)
                         || (gallery.eq_ignore_ascii_case("Quick Parts")
-                            && part
-                                .gallery
-                                .eq_ignore_ascii_case("docPartGalleryQuickParts"))
+                            && matches!(
+                                part.gallery.as_str(),
+                                "custQuickParts" | "docPartGalleryQuickParts"
+                            ))
                 })
             })
             .map(|part| part.name)
@@ -384,6 +390,92 @@ impl WordDocument {
             });
         }
         parts
+    }
+
+    /// Adds a building block to the glossary document, making the
+    /// glossary (and its relationship and content type) when there is none.
+    fn add_glossary_part(&mut self, name: &str, gallery: &str, body: &str) -> Result<(), String> {
+        const GLOSSARY_TYPE: &str =
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/glossaryDocument";
+        let path = match self.glossary_path() {
+            Some(path) => path,
+            None => {
+                let path = "word/glossary/document.xml".to_string();
+                let relationship = {
+                    let document_part = self
+                        .document_part
+                        .as_mut()
+                        .ok_or_else(|| "main document part is unavailable".to_string())?;
+                    let relationship = Relationship {
+                        id: Self::next_relationship_id(&document_part.relationships),
+                        r#type: GLOSSARY_TYPE.to_string(),
+                        target: "glossary/document.xml".to_string(),
+                        target_mode: None,
+                    };
+                    document_part.relationships.push(relationship.clone());
+                    relationship
+                };
+                if let Some(document_part) = self.document_part.as_ref() {
+                    if let Some(part) = self.parts.get_mut(&document_part.path) {
+                        part.relationships = document_part.relationships.clone();
+                    }
+                }
+                self.ensure_document_relationships_part_has_relationship(&relationship)?;
+                self.ensure_content_types_has_override(
+                    &path,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml",
+                )?;
+                path
+            }
+        };
+        let existing = self.read_xml_part_content(&path).unwrap_or_else(|| {
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<w:glossaryDocument xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docParts/></w:glossaryDocument>".to_string()
+        });
+        let mut glossary = DocxXmlDocument::parse(&existing)
+            .map_err(|error| format!("the glossary could not be read: {error:?}"))?;
+        // A unique id for the part, as Word gives each one.
+        let seed = name.bytes().fold(0x811c_9dc5u32, |hash, byte| {
+            (hash ^ u32::from(byte)).wrapping_mul(0x0100_0193)
+        });
+        let part = xml_fragment(
+            &mut glossary,
+            &format!(
+                "<w:docPart><w:docPartPr><w:name w:val=\"{}\"/><w:category><w:name w:val=\"全般\"/><w:gallery w:val=\"{}\"/></w:category><w:behaviors><w:behavior w:val=\"content\"/></w:behaviors><w:guid w:val=\"{{{:08X}-0000-4000-8000-{:012X}}}\"/></w:docPartPr><w:docPartBody>{body}</w:docPartBody></w:docPart>",
+                xml_escape(name),
+                glossary_gallery(gallery),
+                seed,
+                u64::from(seed) * 7919,
+            ),
+        );
+        let root_id = glossary.root().id;
+        let parts_id = glossary.root().children.iter().find_map(|node| match node {
+            XmlNode::Element(element) if element.name == "w:docParts" => Some(element.id),
+            _ => None,
+        });
+        match parts_id {
+            Some(parts_id) => {
+                if let Some(parts) = glossary.element_mut(parts_id) {
+                    // A part of the same name is replaced.
+                    parts.children.retain(|node| {
+                        !matches!(node, XmlNode::Element(part) if part.name == "w:docPart"
+                            && val(child(child(Some(part), "w:docPartPr"), "w:name")).as_deref() == Some(name))
+                    });
+                    parts.children.extend(part);
+                }
+            }
+            None => {
+                let parts = glossary.create_element("w:docParts", Vec::new(), part);
+                if let Some(root) = glossary.element_mut(root_id) {
+                    root.children.push(XmlNode::Element(parts));
+                }
+            }
+        }
+        glossary.rebuild_index();
+        let written = glossary
+            .to_string()
+            .map_err(|error| format!("the glossary could not be written: {error:?}"))?;
+        self.upsert_xml_part_content(&path, written);
+        Ok(())
     }
 
     /// The id of the `Placeholder Text` character style, added to the
@@ -825,6 +917,28 @@ impl WordDocument {
                 }
                 Ok(CaretAfter::Keep)
             }
+            ContentControlAction::SaveBuildingBlock { name, gallery } => {
+                let (start, end) = range.normalized();
+                let start = self.rendered_to_model_text_position(start);
+                let end = self.rendered_to_model_text_position(end);
+                let mut body = String::new();
+                for index in start.paragraph..=end.paragraph {
+                    let Some(id) = self
+                        .paragraph(index)
+                        .and_then(|paragraph| paragraph.node_id)
+                    else {
+                        continue;
+                    };
+                    if let Some(paragraph) = xml.element(id) {
+                        body.push_str(&super::super::rewrite::element_xml(paragraph));
+                    }
+                }
+                if body.is_empty() || name.trim().is_empty() {
+                    return Err("保存する段落と名前が必要です".to_string());
+                }
+                self.add_glossary_part(name.trim(), gallery, &body)?;
+                Ok(CaretAfter::Keep)
+            }
             ContentControlAction::ProtectForms(on) => {
                 let on = *on;
                 self.write_settings(|settings, root_id| {
@@ -1203,6 +1317,22 @@ pub(crate) fn run_properties_before(
             _ => None,
         })
         .filter(|properties| !properties.children.is_empty())
+}
+
+/// The glossary's name (`ST_DocPartGallery`) for a gallery a building
+/// block gallery control names.
+fn glossary_gallery(gallery: &str) -> &'static str {
+    match gallery.to_ascii_lowercase().as_str() {
+        "autotext" => "autoTxt",
+        "cover pages" => "coverPg",
+        "equations" => "eq",
+        "tables" => "tbls",
+        "text boxes" => "txtBox",
+        "watermarks" => "watermarks",
+        "headers" => "hdrs",
+        "footers" => "ftrs",
+        _ => "docParts",
+    }
 }
 
 /// A glossary document's building block.
