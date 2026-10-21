@@ -220,7 +220,16 @@ impl WordDocument {
                         })
                         .map(|edge| jade_docx_headless_api::HeadlessBorderEdge {
                             style: edge.val.clone(),
-                            width: edge.size_eighths.map(|size| size as f32 / 8.0),
+                            // An art border's `w:sz` is in whole points.
+                            width: edge.size_eighths.map(|size| {
+                                if edge.val.as_deref().is_some_and(|val| {
+                                    crate::canvas_renderer::art_border_name(val).is_some()
+                                }) {
+                                    size as f32
+                                } else {
+                                    size as f32 / 8.0
+                                }
+                            }),
                             color: edge.color.clone(),
                         })
                     };

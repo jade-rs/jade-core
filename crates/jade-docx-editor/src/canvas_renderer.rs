@@ -241,6 +241,7 @@ where
 }
 
 mod art_borders;
+pub(crate) use art_borders::art_border_name;
 mod border_styles;
 mod float_lookahead;
 mod keep_next;

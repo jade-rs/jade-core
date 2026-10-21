@@ -294,6 +294,11 @@ pub(super) const ART_BORDERS: &[ArtBorder] = &[
     art("custom", Square, Border),
 ];
 
+/// The schema spelling of the art border named `name` (case-insensitive).
+pub(crate) fn art_border_name(name: &str) -> Option<&'static str> {
+    art_border_index(name).map(|index| ART_BORDERS[usize::from(index)].name)
+}
+
 /// The index of the art border named `name` (case-insensitive).
 pub(super) fn art_border_index(name: &str) -> Option<u16> {
     ART_BORDERS
