@@ -108,6 +108,10 @@ impl DocxSerializer {
                     flush_text(buffer, &mut segment)?;
                     write!(buffer, r#"<w:br w:type="page"/>"#)?;
                 }
+                crate::document::COLUMN_BREAK_CHAR => {
+                    flush_text(buffer, &mut segment)?;
+                    write!(buffer, r#"<w:br w:type="column"/>"#)?;
+                }
                 _ => segment.push(ch),
             }
         }

@@ -46,6 +46,26 @@ pub(crate) fn sync_paragraph_bidi_xml(
     );
 }
 
+/// `w:snapToGrid`: absent (on, the default) or `w:val="0"` (off).
+pub(crate) fn sync_paragraph_snap_to_grid_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    snap: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        if snap {
+            remove_paragraph_property_child(paragraph_properties, "w:snapToGrid")
+        } else {
+            upsert_paragraph_property_child_with_value(
+                raw,
+                paragraph_properties,
+                "w:snapToGrid",
+                "0",
+            )
+        }
+    });
+}
+
 pub(crate) fn sync_paragraph_style_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,

@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod section_layout;
+pub use section_layout::*;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
     #[serde(default)]
@@ -633,6 +636,8 @@ pub enum HeadlessFieldKind {
     Page,
     NumPages,
     FileName,
+    /// `STYLEREF "heading 1"`: the running Heading 1 text, for a header.
+    StyleRef,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -1453,6 +1458,32 @@ pub enum HeadlessCommand {
         #[serde(default)]
         section: Option<usize>,
     },
+    /// Word's ページ設定 dialog: applies what `patch` names to the sections
+    /// `scope` reaches, leaving the rest of each as it is. One history step.
+    SetSectionLayout {
+        #[serde(default)]
+        scope: HeadlessSectionScope,
+        patch: Box<HeadlessSectionLayoutPatch>,
+    },
+    /// The 段落 dialog's 1 ページの行数を指定時に文字を行グリッド線に合わせる
+    /// (`w:snapToGrid`): whether the paragraphs follow the section's line
+    /// grid.
+    SetParagraphSnapToGrid {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        snap: bool,
+    },
+    /// Word's 前と同じヘッダー/フッター: links a section's story to the
+    /// previous section's (dropping its own reference) or gives it a copy of
+    /// its own.
+    SetHeaderFooterLink {
+        section: usize,
+        /// `header` or `footer`.
+        role: String,
+        /// `default`, `first` or `even`.
+        variant: String,
+        linked: bool,
+    },
     InsertTable {
         after_paragraph: usize,
         rows: usize,
@@ -2137,6 +2168,9 @@ impl HeadlessCommand {
             HeadlessCommand::SetHeaderParagraphText { .. } => "set_header_paragraph_text",
             HeadlessCommand::SetFooterParagraphText { .. } => "set_footer_paragraph_text",
             HeadlessCommand::SetHeaderFooterVariants { .. } => "set_header_footer_variants",
+            HeadlessCommand::SetSectionLayout { .. } => "set_section_layout",
+            HeadlessCommand::SetParagraphSnapToGrid { .. } => "set_paragraph_snap_to_grid",
+            HeadlessCommand::SetHeaderFooterLink { .. } => "set_header_footer_link",
             HeadlessCommand::InsertTable { .. } => "insert_table",
             HeadlessCommand::InsertTableOfContents { .. } => "insert_table_of_contents",
             HeadlessCommand::InsertCaption { .. } => "insert_caption",
@@ -2333,6 +2367,12 @@ pub enum HeadlessQuery {
     /// Page geometry of the default section: size, orientation, margins and
     /// background.
     PageSetup,
+    /// One section's layout as the ページ設定 dialog shows it; `None` is
+    /// the final section.
+    SectionLayout {
+        #[serde(default)]
+        section: Option<usize>,
+    },
     /// Text of every header and footer story in the document.
     HeaderFooterText,
     /// Package metadata (`docProps/core.xml` and friends): title, creator,
@@ -2486,6 +2526,9 @@ pub enum HeadlessQueryResult {
     },
     PageSetup {
         page_setup: HeadlessPageSetupSnapshot,
+    },
+    SectionLayout {
+        layout: Box<HeadlessSectionLayout>,
     },
     HeaderFooterText {
         stories: Vec<HeadlessHeaderFooterSnapshot>,
