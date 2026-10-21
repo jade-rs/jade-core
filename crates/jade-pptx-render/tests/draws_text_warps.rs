@@ -48,7 +48,10 @@ fn glyph_turns(layout: &SlideLayout) -> Vec<f64> {
 #[test]
 fn an_upward_arch_turns_each_glyph_with_the_curve() {
     let layout = layout("textArchUp");
-    assert_eq!(layout.shapes[0].effects.text_warp.as_deref(), Some("textArchUp"));
+    assert_eq!(
+        layout.shapes[0].effects.text_warp.as_deref(),
+        Some("textArchUp")
+    );
     let turns = glyph_turns(&layout);
     // One turn per glyph: leaning left at the start, upright mid-way,
     // leaning right at the end.

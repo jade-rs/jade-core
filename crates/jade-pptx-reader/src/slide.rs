@@ -1198,8 +1198,9 @@ pub(crate) fn parse_effects(container: &XmlElement) -> Effects {
             .and_then(|v| v.parse::<i64>().ok())
             .unwrap_or(default)
     };
-    let frac =
-        |element: &XmlElement, name: &str, default: f32| fraction(element.attr(name)).unwrap_or(default);
+    let frac = |element: &XmlElement, name: &str, default: f32| {
+        fraction(element.attr(name)).unwrap_or(default)
+    };
     let angle = |element: &XmlElement, name: &str, default: f32| {
         element
             .attr(name)

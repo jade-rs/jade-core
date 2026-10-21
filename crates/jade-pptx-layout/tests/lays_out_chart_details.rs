@@ -97,7 +97,12 @@ fn text(shape: &PlacedShape) -> String {
     shape
         .lines
         .iter()
-        .map(|line| line.runs.iter().map(|run| run.text.as_str()).collect::<String>())
+        .map(|line| {
+            line.runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>()
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -105,15 +110,34 @@ fn text(shape: &PlacedShape) -> String {
 fn bar_chart(extra: &str, value_axis: &str) -> String {
     chart_xml(&format!(
         r#"<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>{}{}{extra}<c:axId val="1"/><c:axId val="2"/></c:barChart>{}"#,
-        series(0, "S1", &format!("{}{}", categories(), values(&[1200.0, 2500.0, 1800.0], "#,##0"))),
-        series(1, "S2", &format!("{}{}", categories(), values(&[600.0, 900.0, 300.0], "#,##0"))),
+        series(
+            0,
+            "S1",
+            &format!(
+                "{}{}",
+                categories(),
+                values(&[1200.0, 2500.0, 1800.0], "#,##0")
+            )
+        ),
+        series(
+            1,
+            "S2",
+            &format!(
+                "{}{}",
+                categories(),
+                values(&[600.0, 900.0, 300.0], "#,##0")
+            )
+        ),
         axes("", value_axis),
     ))
 }
 
 #[test]
 fn data_labels_sit_above_columns_in_the_source_number_format() {
-    let shapes = laid_out(&bar_chart(SHOW_VALUES, r#"<c:scaling><c:orientation val="minMax"/></c:scaling>"#));
+    let shapes = laid_out(&bar_chart(
+        SHOW_VALUES,
+        r#"<c:scaling><c:orientation val="minMax"/></c:scaling>"#,
+    ));
     let bar = named(&shapes, "S1/B");
     let label = named(&shapes, "S1 label 1");
     assert_eq!(text(label), "2,500");
@@ -166,7 +190,10 @@ fn gap_width_and_overlap_size_the_columns() {
     // Two bars and a gap of 1.5 bars share the slot.
     assert!((a1.rect.width - slot / 3.5).abs() < 1e-6);
     assert!((a2.rect.x - (a1.rect.x + a1.rect.width)).abs() < 1e-6);
-    let overlapped = laid_out(&bar_chart(r#"<c:gapWidth val="50"/><c:overlap val="50"/>"#, ""));
+    let overlapped = laid_out(&bar_chart(
+        r#"<c:gapWidth val="50"/><c:overlap val="50"/>"#,
+        "",
+    ));
     let a1 = named(&overlapped, "S1/A");
     let a2 = named(&overlapped, "S2/A");
     // Half of each bar overlaps the next: 1.5 lanes plus half a bar of gap.
@@ -178,7 +205,11 @@ fn gap_width_and_overlap_size_the_columns() {
 fn axis_titles_are_placed_and_the_value_title_reads_upwards() {
     let xml = chart_xml(&format!(
         r#"<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>{}<c:axId val="1"/><c:axId val="2"/></c:barChart>{}"#,
-        series(0, "S1", &format!("{}{}", categories(), values(&[1.0, 2.0, 3.0], "General"))),
+        series(
+            0,
+            "S1",
+            &format!("{}{}", categories(), values(&[1.0, 2.0, 3.0], "General"))
+        ),
         axes(
             r#"<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:t>Region</a:t></a:r></a:p></c:rich></c:tx></c:title>"#,
             r#"<c:scaling><c:orientation val="minMax"/></c:scaling><c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:t>Units</a:t></a:r></a:p></c:rich></c:tx></c:title>"#,
@@ -210,8 +241,19 @@ fn a_combo_line_draws_on_its_own_secondary_axis_smoothed_with_markers() {
     );
     let xml = chart_xml(&format!(
         r#"<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>{}<c:axId val="1"/><c:axId val="2"/></c:barChart><c:lineChart><c:grouping val="standard"/>{line}<c:marker val="1"/><c:axId val="3"/><c:axId val="4"/></c:lineChart>{}<c:catAx><c:axId val="3"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="1"/><c:axPos val="b"/><c:crossAx val="4"/></c:catAx><c:valAx><c:axId val="4"/><c:scaling><c:orientation val="minMax"/><c:max val="1"/><c:min val="0"/></c:scaling><c:delete val="0"/><c:axPos val="r"/><c:numFmt formatCode="0%" sourceLinked="0"/><c:majorUnit val="0.25"/><c:tickLblPos val="nextTo"/><c:crossAx val="3"/><c:crosses val="max"/></c:valAx>"#,
-        series(0, "Sales", &format!("{}{}", categories(), values(&[100.0, 300.0, 200.0], "General"))),
-        axes("", r#"<c:scaling><c:orientation val="minMax"/></c:scaling><c:tickLblPos val="nextTo"/>"#),
+        series(
+            0,
+            "Sales",
+            &format!(
+                "{}{}",
+                categories(),
+                values(&[100.0, 300.0, 200.0], "General")
+            )
+        ),
+        axes(
+            "",
+            r#"<c:scaling><c:orientation val="minMax"/></c:scaling><c:tickLblPos val="nextTo"/>"#
+        ),
     ));
     let shapes = laid_out(&xml);
     // The secondary axis' own ticks, right of the plot.
@@ -258,8 +300,15 @@ fn a_pie_labels_its_slices_with_category_and_percentage() {
 fn a_radar_draws_a_web_and_each_series_as_a_closed_outline() {
     let xml = chart_xml(&format!(
         r#"<c:radarChart><c:radarStyle val="marker"/>{}<c:axId val="1"/><c:axId val="2"/></c:radarChart>{}"#,
-        series(0, "R", &format!("{}{}", categories(), values(&[1.0, 2.0, 3.0], "General"))),
-        axes("", r#"<c:scaling><c:orientation val="minMax"/></c:scaling><c:majorGridlines/>"#),
+        series(
+            0,
+            "R",
+            &format!("{}{}", categories(), values(&[1.0, 2.0, 3.0], "General"))
+        ),
+        axes(
+            "",
+            r#"<c:scaling><c:orientation val="minMax"/></c:scaling><c:majorGridlines/>"#
+        ),
     ));
     let shapes = laid_out(&xml);
     let line = named(&shapes, "R line");
