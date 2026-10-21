@@ -65,6 +65,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        rich_text: Default::default(),
         protection: None,
     }
 }

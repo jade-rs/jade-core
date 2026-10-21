@@ -98,6 +98,9 @@ pub struct ResolvedFont {
     pub italic: bool,
     pub underline: bool,
     pub strike: bool,
+    /// `superscript` or `subscript`.
+    #[serde(default)]
+    pub vert_align: Option<String>,
 }
 
 impl Default for ResolvedFont {
@@ -109,6 +112,7 @@ impl Default for ResolvedFont {
             italic: false,
             underline: false,
             strike: false,
+            vert_align: None,
         }
     }
 }
@@ -155,6 +159,20 @@ pub struct PlacedCell {
     /// consume this instead of independently measuring Excel's three spaces.
     #[serde(default)]
     pub text_inset_px: f64,
+    /// Rich text: the runs of `text`, each with its own font. Empty for a
+    /// cell drawn in one font.
+    #[serde(default)]
+    pub runs: Vec<PlacedRun>,
+}
+
+/// A run of a rich text cell: a byte range of the cell's text and its font.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedRun {
+    pub start: usize,
+    pub end: usize,
+    pub font: ResolvedFont,
+    /// The run's own colour; `None` takes the cell's.
+    pub color: Option<Color>,
 }
 
 /// A conditional-format icon, placed: which icon of which set, and its box.
@@ -457,6 +475,7 @@ impl SheetLayout {
                     data_bar: None,
                     icon: None,
                     text_inset_px: 0.0,
+                    runs: Vec::new(),
                 });
             }
         }
@@ -1050,6 +1069,7 @@ fn layout_sheet_with_workbook(
             };
             let formatted =
                 number_format::format_value(&cell.value, number_format_code, options.date_system);
+            let fill_at = formatted.fill;
             let text = formatted.text;
             // Without wrap text Excel keeps the cell on one line and shows
             // its line breaks as nothing.
@@ -1110,6 +1130,29 @@ fn layout_sheet_with_workbook(
                 }
                 _ => shown.to_string(),
             };
+            // `*c` repeats c across whatever width the text leaves.
+            let drawing_text = match fill_at {
+                Some((at, character))
+                    if drawing_text == text
+                        && !alignment.wrap_text
+                        && alignment.text_rotation == 0 =>
+                {
+                    let width =
+                        (text_width - options.cell_padding_px * 2.0 - text_inset_px).max(0.0);
+                    let unit = options.measure.measure(&character.to_string(), &font);
+                    let count = if unit > 0.0 {
+                        ((width - options.measure.measure(&text, &font)) / unit)
+                            .floor()
+                            .clamp(0.0, 1000.0) as usize
+                    } else {
+                        0
+                    };
+                    let mut filled = text.clone();
+                    filled.insert_str(at, &character.to_string().repeat(count));
+                    filled
+                }
+                _ => drawing_text,
+            };
             let lines = if stacks_text && !text.is_empty() {
                 text.graphemes(true).map(str::to_string).collect()
             } else if alignment.wrap_text && !text.is_empty() {
@@ -1135,11 +1178,18 @@ fn layout_sheet_with_workbook(
                 *slot = slot.max(needed);
             }
 
+            let runs = rich_runs(
+                sheet.rich_text.get(&cell.reference),
+                &cell.value,
+                &text,
+                &font,
+            );
             prepared.push(PreparedCell {
                 reference: cell.reference,
                 merge,
                 text,
                 lines,
+                runs,
                 font,
                 // A colour in the number format wins over the font's own,
                 // which is how `[Red]-#,##0` turns a negative red without the
@@ -1193,6 +1243,7 @@ fn layout_sheet_with_workbook(
             merge: Some(*merge),
             text: String::new(),
             lines: vec![String::new()],
+            runs: Vec::new(),
             font: {
                 let mut font = resolve_font(
                     format.and_then(|format| styles.font(format)),
@@ -1355,6 +1406,7 @@ fn layout_sheet_with_workbook(
                 }),
                 alignment: cell.alignment,
                 text_inset_px: cell.text_inset_px,
+                runs: cell.runs,
             })
         })
         .collect();
@@ -1443,6 +1495,7 @@ fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {
         italic: font.italic,
         underline: font.underline,
         strike: font.strike,
+        vert_align: font.vert_align.clone(),
     })
     .unwrap_or_else(|| fallback.clone())
 }
@@ -1457,6 +1510,64 @@ fn resolve_fill(fill: &jade_xlsx_reader::Fill) -> Option<ResolvedFill> {
         foreground: fill.foreground,
         background: fill.background,
     })
+}
+
+/// The runs a string cell is drawn in: its rich text runs, when they still
+/// spell its text, or one run for a cell whose own font is raised or
+/// lowered.
+fn rich_runs(
+    runs: Option<&Vec<jade_xlsx_reader::rich_text::TextRun>>,
+    value: &CellValue,
+    text: &str,
+    font: &ResolvedFont,
+) -> Vec<PlacedRun> {
+    let CellValue::Text(value) = value else {
+        return Vec::new();
+    };
+    if let Some(runs) = runs {
+        let joined: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if joined == *value && joined == text {
+            let mut start = 0;
+            return runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    let end = start + run.text.len();
+                    let own = &run.font;
+                    let placed = PlacedRun {
+                        start,
+                        end,
+                        font: ResolvedFont {
+                            family: own.name.clone().unwrap_or_else(|| font.family.clone()),
+                            size_points: own.size_points.unwrap_or(font.size_points),
+                            bold: own.bold.unwrap_or(font.bold),
+                            italic: own.italic.unwrap_or(font.italic),
+                            underline: own.underline.unwrap_or(font.underline),
+                            strike: own.strike.unwrap_or(font.strike),
+                            vert_align: own.vert_align.clone().or_else(|| {
+                                own.bold
+                                    .is_none()
+                                    .then(|| font.vert_align.clone())
+                                    .flatten()
+                            }),
+                        },
+                        color: own.color,
+                    };
+                    start = end;
+                    placed
+                })
+                .collect();
+        }
+    }
+    if font.vert_align.is_some() && !text.is_empty() {
+        return vec![PlacedRun {
+            start: 0,
+            end: text.len(),
+            font: font.clone(),
+            color: None,
+        }];
+    }
+    Vec::new()
 }
 
 /// A cell's text colour: its own font's, unless that is just the workbook's
@@ -1539,6 +1650,7 @@ struct PreparedCell {
     merge: Option<CellRange>,
     text: String,
     lines: Vec<String>,
+    runs: Vec<PlacedRun>,
     font: ResolvedFont,
     text_color: Option<Color>,
     fill: Option<ResolvedFill>,

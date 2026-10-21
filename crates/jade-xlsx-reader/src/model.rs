@@ -256,6 +256,10 @@ pub struct Sheet {
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]
     pub phonetic_readings: std::collections::BTreeMap<CellRef, String>,
+    /// String cells made of formatted runs, by cell: the value is their
+    /// joined text, the runs how to draw it.
+    #[serde(default)]
+    pub rich_text: std::collections::BTreeMap<CellRef, Vec<crate::rich_text::TextRun>>,
     /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
     /// protected: what it still allows.
     #[serde(default)]
@@ -893,6 +897,9 @@ pub struct Font {
     pub underline: bool,
     pub strike: bool,
     pub color: Option<Color>,
+    /// `vertAlign`: `superscript` or `subscript`.
+    #[serde(default)]
+    pub vert_align: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

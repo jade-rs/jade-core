@@ -1161,6 +1161,37 @@ fn render_text_body<P: Painter>(
     let inner_left = cell.rect.x + padding + cell.text_inset_px;
     let content_right = cell.rect.right().min(cell.text_rect().right());
     let inner_right = content_right - padding - cell.text_inset_px;
+    if !cell.runs.is_empty() && text_rotation_radians(cell.alignment.text_rotation).is_none() {
+        let mut cursor = 0;
+        let mut ranges = Vec::new();
+        for line in &cell.lines {
+            let Some(found) = cell
+                .text
+                .get(cursor..)
+                .and_then(|rest| rest.find(line.as_str()))
+            else {
+                ranges.clear();
+                break;
+            };
+            ranges.push((cursor + found, cursor + found + line.len()));
+            cursor += found + line.len();
+        }
+        if ranges.len() == cell.lines.len() {
+            for (index, (start, end)) in ranges.into_iter().enumerate() {
+                let baseline = block_top + line_height * index as f64 + ascent;
+                render_rich_line(
+                    painter,
+                    cell,
+                    (start, end),
+                    (inner_left, inner_right, content_right),
+                    baseline,
+                    &text_color,
+                    options,
+                )?;
+            }
+            return Ok(());
+        }
+    }
     for (index, line) in cell.lines.iter().enumerate() {
         if line.is_empty() {
             continue;
@@ -1190,6 +1221,81 @@ fn render_text_body<P: Painter>(
             paint_cell_text(painter, line, x, y, outline)?;
             render_text_decorations(painter, cell, x, y, width, ascent);
         }
+    }
+    Ok(())
+}
+
+/// One line of a rich text cell: each run's part of `range` in its own font,
+/// colour and baseline, the line placed as a whole by the cell's alignment.
+fn render_rich_line<P: Painter>(
+    painter: &P,
+    cell: &PlacedCell,
+    range: (usize, usize),
+    (inner_left, inner_right, content_right): (f64, f64, f64),
+    baseline: f64,
+    cell_color: &str,
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
+    // Super- and subscripts are drawn two thirds the size, off the baseline.
+    let shaped = |run: &jade_xlsx_layout::PlacedRun| {
+        let mut font = run.font.clone();
+        let em = points_to_px(font.size_points);
+        let shift = match font.vert_align.as_deref() {
+            Some("superscript") => -em * 0.33,
+            Some("subscript") => em * 0.14,
+            _ => 0.0,
+        };
+        if shift != 0.0 {
+            font.size_points = (font.size_points * 2.0 / 3.0).max(1.0);
+        }
+        (font, shift)
+    };
+    let mut pieces = Vec::new();
+    let mut width = 0.0;
+    for run in &cell.runs {
+        let start = run.start.max(range.0);
+        let end = run.end.min(range.1);
+        let Some(text) = cell.text.get(start..end).filter(|text| !text.is_empty()) else {
+            continue;
+        };
+        let (font, shift) = shaped(run);
+        painter.set_font(&font_shorthand(&font));
+        let advance = painter.measure_text_width(text)?;
+        pieces.push((text, font, shift, run.color, advance));
+        width += advance;
+    }
+    let mut x = match cell.alignment.horizontal {
+        HorizontalAlignment::Right => inner_right - width,
+        HorizontalAlignment::Center => cell.rect.x + (content_right - cell.rect.x - width) / 2.0,
+        _ => inner_left,
+    };
+    for (text, font, shift, color, advance) in pieces {
+        let color = color
+            .map(|color| options.color_css(color, cell_color))
+            .unwrap_or_else(|| cell_color.to_string());
+        painter.set_font(&font_shorthand(&font));
+        painter.set_fill_style_str(&color);
+        painter.set_stroke_style_str(&color);
+        let y = baseline + shift;
+        painter.fill_text(text, x, y)?;
+        if font.underline || font.strike {
+            let em = points_to_px(font.size_points);
+            painter.set_line_width((em / 16.0).max(0.75));
+            painter.set_line_dash(&[]);
+            for line_y in [
+                font.underline.then_some(y + (em * 0.08).max(1.0)),
+                font.strike.then_some(y - em * 0.8 * 0.35),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                painter.begin_path();
+                painter.move_to(x, line_y);
+                painter.line_to(x + advance, line_y);
+                painter.stroke();
+            }
+        }
+        x += advance;
     }
     Ok(())
 }
