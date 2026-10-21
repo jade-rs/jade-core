@@ -143,6 +143,9 @@ pub struct PlacedCell {
     pub fill: Option<ResolvedFill>,
     #[serde(default)]
     pub data_bar: Option<PlacedDataBar>,
+    /// An icon-set icon drawn at the cell's left edge.
+    #[serde(default)]
+    pub icon: Option<PlacedIcon>,
     pub border: Border,
     /// Alignment with `General` already resolved against the value's type.
     pub alignment: Alignment,
@@ -150,6 +153,18 @@ pub struct PlacedCell {
     /// consume this instead of independently measuring Excel's three spaces.
     #[serde(default)]
     pub text_inset_px: f64,
+}
+
+/// A conditional-format icon, placed: which icon of which set, and its box.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedIcon {
+    /// The set's name as the file spells it: `3Arrows`, `5Quarters`...
+    pub icon_set: String,
+    /// The icon's position in the set, 0 being the one for the lowest values.
+    pub index: u32,
+    pub rect: Rect,
+    /// False when the rule hides the cell's value and shows only the icon.
+    pub show_value: bool,
 }
 
 /// A conditional data bar with geometry already resolved by shared layout.
@@ -419,6 +434,7 @@ impl SheetLayout {
                     border,
                     alignment: axis_style.map(|style| style.alignment).unwrap_or_default(),
                     data_bar: None,
+                    icon: None,
                     text_inset_px: 0.0,
                 });
             }
@@ -790,6 +806,9 @@ pub struct LayoutOptions {
     pub cell_padding_px: f64,
     /// Which epoch the workbook's date serials count from.
     pub date_system: jade_xlsx_reader::DateSystem,
+    /// The IANA time zone "today" is in for date rules (`TODAY()`, "dates
+    /// occurring"); UTC when unset.
+    pub time_zone: Option<String>,
     /// Measures text for wrapping. The default is a deterministic stand-in;
     /// a browser passes one backed by the canvas, and the native shell one
     /// backed by Skia, so line ends match what will actually be drawn.
@@ -854,6 +873,7 @@ impl Default for LayoutOptions {
             min_row_count: 0,
             cell_padding_px: 3.0,
             date_system: jade_xlsx_reader::DateSystem::default(),
+            time_zone: None,
             measure: Rc::new(HeuristicMeasure),
         }
     }
@@ -889,7 +909,6 @@ fn layout_sheet_with_workbook(
     options: &LayoutOptions,
     workbook: Option<&jade_xlsx_reader::Workbook>,
 ) -> SheetLayout {
-    let conditional = conditional_format::ConditionalStyles::new(sheet, styles);
     let filter_definitions = filter_button::definitions(sheet);
     let column_count = sheet
         .used_column_count()
@@ -916,6 +935,10 @@ fn layout_sheet_with_workbook(
                 .unwrap_or(0),
         );
 
+    let formula_matches =
+        formula_rule_matches(sheet, styles, workbook, column_count, row_count, options);
+    let conditional =
+        conditional_format::ConditionalStyles::with_formula_matches(sheet, styles, formula_matches);
     let mut columns = column_axis(sheet, column_count, options);
     let normal_style_font = resolve_normal_font(styles, &options.default_font);
 
@@ -975,8 +998,10 @@ fn layout_sheet_with_workbook(
                 format.and_then(|format| styles.font(format)),
                 &options.default_font,
             );
-            let (conditional_style, data_bar) =
+            let (conditional_style, visuals) =
                 conditional.for_cell_with_visual(cell.reference, &cell.value);
+            let data_bar = visuals.bar;
+            let icon = visuals.icon;
             conditional_format::apply_font(&conditional_style, &mut font);
             let number_format_code = conditional_style
                 .number_format_code
@@ -988,6 +1013,10 @@ fn layout_sheet_with_workbook(
                 HorizontalAlignment::Left | HorizontalAlignment::Right => {
                     options.measure.measure("   ", &normal_style_font) * f64::from(alignment.indent)
                 }
+                _ => 0.0,
+            } + match (&icon, alignment.horizontal) {
+                // Left-aligned text starts after the icon, which sits there.
+                (Some(_), HorizontalAlignment::Left) => icon_size_px(&font, f64::INFINITY) + 1.0,
                 _ => 0.0,
             };
             let formatted =
@@ -1112,6 +1141,7 @@ fn layout_sheet_with_workbook(
                 alignment,
                 text_inset_px,
                 data_bar,
+                icon,
                 overflow,
             });
         }
@@ -1166,6 +1196,7 @@ fn layout_sheet_with_workbook(
             alignment,
             text_inset_px: 0.0,
             data_bar: None,
+            icon: None,
             overflow: None,
         });
     }
@@ -1234,7 +1265,7 @@ fn layout_sheet_with_workbook(
                 merge: cell.merge,
                 text: cell.text,
                 lines: cell.lines,
-                font: cell.font,
+                font: cell.font.clone(),
                 text_color: cell.text_color,
                 fill: cell.fill,
                 border: cell.border,
@@ -1271,6 +1302,29 @@ fn layout_sheet_with_workbook(
                             },
                             color,
                         }),
+                    }
+                }),
+                icon: cell.icon.map(|icon| {
+                    let size = icon_size_px(&cell.font, rect.height - 2.0);
+                    let y = match cell.alignment.vertical {
+                        jade_xlsx_reader::VerticalAlignment::Top => rect.y + 1.0,
+                        jade_xlsx_reader::VerticalAlignment::Center => {
+                            rect.y + (rect.height - size) / 2.0
+                        }
+                        jade_xlsx_reader::VerticalAlignment::Bottom => {
+                            rect.y + rect.height - size - 2.0
+                        }
+                    };
+                    PlacedIcon {
+                        icon_set: icon.icon_set,
+                        index: icon.index,
+                        rect: Rect {
+                            x: rect.x + 2.0,
+                            y: y.max(rect.y).round(),
+                            width: size,
+                            height: size,
+                        },
+                        show_value: icon.show_value,
                     }
                 }),
                 alignment: cell.alignment,
@@ -1392,7 +1446,60 @@ struct PreparedCell {
     alignment: Alignment,
     text_inset_px: f64,
     data_bar: Option<visual_format::ResolvedDataBar>,
+    icon: Option<visual_format::ResolvedIcon>,
     overflow: Option<(f64, f64)>,
+}
+
+/// An icon set's icons are 16 px for 11 pt text and grow with the font, but
+/// never past the row.
+fn icon_size_px(font: &ResolvedFont, room: f64) -> f64 {
+    let size = (f64::from(font.size_points) * 96.0 / 72.0 * 16.0 / (11.0 * 96.0 / 72.0)).round();
+    size.max(8.0).min(room.max(4.0)).floor()
+}
+
+/// Evaluates the sheet's formula-decided conditional rules over the laid-out
+/// extent, when it has any.
+fn formula_rule_matches(
+    sheet: &Sheet,
+    styles: &StyleTable,
+    workbook: Option<&jade_xlsx_reader::Workbook>,
+    columns: u32,
+    rows: u32,
+    options: &LayoutOptions,
+) -> Option<Vec<conditional_format::FormulaRuleMatches>> {
+    let formula_rules = sheet
+        .conditional_formats
+        .iter()
+        .any(|format| format.rules.iter().any(conditional_format::is_formula_rule));
+    if !formula_rules {
+        return None;
+    }
+    let time_zone = options.time_zone.as_deref().unwrap_or("UTC");
+    let found = workbook.and_then(|workbook| {
+        let index = workbook
+            .sheets
+            .iter()
+            .position(|candidate| std::ptr::eq(candidate, sheet))?;
+        Some(jade_xlsx_calc::conditional::conditional_formula_matches(
+            workbook, index, columns, rows, time_zone,
+        ))
+    });
+    let found = match found {
+        Some(found) => found,
+        None => {
+            // On its own the sheet is a workbook of one.
+            let alone = jade_xlsx_reader::Workbook {
+                sheets: vec![sheet.clone()],
+                styles: styles.clone(),
+                date_system: options.date_system,
+                ..Default::default()
+            };
+            jade_xlsx_calc::conditional::conditional_formula_matches(
+                &alone, 0, columns, rows, time_zone,
+            )
+        }
+    };
+    found.ok()
 }
 
 fn text_overflow(

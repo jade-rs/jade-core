@@ -86,16 +86,16 @@ fn supported_recalculation_is_reflected_in_the_current_snapshot() {
 }
 
 #[test]
-fn unsupported_conditional_formulas_are_reported_and_rules_survive_edits_and_undo() {
+fn conditional_formulas_are_supported_and_rules_survive_edits_and_undo() {
     let mut book = HeadlessWorkbook::open(include_bytes!(
         "../../../public/fixtures/conditional-formats-workbook.xlsx"
     ))
     .unwrap();
     let status = book.conditional_formatting_status();
     assert_eq!(status.rule_count, 12);
-    assert_eq!(status.supported_rules, 11);
-    assert_eq!(status.unsupported.len(), 1);
-    assert_eq!(status.unsupported[0].rule_type, "expression");
+    // The `expression` rule is evaluated per cell now.
+    assert_eq!(status.supported_rules, 12);
+    assert!(status.unsupported.is_empty());
     assert_eq!(book.cell("Conditional", "A3").unwrap().display, "$120.00");
     assert_eq!(
         book.cell("Conditional", "A3")
