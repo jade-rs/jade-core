@@ -53,6 +53,7 @@ pub mod merge_table_cells;
 pub(crate) mod paragraph_property_sync;
 pub(crate) mod paragraph_undo;
 pub(crate) mod raw_xml_undo;
+pub mod replace_equation;
 pub mod replace_image;
 pub mod reset_paragraph_formatting;
 pub mod resize_table_column;

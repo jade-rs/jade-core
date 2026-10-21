@@ -1601,6 +1601,16 @@ pub enum HeadlessCommand {
         omml: String,
         placement: HeadlessEquationPlacement,
     },
+    /// Replaces an existing equation's OMML in place: a display equation
+    /// (`paragraph` is its own paragraph index, `run_index` absent; the root
+    /// is `m:oMathPara`) or an inline one (the math run `run_index` of
+    /// `paragraph`; the root is `m:oMath`).
+    ReplaceEquation {
+        paragraph: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        run_index: Option<usize>,
+        omml: String,
+    },
     /// Replaces the exact current-state selection with a blank Word page.
     /// When document content follows the selection, two page breaks surround
     /// the new page and the caret remains between them. At the document end a
@@ -2241,6 +2251,7 @@ impl HeadlessCommand {
             HeadlessCommand::InsertCaption { .. } => "insert_caption",
             HeadlessCommand::InsertField { .. } => "insert_field",
             HeadlessCommand::InsertEquation { .. } => "insert_equation",
+            HeadlessCommand::ReplaceEquation { .. } => "replace_equation",
             HeadlessCommand::InsertBlankPage { .. } => "insert_blank_page",
             HeadlessCommand::InsertCoverPage { .. } => "insert_cover_page",
             HeadlessCommand::InsertShape { .. } => "insert_shape",
