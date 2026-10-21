@@ -1755,6 +1755,7 @@ fn custom_numbering_levels(values: &[HeadlessCustomNumberingLevel]) -> Vec<Numbe
             run_props: None,
             language: None,
             is_legal: false,
+            picture_bullet: None,
         })
         .collect()
 }
