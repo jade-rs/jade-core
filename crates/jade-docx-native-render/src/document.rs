@@ -1186,6 +1186,12 @@ impl NativeDocument {
         self.repaint_all().map(|_| ())
     }
 
+    /// Opened 読み取り専用 (the file recommends it, or it is marked final):
+    /// no edit runs until this is turned off.
+    pub fn set_opened_read_only(&mut self, read_only: bool) {
+        self.word_document.set_opened_read_only(read_only);
+    }
+
     /// Whether the pages are marked for spelling and grammar.
     pub fn proofing(&self) -> bool {
         self.renderer.spelling_state().0

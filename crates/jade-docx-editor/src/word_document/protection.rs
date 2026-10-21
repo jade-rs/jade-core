@@ -608,6 +608,9 @@ impl WordDocument {
     /// 変更履歴 lets every edit run (the shells keep tracking on);
     /// コメント lets only comments; 書式の制限 stops formatting.
     pub fn restriction_allows(&self, name: &str, at: Option<(usize, usize)>) -> Result<(), String> {
+        if self.opened_read_only && !name.contains("protection") && !name.contains("restriction") {
+            return Err("opened read-only".into());
+        }
         let Some(restriction) = self
             .editing_restriction()
             .filter(|restriction| restriction.enforced)
@@ -643,6 +646,16 @@ impl WordDocument {
             _ if inside_exception => Ok(()),
             Some(kind) => Err(format!("protected: {}", kind.attribute())),
         }
+    }
+
+    /// Opened 読み取り専用 (as the file recommends, or marked final): no
+    /// edit runs until the reader chooses to edit.
+    pub fn set_opened_read_only(&mut self, read_only: bool) {
+        self.opened_read_only = read_only;
+    }
+
+    pub fn opened_read_only(&self) -> bool {
+        self.opened_read_only
     }
 
     /// 保護の中止 with the right password (or on a protection whose

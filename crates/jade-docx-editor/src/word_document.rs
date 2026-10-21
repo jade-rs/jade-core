@@ -1193,6 +1193,9 @@ pub struct WordDocument {
     /// the document is opened again.
     #[serde(skip)]
     protection_lifted: bool,
+    /// Opened 読み取り専用: see `set_opened_read_only`.
+    #[serde(skip)]
+    opened_read_only: bool,
     #[serde(skip)]
     next_revision_id: u32,
     pub relationships: Vec<Relationship>,
@@ -2205,6 +2208,7 @@ impl WordDocument {
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
             protection_lifted: false,
+            opened_read_only: false,
             next_revision_id: 1,
             document: None,
             numbering_part: Some(NumberingPart::new()),
@@ -4506,6 +4510,7 @@ impl WordDocument {
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
             protection_lifted: false,
+            opened_read_only: false,
             next_revision_id: 1,
             document: Some(Rc::new(document)),
             numbering_part: None,
