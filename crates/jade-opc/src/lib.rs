@@ -11,6 +11,7 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
+pub mod encryption;
 pub mod package_limits;
 mod snapshot;
 pub use package_limits::{PackageLimitError, PackageLoadLimits};

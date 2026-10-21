@@ -1648,6 +1648,9 @@ dependencies = [
 name = "jade-opc"
 version = "0.1.0"
 dependencies = [
+ "aes",
+ "base64",
+ "cfb",
  "quick-xml 0.39.2",
  "serde",
  "sha2 0.10.9",
