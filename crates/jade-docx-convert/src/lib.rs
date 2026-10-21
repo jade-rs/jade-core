@@ -10,6 +10,7 @@
 //! - [`rtf`]: Rich Text Format.
 //! - [`odt`]: OpenDocument Text.
 //! - [`html`]: HTML pages.
+//! - `pdf` (with the `pdf` feature): a PDF opened as an editable document.
 
 pub mod docx_read;
 pub(crate) use docx_read::hyperlink_instruction as docx_read_hyperlink;
@@ -17,6 +18,8 @@ pub mod docx_write;
 pub mod flow;
 pub mod html;
 pub mod odt;
+#[cfg(feature = "pdf")]
+pub mod pdf;
 pub mod rtf;
 pub mod text;
 pub mod xml;
