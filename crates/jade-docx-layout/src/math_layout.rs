@@ -7,6 +7,7 @@
 pub mod eq_field;
 #[cfg(feature = "opentype-math")]
 pub mod font;
+pub mod linear;
 pub mod styled;
 
 use jade_docx_reader::document::{MathElement, MathElementKind, MathParagraph};
