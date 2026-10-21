@@ -96,7 +96,11 @@ pub fn family(layout_id: &str) -> Family {
     if let Some((_, _, _, family)) = LAYOUTS.iter().find(|(id, ..)| *id == layout_id) {
         return *family;
     }
-    let name = layout_id.rsplit('/').next().unwrap_or(layout_id).to_ascii_lowercase();
+    let name = layout_id
+        .rsplit('/')
+        .next()
+        .unwrap_or(layout_id)
+        .to_ascii_lowercase();
     if name.contains("cycle") || name.contains("radial") {
         Family::Cycle
     } else if name.contains("hierarchy") || name.contains("org") {
@@ -201,7 +205,9 @@ pub fn parse_data(xml: &str, layout_id: Option<&str>) -> Option<Diagram> {
                     Some((
                         attr(cxn, "srcId")?.to_string(),
                         attr(cxn, "destId")?.to_string(),
-                        attr(cxn, "srcOrd").and_then(|o| o.parse().ok()).unwrap_or(0),
+                        attr(cxn, "srcOrd")
+                            .and_then(|o| o.parse().ok())
+                            .unwrap_or(0),
                     ))
                 })
                 .collect()
@@ -250,7 +256,12 @@ struct Shape {
 }
 
 impl Shape {
-    fn boxed(preset: &'static str, (x, y, width, height): (f64, f64, f64, f64), node: &DiagramNode, with_children: bool) -> Self {
+    fn boxed(
+        preset: &'static str,
+        (x, y, width, height): (f64, f64, f64, f64),
+        node: &DiagramNode,
+        with_children: bool,
+    ) -> Self {
         let mut text = vec![(node.text.clone(), 0)];
         if with_children {
             for child in &node.children {
@@ -273,7 +284,11 @@ impl Shape {
         }
     }
 
-    fn arrow(preset: &'static str, (x, y, width, height): (f64, f64, f64, f64), rotation: f64) -> Self {
+    fn arrow(
+        preset: &'static str,
+        (x, y, width, height): (f64, f64, f64, f64),
+        rotation: f64,
+    ) -> Self {
         Shape {
             preset,
             x,
@@ -334,8 +349,13 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
             for (index, node) in nodes.iter().enumerate() {
                 let (row, column) = (index / columns, index % columns);
                 // The last row is centred when it is short.
-                let in_row = if row == rows - 1 { count - row * columns } else { columns };
-                let row_left = left + (used_width - box_width * (in_row as f64 + (in_row - 1) as f64 * 0.1)) / 2.0;
+                let in_row = if row == rows - 1 {
+                    count - row * columns
+                } else {
+                    columns
+                };
+                let row_left = left
+                    + (used_width - box_width * (in_row as f64 + (in_row - 1) as f64 * 0.1)) / 2.0;
                 shapes.push(Shape::boxed(
                     "rect",
                     (
@@ -353,13 +373,24 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
             // A band per point, and a lighter box of its sub-points.
             let units: f64 = nodes
                 .iter()
-                .map(|node| 1.0 + if node.children.is_empty() { 0.0 } else { 0.25 + 0.5 * node.children.len() as f64 })
+                .map(|node| {
+                    1.0 + if node.children.is_empty() {
+                        0.0
+                    } else {
+                        0.25 + 0.5 * node.children.len() as f64
+                    }
+                })
                 .sum::<f64>()
                 + 0.1 * (count - 1) as f64;
             let unit = (height / units.max(1.0)).min(width / 3.0);
             let mut y = (height - unit * units).max(0.0) / 2.0;
             for node in nodes {
-                shapes.push(Shape::boxed("roundRect", (0.0, y, width, unit), node, false));
+                shapes.push(Shape::boxed(
+                    "roundRect",
+                    (0.0, y, width, unit),
+                    node,
+                    false,
+                ));
                 y += unit;
                 if !node.children.is_empty() {
                     let box_height = unit * (0.25 + 0.5 * node.children.len() as f64);
@@ -373,7 +404,11 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
                         fill: Some("accent1"),
                         fill_tint: Some(40_000),
                         line: None,
-                        text: node.children.iter().map(|child| (child.text.clone(), 1)).collect(),
+                        text: node
+                            .children
+                            .iter()
+                            .map(|child| (child.text.clone(), 1))
+                            .collect(),
                         text_color: "tx1",
                         bullets: true,
                     });
@@ -389,7 +424,12 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
             let top = (height - box_height) / 2.0;
             for (index, node) in nodes.iter().enumerate() {
                 let x = index as f64 * box_width * (1.0 + arrow_share);
-                shapes.push(Shape::boxed("roundRect", (x, top, box_width, box_height), node, true));
+                shapes.push(Shape::boxed(
+                    "roundRect",
+                    (x, top, box_width, box_height),
+                    node,
+                    true,
+                ));
                 if index + 1 < count {
                     let arrow_width = box_width * arrow_share * 0.6;
                     let arrow_height = box_height * 0.3;
@@ -409,26 +449,45 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
         Family::Cycle => {
             let size = width.min(height);
             let (center_x, center_y) = (width / 2.0, height / 2.0);
-            let node_size = size / (2.0 + 2.0 * (std::f64::consts::PI / count as f64).sin().recip().min(3.0)) * 1.6;
+            let node_size = size
+                / (2.0 + 2.0 * (std::f64::consts::PI / count as f64).sin().recip().min(3.0))
+                * 1.6;
             let node_size = node_size.min(size / 2.5);
             let radius = (size - node_size) / 2.0;
             for (index, node) in nodes.iter().enumerate() {
-                let angle = -std::f64::consts::FRAC_PI_2 + std::f64::consts::TAU * index as f64 / count as f64;
-                let (x, y) = (center_x + radius * angle.cos(), center_y + radius * angle.sin());
+                let angle = -std::f64::consts::FRAC_PI_2
+                    + std::f64::consts::TAU * index as f64 / count as f64;
+                let (x, y) = (
+                    center_x + radius * angle.cos(),
+                    center_y + radius * angle.sin(),
+                );
                 shapes.push(Shape::boxed(
                     "ellipse",
-                    (x - node_size / 2.0, y - node_size / 2.0, node_size, node_size),
+                    (
+                        x - node_size / 2.0,
+                        y - node_size / 2.0,
+                        node_size,
+                        node_size,
+                    ),
                     node,
                     true,
                 ));
                 if count > 1 {
                     // An arrow on the ring halfway to the next, along it.
                     let between = angle + std::f64::consts::PI / count as f64;
-                    let (ax, ay) = (center_x + radius * between.cos(), center_y + radius * between.sin());
+                    let (ax, ay) = (
+                        center_x + radius * between.cos(),
+                        center_y + radius * between.sin(),
+                    );
                     let (arrow_width, arrow_height) = (node_size * 0.3, node_size * 0.25);
                     shapes.push(Shape::arrow(
                         "rightArrow",
-                        (ax - arrow_width / 2.0, ay - arrow_height / 2.0, arrow_width, arrow_height),
+                        (
+                            ax - arrow_width / 2.0,
+                            ay - arrow_height / 2.0,
+                            arrow_width,
+                            arrow_height,
+                        ),
                         (between.to_degrees() + 90.0).rem_euclid(360.0),
                     ));
                 }
@@ -470,15 +529,27 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
                 let mut next = first_column;
                 let mut child_centers = Vec::new();
                 for child in &node.children {
-                    let (child_x, child_top) =
-                        place(child, next, level + 1, column, level_height, (box_width, box_height), shapes);
+                    let (child_x, child_top) = place(
+                        child,
+                        next,
+                        level + 1,
+                        column,
+                        level_height,
+                        (box_width, box_height),
+                        shapes,
+                    );
                     child_centers.push((child_x, child_top));
                     next += leaves(child);
                 }
                 if let (Some(first), Some(last)) = (child_centers.first(), child_centers.last()) {
                     // Elbow lines: down from the parent, across, down to each.
                     let bus = top + box_height + (first.1 - top - box_height) / 2.0;
-                    shapes.push(Shape::line((center_x, top + box_height, 0.0, bus - top - box_height)));
+                    shapes.push(Shape::line((
+                        center_x,
+                        top + box_height,
+                        0.0,
+                        bus - top - box_height,
+                    )));
                     shapes.push(Shape::line((first.0, bus, last.0 - first.0, 0.0)));
                     for (child_x, child_top) in &child_centers {
                         shapes.push(Shape::line((*child_x, bus, 0.0, child_top - bus)));
@@ -488,7 +559,15 @@ fn layout(diagram: &Diagram, width: f64, height: f64) -> Vec<Shape> {
             }
             let mut next = 0;
             for node in nodes {
-                place(node, next, 0, column, level_height, (box_width, box_height), &mut shapes);
+                place(
+                    node,
+                    next,
+                    0,
+                    column,
+                    level_height,
+                    (box_width, box_height),
+                    &mut shapes,
+                );
                 next += leaves(node);
             }
         }
@@ -505,7 +584,11 @@ fn escape(text: &str) -> String {
 
 /// A font size (hundredths of a point) the text fits a box with.
 fn font_size(shape: &Shape) -> i64 {
-    let lines: Vec<&(String, usize)> = shape.text.iter().filter(|(text, _)| !text.is_empty()).collect();
+    let lines: Vec<&(String, usize)> = shape
+        .text
+        .iter()
+        .filter(|(text, _)| !text.is_empty())
+        .collect();
     let line_count = lines.len().max(1) as f64;
     let longest = lines
         .iter()
@@ -535,7 +618,9 @@ pub fn drawing_xml(diagram: &Diagram, width: f64, height: f64) -> String {
                 r#"<a:solidFill><a:schemeClr val="{slot}"><a:shade val="{}"/></a:schemeClr></a:solidFill>"#,
                 -shade
             ),
-            (Some(slot), None) => format!(r#"<a:solidFill><a:schemeClr val="{slot}"/></a:solidFill>"#),
+            (Some(slot), None) => {
+                format!(r#"<a:solidFill><a:schemeClr val="{slot}"/></a:solidFill>"#)
+            }
             (None, _) => "<a:noFill/>".to_string(),
         };
         let line = match shape.line {
@@ -718,7 +803,10 @@ mod tests {
         Diagram {
             layout: LAYOUTS[layout].0.to_string(),
             nodes: vec![
-                DiagramNode::with("社長", vec![DiagramNode::new("営業"), DiagramNode::new("開発")]),
+                DiagramNode::with(
+                    "社長",
+                    vec![DiagramNode::new("営業"), DiagramNode::new("開発")],
+                ),
                 DiagramNode::new("監査"),
             ],
         }

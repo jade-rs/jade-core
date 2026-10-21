@@ -56,7 +56,6 @@ use std::rc::Rc;
 #[path = "word_document/objects.rs"]
 pub mod objects;
 
-
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -4030,15 +4029,16 @@ impl WordDocument {
     /// adjustments; `force` replaces colours already resolved (a theme
     /// change).
     fn apply_theme_to_picture(image: &mut RunImage, theme: &ThemePart, force: bool) {
-        let resolve = |color: &mut Option<String>, key: Option<&str>, transforms: &[ThemeColorTransform]| {
-            if force || color.is_none() {
-                if let Some(resolved) =
-                    key.and_then(|key| Self::resolve_shape_theme_color(theme, key, transforms))
-                {
-                    *color = Some(resolved);
+        let resolve =
+            |color: &mut Option<String>, key: Option<&str>, transforms: &[ThemeColorTransform]| {
+                if force || color.is_none() {
+                    if let Some(resolved) =
+                        key.and_then(|key| Self::resolve_shape_theme_color(theme, key, transforms))
+                    {
+                        *color = Some(resolved);
+                    }
                 }
-            }
-        };
+            };
         let Some(format) = image.format.as_deref_mut() else {
             return;
         };
@@ -4060,7 +4060,11 @@ impl WordDocument {
             );
         }
         if let Some(glow) = format.glow.as_mut() {
-            resolve(&mut glow.color, glow.theme_color.as_deref(), &glow.theme_transforms);
+            resolve(
+                &mut glow.color,
+                glow.theme_color.as_deref(),
+                &glow.theme_transforms,
+            );
         }
         for effect in &mut format.blip_effects {
             let colors: Vec<&mut crate::document::DrawingColor> = match effect {
@@ -6907,7 +6911,8 @@ impl WordDocument {
             // data, as Word would lay it out.
             let group = cached.or_else(|| {
                 let diagram = crate::smartart::parse_data(data_xml?, None)?;
-                let xml = crate::smartart::drawing_xml(&diagram, extent.0.max(1.0), extent.1.max(1.0));
+                let xml =
+                    crate::smartart::drawing_xml(&diagram, extent.0.max(1.0), extent.1.max(1.0));
                 parser.parse_diagram_drawing(&xml, extent).ok().flatten()
             });
             if let Some(group) = group {
@@ -7051,10 +7056,19 @@ impl WordDocument {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
-                    if let Some(group) = run.image.as_mut().and_then(|image| image.shape_group.as_mut()) {
-                        fn walk(group: &mut RunShapeGroup, resolve: &mut dyn FnMut(&str) -> Option<String>) {
+                    if let Some(group) = run
+                        .image
+                        .as_mut()
+                        .and_then(|image| image.shape_group.as_mut())
+                    {
+                        fn walk(
+                            group: &mut RunShapeGroup,
+                            resolve: &mut dyn FnMut(&str) -> Option<String>,
+                        ) {
                             for shape in &mut group.children {
-                                if let Some(picture) = shape.picture.as_mut().filter(|p| p.data_uri.is_none()) {
+                                if let Some(picture) =
+                                    shape.picture.as_mut().filter(|p| p.data_uri.is_none())
+                                {
                                     picture.data_uri = resolve(&picture.relationship_id);
                                 }
                             }
@@ -7079,7 +7093,9 @@ impl WordDocument {
                             if image.format().ink.is_none() {
                                 let ink = rel_map
                                     .get(id.as_str())
-                                    .map(|rel| Self::resolve_target_path(&doc_part.path, &rel.target))
+                                    .map(|rel| {
+                                        Self::resolve_target_path(&doc_part.path, &rel.target)
+                                    })
                                     .and_then(|path| package.get(&path))
                                     .and_then(|bytes| std::str::from_utf8(bytes).ok())
                                     .and_then(crate::ink::parse_inkml);
@@ -31601,7 +31617,10 @@ impl WordDocument {
     ) -> Result<XmlElement, XmlElement> {
         use crate::drawing_xml::{attr, child_mut, get_attr, put_child, set_attr};
         fn upsert(attributes: &mut Vec<XmlAttribute>, name: &str, value: String) {
-            match attributes.iter_mut().find(|attribute| attribute.name == name) {
+            match attributes
+                .iter_mut()
+                .find(|attribute| attribute.name == name)
+            {
                 Some(attribute) => attribute.value = value,
                 None => attributes.push(attr(name, value)),
             }
@@ -31632,8 +31651,14 @@ impl WordDocument {
             match node {
                 XmlNode::Element(element) => match element.name.as_str() {
                     "a:graphic" => graphic = Some(element),
-                    "wp:simplePos" | "wp:positionH" | "wp:positionV" | "wp:extent"
-                    | "wp:wrapNone" | "wp:wrapSquare" | "wp:wrapTight" | "wp:wrapThrough"
+                    "wp:simplePos"
+                    | "wp:positionH"
+                    | "wp:positionV"
+                    | "wp:extent"
+                    | "wp:wrapNone"
+                    | "wp:wrapSquare"
+                    | "wp:wrapTight"
+                    | "wp:wrapThrough"
                     | "wp:wrapTopAndBottom" => {}
                     _ => kept.push(element),
                 },
@@ -31651,7 +31676,10 @@ impl WordDocument {
                 if let Some(blip_fill) = child_mut(picture, "pic:blipFill") {
                     if let (Some(blip), Some(relationship)) = (
                         child_mut(blip_fill, "a:blip"),
-                        image.relationship_id.as_deref().filter(|_| image.chart.is_none()),
+                        image
+                            .relationship_id
+                            .as_deref()
+                            .filter(|_| image.chart.is_none()),
                     ) {
                         if get_attr(blip, "r:embed") != Some(relationship) {
                             set_attr(blip, "r:embed", Some(relationship.to_string()));
@@ -31678,7 +31706,12 @@ impl WordDocument {
                                 }
                             }
                             let src_rect = doc.create_element("a:srcRect", attributes, Vec::new());
-                            put_child(blip_fill, src_rect, &["a:srcRect"], &["a:tile", "a:stretch"]);
+                            put_child(
+                                blip_fill,
+                                src_rect,
+                                &["a:srcRect"],
+                                &["a:tile", "a:stretch"],
+                            );
                         }
                         None => {
                             crate::drawing_xml::remove_children(blip_fill, &["a:srcRect"]);
@@ -31708,7 +31741,11 @@ impl WordDocument {
             ("distL", layout.dist_left),
             ("distR", layout.dist_right),
         ] {
-            upsert(&mut attributes, name, px_to_emu(value.unwrap_or(0.0)).to_string());
+            upsert(
+                &mut attributes,
+                name,
+                px_to_emu(value.unwrap_or(0.0)).to_string(),
+            );
         }
         let mut children: Vec<XmlElement> = Vec::new();
         let name = match layout.kind {
@@ -31754,7 +31791,12 @@ impl WordDocument {
                 upsert(
                     &mut attributes,
                     "simplePos",
-                    if layout.simple_position.is_some() { "1" } else { "0" }.to_string(),
+                    if layout.simple_position.is_some() {
+                        "1"
+                    } else {
+                        "0"
+                    }
+                    .to_string(),
                 );
                 upsert(
                     &mut attributes,
@@ -33011,7 +33053,10 @@ impl WordDocument {
     }
 
     /// The `wp:wrap*` child an anchored drawing's layout calls for.
-    pub(crate) fn anchor_wrap_element(doc: &mut DocxXmlDocument, layout: &RunImageLayout) -> XmlElement {
+    pub(crate) fn anchor_wrap_element(
+        doc: &mut DocxXmlDocument,
+        layout: &RunImageLayout,
+    ) -> XmlElement {
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
             XmlAttribute {
                 name: name.to_string(),

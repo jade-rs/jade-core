@@ -85,7 +85,10 @@ pub fn decode(bytes: &[u8]) -> Option<image::RgbaImage> {
 pub fn encode_png(pixels: &image::RgbaImage) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
     pixels
-        .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+        .write_to(
+            &mut std::io::Cursor::new(&mut bytes),
+            image::ImageFormat::Png,
+        )
         .ok()?;
     Some(bytes)
 }
@@ -189,8 +192,9 @@ pub fn apply_effects(pixels: &mut image::RgbaImage, effects: &[BlipEffect]) {
                 // a JPEG's noisy flat colour still goes.
                 const TOLERANCE: f64 = 12.0;
                 for pixel in pixels.pixels_mut() {
-                    let near = (0..3)
-                        .all(|channel| (f64::from(pixel[channel]) - from[channel]).abs() <= TOLERANCE);
+                    let near = (0..3).all(|channel| {
+                        (f64::from(pixel[channel]) - from[channel]).abs() <= TOLERANCE
+                    });
                     if near {
                         pixel[0] = target[0] as u8;
                         pixel[1] = target[1] as u8;
@@ -233,12 +237,16 @@ pub fn remove_background(pixels: &mut image::RgbaImage, marquee: [f64; 4]) -> us
     let quantize = |pixel: &image::Rgba<u8>| [pixel[0] >> 3, pixel[1] >> 3, pixel[2] >> 3];
     for x in 0..width {
         for y in [0, height - 1] {
-            *counts.entry(quantize(pixels.get_pixel(x as u32, y as u32))).or_default() += 1;
+            *counts
+                .entry(quantize(pixels.get_pixel(x as u32, y as u32)))
+                .or_default() += 1;
         }
     }
     for y in 0..height {
         for x in [0, width - 1] {
-            *counts.entry(quantize(pixels.get_pixel(x as u32, y as u32))).or_default() += 1;
+            *counts
+                .entry(quantize(pixels.get_pixel(x as u32, y as u32)))
+                .or_default() += 1;
         }
     }
     let Some((&background, _)) = counts.iter().max_by_key(|(_, count)| **count) else {
@@ -252,7 +260,8 @@ pub fn remove_background(pixels: &mut image::RgbaImage, marquee: [f64; 4]) -> us
     const TOLERANCE: f64 = 40.0;
     let similar = |pixel: &image::Rgba<u8>| {
         pixel[3] > 0
-            && (0..3).all(|channel| (f64::from(pixel[channel]) - background[channel]).abs() <= TOLERANCE)
+            && (0..3)
+                .all(|channel| (f64::from(pixel[channel]) - background[channel]).abs() <= TOLERANCE)
     };
     let outside = |x: usize, y: usize| {
         let (fx, fy) = (
@@ -458,7 +467,10 @@ mod tests {
                 contrast: 0.5,
             }],
         );
-        assert!(pixels.get_pixel(0, 0).0[0] < 100, "more contrast darkens below grey");
+        assert!(
+            pixels.get_pixel(0, 0).0[0] < 100,
+            "more contrast darkens below grey"
+        );
     }
 
     #[test]

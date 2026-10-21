@@ -97,7 +97,10 @@ pub fn part(bytes: &[u8], name: &str) -> String {
 }
 
 pub fn document_xml(document: &WordDocument) -> String {
-    part(&document.export_docx().expect("export"), "word/document.xml")
+    part(
+        &document.export_docx().expect("export"),
+        "word/document.xml",
+    )
 }
 
 /// Runs commands through one executor, as a session does.

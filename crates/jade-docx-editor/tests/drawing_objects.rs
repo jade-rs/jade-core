@@ -61,12 +61,18 @@ fn moving_a_picture_keeps_its_effects() {
     ] {
         assert!(xml.contains(kept), "lost {kept}: {xml}");
     }
-    assert!(xml.contains(r#"<wp:extent cx="1905000" cy="952500"/>"#), "{xml}");
+    assert!(
+        xml.contains(r#"<wp:extent cx="1905000" cy="952500"/>"#),
+        "{xml}"
+    );
     assert!(xml.contains(r#"flipH="1""#), "{xml}");
     assert_eq!(xml.matches("<w:drawing>").count(), 1, "{xml}");
 
     let reopened = session.reopened();
-    let image = reopened.paragraph(0).unwrap().runs[0].image.clone().unwrap();
+    let image = reopened.paragraph(0).unwrap().runs[0]
+        .image
+        .clone()
+        .unwrap();
     assert_eq!(image.width_px.map(f64::round), Some(200.0));
     assert!(image.layout.flip_horizontal);
 }
@@ -98,8 +104,14 @@ fn moving_a_group_keeps_its_shapes() {
     assert!(xml.contains(r#"prst="ellipse""#), "{xml}");
     assert!(!xml.contains("<pic:pic"), "{xml}");
     // The group's frame is scaled; its children keep their own space.
-    assert!(xml.contains(r#"<a:chExt cx="1905000" cy="952500"/>"#), "{xml}");
-    assert!(xml.contains(r#"<a:ext cx="3810000" cy="1905000"/>"#), "{xml}");
+    assert!(
+        xml.contains(r#"<a:chExt cx="1905000" cy="952500"/>"#),
+        "{xml}"
+    );
+    assert!(
+        xml.contains(r#"<a:ext cx="3810000" cy="1905000"/>"#),
+        "{xml}"
+    );
     let reopened = session.reopened();
     let group = reopened.paragraph(0).unwrap().runs[0]
         .image
@@ -109,7 +121,9 @@ fn moving_a_group_keeps_its_shapes() {
         .unwrap();
     assert_eq!(group.children.len(), 2);
     session.undo();
-    assert!(session.xml().contains(r#"<wp:extent cx="1905000" cy="952500"/>"#));
+    assert!(session
+        .xml()
+        .contains(r#"<wp:extent cx="1905000" cy="952500"/>"#));
 }
 
 /// An edit of the drawing's XML is read back as the object: the model draws
@@ -145,7 +159,11 @@ fn a_drawing_edit_is_read_back_and_undone() {
         .clone()
         .unwrap();
     assert_eq!(image.format().blip_effects, vec![BlipEffect::Grayscale]);
-    let reflection = image.format().reflection.clone().expect("reflection read back");
+    let reflection = image
+        .format()
+        .reflection
+        .clone()
+        .expect("reflection read back");
     assert!((reflection.start_opacity - 0.5).abs() < 1e-9);
     assert_eq!(reflection.scale_y, -1.0);
     assert!(image.data_uri.is_some(), "the picture is still resolved");
@@ -219,7 +237,11 @@ fn drawing_extras_are_read() {
     assert!(layout.hidden && layout.locked);
     assert_eq!(layout.allow_overlap, Some(false));
     assert_eq!(layout.layout_in_cell, Some(false));
-    let geometry = boxes[0].extras().custom_geometry.as_ref().expect("freeform path");
+    let geometry = boxes[0]
+        .extras()
+        .custom_geometry
+        .as_ref()
+        .expect("freeform path");
     assert_eq!(geometry.paths.len(), 1);
     assert_eq!(geometry.paths[0].commands.len(), 4);
     let ends = boxes[1].extras().connector.expect("connector ends");
@@ -228,5 +250,8 @@ fn drawing_extras_are_read() {
     let warp = boxes[2].extras().text_warp.as_ref().expect("warp");
     assert_eq!(warp.preset, "textArchUp");
     assert_eq!(warp.adjustments, vec![("adj".to_string(), 10_800_000)]);
-    assert_eq!(boxes[2].extras().link.map(|link| (link.id, link.sequence)), Some((7, 0)));
+    assert_eq!(
+        boxes[2].extras().link.map(|link| (link.id, link.sequence)),
+        Some((7, 0))
+    );
 }
