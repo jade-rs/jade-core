@@ -2,8 +2,8 @@
 //! that a drawing's `w14:contentPart` points at. Read into strokes the
 //! renderer draws, and written from strokes drawn in the app.
 
-use crate::docx_xml::{DocxXmlDocument, XmlElement, XmlNode};
 use crate::document::{InkDrawing, InkStroke};
+use crate::docx_xml::{DocxXmlDocument, XmlElement, XmlNode};
 
 /// CSS px per centimetre.
 const PX_PER_CM: f64 = 96.0 / 2.54;
@@ -49,7 +49,8 @@ pub fn parse_inkml(xml: &str) -> Option<InkDrawing> {
     // Each channel's resolution (units per cm); Word writes 1000/cm.
     let mut resolution = (1000.0, 1000.0);
     for element in &all {
-        if local(&element.name) == "channelProperty" && attr(element, "name") == Some("resolution") {
+        if local(&element.name) == "channelProperty" && attr(element, "name") == Some("resolution")
+        {
             let value = attr(element, "value").and_then(|v| v.parse::<f64>().ok());
             let units = attr(element, "units").unwrap_or("1/cm");
             let per_cm = value.map(|value| match units {
@@ -124,7 +125,11 @@ pub fn parse_inkml(xml: &str) -> Option<InkDrawing> {
             if sample.is_empty() {
                 continue;
             }
-            for (marker, next) in [('!', Mode::Explicit), ('\'', Mode::Velocity), ('"', Mode::Acceleration)] {
+            for (marker, next) in [
+                ('!', Mode::Explicit),
+                ('\'', Mode::Velocity),
+                ('"', Mode::Acceleration),
+            ] {
                 if let Some(rest) = sample.strip_prefix(marker) {
                     mode = next;
                     sample = rest;
@@ -169,7 +174,12 @@ pub fn parse_inkml(xml: &str) -> Option<InkDrawing> {
 /// The bounding box of the strokes, in their units.
 pub fn bounds(ink: &InkDrawing) -> (f64, f64, f64, f64) {
     let points = ink.strokes.iter().flat_map(|stroke| stroke.points.iter());
-    let (mut left, mut top, mut right, mut bottom) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    let (mut left, mut top, mut right, mut bottom) = (
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    );
     for (x, y) in points {
         left = left.min(*x);
         top = top.min(*y);
@@ -179,14 +189,22 @@ pub fn bounds(ink: &InkDrawing) -> (f64, f64, f64, f64) {
     if !left.is_finite() {
         return (0.0, 0.0, 1.0, 1.0);
     }
-    (left, top, (right - left).max(1e-6), (bottom - top).max(1e-6))
+    (
+        left,
+        top,
+        (right - left).max(1e-6),
+        (bottom - top).max(1e-6),
+    )
 }
 
 /// Writes strokes drawn on the page (CSS px, with widths in px) as an
 /// InkML part, in centimetres at 1000 per cm, and returns it with the
 /// strokes' box (x, y, width, height in px, widened by the pen).
 pub fn write_inkml(strokes: &[InkStroke]) -> (String, (f64, f64, f64, f64)) {
-    let pen = strokes.iter().map(|stroke| stroke.width).fold(0.0, f64::max);
+    let pen = strokes
+        .iter()
+        .map(|stroke| stroke.width)
+        .fold(0.0, f64::max);
     let (left, top, width, height) = bounds(&InkDrawing {
         strokes: strokes.to_vec(),
     });
@@ -250,7 +268,10 @@ mod tests {
             },
         ];
         let (xml, frame) = write_inkml(&strokes);
-        assert!((frame.0 - 96.0).abs() < 1e-9 && (frame.2 - 108.0).abs() < 1e-9, "{frame:?}");
+        assert!(
+            (frame.0 - 96.0).abs() < 1e-9 && (frame.2 - 108.0).abs() < 1e-9,
+            "{frame:?}"
+        );
         let ink = parse_inkml(&xml).unwrap();
         assert_eq!(ink.strokes.len(), 2);
         assert_eq!(ink.strokes[0].color, "#E71224");
@@ -270,6 +291,9 @@ mod tests {
             .iter()
             .map(|(x, y)| ((x * 1000.0).round() as i64, (y * 1000.0).round() as i64))
             .collect();
-        assert_eq!(points, vec![(1000, 1000), (1010, 1000), (1020, 1005), (1030, 1010)]);
+        assert_eq!(
+            points,
+            vec![(1000, 1000), (1010, 1000), (1020, 1005), (1030, 1010)]
+        );
     }
 }

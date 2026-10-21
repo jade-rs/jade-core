@@ -15,7 +15,11 @@ use super::*;
 pub const UNASSIGNED: u32 = u32::MAX;
 
 /// An element to put into a drawing; it gets an id when it is put in.
-pub fn new_element(name: &str, attributes: Vec<XmlAttribute>, children: Vec<XmlNode>) -> XmlElement {
+pub fn new_element(
+    name: &str,
+    attributes: Vec<XmlAttribute>,
+    children: Vec<XmlNode>,
+) -> XmlElement {
     XmlElement {
         id: XmlNodeId::new(UNASSIGNED),
         name: name.to_string(),
@@ -210,14 +214,17 @@ impl WordDocument {
         let text_of = |drawing: &XmlElement| {
             crate::drawing_xml::descendant(drawing, "w:txbxContent").map(element_xml)
         };
-        let content_changed = text_of(&drawing) != self.object_drawing(target).ok().as_ref().and_then(text_of);
+        let content_changed =
+            text_of(&drawing) != self.object_drawing(target).ok().as_ref().and_then(text_of);
         {
             let raw = self
                 .raw_document
                 .as_mut()
                 .ok_or("the document has no editable XML")?;
             Self::assign_unassigned_ids(raw, &mut drawing);
-            let run = raw.element_mut(run_id).ok_or("the object's run is missing")?;
+            let run = raw
+                .element_mut(run_id)
+                .ok_or("the object's run is missing")?;
             match drawing_slot(run).ok_or("the object has no drawing")? {
                 DrawingSlot::Direct(index)
                     if crate::drawing_xml::descendant(&drawing, "w14:contentPart").is_some() =>
@@ -248,7 +255,9 @@ impl WordDocument {
                         vec![choice],
                     );
                     Self::assign_unassigned_ids(raw, &mut alternate);
-                    let run = raw.element_mut(run_id).ok_or("the object's run is missing")?;
+                    let run = raw
+                        .element_mut(run_id)
+                        .ok_or("the object's run is missing")?;
                     run.children[index] = XmlNode::Element(alternate);
                 }
                 DrawingSlot::Direct(index) => run.children[index] = XmlNode::Element(drawing),
@@ -403,7 +412,9 @@ impl WordDocument {
             Self::apply_run_font_defaults_to_document(&mut parsed, styles_part);
         }
         // Without a theme part, Word draws with its Office theme.
-        let theme = self.loaded_theme_part().unwrap_or_else(ThemePart::office_default);
+        let theme = self
+            .loaded_theme_part()
+            .unwrap_or_else(ThemePart::office_default);
         Self::apply_theme_to_document(&mut parsed, &theme);
         Self::force_apply_theme_to_document(&mut parsed, &theme);
         let run = parsed
@@ -496,7 +507,10 @@ impl WordDocument {
             .relationships
             .iter()
             .find(|relationship| relationship.id == relationship_id)?;
-        Some(Self::resolve_target_path(&document_part.path, &relationship.target))
+        Some(Self::resolve_target_path(
+            &document_part.path,
+            &relationship.target,
+        ))
     }
 
     /// Adds a part at `{stem}{n}.{extension}` (the first free `n`), related
@@ -530,7 +544,10 @@ impl WordDocument {
             let relationship = Relationship {
                 id: Self::next_relationship_id(&document_part.relationships),
                 r#type: relationship_type.to_string(),
-                target: path.strip_prefix("word/").unwrap_or(path.as_str()).to_string(),
+                target: path
+                    .strip_prefix("word/")
+                    .unwrap_or(path.as_str())
+                    .to_string(),
                 target_mode: None,
             };
             document_part.relationships.push(relationship.clone());
@@ -549,7 +566,11 @@ impl WordDocument {
     }
 
     /// Writes new contents for the part `relationship_id` points at.
-    pub fn replace_object_part(&mut self, relationship_id: &str, bytes: &[u8]) -> Result<(), String> {
+    pub fn replace_object_part(
+        &mut self,
+        relationship_id: &str,
+        bytes: &[u8],
+    ) -> Result<(), String> {
         let path = self
             .object_part_path(relationship_id)
             .ok_or("the part is not related to the document")?;
@@ -619,13 +640,22 @@ pub const DRAWING_NAMESPACES: &[(&str, &str)] = &[
         "mc",
         "http://schemas.openxmlformats.org/markup-compatibility/2006",
     ),
-    ("a14", "http://schemas.microsoft.com/office/drawing/2010/main"),
-    ("w14", "http://schemas.microsoft.com/office/word/2010/wordml"),
+    (
+        "a14",
+        "http://schemas.microsoft.com/office/drawing/2010/main",
+    ),
+    (
+        "w14",
+        "http://schemas.microsoft.com/office/word/2010/wordml",
+    ),
     (
         "wp14",
         "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
     ),
-    ("c", "http://schemas.openxmlformats.org/drawingml/2006/chart"),
+    (
+        "c",
+        "http://schemas.openxmlformats.org/drawingml/2006/chart",
+    ),
     (
         "dgm",
         "http://schemas.openxmlformats.org/drawingml/2006/diagram",

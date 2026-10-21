@@ -46,7 +46,9 @@ pub fn set_attr(element: &mut XmlElement, name: &str, value: Option<String>) {
             Some(attribute) => attribute.value = value,
             None => element.attributes.push(attr(name, value)),
         },
-        None => element.attributes.retain(|attribute| attribute.name != name),
+        None => element
+            .attributes
+            .retain(|attribute| attribute.name != name),
     }
 }
 
@@ -258,7 +260,10 @@ pub fn after<'a>(order: &'a [&'a str], name: &str) -> &'a [&'a str] {
 /// any of `replaces`.
 pub fn put_shape_property(sp_pr: &mut XmlElement, new: XmlElement, replaces: &[&str]) {
     let name = new.name.clone();
-    let before = after(SHAPE_PROPERTIES_ORDER, replaces.last().copied().unwrap_or(&name));
+    let before = after(
+        SHAPE_PROPERTIES_ORDER,
+        replaces.last().copied().unwrap_or(&name),
+    );
     put_child(sp_pr, new, replaces, before);
 }
 

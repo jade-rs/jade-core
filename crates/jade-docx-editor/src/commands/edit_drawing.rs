@@ -38,9 +38,13 @@ pub fn replace_drawing_command(
     target: FloatingObjectTarget,
     mut edit: impl FnMut(&mut WordDocument, &mut XmlElement) -> Result<(), String> + 'static,
 ) -> SnapshotEditCommand {
-    SnapshotEditCommand::with_scope(name, EditScope::Document, move |document: &mut WordDocument| {
-        let mut drawing = document.object_drawing(target)?;
-        edit(document, &mut drawing)?;
-        document.replace_object_drawing(target, drawing)
-    })
+    SnapshotEditCommand::with_scope(
+        name,
+        EditScope::Document,
+        move |document: &mut WordDocument| {
+            let mut drawing = document.object_drawing(target)?;
+            edit(document, &mut drawing)?;
+            document.replace_object_drawing(target, drawing)
+        },
+    )
 }

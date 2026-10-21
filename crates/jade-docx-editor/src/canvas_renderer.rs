@@ -1238,6 +1238,14 @@ pub struct GroupedShapeTextDebugInfo {
     pub page: usize,
 }
 
+/// A chain of linked text boxes (`linked_story`).
+pub(crate) struct LinkedStory {
+    document: Rc<Document>,
+    blocks: Vec<BodyElement>,
+    /// Each box's sequence and content height, in order.
+    boxes: Vec<(u32, f64)>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectDebugInfo {
@@ -3568,6 +3576,8 @@ where
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
     object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
+    /// Linked text box chains, by id, for the document last rendered.
+    linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
     object_transform_preview: Option<ObjectTransformPreview>,
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
@@ -8021,6 +8031,7 @@ where
             text_box_debug_regions: RefCell::new(Vec::new()),
             grouped_shape_text_regions: RefCell::new(Vec::new()),
             object_debug_regions: RefCell::new(Vec::new()),
+            linked_stories: RefCell::new(HashMap::new()),
             object_transform_preview: None,
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
@@ -20896,8 +20907,9 @@ where
             {
                 // A hidden object (the Selection Pane's eye) cannot be
                 // clicked on the page.
-                self.object_debug_regions.borrow_mut().extend(
-                    (!image.layout.hidden()).then(|| ObjectDebugInfo {
+                self.object_debug_regions
+                    .borrow_mut()
+                    .extend((!image.layout.hidden()).then(|| ObjectDebugInfo {
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -20907,8 +20919,7 @@ where
                         width: *image_width,
                         height: *image_height,
                         rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
-                    }),
-                );
+                    }));
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
                     y: *image_y,
@@ -22182,8 +22193,16 @@ where
         context.begin_path();
         for path in &geometry.paths {
             // A path without its own size is in the shape's EMU.
-            let scale_x = if path.width > 0.0 { width / path.width } else { 1.0 / 9525.0 };
-            let scale_y = if path.height > 0.0 { height / path.height } else { 1.0 / 9525.0 };
+            let scale_x = if path.width > 0.0 {
+                width / path.width
+            } else {
+                1.0 / 9525.0
+            };
+            let scale_y = if path.height > 0.0 {
+                height / path.height
+            } else {
+                1.0 / 9525.0
+            };
             let at = |px: f64, py: f64| (x + px * scale_x, y + py * scale_y);
             let mut current = (x, y);
             for command in &path.commands {
@@ -24614,7 +24633,40 @@ where
             context.save();
             context.set_global_alpha(0.0);
         }
-        let rendered = if text_box.shape.is_line() {
+        // A linked text box: the chain's text flows through its boxes. The
+        // first box shows what fits; each later one, the lines after those
+        // the boxes before it hold.
+        let chain = text_box
+            .extras()
+            .link
+            .and_then(|link| self.linked_story(link.id).map(|story| (link, story)))
+            .filter(|(_, story)| story.boxes.len() > 1);
+        if let Some((link, story)) = chain.as_ref() {
+            let context = self.host.painter();
+            context.save();
+            context.begin_path();
+            context.rect(
+                content_left,
+                content_top,
+                (content_right - content_left).max(1.0),
+                (box_bottom - content_top).max(1.0),
+            );
+            context.clip();
+            if link.sequence > 0 {
+                self.render_linked_continuation(
+                    story,
+                    link.sequence,
+                    content_left,
+                    content_right,
+                    content_top,
+                    box_bottom,
+                )?;
+            }
+        }
+        let rendered = if chain.as_ref().is_some_and(|(link, _)| link.sequence > 0) {
+            // Its text is the chain's, drawn above; it has none of its own.
+            true
+        } else if text_box.shape.is_line() {
             // Connectors are stroke-only WordprocessingShapes. They expose a
             // grab region but must not synthesize an editable empty paragraph.
             true
@@ -24636,6 +24688,10 @@ where
         if !rendered {
             self.render_empty_text_box_paragraph(content_left, &mut cursor_y, box_bottom)?;
         }
+        if chain.is_some() {
+            self.host.painter().restore();
+            self.invalidate_context_state_tracking();
+        }
         if wordart {
             let context = self.host.painter();
             context.restore();
@@ -24648,7 +24704,8 @@ where
                     .and_then(|run| run.properties.as_ref()),
                 _ => None,
             });
-            let resolved = jade_docx_layout::font_resolver::resolve_run_style_for_wrap(first_run, None);
+            let resolved =
+                jade_docx_layout::font_resolver::resolve_run_style_for_wrap(first_run, None);
             let font = if text_box.text.is_ascii() {
                 resolved.font_descriptor_latin_hansi.to_string()
             } else {
@@ -24843,6 +24900,150 @@ where
 
         let wrap_bottom_outset = text_box_wrap_bottom_outset_px(&border);
         Ok(Some(draw_y + height + wrap_bottom_outset))
+    }
+
+    /// The chain of linked text boxes `id`: the first box's text, and each
+    /// box's sequence and content height, from the document last rendered.
+    fn linked_story(&self, id: u32) -> Option<Rc<LinkedStory>> {
+        let document = self.last_document.as_ref()?;
+        if let Some(found) = self
+            .linked_stories
+            .borrow()
+            .get(&id)
+            .filter(|story| Rc::ptr_eq(&story.document, document))
+        {
+            return Some(Rc::clone(found));
+        }
+        fn walk(elements: &[BodyElement], id: u32, story: &mut LinkedStory) {
+            for element in elements {
+                match element {
+                    BodyElement::Paragraph(paragraph) => {
+                        for run in &paragraph.runs {
+                            let Some(text_box) = run.text_box.as_ref() else {
+                                continue;
+                            };
+                            if let Some(link) = text_box.extras().link.filter(|link| link.id == id)
+                            {
+                                let height = text_box.height_px.unwrap_or(0.0)
+                                    - text_box.insets.top_px
+                                    - text_box.insets.bottom_px;
+                                story.boxes.push((link.sequence, height.max(0.0)));
+                                if link.sequence == 0 {
+                                    story.blocks = text_box.blocks.clone();
+                                }
+                            }
+                            walk(&text_box.blocks, id, story);
+                        }
+                    }
+                    BodyElement::Table(table) => {
+                        for row in &table.rows {
+                            for cell in &row.cells {
+                                walk(&cell.blocks, id, story);
+                            }
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let mut story = LinkedStory {
+            document: Rc::clone(document),
+            blocks: Vec::new(),
+            boxes: Vec::new(),
+        };
+        walk(&document.body.as_ref()?.elements, id, &mut story);
+        story.boxes.sort_by_key(|(sequence, _)| *sequence);
+        let story = Rc::new(story);
+        self.linked_stories
+            .borrow_mut()
+            .insert(id, Rc::clone(&story));
+        Some(story)
+    }
+
+    /// Draws the part of a linked chain's text that falls in box
+    /// `sequence`: the whole text laid out at this box's width, moved up by
+    /// the lines the boxes before it hold, clipped by the caller. Drawn
+    /// apart from the document's own paragraphs, which the first box holds.
+    fn render_linked_continuation(
+        &mut self,
+        story: &LinkedStory,
+        sequence: u32,
+        content_left: f64,
+        content_right: f64,
+        content_top: f64,
+        box_bottom: f64,
+    ) -> Result<(), JsValue> {
+        let TextBoxBlockLayout {
+            height,
+            line_count,
+            math_plans,
+        } = self.measure_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut NumberingCounter::new(),
+        )?;
+        let line_height = height / line_count.max(1) as f64;
+        if line_height <= 0.0 {
+            return Ok(());
+        }
+        let lines_before: f64 = story
+            .boxes
+            .iter()
+            .filter(|(other, _)| *other < sequence)
+            .map(|(_, content)| (content / line_height).floor())
+            .sum();
+        // Isolated: the story's paragraphs are the first box's surfaces.
+        let saved_counter = self.paragraph_counter;
+        let saved_selection = std::mem::take(&mut self.selection);
+        let saved_hyperlinks = self.hyperlink_regions.len();
+        let saved_comments = self.comment_annotations.len();
+        let saved_images = self.image_debug_regions.borrow().len();
+        let saved_text_boxes = self.text_box_debug_regions.borrow().len();
+        let saved_grouped = self.grouped_shape_text_regions.borrow().len();
+        let saved_objects = self.object_debug_regions.borrow().len();
+        let saved_revisions = self.revision_debug_regions.borrow().len();
+        let saved_numbering = self.numbering_debug_regions.borrow().len();
+        let saved_overflows = self.line_overflow_debug_regions.borrow().len();
+        let mut cursor_y = content_top - lines_before * line_height;
+        let bottom = box_bottom.max(cursor_y + height);
+        let mut remaining_gaps = line_count.saturating_sub(1);
+        let result = self.render_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut cursor_y,
+            bottom,
+            false,
+            &mut NumberingCounter::new(),
+            0.0,
+            &mut remaining_gaps,
+            &mut math_plans.iter(),
+        );
+        self.paragraph_counter = saved_counter;
+        self.selection = saved_selection;
+        self.hyperlink_regions.truncate(saved_hyperlinks);
+        self.comment_annotations.truncate(saved_comments);
+        self.image_debug_regions.borrow_mut().truncate(saved_images);
+        self.text_box_debug_regions
+            .borrow_mut()
+            .truncate(saved_text_boxes);
+        self.grouped_shape_text_regions
+            .borrow_mut()
+            .truncate(saved_grouped);
+        self.object_debug_regions
+            .borrow_mut()
+            .truncate(saved_objects);
+        self.revision_debug_regions
+            .borrow_mut()
+            .truncate(saved_revisions);
+        self.numbering_debug_regions
+            .borrow_mut()
+            .truncate(saved_numbering);
+        self.line_overflow_debug_regions
+            .borrow_mut()
+            .truncate(saved_overflows);
+        result.map(|_| ())
     }
 
     /// Flattens a text-box paragraph into the text the shared wrap engine sees
@@ -26247,8 +26448,7 @@ where
                 let from = reach * band as f64 / BANDS as f64;
                 let to = reach * (band + 1) as f64 / BANDS as f64;
                 let opacity = reflection.start_opacity
-                    + (reflection.end_opacity - reflection.start_opacity)
-                        * (band as f64 + 0.5)
+                    + (reflection.end_opacity - reflection.start_opacity) * (band as f64 + 0.5)
                         / BANDS as f64;
                 if opacity <= 0.0 {
                     continue;
@@ -26293,12 +26493,7 @@ where
             painter.restore();
         };
         if let Some(glow) = image.format().glow.as_ref() {
-            shadow_pass(
-                Self::shape_glow_color(glow),
-                glow.radius_px * 2.0,
-                0.0,
-                0.0,
-            );
+            shadow_pass(Self::shape_glow_color(glow), glow.radius_px * 2.0, 0.0, 0.0);
         }
         if let Some(shadow) = image.format().shadow.as_ref() {
             let direction = shadow.direction_deg.to_radians();

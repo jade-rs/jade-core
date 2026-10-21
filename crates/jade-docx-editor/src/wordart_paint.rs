@@ -25,16 +25,26 @@ fn envelope(preset: &str, u: f64) -> Option<(f64, f64)> {
     Some(match preset {
         "textSlantUp" => (0.4 * (1.0 - u), 0.4 * (1.0 - u) + 0.6),
         "textSlantDown" => (0.4 * u, 0.4 * u + 0.6),
-        "textWave1" => (0.15 - 0.15 * (2.0 * PI * u).sin(), 0.85 - 0.15 * (2.0 * PI * u).sin()),
-        "textWave2" | "textWave4" => {
-            (0.15 + 0.15 * (2.0 * PI * u).sin(), 0.85 + 0.15 * (2.0 * PI * u).sin())
-        }
-        "textDoubleWave1" => (0.15 - 0.15 * (4.0 * PI * u).sin(), 0.85 - 0.15 * (4.0 * PI * u).sin()),
+        "textWave1" => (
+            0.15 - 0.15 * (2.0 * PI * u).sin(),
+            0.85 - 0.15 * (2.0 * PI * u).sin(),
+        ),
+        "textWave2" | "textWave4" => (
+            0.15 + 0.15 * (2.0 * PI * u).sin(),
+            0.85 + 0.15 * (2.0 * PI * u).sin(),
+        ),
+        "textDoubleWave1" => (
+            0.15 - 0.15 * (4.0 * PI * u).sin(),
+            0.85 - 0.15 * (4.0 * PI * u).sin(),
+        ),
         "textTriangle" => (0.6 * mid, 1.0),
         "textTriangleInverted" => (0.0, 1.0 - 0.6 * mid),
         "textChevron" => (0.3 * mid, 0.7 + 0.3 * mid),
         "textChevronInverted" => (0.3 * (1.0 - mid), 1.0 - 0.3 * mid),
-        "textInflate" => (0.2 * (1.0 - (PI * u).sin()), 1.0 - 0.2 * (1.0 - (PI * u).sin())),
+        "textInflate" => (
+            0.2 * (1.0 - (PI * u).sin()),
+            1.0 - 0.2 * (1.0 - (PI * u).sin()),
+        ),
         "textDeflate" => (0.2 * (PI * u).sin(), 1.0 - 0.2 * (PI * u).sin()),
         "textFadeRight" => (0.3 * u, 1.0 - 0.3 * u),
         "textFadeLeft" => (0.3 * (1.0 - u), 1.0 - 0.3 * (1.0 - u)),
@@ -52,10 +62,15 @@ fn path_point(preset: &str, u: f64, width: f64, height: f64) -> Option<((f64, f6
     let (rx, ry) = (width / 2.0, height * 0.9);
     let (cx, cy) = (width / 2.0, height);
     let point = |theta: f64, center: (f64, f64), radii: (f64, f64)| {
-        (center.0 + radii.0 * theta.cos(), center.1 - radii.1 * theta.sin())
+        (
+            center.0 + radii.0 * theta.cos(),
+            center.1 - radii.1 * theta.sin(),
+        )
     };
     let (theta, center, radii, clockwise) = match preset {
-        "textArchUp" | "textButton" | "textArchUpPour" => (PI * (1.0 - u), (cx, cy), (rx, ry), true),
+        "textArchUp" | "textButton" | "textArchUpPour" => {
+            (PI * (1.0 - u), (cx, cy), (rx, ry), true)
+        }
         "textArchDown" | "textArchDownPour" => (PI * (1.0 + u), (cx, 0.0), (rx, ry), false),
         "textCircle" | "textCirclePour" => (
             PI - 2.0 * PI * u,
@@ -120,7 +135,12 @@ pub fn paint_wordart<P: Painter>(
         .collect();
     let advances: Vec<f64> = characters
         .iter()
-        .map(|ch| painter.measure_text_width(ch).unwrap_or(paint.size_px * 0.6).max(0.1))
+        .map(|ch| {
+            painter
+                .measure_text_width(ch)
+                .unwrap_or(paint.size_px * 0.6)
+                .max(0.1)
+        })
         .collect();
     let total: f64 = advances.iter().sum::<f64>().max(0.1);
     // The glyphs' box: ascent about 0.88 of the size, descent 0.24.
@@ -129,7 +149,9 @@ pub fn paint_wordart<P: Painter>(
         // Along a path: the text stretched over the path's length.
         let samples = 64;
         let mut length = 0.0;
-        let mut previous = path_point(preset, 0.0, width, height).map(|(at, _)| at).unwrap_or_default();
+        let mut previous = path_point(preset, 0.0, width, height)
+            .map(|(at, _)| at)
+            .unwrap_or_default();
         for step in 1..=samples {
             let at = path_point(preset, step as f64 / samples as f64, width, height)
                 .map(|(at, _)| at)
@@ -139,12 +161,16 @@ pub fn paint_wordart<P: Painter>(
         }
         // Word spreads the text over the whole path, the glyphs at their
         // size (smaller only when the box is too low for them).
-        let scale = (height * 0.5 / line).min(length * 0.95 / total).min(1.0).max(0.05);
+        let scale = (height * 0.5 / line)
+            .min(length * 0.95 / total)
+            .min(1.0)
+            .max(0.05);
         let mut cursor = 0.0;
         for (ch, advance) in characters.iter().zip(&advances) {
             let u = (cursor + advance / 2.0) / total;
             cursor += advance;
-            let Some(((px, py), angle)) = path_point(preset, u.clamp(0.0, 1.0), width, height) else {
+            let Some(((px, py), angle)) = path_point(preset, u.clamp(0.0, 1.0), width, height)
+            else {
                 continue;
             };
             painter.save();
@@ -197,14 +223,23 @@ mod tests {
         for preset in ["textArchUp", "textArchDown", "textCircle"] {
             for step in 0..=10 {
                 let ((px, py), _) = path_point(preset, step as f64 / 10.0, 200.0, 100.0).unwrap();
-                assert!((-0.5..=200.5).contains(&px) && (-0.5..=100.5).contains(&py), "{preset} {px} {py}");
+                assert!(
+                    (-0.5..=200.5).contains(&px) && (-0.5..=100.5).contains(&py),
+                    "{preset} {px} {py}"
+                );
             }
         }
         // An arch's ends are low and its middle high.
         let left = path_point("textArchUp", 0.0, 200.0, 100.0).unwrap().0;
         let middle = path_point("textArchUp", 0.5, 200.0, 100.0).unwrap().0;
         assert!(middle.1 < left.1);
-        for preset in ["textSlantUp", "textWave1", "textTriangle", "textInflate", "textFadeRight"] {
+        for preset in [
+            "textSlantUp",
+            "textWave1",
+            "textTriangle",
+            "textInflate",
+            "textFadeRight",
+        ] {
             for step in 0..=10 {
                 let (top, bottom) = envelope(preset, step as f64 / 10.0).unwrap();
                 assert!(top >= -0.01 && bottom <= 1.31 && bottom > top, "{preset}");

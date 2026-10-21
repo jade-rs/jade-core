@@ -127,7 +127,8 @@ impl DrawingExtras {
             b"a:clrTo" if self.color_change.is_some() => {
                 self.color_target = Some(ColorTarget::ChangeTo)
             }
-            b"a:srgbClr" | b"a:prstClr" | b"a:sysClr" | b"a:scrgbClr" | b"a:hslClr" | b"a:schemeClr"
+            b"a:srgbClr" | b"a:prstClr" | b"a:sysClr" | b"a:scrgbClr" | b"a:hslClr"
+            | b"a:schemeClr"
                 if self.duotone.is_some() || self.color_target.is_some() =>
             {
                 let mut color = DrawingColor::default();
@@ -321,7 +322,8 @@ impl DrawingExtras {
         match name {
             b"a:blip" => self.in_blip = false,
             b"a:effectLst" => self.in_effect_list = false,
-            b"a:srgbClr" | b"a:prstClr" | b"a:sysClr" | b"a:scrgbClr" | b"a:hslClr" | b"a:schemeClr" => {
+            b"a:srgbClr" | b"a:prstClr" | b"a:sysClr" | b"a:scrgbClr" | b"a:hslClr"
+            | b"a:schemeClr" => {
                 if let Some(color) = self.color.take() {
                     self.finish_color(color);
                 }

@@ -6269,11 +6269,18 @@ impl DocumentParser {
                         b"a:blip" if current_shape.is_some() => {
                             Self::group_picture_blip(current_shape.as_mut(), element);
                         }
-                        b"a:srcRect" if current_shape.as_ref().is_some_and(|shape| shape.picture.is_some()) => {
+                        b"a:srcRect"
+                            if current_shape
+                                .as_ref()
+                                .is_some_and(|shape| shape.picture.is_some()) =>
+                        {
                             let mut image = RunImage::default();
                             let mut embed = false;
                             Self::extract_drawing_attributes(&mut image, element, &mut embed);
-                            if let Some(picture) = current_shape.as_mut().and_then(|shape| shape.picture.as_mut()) {
+                            if let Some(picture) = current_shape
+                                .as_mut()
+                                .and_then(|shape| shape.picture.as_mut())
+                            {
                                 picture.crop = image.crop;
                             }
                         }

@@ -6,7 +6,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{RunImage, RunImageLayout, RunTextBox, ShapeGlow, ShapeShadow, TextBoxBorder, TextBoxShape, ThemeColorTransform};
+use super::{
+    RunImage, RunImageLayout, RunTextBox, ShapeGlow, ShapeShadow, TextBoxBorder, TextBoxShape,
+    ThemeColorTransform,
+};
 
 /// A DrawingML colour: explicit (`a:srgbClr`, `a:prstClr`, `a:sysClr`) or a
 /// theme slot (`a:schemeClr`) with its transforms, which loading resolves
@@ -231,8 +234,12 @@ impl WordArtText {
         if !xml.contains("w14:") {
             return None;
         }
-        let document = crate::docx_xml::DocxXmlDocument::parse(&format!("<root>{xml}</root>")).ok()?;
-        fn find<'a>(element: &'a crate::docx_xml::XmlElement, name: &str) -> Option<&'a crate::docx_xml::XmlElement> {
+        let document =
+            crate::docx_xml::DocxXmlDocument::parse(&format!("<root>{xml}</root>")).ok()?;
+        fn find<'a>(
+            element: &'a crate::docx_xml::XmlElement,
+            name: &str,
+        ) -> Option<&'a crate::docx_xml::XmlElement> {
             for node in &element.children {
                 if let crate::docx_xml::XmlNode::Element(child) = node {
                     if child.name == name {
@@ -268,10 +275,18 @@ impl WordArtText {
                 if let crate::docx_xml::XmlNode::Element(transform) = node {
                     let value = attr(transform, "w14:val").and_then(|v| v.parse::<f64>().ok());
                     let transform = match (transform.name.as_str(), value) {
-                        ("w14:lumMod", Some(v)) => Some(super::ThemeColorTransform::LuminanceMod(v / 100_000.0)),
-                        ("w14:lumOff", Some(v)) => Some(super::ThemeColorTransform::LuminanceOffset(v / 100_000.0)),
-                        ("w14:tint", Some(v)) => Some(super::ThemeColorTransform::Tint(v / 100_000.0)),
-                        ("w14:shade", Some(v)) => Some(super::ThemeColorTransform::Shade(v / 100_000.0)),
+                        ("w14:lumMod", Some(v)) => {
+                            Some(super::ThemeColorTransform::LuminanceMod(v / 100_000.0))
+                        }
+                        ("w14:lumOff", Some(v)) => {
+                            Some(super::ThemeColorTransform::LuminanceOffset(v / 100_000.0))
+                        }
+                        ("w14:tint", Some(v)) => {
+                            Some(super::ThemeColorTransform::Tint(v / 100_000.0))
+                        }
+                        ("w14:shade", Some(v)) => {
+                            Some(super::ThemeColorTransform::Shade(v / 100_000.0))
+                        }
                         _ => None,
                     };
                     color.transforms.extend(transform);
