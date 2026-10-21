@@ -1606,6 +1606,24 @@ fn applied_snapshot_transform(
     }
 }
 
+/// Refuses a batch that would type into a content control whose contents
+/// cannot be edited, delete one that cannot be deleted, change a group's
+/// fixed text, or edit outside the forms of a document protected for them.
+fn refuse_locked_edits(
+    word_doc: &WordDocument,
+    commands: &[HeadlessCommand],
+) -> Result<(), HeadlessApiApplyError> {
+    for (index, command) in commands.iter().enumerate() {
+        if let Some(reason) = word_doc.headless_edit_refusal(command) {
+            return Err(HeadlessApiApplyError::Command {
+                index,
+                source: CommandError::Custom(reason.to_string()),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// Applies text commands whose coordinates all refer to the document state at
 /// the start of the batch.
 ///
@@ -1622,6 +1640,7 @@ pub fn apply_snapshot_headless_commands_with_executor_to_document(
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    refuse_locked_edits(word_doc, &request.commands)?;
 
     let mut available_sources = word_doc
         .citation_sources()
@@ -1794,6 +1813,7 @@ pub fn apply_headless_commands_with_executor_to_document(
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    refuse_locked_edits(word_doc, &request.commands)?;
 
     for (index, command) in request.commands.iter().enumerate() {
         match command {
