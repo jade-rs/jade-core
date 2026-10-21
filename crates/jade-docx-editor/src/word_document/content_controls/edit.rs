@@ -205,6 +205,8 @@ pub enum ContentControlAction {
     /// The control's content, as one run of text: what is typed over a
     /// placeholder, a combo box's own value.
     SetText { control: usize, text: String },
+    /// The control's content emptied: its placeholder shown again.
+    ShowPlaceholder { control: usize },
     /// A date picker's date, `yyyy-mm-dd`.
     SetDate { control: usize, date: String },
     /// A picture control's picture: PNG or JPEG bytes.
@@ -282,6 +284,7 @@ impl ContentControlAction {
             ContentControlAction::SetChecked { .. } => "set_content_control_checked",
             ContentControlAction::ChooseEntry { .. } => "choose_content_control_entry",
             ContentControlAction::SetText { .. } => "set_content_control_text",
+            ContentControlAction::ShowPlaceholder { .. } => "show_content_control_placeholder",
             ContentControlAction::SetDate { .. } => "set_content_control_date",
             ContentControlAction::SetPicture { .. } => "set_content_control_picture",
             ContentControlAction::InsertBuildingBlock { .. } => "insert_building_block",
@@ -630,6 +633,33 @@ impl WordDocument {
                     )));
                 }
                 Ok(CaretAfter::AfterControl(*control))
+            }
+            ContentControlAction::ShowPlaceholder { control } => {
+                let current = control_of(*control)?;
+                // The placeholder in the document's language, by its text.
+                let japanese =
+                    self.paragraph(
+                        self.rendered_to_model_text_position(current.start)
+                            .paragraph,
+                    )
+                    .is_some_and(|paragraph| {
+                        paragraph
+                            .runs
+                            .iter()
+                            .any(|run| run.text.chars().any(|ch| ch as u32 >= 0x3000))
+                    }) || current.text.chars().any(|ch| ch as u32 >= 0x3000);
+                let placeholder = default_placeholder(&current.kind, japanese)
+                    .unwrap_or_default()
+                    .to_string();
+                let style = self.placeholder_style_id();
+                let id = sdt_id(xml, *control)?;
+                let sdt = xml.element_mut(id).ok_or("missing content control")?;
+                set_content_text(sdt, &placeholder, None);
+                set_showing_placeholder(sdt, true);
+                if let Some(style) = style {
+                    set_content_style(sdt, &style);
+                }
+                Ok(CaretAfter::SelectControl(*control))
             }
             ContentControlAction::SetDate { control, date } => {
                 let current = control_of(*control)?;
