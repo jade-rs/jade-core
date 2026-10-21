@@ -56,6 +56,7 @@ use crate::commands::set_paragraph_direction::SetParagraphDirectionCommand;
 use crate::commands::set_paragraph_indent::SetParagraphIndentCommand;
 use crate::commands::set_paragraph_line_spacing::SetParagraphLineSpacingCommand;
 use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, SpecialIndent};
+use crate::commands::set_paragraph_options::{ParagraphOptions, SetParagraphOptionsCommand};
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
 use crate::commands::set_watermark::SetWatermarkCommand;
@@ -434,6 +435,66 @@ fn paragraph_border_edge(
         size_eighths: Some((width * 8.0).round().max(1.0) as u32),
         space: Some(1),
         color,
+    })
+}
+
+/// The headless form of [`ParagraphOptions`], checked.
+fn paragraph_options(
+    tabs: Option<&[jade_docx_headless_api::HeadlessTabStop]>,
+    contextual_spacing: Option<bool>,
+    suppress_line_numbers: Option<bool>,
+    suppress_auto_hyphens: Option<bool>,
+    borders: Option<&jade_docx_headless_api::HeadlessParagraphBorderBox>,
+    shading: Option<&Option<jade_docx_headless_api::HeadlessParagraphShading>>,
+) -> Result<ParagraphOptions, CommandError> {
+    use crate::commands::set_paragraph_options::{border_line, shading as shading_of, tab_stop};
+    let line = |line: Option<&jade_docx_headless_api::HeadlessParagraphBorderLine>| {
+        line.map(|line| border_line(&line.style, line.width, line.color.as_deref(), line.space))
+            .transpose()
+    };
+    Ok(ParagraphOptions {
+        tabs: tabs
+            .map(|tabs| {
+                tabs.iter()
+                    .map(|tab| {
+                        tab_stop(
+                            tab.position,
+                            tab.alignment.as_deref(),
+                            tab.leader.as_deref(),
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?,
+        contextual_spacing,
+        suppress_line_numbers,
+        suppress_auto_hyphens,
+        borders: borders
+            .map(|borders| -> Result<_, CommandError> {
+                Ok(crate::document::ParagraphBorders {
+                    top: line(borders.top.as_ref())?,
+                    bottom: line(borders.bottom.as_ref())?,
+                    left: line(borders.left.as_ref())?,
+                    right: line(borders.right.as_ref())?,
+                    between: line(borders.between.as_ref())?,
+                    bar: None,
+                })
+            })
+            .transpose()?,
+        shading: shading
+            .map(|shading| {
+                shading
+                    .as_ref()
+                    .map(|shading| {
+                        shading_of(
+                            shading.pattern.as_deref(),
+                            shading.color.as_deref(),
+                            shading.fill.as_deref(),
+                        )
+                    })
+                    .transpose()
+            })
+            .transpose()?,
     })
 }
 
@@ -2328,6 +2389,37 @@ pub fn apply_headless_commands_with_executor_to_document(
                             *end_paragraph,
                             kind,
                             *lines,
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphOptions {
+                start_paragraph,
+                end_paragraph,
+                tabs,
+                contextual_spacing,
+                suppress_line_numbers,
+                suppress_auto_hyphens,
+                borders,
+                shading,
+            } => {
+                let options = paragraph_options(
+                    tabs.as_deref(),
+                    *contextual_spacing,
+                    *suppress_line_numbers,
+                    *suppress_auto_hyphens,
+                    borders.as_ref(),
+                    shading.as_ref(),
+                )
+                .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphOptionsCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            options,
                         )),
                         &mut ctx,
                     )

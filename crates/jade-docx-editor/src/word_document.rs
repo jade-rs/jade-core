@@ -4300,8 +4300,15 @@ impl WordDocument {
             }
             _ => {}
         }
+        // Tab stops add up down the cascade, as in Word: the style's first,
+        // then the paragraph's own, whose `clear` entries take style stops
+        // away (`resolve_tab_stops` reads them in that order).
         if target.tabs.is_empty() {
             target.tabs = fallback.tabs.clone();
+        } else if !fallback.tabs.is_empty() && !target.tabs.starts_with(&fallback.tabs) {
+            let mut tabs = fallback.tabs.clone();
+            tabs.append(&mut target.tabs);
+            target.tabs = tabs;
         }
         if target.adjust_right_indent.is_none() {
             target.adjust_right_indent = fallback.adjust_right_indent;
@@ -24231,6 +24238,22 @@ impl WordDocument {
             }],
             vec![XmlNode::Element(abstract_id)],
         )
+    }
+
+    /// The XML of the part the main document relates with a relationship
+    /// whose type ends in `/{kind}` — `styles`, `numbering`, `theme`,
+    /// `settings` — as it stands now, edited or as loaded. A UI listing what
+    /// the engine's models do not keep (a style's `w:uiPriority`, a list
+    /// level's every setting) reads it from here.
+    pub fn related_part_xml(&self, kind: &str) -> Option<String> {
+        let document_part = self.document_part.as_ref()?;
+        let suffix = format!("/{kind}");
+        let relationship = document_part.relationships.iter().find(|relationship| {
+            relationship.r#type.ends_with(&suffix)
+                && relationship.target_mode.as_deref() != Some("External")
+        })?;
+        let path = Self::resolve_target_path(&document_part.path, &relationship.target);
+        self.read_xml_part_content(&path)
     }
 
     fn read_xml_part_content(&self, path: &str) -> Option<String> {

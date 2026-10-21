@@ -81,6 +81,7 @@ pub mod set_paragraph_direction;
 pub mod set_paragraph_indent;
 pub mod set_paragraph_line_spacing;
 pub mod set_paragraph_metrics;
+pub mod set_paragraph_options;
 pub mod set_paragraph_style;
 pub mod set_paragraph_visuals;
 pub mod set_watermark;
