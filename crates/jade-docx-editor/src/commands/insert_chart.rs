@@ -248,6 +248,9 @@ mod tests {
                 title,
                 categories,
                 series,
+                // Word puts a new chart's legend under it.
+                legend: Some("b".to_string()),
+                ..Default::default()
             };
             let source = build_docx(&host);
             let mut document = executor::block_on(WordDocument::load(&source, &Options::default()))

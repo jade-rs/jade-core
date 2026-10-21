@@ -205,6 +205,114 @@ pub struct TextWarp {
     pub adjustments: Vec<(String, i64)>,
 }
 
+/// WordArt's text effects (Word 2010's `w14:` run properties) on the first
+/// run of a shape's text, which jade draws the shape's text with.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WordArtText {
+    /// `w14:textFill`'s colour; `None` with `no_fill` for an outline only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<DrawingColor>,
+    #[serde(default)]
+    pub no_fill: bool,
+    /// `w14:textOutline`'s colour and width (px).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline: Option<(DrawingColor, f64)>,
+    #[serde(default)]
+    pub shadow: bool,
+    /// `w14:glow`'s colour and radius (px).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<(DrawingColor, f64)>,
+}
+
+impl WordArtText {
+    /// Reads the first run's `w14:` effects from a text box's content.
+    pub fn from_content(xml: &str) -> Option<Self> {
+        if !xml.contains("w14:") {
+            return None;
+        }
+        let document = crate::docx_xml::DocxXmlDocument::parse(&format!("<root>{xml}</root>")).ok()?;
+        fn find<'a>(element: &'a crate::docx_xml::XmlElement, name: &str) -> Option<&'a crate::docx_xml::XmlElement> {
+            for node in &element.children {
+                if let crate::docx_xml::XmlNode::Element(child) = node {
+                    if child.name == name {
+                        return Some(child);
+                    }
+                    if let Some(found) = find(child, name) {
+                        return Some(found);
+                    }
+                }
+            }
+            None
+        }
+        fn attr<'a>(element: &'a crate::docx_xml::XmlElement, name: &str) -> Option<&'a str> {
+            element
+                .attributes
+                .iter()
+                .find(|attribute| attribute.name == name)
+                .map(|attribute| attribute.value.as_str())
+        }
+        fn color(element: &crate::docx_xml::XmlElement) -> Option<DrawingColor> {
+            if let Some(rgb) = find(element, "w14:srgbClr").and_then(|c| attr(c, "w14:val")) {
+                return Some(DrawingColor {
+                    rgb: Some(format!("#{}", rgb.to_ascii_uppercase())),
+                    ..Default::default()
+                });
+            }
+            let scheme = find(element, "w14:schemeClr")?;
+            let mut color = DrawingColor {
+                theme: attr(scheme, "w14:val").map(str::to_string),
+                ..Default::default()
+            };
+            for node in &scheme.children {
+                if let crate::docx_xml::XmlNode::Element(transform) = node {
+                    let value = attr(transform, "w14:val").and_then(|v| v.parse::<f64>().ok());
+                    let transform = match (transform.name.as_str(), value) {
+                        ("w14:lumMod", Some(v)) => Some(super::ThemeColorTransform::LuminanceMod(v / 100_000.0)),
+                        ("w14:lumOff", Some(v)) => Some(super::ThemeColorTransform::LuminanceOffset(v / 100_000.0)),
+                        ("w14:tint", Some(v)) => Some(super::ThemeColorTransform::Tint(v / 100_000.0)),
+                        ("w14:shade", Some(v)) => Some(super::ThemeColorTransform::Shade(v / 100_000.0)),
+                        _ => None,
+                    };
+                    color.transforms.extend(transform);
+                }
+            }
+            Some(color)
+        }
+        let properties = find(document.root(), "w:r").and_then(|run| find(run, "w:rPr"))?;
+        let mut effects = WordArtText::default();
+        if let Some(fill) = find(properties, "w14:textFill") {
+            if find(fill, "w14:noFill").is_some() {
+                effects.no_fill = true;
+            } else {
+                effects.fill = color(fill);
+            }
+        }
+        if let Some(outline) = find(properties, "w14:textOutline") {
+            if find(outline, "w14:noFill").is_none() {
+                let width = attr(outline, "w14:w")
+                    .and_then(|w| w.parse::<f64>().ok())
+                    .map(|emu| emu / 9525.0)
+                    .unwrap_or(0.75);
+                if let Some(color) = color(outline) {
+                    effects.outline = Some((color, width.max(0.5)));
+                }
+            }
+        }
+        effects.shadow = find(properties, "w14:shadow").is_some();
+        if let Some(glow) = find(properties, "w14:glow") {
+            let radius = attr(glow, "w14:rad")
+                .and_then(|r| r.parse::<f64>().ok())
+                .map(|emu| emu / 9525.0)
+                .unwrap_or(4.0);
+            if let Some(color) = color(glow) {
+                effects.glow = Some((color, radius));
+            }
+        }
+        (effects != WordArtText::default()).then_some(effects)
+    }
+}
+
 /// A text box whose text continues from or into another (`wps:txbx@id`,
 /// `wps:linkedTxbx`).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -276,6 +384,9 @@ pub struct ShapeExtras {
     /// The chain of linked text boxes this one belongs to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link: Option<TextBoxLink>,
+    /// WordArt's text effects.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wordart: Option<WordArtText>,
 }
 
 impl ShapeExtras {

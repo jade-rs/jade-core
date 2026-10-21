@@ -2916,13 +2916,31 @@ pub struct ChartSeries {
 }
 
 /// Editable cached data for a native Word chart part.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RunChart {
     pub kind: ChartKind,
     pub title: String,
     pub categories: Vec<String>,
     pub series: Vec<ChartSeries>,
+    /// Where the legend is (`r`, `t`, `l`, `b`), `None` for no legend.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<String>,
+    /// The chart part as the package has it, which the chart is drawn
+    /// from: its titles, legend, axes and formatting as Word wrote them.
+    #[serde(skip)]
+    pub xml: Option<std::rc::Rc<str>>,
+}
+
+/// Charts are equal by what they say, whatever part XML they came from.
+impl PartialEq for RunChart {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+            && self.title == other.title
+            && self.categories == other.categories
+            && self.series == other.series
+            && self.legend == other.legend
+    }
 }
 
 /// Fractions removed from each edge of an image before it is fitted into the
@@ -3826,8 +3844,10 @@ mod tests {
         // 8 bytes of it: the insertion a tracked deletion sits in
         // (`RevisionMark::insertion`). 32 more: a drawing's boxed format,
         // shape extras and anchor options (`RunImage::format`,
-        // `RunTextBox::extras`, `RunImageLayout::options`, twice).
-        assert_eq!(std::mem::size_of::<Run>(), 3064);
+        // `RunTextBox::extras`, `RunImageLayout::options`, twice). 40 more:
+        // a chart's legend and the part XML it is drawn from
+        // (`RunChart::legend`, `RunChart::xml`).
+        assert_eq!(std::mem::size_of::<Run>(), 3104);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {

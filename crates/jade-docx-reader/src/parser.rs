@@ -4969,6 +4969,7 @@ impl DocumentParser {
                                 let (blocks, plain) = self.parse_text_box_content(&inner)?;
                                 text_box_blocks = Some(blocks);
                                 text_box_text = Some(plain);
+                                extras.wordart = WordArtText::from_content(&inner);
                             }
                             continue;
                         }

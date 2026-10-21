@@ -1463,6 +1463,8 @@ dependencies = [
  "jade-docx-writer",
  "jade-painter",
  "jade-preview-plugin-api",
+ "jade-xlsx-layout",
+ "jade-xlsx-reader",
  "js-sys",
  "png 0.17.16",
  "proptest",
