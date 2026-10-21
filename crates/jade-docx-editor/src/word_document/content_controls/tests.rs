@@ -782,3 +782,48 @@ fn typing_over_an_inserted_form_text_box_fills_it() {
     );
     assert_eq!(text_of(&document, 0), "Name: Hanako");
 }
+
+#[test]
+fn a_headless_replacement_of_a_placeholder_types_into_the_control() {
+    let mut document = open(r#"<w:p><w:r><w:t>Hello</w:t></w:r></w:p>"#, "");
+    let mut executor = CommandExecutor::new();
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::Insert {
+            kind: ContentControlKind::PlainText,
+            japanese: false,
+        },
+        at(0, 5),
+    )
+    .expect("insert");
+    let control = document.content_controls().remove(0);
+    let selection = apply_headless_commands_with_executor_to_document(
+        &mut document,
+        &mut executor,
+        Some(SelectionRange::new(control.start, control.end)),
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: control.start.offset,
+                end_paragraph: 0,
+                end_offset: control.end.offset,
+                text: "あ".to_string(),
+            }],
+            ..Default::default()
+        },
+    )
+    .expect("typed over");
+    assert_eq!(
+        selection,
+        Some(SelectionRange::collapsed(TextPosition::new(0, 8)))
+    );
+    let control = document.content_controls().remove(0);
+    assert!(!control.showing_placeholder);
+    assert_eq!(control.text, "あ");
+    assert!(!document_xml(&document)
+        .contains("PlaceholderText\"/></w:rPr><w:t xml:space=\"preserve\">あ"));
+    // The next keystroke goes on inside the control.
+    type_text(&mut document, 0, 8, "い").unwrap();
+    assert_eq!(document.content_controls()[0].text, "あい");
+}

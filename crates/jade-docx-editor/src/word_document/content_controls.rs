@@ -236,12 +236,21 @@ impl WordDocument {
             let mut offset = 0usize;
             for run in &paragraph.runs {
                 let end = offset + run.text.len();
+                // A run of the file can be several of the model (a split
+                // keeps its element): its place spans them all.
                 for id in [run.node_id, run.revision_node_id].into_iter().flatten() {
-                    runs.entry(id).or_insert(RunPlace {
-                        paragraph: index,
-                        start: offset,
-                        end,
-                    });
+                    runs.entry(id)
+                        .and_modify(|place: &mut RunPlace| {
+                            if place.paragraph == index {
+                                place.start = place.start.min(offset);
+                                place.end = place.end.max(end);
+                            }
+                        })
+                        .or_insert(RunPlace {
+                            paragraph: index,
+                            start: offset,
+                            end,
+                        });
                 }
                 offset = end;
             }
@@ -492,6 +501,85 @@ impl WordDocument {
             position = self.model_to_rendered_text_position(next);
         }
         position
+    }
+
+    /// The content-control action a headless text edit amounts to when it
+    /// replaces a control's whole placeholder, or a form text box's whole
+    /// result (or types into its five spaces): the text goes in as the
+    /// control's or field's content rather than beside it.
+    pub fn placeholder_replacement(
+        &self,
+        command: &jade_docx_headless_api::HeadlessCommand,
+    ) -> Option<ContentControlAction> {
+        use jade_docx_headless_api::HeadlessCommand;
+        let (start, end, text) = match command {
+            HeadlessCommand::ReplaceRange {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                text,
+            } => (
+                TextPosition::new(*start_paragraph, *start_offset),
+                TextPosition::new(*end_paragraph, *end_offset),
+                text,
+            ),
+            HeadlessCommand::InsertText {
+                paragraph,
+                offset,
+                text,
+            } => {
+                let at = TextPosition::new(*paragraph, *offset);
+                (at, at, text)
+            }
+            _ => return None,
+        };
+        if text.contains('\n') || !self.paragraph_may_hold_controls(start.paragraph) {
+            return None;
+        }
+        let (start, end) = (start.min(end), start.max(end));
+        if let Some(field) = self.legacy_form_fields().into_iter().find(|field| {
+            field.kind == FormFieldKind::Text
+                && field.enabled
+                && field.result_start <= start
+                && end <= field.result_end
+                && ((start == field.result_start && end == field.result_end && start != end)
+                    || field.result == forms::EMPTY_TEXT_FIELD)
+        }) {
+            return Some(ContentControlAction::SetFormText {
+                field: field.index,
+                text: text.clone(),
+            });
+        }
+        let control = self.content_control_at(start)?;
+        (control.showing_placeholder
+            && control.kind.takes_typing()
+            && !control.cannot_edit
+            && !control.block
+            && control.start == start
+            && control.end == end
+            && start != end)
+            .then(|| ContentControlAction::SetText {
+                control: control.index,
+                text: text.clone(),
+            })
+    }
+
+    /// Whether a content control or a legacy form field may be in
+    /// paragraph `index`: a cheap look before reading them all, for what
+    /// runs on every keystroke.
+    pub fn paragraph_may_hold_controls(&self, index: usize) -> bool {
+        if self.paragraphs_hold_controls(index, index) {
+            return true;
+        }
+        self.paragraph(index).is_some_and(|paragraph| {
+            paragraph.runs.iter().any(|run| {
+                run.field.as_ref().is_some_and(|field| {
+                    matches!(field.kind.base_kind(), RunFieldKind::Unsupported { instruction }
+                        if instruction.trim_start().to_ascii_uppercase().starts_with("FORM"))
+                })
+            })
+        })
     }
 
     /// Whether settings.xml may protect the document for forms: a cheap

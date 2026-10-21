@@ -1624,6 +1624,31 @@ fn refuse_locked_edits(
     Ok(())
 }
 
+/// Text typed over a content control's placeholder, or over a form text
+/// box's whole result, replaces it as Word does — out of the placeholder's
+/// grey, inside the control or field — as one step. `None` when the batch
+/// is not that.
+fn type_over_placeholder(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    commands: &[HeadlessCommand],
+) -> Result<Option<Option<SelectionRange>>, HeadlessApiApplyError> {
+    let [command] = commands else {
+        return Ok(None);
+    };
+    let Some(action) = word_doc.placeholder_replacement(command) else {
+        return Ok(None);
+    };
+    let range = selection.unwrap_or_else(|| SelectionRange::collapsed(TextPosition::new(0, 0)));
+    let mut selection = Some(range);
+    let mut ctx = CommandContext::new(word_doc, &mut selection);
+    command_executor
+        .execute(Box::new(action.command(range)), &mut ctx)
+        .map_err(|source| HeadlessApiApplyError::Command { index: 0, source })?;
+    Ok(Some(selection))
+}
+
 /// Applies text commands whose coordinates all refer to the document state at
 /// the start of the batch.
 ///
@@ -1641,6 +1666,11 @@ pub fn apply_snapshot_headless_commands_with_executor_to_document(
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
     refuse_locked_edits(word_doc, &request.commands)?;
+    if let Some(selection) =
+        type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
+    {
+        return Ok(selection);
+    }
 
     let mut available_sources = word_doc
         .citation_sources()
@@ -1814,6 +1844,11 @@ pub fn apply_headless_commands_with_executor_to_document(
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
     refuse_locked_edits(word_doc, &request.commands)?;
+    if let Some(selection) =
+        type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
+    {
+        return Ok(selection);
+    }
 
     for (index, command) in request.commands.iter().enumerate() {
         match command {
