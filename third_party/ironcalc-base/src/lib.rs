@@ -71,6 +71,8 @@ mod test;
 #[cfg(any(test, feature = "mock_time"))]
 pub mod mock_time;
 
+mod anchored_formula;
+pub use anchored_formula::AnchoredFormula;
 pub use functions::xlsx_function_prefix;
 pub use locale::get_supported_locales;
 pub use model::get_milliseconds_since_epoch;

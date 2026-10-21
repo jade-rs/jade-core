@@ -10,6 +10,7 @@
 //! layout. Unavailable objects retain named frames.
 
 pub mod color;
+mod icons;
 
 use jade_painter::Painter;
 use jade_xlsx_layout::units::{line_height_points, points_to_px};
@@ -292,8 +293,16 @@ fn render_body<P: Painter>(
         render_borders(painter, &cell.border, cell.rect, options);
     }
 
+    for cell in layout.cells_in(viewport) {
+        if let Some(icon) = &cell.icon {
+            icons::render_icon(painter, &icon.icon_set, icon.index, icon.rect)?;
+        }
+    }
+
     for cell in layout.text_cells_in(viewport) {
-        if cell.data_bar.as_ref().is_some_and(|bar| !bar.show_value) {
+        if cell.data_bar.as_ref().is_some_and(|bar| !bar.show_value)
+            || cell.icon.as_ref().is_some_and(|icon| !icon.show_value)
+        {
             continue;
         }
         render_text(painter, cell, layout.cell_padding_px, options)?;
