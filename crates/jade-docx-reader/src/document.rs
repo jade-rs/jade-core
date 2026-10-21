@@ -2675,6 +2675,19 @@ impl RunFieldKind {
                 }
                 | RunFieldKind::PageRef { .. }
                 | RunFieldKind::NoteRef { .. }
+        ) || self.is_form_text()
+    }
+
+    /// Whether this is a legacy form text box (`FORMTEXT`, §17.16.5.24),
+    /// whose result is what the form's user types.
+    pub fn is_form_text(&self) -> bool {
+        matches!(
+            self.base_kind(),
+            RunFieldKind::Unsupported { instruction }
+                if instruction
+                    .split_whitespace()
+                    .next()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("FORMTEXT"))
         )
     }
 }
