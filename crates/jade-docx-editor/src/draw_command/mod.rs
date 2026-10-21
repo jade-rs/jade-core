@@ -87,6 +87,19 @@ pub struct TextStyle {
     pub fill_color: Rc<str>,
     /// Highlight/background color (optional)
     pub highlight_color: Option<Rc<str>>,
+    /// Word 2010's glow and coloured text outline (`w14:glow`,
+    /// `w14:textOutline`), when the run has either.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effects: Option<Box<TextEffectStyle>>,
+}
+
+/// `w14:glow` and `w14:textOutline` as the painter draws them.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TextEffectStyle {
+    /// The glow's CSS colour (with its opacity) and blur radius in px.
+    pub glow: Option<(Rc<str>, f64)>,
+    /// The outline's CSS colour and line width in px, stroked over the fill.
+    pub outline: Option<(Rc<str>, f64)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -130,6 +143,7 @@ impl Default for TextStyle {
             fill_color: Rc::from("#000000"),
             highlight_color: None,
             font_hint: None,
+            effects: None,
         }
     }
 }

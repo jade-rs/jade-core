@@ -769,6 +769,25 @@ fn execute_text_run_with_font_state<P: Painter>(
     // offset in opposite directions to fake the raised/engraved look on a light
     // page; emboss takes priority over imprint over shadow (mutually exclusive
     // in Word).
+    // `w14:glow`: the glyphs drawn once with a soft, unoffset shadow of the
+    // glow's colour, which haloes them; their own fill draws over it.
+    if let Some((color, radius)) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.glow.as_ref())
+    {
+        context.set_shadow_color(color);
+        context.set_shadow_offset_x(0.0);
+        context.set_shadow_offset_y(0.0);
+        context.set_shadow_blur(*radius);
+        // Twice: one blurred pass is fainter near the glyph than Word's glow.
+        let halo = draw_text_run_glyphs(context, text, x, y, style, fonts, glyphs, font_state)
+            .and_then(|()| {
+                draw_text_run_glyphs(context, text, x, y, style, fonts, glyphs, font_state)
+            });
+        clear_text_shadow(context);
+        halo?;
+    }
     let shadow_applied = if style.emboss {
         apply_emboss_shadow(context, style.font_size_pt, false);
         true
@@ -787,7 +806,54 @@ fn execute_text_run_with_font_state<P: Painter>(
     if shadow_applied {
         clear_text_shadow(context);
     }
-    result
+    result?;
+    // `w14:textOutline`: the glyph outlines stroked in their own colour over
+    // the fill.
+    if let Some((color, width)) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.outline.as_ref())
+    {
+        let mut stroked = style.clone();
+        stroked.outline = true;
+        stroked.fill_color = Rc::clone(color);
+        stroked.effects = None;
+        context.set_stroke_style_str(color);
+        context.set_line_width(width.max(0.5));
+        stroke_text_run_glyphs(context, text, x, y, &stroked, fonts, glyphs, font_state)?;
+        font_state.invalidate();
+    }
+    Ok(())
+}
+
+/// Strokes each glyph of a run with the current stroke style.
+#[allow(clippy::too_many_arguments)]
+fn stroke_text_run_glyphs<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    let scale = style.text_scale_x;
+    context.save();
+    context.translate(0.0, y)?;
+    context.scale(scale, 1.0)?;
+    for glyph in glyphs {
+        let (Some(font_descriptor), Some(glyph_text)) =
+            (fonts.get(glyph.font_index as usize), glyph.text(text))
+        else {
+            continue;
+        };
+        font_state.set_font_rc_if_changed(context, font_descriptor);
+        context.stroke_text(glyph_text, (x + glyph.x_offset) / scale, 0.0)?;
+    }
+    context.restore();
+    font_state.invalidate();
+    Ok(())
 }
 
 /// Applies a Word-style drop shadow to the canvas context. The offset and blur
@@ -1669,6 +1735,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Arial"),
             font_descriptor_latin_hansi: Rc::from("12pt Arial Unicode"),
             font_descriptor_east_asia: Rc::from("12pt 'MS Mincho'"),
@@ -1703,6 +1770,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from("12pt HAnsi"),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),
@@ -1736,6 +1804,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from(""),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),
@@ -1765,6 +1834,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from("12pt HAnsi"),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),

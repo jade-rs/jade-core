@@ -996,6 +996,44 @@ impl DocumentParser {
                         // above; `w:rubyPr` / `w:rt` are consumed by subtree
                         // walks so the guide text never contaminates the body
                         // text (or selection offsets).
+                        b"w14:glow" | b"w14:textOutline" | b"w14:stylisticSets"
+                            if parsing_run_props =>
+                        {
+                            let name = e.name().as_ref().to_vec();
+                            let size = e
+                                .attributes()
+                                .flatten()
+                                .find(|attr| matches!(attr.key.as_ref(), b"w14:rad" | b"w14:w"))
+                                .and_then(|attr| {
+                                    String::from_utf8_lossy(&attr.value)
+                                        .trim()
+                                        .parse::<f32>()
+                                        .ok()
+                                })
+                                .map(|emu| emu / 12_700.0);
+                            let (color, alpha, set) = Self::parse_text_effect(reader, &name)?;
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    let effects =
+                                        props.text_effects.get_or_insert_with(Default::default);
+                                    match name.as_slice() {
+                                        b"w14:glow" => {
+                                            effects.glow_color = color.as_deref().map(Rc::from);
+                                            effects.glow_radius = size;
+                                            effects.glow_alpha = alpha;
+                                        }
+                                        b"w14:textOutline" => {
+                                            effects.outline_color = color.as_deref().map(Rc::from);
+                                            effects.outline_width = size;
+                                        }
+                                        _ => effects.stylistic_set = set,
+                                    }
+                                },
+                            );
+                        }
                         b"w:ruby" => {
                             pending_ruby = Some(PendingRuby {
                                 base_run_index: current_paragraph
@@ -2832,6 +2870,37 @@ impl DocumentParser {
                                 },
                             );
                         }
+                    }
+                    b"w14:ligatures" | b"w14:numForm" | b"w14:numSpacing" | b"w14:cntxtAlts"
+                        if parsing_run_props =>
+                    {
+                        let name = e.name().as_ref().to_vec();
+                        let value = e
+                            .attributes()
+                            .flatten()
+                            .find(|attr| attr.key.as_ref() == b"w14:val")
+                            .map(|attr| String::from_utf8_lossy(&attr.value).trim().to_string());
+                        Self::apply_to_active_run_props(
+                            parsing_paragraph_run_props,
+                            &mut current_paragraph_run_props,
+                            &mut current_run_props,
+                            |props| {
+                                let effects =
+                                    props.text_effects.get_or_insert_with(Default::default);
+                                let token = value.as_deref().map(Rc::from);
+                                match name.as_slice() {
+                                    b"w14:ligatures" => effects.ligatures = token.clone(),
+                                    b"w14:numForm" => effects.number_form = token.clone(),
+                                    b"w14:numSpacing" => effects.number_spacing = token.clone(),
+                                    _ => {
+                                        effects.contextual_alternates = Some(!matches!(
+                                            value.as_deref(),
+                                            Some("0" | "false" | "off")
+                                        ))
+                                    }
+                                }
+                            },
+                        );
                     }
                     b"w:eastAsianLayout" => {
                         if parsing_run_props {
@@ -8734,6 +8803,62 @@ impl DocumentParser {
         }
 
         Ok(borders)
+    }
+
+    /// Reads a `w14` text effect's subtree: its first `w14:srgbClr` (as
+    /// `#RRGGBB`), that colour's `w14:alpha` (as opacity, 0–1), and for
+    /// `w14:stylisticSets` the first set's id. `w14:noFill` leaves no colour.
+    #[allow(clippy::type_complexity)]
+    fn parse_text_effect(
+        reader: &mut dyn XmlEventSource,
+        tag: &[u8],
+    ) -> Result<(Option<String>, Option<f32>, Option<u8>), Box<dyn std::error::Error>> {
+        let (mut color, mut alpha, mut set) = (None, None, None);
+        let mut depth = 1usize;
+        let mut buf = Vec::new();
+        loop {
+            let event = reader.read_event_into(&mut buf);
+            match event {
+                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                    let is_start = matches!(event, Ok(Event::Start(_)));
+                    let value = |key: &[u8]| {
+                        e.attributes()
+                            .flatten()
+                            .find(|attr| attr.key.as_ref() == key)
+                            .map(|attr| String::from_utf8_lossy(&attr.value).trim().to_string())
+                    };
+                    match e.name().as_ref() {
+                        b"w14:srgbClr" if color.is_none() => {
+                            color = value(b"w14:val")
+                                .map(|hex| format!("#{}", hex.to_ascii_uppercase()));
+                        }
+                        b"w14:alpha" if alpha.is_none() => {
+                            alpha = value(b"w14:val")
+                                .and_then(|val| val.parse::<f32>().ok())
+                                .map(|transparency| {
+                                    (1.0 - transparency / 100_000.0).clamp(0.0, 1.0)
+                                });
+                        }
+                        b"w14:styleSet" if set.is_none() => {
+                            set = value(b"w14:id").and_then(|id| id.parse::<u8>().ok());
+                        }
+                        name if name == tag && is_start => depth += 1,
+                        _ => {}
+                    }
+                }
+                Ok(Event::End(ref e)) if e.name().as_ref() == tag => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Ok(_) => {}
+                Err(err) => return Err(Box::new(err)),
+            }
+            buf.clear();
+        }
+        Ok((color, alpha, set))
     }
 
     /// The theme colour a `w:color` names, if it names one.

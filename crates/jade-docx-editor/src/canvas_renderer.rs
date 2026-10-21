@@ -9192,6 +9192,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -10477,6 +10482,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -28011,6 +28021,7 @@ where
             underline_kind,
             underline_color,
             border,
+            effects: text_effect_style(properties, font_size_pt),
             fill_color,
             font_style_prefix: font_style,
             families,
@@ -28045,6 +28056,11 @@ where
             props.outline.hash(&mut hasher);
             props.emboss.hash(&mut hasher);
             props.imprint.hash(&mut hasher);
+            props
+                .text_effects
+                .as_ref()
+                .map(|effects| format!("{effects:?}"))
+                .hash(&mut hasher);
             props.emphasis.hash(&mut hasher);
             if let Some(ruby) = props.ruby.as_ref() {
                 ruby.text.hash(&mut hasher);
@@ -28147,6 +28163,7 @@ where
             },
             highlight_color: highlight,
             font_hint: style.font_hint.clone(),
+            effects: style.effects.clone(),
         }
     }
 
@@ -28272,7 +28289,12 @@ where
         if !self.should_draw_current_page_for_render() || glyph_steps.is_empty() {
             return Ok(());
         }
-        if text_style.outline || text_style.shadow || text_style.emboss || text_style.imprint {
+        if text_style.outline
+            || text_style.shadow
+            || text_style.emboss
+            || text_style.imprint
+            || text_style.effects.is_some()
+        {
             // Use the same precomputed glyph positions and effect executor as
             // cache replay; a fresh/export paint must retain character effects.
             let mut commands = Vec::with_capacity(1);
@@ -33466,6 +33488,42 @@ fn eq_distributed_text_scale_percent(
     Some(((base_percent as f64) * guide_width / display_width).clamp(1.0, 1000.0) as f32)
 }
 
+/// A run's `w14:glow` and `w14:textOutline` as the painter takes them: the
+/// glow's colour with its opacity and its radius, the outline's colour and
+/// width, in CSS px.
+fn text_effect_style(
+    properties: Option<&RunProperties>,
+    font_size_pt: f32,
+) -> Option<Box<crate::draw_command::TextEffectStyle>> {
+    let effects = properties?.text_effects.as_deref()?;
+    let rgba = |hex: &str, alpha: f32| -> Option<Rc<str>> {
+        let hex = hex.trim().trim_start_matches('#');
+        let value = u32::from_str_radix(hex, 16)
+            .ok()
+            .filter(|_| hex.len() == 6)?;
+        Some(Rc::from(format!(
+            "rgba({}, {}, {}, {:.3})",
+            (value >> 16) & 0xFF,
+            (value >> 8) & 0xFF,
+            value & 0xFF,
+            alpha.clamp(0.0, 1.0)
+        )))
+    };
+    let px = |points: f32| points as f64 * 96.0 / 72.0;
+    let glow = effects.glow_color.as_deref().and_then(|color| {
+        let radius = effects.glow_radius.unwrap_or(5.0).max(0.5);
+        Some((rgba(color, effects.glow_alpha.unwrap_or(0.6))?, px(radius)))
+    });
+    let outline = effects.outline_color.as_deref().and_then(|color| {
+        let width = effects
+            .outline_width
+            .unwrap_or((font_size_pt * 0.04).max(0.5));
+        Some((rgba(color, 1.0)?, px(width)))
+    });
+    (glow.is_some() || outline.is_some())
+        .then(|| Box::new(crate::draw_command::TextEffectStyle { glow, outline }))
+}
+
 #[derive(Clone)]
 struct AppliedRunStyle {
     font_size_pt: f32,
@@ -33491,6 +33549,8 @@ struct AppliedRunStyle {
     /// Character border (`w:bdr`, §17.3.2.4): a box stroked around the run's
     /// glyph box. `None` when the run carries no visible border.
     border: Option<ResolvedBorderEdge>,
+    /// `w14:glow` and `w14:textOutline`, resolved for the painter.
+    effects: Option<Box<crate::draw_command::TextEffectStyle>>,
     /// Requested run color shared by direct drawing and cached draw commands.
     /// Keeping the allocation on the cached style avoids rebuilding an
     /// `Rc<str>` for every segment that uses this style.
@@ -40967,6 +41027,7 @@ mod tests {
             underline_kind: None,
             underline_color: None,
             border: None,
+            effects: None,
             fill_color: Rc::from("#000000"),
             font_style_prefix,
             families,
@@ -47582,6 +47643,130 @@ mod tests {
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
+    }
+
+    #[test]
+    fn tate_chu_yoko_paints_its_run_as_one_upright_group() {
+        use jade_painter::recording::Op;
+        // Glyphs as wide as they are measured, so a group of ten is wider
+        // than the one character it is fitted into.
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let vertical = |compress: bool| {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                    id: Some(if compress { 2 } else { 1 }),
+                    vert: true,
+                    vert_compress: compress,
+                    ..Default::default()
+                })),
+                ..Default::default()
+            })
+        };
+        let plain = || {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                ..Default::default()
+            })
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![
+                        text_box_run("令和", plain()),
+                        text_box_run("12", vertical(false)),
+                        text_box_run("年", plain()),
+                        text_box_run("1234567890", vertical(true)),
+                    ],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            default_section: Some(SectionProperties {
+                text_direction: Some(TextDirection::TbRl),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let painted: Vec<String> = painter
+            .ops()
+            .into_iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, _, _) => Some(text),
+                _ => None,
+            })
+            .collect();
+        // Each 縦中横 run is one horizontal string, not a column of digits.
+        assert!(painted.contains(&"12".to_string()), "{painted:?}");
+        assert!(painted.contains(&"1234567890".to_string()), "{painted:?}");
+        assert!(!painted.contains(&"1".to_string()), "{painted:?}");
+        // 行の幅に合わせる squeezes the wider group into one character.
+        assert!(painter
+            .ops()
+            .iter()
+            .any(|op| matches!(op, Op::Scale(x, y) if *x < 0.99 && (*y - 1.0).abs() < 1e-9)));
+    }
+
+    #[test]
+    fn glow_and_text_outline_paint_a_halo_and_a_stroke() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let effects = crate::document::RunTextEffects {
+            glow_color: Some(Rc::from("#FF0000")),
+            glow_radius: Some(5.0),
+            glow_alpha: Some(0.4),
+            outline_color: Some(Rc::from("#0070C0")),
+            outline_width: Some(0.75),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "Glow",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(20.0),
+                            text_effects: Some(Box::new(effects)),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let ops = painter.ops();
+        assert!(
+            ops.iter().any(
+                |op| matches!(op, Op::SetShadowColor(color) if color == "rgba(255, 0, 0, 0.400)")
+            ),
+            "the glow's colour"
+        );
+        assert!(ops
+            .iter()
+            .any(|op| matches!(op, Op::SetStrokeStyle(color) if color.contains("0, 112, 192"))));
+        assert!(ops.iter().any(|op| matches!(op, Op::StrokeText(..))));
     }
 
     #[test]
