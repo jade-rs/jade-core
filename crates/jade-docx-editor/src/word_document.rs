@@ -7420,8 +7420,10 @@ impl WordDocument {
                 // while this legacy form has literal text and no cache, which
                 // lets us preserve Word's inline prefix-before-field order.
                 let literal_precedes_page_field = run.field.as_ref().is_some_and(|field| {
-                    matches!(field.kind.without_format(), crate::document::RunFieldKind::PageNumber)
-                        && field.cached_text.is_none()
+                    matches!(
+                        field.kind.without_format(),
+                        crate::document::RunFieldKind::PageNumber
+                    ) && field.cached_text.is_none()
                         && !run.text.is_empty()
                 });
                 if literal_precedes_page_field {
@@ -19775,16 +19777,14 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
-        let element = |document: &Self, surface: usize| match document
-            .paragraph_surfaces
-            .get(surface)
-        {
-            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                [PathEntry::Element(index)] => Some(*index),
+        let element =
+            |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(index)] => Some(*index),
+                    _ => None,
+                },
                 _ => None,
-            },
-            _ => None,
-        };
+            };
         let start = element(self, block.start)
             .ok_or_else(|| "the table of contents is not in the body".to_string())?;
         let end = element(self, block.end)

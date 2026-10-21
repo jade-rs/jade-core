@@ -4525,14 +4525,7 @@ impl DocumentParser {
     fn parse_note_numbering(
         reader: &mut dyn XmlEventSource,
         end_tag: &[u8],
-    ) -> Result<
-        (
-            crate::document::NoteNumbering,
-            Option<crate::document::EndnotePosition>,
-            Option<bool>,
-        ),
-        Box<dyn std::error::Error>,
-    > {
+    ) -> Result<NoteProperties, Box<dyn std::error::Error>> {
         use crate::document::{EndnotePosition, NoteNumbering};
         let mut note = NoteNumbering::default();
         let mut position = None;
@@ -4600,7 +4593,13 @@ impl DocumentParser {
                 Ok(Event::Start(ref e)) => {
                     let owned = e.name();
                     let name = owned.as_ref().to_vec();
-                    assign(&mut note, &mut position, &mut beneath, &name, e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        &name,
+                        e.attributes(),
+                    );
                     Self::consume_element(reader, &name)?;
                 }
                 Ok(Event::Eof) => break,
@@ -11074,6 +11073,14 @@ fn reference_event_to_string(event: &quick_xml::events::BytesRef<'_>) -> Option<
         .ok()
         .map(|value| value.into_owned())
 }
+
+/// A `w:footnotePr` / `w:endnotePr`: its numbering, the endnotes'
+/// position, and whether the notes sit beneath the text.
+type NoteProperties = (
+    crate::document::NoteNumbering,
+    Option<crate::document::EndnotePosition>,
+    Option<bool>,
+);
 
 #[cfg(test)]
 mod tests {

@@ -1931,8 +1931,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                 };
                 // The notes whose reference marks the range holds go with
                 // them, as in Word.
-                let notes =
-                    crate::commands::range_notes::notes_in_rendered_range(word_doc, range);
+                let notes = crate::commands::range_notes::notes_in_rendered_range(word_doc, range);
                 let command: Box<dyn Command> = if notes.is_empty() {
                     command
                 } else {

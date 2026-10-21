@@ -1353,6 +1353,13 @@ enum ArgType {
     SectionScope,
     /// The Page Setup fields to change, snake_case, each optional.
     SectionLayoutPatch,
+    /// `[{ "position": pt, "alignment"?, "leader"? }, …]`
+    TabStopList,
+    /// `{ top?, bottom?, left?, right?, between? }`, each
+    /// `{ style, width, color?, space? }`.
+    ParagraphBorderBox,
+    /// `{ pattern?, color?, fill? }`, or null to take the shading off.
+    NullableParagraphShading,
     /// `[{"row": …, "column": …, "column_span": …}, …]`
     CellList,
     /// `[{"column": …, "kind": "text"|"number"|"date", "descending": …}, …]`
@@ -1458,6 +1465,20 @@ impl ArgType {
                 "required": ["edit", "enforced"],
                 "additionalProperties": false
             }),
+            ArgType::TabStopList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "position": { "type": "number", "description": "From the paragraph's start edge, in points." },
+                        "alignment": { "type": "string", "description": "left, center, right, decimal or bar." },
+                        "leader": { "type": "string", "description": "none, dot, hyphen, underscore, middleDot or heavy." }
+                    },
+                    "required": ["position"]
+                }
+            }),
+            ArgType::ParagraphBorderBox => json!({ "type": "object" }),
+            ArgType::NullableParagraphShading => json!({ "type": ["object", "null"] }),
             ArgType::RunFormat
             | ArgType::ParagraphTypography
             | ArgType::JapaneseTypography
@@ -3596,6 +3617,20 @@ const COMMANDS: &[Variant] = &[
         "update_table_formulas",
         "Recompute every formula field in the document's tables (Word's Update Field).",
         &[],
+    ),
+    variant(
+        "set_paragraph_options",
+        "Set paragraph options from Word's Tabs, Borders and Shading and Paragraph dialogs; options left out stay as they are.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            opt("tabs", ArgType::TabStopList, "Replaces the paragraphs' effective tab stops."),
+            opt("contextual_spacing", ArgType::Flag, "Don't add space between paragraphs of the same style."),
+            opt("suppress_line_numbers", ArgType::Flag, "Suppress line numbers."),
+            opt("suppress_auto_hyphens", ArgType::Flag, "Don't hyphenate."),
+            opt("borders", ArgType::ParagraphBorderBox, "Replaces the whole border box."),
+            opt("shading", ArgType::NullableParagraphShading, "The shading, or null to take it off."),
+        ],
     ),
     // -- characters and Japanese typography -------------------------------
     variant(
@@ -5850,6 +5885,11 @@ mod tests {
                 "edit": "readOnly",
                 "enforced": true
             }),
+            ArgType::TabStopList => {
+                json!([{ "position": 36.0, "alignment": "left", "leader": "dot" }])
+            }
+            ArgType::ParagraphBorderBox => json!({ "top": { "style": "single", "width": 0.5 } }),
+            ArgType::NullableParagraphShading => json!({ "fill": "#FFFF00" }),
             ArgType::RunFormat => json!({ "bold": true, "fontSize": 12.0 }),
             ArgType::ParagraphTypography => json!({ "kinsoku": true }),
             ArgType::JapaneseTypography => json!({ "kinsokuLevel": "strict" }),
