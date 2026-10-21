@@ -107,6 +107,10 @@ pub struct PdfExportOptions {
     /// の印刷): `Some(false)` prints the document as it reads with every
     /// change accepted and no comments; `None` prints what the view shows.
     pub markup: Option<bool>,
+    /// A tagged PDF: its structure tree — headings, paragraphs, tables,
+    /// figures with their alternative text — in reading order, bookmarks
+    /// from the headings and the document's title. Tagged pages are vector.
+    pub tagged: bool,
 }
 
 impl Default for PdfExportOptions {
@@ -115,6 +119,7 @@ impl Default for PdfExportOptions {
             rendering: PdfRenderingMode::Editor,
             scale: 1.0,
             markup: None,
+            tagged: false,
         }
     }
 }
@@ -362,8 +367,12 @@ impl NativeDocument {
     /// Exports at a chosen raster density or with scalable vector text.
     pub fn export_pdf_with_options(
         &self,
-        pdf_options: PdfExportOptions,
+        mut pdf_options: PdfExportOptions,
     ) -> Result<Vec<u8>, String> {
+        if pdf_options.tagged {
+            // Marks survive only in vector drawing.
+            pdf_options.rendering = PdfRenderingMode::Vector;
+        }
         if !pdf_options.scale.is_finite() || !(0.5..=4.0).contains(&pdf_options.scale) {
             return Err("PDF scale must be finite and between 0.5 and 4".to_string());
         }
@@ -392,6 +401,7 @@ impl NativeDocument {
             }
         }
         renderer.set_spelling_export_mode(true);
+        renderer.set_structure_tagging(pdf_options.tagged);
         renderer.mark_full_repaint();
         renderer
             .render_with_numbering(
@@ -437,7 +447,13 @@ impl NativeDocument {
                 })
             })
             .collect::<Vec<_>>();
-        let output = SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links);
+        let output = if pdf_options.tagged {
+            let entries = renderer.take_structure_entries();
+            let tagging = crate::tagging::tagging(&self.word_document, &entries);
+            SkiaPainter::encode_tagged_pdf(&pages.borrow()[..count.get()], &links, &tagging)
+        } else {
+            SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links)
+        };
         output
     }
 

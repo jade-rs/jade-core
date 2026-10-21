@@ -247,6 +247,7 @@ mod paragraph_join;
 mod recording_host;
 #[cfg(test)]
 mod section_tests;
+mod structure;
 mod table;
 use self::table::{
     border_edge_to_spec, layout_paragraph as table_layout_paragraph,
@@ -254,6 +255,7 @@ use self::table::{
     parse_border_kind, BorderKind, TextAlign as TableTextAlign,
 };
 use math::{MathParagraphAlignment, MathRenderer};
+pub use structure::{StructureEntry, StructureKind};
 
 const PAGE_GAP_PX: f64 = 16.0;
 /// Padding (CSS px) added around the edited paragraph's band rect in "band
@@ -3583,6 +3585,8 @@ where
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
+    /// The structure a tagged PDF is given, as it is drawn (`structure`).
+    structure: RefCell<structure::StructureState>,
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
     object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
@@ -7522,6 +7526,14 @@ where
     }
 
     fn render_pending_footnotes_for_current_page(&mut self) -> Result<(), JsValue> {
+        // Notes are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_pending_footnotes_for_current_page_untagged();
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_pending_footnotes_for_current_page_untagged(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode || self.rendering_page_footnotes {
             return Ok(());
         }
@@ -8038,6 +8050,7 @@ where
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
+            structure: RefCell::new(Default::default()),
             text_box_debug_regions: RefCell::new(Vec::new()),
             grouped_shape_text_regions: RefCell::new(Vec::new()),
             object_debug_regions: RefCell::new(Vec::new()),
@@ -13953,6 +13966,45 @@ where
     #[allow(clippy::too_many_arguments)]
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
     fn render_body_element(
+        &mut self,
+        element: &BodyElement,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
+        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+        body_element_index: usize,
+        section_index: usize,
+    ) -> Result<(), JsValue> {
+        // A paragraph of the body is a node of a tagged PDF's structure.
+        let tagged = match element {
+            BodyElement::Paragraph(_)
+                if body_element_index != usize::MAX
+                    && section_index != usize::MAX
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story =>
+            {
+                self.begin_structure(StructureKind::Paragraph {
+                    paragraph_index: self.paragraph_counter,
+                    body_element_index,
+                })
+            }
+            _ => None,
+        };
+        let result = self.render_body_element_untagged(
+            element,
+            options,
+            numbering_part,
+            numbering_counter,
+            deleted_numbering_offsets,
+            body_element_index,
+            section_index,
+        );
+        self.end_structure(tagged);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_body_element_untagged(
         &mut self,
         element: &BodyElement,
         options: &Options,
@@ -25954,6 +26006,24 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(());
         }
+        // A picture is a figure in a tagged PDF, with its alternative text.
+        let tagged = self.begin_structure(StructureKind::Figure {
+            alt: image
+                .description
+                .clone()
+                .or_else(|| image.title.clone())
+                .filter(|alt| !alt.trim().is_empty()),
+        });
+        let result = self.draw_image_element_untagged(image, draw_spec);
+        self.end_structure(tagged);
+        result
+    }
+
+    fn draw_image_element_untagged(
+        &self,
+        image: &RunImage,
+        draw_spec: ImageDrawSpec,
+    ) -> Result<(), JsValue> {
         let data_uri = match &image.data_uri {
             Some(uri) => uri.as_str(),
             None => return Ok(()),
@@ -30003,7 +30073,9 @@ where
         switch: impl FnOnce(&mut crate::render_host::BoxedRenderHost<HostPainter>) -> R,
     ) -> R {
         self.restore_band_clip_if_active();
-        switch(&mut self.host)
+        let result = switch(&mut self.host);
+        self.resume_structure_on_new_page();
+        result
     }
 
     fn begin_next_page_backing(&mut self, next_page: usize) -> Result<(), JsValue> {
@@ -32510,6 +32582,27 @@ where
     /// editable main story is restored afterward; visual regions for a real
     /// draw are retained so images, text boxes, and links remain discoverable.
     fn render_header_footer_body_at(
+        &mut self,
+        body: &Body,
+        start_y: f64,
+        paragraph_base: usize,
+        draw: bool,
+        capture_story: Option<&'static str>,
+    ) -> Result<f64, JsValue> {
+        // Headers and footers are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_header_footer_body_at_untagged(
+            body,
+            start_y,
+            paragraph_base,
+            draw,
+            capture_story,
+        );
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_header_footer_body_at_untagged(
         &mut self,
         body: &Body,
         start_y: f64,
