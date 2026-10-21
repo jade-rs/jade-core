@@ -39181,10 +39181,13 @@ mod tests {
         assert_eq!(lines[0].fragments.len(), 4);
         assert!((renderer.current_y - top - 48.0).abs() < 1e-9);
         assert_eq!(renderer.last_line_baseline, lines[0].baseline);
-        assert_eq!(renderer.math_font_stats()["fonts"][0]["cached_glyphs"], 2);
+        // The integral is the math font's outline, cached; the `m:nor`
+        // runs are normal text, drawn in the run's own font as Word draws
+        // them.
+        assert_eq!(renderer.math_font_stats()["fonts"][0]["cached_glyphs"], 1);
         assert_eq!(renderer.math_font_stats()["fonts"][0]["layouts"], 1);
-        assert_eq!(painter.count(|op| matches!(op, Op::Fill)), 4);
-        assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), 0);
+        assert_eq!(painter.count(|op| matches!(op, Op::Fill)), 1);
+        assert_eq!(painter.count(|op| matches!(op, Op::FillText(..))), 3);
         assert_eq!(serde_json::to_value(math).unwrap(), before);
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
