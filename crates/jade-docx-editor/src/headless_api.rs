@@ -2790,6 +2790,33 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertEnclosedCharacter {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                text,
+                enclosure,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertFieldCommand::of_kind(
+                            range,
+                            crate::document::RunFieldKind::EqEnclosed {
+                                text: text.clone(),
+                                enclosure: enclosure.clone(),
+                            },
+                            text.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetRuby {
                 paragraph,
                 start_offset,

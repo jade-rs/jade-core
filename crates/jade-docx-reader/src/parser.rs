@@ -9924,10 +9924,12 @@ impl DocumentParser {
             "HYPERLINK" => Self::parse_hyperlink_field(&raw_tokens, name_idx),
             "MACROBUTTON" => Self::parse_macrobutton_field(&raw_tokens, name_idx),
             "GOTOBUTTON" => Self::parse_gotobutton_field(&raw_tokens, name_idx),
-            "EQ" => parse_eq_ruby_field(normalized).or_else(|| {
-                parse_eq_distributed_field(normalized)
-                    .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
-            }),
+            "EQ" => parse_eq_ruby_field(normalized)
+                .or_else(|| parse_eq_enclosed_field(normalized))
+                .or_else(|| {
+                    parse_eq_distributed_field(normalized)
+                        .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
+                }),
             "PRIVATE" | "ADDIN" | "XE" | "TA" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
@@ -10648,6 +10650,37 @@ fn parse_eq_ruby_field(instr: &str) -> Option<RunFieldKind> {
         size_half_points,
         raise_points,
     })
+}
+
+/// The enclosures Word's 囲い文字 offers.
+const EQ_ENCLOSURES: [&str; 6] = ["○", "◯", "〇", "□", "△", "◇"];
+
+/// Extracts Word's 囲い文字: `EQ \o\ac(enclosure,character)` (ECMA-376
+/// §17.16.5.22), either argument the enclosure.
+fn parse_eq_enclosed_field(instr: &str) -> Option<RunFieldKind> {
+    let trimmed = instr.trim();
+    let (name, rest) = trimmed.split_once(char::is_whitespace)?;
+    if !name.eq_ignore_ascii_case("EQ") {
+        return None;
+    }
+    let lower = rest.to_ascii_lowercase();
+    let overstrike = lower.find("\\o")?;
+    let after = &rest[overstrike + 2..];
+    let after = match after.get(..2) {
+        Some(align) if align.eq_ignore_ascii_case("\\a") => after.get(3..)?,
+        _ => after,
+    };
+    let args = after.trim_start().strip_prefix('(')?;
+    let end = find_matching_field_paren(args)?;
+    let (first, second) = split_eq_distributed_args(&args[..end])?;
+    let (enclosure, text) = if EQ_ENCLOSURES.contains(&first.as_str()) {
+        (first, second)
+    } else if EQ_ENCLOSURES.contains(&second.as_str()) {
+        (second, first)
+    } else {
+        return None;
+    };
+    Some(RunFieldKind::EqEnclosed { text, enclosure })
 }
 
 fn find_matching_field_paren(text: &str) -> Option<usize> {
@@ -20840,6 +20873,25 @@ mod tests {
         assert_eq!(ruby.text, "じゆん");
         assert_eq!(ruby.size_pt, Some(5.5));
         assert_eq!(ruby.raise_half_points, Some(22));
+    }
+
+    #[test]
+    fn eq_overstrike_of_an_enclosure_is_an_enclosed_character() {
+        assert_eq!(
+            parse_eq_enclosed_field(r"EQ \o\ac(○,秘)"),
+            Some(RunFieldKind::EqEnclosed {
+                text: "秘".into(),
+                enclosure: "○".into()
+            })
+        );
+        assert_eq!(
+            parse_eq_enclosed_field(r"eq \o(株,□)"),
+            Some(RunFieldKind::EqEnclosed {
+                text: "株".into(),
+                enclosure: "□".into()
+            })
+        );
+        assert_eq!(parse_eq_enclosed_field(r#"EQ \o\ad("契約","　　")"#), None);
     }
 
     #[test]

@@ -100,6 +100,26 @@ pub struct TextEffectStyle {
     pub glow: Option<(Rc<str>, f64)>,
     /// The outline's CSS colour and line width in px, stroked over the fill.
     pub outline: Option<(Rc<str>, f64)>,
+    /// 組み文字 / 割注 (`w:eastAsianLayout w:combine`): the run's text drawn
+    /// as two lines, the first raised and the second lowered by these px,
+    /// in the room the layout squeezed the run into.
+    #[serde(default)]
+    pub combine: Option<CombinedCharacters>,
+    /// 囲い文字: an enclosure (○, □, △, ◇) drawn round the run's character,
+    /// which is drawn smaller inside it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enclosure: Option<Rc<str>>,
+}
+
+/// How a 組み文字 / 割注 run is drawn.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CombinedCharacters {
+    /// px the first line's baseline is raised.
+    pub raise: f64,
+    /// px the second line's baseline is lowered.
+    pub lower: f64,
+    /// 割注's brackets, drawn at twice the run's (half) size round the lines.
+    pub brackets: Option<(Rc<str>, Rc<str>)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

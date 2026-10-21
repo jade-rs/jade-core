@@ -2542,6 +2542,14 @@ pub enum RunFieldKind {
         text: String,
         guide: String,
     },
+    /// Word's 囲い文字: an `EQ` overstrike of an enclosure and a character
+    /// (`EQ \o\ac(○,秘)`, §17.16.5.22), drawn one over the other.
+    EqEnclosed {
+        /// The enclosed character.
+        text: String,
+        /// The enclosure: ○, □, △ or ◇.
+        enclosure: String,
+    },
     /// Ruby written as an `EQ` overstrike (`EQ \* jc2 \* hps11
     /// \o\ad(\s\up11(guide),text)`, §17.16.5.22): `text` is the base and
     /// `guide` the raised phonetic guide. Word lays it out like `w:ruby`.
@@ -5533,6 +5541,10 @@ pub struct RunTextEffects {
     /// `w14:textOutline/@w14:w` in points.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outline_width: Option<f32>,
+    /// Render-time only: the enclosure a 囲い文字 field (`EQ \o\ac`) draws
+    /// round the run. Never read from or written to `w:rPr`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enclosure: Option<Rc<str>>,
 }
 
 impl RunTextEffects {

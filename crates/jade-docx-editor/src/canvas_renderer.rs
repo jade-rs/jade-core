@@ -10733,6 +10733,11 @@ where
                         guide.hash(&mut hasher);
                         8
                     }
+                    RunFieldKind::EqEnclosed { text, enclosure } => {
+                        text.hash(&mut hasher);
+                        enclosure.hash(&mut hasher);
+                        45
+                    }
                     RunFieldKind::EqRuby {
                         text,
                         guide,
@@ -17109,6 +17114,16 @@ where
                         Some(&paragraph_style),
                     )?;
                 }
+                // 囲い文字: the enclosure is drawn round the character.
+                if let Some(RunFieldKind::EqEnclosed { enclosure, .. }) =
+                    run.field.as_ref().map(|field| field.kind.base_kind())
+                {
+                    effective_props
+                        .get_or_insert_with(RunProperties::default)
+                        .text_effects
+                        .get_or_insert_with(Default::default)
+                        .enclosure = Some(Rc::from(enclosure.as_str()));
+                }
                 // An `EQ` overstrike ruby lays out like `w:ruby` over its base.
                 if let Some(ruby) = run
                     .field
@@ -17148,6 +17163,29 @@ where
                             start: start_pos,
                             end: current_pos,
                             properties: chunk_props.map(Rc::new),
+                            revision: run.revision.clone(),
+                            hyperlink: run.hyperlink.clone(),
+                            inline_object: None,
+                        });
+                    }
+                } else if let Some(chunks) = self.combined_character_chunks(
+                    &segment,
+                    effective_props.as_ref(),
+                    &paragraph_style,
+                )? {
+                    // 組み文字 / 割注: two half-size lines stacked in one
+                    // line's height (see `combined_character_chunks`).
+                    for (chunk_text, chunk_props) in chunks {
+                        let start_pos = current_pos;
+                        layout_text.push_str(&chunk_text);
+                        if let Some(debug_text) = debug_text.as_mut() {
+                            debug_text.push_str(&chunk_text);
+                        }
+                        current_pos = layout_text.len();
+                        run_styles.push(RunStyle {
+                            start: start_pos,
+                            end: current_pos,
+                            properties: Some(Rc::new(chunk_props)),
                             revision: run.revision.clone(),
                             hyperlink: run.hyperlink.clone(),
                             inline_object: None,
@@ -33000,9 +33038,9 @@ where
             RunFieldKind::Ref { .. } | RunFieldKind::Seq { .. } | RunFieldKind::AutoNum { .. } => {
                 field.resolved_value.clone()
             }
-            RunFieldKind::EqDistributed { text, .. } | RunFieldKind::EqRuby { text, .. } => {
-                Some(text.clone())
-            }
+            RunFieldKind::EqDistributed { text, .. }
+            | RunFieldKind::EqRuby { text, .. }
+            | RunFieldKind::EqEnclosed { text, .. } => Some(text.clone()),
             RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
@@ -33014,6 +33052,72 @@ where
             RunFieldKind::NonDisplay { .. } => return None,
         }
         .or_else(|| field.cached_text.clone())
+    }
+
+    /// A combined-characters run (`w:eastAsianLayout w:combine`, ECMA-376
+    /// Part 1 §17.3.2.10 — Word's 組み文字 and 割注) as the line lays it out:
+    /// at half size and squeezed to the width of the wider of its two lines,
+    /// so it takes the room Word gives it. The painter then draws the two
+    /// lines stacked in that room (`TextEffectStyle::combine`). The text and
+    /// its offsets are unchanged, so selection and editing see the run as it
+    /// is.
+    #[allow(clippy::type_complexity)]
+    fn combined_character_chunks(
+        &self,
+        text: &str,
+        properties: Option<&RunProperties>,
+        paragraph_style: &ParagraphStyle,
+    ) -> Result<Option<Vec<(String, RunProperties)>>, JsValue> {
+        let Some(props) = properties else {
+            return Ok(None);
+        };
+        if !props
+            .east_asian_layout
+            .as_deref()
+            .is_some_and(|layout| layout.combine)
+        {
+            return Ok(None);
+        }
+        let characters: Vec<&str> = jade_docx_layout::graphemes::grapheme_indices(text)
+            .map(|(_, grapheme)| grapheme)
+            .collect();
+        if characters.len() < 2 || text.contains(['\t', '\n']) {
+            return Ok(None);
+        }
+        let base = self
+            .resolve_applied_run_style_uncached(Some(props))
+            .font_size_pt;
+        let half = base / 2.0;
+        let split = characters.len().div_ceil(2);
+        let top: String = characters[..split].concat();
+        let bottom: String = characters[split..].concat();
+        let mut small = props.clone();
+        small.font_size = Some(half);
+        small.font_size_complex = Some(half);
+        let style = self.resolve_applied_run_style_uncached(Some(&small));
+        let top_width = self.measure_text_with_spacing(&top, &style, Some(paragraph_style))?;
+        let bottom_width =
+            self.measure_text_with_spacing(&bottom, &style, Some(paragraph_style))?;
+        let total = top_width + bottom_width;
+        if total <= f64::EPSILON {
+            return Ok(None);
+        }
+        // 割注's brackets take full-size room either side of the lines.
+        let brackets = props
+            .east_asian_layout
+            .as_deref()
+            .and_then(|layout| combine_brackets(layout.combine_brackets.as_deref()));
+        let full = self.resolve_applied_run_style_uncached(Some(props));
+        let bracket_width = match brackets {
+            Some((open, close)) => {
+                self.measure_text_with_spacing(open, &full, Some(paragraph_style))?
+                    + self.measure_text_with_spacing(close, &full, Some(paragraph_style))?
+            }
+            None => 0.0,
+        };
+        let scale = (top_width.max(bottom_width) + bracket_width) / total;
+        small.text_scale = Some(props.text_scale.unwrap_or(100.0) * scale as f32);
+        Ok(Some(vec![(text.to_string(), small)]))
     }
 
     fn apply_eq_distributed_text_scale(
@@ -33488,6 +33592,17 @@ fn eq_distributed_text_scale_percent(
     Some(((base_percent as f64) * guide_width / display_width).clamp(1.0, 1000.0) as f32)
 }
 
+/// 割注's brackets (`w:combineBrackets`).
+fn combine_brackets(brackets: Option<&str>) -> Option<(&'static str, &'static str)> {
+    match brackets? {
+        "round" => Some(("(", ")")),
+        "square" => Some(("[", "]")),
+        "angle" => Some(("<", ">")),
+        "curly" => Some(("{", "}")),
+        _ => None,
+    }
+}
+
 /// A run's `w14:glow` and `w14:textOutline` as the painter takes them: the
 /// glow's colour with its opacity and its radius, the outline's colour and
 /// width, in CSS px.
@@ -33495,7 +33610,10 @@ fn text_effect_style(
     properties: Option<&RunProperties>,
     font_size_pt: f32,
 ) -> Option<Box<crate::draw_command::TextEffectStyle>> {
-    let effects = properties?.text_effects.as_deref()?;
+    let no_effects = crate::document::RunTextEffects::default();
+    let effects = properties
+        .and_then(|props| props.text_effects.as_deref())
+        .unwrap_or(&no_effects);
     let rgba = |hex: &str, alpha: f32| -> Option<Rc<str>> {
         let hex = hex.trim().trim_start_matches('#');
         let value = u32::from_str_radix(hex, 16)
@@ -33520,8 +33638,28 @@ fn text_effect_style(
             .unwrap_or((font_size_pt * 0.04).max(0.5));
         Some((rgba(color, 1.0)?, px(width)))
     });
-    (glow.is_some() || outline.is_some())
-        .then(|| Box::new(crate::draw_command::TextEffectStyle { glow, outline }))
+    let combine = properties
+        .and_then(|props| props.east_asian_layout.as_deref())
+        .filter(|layout| layout.combine)
+        .map(|layout| {
+            // The run is at half size here; the lines sit in the full line.
+            let base = px(font_size_pt * 2.0);
+            crate::draw_command::CombinedCharacters {
+                raise: base * 0.42,
+                lower: base * 0.08,
+                brackets: combine_brackets(layout.combine_brackets.as_deref())
+                    .map(|(open, close)| (Rc::from(open), Rc::from(close))),
+            }
+        });
+    let enclosure = effects.enclosure.clone();
+    (glow.is_some() || outline.is_some() || combine.is_some() || enclosure.is_some()).then(|| {
+        Box::new(crate::draw_command::TextEffectStyle {
+            glow,
+            outline,
+            combine,
+            enclosure,
+        })
+    })
 }
 
 #[derive(Clone)]
@@ -47719,6 +47857,55 @@ mod tests {
             .ops()
             .iter()
             .any(|op| matches!(op, Op::Scale(x, y) if *x < 0.99 && (*y - 1.0).abs() < 1e-9)));
+    }
+
+    #[test]
+    fn combined_characters_stack_their_halves() {
+        use jade_painter::recording::Op;
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "株式会社",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(12.0),
+                            east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                                combine: true,
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let at = |wanted: &str| {
+            painter.ops().into_iter().find_map(|op| match op {
+                Op::FillText(text, x, y) if text == wanted => Some((x, y)),
+                _ => None,
+            })
+        };
+        let (top_x, top_y) = at("株").expect("株 painted");
+        let (bottom_x, bottom_y) = at("会").expect("会 painted");
+        assert!((top_x - bottom_x).abs() < 0.01, "the lines start together");
+        assert!(top_y < bottom_y, "the first half is above the second");
     }
 
     #[test]
