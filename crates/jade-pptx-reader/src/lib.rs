@@ -31,7 +31,7 @@ pub use slide::{
 };
 pub use slide::{parse_default_text_style, parse_slide_xml, TextVertical};
 pub use slide::{
-    Autofit, Bullet, CellBorders, Color, Fill, GradientStop, GroupShape, GroupTransform, Hyperlink,
+    Autofit, Bullet, CellBorders, Color, Effects, Fill, Glow, Reflection, GradientStop, GroupShape, GroupTransform, Hyperlink,
     LevelStyle, ListStyle, Outline, Picture, Placeholder, RunProps, Shadow, Shape, ShapeItem,
     ShapeStyle, SlideContent, SourceRect, Spacing, Table, TableCell, TableRow, TextAlign,
     TextAnchor, TextBody, TextBodyPropertyPresence, TextInsets, TextParagraph, TextRun, TextStyles,
@@ -230,6 +230,7 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
         background_fill_styles: theme_background_fill_styles.clone(),
         line_styles: theme_line_styles.clone(),
         effect_styles: Vec::new(),
+        effect_style_effects: Vec::new(),
     });
     let mut themes = slide_theme::ThemeResolver::default();
     let mut slides = Vec::new();
@@ -624,9 +625,9 @@ fn read_theme(package: &OpcPackage) -> Result<ThemeParts> {
 pub(crate) fn read_master_effect_styles(
     package: &OpcPackage,
     master_part: Option<&str>,
-) -> Result<Vec<Option<Shadow>>> {
+) -> Result<(Vec<Option<Shadow>>, Vec<Effects>)> {
     let Some(master) = master_part else {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     };
     let theme_part = match package.part_str(&jade_opc::rels_part_name(master))? {
         Some(xml) => jade_opc::parse_relationships(&xml)?
@@ -637,8 +638,11 @@ pub(crate) fn read_master_effect_styles(
         None => None,
     };
     match theme_part.and_then(|part| package.part_str(&part).ok().flatten()) {
-        Some(xml) => parse_theme_effect_styles(&xml),
-        None => Ok(Vec::new()),
+        Some(xml) => Ok((
+            parse_theme_effect_styles(&xml)?,
+            theme::parse_theme_effect_style_effects(&xml)?,
+        )),
+        None => Ok((Vec::new(), Vec::new())),
     }
 }
 

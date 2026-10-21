@@ -77,6 +77,7 @@ pub(crate) fn plot_chart(
         shadow: None,
         image_alpha: None,
         pattern: None,
+        effects: Default::default(),
     };
     let accent = |index: usize| {
         resolve_color(

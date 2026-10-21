@@ -79,6 +79,9 @@ pub struct PlacedRun {
     /// The glyphs' shadow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_shadow: Option<crate::PlacedShadow>,
+    /// The glyphs' glow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_glow: Option<crate::PlacedGlow>,
     /// A non-single underline's `u` value (`dbl`, `wavy`, `dotted`, …).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub underline_style: Option<String>,
@@ -800,6 +803,7 @@ fn layout_paragraph(
                     letter_spacing_px: 0.0,
                     text_outline: None,
                     text_shadow: None,
+                    text_glow: None,
                     underline_style: None,
                     double_strike: false,
                 });
@@ -876,6 +880,7 @@ fn layout_paragraph(
                 letter_spacing_px: run.spacing_px,
                 text_outline: run.outline.clone(),
                 text_shadow: run.shadow.clone(),
+                text_glow: run.glow.clone(),
                 underline_style: run.underline_style.clone(),
                 double_strike: run.double_strike,
             });
