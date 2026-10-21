@@ -3544,6 +3544,8 @@ where
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
     dark_mode_text: bool,
+    /// The formatting marks shown by kind in the current render.
+    mark_kinds: crate::FormattingMarkKinds,
     /// Set while painting the text of a shape that carries its own fill. Word
     /// keeps the document colour there, and the page-contrast remap would put
     /// white glyphs on Word's light fill.
@@ -5515,6 +5517,7 @@ where
             && last.render_original == options.render_original
             && last.render_comments == options.render_comments
             && last.show_formatting_marks == options.show_formatting_marks
+            && last.formatting_mark_kinds() == options.formatting_mark_kinds()
             && last.render_footnotes == options.render_footnotes
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
@@ -5532,7 +5535,7 @@ where
             || (self.document_has_comments && options.render_comments)
             || options.render_changes
             || options.render_original
-            || options.show_formatting_marks
+            || options.any_formatting_marks()
             || !options.collapsed_blocks().is_empty()
         {
             return false;
@@ -8011,6 +8014,7 @@ where
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
             dark_mode_text: false,
+            mark_kinds: crate::FormattingMarkKinds::default(),
             dark_mode_text_suppressed: false,
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
@@ -10304,6 +10308,7 @@ where
         options.render_original.hash(&mut hasher);
         options.render_comments.hash(&mut hasher);
         options.show_formatting_marks.hash(&mut hasher);
+        options.formatting_mark_kinds().hash(&mut hasher);
         options.render_footnotes.hash(&mut hasher);
         options.render_endnotes.hash(&mut hasher);
         let dir_tag: u8 = match self.current_text_direction {
@@ -12868,6 +12873,7 @@ where
                 .clear(self.page_width, self.pageless_mode, self.page_height)?;
         }
         self.dark_mode_text = options.dark_mode();
+        self.mark_kinds = options.shown_formatting_marks();
 
         let context = self.host.painter();
         context.set_font("12pt 'Times New Roman', serif");
@@ -15793,7 +15799,7 @@ where
                     .as_ref()
                     .and_then(|properties| properties.numbering.as_ref())
                     .is_none())
-            && !options.show_formatting_marks
+            && !options.any_formatting_marks()
             && !matches!(
                 current_direction,
                 Some(
@@ -16990,9 +16996,25 @@ where
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
             // not display such runs and they occupy no layout space, so skip the
             // run entirely. (A "show hidden text" toggle is a follow-up.)
-            if run_properties_are_hidden(resolved_run_properties.as_deref()) {
-                continue;
-            }
+            // With 隠し文字 shown, hidden text is laid out like any other,
+            // underlined with dots as Word marks it.
+            let resolved_run_properties =
+                if run_properties_are_hidden(resolved_run_properties.as_deref()) {
+                    if !self.mark_kinds.hidden_text {
+                        continue;
+                    }
+                    let mut shown = resolved_run_properties
+                        .as_deref()
+                        .cloned()
+                        .unwrap_or_default();
+                    shown.vanish = None;
+                    shown.spec_vanish = None;
+                    shown.underline = Some(true);
+                    shown.underline_kind = Some(Rc::from("dotted"));
+                    Some(Rc::new(shown))
+                } else {
+                    resolved_run_properties
+                };
 
             // Final-preview state (changes not shown): tracked deletions and
             // move-source runs are removed from the layout entirely so they
@@ -17561,6 +17583,20 @@ where
             .collect::<Vec<_>>();
         floating_paint_objects.sort_by_key(FloatingPaintObject::paint_order_key);
 
+        // アンカー: the paragraph a floating object is anchored to carries an
+        // anchor in the left margin, beside its first line.
+        if self.mark_kinds.anchors
+            && !floating_paint_objects.is_empty()
+            && !self.measuring_keep_next
+            && self.should_draw_current_page_for_render()
+        {
+            let style = self.apply_run_style(None)?;
+            let context = self.host.painter();
+            let baseline = self.current_y + points_to_px(style.font_size_pt).max(10.0);
+            let x = (self.margin_left - 18.0).max(2.0);
+            self.draw_control_mark(&context, "\u{2693}", x, baseline, &style)?;
+        }
+
         // `wp:anchor behindDoc="1"` participates in the same positioning and
         // hit-testing model as every other floating object, but it must be
         // painted before the paragraph glyphs. This applies to text boxes and
@@ -17684,7 +17720,7 @@ where
                     &inline_text_boxes,
                     column_right,
                     line_height,
-                    options.show_formatting_marks,
+                    options.shown_formatting_marks().paragraph_marks,
                     render_changes,
                     comment_ranges,
                     comment_markers,
@@ -17878,7 +17914,7 @@ where
                 }
             }
 
-            if options.show_formatting_marks && !self.measuring_keep_next {
+            if options.shown_formatting_marks().paragraph_marks && !self.measuring_keep_next {
                 let default_properties: Option<RunProperties> = None;
                 let style = self.apply_run_style(default_properties.as_ref())?;
                 let context = self.host.painter();
@@ -21694,6 +21730,23 @@ where
                         });
                     }
                 }
+            }
+
+            // スペース, タブ and 任意指定のハイフン marks, over the laid-out
+            // line.
+            if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
+                && !self.measuring_keep_next
+            {
+                self.draw_whitespace_marks(
+                    &line_layout,
+                    text,
+                    base_offset,
+                    baseline,
+                    prepared_segments
+                        .first()
+                        .and_then(|prepared| prepared.segment.properties.as_deref()),
+                    commands_out.as_deref_mut(),
+                )?;
             }
 
             // Keep the logical caret extent in the same coordinate space as
@@ -29946,6 +29999,72 @@ where
             font_size_pt,
             color,
         )
+    }
+
+    /// Word's marks for the spaces, tabs and optional hyphens of a laid-out
+    /// line: a centred dot in a space, a square in a full-width one, an
+    /// arrow at a tab's start, ¬ for an optional hyphen.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_whitespace_marks(
+        &mut self,
+        line: &SelectionLineLayout,
+        text: &str,
+        base_offset: usize,
+        baseline: f64,
+        properties: Option<&RunProperties>,
+        mut commands_out: Option<&mut Vec<DrawCommand>>,
+    ) -> Result<(), JsValue> {
+        let mut marks: Vec<(&'static str, f64, f64)> = Vec::new();
+        let char_at = |offset: usize| -> Option<char> {
+            offset
+                .checked_sub(base_offset)
+                .and_then(|local| text.get(local..))
+                .and_then(|rest| rest.chars().next())
+        };
+        for fragment in line.fragments.iter() {
+            for glyph in fragment.glyphs.iter() {
+                let symbol = match char_at(glyph.start) {
+                    Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
+                    Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
+                    Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
+                    _ => continue,
+                };
+                marks.push((symbol, fragment.x + glyph.x, glyph.width));
+            }
+        }
+        if self.mark_kinds.tabs {
+            for tab in line.tab_stops.iter() {
+                marks.push(("\u{2192}", tab.start_x, (tab.end_x - tab.start_x).max(0.0)));
+            }
+        }
+        if marks.is_empty() {
+            return Ok(());
+        }
+        let style = self.apply_run_style(properties)?;
+        let context = self.host.painter();
+        for (symbol, x, width) in marks {
+            // Centred in what it marks: measured first, then drawn.
+            let mark_width = self.text_width_with_spacing(
+                symbol,
+                style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
+                &style,
+            )?;
+            let mark_x = if symbol == "\u{2192}" {
+                x + ((width - mark_width) / 2.0).max(0.0).min(width)
+            } else {
+                x + (width - mark_width) / 2.0
+            };
+            self.draw_control_mark(&context, symbol, mark_x, baseline, &style)?;
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::ControlMark {
+                    symbol: Rc::from(symbol),
+                    x: mark_x,
+                    baseline,
+                    style: self.cmd_control_mark_style(properties, &style),
+                });
+            }
+        }
+        Ok(())
     }
 
     fn draw_control_mark<P>(
@@ -56964,9 +57083,18 @@ mod tests {
                 paragraph_marks, 4,
                 "only the real body paints paragraph marks {middle:?}"
             );
+            // With ¶ on every space shows its dot too, as in Word.
+            let space_marks = painter
+                .ops()
+                .iter()
+                .filter(|op| {
+                    matches!(op, jade_painter::recording::Op::FillText(text, ..) if text == "\u{00B7}")
+                })
+                .count();
             let control_styles = painter.ops().iter().filter(|op| matches!(op, jade_painter::recording::Op::SetFillStyle(color) if color == CONTROL_MARK_COLOR)).count();
             assert_eq!(
-                control_styles, 4,
+                control_styles,
+                4 + space_marks,
                 "measurement does not prepare editor-only marks {middle:?}"
             );
             assert_eq!(unbalanced_saves(&painter), 0);
