@@ -1,0 +1,18 @@
+[package]
+name = "jade-doc-writer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# Word 97–2003 documents (.doc, [MS-DOC]) written from jade-docx-convert's
+# flow model: the WordDocument stream's FIB, text, formatted disk pages and
+# section properties, and the table stream's style sheet, font table,
+# piece table and the plexes that tie them together — what Word's 名前を付けて
+# 保存 → Word 97-2004 文書 writes.
+
+[dependencies]
+jade-docx-convert = { path = "../jade-docx-convert" }
+cfb = "0.7"
+
+[dev-dependencies]
+jade-doc-reader = { path = "../jade-doc-reader" }

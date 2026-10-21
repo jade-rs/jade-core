@@ -1394,6 +1394,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "jade-doc-reader"
+version = "0.1.0"
+dependencies = [
+ "cfb",
+ "flate2",
+ "jade-docx-convert",
+]
+
+[[package]]
+name = "jade-doc-writer"
+version = "0.1.0"
+dependencies = [
+ "cfb",
+ "jade-doc-reader",
+ "jade-docx-convert",
+]
+
+[[package]]
 name = "jade-docx-annotations"
 version = "0.1.0"
 dependencies = [
@@ -1401,6 +1419,19 @@ dependencies = [
  "jade-docx-reader",
  "jade-docx-writer",
  "proptest",
+ "zip 8.6.0",
+]
+
+[[package]]
+name = "jade-docx-convert"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "encoding_rs",
+ "flate2",
+ "jade-opc",
+ "lopdf",
+ "quick-xml 0.39.2",
  "zip 8.6.0",
 ]
 

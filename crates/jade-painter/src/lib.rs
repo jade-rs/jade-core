@@ -287,4 +287,10 @@ pub trait Painter {
     ) -> Result<bool, Self::Error> {
         Ok(false)
     }
+
+    /// Says which node of a tagged PDF's structure tree what is drawn next
+    /// belongs to: a paragraph, a table cell, a figure. `0` is none — page
+    /// furniture such as headers and footers. Only a backend that writes
+    /// tagged PDF does anything with it.
+    fn set_structure_node(&self, _node: i32) {}
 }

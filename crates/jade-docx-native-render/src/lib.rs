@@ -32,6 +32,7 @@
 
 pub mod document;
 pub mod system_fonts;
+mod tagging;
 pub use document::{
     CaretAffinity, CaretRect, CharacterFormat, FaceSpec, FontFace, NativeDocument, ObjectHit,
     PdfExportOptions, PdfRenderingMode, SearchHit, TableCell,
