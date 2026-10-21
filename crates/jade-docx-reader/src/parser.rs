@@ -103,6 +103,7 @@ struct PendingRuby {
 }
 
 mod diagram;
+mod drawing_extras;
 pub mod math;
 mod table;
 use math::{parse_math_elements, parse_math_paragraph};
@@ -1821,6 +1822,14 @@ impl DocumentParser {
                                         .map(|value| value.eq_ignore_ascii_case("preserve"))
                                         .unwrap_or(false)
                             });
+                        }
+                        b"w:drawing"
+                            if current_run_image.as_ref().is_some_and(|image| {
+                                image.format().ink_relationship_id.is_some()
+                            }) =>
+                        {
+                            // Ink's fallback picture: the choice is read.
+                            Self::consume_element(reader, b"w:drawing")?;
                         }
                         b"w:drawing" => {
                             if let Some(drawing) = self.parse_drawing(reader)? {
@@ -5064,10 +5073,12 @@ impl DocumentParser {
         let mut in_glow = false;
         let mut current_border = TextBoxBorder::default();
         let mut active_shape_theme_color: Option<ShapeThemeColorTarget> = None;
+        let mut extras = drawing_extras::DrawingExtras::default();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
+                    extras.start(e, false);
                     match e.name().as_ref() {
                         // Stored properties of an invisible line must not
                         // become the visible shape's fill or effects.
@@ -5152,6 +5163,7 @@ impl DocumentParser {
                                 let (blocks, plain) = self.parse_text_box_content(&inner)?;
                                 text_box_blocks = Some(blocks);
                                 text_box_text = Some(plain);
+                                extras.wordart = WordArtText::from_content(&inner);
                             }
                             continue;
                         }
@@ -5428,6 +5440,7 @@ impl DocumentParser {
                     depth = depth.saturating_add(1);
                 }
                 Ok(Event::Empty(ref e)) => {
+                    extras.start(e, true);
                     match e.name().as_ref() {
                         b"wp:inline" => {
                             image.layout.kind = RunImageKind::Inline;
@@ -5708,6 +5721,7 @@ impl DocumentParser {
                     Self::extract_drawing_attributes(&mut image, e, &mut has_embed);
                 }
                 Ok(Event::End(ref e)) => {
+                    extras.end(e.name().as_ref());
                     match e.name().as_ref() {
                         b"wp:positionH" => {
                             in_position_h = false;
@@ -5855,7 +5869,21 @@ impl DocumentParser {
             image.placeholder_label = Some("SmartArt".to_string());
         }
 
-        if has_embed || has_chart || has_group || has_smartart {
+        let has_ink = extras.ink_relationship_id.is_some();
+        if has_embed || has_chart || has_group || has_smartart || has_ink {
+            let mut format = PictureFormat::default();
+            if has_embed && !has_chart && !has_group && !has_smartart {
+                // A picture's own outline, effects and shape.
+                format.outline = text_box_border;
+                format.shadow = text_box_shadow;
+                format.inner_shadow = text_box_inner_shadow;
+                format.glow = text_box_glow;
+                format.soft_edge_radius_px = text_box_soft_edge_radius_px;
+                format.geometry = (text_box_shape != TextBoxShape::Rectangle
+                    && !text_box_shape.is_line())
+                .then_some(text_box_shape);
+            }
+            extras.apply_to_image(&mut image, format);
             Ok(Some(DrawingObject::Image(image)))
         } else if text_box_text.is_some() || has_wordprocessing_shape {
             let text_box = RunTextBox {
@@ -5878,7 +5906,10 @@ impl DocumentParser {
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
                 effect_ref: text_box_effect_ref,
+                ..Default::default()
             };
+            let mut text_box = text_box;
+            extras.apply_to_text_box(&mut text_box);
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
             Ok(None)
@@ -6090,7 +6121,7 @@ impl DocumentParser {
                             continue;
                         }
                         b"wpg:grpSpPr" => in_group_properties = true,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             current_shape = Some(RunGroupShape {
                                 z_order: next_z_order,
                                 ..RunGroupShape::default()
@@ -6098,7 +6129,12 @@ impl DocumentParser {
                             next_z_order += 1;
                             active_theme_color = None;
                         }
-                        b"wps:spPr" if current_shape.is_some() => in_shape_properties = true,
+                        b"wps:spPr" | b"pic:spPr" if current_shape.is_some() => {
+                            in_shape_properties = true
+                        }
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
                         b"w:txbxContent" | b"wp:txbxContent" if current_shape.is_some() => {
                             let inner =
                                 self.extract_inner_xml(&mut reader, element.name().as_ref())?;
@@ -6429,6 +6465,24 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
+                        b"a:srcRect"
+                            if current_shape
+                                .as_ref()
+                                .is_some_and(|shape| shape.picture.is_some()) =>
+                        {
+                            let mut image = RunImage::default();
+                            let mut embed = false;
+                            Self::extract_drawing_attributes(&mut image, element, &mut embed);
+                            if let Some(picture) = current_shape
+                                .as_mut()
+                                .and_then(|shape| shape.picture.as_mut())
+                            {
+                                picture.crop = image.crop;
+                            }
+                        }
                         b"a:chOff" if in_group_properties => {
                             group.child_offset_x = coordinate(element, b"x").unwrap_or(0.0);
                             group.child_offset_y = coordinate(element, b"y").unwrap_or(0.0);
@@ -6735,13 +6789,13 @@ impl DocumentParser {
                     }
                     match element.name().as_ref() {
                         b"wpg:grpSpPr" => in_group_properties = false,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             if let Some(shape) = current_shape.take() {
                                 group.children.push(shape);
                             }
                             active_theme_color = None;
                         }
-                        b"wps:spPr" => in_shape_properties = false,
+                        b"wps:spPr" | b"pic:spPr" => in_shape_properties = false,
                         b"a:xfrm" => in_transform = false,
                         b"a:ln" => {
                             in_line = false;
@@ -6828,6 +6882,24 @@ impl DocumentParser {
             group.child_extent_height = shape_max.max(group_max) - group.child_offset_y;
         }
         Ok(group)
+    }
+
+    /// A grouped picture's `a:blip`: its media relationship.
+    fn group_picture_blip(shape: Option<&mut RunGroupShape>, element: &BytesStart<'_>) {
+        let Some(shape) = shape else {
+            return;
+        };
+        let relationship = element
+            .attributes()
+            .flatten()
+            .find(|attribute| attribute.key.as_ref() == b"r:embed")
+            .map(|attribute| String::from_utf8_lossy(&attribute.value).into_owned());
+        if let Some(relationship_id) = relationship {
+            shape.picture = Some(Box::new(GroupPicture {
+                relationship_id,
+                ..GroupPicture::default()
+            }));
+        }
     }
 
     fn drawingml_color_value(element: &BytesStart<'_>) -> Option<String> {
@@ -7515,7 +7587,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
-            effect_ref: None,
+            ..Default::default()
         })))
     }
 

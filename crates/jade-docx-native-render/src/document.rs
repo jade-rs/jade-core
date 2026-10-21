@@ -846,12 +846,25 @@ impl NativeDocument {
             run_index: object.run,
             kind: object.kind,
         };
+        // A move or resize keeps the object's rotation.
+        let rotation_deg = self
+            .word_document
+            .paragraph(object.paragraph)
+            .and_then(|paragraph| paragraph.runs.get(object.run))
+            .and_then(|run| {
+                run.image
+                    .as_ref()
+                    .map(|image| &image.layout)
+                    .or_else(|| run.text_box.as_ref().map(|text_box| &text_box.layout))
+            })
+            .and_then(|layout| layout.rotation_deg)
+            .unwrap_or(0.0);
         let transform = FloatingObjectTransform {
             x,
             y,
             width,
             height,
-            rotation_deg: 0.0,
+            rotation_deg,
         };
         let mut selection = self.selection.take();
         self.edit_in_place(|this| {

@@ -1145,6 +1145,14 @@ pub struct GroupedShapeTextDebugInfo {
     pub page: usize,
 }
 
+/// A chain of linked text boxes (`linked_story`).
+pub(crate) struct LinkedStory {
+    document: Rc<Document>,
+    blocks: Vec<BodyElement>,
+    /// Each box's sequence and content height, in order.
+    boxes: Vec<(u32, f64)>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectDebugInfo {
@@ -3497,6 +3505,8 @@ where
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
     object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
+    /// Linked text box chains, by id, for the document last rendered.
+    linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
     object_transform_preview: Option<ObjectTransformPreview>,
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
@@ -7984,6 +7994,7 @@ where
             text_box_debug_regions: RefCell::new(Vec::new()),
             grouped_shape_text_regions: RefCell::new(Vec::new()),
             object_debug_regions: RefCell::new(Vec::new()),
+            linked_stories: RefCell::new(HashMap::new()),
             object_transform_preview: None,
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
@@ -21052,9 +21063,11 @@ where
             for (run_index, image, image_x, image_y, image_width, image_height) in
                 &inline_image_draws
             {
+                // A hidden object (the Selection Pane's eye) cannot be
+                // clicked on the page.
                 self.object_debug_regions
                     .borrow_mut()
-                    .push(ObjectDebugInfo {
+                    .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -21064,7 +21077,7 @@ where
                         width: *image_width,
                         height: *image_height,
                         rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
-                    });
+                    }));
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
                     y: *image_y,
@@ -21087,7 +21100,7 @@ where
                     );
                 }
                 if draw_enabled {
-                    if image.data_uri.is_some() {
+                    if image.data_uri.is_some() || image.format().ink.is_some() {
                         self.draw_image_element(image, draw_spec)?;
                     } else if let Some(group) = image.shape_group.as_ref() {
                         self.draw_shape_group(group, draw_spec)?;
@@ -21818,7 +21831,7 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
+            .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                 kind: FloatingObjectKind::Image,
                 paragraph_index,
                 run_index,
@@ -21828,7 +21841,7 @@ where
                 width: transform.width,
                 height: transform.height,
                 rotation_deg: transform.rotation_deg,
-            });
+            }));
 
         let draw_spec = ImageDrawSpec {
             x: transform.x,
@@ -21855,7 +21868,7 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(Some(transform.y + transform.height));
         }
-        if image.data_uri.is_some() {
+        if image.data_uri.is_some() || image.format().ink.is_some() {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
             self.draw_shape_group(group, draw_spec)?;
@@ -22320,6 +22333,128 @@ where
         }
     }
 
+    /// A shape's outline: its freeform paths when it has them, its preset
+    /// otherwise.
+    #[allow(clippy::too_many_arguments)]
+    fn trace_text_box_geometry<P: Painter>(
+        context: &P,
+        text_box: &RunTextBox,
+        head_end: Option<TextBoxLineEnd>,
+        tail_end: Option<TextBoxLineEnd>,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        match text_box.extras().custom_geometry.as_ref() {
+            Some(geometry) => {
+                Self::trace_custom_geometry(context, geometry, x, y, width, height);
+                Ok(())
+            }
+            None => Self::trace_text_box_shape_with_line_ends(
+                context,
+                text_box.shape,
+                head_end,
+                tail_end,
+                x,
+                y,
+                width,
+                height,
+            ),
+        }
+    }
+
+    /// `a:custGeom`'s paths, scaled from each path's own space into the box.
+    fn trace_custom_geometry<P: Painter>(
+        context: &P,
+        geometry: &crate::document::CustomGeometry,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) {
+        use crate::document::PathCommand;
+        context.begin_path();
+        for path in &geometry.paths {
+            // A path without its own size is in the shape's EMU.
+            let scale_x = if path.width > 0.0 {
+                width / path.width
+            } else {
+                1.0 / 9525.0
+            };
+            let scale_y = if path.height > 0.0 {
+                height / path.height
+            } else {
+                1.0 / 9525.0
+            };
+            let at = |px: f64, py: f64| (x + px * scale_x, y + py * scale_y);
+            let mut current = (x, y);
+            for command in &path.commands {
+                match *command {
+                    PathCommand::MoveTo(px, py) => {
+                        current = at(px, py);
+                        context.move_to(current.0, current.1);
+                    }
+                    PathCommand::LineTo(px, py) => {
+                        current = at(px, py);
+                        context.line_to(current.0, current.1);
+                    }
+                    PathCommand::CubicTo(x1, y1, x2, y2, px, py) => {
+                        let (c1, c2) = (at(x1, y1), at(x2, y2));
+                        current = at(px, py);
+                        context.bezier_curve_to(c1.0, c1.1, c2.0, c2.1, current.0, current.1);
+                    }
+                    PathCommand::QuadTo(x1, y1, px, py) => {
+                        let control = at(x1, y1);
+                        current = at(px, py);
+                        context.quadratic_curve_to(control.0, control.1, current.0, current.1);
+                    }
+                    PathCommand::ArcTo {
+                        width_radius,
+                        height_radius,
+                        start_deg,
+                        sweep_deg,
+                    } => {
+                        // The arc starts at the current point, at angle
+                        // `start_deg` of an ellipse with these radii.
+                        let (rx, ry) = (width_radius * scale_x, height_radius * scale_y);
+                        let start = start_deg.to_radians();
+                        let (cx, cy) = (current.0 - rx * start.cos(), current.1 - ry * start.sin());
+                        const STEPS: usize = 24;
+                        for step in 1..=STEPS {
+                            let angle = start + sweep_deg.to_radians() * step as f64 / STEPS as f64;
+                            current = (cx + rx * angle.cos(), cy + ry * angle.sin());
+                            context.line_to(current.0, current.1);
+                        }
+                    }
+                    PathCommand::Close => context.close_path(),
+                }
+            }
+        }
+    }
+
+    /// Mirrors what is drawn next about the box's centre for a shape's
+    /// `flipH`/`flipV`; the caller restores.
+    fn apply_shape_flips<P: Painter>(
+        context: &P,
+        layout: &RunImageLayout,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        if !layout.flip_horizontal && !layout.flip_vertical {
+            return Ok(());
+        }
+        let (center_x, center_y) = (x + width / 2.0, y + height / 2.0);
+        context.translate(center_x, center_y)?;
+        context.scale(
+            if layout.flip_horizontal { -1.0 } else { 1.0 },
+            if layout.flip_vertical { -1.0 } else { 1.0 },
+        )?;
+        context.translate(-center_x, -center_y)
+    }
+
     fn trace_text_box_shape<P: Painter>(
         context: &P,
         shape: TextBoxShape,
@@ -22544,10 +22679,12 @@ where
                 context.rect(x, y, width, height);
             }
             TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble => {
+                // DrawingML's line runs from the frame's top left to its
+                // bottom right; `flipH`/`flipV` turn it the other ways.
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(end_x, end_y);
                 // Word keeps arrowheads legible even when a straight
@@ -22578,13 +22715,13 @@ where
             }
             TextBoxShape::LineBent => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let lower_elbow_x = x + width / 2.0;
-                let lower_elbow_y = y + height;
+                let lower_elbow_y = y;
                 let upper_elbow_x = x + width / 2.0;
-                let upper_elbow_y = y;
+                let upper_elbow_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(lower_elbow_x, lower_elbow_y);
                 context.line_to(upper_elbow_x, upper_elbow_y);
@@ -22615,13 +22752,13 @@ where
             }
             TextBoxShape::LineCurved => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let first_control_x = x + width * 0.6;
-                let first_control_y = y + height;
+                let first_control_y = y;
                 let second_control_x = x + width * 0.4;
-                let second_control_y = y;
+                let second_control_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.bezier_curve_to(
                     first_control_x,
@@ -24430,7 +24567,7 @@ where
         line_height: f64,
         render_changes: bool,
     ) -> Result<Option<f64>, JsValue> {
-        if !matches!(text_box.layout.kind, RunImageKind::Floating) {
+        if !matches!(text_box.layout.kind, RunImageKind::Floating) || text_box.layout.hidden() {
             return Ok(None);
         }
 
@@ -24572,9 +24709,15 @@ where
                     1.0,
                     1.0,
                 );
-                Self::trace_text_box_shape(&context, text_box.shape, draw_x, draw_y, width, height)
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
                     .map_err(PainterError::into_js_value)?;
+                Self::trace_text_box_geometry(
+                    &context, text_box, None, None, draw_x, draw_y, width, height,
+                )
+                .map_err(PainterError::into_js_value)?;
                 context.fill();
+                context.restore();
                 if blur_effect {
                     context.restore();
                 }
@@ -24658,7 +24801,56 @@ where
         let mut cursor_y = content_y;
         let mut remaining_line_gaps = line_count.saturating_sub(1);
         let first_text_box_paragraph = self.paragraph_counter;
-        let rendered = if text_box.shape.is_line() {
+        // WordArt: the text is laid out as usual — the caret and hit test
+        // need its lines — but drawn by `wordart_paint`, with its effects
+        // and transform.
+        let wordart = draw_enabled
+            && !text_box.shape.is_line()
+            && (text_box.extras().wordart.is_some()
+                || text_box
+                    .extras()
+                    .text_warp
+                    .as_ref()
+                    .is_some_and(|warp| warp.preset != "textNoShape"));
+        if wordart {
+            let context = self.host.painter();
+            context.save();
+            context.set_global_alpha(0.0);
+        }
+        // A linked text box: the chain's text flows through its boxes. The
+        // first box shows what fits; each later one, the lines after those
+        // the boxes before it hold.
+        let chain = text_box
+            .extras()
+            .link
+            .and_then(|link| self.linked_story(link.id).map(|story| (link, story)))
+            .filter(|(_, story)| story.boxes.len() > 1);
+        if let Some((link, story)) = chain.as_ref() {
+            let context = self.host.painter();
+            context.save();
+            context.begin_path();
+            context.rect(
+                content_left,
+                content_top,
+                (content_right - content_left).max(1.0),
+                (box_bottom - content_top).max(1.0),
+            );
+            context.clip();
+            if link.sequence > 0 {
+                self.render_linked_continuation(
+                    story,
+                    link.sequence,
+                    content_left,
+                    content_right,
+                    content_top,
+                    box_bottom,
+                )?;
+            }
+        }
+        let rendered = if chain.as_ref().is_some_and(|(link, _)| link.sequence > 0) {
+            // Its text is the chain's, drawn above; it has none of its own.
+            true
+        } else if text_box.shape.is_line() {
             // Connectors are stroke-only WordprocessingShapes. They expose a
             // grab region but must not synthesize an editable empty paragraph.
             true
@@ -24680,6 +24872,80 @@ where
         if !rendered {
             self.render_empty_text_box_paragraph(content_left, &mut cursor_y, box_bottom)?;
         }
+        if chain.is_some() {
+            self.host.painter().restore();
+            self.invalidate_context_state_tracking();
+        }
+        if wordart {
+            let context = self.host.painter();
+            context.restore();
+            self.invalidate_context_state_tracking();
+            let first_run = text_box.blocks.iter().find_map(|block| match block {
+                BodyElement::Paragraph(paragraph) => paragraph
+                    .runs
+                    .iter()
+                    .find(|run| !run.text.is_empty())
+                    .and_then(|run| run.properties.as_ref()),
+                _ => None,
+            });
+            let resolved =
+                jade_docx_layout::font_resolver::resolve_run_style_for_wrap(first_run, None);
+            let font = if text_box.text.is_ascii() {
+                resolved.font_descriptor_latin_hansi.to_string()
+            } else {
+                resolved.font_descriptor_east_asia.to_string()
+            };
+            let size_px = parse_font_descriptor_size_pt(&font).unwrap_or(36.0) * 96.0 / 72.0;
+            let effects = text_box.extras().wordart.clone().unwrap_or_default();
+            let run_color = first_run
+                .and_then(|properties| properties.color.as_deref())
+                .filter(|color| !color.eq_ignore_ascii_case("auto"))
+                .map(|color| format!("#{}", color.trim_start_matches('#')));
+            let paint = crate::wordart_paint::WordArtPaint {
+                font,
+                size_px,
+                fill: if effects.no_fill {
+                    None
+                } else {
+                    effects
+                        .fill
+                        .as_ref()
+                        .and_then(|fill| fill.rgb.clone())
+                        .or(run_color)
+                        .or_else(|| Some("#000000".to_string()))
+                },
+                outline: effects
+                    .outline
+                    .as_ref()
+                    .and_then(|(color, width)| color.rgb.clone().map(|rgb| (rgb, *width))),
+                shadow: effects.shadow,
+                glow: effects.glow.as_ref().and_then(|(color, radius)| {
+                    color
+                        .rgb
+                        .as_deref()
+                        .map(|rgb| (Self::shape_effect_color(Some(rgb), 0.6), *radius))
+                }),
+            };
+            let preset = text_box
+                .extras()
+                .text_warp
+                .as_ref()
+                .map(|warp| warp.preset.as_str())
+                .unwrap_or("textNoShape");
+            crate::wordart_paint::paint_wordart(
+                &context,
+                &text_box.text,
+                preset,
+                (
+                    content_left,
+                    content_top,
+                    (content_right - content_left).max(1.0),
+                    (box_bottom - content_top).max(1.0),
+                ),
+                &paint,
+            );
+            self.invalidate_context_state_tracking();
+        }
 
         if self.auxiliary_story_capture_mode.enabled() {
             let lines =
@@ -24695,6 +24961,9 @@ where
         if draw_enabled {
             let context = self.host.painter();
             if border.style != TextBoxBorderStyle::None {
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
+                    .map_err(PainterError::into_js_value)?;
                 context.set_stroke_style_str(&stroke_style);
                 let blur_effect = Self::begin_shape_blur_effects(
                     &context,
@@ -24708,9 +24977,9 @@ where
                         Self::apply_line_dash(&context, &[])
                             .map_err(PainterError::into_js_value)?;
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24749,9 +25018,9 @@ where
                                 .map_err(PainterError::into_js_value)?;
                         }
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24766,6 +25035,7 @@ where
                 if blur_effect {
                     context.restore();
                 }
+                context.restore();
             }
             context.restore();
             // The box's paragraphs set fonts inside this save.
@@ -24814,6 +25084,150 @@ where
 
         let wrap_bottom_outset = text_box_wrap_bottom_outset_px(&border);
         Ok(Some(draw_y + height + wrap_bottom_outset))
+    }
+
+    /// The chain of linked text boxes `id`: the first box's text, and each
+    /// box's sequence and content height, from the document last rendered.
+    fn linked_story(&self, id: u32) -> Option<Rc<LinkedStory>> {
+        let document = self.last_document.as_ref()?;
+        if let Some(found) = self
+            .linked_stories
+            .borrow()
+            .get(&id)
+            .filter(|story| Rc::ptr_eq(&story.document, document))
+        {
+            return Some(Rc::clone(found));
+        }
+        fn walk(elements: &[BodyElement], id: u32, story: &mut LinkedStory) {
+            for element in elements {
+                match element {
+                    BodyElement::Paragraph(paragraph) => {
+                        for run in &paragraph.runs {
+                            let Some(text_box) = run.text_box.as_ref() else {
+                                continue;
+                            };
+                            if let Some(link) = text_box.extras().link.filter(|link| link.id == id)
+                            {
+                                let height = text_box.height_px.unwrap_or(0.0)
+                                    - text_box.insets.top_px
+                                    - text_box.insets.bottom_px;
+                                story.boxes.push((link.sequence, height.max(0.0)));
+                                if link.sequence == 0 {
+                                    story.blocks = text_box.blocks.clone();
+                                }
+                            }
+                            walk(&text_box.blocks, id, story);
+                        }
+                    }
+                    BodyElement::Table(table) => {
+                        for row in &table.rows {
+                            for cell in &row.cells {
+                                walk(&cell.blocks, id, story);
+                            }
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let mut story = LinkedStory {
+            document: Rc::clone(document),
+            blocks: Vec::new(),
+            boxes: Vec::new(),
+        };
+        walk(&document.body.as_ref()?.elements, id, &mut story);
+        story.boxes.sort_by_key(|(sequence, _)| *sequence);
+        let story = Rc::new(story);
+        self.linked_stories
+            .borrow_mut()
+            .insert(id, Rc::clone(&story));
+        Some(story)
+    }
+
+    /// Draws the part of a linked chain's text that falls in box
+    /// `sequence`: the whole text laid out at this box's width, moved up by
+    /// the lines the boxes before it hold, clipped by the caller. Drawn
+    /// apart from the document's own paragraphs, which the first box holds.
+    fn render_linked_continuation(
+        &mut self,
+        story: &LinkedStory,
+        sequence: u32,
+        content_left: f64,
+        content_right: f64,
+        content_top: f64,
+        box_bottom: f64,
+    ) -> Result<(), JsValue> {
+        let TextBoxBlockLayout {
+            height,
+            line_count,
+            math_plans,
+        } = self.measure_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut NumberingCounter::new(),
+        )?;
+        let line_height = height / line_count.max(1) as f64;
+        if line_height <= 0.0 {
+            return Ok(());
+        }
+        let lines_before: f64 = story
+            .boxes
+            .iter()
+            .filter(|(other, _)| *other < sequence)
+            .map(|(_, content)| (content / line_height).floor())
+            .sum();
+        // Isolated: the story's paragraphs are the first box's surfaces.
+        let saved_counter = self.paragraph_counter;
+        let saved_selection = std::mem::take(&mut self.selection);
+        let saved_hyperlinks = self.hyperlink_regions.len();
+        let saved_comments = self.comment_annotations.len();
+        let saved_images = self.image_debug_regions.borrow().len();
+        let saved_text_boxes = self.text_box_debug_regions.borrow().len();
+        let saved_grouped = self.grouped_shape_text_regions.borrow().len();
+        let saved_objects = self.object_debug_regions.borrow().len();
+        let saved_revisions = self.revision_debug_regions.borrow().len();
+        let saved_numbering = self.numbering_debug_regions.borrow().len();
+        let saved_overflows = self.line_overflow_debug_regions.borrow().len();
+        let mut cursor_y = content_top - lines_before * line_height;
+        let bottom = box_bottom.max(cursor_y + height);
+        let mut remaining_gaps = line_count.saturating_sub(1);
+        let result = self.render_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut cursor_y,
+            bottom,
+            false,
+            &mut NumberingCounter::new(),
+            0.0,
+            &mut remaining_gaps,
+            &mut math_plans.iter(),
+        );
+        self.paragraph_counter = saved_counter;
+        self.selection = saved_selection;
+        self.hyperlink_regions.truncate(saved_hyperlinks);
+        self.comment_annotations.truncate(saved_comments);
+        self.image_debug_regions.borrow_mut().truncate(saved_images);
+        self.text_box_debug_regions
+            .borrow_mut()
+            .truncate(saved_text_boxes);
+        self.grouped_shape_text_regions
+            .borrow_mut()
+            .truncate(saved_grouped);
+        self.object_debug_regions
+            .borrow_mut()
+            .truncate(saved_objects);
+        self.revision_debug_regions
+            .borrow_mut()
+            .truncate(saved_revisions);
+        self.numbering_debug_regions
+            .borrow_mut()
+            .truncate(saved_numbering);
+        self.line_overflow_debug_regions
+            .borrow_mut()
+            .truncate(saved_overflows);
+        result.map(|_| ())
     }
 
     /// Flattens a text-box paragraph into the text the shared wrap engine sees
@@ -25990,7 +26404,23 @@ where
         image: &RunImage,
         draw_spec: ImageDrawSpec,
     ) -> Result<(), JsValue> {
-        if !self.should_draw_current_page_for_render() {
+        if !self.should_draw_current_page_for_render() || image.layout.hidden() {
+            return Ok(());
+        }
+        if let Some(ink) = image.format().ink.as_ref() {
+            let painter = self.host.painter();
+            painter.save();
+            Self::apply_centered_transform(
+                &painter,
+                draw_spec.x + draw_spec.width / 2.0,
+                draw_spec.y + draw_spec.height / 2.0,
+                draw_spec.rotation_deg,
+                draw_spec.flip_horizontal,
+                draw_spec.flip_vertical,
+            )
+            .map_err(PainterError::into_js_value)?;
+            Self::paint_ink(&painter, ink, draw_spec);
+            painter.restore();
             return Ok(());
         }
         let data_uri = match &image.data_uri {
@@ -26026,6 +26456,42 @@ where
         // A host that can draw the image itself gets first refusal. The path
         // below needs a canvas and an event loop for the decode; a host with
         // neither would reach for a context that does not exist.
+        //
+        // The picture is drawn with its colour adjustments and soft edges
+        // applied, inside its effects: reflection, glow and shadow under
+        // it, its shape as a clip, its outline and bevel over it.
+        // A chart is drawn from its part: plot, axes, title and legend.
+        if let Some(chart) = image.chart.as_ref() {
+            let xml = chart.xml.clone().or_else(|| {
+                crate::chart::build_chart_xml(chart, None)
+                    .ok()
+                    .map(|xml| std::rc::Rc::from(xml.as_str()))
+            });
+            if let Some(xml) = xml {
+                let painter = self.host.painter();
+                painter.save();
+                let transformed = Self::apply_centered_transform(
+                    &painter,
+                    draw_spec.x + draw_spec.width / 2.0,
+                    draw_spec.y + draw_spec.height / 2.0,
+                    draw_spec.rotation_deg,
+                    draw_spec.flip_horizontal,
+                    draw_spec.flip_vertical,
+                );
+                let drawn = transformed.is_ok()
+                    && crate::chart_paint::paint_chart(
+                        &painter,
+                        &xml,
+                        (draw_spec.x, draw_spec.y, draw_spec.width, draw_spec.height),
+                    );
+                painter.restore();
+                if drawn {
+                    return Ok(());
+                }
+            }
+        }
+        let effective = crate::picture_effects::effective_data_uri(image);
+        let data_uri = effective.as_deref().unwrap_or(data_uri);
         let painter = self.host.painter();
         painter.save();
         let transform = Self::apply_centered_transform(
@@ -26036,15 +26502,35 @@ where
             draw_spec.flip_horizontal,
             draw_spec.flip_vertical,
         );
-        let handled = transform.is_ok()
-            && self.host.draw_image_data_uri(
-                data_uri,
-                draw_spec.x,
-                draw_spec.y,
-                draw_spec.width,
-                draw_spec.height,
-                image_crop_mapping(draw_spec.crop),
-            );
+        let crop = image_crop_mapping(draw_spec.crop);
+        let draw = |x: f64, y: f64| {
+            self.host
+                .draw_image_data_uri(data_uri, x, y, draw_spec.width, draw_spec.height, crop)
+        };
+        let handled = transform.is_ok() && {
+            self.paint_picture_underlay(&painter, image, draw_spec, &draw)
+                .map_err(PainterError::into_js_value)?;
+            painter.save();
+            if let Some(shape) = image.format().geometry {
+                Self::trace_text_box_shape(
+                    &painter,
+                    shape,
+                    draw_spec.x,
+                    draw_spec.y,
+                    draw_spec.width,
+                    draw_spec.height,
+                )
+                .map_err(PainterError::into_js_value)?;
+                painter.clip();
+            }
+            let drawn = draw(draw_spec.x, draw_spec.y);
+            painter.restore();
+            if drawn {
+                Self::paint_picture_overlay(&painter, image, draw_spec)
+                    .map_err(PainterError::into_js_value)?;
+            }
+            drawn
+        };
         painter.restore();
         transform.map_err(PainterError::into_js_value)?;
         if handled {
@@ -26120,6 +26606,197 @@ where
 
         self.pending_image_promises.borrow_mut().push(draw_promise);
 
+        Ok(())
+    }
+
+    /// What goes under a picture: its reflection, glow and shadow. Each
+    /// follows the picture's shape — its own pixels when it is a plain
+    /// rectangle, so a picture with a transparent background casts the
+    /// shadow of what is in it, as in Word.
+    fn paint_picture_underlay<P: Painter>(
+        &self,
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+        draw: &dyn Fn(f64, f64) -> bool,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        if let Some(reflection) = image.format().reflection.as_ref() {
+            // A copy mirrored below the picture, fading from `start_opacity`
+            // at the picture's foot to `end_opacity` at `end_position` of
+            // its height. The painters have no gradient mask, so the fade is
+            // drawn as bands of falling opacity.
+            const BANDS: usize = 16;
+            let reach = (height * reflection.end_position.clamp(0.0, 1.0)).max(1.0);
+            let top = y + height + reflection.distance_px.max(0.0);
+            for band in 0..BANDS {
+                let from = reach * band as f64 / BANDS as f64;
+                let to = reach * (band + 1) as f64 / BANDS as f64;
+                let opacity = reflection.start_opacity
+                    + (reflection.end_opacity - reflection.start_opacity) * (band as f64 + 0.5)
+                        / BANDS as f64;
+                if opacity <= 0.0 {
+                    continue;
+                }
+                painter.save();
+                painter.begin_path();
+                painter.rect(x, top + from, width, to - from + 0.5);
+                painter.clip();
+                painter.set_global_alpha(opacity.clamp(0.0, 1.0));
+                painter.translate(0.0, top * 2.0)?;
+                painter.scale(1.0, -1.0)?;
+                draw(x, top - height);
+                painter.restore();
+            }
+        }
+        let shadow_pass = |color: String, blur: f64, offset_x: f64, offset_y: f64| {
+            painter.save();
+            match image.format().geometry {
+                Some(shape) => {
+                    // The shape filled far off the page casts its shadow
+                    // back onto it, so only the shadow shows.
+                    const AWAY: f64 = 100_000.0;
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x + AWAY);
+                    painter.set_shadow_offset_y(offset_y);
+                    painter.set_fill_style_str("#000000");
+                    let traced =
+                        Self::trace_text_box_shape(painter, shape, x - AWAY, y, width, height);
+                    if traced.is_ok() {
+                        painter.fill();
+                    }
+                }
+                None => {
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x);
+                    painter.set_shadow_offset_y(offset_y);
+                    draw(x, y);
+                }
+            }
+            painter.restore();
+        };
+        if let Some(glow) = image.format().glow.as_ref() {
+            shadow_pass(Self::shape_glow_color(glow), glow.radius_px * 2.0, 0.0, 0.0);
+        }
+        if let Some(shadow) = image.format().shadow.as_ref() {
+            let direction = shadow.direction_deg.to_radians();
+            shadow_pass(
+                Self::shape_shadow_color(shadow),
+                shadow.blur_radius_px,
+                shadow.distance_px * direction.cos(),
+                shadow.distance_px * direction.sin(),
+            );
+        }
+        Ok(())
+    }
+
+    /// Ink's strokes, fitted to the drawing's box (which Word sizes to the
+    /// strokes and their pen).
+    fn paint_ink<P: Painter>(painter: &P, ink: &crate::document::InkDrawing, spec: ImageDrawSpec) {
+        const PX_PER_CM: f64 = 96.0 / 2.54;
+        let (left, top, width, height) = crate::ink::bounds(ink);
+        let pen = ink
+            .strokes
+            .iter()
+            .map(|stroke| stroke.width)
+            .fold(0.0, f64::max)
+            * PX_PER_CM;
+        let scale_x = ((spec.width - pen).max(1.0)) / width;
+        let scale_y = ((spec.height - pen).max(1.0)) / height;
+        let at = |(x, y): (f64, f64)| {
+            (
+                spec.x + pen / 2.0 + (x - left) * scale_x,
+                spec.y + pen / 2.0 + (y - top) * scale_y,
+            )
+        };
+        for stroke in &ink.strokes {
+            let line_width = (stroke.width * (scale_x + scale_y) / 2.0).max(0.5);
+            painter.save();
+            if stroke.highlighter {
+                painter.set_global_alpha(0.5);
+            }
+            painter.set_stroke_style_str(&stroke.color);
+            painter.set_fill_style_str(&stroke.color);
+            painter.set_line_width(line_width);
+            painter.set_line_dash(&[]);
+            painter.begin_path();
+            if stroke.points.len() == 1 {
+                let (x, y) = at(stroke.points[0]);
+                let _ = painter.arc(x, y, line_width / 2.0, 0.0, std::f64::consts::TAU);
+                painter.fill();
+            } else {
+                for (index, point) in stroke.points.iter().enumerate() {
+                    let (x, y) = at(*point);
+                    if index == 0 {
+                        painter.move_to(x, y);
+                    } else {
+                        painter.line_to(x, y);
+                    }
+                }
+                painter.stroke();
+            }
+            painter.restore();
+        }
+    }
+
+    /// What goes over a picture: its inner shadow, bevel and outline.
+    fn paint_picture_overlay<P: Painter>(
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        let shape = image.format().geometry.unwrap_or(TextBoxShape::Rectangle);
+        if let Some(shadow) = image.format().inner_shadow.as_ref() {
+            Self::paint_shape_inner_shadow(painter, shadow, shape, x, y, width, height, 1.0, 1.0)?;
+        }
+        if let Some(bevel) = image.format().bevel.as_ref() {
+            // Light falls from the top left: a bright band along the top and
+            // left edges, a dark one along the bottom and right, as wide as
+            // the bevel.
+            let band = bevel.width_px.min(width / 2.0).min(height / 2.0).max(1.0);
+            painter.save();
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.clip();
+            painter.set_line_width(band);
+            painter.set_stroke_style_str("rgba(255, 255, 255, 0.45)");
+            painter.begin_path();
+            painter.move_to(x + band / 2.0, y + height);
+            painter.line_to(x + band / 2.0, y + band / 2.0);
+            painter.line_to(x + width, y + band / 2.0);
+            painter.stroke();
+            painter.set_stroke_style_str("rgba(0, 0, 0, 0.3)");
+            painter.begin_path();
+            painter.move_to(x + band, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + band);
+            painter.stroke();
+            painter.restore();
+        }
+        if let Some(outline) = image
+            .format()
+            .outline
+            .as_ref()
+            .filter(|outline| outline.style != TextBoxBorderStyle::None)
+            .filter(|outline| outline.color.is_some() || outline.width_px.is_some())
+        {
+            let line_width = outline
+                .width_px
+                .unwrap_or(DEFAULT_TEXT_BOX_BORDER_WIDTH_PX)
+                .max(0.5);
+            painter.save();
+            painter.set_stroke_style_str(&Self::shape_border_color(outline));
+            painter.set_line_width(line_width);
+            if let Some(pattern) = Self::border_dash_pattern(outline.style.clone(), line_width) {
+                painter.set_line_dash(&pattern);
+            }
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.stroke();
+            painter.set_line_dash(&[]);
+            painter.restore();
+        }
         Ok(())
     }
 
@@ -26361,6 +27038,19 @@ where
                 shape.flip_vertical,
             )
             .map_err(PainterError::into_js_value)?;
+            // A grouped picture, drawn in its box.
+            if let Some(picture) = shape.picture.as_ref() {
+                if let Some(uri) = picture.data_uri.as_deref() {
+                    self.host.draw_image_data_uri(
+                        uri,
+                        child_x,
+                        child_y,
+                        child_width,
+                        child_height,
+                        image_crop_mapping(picture.crop),
+                    );
+                }
+            }
             let fill_color =
                 Self::shape_fill_color(shape.fill_color.as_deref(), shape.fill_opacity);
             if let Some(glow) = shape.glow.as_ref() {
@@ -40544,6 +41234,8 @@ mod tests {
 
     #[test]
     fn connector_line_ends_keep_the_authored_side_and_geometry() {
+        // DrawingML lines run from the frame's top left to its bottom right
+        // unless flipped.
         use jade_painter::recording::Op;
 
         let head_only = jade_painter::recording::RecordingPainter::new();
@@ -40560,7 +41252,7 @@ mod tests {
         .expect("infallible");
         let ops = head_only.ops();
         assert_eq!(
-            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "the head marker must start at the connector's authored start point: {ops:?}"
         );
@@ -40601,12 +41293,12 @@ mod tests {
         )
         .expect("infallible");
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "a bent connector's head marker must use its start endpoint"
         );
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 0.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 40.0)),
             0,
             "head-only bent connectors must not gain a tail marker"
         );
@@ -40625,7 +41317,7 @@ mod tests {
         .expect("infallible");
         assert!(
             curved_tail.ops().iter().any(
-                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 0.0)
+                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 40.0)
             ),
             "a curved connector's tail marker must follow its ending tangent"
         );
@@ -40680,6 +41372,7 @@ mod tests {
                     },
                     vertical_alignment: TextBoxVerticalAlignment::Center,
                     text_style: None,
+                    ..Default::default()
                 },
                 RunGroupShape {
                     x: 700.0,
