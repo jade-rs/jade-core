@@ -19,6 +19,7 @@
 //! the renderer paints from `&self` methods throughout. Backends that need
 //! mutable state use interior mutability.
 
+pub mod font_features;
 pub mod paper;
 pub mod recording;
 
@@ -267,6 +268,29 @@ pub trait Painter {
         &self,
         _text: &str,
         _x_positions: &[f64],
+        _y: f64,
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
+
+    /// Draws `text` shaped as one run with the OpenType features the current
+    /// font descriptor carries (see [`font_features`]): ligatures, contextual
+    /// alternates, old-style figures and the like, drawn as the glyphs the
+    /// font substitutes rather than a character at a time.
+    ///
+    /// `clusters` places the text: each entry is a byte offset into `text`
+    /// where a character (grapheme) starts, with the x layout gave it. A glyph
+    /// is drawn at its cluster's x plus its offset within the cluster, so
+    /// layout's justification and spacing survive, and a ligature spanning
+    /// several characters is drawn at the first one's x.
+    ///
+    /// `Ok(false)` when the backend cannot shape this run (no features, no
+    /// shaper, a character its face lacks); the caller then draws it a
+    /// character at a time.
+    fn try_fill_shaped_text(
+        &self,
+        _text: &str,
+        _clusters: &[(usize, f64)],
         _y: f64,
     ) -> Result<bool, Self::Error> {
         Ok(false)

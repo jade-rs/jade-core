@@ -743,6 +743,104 @@ impl SkiaPainter {
         });
     }
 
+    /// The font file behind `typeface`, parsed once per face for the shaper.
+    fn shaping_data(typeface: &Typeface) -> Option<Rc<(Vec<u8>, u32)>> {
+        thread_local! {
+            static DATA: RefCell<HashMap<u32, Option<Rc<(Vec<u8>, u32)>>>> =
+                RefCell::new(HashMap::new());
+        }
+        let id = typeface.unique_id();
+        DATA.with(|data| {
+            data.borrow_mut()
+                .entry(id)
+                .or_insert_with(|| {
+                    typeface
+                        .to_font_data()
+                        .map(|(bytes, index)| Rc::new((bytes, index as u32)))
+                })
+                .clone()
+        })
+    }
+
+    /// [`Painter::try_fill_shaped_text`]: shapes `text` with the descriptor's
+    /// OpenType features and draws the glyphs the font substitutes, each at
+    /// its cluster's x.
+    fn fill_shaped(&self, text: &str, clusters: &[(usize, f64)], y: f64) -> bool {
+        let descriptor = self.shared.style.borrow().font_descriptor.clone();
+        let features = jade_painter::font_features::parse(&descriptor);
+        if features.is_empty() || text.is_empty() || clusters.is_empty() {
+            return false;
+        }
+        let font = self.font();
+        let typeface = font.typeface();
+        // One face draws the whole stretch, or the caller draws it per
+        // character with fallback.
+        if text
+            .chars()
+            .any(|ch| typeface.unichar_to_glyph(ch as i32) == 0)
+        {
+            return false;
+        }
+        let Some(data) = Self::shaping_data(&typeface) else {
+            return false;
+        };
+        let Some(face) = rustybuzz::Face::from_slice(&data.0, data.1) else {
+            return false;
+        };
+        let mut buffer = rustybuzz::UnicodeBuffer::new();
+        buffer.push_str(text);
+        buffer.guess_segment_properties();
+        let features: Vec<rustybuzz::Feature> = features
+            .iter()
+            .map(|feature| {
+                rustybuzz::Feature::new(
+                    rustybuzz::ttf_parser::Tag::from_bytes(&feature.tag),
+                    feature.value,
+                    ..,
+                )
+            })
+            .collect();
+        let shaped = rustybuzz::shape(&face, &features, buffer);
+        let scale = font.size() / f32::from(face.units_per_em() as u16);
+        let infos = shaped.glyph_infos();
+        let positions = shaped.glyph_positions();
+        let paint = self.fill_paint();
+        let baseline_y = self.baseline_y(&font, y);
+        let cluster_x = |byte: usize| -> f32 {
+            let at = clusters.partition_point(|(start, _)| *start <= byte);
+            clusters[at.saturating_sub(1)].1 as f32
+        };
+        let mut builder = skia_safe::TextBlobBuilder::new();
+        let (glyphs, points, utf8, blob_clusters) =
+            builder.alloc_run_text_pos(&font, infos.len(), text.len(), None);
+        utf8.copy_from_slice(text.as_bytes());
+        let mut pen = 0.0_f32;
+        let mut cluster_pen = 0.0_f32;
+        let mut current_cluster = None;
+        for (index, (info, position)) in infos.iter().zip(positions).enumerate() {
+            if current_cluster != Some(info.cluster) {
+                current_cluster = Some(info.cluster);
+                cluster_pen = pen;
+            }
+            glyphs[index] = info.glyph_id as u16;
+            blob_clusters[index] = info.cluster;
+            points[index] = skia_safe::Point::new(
+                cluster_x(info.cluster as usize)
+                    + (pen - cluster_pen)
+                    + position.x_offset as f32 * scale,
+                -(position.y_offset as f32) * scale,
+            );
+            pen += position.x_advance as f32 * scale;
+        }
+        let Some(blob) = builder.make() else {
+            return false;
+        };
+        self.with_canvas(|canvas| {
+            canvas.draw_text_blob(&blob, (0.0, baseline_y), &paint);
+        });
+        true
+    }
+
     /// PNG bytes of everything painted so far.
     pub fn encode_png(&self) -> Option<Vec<u8>> {
         let mut target = self.shared.surface.borrow_mut();
@@ -1544,6 +1642,18 @@ impl Painter for SkiaPainter {
         let paint = self.fill_paint();
         self.draw_segments(text, x, y, &paint);
         Ok(())
+    }
+
+    fn try_fill_shaped_text(
+        &self,
+        text: &str,
+        clusters: &[(usize, f64)],
+        y: f64,
+    ) -> Result<bool, Self::Error> {
+        self.shared
+            .fill_text_calls
+            .set(self.shared.fill_text_calls.get() + 1);
+        Ok(self.fill_shaped(text, clusters, y))
     }
 
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {

@@ -198,7 +198,10 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
     }
 
     fn set_font(&self, value: &str) {
-        self.ctx().set_font(value);
+        // A canvas rejects the whole shorthand over a token it does not know,
+        // so OpenType features are dropped here: the text is drawn plain.
+        self.ctx()
+            .set_font(&jade_painter::font_features::strip(value));
     }
 
     fn set_text_baseline(&self, value: &str) {
@@ -392,6 +395,23 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
         fonts: &[Rc<str>],
         y: f64,
     ) -> Result<bool, Self::Error> {
+        if fonts
+            .iter()
+            .any(|font| jade_painter::font_features::has_features(font))
+        {
+            let plain: Vec<Rc<str>> = fonts
+                .iter()
+                .map(|font| Rc::from(jade_painter::font_features::strip(font).as_ref()))
+                .collect();
+            return fill_bmp_glyph_run_batch(
+                self.ctx(),
+                text,
+                x_positions,
+                font_indexes,
+                &plain,
+                y,
+            );
+        }
         fill_bmp_glyph_run_batch(self.ctx(), text, x_positions, font_indexes, fonts, y)
     }
 }
