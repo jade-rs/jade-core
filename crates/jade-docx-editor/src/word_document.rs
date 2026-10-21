@@ -18284,6 +18284,8 @@ impl WordDocument {
                     hanging,
                     left_chars,
                     right_chars,
+                    first_line_chars,
+                    hanging_chars,
                     clear_special,
                     ..
                 } => {
@@ -18293,6 +18295,8 @@ impl WordDocument {
                         || hanging.is_some()
                         || left_chars.is_some()
                         || right_chars.is_some()
+                        || first_line_chars.is_some()
+                        || hanging_chars.is_some()
                         || *clear_special;
                 }
                 HeadlessCommand::SetParagraphLineSpacing {
@@ -42466,6 +42470,8 @@ mod tests {
                             hanging: None,
                             left_chars: None,
                             right_chars: None,
+                            first_line_chars: None,
+                            hanging_chars: None,
                             clear_special: true,
                         }]
                     )

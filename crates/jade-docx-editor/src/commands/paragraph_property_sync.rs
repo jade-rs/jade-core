@@ -163,6 +163,31 @@ pub(crate) fn reset_paragraph_formatting_xml(paragraph_properties: &mut XmlEleme
     }
 }
 
+/// Writes an on/off paragraph property (`w:keepNext`, `w:keepLines`,
+/// `w:pageBreakBefore`, `w:widowControl`) as direct formatting: the bare
+/// element for on, `w:val="0"` for off — which overrides a style that turns
+/// it on — in its `CT_PPrBase` place.
+pub(crate) fn sync_paragraph_toggle_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    on: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        let attributes = if on {
+            Vec::new()
+        } else {
+            vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: "0".to_string(),
+            }]
+        };
+        let child = raw.create_element(tag, attributes, Vec::new());
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
 pub(crate) fn sync_paragraph_shading_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
