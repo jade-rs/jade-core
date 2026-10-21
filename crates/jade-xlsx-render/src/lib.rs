@@ -544,6 +544,9 @@ fn render_shape<P: Painter>(
             painter.set_global_alpha(1.0);
         }
     }
+    if let Some(style) = shape.style.as_ref() {
+        return render_styled_shape(painter, shape, style, rect);
+    }
     let background = options
         .background
         .clone()
@@ -622,6 +625,109 @@ fn render_shape<P: Painter>(
         let y = rect.y + padding + line_height * index as f64 + ascent;
         painter.fill_text(line, rect.x + padding, y)?;
     }
+    Ok(())
+}
+
+fn rgba_css(color: [u8; 4]) -> String {
+    format!(
+        "rgba({}, {}, {}, {})",
+        color[0],
+        color[1],
+        color[2],
+        f64::from(color[3]) / 255.0
+    )
+}
+
+/// A shape with its own geometry, fill and outline, and its text placed by
+/// its alignment and anchor.
+fn render_styled_shape<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    style: &jade_xlsx_layout::shape_style::PlacedShapeStyle,
+    rect: Rect,
+) -> Result<(), P::Error> {
+    use jade_xlsx_layout::shape_style::PathOp;
+    let turned = style.rotation_radians != 0.0 || style.flip_h || style.flip_v;
+    painter.save();
+    painter.translate(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)?;
+    painter.rotate(style.rotation_radians)?;
+    painter.scale(
+        if style.flip_h { -1.0 } else { 1.0 },
+        if style.flip_v { -1.0 } else { 1.0 },
+    )?;
+    painter.translate(-rect.width / 2.0, -rect.height / 2.0)?;
+    painter.begin_path();
+    for op in &style.path {
+        match *op {
+            PathOp::Move(x, y) => painter.move_to(x, y),
+            PathOp::Line(x, y) => painter.line_to(x, y),
+            PathOp::Cubic(a, b, c, d, e, f) => painter.bezier_curve_to(a, b, c, d, e, f),
+            PathOp::Close => painter.close_path(),
+        }
+    }
+    if let Some(fill) = style.fill {
+        painter.set_fill_style_str(&rgba_css(fill));
+        painter.fill();
+    }
+    if let Some(stroke) = style.stroke {
+        painter.set_stroke_style_str(&rgba_css(stroke));
+        painter.set_line_width(style.stroke_width);
+        painter.set_line_dash(&style.dash);
+        painter.stroke();
+        painter.set_line_dash(&[]);
+        painter.set_fill_style_str(&rgba_css(stroke));
+        for arrow in &style.arrows {
+            painter.begin_path();
+            for (index, (x, y)) in arrow.iter().enumerate() {
+                if index == 0 {
+                    painter.move_to(*x, *y);
+                } else {
+                    painter.line_to(*x, *y);
+                }
+            }
+            painter.close_path();
+            painter.fill();
+        }
+    }
+    painter.restore();
+    if shape.lines.is_empty() {
+        return Ok(());
+    }
+    // Text turns with the shape but is never mirrored.
+    painter.save();
+    if turned {
+        painter.translate(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)?;
+        painter.rotate(style.rotation_radians)?;
+        painter.translate(-rect.x - rect.width / 2.0, -rect.y - rect.height / 2.0)?;
+    }
+    painter.set_font(&font_shorthand(&shape.font));
+    painter.set_text_baseline("alphabetic");
+    painter.set_fill_style_str(&rgba_css(style.text_color));
+    let line_height = points_to_px(line_height_points(shape.font.size_points));
+    let ascent = f64::from(shape.font.size_points) * 96.0 / 72.0 * 0.8;
+    let height = line_height * shape.lines.len() as f64;
+    let top = match style.text_anchor.as_str() {
+        "ctr" => rect.y + (rect.height - height) / 2.0,
+        "b" => rect.bottom() - style.inset_y - height,
+        _ => rect.y + style.inset_y,
+    };
+    for (index, line) in shape.lines.iter().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let width = painter.measure_text_width(line)?;
+        let x = match style.text_align.as_str() {
+            "ctr" => rect.x + (rect.width - width) / 2.0,
+            "r" => rect.right() - style.inset_x - width,
+            _ => rect.x + style.inset_x,
+        };
+        let y = top + line_height * index as f64 + ascent;
+        if let Err(error) = painter.fill_text(line, x, y) {
+            painter.restore();
+            return Err(error);
+        }
+    }
+    painter.restore();
     Ok(())
 }
 

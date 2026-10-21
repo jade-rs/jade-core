@@ -528,6 +528,72 @@ pub struct Shape {
     pub picture: Option<Picture>,
     #[serde(default)]
     pub chart: Option<crate::chart::Chart>,
+    /// A shape's or connector's geometry, fill, outline and text format.
+    #[serde(default)]
+    pub style: Option<Box<ShapeStyle>>,
+}
+
+/// A DrawingML colour: an RGB value or a theme colour, with its transforms
+/// (`lumMod`, `lumOff`, `shade`, `tint`, `satMod`, `alpha`) in file order.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DrawingColor {
+    pub rgb: Option<[u8; 3]>,
+    /// `schemeClr/@val`: `accent1`, `lt1`, `tx1`, `phClr`...
+    pub scheme: Option<String>,
+    /// Transforms as (name, value in 1/1000 percent).
+    pub transforms: Vec<(String, i32)>,
+}
+
+/// How a shape is filled or outlined.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ShapePaint {
+    /// The file says nothing: the shape style (`xdr:style`) decides.
+    #[default]
+    Unset,
+    /// `a:noFill`.
+    None,
+    Solid(DrawingColor),
+    /// A gradient's stops, drawn as their blend.
+    Gradient(Vec<DrawingColor>),
+}
+
+/// A shape's look from its `spPr`, `xdr:style` and text body.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ShapeStyle {
+    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...
+    pub geometry: Option<String>,
+    /// `avLst` guides as (name, value).
+    pub adjustments: Vec<(String, i64)>,
+    pub fill: ShapePaint,
+    pub line: ShapePaint,
+    /// `ln/@w` in EMUs.
+    pub line_width: Option<i64>,
+    /// `prstDash/@val`.
+    pub line_dash: Option<String>,
+    /// `headEnd/@type` and `tailEnd/@type` of a line: `triangle`, `arrow`...
+    pub head_end: Option<String>,
+    pub tail_end: Option<String>,
+    /// `xfrm/@rot` in 60000ths of a degree, and the flips.
+    pub rotation: i32,
+    pub flip_h: bool,
+    pub flip_v: bool,
+    /// The style's references: `fillRef`, `lnRef` (index and colour) and
+    /// `fontRef`'s colour.
+    pub style_fill: Option<(u32, DrawingColor)>,
+    pub style_line: Option<(u32, DrawingColor)>,
+    pub style_font: Option<DrawingColor>,
+    /// The text's first run: colour, size in 1/100 pt, bold, italic.
+    pub text_color: Option<DrawingColor>,
+    pub text_size: Option<u32>,
+    pub text_bold: bool,
+    pub text_italic: bool,
+    /// `pPr/@algn` of the first paragraph: `l`, `ctr`, `r`.
+    pub text_align: Option<String>,
+    /// `bodyPr/@anchor`: `t`, `ctr`, `b`.
+    pub text_anchor: Option<String>,
+    /// `bodyPr` insets in EMUs: left, top, right, bottom.
+    #[serde(default)]
+    pub text_insets: [Option<i64>; 4],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
