@@ -79,6 +79,14 @@ pub struct PlacedRun {
     /// The glyphs' shadow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_shadow: Option<crate::PlacedShadow>,
+    /// The glyphs' glow.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_glow: Option<crate::PlacedGlow>,
+    /// A picture bullet's image part: the run is the bullet, drawn as this
+    /// picture in a square of `width` sitting on the baseline, its text
+    /// the fallback when the picture cannot be drawn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bullet_image: Option<String>,
     /// A non-single underline's `u` value (`dbl`, `wavy`, `dotted`, …).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub underline_style: Option<String>,
@@ -161,9 +169,82 @@ pub(crate) fn layout_text_in_region(
             context,
         );
     }
-    let (mut lines, content_bottom) = flow_text(text, box_width_px, &frame, context);
+    let (mut lines, content_bottom) = match context.autofit.unwrap_or(text.autofit) {
+        Autofit::Normal {
+            font_scale,
+            line_spacing_reduction,
+        } => shrink_to_fit(
+            text,
+            box_width_px,
+            box_height_px,
+            &frame,
+            context,
+            stored_scale(font_scale, line_spacing_reduction),
+        ),
+        _ => flow_text(text, box_width_px, &frame, context),
+    };
     anchor_lines(&mut lines, &frame, box_height_px, content_bottom);
     (lines, content_bottom + frame.inset_bottom)
+}
+
+/// The stored `fontScale`/`lnSpcReduction`, sanitised.
+fn stored_scale(font_scale: f32, line_spacing_reduction: f32) -> (f32, f64) {
+    (
+        if font_scale > 0.0 && font_scale.is_finite() {
+            font_scale.min(1.0)
+        } else {
+            1.0
+        },
+        if line_spacing_reduction.is_finite() {
+            line_spacing_reduction.clamp(0.0, 0.9) as f64
+        } else {
+            0.0
+        },
+    )
+}
+
+/// The shrink steps PowerPoint's "shrink text on overflow" walks: line
+/// spacing first, 10% then 20%, then the font down 7.5% at a time with the
+/// spacing kept 20% tighter, to a quarter of its size — the pairs it
+/// records as `fontScale`/`lnSpcReduction`.
+fn autofit_steps() -> impl Iterator<Item = (f32, f64)> {
+    [(1.0, 0.0), (1.0, 0.1), (1.0, 0.2), (0.925, 0.1)]
+        .into_iter()
+        .chain((0..=9).map(|step| (0.925 - 0.075 * step as f32, 0.2)))
+}
+
+/// `normAutofit`: the text at its stored scale when that fits; otherwise
+/// the first of PowerPoint's shrink steps beyond the stored one that does
+/// (or the last). A stored scale is where PowerPoint left the text, so a
+/// deck opens as it was saved; text that has since grown — or that never
+/// had a scale recorded — shrinks on from there.
+fn shrink_to_fit(
+    text: &TextBody,
+    box_width_px: f64,
+    box_height_px: f64,
+    frame: &TextFrame,
+    context: &TextContext<'_>,
+    stored: (f32, f64),
+) -> (Vec<PlacedLine>, f64) {
+    // A hair of slack: substitute faces measure a little differently from
+    // the ones PowerPoint fitted with, and a deck it saved unshrunk fit.
+    let inner = (box_height_px - frame.inset_top - frame.inset_bottom).max(0.0);
+    let limit = box_height_px - frame.inset_bottom + (inner * 0.02).max(0.5);
+    let first = flow_text_scaled(text, box_width_px, frame, context, stored);
+    if first.1 <= limit {
+        return first;
+    }
+    let mut last = first;
+    for step in autofit_steps().filter(|(scale, reduction)| {
+        // Only steps that shrink further than what is stored.
+        *scale < stored.0 - 1e-4 || (*scale <= stored.0 + 1e-4 && *reduction > stored.1 + 1e-4)
+    }) {
+        last = flow_text_scaled(text, box_width_px, frame, context, step);
+        if last.1 <= limit {
+            break;
+        }
+    }
+    last
 }
 
 /// `numCol` text: flowed at one column's width, then dealt into columns
@@ -242,21 +323,26 @@ pub(crate) fn flow_text(
     frame: &TextFrame,
     context: &TextContext<'_>,
 ) -> (Vec<PlacedLine>, f64) {
-    let inner_width = (box_width_px - frame.inset_left - frame.inset_right).max(1.0);
-    let (font_scale, spacing_reduction) = match context.autofit.unwrap_or(text.autofit) {
+    let scale = match context.autofit.unwrap_or(text.autofit) {
         Autofit::Normal {
             font_scale,
             line_spacing_reduction,
-        } => (
-            if font_scale > 0.0 && font_scale.is_finite() {
-                font_scale
-            } else {
-                1.0
-            },
-            line_spacing_reduction.clamp(0.0, 0.9) as f64,
-        ),
+        } => stored_scale(font_scale, line_spacing_reduction),
         Autofit::None | Autofit::Shape => (1.0, 0.0),
     };
+    flow_text_scaled(text, box_width_px, frame, context, scale)
+}
+
+/// [`flow_text`] at an explicit autofit font scale and line spacing
+/// reduction.
+fn flow_text_scaled(
+    text: &TextBody,
+    box_width_px: f64,
+    frame: &TextFrame,
+    context: &TextContext<'_>,
+    (font_scale, spacing_reduction): (f32, f64),
+) -> (Vec<PlacedLine>, f64) {
+    let inner_width = (box_width_px - frame.inset_left - frame.inset_right).max(1.0);
 
     let mut lines = Vec::new();
     let mut line_top = frame.inset_top;
@@ -526,7 +612,14 @@ fn layout_paragraph(
             scheme,
             paragraph.number_start,
         )),
+        // A picture bullet takes a glyph's place; the run carries the
+        // picture, and the round bullet draws where it cannot.
+        Some(Bullet::Picture { .. }) => Some("\u{2022}".to_string()),
         Some(Bullet::None) | None => None,
+    };
+    let bullet_image = match &resolved.bullet {
+        Some(Bullet::Picture { image_part, .. }) => image_part.clone(),
+        _ => None,
     };
     let marker_style = RunStyle {
         size_pt: paragraph_size_pt * resolved.bullet_size_percent.unwrap_or(1.0).max(0.01),
@@ -538,10 +631,12 @@ fn layout_paragraph(
             .first()
             .and_then(|run| run.style.east_asian_font.clone()),
     };
-    let marker_width = marker
-        .as_deref()
-        .map(|marker| context.measure.measure(marker, &marker_style))
-        .unwrap_or(0.0);
+    let marker_width = match (&bullet_image, marker.as_deref()) {
+        // A picture bullet is a square as tall as the text's ascent.
+        (Some(_), Some(_)) => marker_style.size_pt as f64 * PX_PER_PT * crate::ASCENT_RATIO,
+        (None, Some(marker)) => context.measure.measure(marker, &marker_style),
+        _ => 0.0,
+    };
 
     // Where the bullet and the text go. With `marL`/`indent` known (the
     // paragraph's or an inherited level's), the bullet sits at the first
@@ -800,8 +895,10 @@ fn layout_paragraph(
                     letter_spacing_px: 0.0,
                     text_outline: None,
                     text_shadow: None,
+                    text_glow: None,
                     underline_style: None,
                     double_strike: false,
+                    bullet_image: bullet_image.clone(),
                 });
             }
         }
@@ -876,6 +973,8 @@ fn layout_paragraph(
                 letter_spacing_px: run.spacing_px,
                 text_outline: run.outline.clone(),
                 text_shadow: run.shadow.clone(),
+                text_glow: run.glow.clone(),
+                bullet_image: None,
                 underline_style: run.underline_style.clone(),
                 double_strike: run.double_strike,
             });
