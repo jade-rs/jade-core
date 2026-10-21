@@ -37,7 +37,12 @@ fn is_combining_accent(ch: char) -> bool {
 
 /// Characters that are part of an operand run (`2x`, `ab`, `3.14`).
 fn is_operand_char(ch: char) -> bool {
-    ch.is_alphanumeric() || matches!(ch, '.' | '′' | '″' | '‴' | '∞' | '∂' | '∅' | 'ℏ' | 'ℓ')
+    // ⬚ is an empty argument in the Equation tab's templates.
+    ch.is_alphanumeric()
+        || matches!(
+            ch,
+            '.' | '′' | '″' | '‴' | '∞' | '∂' | '∅' | 'ℏ' | 'ℓ' | '⬚'
+        )
 }
 
 fn closing_for(open: char) -> Option<char> {
@@ -280,25 +285,51 @@ impl Parser {
             open if closing_for(open).is_some() => {
                 let close = closing_for(open)?;
                 // A bar opens a delimiter only when another closes it.
-                if (open == '|' || open == '‖') && !self.chars[self.at + 1..].contains(&close) {
+                if (open == '|' || open == '‖')
+                    && !self.chars[self.at + 1..].contains(&close)
+                    && !self.chars[self.at + 1..].contains(&'┤')
+                {
                     return None;
                 }
                 let start = self.at;
                 self.at += 1;
-                let items = self.delimited_items(&[close]);
-                if self.peek() == Some(close) {
-                    self.at += 1;
-                    let separator = (items.len() > 1).then(|| "│".to_string());
-                    Some(Node::Delimiter {
-                        open: open.to_string(),
-                        close: close.to_string(),
-                        separator: separator.map(|_| "|".to_string()),
-                        items,
-                    })
-                } else {
-                    // Unclosed: the bracket is text.
-                    self.at = start;
-                    None
+                let items = self.delimited_items(&[close, '┤']);
+                let separator = (items.len() > 1).then(|| "|".to_string());
+                match self.peek() {
+                    Some(c) if c == close => {
+                        self.at += 1;
+                        Some(Node::Delimiter {
+                            open: open.to_string(),
+                            close: close.to_string(),
+                            separator,
+                            items,
+                        })
+                    }
+                    Some('┤') => {
+                        // `{■(…)┤`: closed by nothing, or by what follows ┤.
+                        self.at += 1;
+                        let mut close = String::new();
+                        if let Some(ch) = self
+                            .peek()
+                            .filter(|c| is_closing(*c) || *c == '|' || *c == '.')
+                        {
+                            self.at += 1;
+                            if ch != '.' {
+                                close = ch.to_string();
+                            }
+                        }
+                        Some(Node::Delimiter {
+                            open: open.to_string(),
+                            close,
+                            separator,
+                            items,
+                        })
+                    }
+                    _ => {
+                        // Unclosed: the bracket is text.
+                        self.at = start;
+                        None
+                    }
                 }
             }
             '■' | '⒨' | '⒩' => {

@@ -210,6 +210,7 @@ impl WordOracleLineXOffsets {
 mod math;
 #[cfg(feature = "opentype-math")]
 pub use math::paint_boxed_math as paint_styled_math;
+pub use math::{MathZone, OwnedMathGlyph, OwnedMathPlan, OwnedMathShape};
 struct RenderHostSlot<P: Painter>
 where
     P::Error: PainterError,
@@ -13145,6 +13146,7 @@ where
         // in the runtime wrap style instead of falling back to Word's 36pt
         // built-in default for every document.
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
+        self.math_settings = math::settings_from(&document.math_properties);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
         let new_east_asian_rules =
@@ -14307,6 +14309,7 @@ where
         &self,
         elements: &[jade_docx_reader::document::MathElement],
         properties: Option<&RunProperties>,
+        display: bool,
     ) -> Result<math::OwnedMathPlan, JsValue> {
         let mut style = self.boxed_math_style();
         if let Some(size) = properties
@@ -14316,7 +14319,7 @@ where
             style.size_px = points_to_px(size);
         }
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
-            display: false,
+            display,
             max_width: None,
             text_family: Some(self.math_text_family()),
             settings: self.math_settings,
@@ -17084,8 +17087,25 @@ where
                 if debug_text.is_none() {
                     debug_text = Some(layout_text.clone());
                 }
-                let plan =
-                    self.inline_math_plan(&math.elements, resolved_run_properties.as_deref())?;
+                // An equation alone in its paragraph is in display mode, as
+                // Word shows one on its own line.
+                let alone = paragraph
+                    .runs
+                    .iter()
+                    .filter(|r| {
+                        !r.text.is_empty()
+                            || r.image.is_some()
+                            || r.text_box.is_some()
+                            || r.math.is_some()
+                            || r.field.is_some()
+                    })
+                    .count()
+                    == 1;
+                let plan = self.inline_math_plan(
+                    &math.elements,
+                    resolved_run_properties.as_deref(),
+                    alone,
+                )?;
                 layout_text.push('\u{fffc}');
                 current_pos = layout_text.len();
                 run_styles.push(RunStyle {
