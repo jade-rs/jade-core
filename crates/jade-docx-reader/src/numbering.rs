@@ -52,6 +52,11 @@ pub struct NumberingLevel {
     /// Language of the numbering label from `w:lvl/w:rPr/w:lang/@w:val`.
     /// Language-dependent formats must not guess from the document body.
     pub language: Option<String>,
+    /// `w:isLgl` (ECMA-376 Part 1 §17.9.4): the level's text shows every
+    /// level it names in decimal — Word's 正規形式の番号を使用する, which
+    /// turns `第一章.1` into `1.1`.
+    #[serde(default)]
+    pub is_legal: bool,
 }
 
 /// Indentation offsets used when the numbering definition contributes its own
@@ -219,6 +224,7 @@ impl NumberingPart {
                         paragraph_props: None,
                         run_props: None,
                         language: None,
+                        is_legal: false,
                     };
                     *current_level = Some(level);
                 }
@@ -256,6 +262,12 @@ impl NumberingPart {
                     if let Some(val) = attr_value(e, b"w:val") {
                         level.lvl_jc = Some(val);
                     }
+                }
+            }
+            b"w:isLgl" => {
+                if let Some(level) = current_level.as_mut() {
+                    level.is_legal = attr_value(e, b"w:val")
+                        .is_none_or(|value| !matches!(value.as_str(), "0" | "false" | "off"));
                 }
             }
             b"w:suff" => {
@@ -650,6 +662,7 @@ impl NumberingPart {
                 paragraph_props: None,
                 run_props,
                 language: None,
+                is_legal: false,
             }],
             preset: None,
         };
@@ -775,6 +788,9 @@ impl NumberingPart {
             .and_then(|info| info.lvl_text.clone())
             .unwrap_or(default_template);
 
+        let legal = self
+            .get_level_info(num_id, level)
+            .is_some_and(|info| info.is_legal);
         let mut result = String::new();
         let mut chars = template.chars().peekable();
 
@@ -817,7 +833,13 @@ impl NumberingPart {
                                 }
                             }
                         }
-                        let formatted = self.format_counter_value(num_id, placeholder_level, value);
+                        // A legal level writes every level it names in
+                        // decimal, whatever their own formats.
+                        let formatted = if legal {
+                            value.to_string()
+                        } else {
+                            self.format_counter_value(num_id, placeholder_level, value)
+                        };
                         result.push_str(&formatted);
                         continue;
                     }
@@ -1356,6 +1378,7 @@ fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel>
                 paragraph_props: None,
                 run_props,
                 language: None,
+                is_legal: false,
             }
         })
         .collect()
@@ -2679,5 +2702,57 @@ mod tests {
             numbering.format_number(second_num_id, second_level, &counter),
             "第2条"
         );
+    }
+}
+
+#[cfg(test)]
+mod legal_numbering_tests {
+    use super::{NumberingCounter, NumberingPart};
+
+    /// Word's 正規形式の番号を使用する (`w:isLgl`): a 第一章 heading's
+    /// second level reads `1.1`, not `一.1`; the level without it keeps the
+    /// first level's own format.
+    #[test]
+    fn a_legal_level_names_every_level_in_decimal() {
+        let xml = r#"
+            <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:abstractNum w:abstractNumId="7">
+                <w:lvl w:ilvl="0">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="japaneseCounting"/>
+                  <w:lvlText w:val="第%1章"/>
+                </w:lvl>
+                <w:lvl w:ilvl="1">
+                  <w:start w:val="1"/>
+                  <w:isLgl/>
+                  <w:numFmt w:val="decimal"/>
+                  <w:lvlText w:val="%1.%2"/>
+                </w:lvl>
+                <w:lvl w:ilvl="2">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="decimal"/>
+                  <w:lvlText w:val="%1-%3"/>
+                </w:lvl>
+              </w:abstractNum>
+              <w:num w:numId="7"><w:abstractNumId w:val="7"/></w:num>
+            </w:numbering>
+        "#;
+        let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
+        assert!(numbering.get_level_info("7", 1).unwrap().is_legal);
+        assert!(!numbering.get_level_info("7", 0).unwrap().is_legal);
+        let mut counter = NumberingCounter::new();
+        for level in [0, 0, 1, 2] {
+            counter.increment_with(
+                Some(&numbering),
+                "7",
+                "7",
+                level,
+                numbering.start_value("7", level),
+                numbering.has_start_override("7", level),
+            );
+        }
+        assert_eq!(numbering.format_number("7", 0, &counter), "第二章");
+        assert_eq!(numbering.format_number("7", 1, &counter), "2.1");
+        assert_eq!(numbering.format_number("7", 2, &counter), "二-1");
     }
 }

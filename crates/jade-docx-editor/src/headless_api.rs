@@ -1693,6 +1693,7 @@ fn custom_numbering_levels(values: &[HeadlessCustomNumberingLevel]) -> Vec<Numbe
             paragraph_props: None,
             run_props: None,
             language: None,
+            is_legal: false,
         })
         .collect()
 }
