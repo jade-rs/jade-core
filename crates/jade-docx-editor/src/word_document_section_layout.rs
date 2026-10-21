@@ -208,6 +208,31 @@ impl WordDocument {
                 chapter_style: page_numbering.chapter_style,
                 chapter_separator: page_numbering.chapter_separator,
             },
+            page_borders: properties
+                .page_borders
+                .as_ref()
+                .map(|borders| {
+                    let edge = |edge: Option<&crate::document::BorderEdge>| {
+                        edge.filter(|edge| {
+                            edge.val
+                                .as_deref()
+                                .is_some_and(|val| val != "none" && val != "nil")
+                        })
+                        .map(|edge| jade_docx_headless_api::HeadlessBorderEdge {
+                            style: edge.val.clone(),
+                            width: edge.size_eighths.map(|size| size as f32 / 8.0),
+                            color: edge.color.clone(),
+                        })
+                    };
+                    jade_docx_headless_api::HeadlessPageBorderSet {
+                        top: edge(borders.top.as_ref()),
+                        bottom: edge(borders.bottom.as_ref()),
+                        left: edge(borders.left.as_ref()),
+                        right: edge(borders.right.as_ref()),
+                        offset_from: borders.offset_from.clone(),
+                    }
+                })
+                .unwrap_or_default(),
         }
     }
 
@@ -390,6 +415,25 @@ impl WordDocument {
 
         if let Some(numbering) = patch.page_numbering.as_ref() {
             self.set_section_page_numbering(section, numbering)?;
+        }
+
+        // ページ罫線.
+        if let Some(borders) = patch.page_borders.as_ref() {
+            let edge = |edge: &Option<jade_docx_headless_api::HeadlessBorderEdge>| {
+                edge.as_ref().map(|edge| super::BorderEdgeSpec {
+                    style: edge.style.clone(),
+                    width: edge.width,
+                    color: edge.color.clone(),
+                })
+            };
+            let spec = (!borders.is_empty()).then(|| super::PageBorderSpec {
+                top: edge(&borders.top),
+                bottom: edge(&borders.bottom),
+                left: edge(&borders.left),
+                right: edge(&borders.right),
+                offset_from: borders.offset_from.clone(),
+            });
+            self.set_page_borders_in_section(section, spec.as_ref())?;
         }
         Ok(())
     }
