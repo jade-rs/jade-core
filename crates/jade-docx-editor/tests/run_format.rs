@@ -97,6 +97,9 @@ fn full_format() -> HeadlessRunFormat {
         position: Some(3.0),
         kerning: Some(10.5),
         ligatures: Some("standard".into()),
+        glow_color: Some("FF0000".into()),
+        glow_radius: Some(5.0),
+        text_outline_color: Some("0070C0".into()),
         east_asian_layout: Some(HeadlessEastAsianLayout {
             vert: true,
             ..Default::default()
@@ -164,6 +167,10 @@ fn the_font_dialog_writes_every_property_and_reads_back() {
         Some("accent1")
     );
     assert!(format.east_asian_layout.is_some_and(|layout| layout.vert));
+    assert_eq!(format.ligatures.as_deref(), Some("standard"));
+    assert_eq!(format.glow_color.as_deref(), Some("FF0000"));
+    assert_eq!(format.glow_radius, Some(5.0));
+    assert_eq!(format.text_outline_color.as_deref(), Some("0070C0"));
     // The text after the range keeps its own formatting.
     assert_ne!(format_at(&reread, paragraph, 3).double_strike, Some(true));
 }
