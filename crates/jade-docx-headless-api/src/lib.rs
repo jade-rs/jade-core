@@ -1409,7 +1409,7 @@ pub enum HeadlessCommand {
     SetSectionLayout {
         #[serde(default)]
         scope: HeadlessSectionScope,
-        patch: HeadlessSectionLayoutPatch,
+        patch: Box<HeadlessSectionLayoutPatch>,
     },
     /// The 段落 dialog's 1 ページの行数を指定時に文字を行グリッド線に合わせる
     /// (`w:snapToGrid`): whether the paragraphs follow the section's line
@@ -2358,7 +2358,7 @@ pub enum HeadlessQueryResult {
         page_setup: HeadlessPageSetupSnapshot,
     },
     SectionLayout {
-        layout: HeadlessSectionLayout,
+        layout: Box<HeadlessSectionLayout>,
     },
     HeaderFooterText {
         stories: Vec<HeadlessHeaderFooterSnapshot>,

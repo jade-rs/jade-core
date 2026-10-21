@@ -4665,7 +4665,7 @@ fn execute_headless_query(
             page_setup: page_setup_snapshot(word_doc),
         }),
         HeadlessQuery::SectionLayout { section } => Ok(HeadlessQueryResult::SectionLayout {
-            layout: word_doc.section_layout(*section),
+            layout: Box::new(word_doc.section_layout(*section)),
         }),
         HeadlessQuery::HeaderFooterText => Ok(HeadlessQueryResult::HeaderFooterText {
             stories: header_footer_snapshots(word_doc),

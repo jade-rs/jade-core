@@ -109,7 +109,7 @@ fn the_dialog_writes_one_section_and_leaves_the_other() {
         Some(caret),
         vec![HeadlessCommand::SetSectionLayout {
             scope: HeadlessSectionScope::Caret,
-            patch,
+            patch: Box::new(patch),
         }],
     );
 
@@ -160,14 +160,14 @@ fn whole_document_and_document_switches_apply_once() {
         None,
         vec![HeadlessCommand::SetSectionLayout {
             scope: HeadlessSectionScope::All,
-            patch: HeadlessSectionLayoutPatch {
+            patch: Box::new(HeadlessSectionLayoutPatch {
                 margin_top: Some(100.0),
                 mirror_margins: Some(true),
                 gutter_at_top: Some(true),
                 print_two_on_one: Some(true),
                 different_odd_even: Some(true),
                 ..Default::default()
-            },
+            }),
         }],
     );
     for section in 0..document.section_count() {
