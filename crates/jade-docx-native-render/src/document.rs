@@ -1219,6 +1219,18 @@ impl NativeDocument {
         self.renderer.set_field_code_display(Some(display));
     }
 
+    /// Hides the top-level body elements under collapsed headings (Word's
+    /// 見出しの折りたたみ) and repaints; empty shows them all again.
+    pub fn set_collapsed_blocks(&mut self, blocks: Vec<usize>) -> Result<(), String> {
+        self.options.set_collapsed_blocks(blocks);
+        self.repaint_all().map(|_| ())
+    }
+
+    /// The top-level body elements collapsed headings hide.
+    pub fn collapsed_blocks(&self) -> &[usize] {
+        self.options.collapsed_blocks()
+    }
+
     /// Shows or hides the crop marks around the document's content area.
     pub fn set_crop_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_crop_marks = show;

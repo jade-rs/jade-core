@@ -861,15 +861,17 @@ impl DocumentParser {
                             Self::consume_element(reader, b"w:lnNumType")?;
                         }
                         b"w:footnotePr" if parsing_section_props => {
-                            let (note, _) = Self::parse_note_numbering(reader, b"w:footnotePr")?;
-                            if !note.is_empty() {
-                                if let Some(section) = current_section_props.as_mut() {
+                            let (note, _, beneath) =
+                                Self::parse_note_numbering(reader, b"w:footnotePr")?;
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.footnote_beneath_text = beneath;
+                                if !note.is_empty() {
                                     section.footnote_properties = Some(note);
                                 }
                             }
                         }
                         b"w:endnotePr" if parsing_section_props => {
-                            let (note, position) =
+                            let (note, position, _) =
                                 Self::parse_note_numbering(reader, b"w:endnotePr")?;
                             if let Some(section) = current_section_props.as_mut() {
                                 section.endnote_position = position;
@@ -4527,16 +4529,19 @@ impl DocumentParser {
         (
             crate::document::NoteNumbering,
             Option<crate::document::EndnotePosition>,
+            Option<bool>,
         ),
         Box<dyn std::error::Error>,
     > {
         use crate::document::{EndnotePosition, NoteNumbering};
         let mut note = NoteNumbering::default();
         let mut position = None;
+        let mut beneath = None;
         let mut buf = Vec::new();
 
         let assign = |note: &mut NoteNumbering,
                       position: &mut Option<EndnotePosition>,
+                      beneath: &mut Option<bool>,
                       name: &[u8],
                       attrs: Attributes<'_>| {
             let val = attrs.flatten().find_map(|attr| {
@@ -4549,6 +4554,11 @@ impl DocumentParser {
             let Some(val) = val else { return };
             match name {
                 b"w:pos" => {
+                    *beneath = match val.as_str() {
+                        "beneathText" => Some(true),
+                        "pageBottom" => Some(false),
+                        _ => None,
+                    };
                     *position = match val.as_str() {
                         "sectEnd" => Some(EndnotePosition::SectionEnd),
                         "docEnd" => Some(EndnotePosition::DocumentEnd),
@@ -4579,12 +4589,18 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
-                    assign(&mut note, &mut position, name.as_ref(), e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        name.as_ref(),
+                        e.attributes(),
+                    );
                 }
                 Ok(Event::Start(ref e)) => {
                     let owned = e.name();
                     let name = owned.as_ref().to_vec();
-                    assign(&mut note, &mut position, &name, e.attributes());
+                    assign(&mut note, &mut position, &mut beneath, &name, e.attributes());
                     Self::consume_element(reader, &name)?;
                 }
                 Ok(Event::Eof) => break,
@@ -4594,7 +4610,7 @@ impl DocumentParser {
             buf.clear();
         }
 
-        Ok((note, position))
+        Ok((note, position, beneath))
     }
 
     /// Consumes a `w:rubyPr` subtree (ECMA-376 Part 1 §17.3.3.26) and returns

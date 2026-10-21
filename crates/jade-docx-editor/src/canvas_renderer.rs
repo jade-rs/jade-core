@@ -5519,6 +5519,7 @@ where
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
             && last.dark_mode() == options.dark_mode()
+            && last.collapsed_blocks() == options.collapsed_blocks()
     }
 
     /// Returns true if it is safe to attempt unchecked paragraph render-cache replay.
@@ -5532,6 +5533,7 @@ where
             || options.render_changes
             || options.render_original
             || options.show_formatting_marks
+            || !options.collapsed_blocks().is_empty()
         {
             return false;
         }
@@ -6245,8 +6247,16 @@ where
                 .flatten()
                 .filter(|height| *height > 0.0)
                 .map(|height| (available_bottom - separator_height - height).max(self.current_y));
+            // `w:pos="beneathText"`: the notes follow the page's last line
+            // rather than sitting at the bottom of the body area.
+            let beneath_text =
+                document.resolved_footnote_beneath_text(Some(self.active_section_index));
             self.current_y = fragment_top.unwrap_or_else(|| {
-                note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                if beneath_text {
+                    self.current_y
+                } else {
+                    note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                }
             });
             self.last_line_baseline = self.current_y;
             if self.current_y + note_block_height > available_bottom + 0.5 {
@@ -6257,7 +6267,28 @@ where
             // `w:separator` rule, a short line spanning roughly a third of the
             // column. An area continuing a note from the previous page uses
             // the `w:continuationSeparator` rule across the whole column.
-            if self.should_draw_current_page_for_render() && !self.render_skip_draw {
+            // A separator emptied in Word's notes pane draws no rule.
+            let wanted = if continuing {
+                "continuationSeparator"
+            } else {
+                "separator"
+            };
+            let rule_shown = document
+                .footnotes
+                .values()
+                .find(|note| {
+                    note.note_type
+                        .as_deref()
+                        .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+                })
+                .is_none_or(|note| {
+                    note.body
+                        .iter()
+                        .filter_map(BodyElement::as_paragraph)
+                        .flat_map(|paragraph| paragraph.runs.iter())
+                        .any(|run| run.note_separator.is_some())
+                });
+            if rule_shown && self.should_draw_current_page_for_render() && !self.render_skip_draw {
                 let column_width =
                     (self.page_width - self.margin_left - self.margin_right).max(0.0);
                 let separator_width = if continuing {
@@ -13876,6 +13907,64 @@ where
         section_index: usize,
     ) -> Result<(), JsValue> {
         self.last_render_body_element_count += 1;
+        // Under a collapsed heading: laid out as if absent, its paragraphs
+        // keeping their indices but taking no room and no caret.
+        if body_element_index != usize::MAX
+            && section_index != usize::MAX
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && options
+                .collapsed_blocks()
+                .binary_search(&body_element_index)
+                .is_ok()
+        {
+            // A hidden list paragraph still counts: the items after it keep
+            // their numbers, as in Word.
+            if let (BodyElement::Paragraph(paragraph), Some(numbering_part)) =
+                (element, numbering_part)
+            {
+                let numbering = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.numbering.as_ref());
+                if let Some((num_id, level)) =
+                    numbering.and_then(|numbering| Some((numbering.id.as_ref()?, numbering.level?)))
+                {
+                    if !Self::paragraph_is_entirely_deleted(paragraph) {
+                        if let Some(abstract_num_id) = numbering_part.abstract_num_id(num_id) {
+                            numbering_counter.initialize_ancestor_levels(
+                                Some(numbering_part),
+                                num_id,
+                                level,
+                            );
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
+                                num_id,
+                                abstract_num_id,
+                                level,
+                                numbering_part.start_value(num_id, level),
+                                numbering_part.has_start_override(num_id, level),
+                            );
+                        }
+                    }
+                }
+            }
+            let count =
+                Self::body_element_paragraph_surface_count(std::slice::from_ref(element)).max(1);
+            for paragraph_index in self.paragraph_counter..self.paragraph_counter + count {
+                self.selection.ensure_paragraph(paragraph_index);
+                self.selection
+                    .set_paragraph_selectable(paragraph_index, false);
+            }
+            self.paragraph_counter += count;
+            if !self.footnote_surface_extras.is_empty() {
+                let anchor_index = self.paragraph_counter.saturating_sub(1);
+                if let Some(extra) = self.footnote_surface_extras.get(&anchor_index) {
+                    self.paragraph_counter = self.paragraph_counter.saturating_add(*extra);
+                }
+            }
+            return Ok(());
+        }
         match element {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph_index = self.paragraph_counter;
@@ -30158,6 +30247,13 @@ where
 
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         self.selection.caret_metrics()
+    }
+
+    /// Where a caret at `position` would be drawn, from the last layout,
+    /// without moving the selection: what a page number for a heading or a
+    /// bookmark's bracket is read from.
+    pub fn caret_metrics_at(&self, position: TextPosition) -> Option<CaretMetrics> {
+        self.selection.caret_metrics_at_position(position)
     }
 
     /// Which line a caret on a soft wrap is drawn on — the end of the line

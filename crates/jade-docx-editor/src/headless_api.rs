@@ -1929,6 +1929,17 @@ pub fn apply_headless_commands_with_executor_to_document(
                 } else {
                     command
                 };
+                // The notes whose reference marks the range holds go with
+                // them, as in Word.
+                let notes =
+                    crate::commands::range_notes::notes_in_rendered_range(word_doc, range);
+                let command: Box<dyn Command> = if notes.is_empty() {
+                    command
+                } else {
+                    Box::new(crate::commands::range_notes::DeleteRangeNotesCommand::new(
+                        command, notes,
+                    ))
+                };
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(command, &mut ctx)
