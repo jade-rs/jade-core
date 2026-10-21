@@ -101,6 +101,28 @@ pub struct HeadlessPageNumbering {
     pub chapter_separator: Option<String>,
 }
 
+/// `w:pgBorders`, the ページ罫線 dialog: each side's line, or none.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct HeadlessPageBorderSet {
+    #[serde(default)]
+    pub top: Option<crate::HeadlessBorderEdge>,
+    #[serde(default)]
+    pub bottom: Option<crate::HeadlessBorderEdge>,
+    #[serde(default)]
+    pub left: Option<crate::HeadlessBorderEdge>,
+    #[serde(default)]
+    pub right: Option<crate::HeadlessBorderEdge>,
+    /// 基準: `text` (本文) or `page` (ページの端).
+    #[serde(default)]
+    pub offset_from: Option<String>,
+}
+
+impl HeadlessPageBorderSet {
+    pub fn is_empty(&self) -> bool {
+        self.top.is_none() && self.bottom.is_none() && self.left.is_none() && self.right.is_none()
+    }
+}
+
 /// One section's layout and the document switches beside it.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct HeadlessSectionLayout {
@@ -146,6 +168,9 @@ pub struct HeadlessSectionLayout {
     /// The section reads right to left (`w:bidi`).
     pub bidi: bool,
     pub page_numbering: HeadlessPageNumbering,
+    /// ページ罫線; empty for none.
+    #[serde(default)]
+    pub page_borders: HeadlessPageBorderSet,
 }
 
 /// What an edit changes; every `None` leaves that value as it is, so one
@@ -202,6 +227,9 @@ pub struct HeadlessSectionLayoutPatch {
     pub bidi: Option<bool>,
     #[serde(default)]
     pub page_numbering: Option<HeadlessPageNumbering>,
+    /// The page frame; an empty set removes it.
+    #[serde(default)]
+    pub page_borders: Option<HeadlessPageBorderSet>,
 }
 
 impl HeadlessSectionLayoutPatch {
