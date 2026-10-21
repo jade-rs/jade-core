@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 mod run_format;
 mod typography;
 pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
-pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography};
+pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography, HeadlessRuby};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
@@ -1290,6 +1290,15 @@ pub enum HeadlessCommand {
     SetJapaneseTypography {
         typography: HeadlessJapaneseTypography,
     },
+    /// ルビ: puts a ruby over `start_offset..end_offset` of a paragraph,
+    /// replacing any ruby there, or with `ruby: None` takes them off.
+    SetRuby {
+        paragraph: usize,
+        start_offset: usize,
+        end_offset: usize,
+        #[serde(default)]
+        ruby: Option<HeadlessRuby>,
+    },
     /// 日付と時刻 with 自動的に更新する: a `DATE` (or, with `time`, `TIME`)
     /// field with Word's `\@` date picture `format`, in place of the
     /// selection, showing `cached_text` until it is next evaluated.
@@ -2085,6 +2094,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphTypography { .. } => "set_paragraph_typography",
             HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
             HeadlessCommand::InsertDateTimeField { .. } => "insert_date_time_field",
+            HeadlessCommand::SetRuby { .. } => "set_ruby",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",

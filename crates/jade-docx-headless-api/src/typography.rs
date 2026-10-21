@@ -51,3 +51,25 @@ pub struct HeadlessJapaneseTypography {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub character_spacing_control: Option<String>,
 }
+
+/// A ruby (ふりがな, `w:ruby`, ECMA-376 Part 1 §17.3.3.25) as Word's ルビ
+/// dialog sets it.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HeadlessRuby {
+    /// The guide text.
+    pub text: String,
+    /// 配置 (ST_RubyAlign): `center`, `distributeLetter`, `distributeSpace`,
+    /// `left`, `right`, `rightVertical`. Word's default is `distributeSpace`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub align: Option<String>,
+    /// サイズ: the guide's size in points; half the base's by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<f32>,
+    /// オフセット: points from the base's baseline up to the guide's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raise: Option<f32>,
+    /// フォント: the guide's font.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
+}
