@@ -517,7 +517,12 @@ fn read_fonts(table: &[u8], (fc, lcb): (usize, usize)) -> Vec<String> {
 fn read_lists(table: &[u8], fib: &Fib) -> (HashMap<i32, Vec<u8>>, Vec<i32>) {
     let mut lists = HashMap::new();
     let (fc, lcb) = fib.pair(FC_PLF_LST);
-    let plf = slice(table, fc, lcb);
+    // lcbPlfLst covers the LSTFs; the levels are appended after them.
+    let plf = if lcb >= 2 {
+        slice(table, fc, table.len())
+    } else {
+        &[][..]
+    };
     if plf.len() >= 2 {
         let count = i16_at(plf, 0).max(0) as usize;
         let mut lstfs = Vec::new();

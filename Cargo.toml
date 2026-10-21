@@ -18,6 +18,7 @@ members = [
   "crates/jade-docx-writer",
   "crates/jade-docx-convert",
   "crates/jade-doc-reader",
+  "crates/jade-doc-writer",
   "crates/jade-docx-annotations",
   "crates/jade-docx-editor",
   "crates/jade-docx-layout",
