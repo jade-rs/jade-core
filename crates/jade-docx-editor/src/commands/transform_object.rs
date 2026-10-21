@@ -294,6 +294,7 @@ mod tests {
             text: String::new(),
             properties: None,
             image: Some(RunImage {
+                decorative: false,
                 relationship_id: Some("rIdImage".to_string()),
                 ole_relationship_id: None,
                 ole_program_id: None,

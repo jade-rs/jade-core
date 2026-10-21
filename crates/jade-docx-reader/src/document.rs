@@ -2770,6 +2770,10 @@ pub struct RunImage {
     pub title: Option<String>,
     /// Optional alternative text/description for accessibility.
     pub description: Option<String>,
+    /// 装飾用にする: the drawing is decorative and has no alternative text
+    /// (`adec:decorative` in `wp:docPr`'s extension list).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub decorative: bool,
     /// Optional label shown when the image bytes cannot be decoded (e.g. WMF/EMF placeholder).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
@@ -3852,8 +3856,9 @@ mod tests {
         assert_eq!(std::mem::size_of::<RunField>(), 176);
         // 8 bytes of it: the insertion a tracked deletion sits in
         // (`RevisionMark::insertion`); 24 the boxed theme colour, East Asian
-        // layout and text effects the フォント dialog sets.
-        assert_eq!(std::mem::size_of::<Run>(), 3056);
+        // layout and text effects the フォント dialog sets; 8 a picture's
+        // 装飾用 flag (`RunImage::decorative`).
+        assert_eq!(std::mem::size_of::<Run>(), 3064);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
