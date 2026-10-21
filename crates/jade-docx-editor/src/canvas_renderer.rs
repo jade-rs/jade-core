@@ -6356,7 +6356,28 @@ where
             // `w:separator` rule, a short line spanning roughly a third of the
             // column. An area continuing a note from the previous page uses
             // the `w:continuationSeparator` rule across the whole column.
-            if self.should_draw_current_page_for_render() && !self.render_skip_draw {
+            // A separator emptied in Word's notes pane draws no rule.
+            let wanted = if continuing {
+                "continuationSeparator"
+            } else {
+                "separator"
+            };
+            let rule_shown = document
+                .footnotes
+                .values()
+                .find(|note| {
+                    note.note_type
+                        .as_deref()
+                        .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+                })
+                .is_none_or(|note| {
+                    note.body
+                        .iter()
+                        .filter_map(BodyElement::as_paragraph)
+                        .flat_map(|paragraph| paragraph.runs.iter())
+                        .any(|run| run.note_separator.is_some())
+                });
+            if rule_shown && self.should_draw_current_page_for_render() && !self.render_skip_draw {
                 let column_width =
                     (self.page_width - self.margin_left - self.margin_right).max(0.0);
                 let separator_width = if continuing {
@@ -13984,6 +14005,37 @@ where
                 .binary_search(&body_element_index)
                 .is_ok()
         {
+            // A hidden list paragraph still counts: the items after it keep
+            // their numbers, as in Word.
+            if let (BodyElement::Paragraph(paragraph), Some(numbering_part)) =
+                (element, numbering_part)
+            {
+                let numbering = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.numbering.as_ref());
+                if let Some((num_id, level)) =
+                    numbering.and_then(|numbering| Some((numbering.id.as_ref()?, numbering.level?)))
+                {
+                    if !Self::paragraph_is_entirely_deleted(paragraph) {
+                        if let Some(abstract_num_id) = numbering_part.abstract_num_id(num_id) {
+                            numbering_counter.initialize_ancestor_levels(
+                                Some(numbering_part),
+                                num_id,
+                                level,
+                            );
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
+                                num_id,
+                                abstract_num_id,
+                                level,
+                                numbering_part.start_value(num_id, level),
+                                numbering_part.has_start_override(num_id, level),
+                            );
+                        }
+                    }
+                }
+            }
             let count =
                 Self::body_element_paragraph_surface_count(std::slice::from_ref(element)).max(1);
             for paragraph_index in self.paragraph_counter..self.paragraph_counter + count {

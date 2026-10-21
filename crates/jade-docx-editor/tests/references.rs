@@ -445,3 +445,19 @@ fn the_bibliography_style_is_switched_and_sources_removed() {
     assert_eq!(reread.bibliography_style().as_deref(), Some("MLA"));
     assert_eq!(reread.citation_sources().len(), 1);
 }
+
+#[test]
+fn a_footnote_separator_is_emptied_and_drawn_again() {
+    let mut document = fixture("footnote.docx");
+    assert!(document.note_separator_shown(true, false));
+    assert!(document.set_note_separator_shown(true, false, false).unwrap());
+    assert!(!document.note_separator_shown(true, false));
+    assert!(document.note_separator_shown(true, true), "the other one stays");
+    let xml = part(&document, "word/footnotes.xml");
+    assert!(!xml.contains("<w:separator/>"), "{xml}");
+    assert!(xml.contains("<w:continuationSeparator/>"));
+    assert!(!reload(&document).note_separator_shown(true, false));
+    assert!(document.set_note_separator_shown(true, false, true).unwrap());
+    assert!(part(&document, "word/footnotes.xml").contains("<w:separator/>"));
+    assert!(reload(&document).note_separator_shown(true, false));
+}
