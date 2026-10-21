@@ -275,6 +275,10 @@ pub struct PlacedEffects {
     /// How far in from the edge the silhouette fades out, in px.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub soft_edge_px: Option<f64>,
+    /// The text's WordArt transform (`prstTxWarp`), which PowerPoint lists
+    /// among the text effects: the lines bend along it when drawn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_warp: Option<String>,
 }
 
 impl PlacedEffects {
@@ -375,6 +379,7 @@ pub(crate) fn place_effects(
             .soft_edge_emu
             .map(emu_to_px)
             .filter(|px| *px > 0.0),
+        text_warp: None,
     }
 }
 
@@ -1343,6 +1348,10 @@ fn place_shape(
             context.theme,
         ),
         image_alpha: None,
+    })
+    .map(|mut placed| {
+        placed.effects.text_warp = shape.text.as_ref().and_then(|text| text.warp.clone());
+        placed
     })
 }
 
