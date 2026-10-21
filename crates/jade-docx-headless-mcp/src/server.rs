@@ -1340,6 +1340,19 @@ enum ArgType {
     DocumentProtection,
     /// Editable package-wide DrawingML theme fonts and colors.
     DocumentTheme,
+    /// The Font dialog's fields, camelCase, each optional.
+    RunFormat,
+    /// The 体裁 tab's paragraph options, camelCase, each optional.
+    ParagraphTypography,
+    /// The document's 文字体裁 settings, camelCase, each optional.
+    JapaneseTypography,
+    /// A ruby: `{ text, align?, size?, raise?, font? }`.
+    Ruby,
+    /// `{ "kind": "caret" | "caret_to_end" | "all" }`, `{ "kind": "index", "index" }`
+    /// or `{ "kind": "range", "first", "last" }`.
+    SectionScope,
+    /// The Page Setup fields to change, snake_case, each optional.
+    SectionLayoutPatch,
     /// `[{"row": …, "column": …, "column_span": …}, …]`
     CellList,
     /// `[{"column": …, "kind": "text"|"number"|"date", "descending": …}, …]`
@@ -1444,6 +1457,31 @@ impl ArgType {
                 },
                 "required": ["edit", "enforced"],
                 "additionalProperties": false
+            }),
+            ArgType::RunFormat
+            | ArgType::ParagraphTypography
+            | ArgType::JapaneseTypography
+            | ArgType::SectionLayoutPatch => json!({ "type": "object" }),
+            ArgType::Ruby => json!({
+                "type": "object",
+                "properties": {
+                    "text": { "type": "string", "description": "The guide text." },
+                    "align": { "type": "string", "description": "center, distributeLetter, distributeSpace, left, right or rightVertical." },
+                    "size": { "type": "number", "description": "The guide size in points; half the base by default." },
+                    "raise": { "type": "number", "description": "Points from the base baseline up to the guide." },
+                    "font": { "type": "string", "description": "The guide font." }
+                },
+                "required": ["text"]
+            }),
+            ArgType::SectionScope => json!({
+                "type": "object",
+                "properties": {
+                    "kind": { "type": "string", "enum": ["caret", "index", "range", "caret_to_end", "all"], "description": "Which sections: the caret's, one by index, a range, the caret's and every later one, or all." },
+                    "index": { "type": "integer", "minimum": 0, "description": "The section, for kind index." },
+                    "first": { "type": "integer", "minimum": 0, "description": "The first section, for kind range." },
+                    "last": { "type": "integer", "minimum": 0, "description": "The last section, for kind range." }
+                },
+                "required": ["kind"]
             }),
             ArgType::DocumentTheme => json!({
                 "type": "object",
@@ -3559,6 +3597,95 @@ const COMMANDS: &[Variant] = &[
         "Recompute every formula field in the document's tables (Word's Update Field).",
         &[],
     ),
+    // -- characters and Japanese typography -------------------------------
+    variant(
+        "set_run_format",
+        "Apply Word's Font dialog to a range: fonts per script, size, styles, underline, effects, spacing, position, scaling, kerning (only the fields given change).",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            req("format", ArgType::RunFormat, "The Font dialog's fields to set (HeadlessRunFormat)."),
+        ],
+    ),
+    variant(
+        "set_paragraph_typography",
+        "Set the Paragraph dialog's 体裁 (Asian typography) options on a paragraph range: kinsoku, hanging punctuation, auto spacing.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            req("typography", ArgType::ParagraphTypography, "The options to set (HeadlessParagraphTypography)."),
+        ],
+    ),
+    variant(
+        "set_japanese_typography",
+        "Set the document's 文字体裁: kinsoku level, custom line-start/line-end sets and character spacing control.",
+        &[req("typography", ArgType::JapaneseTypography, "The settings (HeadlessJapaneseTypography).")],
+    ),
+    variant(
+        "insert_enclosed_character",
+        "Replace a range with an enclosed character (囲い文字), as Word's EQ \\o\\ac field.",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            req("text", ArgType::Text, "The character to enclose."),
+            req("enclosure", ArgType::Choice(&["○", "□", "△", "◇"]), "The enclosing shape."),
+        ],
+    ),
+    variant(
+        "set_ruby",
+        "Put a ruby (phonetic guide) over part of a paragraph, replacing any there, or remove it.",
+        &[
+            req("paragraph", ArgType::Index, "The paragraph."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the base text starts."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the base text ends."),
+            opt("ruby", ArgType::Ruby, "The ruby (HeadlessRuby), or omitted/null to remove it."),
+        ],
+    ),
+    variant(
+        "insert_date_time_field",
+        "Insert Word's Date and Time as an auto-updating DATE or TIME field in place of a range.",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            opt("time", ArgType::Flag, "A TIME field rather than DATE."),
+            req("format", ArgType::Text, "Word's \\@ date picture, e.g. yyyy/MM/dd or ggge年M月d日."),
+            req("cached_text", ArgType::Text, "The text shown until the field is next evaluated."),
+        ],
+    ),
+    // -- sections and stories ------------------------------------------------
+    variant(
+        "set_section_layout",
+        "Apply Word's Page Setup dialog to the sections a scope reaches, changing only the fields the patch names. One history step.",
+        &[
+            opt("scope", ArgType::SectionScope, "Which sections: this one, selected, this point forward or the whole document (HeadlessSectionScope)."),
+            req("patch", ArgType::SectionLayoutPatch, "The page setup fields to set (HeadlessSectionLayoutPatch)."),
+        ],
+    ),
+    variant(
+        "set_paragraph_snap_to_grid",
+        "Set whether paragraphs snap to the section's line grid (w:snapToGrid).",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            req("snap", ArgType::Flag, "Whether they follow the grid."),
+        ],
+    ),
+    variant(
+        "set_header_footer_link",
+        "Link a section's header or footer to the previous section's (Word's Link to Previous), or give it a copy of its own.",
+        &[
+            req("section", ArgType::Index, "Zero-based section index."),
+            req("role", ArgType::Choice(&["header", "footer"]), "Which story."),
+            req("variant", ArgType::Choice(&["default", "first", "even"]), "Which variant."),
+            req("linked", ArgType::Flag, "Link to the previous section."),
+        ],
+    ),
     // -- table of contents --------------------------------------------------
     variant(
         "insert_table_of_contents",
@@ -4018,6 +4145,11 @@ const QUERIES: &[Variant] = &[
         "page_setup",
         "Page geometry of the default section — size, orientation, margins, header/footer distance and background. The read side of the set_page_* commands.",
         &[],
+    ),
+    variant(
+        "section_layout",
+        "One section's layout as the Page Setup dialog shows it — the read side of set_section_layout.",
+        &[opt("section", ArgType::Index, "Zero-based section index; omit for the final section.")],
     ),
     variant(
         "header_footer_text",
@@ -5718,6 +5850,12 @@ mod tests {
                 "edit": "readOnly",
                 "enforced": true
             }),
+            ArgType::RunFormat => json!({ "bold": true, "fontSize": 12.0 }),
+            ArgType::ParagraphTypography => json!({ "kinsoku": true }),
+            ArgType::JapaneseTypography => json!({ "kinsokuLevel": "strict" }),
+            ArgType::Ruby => json!({ "text": "ふりがな", "align": "center" }),
+            ArgType::SectionScope => json!({ "kind": "all" }),
+            ArgType::SectionLayoutPatch => json!({ "margin_top": 72.0 }),
             ArgType::DocumentTheme => json!({
                 "name": "Office",
                 "majorFont": "Calibri Light",
