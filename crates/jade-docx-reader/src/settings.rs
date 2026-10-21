@@ -129,6 +129,12 @@ pub struct DocumentSettings {
     /// Swaps physical left/right margins on even pages.
     #[serde(default)]
     pub mirror_margins: bool,
+    /// `w:bookFoldPrinting`.
+    #[serde(default)]
+    pub book_fold_printing: bool,
+    /// `w:printTwoOnOne`.
+    #[serde(default)]
+    pub print_two_on_one: bool,
     /// Values declared by `w:docVars/w:docVar`. Keys are normalized for the
     /// case-insensitive lookup Word applies to `DOCVARIABLE` instructions.
     #[serde(default)]
@@ -381,6 +387,12 @@ impl DocumentSettings {
                     } else if name == b"mirrorMargins" {
                         settings.mirror_margins =
                             Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"bookFoldPrinting" {
+                        settings.book_fold_printing =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"printTwoOnOne" {
+                        settings.print_two_on_one =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =
                             Self::parse_twips_attribute(e.attributes().flatten());
@@ -533,6 +545,12 @@ impl DocumentSettings {
                             Self::parse_on_off_attribute(e.attributes().flatten());
                     } else if name == b"mirrorMargins" {
                         settings.mirror_margins =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"bookFoldPrinting" {
+                        settings.book_fold_printing =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"printTwoOnOne" {
+                        settings.print_two_on_one =
                             Self::parse_on_off_attribute(e.attributes().flatten());
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =

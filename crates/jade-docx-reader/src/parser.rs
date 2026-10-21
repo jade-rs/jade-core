@@ -520,7 +520,13 @@ impl DocumentParser {
                             }
                         }
                         b"w:bidi" => {
-                            if parsing_paragraph_props {
+                            if parsing_section_props {
+                                // A section that reads right to left (`w:sectPr/w:bidi`), not
+                                // the paragraph whose `w:pPr` happens to carry the section.
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.bidi = Self::parse_on_off_attr(e.attributes());
+                                }
+                            } else if parsing_paragraph_props {
                                 let value = Self::parse_on_off_attr(e.attributes());
                                 current_paragraph_props
                                     .get_or_insert_with(ParagraphProperties::default)
@@ -911,6 +917,13 @@ impl DocumentParser {
                                             );
                                         }
                                     }
+                                }
+                            }
+                        }
+                        b"w:rtlGutter" => {
+                            if parsing_section_props {
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
                                 }
                             }
                         }
@@ -1988,12 +2001,14 @@ impl DocumentParser {
                                 // unhandled break type desynced `paragraph_text_len`
                                 // from the run text and shifted later offsets.
                                 match break_type.as_deref() {
-                                    // `column` has no dedicated column-advance
-                                    // yet; a page break is exactly correct for the
-                                    // common single-column case (Word moves to the
-                                    // next page when the only column ends).
-                                    Some("page") | Some("column") => {
+                                    Some("page") => {
                                         run.text.push(PAGE_BREAK_CHAR);
+                                        paragraph_text_len += 1;
+                                    }
+                                    // The next column, or the next page after
+                                    // the last one.
+                                    Some("column") => {
+                                        run.text.push(crate::document::COLUMN_BREAK_CHAR);
                                         paragraph_text_len += 1;
                                     }
                                     Some("textwrapping") | None => {
@@ -2232,6 +2247,13 @@ impl DocumentParser {
                                 if !ln_num.is_empty() {
                                     section.line_numbering = Some(ln_num);
                                 }
+                            }
+                        }
+                    }
+                    b"w:rtlGutter" => {
+                        if parsing_section_props {
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
                             }
                         }
                     }
@@ -3066,7 +3088,13 @@ impl DocumentParser {
                         }
                     }
                     b"w:bidi" => {
-                        if parsing_paragraph_props {
+                        if parsing_section_props {
+                            // A section that reads right to left (`w:sectPr/w:bidi`), not
+                            // the paragraph whose `w:pPr` happens to carry the section.
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.bidi = Self::parse_on_off_attr(e.attributes());
+                            }
+                        } else if parsing_paragraph_props {
                             let value = Self::parse_on_off_attr(e.attributes());
                             current_paragraph_props
                                 .get_or_insert_with(ParagraphProperties::default)
@@ -4278,6 +4306,17 @@ impl DocumentParser {
                 b"w:start" => {
                     if let Ok(v) = value.trim().parse::<u32>() {
                         pg_num.start = Some(v);
+                    }
+                }
+                b"w:chapStyle" => {
+                    if let Ok(v) = value.trim().parse::<u8>() {
+                        pg_num.chapter_style = Some(v);
+                    }
+                }
+                b"w:chapSep" => {
+                    let trimmed = value.trim();
+                    if !trimmed.is_empty() {
+                        pg_num.chapter_separator = Some(trimmed.to_string());
                     }
                 }
                 _ => {}
@@ -9463,6 +9502,19 @@ impl DocumentParser {
             }
             "SECTION" => Some(RunFieldKind::SectionNumber),
             "SECTIONPAGES" => Some(RunFieldKind::SectionPages),
+            "STYLEREF" => {
+                let style = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .map(|token| token.trim_matches('"'))
+                    .find(|token| !token.is_empty() && !token.starts_with('\\'))?;
+                let from_bottom = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .any(|token| token.eq_ignore_ascii_case("\\l"));
+                Some(RunFieldKind::StyleRef {
+                    style: style.to_string(),
+                    from_bottom,
+                })
+            }
             "DOCPROPERTY" => {
                 let name = raw_tokens[name_idx + 1..]
                     .iter()
@@ -13659,8 +13711,9 @@ mod tests {
             BodyElement::Paragraph(p) => p.as_ref(),
             _ => panic!("expected paragraph"),
         };
-        // Column break → page-break char; the unknown break adds nothing.
-        assert_eq!(paragraph.runs[0].text, "A\u{000C}BC");
+        // A column break has its own character; the unknown break adds
+        // nothing.
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}BC");
     }
 
     #[test]

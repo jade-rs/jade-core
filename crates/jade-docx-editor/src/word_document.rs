@@ -53,6 +53,16 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
+// Included rather than declared as files: this file is also compiled by
+// jade-docx-document-core through `#[path]`, where a child module's file
+// would be looked for somewhere else.
+mod section_layout {
+    include!("word_document_section_layout.rs");
+}
+mod header_footer_story {
+    include!("word_document_header_footer_story.rs");
+}
+
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -816,7 +826,7 @@ impl TableBorderSpec {
 
 /// A page-margin change. Every field is optional: `None` leaves that edge as it
 /// is, so a caller can widen the gutter without restating the four margins.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PageMarginSpec {
     pub top: Option<f32>,
     pub bottom: Option<f32>,
@@ -2556,6 +2566,8 @@ impl WordDocument {
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
+            parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
@@ -7398,6 +7410,7 @@ impl WordDocument {
                         | crate::document::RunFieldKind::DocumentProperty { .. }
                         | crate::document::RunFieldKind::DocumentVariable { .. }
                         | crate::document::RunFieldKind::Compare { .. }
+                        | crate::document::RunFieldKind::StyleRef { .. }
                         | crate::document::RunFieldKind::If { .. } => {
                             // Structural, package, and comparison fields are
                             // resolved at load time; prefer that value over
@@ -9303,13 +9316,19 @@ impl WordDocument {
             return Err("document is unavailable".to_string());
         }
 
-        let next = PageNumberType {
-            format: Some(format.to_string()),
-            start,
-        };
         let current = self
             .section_properties(section)
             .and_then(|properties| properties.page_number_type.clone());
+        // The chapter number (章番号を含める) is another part of the same
+        // dialog; changing the format keeps it.
+        let next = PageNumberType {
+            format: Some(format.to_string()),
+            start,
+            chapter_style: current.as_ref().and_then(|value| value.chapter_style),
+            chapter_separator: current
+                .as_ref()
+                .and_then(|value| value.chapter_separator.clone()),
+        };
         if current.as_ref().is_some_and(|value| {
             value.start == next.start
                 && value
@@ -33667,12 +33686,18 @@ impl WordDocument {
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
                 }
-                PAGE_BREAK_CHAR => {
+                PAGE_BREAK_CHAR | crate::document::COLUMN_BREAK_CHAR => {
                     push_text_node(doc, &mut nodes, &mut buffer, &mut first_text_id);
                     let element = page_break_templates
                         .and_then(|templates| templates.get(page_break_index))
                         .cloned()
-                        .unwrap_or_else(|| Self::create_page_break_element(doc));
+                        .unwrap_or_else(|| {
+                            let mut element = Self::create_page_break_element(doc);
+                            if ch == crate::document::COLUMN_BREAK_CHAR {
+                                element.attributes[0].value = "column".to_string();
+                            }
+                            element
+                        });
                     page_break_index += 1;
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
@@ -34852,6 +34877,10 @@ impl WordDocument {
             RunFieldKind::Unsupported { instruction } if instruction.trim().starts_with('=') => {
                 format!(" {} ", instruction.trim())
             }
+            RunFieldKind::StyleRef { style, from_bottom } => format!(
+                " STYLEREF \"{style}\"{} ",
+                if *from_bottom { " \\l" } else { "" }
+            ),
             RunFieldKind::Ref {
                 name, hyperlink, ..
             } => format!(" REF {name}{} ", if *hyperlink { " \\h" } else { "" }),
@@ -44853,6 +44882,7 @@ mod tests {
             PageNumberType {
                 format: Some("upperRoman".to_string()),
                 start: Some(7),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -44860,6 +44890,7 @@ mod tests {
             PageNumberType {
                 format: Some("lowerLetter".to_string()),
                 start: None,
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -47399,11 +47430,11 @@ mod tests {
         let mut word_doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
 
-        // The reader approximates a column break with the shared page-break
-        // control for layout, but saving must retain the original OOXML type.
+        // A column break reads as its own control character, and saving
+        // retains the original OOXML type.
         let paragraph = word_doc.paragraph_mut(0).expect("column paragraph");
-        assert_eq!(paragraph.runs[0].text, format!("A{PAGE_BREAK_STR}B"));
-        paragraph.runs[0].text = format!("Column{PAGE_BREAK_STR}B");
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}B");
+        paragraph.runs[0].text = "Column\u{000E}B".to_string();
 
         // Future/extension break types are intentionally absent from editable
         // text, but lossless editing must still preserve their raw marker.
