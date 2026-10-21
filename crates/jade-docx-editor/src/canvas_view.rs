@@ -11934,6 +11934,10 @@ impl OffscreenDocumentView {
             table_order_index: cell.table_order_index,
             first_row,
             banded_rows,
+            last_row: None,
+            first_column: None,
+            last_column: None,
+            banded_columns: None,
         })
     }
 
