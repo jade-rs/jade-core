@@ -360,6 +360,36 @@ impl WordDocument {
     }
 
 
+    // ---- body elements ------------------------------------------------------
+
+    /// The top-level body element (paragraph or table) a body paragraph
+    /// surface belongs to.
+    pub fn body_element_of(&self, surface: usize) -> Option<usize> {
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Body { path } => match path.first()? {
+                PathEntry::Element(index) => Some(*index),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// The first paragraph surface of a top-level body element.
+    pub fn body_element_surface(&self, element: usize) -> Option<usize> {
+        self.paragraph_surfaces.iter().position(|surface| {
+            matches!(surface, ParagraphSurface::Body { path }
+                if path.first() == Some(&PathEntry::Element(element)))
+        })
+    }
+
+    /// How many top-level body elements the document has.
+    pub fn body_element_count(&self) -> usize {
+        self.document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .map_or(0, |body| body.elements.len())
+    }
+
     // ---- inline fields -----------------------------------------------------
 
     /// Puts a field at a rendered caret: a hidden marker (`XE`, `TA`, `TC`)
