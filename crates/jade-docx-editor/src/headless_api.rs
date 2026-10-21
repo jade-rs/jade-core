@@ -5555,7 +5555,25 @@ fn character_style_snapshot(
             run_start_char_offset: run_start_char,
             run_end_char_offset: run_end_char,
             run_text: run.text.clone(),
-            style: run_style_snapshot(run.properties.as_ref()),
+            // What the run looks like: its paragraph's and character
+            // style's formatting under its own, as the renderer resolves it
+            // — a heading's bold is bold at the caret too.
+            style: run_style_snapshot(
+                word_doc
+                    .styles_part
+                    .as_ref()
+                    .and_then(|styles| {
+                        styles.resolve_effective_run_properties(
+                            paragraph
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.style.as_deref()),
+                            run.properties.as_ref(),
+                        )
+                    })
+                    .as_ref()
+                    .or(run.properties.as_ref()),
+            ),
         });
     }
 
