@@ -7688,7 +7688,7 @@ impl WordDocument {
 
     /// Returns the current `word/settings.xml` text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
-    fn settings_xml_content(&self) -> Option<String> {
+    pub(crate) fn settings_xml_content(&self) -> Option<String> {
         const SETTINGS_PATH: &str = "word/settings.xml";
         if let Some(part) = self.parts.get(SETTINGS_PATH) {
             return Some(part.content.clone());
