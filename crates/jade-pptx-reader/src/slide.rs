@@ -316,6 +316,10 @@ pub struct Shape {
     /// `<a:effectLst><a:outerShdw>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<Shadow>,
+    /// The rest of `<a:effectLst>`: inner shadow, glow, reflection, soft
+    /// edge.
+    #[serde(default, skip_serializing_if = "Effects::is_empty")]
+    pub effects: Effects,
 }
 
 /// `<a:srcRect>` offsets in thousandths of a percent; negative is an outset.
@@ -383,6 +387,8 @@ pub struct Picture {
     pub outline: Option<Outline>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<Shadow>,
+    #[serde(default, skip_serializing_if = "Effects::is_empty")]
+    pub effects: Effects,
     /// `<a:blip><a:alphaModFix amt>`: the picture's opacity, 0..1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alpha: Option<f32>,
@@ -396,6 +402,57 @@ pub struct Shadow {
     pub distance_emu: i64,
     /// Direction the shadow falls, clockwise degrees from the +x axis.
     pub direction_deg: f32,
+}
+
+/// The effects of an `<a:effectLst>` beyond its outer shadow, which keeps
+/// its own field for the shapes and runs that only ever had that one.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct Effects {
+    /// `<a:innerShdw>`: a shadow cast inside the silhouette's edge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_shadow: Option<Shadow>,
+    /// `<a:glow>`: a soft halo of colour around the silhouette.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<Glow>,
+    /// `<a:reflection>`: a fading mirror image beside the shape.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reflection: Option<Reflection>,
+    /// `<a:softEdge rad>`: the silhouette fades out over this many EMU
+    /// inward from its edge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub soft_edge_emu: Option<i64>,
+}
+
+impl Effects {
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
+/// `<a:glow rad>` and its colour.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Glow {
+    pub color: Color,
+    pub radius_emu: i64,
+}
+
+/// `<a:reflection>` with every attribute at its ECMA-376 default when
+/// unstated. Fractions are 0..1 (thousandths of a percent / 100000),
+/// angles in degrees.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Reflection {
+    pub blur_emu: i64,
+    pub start_alpha: f32,
+    pub start_position: f32,
+    pub end_alpha: f32,
+    pub end_position: f32,
+    pub distance_emu: i64,
+    pub direction_deg: f32,
+    pub fade_direction_deg: f32,
+    pub scale_x: f32,
+    pub scale_y: f32,
+    /// `algn`: `tl`, `t`, `tr`, `l`, `ctr`, `r`, `bl`, `b` or `br`.
+    pub align: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -739,6 +796,9 @@ pub struct TextRun {
     /// `<a:effectLst><a:outerShdw>` in `rPr`: the glyphs' shadow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<Shadow>,
+    /// `<a:effectLst><a:glow>` in `rPr`: a halo around the glyphs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<Glow>,
 }
 
 /// The run properties a level style supplies (`<a:defRPr>`), each optional
@@ -969,6 +1029,7 @@ fn parse_sp(sp: &XmlElement) -> Shape {
         fill: sp_pr.and_then(parse_fill),
         outline: sp_pr.and_then(|pr| pr.child("ln")).map(parse_outline),
         shadow: sp_pr.and_then(parse_shadow),
+        effects: sp_pr.map(parse_effects).unwrap_or_default(),
         style: sp.child("style").map(parse_style),
         image_rel_id: sp_pr
             .and_then(|pr| pr.child("blipFill"))
@@ -1049,6 +1110,7 @@ fn parse_pic(pic: &XmlElement) -> Picture {
             .and_then(|pr| pr.child("ln"))
             .map(parse_outline),
         shadow: pic.child("spPr").and_then(parse_shadow),
+        effects: pic.child("spPr").map(parse_effects).unwrap_or_default(),
         alpha: pic.child("blipFill").and_then(blip_alpha),
     }
 }
@@ -1111,6 +1173,62 @@ pub(crate) fn parse_shadow(sp_pr: &XmlElement) -> Option<Shadow> {
         distance_emu: number("dist"),
         direction_deg: number("dir") as f32 / 60_000.0,
     })
+}
+
+/// Everything in an element's `<a:effectLst>` but the outer shadow.
+pub(crate) fn parse_effects(container: &XmlElement) -> Effects {
+    let Some(effects) = container.child("effectLst") else {
+        return Effects::default();
+    };
+    let int = |element: &XmlElement, name: &str, default: i64| {
+        element
+            .attr(name)
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(default)
+    };
+    let frac =
+        |element: &XmlElement, name: &str, default: f32| fraction(element.attr(name)).unwrap_or(default);
+    let angle = |element: &XmlElement, name: &str, default: f32| {
+        element
+            .attr(name)
+            .and_then(|v| v.parse::<f32>().ok())
+            .filter(|v| v.is_finite())
+            .map_or(default, |v| v / 60_000.0)
+    };
+    Effects {
+        inner_shadow: effects.child("innerShdw").and_then(|shadow| {
+            Some(Shadow {
+                color: parse_color(shadow)?,
+                blur_emu: int(shadow, "blurRad", 0),
+                distance_emu: int(shadow, "dist", 0),
+                direction_deg: angle(shadow, "dir", 0.0),
+            })
+        }),
+        glow: effects.child("glow").and_then(|glow| {
+            Some(Glow {
+                color: parse_color(glow)?,
+                radius_emu: int(glow, "rad", 0),
+            })
+            .filter(|glow| glow.radius_emu > 0)
+        }),
+        reflection: effects.child("reflection").map(|r| Reflection {
+            blur_emu: int(r, "blurRad", 0),
+            start_alpha: frac(r, "stA", 1.0),
+            start_position: frac(r, "stPos", 0.0),
+            end_alpha: frac(r, "endA", 0.0),
+            end_position: frac(r, "endPos", 1.0),
+            distance_emu: int(r, "dist", 0),
+            direction_deg: angle(r, "dir", 0.0),
+            fade_direction_deg: angle(r, "fadeDir", 90.0),
+            scale_x: frac(r, "sx", 1.0),
+            scale_y: frac(r, "sy", 1.0),
+            align: r.attr("algn").unwrap_or("b").to_string(),
+        }),
+        soft_edge_emu: effects
+            .child("softEdge")
+            .map(|edge| int(edge, "rad", 0))
+            .filter(|rad| *rad > 0),
+    }
 }
 
 /// Hands a group's own fill to the children that asked for it with
@@ -1983,7 +2101,7 @@ fn parse_level_style(p_pr: &XmlElement) -> LevelStyle {
     }
 }
 
-fn parse_run_props(r_pr: &XmlElement) -> RunProps {
+pub(crate) fn parse_run_props(r_pr: &XmlElement) -> RunProps {
     let flag = |name: &str| -> Option<bool> {
         match r_pr.attr(name) {
             Some("1") | Some("true") => Some(true),
@@ -2233,6 +2351,7 @@ fn parse_styled_run(text: String, r_pr: Option<&XmlElement>) -> TextRun {
             .map(parse_outline)
             .filter(|ln| !ln.no_fill && ln.color.is_some()),
         shadow: r_pr.and_then(parse_shadow),
+        glow: r_pr.map(parse_effects).and_then(|effects| effects.glow),
         field: None,
         size_pt: props.size_pt,
         color: props.color,

@@ -35,6 +35,7 @@ fn bare_shape(geometry: PlacedGeometry) -> PlacedShape {
         text_rotation_deg: 0.0,
         gradient: None,
         shadow: None,
+        effects: Default::default(),
         image_alpha: None,
         pattern: None,
     }
@@ -291,6 +292,7 @@ fn text_runs_draw_at_their_shape_relative_positions() {
             letter_spacing_px: 0.0,
             text_outline: None,
             text_shadow: None,
+            text_glow: None,
             underline_style: None,
             double_strike: false,
         }],
@@ -472,6 +474,7 @@ fn run(text: &str) -> PlacedRun {
         letter_spacing_px: 0.0,
         text_outline: None,
         text_shadow: None,
+        text_glow: None,
         underline_style: None,
         double_strike: false,
     }

@@ -41,6 +41,7 @@ fn shape(name: &str, fill: Option<Fill>, transform: Transform) -> Shape {
         image_part: None,
         source_rect: None,
         shadow: None,
+        effects: Default::default(),
     }
 }
 
@@ -279,6 +280,7 @@ fn inherited<'a>(
         theme_background_fill_styles: None,
         theme_line_styles: None,
         theme_effect_styles: None,
+        theme_effect_style_effects: None,
     }
 }
 

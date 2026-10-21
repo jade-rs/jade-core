@@ -40,6 +40,7 @@ fn shape(name: &str, transform: Transform) -> Shape {
         image_part: None,
         source_rect: None,
         shadow: None,
+        effects: Default::default(),
     }
 }
 
@@ -143,6 +144,7 @@ fn a_picture_placeholder_inherits_its_geometry_from_the_layout() {
         adjustments: Vec::new(),
         outline: None,
         shadow: None,
+        effects: Default::default(),
         alpha: None,
     };
     let laid_out = layout_slide_inheriting(

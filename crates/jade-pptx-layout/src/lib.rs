@@ -255,6 +255,136 @@ pub struct PlacedShape {
     /// colours' blend for renderers that draw no patterns).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pattern: Option<PlacedPattern>,
+    /// Inner shadow, glow, reflection and soft edge, ready to draw.
+    #[serde(default, skip_serializing_if = "PlacedEffects::is_empty")]
+    pub effects: PlacedEffects,
+}
+
+/// The effects of an `<a:effectLst>` other than the outer shadow, in px and
+/// resolved colours.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct PlacedEffects {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_shadow: Option<PlacedShadow>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<PlacedGlow>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reflection: Option<PlacedReflection>,
+    /// How far in from the edge the silhouette fades out, in px.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub soft_edge_px: Option<f64>,
+}
+
+impl PlacedEffects {
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
+/// `<a:glow>`: a halo of `color` reaching `radius_px` beyond the edge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedGlow {
+    pub color: String,
+    pub radius_px: f64,
+}
+
+/// `<a:reflection>`: the shape mirrored by `scale` about its `align` point,
+/// moved by (`dx`, `dy`), and faded from `start_alpha` at `start_position`
+/// to `end_alpha` at `end_position` along `fade_direction_deg` across the
+/// mirrored copy's box.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedReflection {
+    pub blur_px: f64,
+    pub start_alpha: f64,
+    pub start_position: f64,
+    pub end_alpha: f64,
+    pub end_position: f64,
+    pub dx: f64,
+    pub dy: f64,
+    pub fade_direction_deg: f64,
+    pub scale_x: f64,
+    pub scale_y: f64,
+    /// The point of the shape's box the mirror is anchored on, as fractions
+    /// of its width and height (`bl` is (0, 1)).
+    pub anchor: (f64, f64),
+}
+
+impl PlacedReflection {
+    /// The reflection's alpha at `position` (0 at the start of the fade
+    /// direction across the mirrored box, 1 at its end).
+    pub fn alpha_at(&self, position: f64) -> f64 {
+        if position <= self.start_position {
+            return self.start_alpha;
+        }
+        if position >= self.end_position {
+            return self.end_alpha;
+        }
+        let span = self.end_position - self.start_position;
+        if span <= 0.0 {
+            return self.end_alpha;
+        }
+        let t = (position - self.start_position) / span;
+        self.start_alpha + (self.end_alpha - self.start_alpha) * t
+    }
+}
+
+/// Resolves the parsed effects to px and CSS colours.
+pub(crate) fn place_effects(
+    effects: &jade_pptx_reader::Effects,
+    theme: &ThemeColors,
+) -> PlacedEffects {
+    PlacedEffects {
+        inner_shadow: place_shadow(effects.inner_shadow.as_ref(), theme),
+        glow: effects.glow.as_ref().and_then(|glow| place_glow(glow, theme)),
+        reflection: effects.reflection.as_ref().and_then(|r| {
+            let anchor = match r.align.as_str() {
+                "tl" => (0.0, 0.0),
+                "t" => (0.5, 0.0),
+                "tr" => (1.0, 0.0),
+                "l" => (0.0, 0.5),
+                "ctr" => (0.5, 0.5),
+                "r" => (1.0, 0.5),
+                "bl" => (0.0, 1.0),
+                "br" => (1.0, 1.0),
+                _ => (0.5, 1.0),
+            };
+            let distance = emu_to_px(r.distance_emu);
+            let direction = (r.direction_deg as f64).to_radians();
+            let placed = PlacedReflection {
+                blur_px: emu_to_px(r.blur_emu),
+                start_alpha: (r.start_alpha as f64).clamp(0.0, 1.0),
+                start_position: (r.start_position as f64).clamp(0.0, 1.0),
+                end_alpha: (r.end_alpha as f64).clamp(0.0, 1.0),
+                end_position: (r.end_position as f64).clamp(0.0, 1.0),
+                dx: distance * direction.cos(),
+                dy: distance * direction.sin(),
+                fade_direction_deg: r.fade_direction_deg as f64,
+                scale_x: r.scale_x as f64,
+                scale_y: r.scale_y as f64,
+                anchor,
+            };
+            // Nothing shows when both ends are clear or the copy is flat.
+            (placed.start_alpha.max(placed.end_alpha) > 0.0
+                && placed.scale_x != 0.0
+                && placed.scale_y != 0.0)
+                .then_some(placed)
+        }),
+        soft_edge_px: effects
+            .soft_edge_emu
+            .map(emu_to_px)
+            .filter(|px| *px > 0.0),
+    }
+}
+
+pub(crate) fn place_glow(glow: &jade_pptx_reader::Glow, theme: &ThemeColors) -> Option<PlacedGlow> {
+    let color = resolve_color(&glow.color, theme);
+    if color.ends_with(",0)") || glow.radius_emu <= 0 {
+        return None;
+    }
+    Some(PlacedGlow {
+        color,
+        radius_px: emu_to_px(glow.radius_emu),
+    })
 }
 
 /// A preset pattern with its resolved colours.
@@ -578,6 +708,8 @@ pub struct InheritedContent<'a> {
     pub theme_line_styles: Option<&'a [Outline]>,
     /// The theme's effect styles, for a shape style's `effectRef`.
     pub theme_effect_styles: Option<&'a [Option<jade_pptx_reader::Shadow>]>,
+    /// The same effect styles' glow, reflection, soft edge and inner shadow.
+    pub theme_effect_style_effects: Option<&'a [jade_pptx_reader::Effects]>,
 }
 
 pub fn layout_slide(
@@ -618,6 +750,7 @@ pub fn layout_deck_slide(
             theme_background_fill_styles: Some(slide_theme.background_fill_styles),
             theme_line_styles: Some(slide_theme.line_styles),
             theme_effect_styles: Some(slide_theme.effect_styles),
+            theme_effect_style_effects: Some(slide_theme.effect_style_effects),
         },
         slide_theme.colors,
         measure,
@@ -747,6 +880,7 @@ pub fn layout_slide_inheriting(
                 shadow: None,
                 image_alpha: None,
                 pattern: None,
+                effects: PlacedEffects::default(),
             },
         );
     }
@@ -943,6 +1077,7 @@ fn place_chart(
         shadow: None,
         image_alpha: None,
         pattern: None,
+        effects: PlacedEffects::default(),
     }];
     placed.extend(chart::plot_chart(chart, rect, has_title, context, origin));
     placed
@@ -1187,6 +1322,21 @@ fn place_shape(
             }),
             context.theme,
         ),
+        effects: place_effects(
+            if shape.shadow.is_some() {
+                // A stated `<a:effectLst>` replaces the style's effects whole.
+                &shape.effects
+            } else {
+                visual
+                    .style
+                    .and_then(|style| {
+                        let index = style.effect_index.checked_sub(1)? as usize;
+                        context.inherited.theme_effect_style_effects?.get(index)
+                    })
+                    .unwrap_or(&shape.effects)
+            },
+            context.theme,
+        ),
         image_alpha: None,
     })
 }
@@ -1337,5 +1487,6 @@ fn place_picture(
         shadow: place_shadow(picture.shadow.as_ref(), context.theme),
         image_alpha: picture.alpha.map(f64::from),
         pattern: None,
+        effects: place_effects(&picture.effects, context.theme),
     })
 }

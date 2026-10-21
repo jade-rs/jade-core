@@ -255,6 +255,7 @@ pub(crate) fn place_table(
                 shadow: None,
                 image_alpha: None,
                 pattern: None,
+                effects: Default::default(),
             });
         }
         out.push(PlacedShape {
@@ -290,6 +291,7 @@ pub(crate) fn place_table(
             shadow: None,
             image_alpha: None,
             pattern: None,
+            effects: Default::default(),
         });
     }
     out.extend(borders);
