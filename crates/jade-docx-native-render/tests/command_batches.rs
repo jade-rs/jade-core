@@ -219,3 +219,38 @@ fn a_shell_text_command_edits_in_place() {
         format!("added {before}")
     );
 }
+
+/// Separate edits merged after the fact — formatting several ranges, a drag
+/// and drop — undo and redo as one step.
+#[test]
+fn steps_merged_since_a_mark_undo_as_one() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    let before = document.paragraph_text(paragraph).unwrap();
+    let mark = document.history_len();
+    for text in ["a", "b", "c"] {
+        document
+            .apply_commands(
+                vec![HeadlessCommand::InsertText {
+                    paragraph,
+                    offset: 0,
+                    text: text.to_string(),
+                }],
+                false,
+            )
+            .unwrap();
+    }
+    assert_eq!(document.history_len(), mark + 3);
+    document.merge_history_since(mark);
+    assert_eq!(document.history_len(), mark + 1);
+    document.undo().unwrap();
+    assert_eq!(document.paragraph_text(paragraph).unwrap(), before);
+    document.redo().unwrap();
+    assert_eq!(
+        document.paragraph_text(paragraph).unwrap(),
+        format!("cba{before}")
+    );
+    // A mark past the end merges nothing.
+    document.merge_history_since(99);
+    assert_eq!(document.history_len(), mark + 1);
+}
