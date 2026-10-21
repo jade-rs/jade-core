@@ -1290,6 +1290,19 @@ pub enum HeadlessCommand {
     SetJapaneseTypography {
         typography: HeadlessJapaneseTypography,
     },
+    /// 日付と時刻 with 自動的に更新する: a `DATE` (or, with `time`, `TIME`)
+    /// field with Word's `\@` date picture `format`, in place of the
+    /// selection, showing `cached_text` until it is next evaluated.
+    InsertDateTimeField {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        #[serde(default)]
+        time: bool,
+        format: String,
+        cached_text: String,
+    },
     StartChangeTracking {
         author: Option<String>,
         initials: Option<String>,
@@ -2071,6 +2084,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetRunFormat { .. } => "set_run_format",
             HeadlessCommand::SetParagraphTypography { .. } => "set_paragraph_typography",
             HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
+            HeadlessCommand::InsertDateTimeField { .. } => "insert_date_time_field",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",

@@ -1017,8 +1017,19 @@ fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
         }
 
         let rest: String = chars[i..].iter().collect();
+        let japanese = crate::field_datetime::FieldDateTime {
+            year: dt.year,
+            month: dt.month,
+            day: dt.day,
+            hour: dt.hour,
+            minute: dt.minute,
+            second: dt.second,
+            weekday: dt.weekday,
+        };
         let matched: Option<(usize, String)> =
-            if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
+            if let Some(token) = crate::field_datetime::japanese_date_token(&rest, &japanese) {
+                Some(token)
+            } else if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
                 Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
             } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
                 Some((4, format!("{:04}", dt.year)))
