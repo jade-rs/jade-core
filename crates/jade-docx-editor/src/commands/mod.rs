@@ -225,6 +225,81 @@ pub trait Command {
 /// over a long editing session. Oldest entries past this cap are dropped.
 const MAX_UNDO_HISTORY: usize = 200;
 
+/// A paragraph formatting command run with changes tracked, and the
+/// `w:pPrChange` records put in after it: undone, the records go first.
+struct TrackedParagraphFormats {
+    inner: Box<dyn Command>,
+    records: Vec<crate::docx_xml::XmlNodeId>,
+}
+
+impl Command for TrackedParagraphFormats {
+    fn name(&self) -> &'static str {
+        self.inner.name()
+    }
+
+    fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.inner.apply(ctx)
+    }
+
+    fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        ctx.document.remove_paragraph_format_records(&self.records);
+        self.inner.undo(ctx)
+    }
+
+    fn redo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        let before = ctx.document.paragraph_formats();
+        self.inner.redo(ctx)?;
+        let session = ctx.document.revision_session().cloned().unwrap_or_default();
+        self.records = ctx.document.track_paragraph_format_changes(
+            before,
+            session.author.as_deref(),
+            session.date.as_deref(),
+        );
+        Ok(())
+    }
+
+    fn should_record_history(&self) -> bool {
+        self.inner.should_record_history()
+    }
+
+    fn history_render_footprint(&self) -> HistoryRenderFootprint {
+        self.inner.history_render_footprint()
+    }
+}
+
+/// Applies `command`, its formatting edits recorded as tracked changes
+/// (`w:rPrChange`) while the document has a revision session open.
+fn apply_tracking_formatting(
+    command: &mut dyn Command,
+    ctx: &mut CommandContext<'_>,
+) -> CommandResult<()> {
+    tracking_formatting(ctx, |ctx| command.apply(ctx))
+}
+
+/// Runs `step` with formatting edits recorded as tracked changes while the
+/// document has a revision session open.
+fn tracking_formatting(
+    ctx: &mut CommandContext<'_>,
+    step: impl FnOnce(&mut CommandContext<'_>) -> CommandResult<()>,
+) -> CommandResult<()> {
+    let stamp = ctx
+        .document
+        .revision_session()
+        .map(|session| text_edit::FormatRevisionStamp {
+            author: session.author.clone(),
+            date: session.date.clone(),
+            next_id: ctx.document.revision_id_counter(),
+        });
+    let tracking = stamp.is_some();
+    let (result, next_id) = text_edit::with_format_revision(stamp, || step(ctx));
+    if let Some(next_id) = next_id.filter(|_| tracking) {
+        if next_id > ctx.document.revision_id_counter() {
+            ctx.document.restore_revision_id_counter(next_id);
+        }
+    }
+    result
+}
+
 /// Lightweight executor that owns the undo/redo stacks and orchestrates command
 /// lifecycle.
 #[derive(Default)]
@@ -254,7 +329,28 @@ impl CommandExecutor {
         mut command: Box<dyn Command>,
         ctx: &mut CommandContext<'_>,
     ) -> CommandResult<()> {
-        command.apply(ctx)?;
+        // With changes tracked, a paragraph formatting command's changes are
+        // recorded as `w:pPrChange`s, which undo takes back out.
+        let paragraph_formats = ctx
+            .document
+            .revision_session()
+            .filter(|_| crate::word_document::PARAGRAPH_FORMAT_COMMANDS.contains(&command.name()))
+            .map(|_| ctx.document.paragraph_formats());
+        apply_tracking_formatting(command.as_mut(), ctx)?;
+        if let Some(before) = paragraph_formats {
+            let session = ctx.document.revision_session().cloned().unwrap_or_default();
+            let records = ctx.document.track_paragraph_format_changes(
+                before,
+                session.author.as_deref(),
+                session.date.as_deref(),
+            );
+            if !records.is_empty() {
+                command = Box::new(TrackedParagraphFormats {
+                    inner: command,
+                    records,
+                });
+            }
+        }
         if command.should_record_history() {
             if let Some(group) = self.group.as_mut() {
                 group.push(command);
@@ -399,7 +495,7 @@ impl CommandExecutor {
             None => return Ok(None),
         };
         let footprint = command.history_render_footprint();
-        command.redo(ctx)?;
+        tracking_formatting(ctx, |ctx| command.redo(ctx))?;
         if command.should_record_history() {
             self.undo_stack.push(command);
         }

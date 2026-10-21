@@ -15815,9 +15815,18 @@ where
                         | TextDirection::BtLrV
                 )
             )
+            && (options.revision_view().is_plain()
+                || !paragraph
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.has_format_change))
             && paragraph.runs.iter().all(|run| {
                 ((!options.render_changes && options.revision_view().is_plain())
-                    || run.revision.is_none())
+                    || (run.revision.is_none()
+                        && run
+                            .properties
+                            .as_ref()
+                            .is_none_or(|properties| properties.change.is_none())))
                     && run.image.is_none()
                     && run.text_box.is_none()
                     && run.math.is_none()
@@ -16957,13 +16966,34 @@ where
         let mut pending_note_separator = None;
         // Where the changes the layout leaves out stood, for change bars.
         let mut dropped_change_offsets: Vec<usize> = Vec::new();
+        // Where formatting changes (`w:rPrChange`) lie, for change bars.
+        let mut format_change_ranges: Vec<(usize, usize)> = Vec::new();
+        let mut format_change_from: Option<usize> = None;
         let revision_view = Rc::clone(options.revision_view_rc());
+        // The paragraph's own formatting changed (`w:pPrChange`): every line.
+        let paragraph_format_changed = !revision_view.hide_formatting
+            && paragraph.properties.as_ref().is_some_and(|properties| {
+                properties.has_format_change
+                    && !revision_view.hides_author(properties.format_change_author.as_deref())
+            });
         // Footnotes this paragraph references first; their marks' layout
         // offsets decide which line carries them onto a page.
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
         let track_footnote_placement = self.tracks_footnote_placement();
 
         for (run_index, run) in paragraph.runs.iter().enumerate() {
+            if let Some(from) = format_change_from.take() {
+                format_change_ranges.push((from, current_pos));
+            }
+            if !revision_view.hide_formatting
+                && run
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.change.as_deref())
+                    .is_some_and(|change| !revision_view.hides_author(change.author.as_deref()))
+            {
+                format_change_from = Some(current_pos);
+            }
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
             }
@@ -17339,6 +17369,12 @@ where
                 });
             }
         }
+        if let Some(from) = format_change_from.take() {
+            format_change_ranges.push((from, current_pos));
+        }
+        if paragraph_format_changed {
+            format_change_ranges.push((0, current_pos.max(1)));
+        }
 
         let mut drop_cap_floor = None;
         if let Some(drop_cap) = paragraph
@@ -17663,6 +17699,7 @@ where
                         })
                         .map(|style| (style.start, style.end))
                         .chain(dropped_change_offsets.iter().map(|&at| (at, at)))
+                        .chain(format_change_ranges.iter().copied())
                         .filter(|&(_, end)| end >= start)
                         .map(|(from, to)| (from.saturating_sub(start), to - start))
                         .collect();
@@ -42944,6 +42981,46 @@ mod tests {
         )
         .iter()
         .all(|(color, _)| color != "#C00000"));
+    }
+
+    /// A formatting change gets a change bar like any other change, unless
+    /// the view leaves 書式設定 out.
+    #[test]
+    fn formatting_changes_get_change_bars() {
+        use crate::revision_view::RevisionView;
+        use jade_painter::recording::Op;
+        let draw = |hide_formatting: bool| {
+            let mut document = doc_with_paragraph_texts(&["reformatted words"]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            let run = &mut paragraph.runs[0];
+            run.properties
+                .get_or_insert_with(RunProperties::default)
+                .change = Some(Box::new(crate::document::RunPropertiesChange {
+                id: Some("3".into()),
+                author: Some("Ann".into()),
+                date: None,
+                previous: RunProperties::default(),
+            }));
+            let (mut renderer, painter) = recording_renderer();
+            let mut options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Options::default()
+            };
+            options.set_revision_view(RevisionView {
+                change_bar: Some("#C00000".into()),
+                hide_formatting,
+                ..RevisionView::default()
+            });
+            renderer.render(&document, &options).unwrap();
+            painter.ops().contains(&Op::SetFillStyle("#C00000".into()))
+        };
+        assert!(draw(false));
+        assert!(!draw(true));
     }
 
     /// 作成者別: a reviewer's change is drawn in their colour; unticked, it

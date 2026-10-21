@@ -6429,6 +6429,47 @@ fn revision_groups(
             let run_start = offset;
             let run_end = run_start.saturating_add(run.text.len());
             offset = run_end;
+            // A formatting change (`w:rPrChange`), listed apart from any
+            // insertion or deletion the same text is.
+            if let Some(change) = run
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.change.as_deref())
+            {
+                let continues = revisions.last().is_some_and(|(last, _)| {
+                    last.paragraph == paragraph_index
+                        && !last.paragraph_mark
+                        && last.kind == "formatted"
+                        && last.end_offset == run_start
+                        && last.author == change.author
+                        && last.date == change.date
+                });
+                if continues {
+                    if let Some((last, ids)) = revisions.last_mut() {
+                        last.end_offset = run_end;
+                        last.text.push_str(&run.text);
+                        if !ids.contains(&change.id) {
+                            ids.push(change.id.clone());
+                        }
+                    }
+                } else {
+                    revisions.push((
+                        HeadlessRevisionSnapshot {
+                            id: change.id.clone(),
+                            kind: "formatted".to_string(),
+                            author: change.author.clone(),
+                            date: change.date.clone(),
+                            date_utc: None,
+                            paragraph: paragraph_index,
+                            start_offset: run_start,
+                            end_offset: run_end,
+                            text: run.text.clone(),
+                            paragraph_mark: false,
+                        },
+                        vec![change.id.clone()],
+                    ));
+                }
+            }
             let Some(mark) = run.revision.as_ref() else {
                 continue;
             };
@@ -6472,6 +6513,24 @@ fn revision_groups(
                     paragraph_mark: false,
                 },
                 vec![mark.id.clone()],
+            ));
+        }
+        // A change to the paragraph's own formatting (`w:pPrChange`).
+        if let Some(change) = word_doc.paragraph_format_change(paragraph_index) {
+            revisions.push((
+                HeadlessRevisionSnapshot {
+                    id: change.id.clone(),
+                    kind: "formatted".to_string(),
+                    author: change.author,
+                    date: change.date,
+                    date_utc: None,
+                    paragraph: paragraph_index,
+                    start_offset: 0,
+                    end_offset: offset,
+                    text: paragraph.runs.iter().map(|run| run.text.as_str()).collect(),
+                    paragraph_mark: false,
+                },
+                vec![change.id],
             ));
         }
         if let Some(element) = word_doc

@@ -196,6 +196,338 @@ impl WordDocument {
     }
 }
 
+/// The commands that change paragraph formatting: with changes tracked,
+/// what each one changes is recorded as a `w:pPrChange`.
+pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 16] = [
+    "adjust_paragraph_indent",
+    "apply_multilevel_list",
+    "reset_paragraph_formatting",
+    "set_drop_cap",
+    "set_numbering",
+    "set_paragraph_alignment",
+    "set_paragraph_direction",
+    "set_paragraph_indent",
+    "set_paragraph_line_spacing",
+    "set_paragraph_pagination",
+    "set_paragraph_style",
+    "set_paragraph_visuals",
+    "set_paragraph_typography",
+    "set_japanese_typography",
+    "set_paragraph_metrics",
+    "toggle_paragraph_space_before",
+];
+
+/// A paragraph's `w:pPr`, as it was before a formatting command.
+pub(crate) type ParagraphFormats = Vec<(XmlNodeId, Option<XmlElement>)>;
+
+/// Who a paragraph formatting change is by.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ParagraphFormatChange {
+    pub id: Option<String>,
+    pub author: Option<String>,
+    pub date: Option<String>,
+}
+
+fn child<'a>(element: &'a XmlElement, name: &str) -> Option<&'a XmlElement> {
+    element.children.iter().find_map(|node| match node {
+        XmlNode::Element(child) if local(&child.name) == name => Some(child),
+        _ => None,
+    })
+}
+
+fn escape(text: &str, attribute: bool) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' if attribute => out.push_str("&quot;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+/// `element` written out as XML.
+pub(crate) fn element_xml(element: &XmlElement) -> String {
+    let mut out = format!("<{}", element.name);
+    for attribute in &element.attributes {
+        out.push_str(&format!(
+            " {}=\"{}\"",
+            attribute.name,
+            escape(&attribute.value, true)
+        ));
+    }
+    if element.children.is_empty() {
+        out.push_str("/>");
+        return out;
+    }
+    out.push('>');
+    for node in &element.children {
+        match node {
+            XmlNode::Element(child) => out.push_str(&element_xml(child)),
+            XmlNode::Text(text) => out.push_str(&escape(text, false)),
+            XmlNode::CData(text) => out.push_str(&format!("<![CDATA[{text}]]>")),
+            XmlNode::Comment(text) => out.push_str(&format!("<!--{text}-->")),
+        }
+    }
+    out.push_str(&format!("</{}>", element.name));
+    out
+}
+
+/// A `w:pPr`'s formatting, the record of a change to it left out.
+fn formatting_of(p_pr: Option<&XmlElement>) -> String {
+    p_pr.map(|p_pr| {
+        p_pr.children
+            .iter()
+            .filter(|node| !matches!(node, XmlNode::Element(child) if local(&child.name) == "pPrChange"))
+            .map(|node| match node {
+                XmlNode::Element(child) => element_xml(child),
+                _ => String::new(),
+            })
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
+impl WordDocument {
+    fn paragraph_element(&self, index: usize) -> Option<&XmlElement> {
+        let id = self.paragraph(index)?.node_id?;
+        self.raw_document
+            .as_ref()?
+            .element(id)
+            .filter(|element| local(&element.name) == "p")
+    }
+
+    /// Every body paragraph's `w:pPr`, before a formatting command runs.
+    pub(crate) fn paragraph_formats(&self) -> ParagraphFormats {
+        (0..self.paragraph_count())
+            .filter_map(|index| {
+                let element = self.paragraph_element(index)?;
+                Some((element.id, child(element, "pPr").cloned()))
+            })
+            .collect()
+    }
+
+    /// After a formatting command with changes tracked: each paragraph whose
+    /// `w:pPr` it changed keeps what it was in a `w:pPrChange` (one already
+    /// there keeps the first). Returns the records put in, for undo.
+    pub(crate) fn track_paragraph_format_changes(
+        &mut self,
+        before: ParagraphFormats,
+        author: Option<&str>,
+        date: Option<&str>,
+    ) -> Vec<XmlNodeId> {
+        let mut inserted = Vec::new();
+        for (paragraph_id, old) in before {
+            let Some(raw) = self.raw_document.as_ref() else {
+                break;
+            };
+            let Some(paragraph) = raw.element(paragraph_id) else {
+                continue;
+            };
+            let new = child(paragraph, "pPr");
+            if formatting_of(new) == formatting_of(old.as_ref())
+                || new.is_some_and(|p_pr| child(p_pr, "pPrChange").is_some())
+            {
+                continue;
+            }
+            // The formatting before: the old `w:pPr` without the paragraph
+            // mark's run properties, a section break or an older record.
+            let previous: Vec<XmlNode> = old
+                .map(|old| {
+                    old.children
+                        .into_iter()
+                        .filter(|node| {
+                            !matches!(node, XmlNode::Element(child)
+                                if matches!(local(&child.name), "rPr" | "sectPr" | "pPrChange"))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let id = self.allocate_revision_id().to_string();
+            let raw = self.raw_document.as_mut().expect("checked above");
+            let previous_p_pr = raw.create_element("w:pPr", Vec::new(), previous);
+            let mut attributes = vec![XmlAttribute {
+                name: "w:id".into(),
+                value: id,
+            }];
+            for (name, value) in [("w:author", author), ("w:date", date)] {
+                if let Some(value) = value {
+                    attributes.push(XmlAttribute {
+                        name: name.into(),
+                        value: value.into(),
+                    });
+                }
+            }
+            let record = raw.create_element(
+                "w:pPrChange",
+                attributes,
+                vec![XmlNode::Element(previous_p_pr)],
+            );
+            let record_id = record.id;
+            let has_p_pr = raw
+                .element(paragraph_id)
+                .is_some_and(|paragraph| child(paragraph, "pPr").is_some());
+            if !has_p_pr {
+                let p_pr = raw.create_element("w:pPr", Vec::new(), Vec::new());
+                if let Some(paragraph) = raw.element_mut(paragraph_id) {
+                    paragraph.children.insert(0, XmlNode::Element(p_pr));
+                }
+            }
+            let Some(paragraph) = raw.element_mut(paragraph_id) else {
+                continue;
+            };
+            if let Some(XmlNode::Element(p_pr)) = paragraph
+                .children
+                .iter_mut()
+                .find(|node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPr"))
+            {
+                p_pr.children.push(XmlNode::Element(record));
+                inserted.push(record_id);
+                // The layout's paragraph shows the change bar.
+                if let Some(index) = (0..self.paragraph_count()).find(|&index| {
+                    self.paragraph(index)
+                        .is_some_and(|paragraph| paragraph.node_id == Some(paragraph_id))
+                }) {
+                    if let Some(paragraph) = self.paragraph_mut(index) {
+                        let properties = paragraph.properties.get_or_insert_with(Default::default);
+                        properties.has_format_change = true;
+                        properties.format_change_author = author.map(Into::into);
+                    }
+                }
+            }
+        }
+        inserted
+    }
+
+    /// Takes the records `track_paragraph_format_changes` put in back out.
+    pub(crate) fn remove_paragraph_format_records(&mut self, records: &[XmlNodeId]) {
+        let Some(raw) = self.raw_document.as_mut() else {
+            return;
+        };
+        for &id in records {
+            if let Some(path) = raw.path(id) {
+                let _ = raw.remove_node(&path);
+            }
+        }
+    }
+
+    /// The tracked change to paragraph `index`'s formatting, if it has one.
+    pub fn paragraph_format_change(&self, index: usize) -> Option<ParagraphFormatChange> {
+        let record = child(child(self.paragraph_element(index)?, "pPr")?, "pPrChange")?;
+        let attribute = |name: &str| {
+            record
+                .attributes
+                .iter()
+                .find(|attribute| attribute.name == name)
+                .map(|attribute| attribute.value.clone())
+        };
+        Some(ParagraphFormatChange {
+            id: attribute("w:id"),
+            author: attribute("w:author"),
+            date: attribute("w:date"),
+        })
+    }
+
+    /// 承諾 (`accept`) or 元に戻す for paragraph `index`'s formatting change:
+    /// accepted, the record goes; rejected, the formatting in the record comes
+    /// back — in the XML and in the paragraph the layout reads.
+    pub(crate) fn decide_paragraph_format_change(
+        &mut self,
+        index: usize,
+        accept: bool,
+    ) -> Result<(), String> {
+        let paragraph_id = self
+            .paragraph_element(index)
+            .map(|element| element.id)
+            .ok_or("the paragraph has no XML")?;
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or("the document has no XML")?;
+        let paragraph = raw
+            .element_mut(paragraph_id)
+            .ok_or("the paragraph went missing")?;
+        let Some(XmlNode::Element(p_pr)) = paragraph
+            .children
+            .iter_mut()
+            .find(|node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPr"))
+        else {
+            return Ok(());
+        };
+        let Some(at) = p_pr.children.iter().position(
+            |node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPrChange"),
+        ) else {
+            return Ok(());
+        };
+        let XmlNode::Element(record) = p_pr.children.remove(at) else {
+            unreachable!("matched an element");
+        };
+        if accept {
+            if let Some(properties) = self
+                .paragraph_mut(index)
+                .and_then(|paragraph| paragraph.properties.as_mut())
+            {
+                properties.has_format_change = false;
+                properties.format_change_author = None;
+            }
+            return Ok(());
+        }
+        // The formatting in the record, with the paragraph mark's run
+        // properties and any section break the paragraph carries.
+        let previous: Vec<XmlNode> = record
+            .children
+            .into_iter()
+            .find_map(|node| match node {
+                XmlNode::Element(inner) if local(&inner.name) == "pPr" => Some(inner.children),
+                _ => None,
+            })
+            .unwrap_or_default();
+        let kept: Vec<XmlNode> = p_pr
+            .children
+            .drain(..)
+            .filter(|node| {
+                matches!(node, XmlNode::Element(child) if matches!(local(&child.name), "rPr" | "sectPr"))
+            })
+            .collect();
+        p_pr.children = previous;
+        p_pr.children.extend(kept);
+        let restored = element_xml(p_pr);
+        // The paragraph the layout reads, from the restored `w:pPr` and what
+        // its style gives, as a load would make it.
+        let wrapper = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{restored}<w:r><w:t>x</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let parsed = crate::parser::DocumentParser::new()
+            .parse_document_xml(&wrapper)
+            .map_err(|error| error.to_string())?;
+        let mut properties = parsed
+            .body
+            .and_then(|body| {
+                body.elements.into_iter().find_map(|element| match element {
+                    BodyElement::Paragraph(paragraph) => Some(paragraph.properties),
+                    _ => None,
+                })
+            })
+            .flatten()
+            .unwrap_or_default();
+        let style = properties.style.as_deref().map(str::to_string);
+        if let Some(inherited) = self.inherited_paragraph_properties(index, style.as_deref()) {
+            Self::fill_missing_paragraph_props(&mut properties, &inherited);
+        }
+        if let Some(paragraph) = self.paragraph_mut(index) {
+            // What the paragraph mark carries stays the paragraph's own.
+            if let Some(old) = paragraph.properties.as_ref() {
+                properties.mark_revision = old.mark_revision.clone();
+            }
+            paragraph.properties = Some(properties);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,6 +552,263 @@ mod tests {
         zip.start_file("word/document.xml", options).unwrap();
         zip.write_all(DOCUMENT.as_bytes()).unwrap();
         zip.finish().unwrap().into_inner()
+    }
+
+    fn docx_with_body(body: &str) -> Vec<u8> {
+        let document = format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}<w:sectPr/></w:body></w:document>"#
+        );
+        let mut parts = vec![("word/document.xml".to_string(), document)];
+        parts.push((
+            "[Content_Types].xml".into(),
+            r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#.into(),
+        ));
+        parts.push((
+            "_rels/.rels".into(),
+            r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.into(),
+        ));
+        use std::io::Write;
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, content) in parts {
+            zip.start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(content.as_bytes()).unwrap();
+        }
+        zip.finish().unwrap().into_inner()
+    }
+
+    fn document_xml(saved: &[u8]) -> String {
+        use std::io::Read;
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(saved)).unwrap();
+        let mut xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        xml
+    }
+
+    fn revisions(document: &WordDocument) -> Vec<jade_docx_headless_api::HeadlessRevisionSnapshot> {
+        use jade_docx_headless_api::{HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResult};
+        let result = crate::headless_api::execute_headless_queries_on_document(
+            document,
+            &HeadlessQueryRequest {
+                queries: vec![HeadlessQuery::Revisions {
+                    start_revision: 0,
+                    max_revisions: 100,
+                    kind: None,
+                    author: None,
+                    date_from: None,
+                    date_to: None,
+                }],
+            },
+        )
+        .unwrap();
+        match result.results.into_iter().next() {
+            Some(HeadlessQueryResult::Revisions { revisions, .. }) => revisions,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn edit(document: &mut WordDocument, commands: Vec<jade_docx_headless_api::HeadlessCommand>) {
+        crate::headless_api::apply_headless_commands_to_document(
+            document,
+            &jade_docx_headless_api::HeadlessEditRequest { commands },
+        )
+        .unwrap();
+    }
+
+    /// With changes tracked, making text bold is a formatting change Word
+    /// lists and saves as `w:rPrChange`: accepted, the bold stays; rejected,
+    /// the text is as it was.
+    #[test]
+    fn tracked_formatting_is_recorded_listed_and_decided() {
+        use jade_docx_headless_api::HeadlessCommand;
+        let bytes = docx_with_body(r#"<w:p><w:r><w:t>hello world</w:t></w:r></w:p>"#);
+        for accept in [true, false] {
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            edit(
+                &mut document,
+                vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("Ann".into()),
+                        initials: None,
+                        date: Some("2026-10-22T00:00:00Z".into()),
+                        date_utc: None,
+                    },
+                    HeadlessCommand::ApplyBold {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: 5,
+                        enabled: true,
+                    },
+                ],
+            );
+            let listed = revisions(&document);
+            assert_eq!(listed.len(), 1, "{listed:?}");
+            assert_eq!(listed[0].kind, "formatted");
+            assert_eq!(listed[0].author.as_deref(), Some("Ann"));
+            assert_eq!((listed[0].start_offset, listed[0].end_offset), (0, 5));
+            let xml = document_xml(&document.export_docx().unwrap());
+            assert!(xml.contains("<w:rPrChange"), "{xml}");
+            assert!(xml.contains(r#"w:author="Ann""#), "{xml}");
+
+            // Saved and opened again, the change is still the same change.
+            let mut reopened = executor::block_on(WordDocument::load(
+                &document.export_docx().unwrap(),
+                &Options::default(),
+            ))
+            .unwrap();
+            assert_eq!(revisions(&reopened).len(), 1);
+            let decide = if accept {
+                HeadlessCommand::AcceptRevisions {
+                    kind: None,
+                    start_paragraph: None,
+                    end_paragraph: None,
+                    revision_id: None,
+                    revision_ids: None,
+                    revision_targets: None,
+                }
+            } else {
+                HeadlessCommand::RejectRevisions {
+                    kind: None,
+                    start_paragraph: None,
+                    end_paragraph: None,
+                    revision_id: None,
+                    revision_ids: None,
+                    revision_targets: None,
+                }
+            };
+            edit(&mut reopened, vec![decide]);
+            assert!(revisions(&reopened).is_empty());
+            let bold = reopened.paragraph(0).unwrap().runs[0]
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.bold);
+            assert_eq!(bold.unwrap_or(false), accept, "accept={accept}");
+            let xml = document_xml(&reopened.export_docx().unwrap());
+            assert!(!xml.contains("rPrChange"), "{xml}");
+        }
+    }
+
+    /// Word's own `w:rPrChange` — italic taken off — is read with what the
+    /// text was, and rejecting it puts the italic back.
+    #[test]
+    fn a_change_word_recorded_is_read_and_rejected() {
+        use jade_docx_headless_api::HeadlessCommand;
+        let bytes = docx_with_body(
+            r#"<w:p><w:r><w:rPr><w:b/><w:rPrChange w:id="7" w:author="Bob" w:date="2025-01-01T00:00:00Z"><w:rPr><w:i/></w:rPr></w:rPrChange></w:rPr><w:t>changed</w:t></w:r></w:p>"#,
+        );
+        let mut document =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        let change = document.paragraph(0).unwrap().runs[0]
+            .properties
+            .as_ref()
+            .and_then(|properties| properties.change.clone())
+            .expect("the change is read");
+        assert_eq!(change.author.as_deref(), Some("Bob"));
+        assert_eq!(change.previous.italic, Some(true));
+        assert_eq!(change.previous.bold, None);
+        // Untouched, it is saved as it was.
+        assert!(document_xml(&document.export_docx().unwrap()).contains(r#"w:id="7""#));
+        edit(
+            &mut document,
+            vec![HeadlessCommand::RejectRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: Some("7".into()),
+                revision_ids: None,
+                revision_targets: None,
+            }],
+        );
+        let properties = document.paragraph(0).unwrap().runs[0]
+            .properties
+            .clone()
+            .unwrap_or_default();
+        assert_eq!(properties.italic, Some(true));
+        assert_ne!(properties.bold, Some(true));
+        assert!(properties.change.is_none());
+    }
+
+    /// With changes tracked, centring a paragraph records what its
+    /// formatting was (`w:pPrChange`): listed, undone with the command, and
+    /// rejected — the alignment back as it was, in the XML and the layout.
+    #[test]
+    fn tracked_paragraph_formatting_is_recorded_and_rejected() {
+        use jade_docx_headless_api::HeadlessCommand;
+        let bytes = docx_with_body(
+            r#"<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>a paragraph</w:t></w:r></w:p>"#,
+        );
+        let mut document =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        edit(
+            &mut document,
+            vec![
+                HeadlessCommand::StartChangeTracking {
+                    author: Some("Ann".into()),
+                    initials: None,
+                    date: None,
+                    date_utc: None,
+                },
+                HeadlessCommand::SetParagraphAlignment {
+                    start_paragraph: 0,
+                    end_paragraph: 0,
+                    alignment: "center".into(),
+                },
+            ],
+        );
+        let listed = revisions(&document);
+        assert_eq!(listed.len(), 1, "{listed:?}");
+        assert_eq!(listed[0].kind, "formatted");
+        assert!(document.paragraph_format_change(0).is_some());
+        assert!(
+            document
+                .paragraph(0)
+                .unwrap()
+                .properties
+                .as_ref()
+                .unwrap()
+                .has_format_change
+        );
+        let xml = document_xml(&document.export_docx().unwrap());
+        assert!(xml.contains("<w:pPrChange"), "{xml}");
+        assert!(xml.contains(r#"<w:pPrChange w:id"#), "{xml}");
+
+        // Saved and opened again, then rejected: right-aligned again.
+        let mut reopened = executor::block_on(WordDocument::load(
+            &document.export_docx().unwrap(),
+            &Options::default(),
+        ))
+        .unwrap();
+        assert!(reopened.paragraph_format_change(0).is_some());
+        edit(
+            &mut reopened,
+            vec![HeadlessCommand::RejectRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: None,
+                revision_ids: None,
+                revision_targets: None,
+            }],
+        );
+        assert!(revisions(&reopened).is_empty());
+        let alignment = reopened
+            .paragraph(0)
+            .unwrap()
+            .properties
+            .as_ref()
+            .unwrap()
+            .alignment
+            .clone();
+        assert_eq!(alignment.as_deref(), Some("right"));
+        let xml = document_xml(&reopened.export_docx().unwrap());
+        assert!(!xml.contains("pPrChange"), "{xml}");
+        assert!(xml.contains(r#"w:val="right""#), "{xml}");
     }
 
     fn picture(document: &WordDocument) -> FloatingObjectTarget {

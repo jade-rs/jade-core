@@ -708,7 +708,8 @@ impl BorderSide {
 mod review_tools;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
-pub use review_tools::AltText;
+pub(crate) use review_tools::PARAGRAPH_FORMAT_COMMANDS;
+pub use review_tools::{AltText, ParagraphFormatChange};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
@@ -11424,6 +11425,27 @@ impl WordDocument {
             // decision takes exactly that part.
             let cuts = targets.map_or_else(Vec::new, |targets| targets.run_cuts(paragraph_index));
             let mut paragraph_changed = !cuts.is_empty();
+            let mut restyled_runs: Vec<XmlNodeId> = Vec::new();
+            // The paragraph's own formatting change, decided whole.
+            if let Some(change) = self.paragraph_format_change(paragraph_index) {
+                let length = self
+                    .paragraph(paragraph_index)
+                    .map(|paragraph| paragraph.runs.iter().map(|run| run.text.len()).sum())
+                    .unwrap_or(0);
+                let selected = kind_filter.is_none()
+                    && id_filter.is_none_or(|filter| filter.matches(change.id.as_deref()))
+                    && targets.is_none_or(|targets| {
+                        targets.contains_run(paragraph_index, 0, length, change.id.as_deref())
+                    });
+                if selected {
+                    self.decide_paragraph_format_change(
+                        paragraph_index,
+                        decision == RevisionDecision::Accept,
+                    )?;
+                    paragraph_changed = true;
+                    changed_runs = changed_runs.saturating_add(1);
+                }
+            }
             let zero_width = (!cuts.is_empty()).then(|| self.zero_width_runs(paragraph_index));
             {
                 let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
@@ -11443,6 +11465,37 @@ impl WordDocument {
                     let run_start = original_offset;
                     let run_end = run_start.saturating_add(run.text.len());
                     original_offset = run_end;
+                    // A formatting change: accepted, the record goes;
+                    // rejected, the formatting before it comes back.
+                    let format_change = run
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| properties.change.as_deref())
+                        .filter(|change| {
+                            kind_filter.is_none()
+                                && id_filter
+                                    .is_none_or(|filter| filter.matches(change.id.as_deref()))
+                                && targets.is_none_or(|targets| {
+                                    targets.contains_run(
+                                        paragraph_index,
+                                        run_start,
+                                        run_end,
+                                        change.id.as_deref(),
+                                    )
+                                })
+                        })
+                        .cloned();
+                    if let Some(change) = format_change {
+                        if let Some(properties) = run.properties.as_mut() {
+                            match decision {
+                                RevisionDecision::Accept => properties.change = None,
+                                RevisionDecision::Reject => *properties = change.previous,
+                            }
+                        }
+                        restyled_runs.extend(run.node_id);
+                        paragraph_changed = true;
+                        changed_runs = changed_runs.saturating_add(1);
+                    }
                     let Some(mark) = run.revision.clone() else {
                         new_runs.push(run);
                         continue;
@@ -11542,7 +11595,12 @@ impl WordDocument {
 
             if paragraph_changed {
                 touched_paragraphs.push(paragraph_index);
-                self.sync_paragraph_text(paragraph_index);
+                if restyled_runs.is_empty() {
+                    self.sync_paragraph_text(paragraph_index);
+                } else {
+                    // The decided runs' `w:rPr` is written again from the model.
+                    self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
+                }
             }
         }
 
@@ -32964,10 +33022,19 @@ impl WordDocument {
         run: &Run,
         existing: Option<XmlElement>,
     ) -> Option<XmlElement> {
+        Self::sync_run_properties_element(doc, run.properties.as_ref(), existing)
+    }
+
+    /// A run's `w:rPr` written from `properties`, patching `existing`.
+    fn sync_run_properties_element(
+        doc: &mut DocxXmlDocument,
+        properties: Option<&RunProperties>,
+        existing: Option<XmlElement>,
+    ) -> Option<XmlElement> {
         let mut element =
             existing.unwrap_or_else(|| doc.create_element("w:rPr", Vec::new(), Vec::new()));
 
-        if let Some(props) = run.properties.as_ref() {
+        if let Some(props) = properties {
             match props.style.as_deref().filter(|style| !style.is_empty()) {
                 Some(style) => Self::upsert_run_property_child_with_str_value(
                     doc,
@@ -33214,7 +33281,7 @@ impl WordDocument {
         // them) does not duplicate, while the create path (fresh rPr for a split
         // fragment) gets them back. `create_element` allocates fresh node ids,
         // avoiding collisions with the original run's element ids.
-        if let Some(props) = run.properties.as_ref() {
+        if let Some(props) = properties {
             for node in props.preserved_rpr.0.iter() {
                 if let XmlNode::Element(child) = node {
                     let already_present = element.children.iter().any(|existing| {
@@ -33231,6 +33298,32 @@ impl WordDocument {
                     }
                 }
             }
+        }
+
+        // A tracked formatting change: the formatting before it, last in
+        // the `w:rPr` as the schema puts it. Accepted or rejected, it goes.
+        match properties.and_then(|props| props.change.as_deref()) {
+            Some(change) => {
+                let previous = Self::sync_run_properties_element(doc, Some(&change.previous), None)
+                    .unwrap_or_else(|| doc.create_element("w:rPr", Vec::new(), Vec::new()));
+                let mut attributes = vec![XmlAttribute {
+                    name: "w:id".into(),
+                    value: change.id.clone().unwrap_or_else(|| "0".into()),
+                }];
+                for (name, value) in [("w:author", &change.author), ("w:date", &change.date)] {
+                    if let Some(value) = value {
+                        attributes.push(XmlAttribute {
+                            name: name.into(),
+                            value: value.clone(),
+                        });
+                    }
+                }
+                let change_element =
+                    doc.create_element("w:rPrChange", attributes, vec![XmlNode::Element(previous)]);
+                Self::remove_run_property_child(&mut element, "w:rPrChange");
+                element.children.push(XmlNode::Element(change_element));
+            }
+            None => Self::remove_run_property_child(&mut element, "w:rPrChange"),
         }
 
         if element.children.is_empty() && element.attributes.is_empty() {
