@@ -21,6 +21,7 @@ pub mod navigation;
 pub mod number_format;
 pub mod resize;
 pub mod selection;
+pub mod table_style;
 pub mod units;
 mod visual_format;
 
@@ -316,6 +317,9 @@ pub struct SheetLayout {
     /// Cells carrying a note, so a painter can mark them.
     #[serde(default)]
     pub notes: Vec<PlacedNote>,
+    /// Tables with a table style, which paints their unstored cells too.
+    #[serde(default)]
+    pub tables: Vec<table_style::StyledTable>,
     pub show_grid_lines: bool,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
@@ -366,6 +370,7 @@ impl SheetLayout {
         if self.blank_conditional_rules.is_empty()
             && self.blank_row_styles.is_empty()
             && self.blank_column_styles.is_empty()
+            && self.tables.is_empty()
         {
             return Vec::new();
         }
@@ -393,13 +398,24 @@ impl SheetLayout {
                 });
                 let style =
                     conditional_format::blank_style(&self.blank_conditional_rules, reference);
-                let fill = conditional_format::conditional_fill(&style)
-                    .unwrap_or_else(|| axis_style.and_then(|style| style.fill.clone()));
+                let table = self
+                    .tables
+                    .iter()
+                    .find_map(|table| table.style_at(reference));
+                let fill = conditional_format::conditional_fill(&style).unwrap_or_else(|| {
+                    axis_style
+                        .and_then(|style| style.fill.clone())
+                        .or_else(|| table.as_ref().and_then(|table| table.fill.clone()))
+                });
                 let mut border = axis_style
                     .map(|style| style.border.clone())
                     .unwrap_or_default();
+                if let Some(table) = &table {
+                    overlay_table_border(&mut border, table);
+                }
                 conditional_format::apply_border(&style, &mut border);
                 if axis_style.is_none()
+                    && table.is_none()
                     && style == jade_xlsx_reader::conditional_format::DifferentialStyle::default()
                 {
                     continue;
@@ -935,6 +951,7 @@ fn layout_sheet_with_workbook(
                 .unwrap_or(0),
         );
 
+    let styled_tables = table_style::styled_tables(sheet, styles);
     let formula_matches =
         formula_rule_matches(sheet, styles, workbook, column_count, row_count, options);
     let conditional =
@@ -998,6 +1015,13 @@ fn layout_sheet_with_workbook(
                 format.and_then(|format| styles.font(format)),
                 &options.default_font,
             );
+            let table_style = styled_tables
+                .iter()
+                .find_map(|table| table.style_at(cell.reference));
+            if let Some(table) = &table_style {
+                font.bold |= table.bold;
+                font.italic |= table.italic;
+            }
             let (conditional_style, visuals) =
                 conditional.for_cell_with_visual(cell.reference, &cell.value);
             let data_bar = visuals.bar;
@@ -1118,23 +1142,17 @@ fn layout_sheet_with_workbook(
                 text_color: conditional_style
                     .text_color
                     .or_else(|| formatted.color.map(format_color_to_color))
-                    .or_else(|| {
-                        format
-                            .and_then(|format| styles.font(format))
-                            .and_then(|font| font.color)
-                    }),
+                    .or_else(|| cell_text_color(styles, format, table_style.as_ref())),
                 fill: conditional_format::conditional_fill(&conditional_style).unwrap_or_else(
                     || {
                         format
                             .and_then(|format| styles.fill(format))
                             .and_then(resolve_fill)
+                            .or_else(|| table_style.as_ref().and_then(|table| table.fill.clone()))
                     },
                 ),
                 border: {
-                    let mut border = format
-                        .and_then(|format| styles.border(format))
-                        .cloned()
-                        .unwrap_or_default();
+                    let mut border = cell_border(styles, format, table_style.as_ref());
                     conditional_format::apply_border(&conditional_style, &mut border);
                     border
                 },
@@ -1160,6 +1178,9 @@ fn layout_sheet_with_workbook(
         }
         let format = styles.cell_format(sheet.effective_style_index(merge.start, None));
         let conditional_style = conditional.for_cell(merge.start, &CellValue::Empty);
+        let table_style = styled_tables
+            .iter()
+            .find_map(|table| table.style_at(merge.start));
         let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
         alignment.horizontal = resolve_horizontal(alignment.horizontal, &CellValue::Empty);
         prepared.push(PreparedCell {
@@ -1172,24 +1193,24 @@ fn layout_sheet_with_workbook(
                     format.and_then(|format| styles.font(format)),
                     &options.default_font,
                 );
+                if let Some(table) = &table_style {
+                    font.bold |= table.bold;
+                    font.italic |= table.italic;
+                }
                 conditional_format::apply_font(&conditional_style, &mut font);
                 font
             },
-            text_color: conditional_style.text_color.or_else(|| {
-                format
-                    .and_then(|format| styles.font(format))
-                    .and_then(|font| font.color)
-            }),
+            text_color: conditional_style
+                .text_color
+                .or_else(|| cell_text_color(styles, format, table_style.as_ref())),
             fill: conditional_format::conditional_fill(&conditional_style).unwrap_or_else(|| {
                 format
                     .and_then(|format| styles.fill(format))
                     .and_then(resolve_fill)
+                    .or_else(|| table_style.as_ref().and_then(|table| table.fill.clone()))
             }),
             border: {
-                let mut border = format
-                    .and_then(|format| styles.border(format))
-                    .cloned()
-                    .unwrap_or_default();
+                let mut border = cell_border(styles, format, table_style.as_ref());
                 conditional_format::apply_border(&conditional_style, &mut border);
                 border
             },
@@ -1398,6 +1419,7 @@ fn layout_sheet_with_workbook(
         blank_column_styles,
         shapes,
         notes,
+        tables: styled_tables,
         show_grid_lines: sheet.show_grid_lines,
         content_width,
         max_digit_width_px: options.max_digit_width_px,
@@ -1430,6 +1452,79 @@ fn resolve_fill(fill: &jade_xlsx_reader::Fill) -> Option<ResolvedFill> {
         foreground: fill.foreground,
         background: fill.background,
     })
+}
+
+/// A cell's text colour: its own font's, unless that is just the workbook's
+/// default and a table style colours the text.
+fn cell_text_color(
+    styles: &StyleTable,
+    format: Option<&jade_xlsx_reader::CellFormat>,
+    table: Option<&table_style::TableCellStyle>,
+) -> Option<Color> {
+    let own = format
+        .and_then(|format| styles.font(format))
+        .and_then(|font| font.color);
+    match table.and_then(|table| table.text_color) {
+        Some(table_color) => {
+            let normal = styles.normal_font().and_then(|font| font.color);
+            if own.is_none() || own == normal || own == Some(Color::Auto) {
+                Some(table_color)
+            } else {
+                own
+            }
+        }
+        None => own,
+    }
+}
+
+/// A cell's own borders over its table style's.
+fn cell_border(
+    styles: &StyleTable,
+    format: Option<&jade_xlsx_reader::CellFormat>,
+    table: Option<&table_style::TableCellStyle>,
+) -> Border {
+    let own = format
+        .and_then(|format| styles.border(format))
+        .cloned()
+        .unwrap_or_default();
+    let Some(table) = table else {
+        return own;
+    };
+    let mut border = Border {
+        left: table.left.clone(),
+        right: table.right.clone(),
+        top: table.top.clone(),
+        bottom: table.bottom.clone(),
+        ..Border::default()
+    };
+    border.diagonal = own.diagonal.clone();
+    border.diagonal_up = own.diagonal_up;
+    border.diagonal_down = own.diagonal_down;
+    for (side, edge) in [
+        (&mut border.left, own.left),
+        (&mut border.right, own.right),
+        (&mut border.top, own.top),
+        (&mut border.bottom, own.bottom),
+    ] {
+        if edge.is_some() {
+            *side = edge;
+        }
+    }
+    border
+}
+
+/// A blank cell's table-style borders where nothing else draws one.
+fn overlay_table_border(border: &mut Border, table: &table_style::TableCellStyle) {
+    for (side, edge) in [
+        (&mut border.left, &table.left),
+        (&mut border.right, &table.right),
+        (&mut border.top, &table.top),
+        (&mut border.bottom, &table.bottom),
+    ] {
+        if side.is_none() {
+            *side = edge.clone();
+        }
+    }
 }
 
 /// A cell after its style and text are resolved, but before the row axis

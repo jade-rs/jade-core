@@ -327,6 +327,18 @@ pub struct Table {
     pub columns: Vec<String>,
     /// `tableStyleInfo/@name`, e.g. `TableStyleMedium2`.
     pub style_name: Option<String>,
+    /// `tableStyleInfo/@showFirstColumn`: the first column is emphasised.
+    #[serde(default)]
+    pub show_first_column: bool,
+    /// `tableStyleInfo/@showLastColumn`.
+    #[serde(default)]
+    pub show_last_column: bool,
+    /// `tableStyleInfo/@showRowStripes`: banded rows.
+    #[serde(default)]
+    pub show_row_stripes: bool,
+    /// `tableStyleInfo/@showColumnStripes`: banded columns.
+    #[serde(default)]
+    pub show_column_stripes: bool,
     /// Whether the table carries an `<autoFilter>` (the header dropdowns).
     pub auto_filter: bool,
 }
@@ -916,6 +928,31 @@ pub struct StyleTable {
     /// Custom `numFmt` codes by id. Built-in ids (0-49) are not in the file and
     /// are not in this map.
     pub number_formats: HashMap<u32, String>,
+    /// The theme's twelve colours (`lt1`, `dk1`, `lt2`, `dk2`, accents,
+    /// links) in `theme="N"` order, when the workbook has a theme.
+    #[serde(default)]
+    pub theme_colors: Vec<Option<[u8; 3]>>,
+    /// Custom table styles (`<tableStyles>`); built-in ones are not stored.
+    #[serde(default)]
+    pub table_styles: Vec<TableStyleDefinition>,
+}
+
+/// A custom table style: which differential format each part of a table
+/// takes.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TableStyleDefinition {
+    pub name: String,
+    pub elements: Vec<TableStyleElement>,
+}
+
+/// `<tableStyleElement type dxfId size>`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TableStyleElement {
+    /// `wholeTable`, `headerRow`, `firstRowStripe`...
+    pub kind: String,
+    pub differential_style_index: Option<u32>,
+    /// How many rows or columns a stripe spans.
+    pub size: u32,
 }
 
 impl StyleTable {

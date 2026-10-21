@@ -126,6 +126,7 @@ impl NativeWorkbook {
                 blank_column_styles: Vec::new(),
                 shapes: Vec::new(),
                 notes: Vec::new(),
+                tables: Vec::new(),
                 show_grid_lines: true,
                 content_width: 0.0,
                 max_digit_width_px: jade_xlsx_layout::units::DEFAULT_MAX_DIGIT_WIDTH_PX,

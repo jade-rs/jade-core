@@ -55,7 +55,8 @@ pub use model::{
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
     DateSystem, DefinedName, Fill, Font, FreezePane, HeaderFooter, HorizontalAlignment, Hyperlink,
     PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape, ShapeKind, Sheet,
-    SheetProtection, SheetVisibility, StyleTable, Table, VerticalAlignment, Workbook, EMU_PER_PX,
+    SheetProtection, SheetVisibility, StyleTable, Table, TableStyleDefinition, TableStyleElement,
+    VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};

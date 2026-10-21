@@ -285,7 +285,75 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
         buf.clear();
     }
     table.differential_styles = crate::conditional_format::parse_differential_styles(xml)?;
+    table.table_styles = parse_table_styles(xml)?;
     Ok(table)
+}
+
+/// `<tableStyles>`: custom table styles and the dxfs their parts use.
+fn parse_table_styles(xml: &str) -> Result<Vec<crate::model::TableStyleDefinition>> {
+    use crate::model::{TableStyleDefinition, TableStyleElement};
+    if !xml.contains("tableStyle") {
+        return Ok(Vec::new());
+    }
+    let mut reader = NsReader::from_str(xml);
+    let mut styles = Vec::new();
+    let mut current: Option<TableStyleDefinition> = None;
+    let mut buf = Vec::new();
+    loop {
+        let (_, event) = reader.read_resolved_event_into(&mut buf)?;
+        match event {
+            Event::Start(ref element) | Event::Empty(ref element) => {
+                let empty = matches!(event, Event::Empty(_));
+                let value = |key: &[u8]| -> Result<Option<String>> {
+                    for attribute in element.attributes() {
+                        let attribute = attribute?;
+                        if attribute.key.as_ref() == key {
+                            return Ok(Some(attribute.unescape_value()?.into_owned()));
+                        }
+                    }
+                    Ok(None)
+                };
+                match local_name(element.name().as_ref()) {
+                    b"tableStyle" => {
+                        let style = TableStyleDefinition {
+                            name: value(b"name")?.unwrap_or_default(),
+                            elements: Vec::new(),
+                        };
+                        if empty {
+                            styles.push(style);
+                        } else {
+                            current = Some(style);
+                        }
+                    }
+                    b"tableStyleElement" => {
+                        if let Some(style) = current.as_mut() {
+                            style.elements.push(TableStyleElement {
+                                kind: value(b"type")?.unwrap_or_default(),
+                                differential_style_index: value(b"dxfId")?
+                                    .and_then(|v| v.parse().ok()),
+                                size: value(b"size")?
+                                    .and_then(|v| v.parse().ok())
+                                    .unwrap_or(1)
+                                    .max(1),
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Event::End(ref element) => {
+                if local_name(element.name().as_ref()) == b"tableStyle" {
+                    if let Some(style) = current.take() {
+                        styles.push(style);
+                    }
+                }
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    Ok(styles)
 }
 
 fn set_border_edge(border: &mut Option<Border>, side: &str, edge: BorderEdge) {
@@ -386,6 +454,7 @@ pub(crate) fn parse_color(element: &BytesStart<'_>) -> Result<Option<Color>> {
 }
 
 pub(crate) fn apply_theme_colors(table: &mut StyleTable, theme: &ThemePalette) {
+    table.theme_colors = (0..12).map(|index| theme.color(index)).collect();
     let resolve = |color: &mut Option<Color>| {
         if let Some(Color::Theme {
             index, resolved, ..
@@ -408,6 +477,8 @@ pub(crate) fn apply_theme_colors(table: &mut StyleTable, theme: &ThemePalette) {
             &mut style.right,
             &mut style.top,
             &mut style.bottom,
+            &mut style.inside_vertical,
+            &mut style.inside_horizontal,
         ]
         .into_iter()
         .flatten()
