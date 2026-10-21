@@ -1376,6 +1376,8 @@ impl NativeDocument {
                 hanging: None,
                 left_chars: None,
                 right_chars: None,
+                first_line_chars: None,
+                hanging_chars: None,
                 clear_special: false,
             },
             visible_end_page_1idx,
