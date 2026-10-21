@@ -10572,6 +10572,7 @@ impl OffscreenDocumentView {
                 | HeadlessCommand::ConvertEndnoteToFootnote { .. }
                 | HeadlessCommand::InsertField { .. }
                 | HeadlessCommand::InsertEquation { .. }
+                | HeadlessCommand::ReplaceEquation { .. }
                 | HeadlessCommand::InsertIndex { .. }
                 | HeadlessCommand::UpdateTableOfContents
                 | HeadlessCommand::SetParagraphStyle { .. }

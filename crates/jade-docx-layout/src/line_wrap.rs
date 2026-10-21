@@ -1929,7 +1929,11 @@ pub struct RunStyle {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InlineObject {
     pub width: f64,
+    /// Height above the baseline.
     pub height: f64,
+    /// Depth below the baseline: an inline equation's denominator or
+    /// subscript hangs below the line's baseline.
+    pub descent: f64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -4852,7 +4856,7 @@ impl InlineCluster {
                     let bounds = (-layout.font_ascent?, layout.font_descent?);
                     (bounds.0.is_finite() && bounds.1.is_finite()).then_some(bounds)
                 })
-                .unwrap_or((-object.height.max(1.0), 0.0)),
+                .unwrap_or((-object.height.max(1.0), object.descent.max(0.0))),
         )
     }
 
@@ -4872,7 +4876,7 @@ impl InlineCluster {
                 adjusted_glyph_width: self.width,
                 font_descriptor_hash: 0,
                 font_ascent: Some(object.height.max(1.0) + raise),
-                font_descent: Some(-raise),
+                font_descent: Some(object.descent.max(0.0) - raise),
             });
         }
         self
@@ -11019,6 +11023,7 @@ mod tests {
                 inline_object: Some(InlineObject {
                     width: 100.0,
                     height: 80.0,
+                    descent: 0.0,
                 }),
             },
             RunStyle {
@@ -11144,6 +11149,7 @@ mod tests {
                     Some(InlineObject {
                         width: 20.0,
                         height: 20.0,
+                        descent: 0.0,
                     }),
                 ),
                 run(object_end, text.len(), None),
@@ -11283,6 +11289,7 @@ mod tests {
             inline_object: Some(InlineObject {
                 width: points_to_px(124.1),
                 height: points_to_px(25.8),
+                descent: 0.0,
             }),
         };
         let lines = wrap_text_into_lines(
@@ -11431,6 +11438,7 @@ mod tests {
             InlineObject {
                 width: 100.0,
                 height: 118.8,
+                descent: 0.0,
             },
         );
         let mut line = WrappedLine {
@@ -11510,6 +11518,7 @@ mod tests {
             inline_object: Some(InlineObject {
                 width: points_to_px(124.1),
                 height: points_to_px(25.8),
+                descent: 0.0,
             }),
         };
         let lines = wrap_text_into_lines(
@@ -11544,6 +11553,7 @@ mod tests {
                 InlineObject {
                     width: 20.0,
                     height: points_to_px(10.0),
+                    descent: 0.0,
                 },
             )
             .with_object_position(Some(position));
@@ -11557,6 +11567,7 @@ mod tests {
             InlineObject {
                 width: 20.0,
                 height: 30.0,
+                descent: 0.0,
             },
         )
         .with_object_position(Some(f32::NAN));

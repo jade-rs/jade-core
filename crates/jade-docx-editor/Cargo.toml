@@ -25,12 +25,18 @@ base64 = "0.22"
 cfb = "0.7"
 bumpalo = { version = "3", features = ["collections"] }
 png = "0.17"
+# Pictures drawn with their colour adjustments and soft edges applied, and
+# the picture tools' pixel work (background removal).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 emf-core = { git = "https://github.com/mythrnr/emf-rs.git", tag = "0.0.8", package = "emf-core", default-features = false, features = ["svg"] }
 wmf-core = { git = "https://github.com/mythrnr/wmf-rs.git", tag = "0.0.24", package = "wmf-core", default-features = false, features = ["svg"] }
 indexmap = "2.7"
 rustc-hash = "2.1"
 jade-docx-writer = { path = "../jade-docx-writer" }
 jade-docx-reader = { path = "../jade-docx-reader" }
+# Word charts drawn by the chart layout the spreadsheet renderer uses.
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+jade-xlsx-layout = { path = "../jade-xlsx-layout" }
 jade-docx-annotations = { path = "../jade-docx-annotations" }
 jade-docx-layout = { path = "../jade-docx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }

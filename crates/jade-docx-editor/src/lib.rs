@@ -21,12 +21,18 @@ pub mod render_host;
 #[cfg(not(feature = "otel"))]
 #[macro_use]
 pub(crate) mod tracing_stub;
+pub(crate) mod chart_paint;
+pub mod drawing_xml;
 pub mod fields;
+pub mod ink;
+pub mod picture_effects;
 pub mod serializer;
 pub mod shortcuts;
+pub mod smartart;
 pub(crate) mod snapshot_plan;
 pub(crate) mod typed_autoformat;
 pub mod word_document;
+pub(crate) mod wordart_paint;
 
 use crate::canvas_view::OffscreenDocumentView;
 use crate::shortcuts::{ShortcutBinding, ShortcutConfig};

@@ -155,6 +155,29 @@ fn environment() -> FieldEnvironment {
 }
 
 #[test]
+fn update_evaluates_merge_fields_for_the_previewed_recipient() {
+    use crate::word_document::mail_merge::{MergeData, MergeRequest};
+    let body = [
+        paragraph(&field("MERGEFIELD Name \\b \"Dear \"", "old")),
+        paragraph(&field("MERGEREC", "old")),
+    ]
+    .concat();
+    let mut doc = load(&package(&body, &[]));
+    let data = MergeData::from_rows(vec![
+        vec!["Name".to_string()],
+        vec!["Aoki".to_string()],
+        vec!["Baba".to_string()],
+    ]);
+    let env = FieldEnvironment {
+        merge: Some((MergeRequest::all(data), 1)),
+        ..environment()
+    };
+    update_fields(&mut doc, FieldScope::Document, &env).unwrap();
+    assert_eq!(result_of(&doc, "MERGEFIELD"), "Dear Baba");
+    assert_eq!(result_of(&doc, "MERGEREC"), "2");
+}
+
+#[test]
 fn update_evaluates_each_kind_as_word_does() {
     let body = [
         paragraph(&field("AUTHOR", "old")),
