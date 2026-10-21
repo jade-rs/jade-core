@@ -2302,6 +2302,14 @@ pub enum RunFieldKind {
     Locked {
         kind: Rc<RunFieldKind>,
     },
+    /// A page-number family field (PAGE, NUMPAGES, SECTIONPAGES, SECTION)
+    /// whose general switches (`\* ROMAN`, `\# "0"`) format the number
+    /// live. `instruction` is the field's instruction, from which the
+    /// renderer reads the switches.
+    Formatted {
+        kind: Rc<RunFieldKind>,
+        instruction: Rc<str>,
+    },
     PageNumber,
     /// Total number of pages in the document (`NUMPAGES` field). Commonly
     /// paired with `PAGE` in headers/footers to produce "X / Y" style page
@@ -2614,10 +2622,20 @@ impl RunFieldKind {
     /// Original semantic kind, for formatting/inspection rather than refresh.
     pub fn base_kind(&self) -> &Self {
         let mut kind = self;
-        while let Self::Locked { kind: inner } = kind {
-            kind = inner;
+        loop {
+            match kind {
+                Self::Locked { kind: inner } | Self::Formatted { kind: inner, .. } => kind = inner,
+                _ => return kind,
+            }
         }
-        kind
+    }
+
+    /// The kind without a [`Self::Formatted`] wrapper (a lock is kept).
+    pub fn without_format(&self) -> &Self {
+        match self {
+            Self::Formatted { kind, .. } => kind,
+            other => other,
+        }
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
