@@ -704,8 +704,11 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/review_tools.rs"]
+mod review_tools;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
+pub use review_tools::AltText;
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
@@ -13195,6 +13198,7 @@ impl WordDocument {
                     height_px: Some(spec.height_px),
                     title: Some(spec.title.clone()),
                     description: Some("Editable Word chart".to_string()),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: Some(chart),
@@ -13354,6 +13358,7 @@ impl WordDocument {
                     description: description
                         .filter(|value| !value.is_empty())
                         .map(str::to_string),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: None,
@@ -16770,6 +16775,7 @@ impl WordDocument {
                     height_px: Some(annotation.height_px),
                     title: Some(format!("{INK_TITLE_PREFIX} {}", annotation.id)),
                     description: annotation.payload.filter(|payload| !payload.is_empty()),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: None,
@@ -31727,7 +31733,35 @@ impl WordDocument {
         {
             doc_pr_attributes.push(attr("descr", description));
         }
-        let doc_pr = doc.create_element("wp:docPr", doc_pr_attributes, Vec::new());
+        let doc_pr_children = if image.decorative {
+            let flag = doc.create_element(
+                "adec:decorative",
+                vec![
+                    attr(
+                        "xmlns:adec",
+                        "http://schemas.microsoft.com/office/drawing/2017/decorative",
+                    ),
+                    attr("val", "1"),
+                ],
+                Vec::new(),
+            );
+            let ext = doc.create_element(
+                "a:ext",
+                vec![attr("uri", review_tools::DECORATIVE_EXT_URI)],
+                vec![XmlNode::Element(flag)],
+            );
+            vec![XmlNode::Element(doc.create_element(
+                "a:extLst",
+                vec![attr(
+                    "xmlns:a",
+                    "http://schemas.openxmlformats.org/drawingml/2006/main",
+                )],
+                vec![XmlNode::Element(ext)],
+            ))]
+        } else {
+            Vec::new()
+        };
+        let doc_pr = doc.create_element("wp:docPr", doc_pr_attributes, doc_pr_children);
         let extent = doc.create_element(
             "wp:extent",
             vec![attr("cx", width_emu), attr("cy", height_emu)],
@@ -40993,6 +41027,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,
@@ -41077,6 +41112,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,
@@ -41427,6 +41463,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,

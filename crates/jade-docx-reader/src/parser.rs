@@ -7915,6 +7915,14 @@ impl DocumentParser {
                     image.title = Some(title);
                 }
             }
+            // `<adec:decorative val="1"/>`, under `wp:docPr`'s extensions.
+            name if name.rsplit(|byte| *byte == b':').next() == Some(b"decorative".as_slice()) => {
+                image.decorative = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"val")
+                    .is_none_or(|attr| matches!(attr.value.as_ref(), b"1" | b"true"));
+            }
             _ => {}
         }
     }
