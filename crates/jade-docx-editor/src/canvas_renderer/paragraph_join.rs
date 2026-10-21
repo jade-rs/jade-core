@@ -58,7 +58,13 @@ impl JoinedRender {
 /// then no longer ends the paragraph. Mirrors `run_is_hidden_revision`.
 fn paragraph_mark_hidden(paragraph: &Paragraph, options: &Options) -> bool {
     if options.render_changes {
-        return false;
+        // A reviewer the view leaves out: their deleted mark reads as
+        // accepted, the paragraphs joined.
+        return paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.mark_revision.as_ref())
+            .is_some_and(|mark| options.revision_view().drops(mark));
     }
     match paragraph
         .properties
@@ -96,6 +102,11 @@ fn shows_text(paragraph: &Paragraph, options: &Options) -> bool {
     paragraph.runs.iter().any(|run| {
         !run.text.is_empty()
             && !run_is_hidden_revision(run, options.render_changes, options.render_original)
+            && !(options.render_changes
+                && run
+                    .revision
+                    .as_ref()
+                    .is_some_and(|mark| options.revision_view().drops(mark)))
     })
 }
 
