@@ -18119,6 +18119,8 @@ impl OffscreenDocumentView {
             hanging: None,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special: false,
         })
     }
@@ -18164,6 +18166,8 @@ impl OffscreenDocumentView {
             hanging,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special,
         })
     }

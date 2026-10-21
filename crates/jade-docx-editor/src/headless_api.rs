@@ -2341,31 +2341,23 @@ pub fn apply_headless_commands_with_executor_to_document(
                 hanging,
                 left_chars,
                 right_chars,
+                first_line_chars,
+                hanging_chars,
                 clear_special,
             } => {
-                let mut cmd = SetParagraphIndentCommand::new(
+                // Every field the call names is applied: points, character
+                // units beside them, and 特殊インデント「なし」 last.
+                let cmd = SetParagraphIndentCommand::new(
                     *start_paragraph,
                     *end_paragraph,
                     *left,
                     *right,
                     *first_line,
                     *hanging,
-                );
-                // If character-based indent is specified, use with_chars instead.
-                if left_chars.is_some() || right_chars.is_some() {
-                    cmd = SetParagraphIndentCommand::with_chars(
-                        *start_paragraph,
-                        *end_paragraph,
-                        *left_chars,
-                        *right_chars,
-                    );
-                }
-                if *clear_special {
-                    cmd = SetParagraphIndentCommand::clearing_special_indent(
-                        *start_paragraph,
-                        *end_paragraph,
-                    );
-                }
+                )
+                .with_edge_chars(*left_chars, *right_chars)
+                .with_special_chars(*first_line_chars, *hanging_chars)
+                .with_clear_special(*clear_special);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(Box::new(cmd), &mut ctx)
@@ -2404,6 +2396,34 @@ pub fn apply_headless_commands_with_executor_to_document(
                                 target,
                             ),
                         ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphPagination {
+                start_paragraph,
+                end_paragraph,
+                keep_next,
+                keep_lines,
+                page_break_before,
+                widow_control,
+            } => {
+                use crate::commands::set_paragraph_pagination::{
+                    Pagination, SetParagraphPaginationCommand,
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphPaginationCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            Pagination {
+                                keep_next: *keep_next,
+                                keep_lines: *keep_lines,
+                                page_break_before: *page_break_before,
+                                widow_control: *widow_control,
+                            },
+                        )),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -13692,6 +13712,8 @@ mod tests {
                     hanging: None,
                     left_chars: None,
                     right_chars: None,
+                    first_line_chars: None,
+                    hanging_chars: None,
                     clear_special: false,
                 },
             ],
