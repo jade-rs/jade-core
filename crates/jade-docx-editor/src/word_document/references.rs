@@ -360,6 +360,186 @@ impl WordDocument {
     }
 
 
+    // ---- note separators ----------------------------------------------------
+
+    /// Whether the footnotes' (or endnotes') separator — or, with
+    /// `continuation`, the continuation separator — draws its rule: Word's
+    /// 脚注の境界線 and 脚注の継続境界線, which can be emptied. A document
+    /// without the note draws Word's default.
+    pub fn note_separator_shown(&self, footnotes: bool, continuation: bool) -> bool {
+        let wanted = if continuation {
+            "continuationSeparator"
+        } else {
+            "separator"
+        };
+        let Some(document) = self.document.as_ref() else {
+            return true;
+        };
+        let notes = if footnotes {
+            &document.footnotes
+        } else {
+            &document.endnotes
+        };
+        notes
+            .values()
+            .find(|note| {
+                note.note_type
+                    .as_deref()
+                    .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+            })
+            .is_none_or(|note| {
+                note.body
+                    .iter()
+                    .filter_map(BodyElement::as_paragraph)
+                    .flat_map(|paragraph| paragraph.runs.iter())
+                    .any(|run| run.note_separator.is_some())
+            })
+    }
+
+    /// Draws a separator's rule again (`w:separator`,
+    /// `w:continuationSeparator`), or empties the separator so none is
+    /// drawn, as deleting the line in Word's notes pane does.
+    pub fn set_note_separator_shown(
+        &mut self,
+        footnotes: bool,
+        continuation: bool,
+        shown: bool,
+    ) -> Result<bool, String> {
+        if self.note_separator_shown(footnotes, continuation) == shown {
+            return Ok(false);
+        }
+        let kind = if footnotes {
+            NoteKind::Footnote
+        } else {
+            NoteKind::Endnote
+        };
+        let wanted = if continuation {
+            "continuationSeparator"
+        } else {
+            "separator"
+        };
+        let id = self
+            .document
+            .as_ref()
+            .and_then(|document| {
+                let notes = if footnotes {
+                    &document.footnotes
+                } else {
+                    &document.endnotes
+                };
+                notes.values().find(|note| {
+                    note.note_type
+                        .as_deref()
+                        .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+                })
+            })
+            .map(|note| note.id.clone())
+            .ok_or_else(|| "the document has no such separator".to_string())?;
+        let part = self.resolve_existing_notes_part_path(kind)?;
+        let existing = self
+            .read_xml_part_content(&part)
+            .ok_or_else(|| format!("missing {part}"))?;
+        let mut notes = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let note_id = notes
+            .root()
+            .children
+            .iter()
+            .find_map(|child| match child {
+                XmlNode::Element(element)
+                    if element.name == kind.note_tag()
+                        && element
+                            .attributes
+                            .iter()
+                            .any(|attribute| attribute.name == "w:id" && attribute.value == id) =>
+                {
+                    Some(element.id)
+                }
+                _ => None,
+            })
+            .ok_or_else(|| "the separator's XML is unavailable".to_string())?;
+        let spacing = notes.create_element(
+            "w:spacing",
+            vec![
+                XmlAttribute {
+                    name: "w:after".to_string(),
+                    value: "0".to_string(),
+                },
+                XmlAttribute {
+                    name: "w:line".to_string(),
+                    value: "240".to_string(),
+                },
+                XmlAttribute {
+                    name: "w:lineRule".to_string(),
+                    value: "auto".to_string(),
+                },
+            ],
+            Vec::new(),
+        );
+        let properties =
+            notes.create_element("w:pPr", Vec::new(), vec![XmlNode::Element(spacing)]);
+        let mut children = vec![XmlNode::Element(properties)];
+        if shown {
+            let rule = notes.create_element(
+                if continuation {
+                    "w:continuationSeparator"
+                } else {
+                    "w:separator"
+                },
+                Vec::new(),
+                Vec::new(),
+            );
+            children.push(XmlNode::Element(notes.create_element(
+                "w:r",
+                Vec::new(),
+                vec![XmlNode::Element(rule)],
+            )));
+        }
+        let paragraph = notes.create_element("w:p", Vec::new(), children);
+        let element = notes
+            .element_mut(note_id)
+            .ok_or_else(|| "the separator's XML is unavailable".to_string())?;
+        element.children = vec![XmlNode::Element(paragraph)];
+        notes.rebuild_index();
+        let written = notes.to_string().map_err(|error| error.to_string())?;
+        self.upsert_xml_part_content(&part, written);
+
+        let mut runs = Vec::new();
+        if shown {
+            let mut rule = blank_run("");
+            rule.note_separator = Some(if continuation {
+                crate::document::NoteSeparatorKind::ContinuationSeparator
+            } else {
+                crate::document::NoteSeparatorKind::Separator
+            });
+            runs.push(rule);
+        }
+        let paragraph = Paragraph {
+            runs,
+            properties: Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    after: Some(0.0),
+                    ..Spacing::default()
+                }),
+                ..ParagraphProperties::default()
+            }),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let notes = if footnotes {
+            &mut document.footnotes
+        } else {
+            &mut document.endnotes
+        };
+        if let Some(note) = notes.get_mut(&id) {
+            note.body = vec![BodyElement::from_paragraph(paragraph)];
+        }
+        Ok(true)
+    }
+
     // ---- body elements ------------------------------------------------------
 
     /// The top-level body element (paragraph or table) a body paragraph
