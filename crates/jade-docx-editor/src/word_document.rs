@@ -2570,6 +2570,7 @@ impl WordDocument {
             parsed_doc.snap_to_grid_default = doc_settings.snap_to_grid_default;
             parsed_doc.display_content_revisions = doc_settings.display_content_revisions;
             parsed_doc.default_tab_stop = doc_settings.default_tab_stop;
+            parsed_doc.math_properties = doc_settings.math.clone();
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
             parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
@@ -28373,6 +28374,39 @@ impl WordDocument {
             self.paragraph_surfaces.get(index),
             Some(ParagraphSurface::Note { .. })
         )
+    }
+
+    /// The display equation at a math surface of the body.
+    pub fn math_paragraph(&self, surface: usize) -> Option<&MathParagraph> {
+        let Some(ParagraphSurface::Math { path: Some(path) }) =
+            self.paragraph_surfaces.get(surface)
+        else {
+            return None;
+        };
+        let body = self.document.as_ref()?.body.as_ref()?;
+        Self::locate_math(&body.elements, path)
+    }
+
+    fn locate_math<'a>(
+        elements: &'a [BodyElement],
+        path: &[PathEntry],
+    ) -> Option<&'a MathParagraph> {
+        let (first, rest) = path.split_first()?;
+        let PathEntry::Element(index) = *first else {
+            return None;
+        };
+        match elements.get(index)? {
+            BodyElement::Math(math) if rest.is_empty() => Some(math.as_ref()),
+            BodyElement::Table(table) => {
+                let (cell, rest) = rest.split_first()?;
+                let PathEntry::TableCell { row, cell } = *cell else {
+                    return None;
+                };
+                let cell = table.rows.get(row)?.cells.get(cell)?;
+                Self::locate_math(&cell.blocks, rest)
+            }
+            _ => None,
+        }
     }
 
     /// An equation outside any paragraph (`m:oMathPara` as a block): it holds

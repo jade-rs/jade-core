@@ -139,10 +139,8 @@ mod tests {
 
     #[test]
     fn an_inline_equation_is_replaced_in_place_and_undone() {
-        let body = format!(
-            r#"<w:p><w:r><w:t xml:space="preserve">a </w:t></w:r><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath><w:r><w:t xml:space="preserve"> b </w:t></w:r><m:oMath><m:r><m:t>y</m:t></m:r></m:oMath></w:p>"#
-        );
-        let source = build_docx(&body);
+        let body = r#"<w:p><w:r><w:t xml:space="preserve">a </w:t></w:r><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath><w:r><w:t xml:space="preserve"> b </w:t></w:r><m:oMath><m:r><m:t>y</m:t></m:r></m:oMath></w:p>"#;
+        let source = build_docx(body);
         let mut document =
             executor::block_on(WordDocument::load(&source, &Options::default())).unwrap();
         let run_index = document
@@ -184,10 +182,8 @@ mod tests {
 
     #[test]
     fn a_display_equation_is_replaced_in_its_wrapper_paragraph() {
-        let body = format!(
-            r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>x=1</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#
-        );
-        let source = build_docx(&body);
+        let body = r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>x=1</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#;
+        let source = build_docx(body);
         let mut document =
             executor::block_on(WordDocument::load(&source, &Options::default())).unwrap();
         assert!(document.is_math_surface(1));

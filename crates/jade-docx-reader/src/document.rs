@@ -59,6 +59,9 @@ pub struct Document {
     pub display_content_revisions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_tab_stop: Option<f32>,
+    /// The settings part's `m:mathPr`: every equation's defaults.
+    #[serde(default)]
+    pub math_properties: crate::settings::MathProperties,
     /// `w:noTabHangInd`: disables the implicit tab stop normally created by a
     /// hanging indent.
     #[serde(default)]

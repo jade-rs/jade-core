@@ -119,6 +119,42 @@ pub(super) fn layout_boxed_math_with_font<'a, P: Painter>(
     painter.restore();
     result
 }
+/// The layout settings a document's `m:mathPr` asks for.
+pub(super) fn settings_from(
+    properties: &jade_docx_reader::settings::MathProperties,
+) -> jade_docx_layout::math_layout::styled::MathSettings {
+    use jade_docx_layout::math_layout::styled::{BreakBinary, MathJustification, MathSettings};
+    let mut settings = MathSettings::default();
+    if let Some(value) = properties.integral_limits.as_deref() {
+        settings.integral_limits_side = value != "undOvr";
+    }
+    if let Some(value) = properties.nary_limits.as_deref() {
+        settings.nary_limits_over = value != "subSup";
+    }
+    if let Some(small) = properties.small_fractions {
+        settings.small_fractions = small;
+    }
+    if let Some(indent) = properties.wrap_indent {
+        settings.wrap_indent_px = f64::from(indent) / 20.0 * 96.0 / 72.0;
+    }
+    if let Some(right) = properties.wrap_right {
+        settings.wrap_right = right;
+    }
+    settings.break_binary = match properties.break_binary.as_deref() {
+        Some("after") => BreakBinary::After,
+        Some("repeat") => BreakBinary::Repeat,
+        _ => BreakBinary::Before,
+    };
+    if let Some(jc) = properties
+        .default_justification
+        .as_deref()
+        .and_then(MathJustification::from_omml)
+    {
+        settings.default_justification = jc;
+    }
+    settings
+}
+
 /// Lays out a list of math elements (an `m:oMath`, an `m:oMathPara`, an EQ
 /// field's equation) in the bound math face when one is registered for the
 /// style's family, else through the painter's measurement.
@@ -483,7 +519,6 @@ fn paint_math_outline<P: Painter>(
 mod tests {
     use super::*;
     use jade_docx_layout::math_layout::MathParagraphAlignment;
-    use jade_painter::recording::RecordingPainter;
     use std::collections::BTreeMap;
 
     #[test]
