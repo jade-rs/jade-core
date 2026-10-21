@@ -4859,6 +4859,7 @@ impl DocumentParser {
         let mut text_box_glow: Option<ShapeGlow> = None;
         let mut text_box_blur_radius_px: Option<f64> = None;
         let mut text_box_soft_edge_radius_px: Option<f64> = None;
+        let mut text_box_effect_ref: Option<u8> = None;
         let mut in_line_definition = false;
         let mut in_line_solid_fill = false;
         let mut in_shape_solid_fill = false;
@@ -5031,6 +5032,18 @@ impl DocumentParser {
                             }
                         }
                         b"a:effectLst" => in_effect_list = true,
+                        b"a:effectRef" => {
+                            text_box_effect_ref = e
+                                .attributes()
+                                .flatten()
+                                .find(|attribute| attribute.key.as_ref() == b"idx")
+                                .and_then(|attribute| {
+                                    String::from_utf8_lossy(&attribute.value)
+                                        .trim()
+                                        .parse()
+                                        .ok()
+                                });
+                        }
                         b"a:outerShdw" if in_effect_list => {
                             in_outer_shadow = true;
                             text_box_shadow = Some(Self::drawingml_outer_shadow(e));
@@ -5669,6 +5682,7 @@ impl DocumentParser {
                 insets: text_box_insets,
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
+                effect_ref: text_box_effect_ref,
             };
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
@@ -7306,6 +7320,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
+            effect_ref: None,
         })))
     }
 

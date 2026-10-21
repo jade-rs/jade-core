@@ -3929,9 +3929,49 @@ impl WordDocument {
         }
     }
 
+    /// A shape that sets no effects of its own draws the theme effect style
+    /// its `a:effectRef` names, as Word does: the format scheme's shadow
+    /// or glow, in its own colour (or the shape's fill for `phClr`).
+    fn apply_theme_effect(text_box: &mut crate::document::RunTextBox, theme: &ThemePart) {
+        let Some(style) = text_box
+            .effect_ref
+            .filter(|index| *index > 0)
+            .and_then(|index| theme.effect_styles.get(index as usize - 1))
+        else {
+            return;
+        };
+        if text_box.shadow.is_some() || text_box.glow.is_some() {
+            return;
+        }
+        let px = |emu: i64| emu as f64 / 9_525.0;
+        let fallback = text_box
+            .fill_color
+            .clone()
+            .or_else(|| theme.colors.get("accent1").cloned());
+        if let Some(shadow) = style.shadow.as_ref() {
+            text_box.shadow = Some(crate::document::ShapeShadow {
+                color: shadow.color.clone().or_else(|| fallback.clone()),
+                opacity: (shadow.alpha as f64 / 100_000.0).clamp(0.0, 1.0),
+                blur_radius_px: px(shadow.blur).max(0.0),
+                distance_px: px(shadow.distance).max(0.0),
+                direction_deg: shadow.direction as f64 / 60_000.0,
+                ..Default::default()
+            });
+        }
+        if let Some(glow) = style.glow.as_ref() {
+            text_box.glow = Some(crate::document::ShapeGlow {
+                color: glow.color.clone().or(fallback),
+                opacity: (glow.alpha as f64 / 100_000.0).clamp(0.0, 1.0),
+                radius_px: px(glow.blur).max(0.0),
+                ..Default::default()
+            });
+        }
+    }
+
     fn apply_theme_to_paragraph(paragraph: &mut Paragraph, theme: &ThemePart) {
         for run in &mut paragraph.runs {
             if let Some(text_box) = run.text_box.as_mut() {
+                Self::apply_theme_effect(text_box, theme);
                 if text_box.fill_color.is_none() {
                     text_box.fill_color = text_box.fill_theme_color.as_deref().and_then(|key| {
                         Self::resolve_shape_theme_color(theme, key, &text_box.fill_theme_transforms)
@@ -12917,6 +12957,7 @@ impl WordDocument {
             },
             vertical_alignment: Default::default(),
             shape: spec.shape,
+            effect_ref: None,
         };
 
         let inserted_run_index = {
@@ -48754,6 +48795,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape,
+            effect_ref: None,
         });
         WordDocument::from_document(Document {
             body: Some(Body {
@@ -48841,6 +48883,7 @@ mod tests {
             insets: Default::default(),
             vertical_alignment: Default::default(),
             shape: Default::default(),
+            effect_ref: None,
         };
 
         let host_paragraph = Paragraph {
