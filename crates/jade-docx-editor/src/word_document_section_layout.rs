@@ -50,6 +50,7 @@ fn text_direction_name(direction: TextDirection) -> &'static str {
         TextDirection::LrTbV => "lrTbV",
         TextDirection::TbRl => "tbRl",
         TextDirection::TbRlV => "tbRlV",
+        TextDirection::TbLrV => "tbLrV",
         TextDirection::BtLr => "btLr",
         TextDirection::BtLrV => "btLrV",
     }

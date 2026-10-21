@@ -12146,9 +12146,10 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
     if let Some(dir) = direction {
         if matches!(
             dir,
-            TextDirection::TbRlV | TextDirection::TbRl | TextDirection::BtLr
+            TextDirection::TbRlV | TextDirection::TbRl | TextDirection::BtLr | TextDirection::TbLrV
         ) {
-            let result = if dir == TextDirection::TbRlV {
+            // tbLrV stacks like tbRlV; only its columns run left to right.
+            let result = if matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) {
                 jade_docx_layout::line_wrap::layout_cell_text_vertically(
                     context,
                     text,
@@ -12572,7 +12573,11 @@ fn direction_requires_rotated_layout(_direction: TextDirection) -> bool {
 fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
     matches!(
         direction,
-        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::BtLr | TextDirection::BtLrV
+        TextDirection::TbRl
+            | TextDirection::TbRlV
+            | TextDirection::BtLr
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV
     )
 }
 

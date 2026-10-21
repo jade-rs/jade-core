@@ -4392,6 +4392,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             Some("vertical_text")
@@ -4735,6 +4736,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             count_miss();
@@ -4980,6 +4982,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return None;
@@ -5563,6 +5566,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         )
     }
@@ -10331,6 +10335,7 @@ where
             Some(TextDirection::BtLrV) => 4,
             Some(TextDirection::LrTb) => 5,
             Some(TextDirection::LrTbV) => 6,
+            Some(TextDirection::TbLrV) => 7,
         };
         dir_tag.hash(&mut hasher);
         self.document_snap_to_grid_default.hash(&mut hasher);
@@ -14159,6 +14164,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return false;
@@ -15443,12 +15449,12 @@ where
                     self.current_doc_grid.as_ref(),
                 ),
             );
-        if paragraph_style
-            .east_asian_rules
-            .character_spacing_control
-            .as_deref()
-            == Some("compressPunctuation")
-            && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
+        if jade_docx_layout::line_wrap::compresses_punctuation(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+        ) && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
             && !doc_grid_has_active_char_grid(self.current_doc_grid.as_ref())
         {
             paragraph_style.east_asian_advance_scale =
@@ -15838,6 +15844,7 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
             && paragraph.runs.iter().all(|run| {
@@ -17406,6 +17413,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 )
             })
@@ -17531,6 +17539,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 })
         }) {
@@ -18536,6 +18545,7 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
         {
@@ -19692,6 +19702,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             ) {
                 let result = self.render_text_line_with_direction(
                     paragraph_index,
@@ -26950,7 +26961,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => table_layout_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => table_layout_vertical_paragraph(
                 self,
                 text,
                 run_styles,
@@ -27015,7 +27027,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => self.render_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => self.render_vertical_paragraph(
                 &paragraph_layout,
                 paragraph_index,
                 direction,
@@ -27040,7 +27053,9 @@ where
     fn paragraph_table_align(style: &ParagraphStyle, direction: TextDirection) -> TableTextAlign {
         let default_align = match direction {
             TextDirection::TbRl | TextDirection::TbRlV => TableTextAlign::Right,
-            TextDirection::BtLr | TextDirection::BtLrV => TableTextAlign::Left,
+            TextDirection::BtLr | TextDirection::BtLrV | TextDirection::TbLrV => {
+                TableTextAlign::Left
+            }
             TextDirection::LrTb | TextDirection::LrTbV => TableTextAlign::Left,
         };
 
@@ -33445,58 +33460,17 @@ where
         &self,
         text: &str,
         properties: Option<&RunProperties>,
-        paragraph_style: &ParagraphStyle,
+        _paragraph_style: &ParagraphStyle,
     ) -> Result<Option<Vec<(String, RunProperties)>>, JsValue> {
         let Some(props) = properties else {
             return Ok(None);
         };
-        if !props
-            .east_asian_layout
-            .as_deref()
-            .is_some_and(|layout| layout.combine)
-        {
-            return Ok(None);
-        }
-        let characters: Vec<&str> = jade_docx_layout::graphemes::grapheme_indices(text)
-            .map(|(_, grapheme)| grapheme)
-            .collect();
-        if characters.len() < 2 || text.contains(['\t', '\n']) {
-            return Ok(None);
-        }
-        let base = self
-            .resolve_applied_run_style_uncached(Some(props))
-            .font_size_pt;
-        let half = base / 2.0;
-        let split = characters.len().div_ceil(2);
-        let top: String = characters[..split].concat();
-        let bottom: String = characters[split..].concat();
-        let mut small = props.clone();
-        small.font_size = Some(half);
-        small.font_size_complex = Some(half);
-        let style = self.resolve_applied_run_style_uncached(Some(&small));
-        let top_width = self.measure_text_with_spacing(&top, &style, Some(paragraph_style))?;
-        let bottom_width =
-            self.measure_text_with_spacing(&bottom, &style, Some(paragraph_style))?;
-        let total = top_width + bottom_width;
-        if total <= f64::EPSILON {
-            return Ok(None);
-        }
-        // 割注's brackets take full-size room either side of the lines.
-        let brackets = props
-            .east_asian_layout
-            .as_deref()
-            .and_then(|layout| combine_brackets(layout.combine_brackets.as_deref()));
-        let full = self.resolve_applied_run_style_uncached(Some(props));
-        let bracket_width = match brackets {
-            Some((open, close)) => {
-                self.measure_text_with_spacing(open, &full, Some(paragraph_style))?
-                    + self.measure_text_with_spacing(close, &full, Some(paragraph_style))?
-            }
-            None => 0.0,
-        };
-        let scale = (top_width.max(bottom_width) + bracket_width) / total;
-        small.text_scale = Some(props.text_scale.unwrap_or(100.0) * scale as f32);
-        Ok(Some(vec![(text.to_string(), small)]))
+        // One rule for layout and drawing (`jade_docx_layout::combined_characters`),
+        // so the headless line breaks are the drawn ones.
+        Ok(
+            jade_docx_layout::combined_characters::combined_run_properties(self, text, props)?
+                .map(|small| vec![(text.to_string(), small)]),
+        )
     }
 
     fn apply_eq_distributed_text_scale(
