@@ -26658,6 +26658,19 @@ where
                 shape.flip_vertical,
             )
             .map_err(PainterError::into_js_value)?;
+            // A grouped picture, drawn in its box.
+            if let Some(picture) = shape.picture.as_ref() {
+                if let Some(uri) = picture.data_uri.as_deref() {
+                    self.host.draw_image_data_uri(
+                        uri,
+                        child_x,
+                        child_y,
+                        child_width,
+                        child_height,
+                        image_crop_mapping(picture.crop),
+                    );
+                }
+            }
             let fill_color =
                 Self::shape_fill_color(shape.fill_color.as_deref(), shape.fill_opacity);
             if let Some(glow) = shape.glow.as_ref() {
@@ -40624,6 +40637,7 @@ mod tests {
                     },
                     vertical_alignment: TextBoxVerticalAlignment::Center,
                     text_style: None,
+                    ..Default::default()
                 },
                 RunGroupShape {
                     x: 700.0,

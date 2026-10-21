@@ -7051,6 +7051,28 @@ impl WordDocument {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
+                    if let Some(group) = run.image.as_mut().and_then(|image| image.shape_group.as_mut()) {
+                        fn walk(group: &mut RunShapeGroup, resolve: &mut dyn FnMut(&str) -> Option<String>) {
+                            for shape in &mut group.children {
+                                if let Some(picture) = shape.picture.as_mut().filter(|p| p.data_uri.is_none()) {
+                                    picture.data_uri = resolve(&picture.relationship_id);
+                                }
+                            }
+                            for nested in &mut group.groups {
+                                walk(nested, resolve);
+                            }
+                        }
+                        walk(group, &mut |id| {
+                            let rel = rel_map.get(id)?;
+                            let path = Self::resolve_target_path(&doc_part.path, &rel.target);
+                            let bytes = package.get(&path)?;
+                            Some(format!(
+                                "data:{};base64,{}",
+                                Self::guess_image_mime_type(&path),
+                                BASE64.encode(bytes)
+                            ))
+                        });
+                    }
                     if let Some(image) = run.image.as_mut() {
                         // Ink: its InkML part's strokes, which are drawn.
                         if let Some(id) = image.format().ink_relationship_id.clone() {
