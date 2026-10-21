@@ -3707,7 +3707,40 @@ where
                     visual_text_top
                 };
 
-                if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                // 縦中横: the group upright and across the column, centred,
+                // and with 行の幅に合わせる squeezed to the column's width.
+                let tate_chu_yoko = turned_angle
+                    .is_none()
+                    .then(|| paragraph_line_tate_chu_yoko(paragraph, line))
+                    .flatten();
+                if let Some((compress, font)) = tate_chu_yoko.as_ref() {
+                    if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                        context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
+                        context.set_text_baseline(if center_glyphs { "alphabetic" } else { "top" });
+                        let width = context
+                            .measure_text_width(&line.text)
+                            .map_err(PainterError::into_js_value)?
+                            .max(0.01);
+                        // One character's width: the cell the group takes.
+                        let fit = line_advance.max(1.0);
+                        let squeeze = if *compress && width > fit {
+                            fit / width
+                        } else {
+                            1.0
+                        };
+                        let drawn = width * squeeze;
+                        let _guard = StateGuard::new(context);
+                        context
+                            .translate(column_x + (column_width - drawn) * 0.5, paint_y)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .scale(squeeze, 1.0)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .fill_text(&line.text, 0.0, 0.0)
+                            .map_err(PainterError::into_js_value)?;
+                    }
+                } else if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
                     let font = paragraph_line_font_descriptor(paragraph, line);
                     context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
                     if turned_angle.is_none() {
@@ -11615,6 +11648,26 @@ fn paragraph_line_text_scale(paragraph: &CellParagraph, line: &LineLayout) -> f6
         .find(|run| run.start <= line.start && line.end <= run.end)
         .map(|run| run_text_scale(run.properties.as_ref()))
         .unwrap_or(1.0)
+}
+
+/// Whether a vertical line is a 縦中横 group (`w:eastAsianLayout w:vert`),
+/// with whether it is fitted to the line (`w:vertCompress`) and the font of
+/// the run it starts in.
+fn paragraph_line_tate_chu_yoko(
+    paragraph: &CellParagraph,
+    line: &LineLayout,
+) -> Option<(bool, Option<Rc<str>>)> {
+    let run = paragraph
+        .styled_runs
+        .iter()
+        .find(|run| run.start <= line.start && line.start < run.end)?;
+    let layout = run.properties.as_ref()?.east_asian_layout.as_deref()?;
+    layout.vert.then(|| {
+        (
+            layout.vert_compress,
+            table_font_descriptor_for_text(run.properties.as_ref(), &line.text),
+        )
+    })
 }
 
 fn paragraph_line_font_descriptor(paragraph: &CellParagraph, line: &LineLayout) -> Option<Rc<str>> {

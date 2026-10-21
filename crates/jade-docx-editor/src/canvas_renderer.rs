@@ -1017,8 +1017,19 @@ fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
         }
 
         let rest: String = chars[i..].iter().collect();
+        let japanese = crate::field_datetime::FieldDateTime {
+            year: dt.year,
+            month: dt.month,
+            day: dt.day,
+            hour: dt.hour,
+            minute: dt.minute,
+            second: dt.second,
+            weekday: dt.weekday,
+        };
         let matched: Option<(usize, String)> =
-            if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
+            if let Some(token) = crate::field_datetime::japanese_date_token(&rest, &japanese) {
+                Some(token)
+            } else if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
                 Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
             } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
                 Some((4, format!("{:04}", dt.year)))
@@ -9190,6 +9201,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -10475,6 +10491,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -10726,6 +10747,11 @@ where
                         text.hash(&mut hasher);
                         guide.hash(&mut hasher);
                         8
+                    }
+                    RunFieldKind::EqEnclosed { text, enclosure } => {
+                        text.hash(&mut hasher);
+                        enclosure.hash(&mut hasher);
+                        45
                     }
                     RunFieldKind::EqRuby {
                         text,
@@ -17151,6 +17177,16 @@ where
                         Some(&paragraph_style),
                     )?;
                 }
+                // 囲い文字: the enclosure is drawn round the character.
+                if let Some(RunFieldKind::EqEnclosed { enclosure, .. }) =
+                    run.field.as_ref().map(|field| field.kind.base_kind())
+                {
+                    effective_props
+                        .get_or_insert_with(RunProperties::default)
+                        .text_effects
+                        .get_or_insert_with(Default::default)
+                        .enclosure = Some(Rc::from(enclosure.as_str()));
+                }
                 // An `EQ` overstrike ruby lays out like `w:ruby` over its base.
                 if let Some(ruby) = run
                     .field
@@ -17190,6 +17226,29 @@ where
                             start: start_pos,
                             end: current_pos,
                             properties: chunk_props.map(Rc::new),
+                            revision: run.revision.clone(),
+                            hyperlink: run.hyperlink.clone(),
+                            inline_object: None,
+                        });
+                    }
+                } else if let Some(chunks) = self.combined_character_chunks(
+                    &segment,
+                    effective_props.as_ref(),
+                    &paragraph_style,
+                )? {
+                    // 組み文字 / 割注: two half-size lines stacked in one
+                    // line's height (see `combined_character_chunks`).
+                    for (chunk_text, chunk_props) in chunks {
+                        let start_pos = current_pos;
+                        layout_text.push_str(&chunk_text);
+                        if let Some(debug_text) = debug_text.as_mut() {
+                            debug_text.push_str(&chunk_text);
+                        }
+                        current_pos = layout_text.len();
+                        run_styles.push(RunStyle {
+                            start: start_pos,
+                            end: current_pos,
+                            properties: Some(Rc::new(chunk_props)),
                             revision: run.revision.clone(),
                             hyperlink: run.hyperlink.clone(),
                             inline_object: None,
@@ -28087,6 +28146,7 @@ where
             underline_kind,
             underline_color,
             border,
+            effects: text_effect_style(properties, font_size_pt),
             fill_color,
             font_style_prefix: font_style,
             families,
@@ -28121,6 +28181,11 @@ where
             props.outline.hash(&mut hasher);
             props.emboss.hash(&mut hasher);
             props.imprint.hash(&mut hasher);
+            props
+                .text_effects
+                .as_ref()
+                .map(|effects| format!("{effects:?}"))
+                .hash(&mut hasher);
             props.emphasis.hash(&mut hasher);
             if let Some(ruby) = props.ruby.as_ref() {
                 ruby.text.hash(&mut hasher);
@@ -28223,6 +28288,7 @@ where
             },
             highlight_color: highlight,
             font_hint: style.font_hint.clone(),
+            effects: style.effects.clone(),
         }
     }
 
@@ -28348,7 +28414,12 @@ where
         if !self.should_draw_current_page_for_render() || glyph_steps.is_empty() {
             return Ok(());
         }
-        if text_style.outline || text_style.shadow || text_style.emboss || text_style.imprint {
+        if text_style.outline
+            || text_style.shadow
+            || text_style.emboss
+            || text_style.imprint
+            || text_style.effects.is_some()
+        {
             // Use the same precomputed glyph positions and effect executor as
             // cache replay; a fresh/export paint must retain character effects.
             let mut commands = Vec::with_capacity(1);
@@ -33063,9 +33134,9 @@ where
             RunFieldKind::Ref { .. } | RunFieldKind::Seq { .. } | RunFieldKind::AutoNum { .. } => {
                 field.resolved_value.clone()
             }
-            RunFieldKind::EqDistributed { text, .. } | RunFieldKind::EqRuby { text, .. } => {
-                Some(text.clone())
-            }
+            RunFieldKind::EqDistributed { text, .. }
+            | RunFieldKind::EqRuby { text, .. }
+            | RunFieldKind::EqEnclosed { text, .. } => Some(text.clone()),
             RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
@@ -33077,6 +33148,72 @@ where
             RunFieldKind::NonDisplay { .. } => return None,
         }
         .or_else(|| field.cached_text.clone())
+    }
+
+    /// A combined-characters run (`w:eastAsianLayout w:combine`, ECMA-376
+    /// Part 1 §17.3.2.10 — Word's 組み文字 and 割注) as the line lays it out:
+    /// at half size and squeezed to the width of the wider of its two lines,
+    /// so it takes the room Word gives it. The painter then draws the two
+    /// lines stacked in that room (`TextEffectStyle::combine`). The text and
+    /// its offsets are unchanged, so selection and editing see the run as it
+    /// is.
+    #[allow(clippy::type_complexity)]
+    fn combined_character_chunks(
+        &self,
+        text: &str,
+        properties: Option<&RunProperties>,
+        paragraph_style: &ParagraphStyle,
+    ) -> Result<Option<Vec<(String, RunProperties)>>, JsValue> {
+        let Some(props) = properties else {
+            return Ok(None);
+        };
+        if !props
+            .east_asian_layout
+            .as_deref()
+            .is_some_and(|layout| layout.combine)
+        {
+            return Ok(None);
+        }
+        let characters: Vec<&str> = jade_docx_layout::graphemes::grapheme_indices(text)
+            .map(|(_, grapheme)| grapheme)
+            .collect();
+        if characters.len() < 2 || text.contains(['\t', '\n']) {
+            return Ok(None);
+        }
+        let base = self
+            .resolve_applied_run_style_uncached(Some(props))
+            .font_size_pt;
+        let half = base / 2.0;
+        let split = characters.len().div_ceil(2);
+        let top: String = characters[..split].concat();
+        let bottom: String = characters[split..].concat();
+        let mut small = props.clone();
+        small.font_size = Some(half);
+        small.font_size_complex = Some(half);
+        let style = self.resolve_applied_run_style_uncached(Some(&small));
+        let top_width = self.measure_text_with_spacing(&top, &style, Some(paragraph_style))?;
+        let bottom_width =
+            self.measure_text_with_spacing(&bottom, &style, Some(paragraph_style))?;
+        let total = top_width + bottom_width;
+        if total <= f64::EPSILON {
+            return Ok(None);
+        }
+        // 割注's brackets take full-size room either side of the lines.
+        let brackets = props
+            .east_asian_layout
+            .as_deref()
+            .and_then(|layout| combine_brackets(layout.combine_brackets.as_deref()));
+        let full = self.resolve_applied_run_style_uncached(Some(props));
+        let bracket_width = match brackets {
+            Some((open, close)) => {
+                self.measure_text_with_spacing(open, &full, Some(paragraph_style))?
+                    + self.measure_text_with_spacing(close, &full, Some(paragraph_style))?
+            }
+            None => 0.0,
+        };
+        let scale = (top_width.max(bottom_width) + bracket_width) / total;
+        small.text_scale = Some(props.text_scale.unwrap_or(100.0) * scale as f32);
+        Ok(Some(vec![(text.to_string(), small)]))
     }
 
     fn apply_eq_distributed_text_scale(
@@ -33630,6 +33767,76 @@ fn eq_distributed_text_scale_percent(
     Some(((base_percent as f64) * guide_width / display_width).clamp(1.0, 1000.0) as f32)
 }
 
+/// 割注's brackets (`w:combineBrackets`).
+fn combine_brackets(brackets: Option<&str>) -> Option<(&'static str, &'static str)> {
+    match brackets? {
+        "round" => Some(("(", ")")),
+        "square" => Some(("[", "]")),
+        "angle" => Some(("<", ">")),
+        "curly" => Some(("{", "}")),
+        _ => None,
+    }
+}
+
+/// A run's `w14:glow` and `w14:textOutline` as the painter takes them: the
+/// glow's colour with its opacity and its radius, the outline's colour and
+/// width, in CSS px.
+fn text_effect_style(
+    properties: Option<&RunProperties>,
+    font_size_pt: f32,
+) -> Option<Box<crate::draw_command::TextEffectStyle>> {
+    let no_effects = crate::document::RunTextEffects::default();
+    let effects = properties
+        .and_then(|props| props.text_effects.as_deref())
+        .unwrap_or(&no_effects);
+    let rgba = |hex: &str, alpha: f32| -> Option<Rc<str>> {
+        let hex = hex.trim().trim_start_matches('#');
+        let value = u32::from_str_radix(hex, 16)
+            .ok()
+            .filter(|_| hex.len() == 6)?;
+        Some(Rc::from(format!(
+            "rgba({}, {}, {}, {:.3})",
+            (value >> 16) & 0xFF,
+            (value >> 8) & 0xFF,
+            value & 0xFF,
+            alpha.clamp(0.0, 1.0)
+        )))
+    };
+    let px = |points: f32| points as f64 * 96.0 / 72.0;
+    let glow = effects.glow_color.as_deref().and_then(|color| {
+        let radius = effects.glow_radius.unwrap_or(5.0).max(0.5);
+        Some((rgba(color, effects.glow_alpha.unwrap_or(0.6))?, px(radius)))
+    });
+    let outline = effects.outline_color.as_deref().and_then(|color| {
+        let width = effects
+            .outline_width
+            .unwrap_or((font_size_pt * 0.04).max(0.5));
+        Some((rgba(color, 1.0)?, px(width)))
+    });
+    let combine = properties
+        .and_then(|props| props.east_asian_layout.as_deref())
+        .filter(|layout| layout.combine)
+        .map(|layout| {
+            // The run is at half size here; the lines sit in the full line.
+            let base = px(font_size_pt * 2.0);
+            crate::draw_command::CombinedCharacters {
+                raise: base * 0.42,
+                lower: base * 0.08,
+                brackets: combine_brackets(layout.combine_brackets.as_deref())
+                    .map(|(open, close)| (Rc::from(open), Rc::from(close))),
+            }
+        });
+    let enclosure = effects.enclosure.clone();
+    (glow.is_some() || outline.is_some() || combine.is_some() || enclosure.is_some()).then(|| {
+        Box::new(crate::draw_command::TextEffectStyle {
+            glow,
+            outline,
+            combine,
+            enclosure,
+        })
+    })
+}
+
 #[derive(Clone)]
 struct AppliedRunStyle {
     font_size_pt: f32,
@@ -33655,6 +33862,8 @@ struct AppliedRunStyle {
     /// Character border (`w:bdr`, §17.3.2.4): a box stroked around the run's
     /// glyph box. `None` when the run carries no visible border.
     border: Option<ResolvedBorderEdge>,
+    /// `w14:glow` and `w14:textOutline`, resolved for the painter.
+    effects: Option<Box<crate::draw_command::TextEffectStyle>>,
     /// Requested run color shared by direct drawing and cached draw commands.
     /// Keeping the allocation on the cached style avoids rebuilding an
     /// `Rc<str>` for every segment that uses this style.
@@ -41142,6 +41351,7 @@ mod tests {
             underline_kind: None,
             underline_color: None,
             border: None,
+            effects: None,
             fill_color: Rc::from("#000000"),
             font_style_prefix,
             families,
@@ -47757,6 +47967,179 @@ mod tests {
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
+    }
+
+    #[test]
+    fn tate_chu_yoko_paints_its_run_as_one_upright_group() {
+        use jade_painter::recording::Op;
+        // Glyphs as wide as they are measured, so a group of ten is wider
+        // than the one character it is fitted into.
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let vertical = |compress: bool| {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                    id: Some(if compress { 2 } else { 1 }),
+                    vert: true,
+                    vert_compress: compress,
+                    ..Default::default()
+                })),
+                ..Default::default()
+            })
+        };
+        let plain = || {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                ..Default::default()
+            })
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![
+                        text_box_run("令和", plain()),
+                        text_box_run("12", vertical(false)),
+                        text_box_run("年", plain()),
+                        text_box_run("1234567890", vertical(true)),
+                    ],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            default_section: Some(SectionProperties {
+                text_direction: Some(TextDirection::TbRl),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let painted: Vec<String> = painter
+            .ops()
+            .into_iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, _, _) => Some(text),
+                _ => None,
+            })
+            .collect();
+        // Each 縦中横 run is one horizontal string, not a column of digits.
+        assert!(painted.contains(&"12".to_string()), "{painted:?}");
+        assert!(painted.contains(&"1234567890".to_string()), "{painted:?}");
+        assert!(!painted.contains(&"1".to_string()), "{painted:?}");
+        // 行の幅に合わせる squeezes the wider group into one character.
+        assert!(painter
+            .ops()
+            .iter()
+            .any(|op| matches!(op, Op::Scale(x, y) if *x < 0.99 && (*y - 1.0).abs() < 1e-9)));
+    }
+
+    #[test]
+    fn combined_characters_stack_their_halves() {
+        use jade_painter::recording::Op;
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "株式会社",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(12.0),
+                            east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                                combine: true,
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let at = |wanted: &str| {
+            painter.ops().into_iter().find_map(|op| match op {
+                Op::FillText(text, x, y) if text == wanted => Some((x, y)),
+                _ => None,
+            })
+        };
+        let (top_x, top_y) = at("株").expect("株 painted");
+        let (bottom_x, bottom_y) = at("会").expect("会 painted");
+        assert!((top_x - bottom_x).abs() < 0.01, "the lines start together");
+        assert!(top_y < bottom_y, "the first half is above the second");
+    }
+
+    #[test]
+    fn glow_and_text_outline_paint_a_halo_and_a_stroke() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let effects = crate::document::RunTextEffects {
+            glow_color: Some(Rc::from("#FF0000")),
+            glow_radius: Some(5.0),
+            glow_alpha: Some(0.4),
+            outline_color: Some(Rc::from("#0070C0")),
+            outline_width: Some(0.75),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "Glow",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(20.0),
+                            text_effects: Some(Box::new(effects)),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let ops = painter.ops();
+        assert!(
+            ops.iter().any(
+                |op| matches!(op, Op::SetShadowColor(color) if color == "rgba(255, 0, 0, 0.400)")
+            ),
+            "the glow's colour"
+        );
+        assert!(ops
+            .iter()
+            .any(|op| matches!(op, Op::SetStrokeStyle(color) if color.contains("0, 112, 192"))));
+        assert!(ops.iter().any(|op| matches!(op, Op::StrokeText(..))));
     }
 
     #[test]

@@ -3,6 +3,10 @@ use std::collections::BTreeMap;
 
 mod section_layout;
 pub use section_layout::*;
+mod run_format;
+mod typography;
+pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
+pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography, HeadlessRuby};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
@@ -685,6 +689,16 @@ pub enum HeadlessChangeCaseMode {
     Lower,
     Title,
     Sentence,
+    /// 大文字と小文字を入れ替える.
+    Toggle,
+    /// 半角: full-width ASCII, katakana and spaces to their half-width forms.
+    HalfWidth,
+    /// 全角: ASCII, half-width katakana and spaces to their full-width forms.
+    FullWidth,
+    /// カタカナ: hiragana to katakana.
+    Katakana,
+    /// ひらがな: katakana to hiragana.
+    Hiragana,
 }
 
 /// DrawingML preset geometries that Jade can currently render and round-trip
@@ -1314,6 +1328,57 @@ pub enum HeadlessCommand {
         end_paragraph: usize,
         end_offset: usize,
         color: String,
+    },
+    /// Applies Word's フォント dialog to a range: every field `format` sets,
+    /// and nothing else, as one step.
+    SetRunFormat {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        format: Box<HeadlessRunFormat>,
+    },
+    /// The 段落 dialog's 体裁 tab on a paragraph range.
+    SetParagraphTypography {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        typography: HeadlessParagraphTypography,
+    },
+    /// The document's 文字体裁: kinsoku level and sets, and compression.
+    SetJapaneseTypography {
+        typography: HeadlessJapaneseTypography,
+    },
+    /// 囲い文字: the selection replaced by `text` in an enclosure (`○`,
+    /// `□`, `△` or `◇`), as Word's `EQ \o\ac` field.
+    InsertEnclosedCharacter {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        text: String,
+        enclosure: String,
+    },
+    /// ルビ: puts a ruby over `start_offset..end_offset` of a paragraph,
+    /// replacing any ruby there, or with `ruby: None` takes them off.
+    SetRuby {
+        paragraph: usize,
+        start_offset: usize,
+        end_offset: usize,
+        #[serde(default)]
+        ruby: Option<HeadlessRuby>,
+    },
+    /// 日付と時刻 with 自動的に更新する: a `DATE` (or, with `time`, `TIME`)
+    /// field with Word's `\@` date picture `format`, in place of the
+    /// selection, showing `cached_text` until it is next evaluated.
+    InsertDateTimeField {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        #[serde(default)]
+        time: bool,
+        format: String,
+        cached_text: String,
     },
     StartChangeTracking {
         author: Option<String>,
@@ -2238,6 +2303,12 @@ impl HeadlessCommand {
             HeadlessCommand::ApplyCustomMultilevelList { .. } => "apply_custom_multilevel_list",
             HeadlessCommand::SetFontColor { .. } => "set_font_color",
             HeadlessCommand::SetHighlightColor { .. } => "set_highlight_color",
+            HeadlessCommand::SetRunFormat { .. } => "set_run_format",
+            HeadlessCommand::SetParagraphTypography { .. } => "set_paragraph_typography",
+            HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
+            HeadlessCommand::InsertDateTimeField { .. } => "insert_date_time_field",
+            HeadlessCommand::SetRuby { .. } => "set_ruby",
+            HeadlessCommand::InsertEnclosedCharacter { .. } => "insert_enclosed_character",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",

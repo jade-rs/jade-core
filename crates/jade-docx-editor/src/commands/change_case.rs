@@ -155,6 +155,13 @@ impl CaseState {
     }
 
     pub(crate) fn transform(&mut self, text: &str) -> String {
+        match self.mode {
+            HeadlessChangeCaseMode::HalfWidth => return to_half_width(text),
+            HeadlessChangeCaseMode::FullWidth => return to_full_width(text),
+            HeadlessChangeCaseMode::Katakana => return to_katakana(text),
+            HeadlessChangeCaseMode::Hiragana => return to_hiragana(text),
+            _ => {}
+        }
         let mut output = String::with_capacity(text.len());
         for character in text.chars() {
             match self.mode {
@@ -182,10 +189,222 @@ impl CaseState {
                         self.capitalize_next_sentence = true;
                     }
                 }
+                HeadlessChangeCaseMode::Toggle => {
+                    if character.is_uppercase() {
+                        output.extend(character.to_lowercase());
+                    } else {
+                        output.extend(character.to_uppercase());
+                    }
+                }
+                HeadlessChangeCaseMode::HalfWidth
+                | HeadlessChangeCaseMode::FullWidth
+                | HeadlessChangeCaseMode::Katakana
+                | HeadlessChangeCaseMode::Hiragana => output.push(character),
             }
         }
         output
     }
+}
+
+/// Full-width katakana and the half-width forms Word's 半角 turns them into
+/// (U+FF66 … U+FF9D), in the half-width block's order.
+const HALF_KATAKANA: [(char, char); 56] = [
+    ('ヲ', 'ｦ'),
+    ('ァ', 'ｧ'),
+    ('ィ', 'ｨ'),
+    ('ゥ', 'ｩ'),
+    ('ェ', 'ｪ'),
+    ('ォ', 'ｫ'),
+    ('ャ', 'ｬ'),
+    ('ュ', 'ｭ'),
+    ('ョ', 'ｮ'),
+    ('ッ', 'ｯ'),
+    ('ー', 'ｰ'),
+    ('ア', 'ｱ'),
+    ('イ', 'ｲ'),
+    ('ウ', 'ｳ'),
+    ('エ', 'ｴ'),
+    ('オ', 'ｵ'),
+    ('カ', 'ｶ'),
+    ('キ', 'ｷ'),
+    ('ク', 'ｸ'),
+    ('ケ', 'ｹ'),
+    ('コ', 'ｺ'),
+    ('サ', 'ｻ'),
+    ('シ', 'ｼ'),
+    ('ス', 'ｽ'),
+    ('セ', 'ｾ'),
+    ('ソ', 'ｿ'),
+    ('タ', 'ﾀ'),
+    ('チ', 'ﾁ'),
+    ('ツ', 'ﾂ'),
+    ('テ', 'ﾃ'),
+    ('ト', 'ﾄ'),
+    ('ナ', 'ﾅ'),
+    ('ニ', 'ﾆ'),
+    ('ヌ', 'ﾇ'),
+    ('ネ', 'ﾈ'),
+    ('ノ', 'ﾉ'),
+    ('ハ', 'ﾊ'),
+    ('ヒ', 'ﾋ'),
+    ('フ', 'ﾌ'),
+    ('ヘ', 'ﾍ'),
+    ('ホ', 'ﾎ'),
+    ('マ', 'ﾏ'),
+    ('ミ', 'ﾐ'),
+    ('ム', 'ﾑ'),
+    ('メ', 'ﾒ'),
+    ('モ', 'ﾓ'),
+    ('ヤ', 'ﾔ'),
+    ('ユ', 'ﾕ'),
+    ('ヨ', 'ﾖ'),
+    ('ラ', 'ﾗ'),
+    ('リ', 'ﾘ'),
+    ('ル', 'ﾙ'),
+    ('レ', 'ﾚ'),
+    ('ロ', 'ﾛ'),
+    ('ワ', 'ﾜ'),
+    ('ン', 'ﾝ'),
+];
+
+/// Japanese punctuation with a half-width form.
+const HALF_PUNCTUATION: [(char, char); 7] = [
+    ('。', '｡'),
+    ('「', '｢'),
+    ('」', '｣'),
+    ('、', '､'),
+    ('・', '･'),
+    ('゛', 'ﾞ'),
+    ('゜', 'ﾟ'),
+];
+
+const DAKUTEN: char = 'ﾞ';
+const HANDAKUTEN: char = 'ﾟ';
+
+/// A voiced katakana's unvoiced base and its mark: ガ is カ and ﾞ.
+fn devoice(kana: char) -> Option<(char, char)> {
+    let code = kana as u32;
+    let base = |offset: u32| char::from_u32(code - offset);
+    match kana {
+        'ヴ' => Some(('ウ', DAKUTEN)),
+        // ガ … ド: each voiced kana follows its base.
+        'ガ' | 'ギ' | 'グ' | 'ゲ' | 'ゴ' | 'ザ' | 'ジ' | 'ズ' | 'ゼ' | 'ゾ' | 'ダ' | 'ヂ'
+        | 'ヅ' | 'デ' | 'ド' => base(1).map(|base| (base, DAKUTEN)),
+        // バ ビ ブ ベ ボ and パ ピ プ ペ ポ follow ハ ヒ フ ヘ ホ.
+        'バ' | 'ビ' | 'ブ' | 'ベ' | 'ボ' => base(1).map(|base| (base, DAKUTEN)),
+        'パ' | 'ピ' | 'プ' | 'ペ' | 'ポ' => base(2).map(|base| (base, HANDAKUTEN)),
+        _ => None,
+    }
+}
+
+/// The voiced kana `base` and `mark` make, if they make one.
+fn voice(base: char, mark: char) -> Option<char> {
+    let code = base as u32;
+    match (base, mark) {
+        ('ウ', DAKUTEN) => Some('ヴ'),
+        (
+            'カ' | 'キ' | 'ク' | 'ケ' | 'コ' | 'サ' | 'シ' | 'ス' | 'セ' | 'ソ' | 'タ' | 'チ'
+            | 'ツ' | 'テ' | 'ト' | 'ハ' | 'ヒ' | 'フ' | 'ヘ' | 'ホ',
+            DAKUTEN,
+        ) => char::from_u32(code + 1),
+        ('ハ' | 'ヒ' | 'フ' | 'ヘ' | 'ホ', HANDAKUTEN) => char::from_u32(code + 2),
+        _ => None,
+    }
+}
+
+fn half_katakana(kana: char) -> Option<char> {
+    HALF_KATAKANA
+        .iter()
+        .chain(HALF_PUNCTUATION.iter())
+        .find(|(full, _)| *full == kana)
+        .map(|(_, half)| *half)
+}
+
+fn full_katakana(kana: char) -> Option<char> {
+    HALF_KATAKANA
+        .iter()
+        .chain(HALF_PUNCTUATION.iter())
+        .find(|(_, half)| *half == kana)
+        .map(|(full, _)| *full)
+}
+
+/// Word's 半角: full-width ASCII, the ideographic space, katakana and
+/// Japanese punctuation to their half-width forms. Hiragana and kanji have
+/// none and stay as they are.
+pub fn to_half_width(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    for character in text.chars() {
+        match character {
+            '\u{3000}' => output.push(' '),
+            '\u{FF01}'..='\u{FF5E}' => {
+                output.extend(char::from_u32(character as u32 - 0xFEE0));
+            }
+            '￥' => output.push('\\'),
+            _ => {
+                if let Some((base, mark)) = devoice(character) {
+                    output.extend(half_katakana(base));
+                    output.push(mark);
+                } else if let Some(half) = half_katakana(character) {
+                    output.push(half);
+                } else {
+                    output.push(character);
+                }
+            }
+        }
+    }
+    output
+}
+
+/// Word's 全角: printable ASCII, the space and half-width katakana (a
+/// voicing mark joined to the kana before it) to their full-width forms.
+pub fn to_full_width(text: &str) -> String {
+    let mut output = String::with_capacity(text.len() * 3);
+    let mut characters = text.chars().peekable();
+    while let Some(character) = characters.next() {
+        match character {
+            ' ' => output.push('\u{3000}'),
+            '\\' => output.push('￥'),
+            '!'..='~' => output.extend(char::from_u32(character as u32 + 0xFEE0)),
+            _ => match full_katakana(character) {
+                Some(full) => {
+                    let voiced = characters.peek().and_then(|mark| voice(full, *mark));
+                    match voiced {
+                        Some(voiced) => {
+                            characters.next();
+                            output.push(voiced);
+                        }
+                        None => output.push(full),
+                    }
+                }
+                None => output.push(character),
+            },
+        }
+    }
+    output
+}
+
+/// Word's カタカナ: hiragana to katakana.
+pub fn to_katakana(text: &str) -> String {
+    text.chars()
+        .map(|character| match character {
+            '\u{3041}'..='\u{3096}' | 'ゝ' | 'ゞ' => {
+                char::from_u32(character as u32 + 0x60).unwrap_or(character)
+            }
+            _ => character,
+        })
+        .collect()
+}
+
+/// Word's ひらがな: katakana to hiragana. ヷ … ヺ have no hiragana and stay.
+pub fn to_hiragana(text: &str) -> String {
+    text.chars()
+        .map(|character| match character {
+            '\u{30A1}'..='\u{30F6}' | 'ヽ' | 'ヾ' => {
+                char::from_u32(character as u32 - 0x60).unwrap_or(character)
+            }
+            _ => character,
+        })
+        .collect()
 }
 
 fn paragraph_len(paragraph: &Paragraph) -> usize {
@@ -227,6 +446,29 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../public/fixtures")
             .join(name)
+    }
+
+    #[test]
+    fn half_and_full_width_convert_as_word_does() {
+        assert_eq!(to_half_width("ＡＢＣ１２３　ガッコウ。"), "ABC123 ｶﾞｯｺｳ｡");
+        assert_eq!(
+            to_full_width("ABC 123 ｶﾞｯｺｳ ﾊﾟﾝ"),
+            "ＡＢＣ　１２３　ガッコウ　パン"
+        );
+        assert_eq!(
+            to_full_width(&to_half_width("ヴァイオリン、パン")),
+            "ヴァイオリン、パン"
+        );
+        // Hiragana and kanji have no half-width forms.
+        assert_eq!(to_half_width("ひらがな漢字"), "ひらがな漢字");
+    }
+
+    #[test]
+    fn kana_convert_both_ways_and_case_toggles() {
+        assert_eq!(to_katakana("ひらがなとカナ"), "ヒラガナトカナ");
+        assert_eq!(to_hiragana("カタカナとABC"), "かたかなとABC");
+        let mut state = CaseState::new(HeadlessChangeCaseMode::Toggle);
+        assert_eq!(state.transform("Hello wORLD"), "hELLO World");
     }
 
     #[test]

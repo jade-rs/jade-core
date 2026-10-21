@@ -66,6 +66,26 @@ pub(crate) fn sync_paragraph_snap_to_grid_xml(
     });
 }
 
+/// Sets (`Some`) or removes (`None`) a `w:val` paragraph property such as
+/// `w:kinsoku` or `w:autoSpaceDE`, keeping the rest of the paragraph's XML.
+pub(crate) fn sync_paragraph_value_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &str,
+    value: Option<&str>,
+) {
+    sync_paragraph_properties_xml(
+        word_doc,
+        paragraph_index,
+        |raw, paragraph_properties| match value {
+            Some(value) => {
+                upsert_paragraph_property_child_with_value(raw, paragraph_properties, tag, value)
+            }
+            None => remove_paragraph_property_child(paragraph_properties, tag),
+        },
+    );
+}
+
 pub(crate) fn sync_paragraph_style_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,

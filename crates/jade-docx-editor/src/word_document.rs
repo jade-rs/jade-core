@@ -456,9 +456,11 @@ fn rebase_run_style_properties(
         char_spacing => declared("w:spacing"),
         fit_text => declared("w:fitText"),
         color => declared("w:color"),
+        theme_color => declared("w:color"),
         highlight => declared("w:highlight"),
         shading => declared("w:shd"),
         border => declared("w:bdr"),
+        east_asian_layout => declared("w:eastAsianLayout"),
     );
     rebase!(
         font_family => declared("w:rFonts"),
@@ -7430,7 +7432,8 @@ impl WordDocument {
                             }
                         }
                         crate::document::RunFieldKind::EqDistributed { text, .. }
-                        | crate::document::RunFieldKind::EqRuby { text, .. } => {
+                        | crate::document::RunFieldKind::EqRuby { text, .. }
+                        | crate::document::RunFieldKind::EqEnclosed { text, .. } => {
                             Self::push_header_text(
                                 &mut segments[idx],
                                 &mut rich_segments[idx],
@@ -7705,7 +7708,7 @@ impl WordDocument {
 
     /// Returns the current `word/settings.xml` text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
-    fn settings_xml_content(&self) -> Option<String> {
+    pub(crate) fn settings_xml_content(&self) -> Option<String> {
         const SETTINGS_PATH: &str = "word/settings.xml";
         if let Some(part) = self.parts.get(SETTINGS_PATH) {
             return Some(part.content.clone());
@@ -33025,6 +33028,30 @@ impl WordDocument {
                         "w:color",
                         color.trim_start_matches('#'),
                     );
+                    // A theme colour is written with the value it resolved
+                    // to, as Word writes a テーマの色 swatch; a plain colour
+                    // drops the theme attributes an earlier one left.
+                    let theme = props.theme_color.as_ref();
+                    for (attribute, value) in [
+                        ("w:themeColor", theme.map(|theme| theme.name.clone())),
+                        ("w:themeTint", theme.and_then(|theme| theme.tint.clone())),
+                        ("w:themeShade", theme.and_then(|theme| theme.shade.clone())),
+                    ] {
+                        match value {
+                            Some(value) => Self::upsert_run_property_child_attribute(
+                                doc,
+                                &mut element,
+                                "w:color",
+                                attribute,
+                                &value,
+                            ),
+                            None => Self::remove_run_property_child_attribute(
+                                &mut element,
+                                "w:color",
+                                attribute,
+                            ),
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -34394,6 +34421,27 @@ impl WordDocument {
                 run_index += consumed;
                 continue;
             }
+            // A base with no ruby XML to take over: one `SetRubyCommand` made.
+            if runs[run_index].node_id.is_none() && Self::starts_ruby_base(&runs[run_index]) {
+                let end = (run_index + 1..runs.len())
+                    .take_while(|&index| {
+                        runs[index].node_id.is_none()
+                            && runs[index]
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.ruby.as_ref())
+                                .is_some_and(|ruby| ruby.continuation)
+                    })
+                    .last()
+                    .map_or(run_index + 1, |last| last + 1);
+                if let Some(ruby_run) =
+                    Self::create_authored_ruby_run(doc, &mut runs[run_index..end])
+                {
+                    new_children.push(XmlNode::Element(ruby_run));
+                    run_index = end;
+                    continue;
+                }
+            }
 
             let wrapped_result = match (tokens.front(), runs[run_index].node_id) {
                 (Some(ChildToken::NonRun(XmlNode::Element(element))), Some(run_id))
@@ -34868,6 +34916,15 @@ impl WordDocument {
             RunFieldKind::NumPages => " NUMPAGES ".to_string(),
             RunFieldKind::Date { format: None } => " DATE ".to_string(),
             RunFieldKind::Time { format: None } => " TIME ".to_string(),
+            RunFieldKind::Date {
+                format: Some(picture),
+            } => format!(" DATE \\@ \"{picture}\" \\* MERGEFORMAT "),
+            RunFieldKind::EqEnclosed { text, enclosure } => {
+                format!(" EQ \\o\\ac({enclosure},{text}) ")
+            }
+            RunFieldKind::Time {
+                format: Some(picture),
+            } => format!(" TIME \\@ \"{picture}\" \\* MERGEFORMAT "),
             RunFieldKind::Unsupported { instruction }
                 if instruction.trim().eq_ignore_ascii_case("FILENAME") =>
             {
@@ -35054,6 +35111,155 @@ impl WordDocument {
                 .as_ref()
                 .and_then(|props| props.ruby.as_ref())
                 .is_some_and(|ruby| Self::ruby_guide_text(element) == ruby.text)
+    }
+
+    /// Removes from a body paragraph's XML every run holding a `w:ruby`
+    /// whose base holds one of `run_ids`, so its base is written afresh
+    /// (with a new ruby, or none) at the next sync.
+    pub(crate) fn remove_ruby_run_elements(
+        &mut self,
+        paragraph_index: usize,
+        run_ids: &[XmlNodeId],
+    ) {
+        fn prune(element: &mut XmlElement, run_ids: &[XmlNodeId]) {
+            element.children.retain(|child| match child {
+                XmlNode::Element(child) if is_ruby_run(child) => !run_ids
+                    .iter()
+                    .any(|&id| WordDocument::element_contains_run_id(child, id)),
+                _ => true,
+            });
+            for child in element.children.iter_mut() {
+                if let XmlNode::Element(child) = child {
+                    if !is_ruby_run(child) {
+                        prune(child, run_ids);
+                    }
+                }
+            }
+        }
+        if run_ids.is_empty() {
+            return;
+        }
+        let Some(paragraph_id) = self.paragraph(paragraph_index).and_then(|p| p.node_id) else {
+            return;
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return;
+        };
+        if let Some(paragraph) = raw.element_mut(paragraph_id) {
+            prune(paragraph, run_ids);
+        }
+        raw.rebuild_index_for_subtree(paragraph_id);
+    }
+
+    /// Authors a run holding a `w:ruby` for `runs`, a base the model marked
+    /// with a ruby and no XML has yet (`SetRubyCommand`): `w:rubyPr` and the
+    /// `w:rt` guide from its [`RubyAnnotation`], the base runs from the
+    /// model, as Word writes a ruby from its ルビ dialog.
+    fn create_authored_ruby_run(doc: &mut DocxXmlDocument, runs: &mut [Run]) -> Option<XmlElement> {
+        let annotation = runs.first()?.properties.as_ref()?.ruby.as_deref()?.clone();
+        let attr = |name: &str, value: String| XmlAttribute {
+            name: name.to_string(),
+            value,
+        };
+        let base_points = runs
+            .iter()
+            .find_map(|run| run.properties.as_ref().and_then(|props| props.font_size))
+            .unwrap_or(10.5);
+        let base_half = (base_points * 2.0).round().max(2.0) as u32;
+        let guide_half = annotation
+            .size_pt
+            .map(|size| (size * 2.0).round().max(1.0) as u32)
+            .unwrap_or((base_half / 2).max(1));
+        let raise = annotation
+            .raise_half_points
+            .unwrap_or(base_half.saturating_sub(3));
+        let align = match annotation.align.as_deref().unwrap_or("distributespace") {
+            "center" => "center",
+            "distributeletter" => "distributeLetter",
+            "left" => "left",
+            "right" => "right",
+            "rightvertical" => "rightVertical",
+            _ => "distributeSpace",
+        };
+        let mut properties = Vec::new();
+        for (name, value) in [
+            ("w:rubyAlign", align.to_string()),
+            ("w:hps", guide_half.to_string()),
+            ("w:hpsRaise", raise.to_string()),
+            ("w:hpsBaseText", base_half.to_string()),
+            ("w:lid", "ja-JP".to_string()),
+        ] {
+            properties.push(XmlNode::Element(doc.create_element(
+                name,
+                vec![attr("w:val", value)],
+                Vec::new(),
+            )));
+        }
+        let ruby_pr = doc.create_element("w:rubyPr", Vec::new(), properties);
+        let mut guide_props = Vec::new();
+        let guide_font = annotation
+            .fonts
+            .as_ref()
+            .and_then(|fonts| fonts.east_asia.clone().or(fonts.ascii.clone()))
+            .or_else(|| {
+                runs.first()
+                    .and_then(|run| run.properties.as_ref())
+                    .and_then(|props| props.fonts.as_ref())
+                    .and_then(|fonts| fonts.east_asia.clone())
+            });
+        if let Some(font) = guide_font {
+            guide_props.push(XmlNode::Element(doc.create_element(
+                "w:rFonts",
+                vec![
+                    attr("w:ascii", font.to_string()),
+                    attr("w:eastAsia", font.to_string()),
+                    attr("w:hAnsi", font.to_string()),
+                ],
+                Vec::new(),
+            )));
+        }
+        guide_props.push(XmlNode::Element(doc.create_element(
+            "w:sz",
+            vec![attr("w:val", guide_half.to_string())],
+            Vec::new(),
+        )));
+        let guide_rpr = doc.create_element("w:rPr", Vec::new(), guide_props);
+        let guide_text = doc.create_element(
+            "w:t",
+            vec![attr("xml:space", "preserve".to_string())],
+            vec![XmlNode::Text(annotation.text.clone())],
+        );
+        let guide_run = doc.create_element(
+            "w:r",
+            Vec::new(),
+            vec![XmlNode::Element(guide_rpr), XmlNode::Element(guide_text)],
+        );
+        let rt = doc.create_element("w:rt", Vec::new(), vec![XmlNode::Element(guide_run)]);
+        let mut base_children = Vec::new();
+        for run in runs.iter_mut() {
+            let Some((element, text_id)) = Self::create_run_element(doc, run) else {
+                continue;
+            };
+            run.node_id = Some(element.id);
+            run.text_node_id = text_id;
+            run.revision_node_id = None;
+            base_children.push(XmlNode::Element(element));
+        }
+        let base = doc.create_element_preserving_child_ids("w:rubyBase", Vec::new(), base_children);
+        let ruby = doc.create_element_preserving_child_ids(
+            "w:ruby",
+            Vec::new(),
+            vec![
+                XmlNode::Element(ruby_pr),
+                XmlNode::Element(rt),
+                XmlNode::Element(base),
+            ],
+        );
+        Some(doc.create_element_preserving_child_ids(
+            "w:r",
+            Vec::new(),
+            vec![XmlNode::Element(ruby)],
+        ))
     }
 
     fn starts_ruby_base(run: &Run) -> bool {
