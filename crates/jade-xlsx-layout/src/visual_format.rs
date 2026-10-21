@@ -19,7 +19,37 @@ pub(crate) struct ResolvedDataBar {
     pub show_value: bool,
 }
 
+/// An icon-set icon chosen for one cell: the set it is drawn from and its
+/// position there, 0 being the icon for the lowest values.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ResolvedIcon {
+    pub icon_set: String,
+    pub index: u32,
+    pub show_value: bool,
+}
+
+/// What a visual rule paints for one cell.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct VisualOutcome {
+    pub fill: Option<Color>,
+    pub bar: Option<ResolvedDataBar>,
+    pub icon: Option<ResolvedIcon>,
+}
+
+/// How many icons a built-in set has: the digit its name starts with.
+pub fn icon_count(icon_set: &str) -> Option<usize> {
+    let count = icon_set.chars().next()?.to_digit(10)? as usize;
+    (3..=5).contains(&count).then_some(count)
+}
+
 pub(super) enum PreparedVisual {
+    IconSet {
+        points: Vec<f64>,
+        gte: Vec<bool>,
+        /// The icon for each band, lowest band first; `None` draws nothing.
+        icons: Vec<Option<(String, u32)>>,
+        show_value: bool,
+    },
     ColorScale {
         points: Vec<f64>,
         colors: Vec<[u8; 4]>,
@@ -42,7 +72,8 @@ pub(super) struct ModernBar {
 fn thresholds(visual: &ConditionalVisual) -> &[ConditionalThreshold] {
     match visual {
         ConditionalVisual::ColorScale { thresholds, .. }
-        | ConditionalVisual::DataBar { thresholds, .. } => thresholds,
+        | ConditionalVisual::DataBar { thresholds, .. }
+        | ConditionalVisual::IconSet { thresholds, .. } => thresholds,
     }
 }
 fn number(threshold: &ConditionalThreshold) -> Option<f64> {
@@ -61,6 +92,37 @@ pub(super) fn issue(rule: &ConditionalRule) -> Option<String> {
         return Some(rule.issues.join(", "));
     }
     let visual = rule.visual.as_ref()?;
+    if let ConditionalVisual::IconSet {
+        icon_set,
+        thresholds,
+        custom,
+        ..
+    } = visual
+    {
+        if rule.rule_type != "iconSet" {
+            return Some("visual definition does not match rule type".into());
+        }
+        let expected = if custom.is_empty() {
+            icon_count(icon_set)
+        } else {
+            Some(custom.len())
+        };
+        if expected != Some(thresholds.len())
+            || custom
+                .iter()
+                .flatten()
+                .any(|icon| icon_count(&icon.icon_set).is_none())
+        {
+            return Some("icon set thresholds do not match its icons".into());
+        }
+        for threshold in thresholds.iter().skip(1) {
+            match threshold.kind.as_str() {
+                "num" | "formula" | "percent" | "percentile" if number(threshold).is_some() => {}
+                _ => return Some("unsupported or invalid icon set threshold".into()),
+            }
+        }
+        return None;
+    }
     let (count, colors) = match visual {
         ConditionalVisual::ColorScale { thresholds, colors } => {
             if !(2..=3).contains(&thresholds.len()) || thresholds.len() != colors.len() {
@@ -84,6 +146,7 @@ pub(super) fn issue(rule: &ConditionalRule) -> Option<String> {
             }
             (2, colors)
         }
+        ConditionalVisual::IconSet { .. } => unreachable!(),
     };
     if !matches!(
         (&rule.rule_type[..], visual),
@@ -223,10 +286,46 @@ impl PreparedVisual {
                 break;
             }
         }
-        if points.windows(2).any(|pair| pair[0] > pair[1]) {
+        let icons = matches!(visual, ConditionalVisual::IconSet { .. });
+        if !icons && points.windows(2).any(|pair| pair[0] > pair[1]) {
             return Err("visual thresholds are not in increasing order".into());
         }
         Ok(match visual {
+            ConditionalVisual::IconSet {
+                icon_set,
+                thresholds,
+                reverse,
+                show_value,
+                custom,
+            } => {
+                let count = thresholds.len();
+                let icons = if custom.is_empty() {
+                    (0..count as u32)
+                        .map(|band| {
+                            let index = if *reverse {
+                                count as u32 - 1 - band
+                            } else {
+                                band
+                            };
+                            Some((icon_set.clone(), index))
+                        })
+                        .collect()
+                } else {
+                    custom
+                        .iter()
+                        .map(|icon| {
+                            icon.as_ref()
+                                .map(|icon| (icon.icon_set.clone(), icon.index))
+                        })
+                        .collect()
+                };
+                Self::IconSet {
+                    points,
+                    gte: thresholds.iter().map(|threshold| threshold.gte).collect(),
+                    icons,
+                    show_value: *show_value,
+                }
+            }
             ConditionalVisual::ColorScale { colors, .. } => Self::ColorScale {
                 points,
                 colors: colors
@@ -256,7 +355,48 @@ impl PreparedVisual {
             },
         })
     }
-    pub(super) fn for_cell(&self, value: &CellValue) -> (Option<Color>, Option<ResolvedDataBar>) {
+    pub(super) fn outcome(&self, value: &CellValue) -> VisualOutcome {
+        if let Self::IconSet {
+            points,
+            gte,
+            icons,
+            show_value,
+        } = self
+        {
+            let CellValue::Number(value) = value else {
+                return VisualOutcome::default();
+            };
+            if !value.is_finite() || points.len() != icons.len() {
+                return VisualOutcome::default();
+            }
+            let band = (1..points.len())
+                .rev()
+                .find(|&band| {
+                    if gte[band] {
+                        *value >= points[band]
+                    } else {
+                        *value > points[band]
+                    }
+                })
+                .unwrap_or(0);
+            return VisualOutcome {
+                icon: icons[band].as_ref().map(|(icon_set, index)| ResolvedIcon {
+                    icon_set: icon_set.clone(),
+                    index: *index,
+                    show_value: *show_value,
+                }),
+                ..VisualOutcome::default()
+            };
+        }
+        let (fill, bar) = self.for_cell(value);
+        VisualOutcome {
+            fill,
+            bar,
+            icon: None,
+        }
+    }
+
+    fn for_cell(&self, value: &CellValue) -> (Option<Color>, Option<ResolvedDataBar>) {
         let CellValue::Number(value) = value else {
             return (None, None);
         };
@@ -264,6 +404,7 @@ impl PreparedVisual {
             return (None, None);
         }
         match self {
+            Self::IconSet { .. } => (None, None),
             Self::ColorScale { points, colors } => {
                 if points.is_empty() {
                     return (None, None);

@@ -10,6 +10,7 @@
 //! layout. Unavailable objects retain named frames.
 
 pub mod color;
+mod icons;
 
 use jade_painter::Painter;
 use jade_xlsx_layout::units::{line_height_points, points_to_px};
@@ -292,8 +293,35 @@ fn render_body<P: Painter>(
         render_borders(painter, &cell.border, cell.rect, options);
     }
 
+    for sparkline in layout
+        .sparklines
+        .iter()
+        .filter(|sparkline| sparkline.rect.intersects(&viewport))
+    {
+        painter.save();
+        painter.begin_path();
+        painter.rect(
+            sparkline.rect.x,
+            sparkline.rect.y,
+            sparkline.rect.width,
+            sparkline.rect.height,
+        );
+        painter.clip();
+        let result = paint_chart_ops(painter, &sparkline.ops);
+        painter.restore();
+        result?;
+    }
+
+    for cell in layout.cells_in(viewport) {
+        if let Some(icon) = &cell.icon {
+            icons::render_icon(painter, &icon.icon_set, icon.index, icon.rect)?;
+        }
+    }
+
     for cell in layout.text_cells_in(viewport) {
-        if cell.data_bar.as_ref().is_some_and(|bar| !bar.show_value) {
+        if cell.data_bar.as_ref().is_some_and(|bar| !bar.show_value)
+            || cell.icon.as_ref().is_some_and(|icon| !icon.show_value)
+        {
             continue;
         }
         render_text(painter, cell, layout.cell_padding_px, options)?;
@@ -391,6 +419,91 @@ fn render_note_marker<P: Painter>(painter: &P, rect: Rect) {
 /// A drawing object over the grid. A text box or shape is drawn as Excel's
 /// default — a white box with a grey line — and its text. Pictures and charts
 /// consume shared layout; unavailable objects retain named frames.
+/// Paints chart operations: a chart's, or a sparkline's.
+fn paint_chart_ops<P: Painter>(
+    painter: &P,
+    ops: &[jade_xlsx_layout::chart::ChartOp],
+) -> Result<(), P::Error> {
+    for op in ops {
+        use jade_xlsx_layout::chart::ChartOp;
+        match op {
+            ChartOp::Clip { rect } => {
+                painter.save();
+                painter.begin_path();
+                painter.rect(rect.x, rect.y, rect.width, rect.height);
+                painter.clip();
+            }
+            ChartOp::Restore => painter.restore(),
+            ChartOp::Rectangle { rect, fill, stroke } => {
+                if let Some(fill) = fill {
+                    painter.set_fill_style_str(fill);
+                    painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
+                }
+                if let Some(stroke) = stroke {
+                    painter.set_stroke_style_str(stroke);
+                    painter.set_line_width(1.0);
+                    painter.set_line_dash(&[]);
+                    painter.stroke_rect(rect.x, rect.y, rect.width, rect.height);
+                }
+            }
+            ChartOp::Path {
+                points,
+                closed,
+                fill,
+                stroke,
+                width,
+                dash,
+            } => {
+                painter.begin_path();
+                if let Some((x, y)) = points.first() {
+                    painter.move_to(*x, *y);
+                }
+                for (x, y) in points.iter().skip(1) {
+                    painter.line_to(*x, *y);
+                }
+                if *closed {
+                    painter.close_path();
+                }
+                if let Some(fill) = fill {
+                    painter.set_fill_style_str(fill);
+                    painter.fill();
+                }
+                if let Some(stroke) = stroke {
+                    painter.set_stroke_style_str(stroke);
+                    painter.set_line_width(*width);
+                    painter.set_line_dash(dash);
+                    painter.stroke();
+                    painter.set_line_dash(&[]);
+                }
+            }
+            ChartOp::Text {
+                text,
+                x,
+                y,
+                font,
+                color,
+                align: _,
+                rotation,
+            } => {
+                painter.set_font(&font_shorthand(font));
+                painter.set_text_baseline("alphabetic");
+                painter.set_fill_style_str(color);
+                if *rotation == 0.0 {
+                    painter.fill_text(text, *x, *y)?;
+                } else {
+                    painter.save();
+                    painter.translate(*x, *y)?;
+                    painter.rotate(*rotation)?;
+                    let result = painter.fill_text(text, 0.0, 0.0);
+                    painter.restore();
+                    result?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn render_shape<P: Painter>(
     painter: &P,
     shape: &PlacedShape,
@@ -406,71 +519,7 @@ fn render_shape<P: Painter>(
             shape.rect.height,
         );
         painter.clip();
-        for op in &chart.ops {
-            use jade_xlsx_layout::chart::ChartOp;
-            match op {
-                ChartOp::Clip { rect } => {
-                    painter.save();
-                    painter.begin_path();
-                    painter.rect(rect.x, rect.y, rect.width, rect.height);
-                    painter.clip();
-                }
-                ChartOp::Restore => painter.restore(),
-                ChartOp::Rectangle { rect, fill, stroke } => {
-                    if let Some(fill) = fill {
-                        painter.set_fill_style_str(fill);
-                        painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                    if let Some(stroke) = stroke {
-                        painter.set_stroke_style_str(stroke);
-                        painter.set_line_width(1.0);
-                        painter.set_line_dash(&[]);
-                        painter.stroke_rect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                }
-                ChartOp::Path {
-                    points,
-                    closed,
-                    fill,
-                    stroke,
-                    width,
-                } => {
-                    painter.begin_path();
-                    if let Some((x, y)) = points.first() {
-                        painter.move_to(*x, *y);
-                    }
-                    for (x, y) in points.iter().skip(1) {
-                        painter.line_to(*x, *y);
-                    }
-                    if *closed {
-                        painter.close_path();
-                    }
-                    if let Some(fill) = fill {
-                        painter.set_fill_style_str(fill);
-                        painter.fill();
-                    }
-                    if let Some(stroke) = stroke {
-                        painter.set_stroke_style_str(stroke);
-                        painter.set_line_width(*width);
-                        painter.set_line_dash(&[]);
-                        painter.stroke();
-                    }
-                }
-                ChartOp::Text {
-                    text,
-                    x,
-                    y,
-                    font,
-                    color,
-                    align: _,
-                } => {
-                    painter.set_font(&font_shorthand(font));
-                    painter.set_text_baseline("alphabetic");
-                    painter.set_fill_style_str(color);
-                    painter.fill_text(text, *x, *y)?;
-                }
-            }
-        }
+        paint_chart_ops(painter, &chart.ops)?;
         return Ok(());
     }
     let mut rect = shape.rect;
@@ -522,6 +571,9 @@ fn render_shape<P: Painter>(
             }
             painter.set_global_alpha(1.0);
         }
+    }
+    if let Some(style) = shape.style.as_ref() {
+        return render_styled_shape(painter, shape, style, rect);
     }
     let background = options
         .background
@@ -601,6 +653,109 @@ fn render_shape<P: Painter>(
         let y = rect.y + padding + line_height * index as f64 + ascent;
         painter.fill_text(line, rect.x + padding, y)?;
     }
+    Ok(())
+}
+
+fn rgba_css(color: [u8; 4]) -> String {
+    format!(
+        "rgba({}, {}, {}, {})",
+        color[0],
+        color[1],
+        color[2],
+        f64::from(color[3]) / 255.0
+    )
+}
+
+/// A shape with its own geometry, fill and outline, and its text placed by
+/// its alignment and anchor.
+fn render_styled_shape<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    style: &jade_xlsx_layout::shape_style::PlacedShapeStyle,
+    rect: Rect,
+) -> Result<(), P::Error> {
+    use jade_xlsx_layout::shape_style::PathOp;
+    let turned = style.rotation_radians != 0.0 || style.flip_h || style.flip_v;
+    painter.save();
+    painter.translate(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)?;
+    painter.rotate(style.rotation_radians)?;
+    painter.scale(
+        if style.flip_h { -1.0 } else { 1.0 },
+        if style.flip_v { -1.0 } else { 1.0 },
+    )?;
+    painter.translate(-rect.width / 2.0, -rect.height / 2.0)?;
+    painter.begin_path();
+    for op in &style.path {
+        match *op {
+            PathOp::Move(x, y) => painter.move_to(x, y),
+            PathOp::Line(x, y) => painter.line_to(x, y),
+            PathOp::Cubic(a, b, c, d, e, f) => painter.bezier_curve_to(a, b, c, d, e, f),
+            PathOp::Close => painter.close_path(),
+        }
+    }
+    if let Some(fill) = style.fill {
+        painter.set_fill_style_str(&rgba_css(fill));
+        painter.fill();
+    }
+    if let Some(stroke) = style.stroke {
+        painter.set_stroke_style_str(&rgba_css(stroke));
+        painter.set_line_width(style.stroke_width);
+        painter.set_line_dash(&style.dash);
+        painter.stroke();
+        painter.set_line_dash(&[]);
+        painter.set_fill_style_str(&rgba_css(stroke));
+        for arrow in &style.arrows {
+            painter.begin_path();
+            for (index, (x, y)) in arrow.iter().enumerate() {
+                if index == 0 {
+                    painter.move_to(*x, *y);
+                } else {
+                    painter.line_to(*x, *y);
+                }
+            }
+            painter.close_path();
+            painter.fill();
+        }
+    }
+    painter.restore();
+    if shape.lines.is_empty() {
+        return Ok(());
+    }
+    // Text turns with the shape but is never mirrored.
+    painter.save();
+    if turned {
+        painter.translate(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)?;
+        painter.rotate(style.rotation_radians)?;
+        painter.translate(-rect.x - rect.width / 2.0, -rect.y - rect.height / 2.0)?;
+    }
+    painter.set_font(&font_shorthand(&shape.font));
+    painter.set_text_baseline("alphabetic");
+    painter.set_fill_style_str(&rgba_css(style.text_color));
+    let line_height = points_to_px(line_height_points(shape.font.size_points));
+    let ascent = f64::from(shape.font.size_points) * 96.0 / 72.0 * 0.8;
+    let height = line_height * shape.lines.len() as f64;
+    let top = match style.text_anchor.as_str() {
+        "ctr" => rect.y + (rect.height - height) / 2.0,
+        "b" => rect.bottom() - style.inset_y - height,
+        _ => rect.y + style.inset_y,
+    };
+    for (index, line) in shape.lines.iter().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let width = painter.measure_text_width(line)?;
+        let x = match style.text_align.as_str() {
+            "ctr" => rect.x + (rect.width - width) / 2.0,
+            "r" => rect.right() - style.inset_x - width,
+            _ => rect.x + style.inset_x,
+        };
+        let y = top + line_height * index as f64 + ascent;
+        if let Err(error) = painter.fill_text(line, x, y) {
+            painter.restore();
+            return Err(error);
+        }
+    }
+    painter.restore();
     Ok(())
 }
 
@@ -1034,6 +1189,37 @@ fn render_text_body<P: Painter>(
     let inner_left = cell.rect.x + padding + cell.text_inset_px;
     let content_right = cell.rect.right().min(cell.text_rect().right());
     let inner_right = content_right - padding - cell.text_inset_px;
+    if !cell.runs.is_empty() && text_rotation_radians(cell.alignment.text_rotation).is_none() {
+        let mut cursor = 0;
+        let mut ranges = Vec::new();
+        for line in &cell.lines {
+            let Some(found) = cell
+                .text
+                .get(cursor..)
+                .and_then(|rest| rest.find(line.as_str()))
+            else {
+                ranges.clear();
+                break;
+            };
+            ranges.push((cursor + found, cursor + found + line.len()));
+            cursor += found + line.len();
+        }
+        if ranges.len() == cell.lines.len() {
+            for (index, (start, end)) in ranges.into_iter().enumerate() {
+                let baseline = block_top + line_height * index as f64 + ascent;
+                render_rich_line(
+                    painter,
+                    cell,
+                    (start, end),
+                    (inner_left, inner_right, content_right),
+                    baseline,
+                    &text_color,
+                    options,
+                )?;
+            }
+            return Ok(());
+        }
+    }
     for (index, line) in cell.lines.iter().enumerate() {
         if line.is_empty() {
             continue;
@@ -1063,6 +1249,81 @@ fn render_text_body<P: Painter>(
             paint_cell_text(painter, line, x, y, outline)?;
             render_text_decorations(painter, cell, x, y, width, ascent);
         }
+    }
+    Ok(())
+}
+
+/// One line of a rich text cell: each run's part of `range` in its own font,
+/// colour and baseline, the line placed as a whole by the cell's alignment.
+fn render_rich_line<P: Painter>(
+    painter: &P,
+    cell: &PlacedCell,
+    range: (usize, usize),
+    (inner_left, inner_right, content_right): (f64, f64, f64),
+    baseline: f64,
+    cell_color: &str,
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
+    // Super- and subscripts are drawn two thirds the size, off the baseline.
+    let shaped = |run: &jade_xlsx_layout::PlacedRun| {
+        let mut font = run.font.clone();
+        let em = points_to_px(font.size_points);
+        let shift = match font.vert_align.as_deref() {
+            Some("superscript") => -em * 0.33,
+            Some("subscript") => em * 0.14,
+            _ => 0.0,
+        };
+        if shift != 0.0 {
+            font.size_points = (font.size_points * 2.0 / 3.0).max(1.0);
+        }
+        (font, shift)
+    };
+    let mut pieces = Vec::new();
+    let mut width = 0.0;
+    for run in &cell.runs {
+        let start = run.start.max(range.0);
+        let end = run.end.min(range.1);
+        let Some(text) = cell.text.get(start..end).filter(|text| !text.is_empty()) else {
+            continue;
+        };
+        let (font, shift) = shaped(run);
+        painter.set_font(&font_shorthand(&font));
+        let advance = painter.measure_text_width(text)?;
+        pieces.push((text, font, shift, run.color, advance));
+        width += advance;
+    }
+    let mut x = match cell.alignment.horizontal {
+        HorizontalAlignment::Right => inner_right - width,
+        HorizontalAlignment::Center => cell.rect.x + (content_right - cell.rect.x - width) / 2.0,
+        _ => inner_left,
+    };
+    for (text, font, shift, color, advance) in pieces {
+        let color = color
+            .map(|color| options.color_css(color, cell_color))
+            .unwrap_or_else(|| cell_color.to_string());
+        painter.set_font(&font_shorthand(&font));
+        painter.set_fill_style_str(&color);
+        painter.set_stroke_style_str(&color);
+        let y = baseline + shift;
+        painter.fill_text(text, x, y)?;
+        if font.underline || font.strike {
+            let em = points_to_px(font.size_points);
+            painter.set_line_width((em / 16.0).max(0.75));
+            painter.set_line_dash(&[]);
+            for line_y in [
+                font.underline.then_some(y + (em * 0.08).max(1.0)),
+                font.strike.then_some(y - em * 0.8 * 0.35),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                painter.begin_path();
+                painter.move_to(x, line_y);
+                painter.line_to(x + advance, line_y);
+                painter.stroke();
+            }
+        }
+        x += advance;
     }
     Ok(())
 }

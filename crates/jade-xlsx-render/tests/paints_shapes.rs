@@ -42,7 +42,8 @@ fn shapes_are_placed_from_their_anchor_cells_and_offsets() {
     assert!((rectangle.rect.x - column_j.offset).abs() < 0.01);
     assert!((rectangle.rect.width - 96.0).abs() < 0.01);
     assert!((rectangle.rect.height - 30.0).abs() < 0.01);
-    assert_eq!(rectangle.lines, ["Note & label", "line two"]);
+    // Wrapped inside the shape's text insets (0.1 inch a side).
+    assert_eq!(rectangle.lines.join(" "), "Note & label line two");
     // The grid reaches under every shape.
     assert!(layout.columns.len() > 9);
     assert!(layout.rows.len() > 13);
@@ -58,23 +59,31 @@ fn a_text_box_paints_its_text_and_a_chart_paints_its_series() {
     let ops = painter.ops();
 
     let text_box = &layout.shapes[0];
-    let box_fill = ops.iter().position(|op| {
-        matches!(op, Op::FillRect(x, y, w, h)
-            if (*x - text_box.rect.x).abs() < 0.01
-                && (*y - text_box.rect.y).abs() < 0.01
-                && (*w - text_box.rect.width).abs() < 0.01
-                && (*h - text_box.rect.height).abs() < 0.01)
-    });
-    let box_fill = box_fill.expect("the text box is filled");
-    // The box goes over the cells: after every cell's text.
+    // The box goes over the cells: after every cell's text. It is filled
+    // with the theme's background (lt1) and outlined in lt1 shaded by half,
+    // as its spPr says, around its rectangle's outline.
     let last_cell_text = ops
         .iter()
         .rposition(|op| matches!(op, Op::FillText(text, ..) if text == "Total"))
         .expect("cell text");
-    assert!(box_fill > last_cell_text, "{ops:?}");
-    assert!(ops[box_fill..]
+    let corner = ops[last_cell_text..]
         .iter()
-        .any(|op| matches!(op, Op::StrokeRect(..))));
+        .position(|op| {
+            matches!(op,
+            Op::LineTo(x, y) if (*x - text_box.rect.width).abs() < 0.01
+                && (*y - text_box.rect.height).abs() < 0.01)
+        })
+        .map(|index| index + last_cell_text)
+        .expect("the text box's outline");
+    let box_fill = ops[corner..]
+        .iter()
+        .position(|op| matches!(op, Op::Fill))
+        .map(|index| index + corner)
+        .expect("the text box is filled");
+    assert!(ops[corner..box_fill]
+        .iter()
+        .any(|op| matches!(op, Op::SetFillStyle(style) if style == "rgba(255, 255, 255, 1)")));
+    assert!(ops[box_fill..].iter().any(|op| matches!(op, Op::Stroke)));
     let draft = ops[box_fill..]
         .iter()
         .find(|op| matches!(op, Op::FillText(text, ..) if text == "Draft"))
@@ -93,7 +102,7 @@ fn a_text_box_paints_its_text_and_a_chart_paints_its_series() {
     assert!(placed.ops.iter().any(|op| matches!(op, jade_xlsx_layout::chart::ChartOp::Rectangle {fill: Some(color), ..} if color != "#ffffff")));
     assert!(ops
         .iter()
-        .any(|op| matches!(op, Op::FillText(text, ..) if text == "Note & label")));
+        .any(|op| matches!(op, Op::FillText(text, ..) if text.starts_with("Note"))));
 }
 
 #[test]

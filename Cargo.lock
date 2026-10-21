@@ -1913,10 +1913,12 @@ name = "jade-xlsx-layout"
 version = "0.1.0"
 dependencies = [
  "jade-text-layout",
+ "jade-xlsx-calc",
  "jade-xlsx-reader",
  "proptest",
  "serde",
  "unicode-segmentation",
+ "zip 8.6.0",
 ]
 
 [[package]]
