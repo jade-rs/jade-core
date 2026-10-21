@@ -12,6 +12,7 @@ pub struct InsertFieldCommand {
     kind: HeadlessFieldKind,
     cached_text: String,
     format: Option<String>,
+    kind_override: Option<RunFieldKind>,
     previous_document: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
@@ -23,6 +24,7 @@ impl InsertFieldCommand {
             kind,
             cached_text,
             format: None,
+            kind_override: None,
             previous_document: None,
             previous_selection: None,
         }
@@ -35,7 +37,18 @@ impl InsertFieldCommand {
         self
     }
 
+    /// A field of any modelled kind (`EQ \o\ac` for 囲い文字), showing
+    /// `cached_text`.
+    pub fn of_kind(range: SelectionRange, kind: RunFieldKind, cached_text: String) -> Self {
+        let mut command = Self::new(range, HeadlessFieldKind::Date, cached_text);
+        command.kind_override = Some(kind);
+        command
+    }
+
     fn run_field_kind(&self) -> RunFieldKind {
+        if let Some(kind) = self.kind_override.clone() {
+            return kind;
+        }
         match self.kind {
             HeadlessFieldKind::Date => RunFieldKind::Date {
                 format: self.format.clone(),

@@ -7413,7 +7413,8 @@ impl WordDocument {
                             }
                         }
                         crate::document::RunFieldKind::EqDistributed { text, .. }
-                        | crate::document::RunFieldKind::EqRuby { text, .. } => {
+                        | crate::document::RunFieldKind::EqRuby { text, .. }
+                        | crate::document::RunFieldKind::EqEnclosed { text, .. } => {
                             Self::push_header_text(
                                 &mut segments[idx],
                                 &mut rich_segments[idx],
@@ -34822,6 +34823,9 @@ impl WordDocument {
             RunFieldKind::Date {
                 format: Some(picture),
             } => format!(" DATE \\@ \"{picture}\" \\* MERGEFORMAT "),
+            RunFieldKind::EqEnclosed { text, enclosure } => {
+                format!(" EQ \\o\\ac({enclosure},{text}) ")
+            }
             RunFieldKind::Time {
                 format: Some(picture),
             } => format!(" TIME \\@ \"{picture}\" \\* MERGEFORMAT "),

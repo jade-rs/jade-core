@@ -1290,6 +1290,16 @@ pub enum HeadlessCommand {
     SetJapaneseTypography {
         typography: HeadlessJapaneseTypography,
     },
+    /// 囲い文字: the selection replaced by `text` in an enclosure (`○`,
+    /// `□`, `△` or `◇`), as Word's `EQ \o\ac` field.
+    InsertEnclosedCharacter {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        text: String,
+        enclosure: String,
+    },
     /// ルビ: puts a ruby over `start_offset..end_offset` of a paragraph,
     /// replacing any ruby there, or with `ruby: None` takes them off.
     SetRuby {
@@ -2095,6 +2105,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
             HeadlessCommand::InsertDateTimeField { .. } => "insert_date_time_field",
             HeadlessCommand::SetRuby { .. } => "set_ruby",
+            HeadlessCommand::InsertEnclosedCharacter { .. } => "insert_enclosed_character",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",
