@@ -310,9 +310,26 @@ impl ThemePart {
     }
 
     pub fn resolve_theme_color(&self, key: &str) -> Option<&str> {
-        self.colors
-            .get(&key.trim().to_ascii_lowercase())
-            .map(String::as_str)
+        let key = key.trim().to_ascii_lowercase();
+        self.colors.get(&key).map(String::as_str).or_else(|| {
+            // DrawingML's text and background slots map onto the scheme's
+            // dark and light ones (the default `w:clrSchemeMapping`).
+            let mapped = match key.as_str() {
+                "tx1" => "dk1",
+                "bg1" => "lt1",
+                "tx2" => "dk2",
+                "bg2" => "lt2",
+                _ => return None,
+            };
+            self.colors.get(mapped).map(String::as_str)
+        })
+    }
+
+    /// Word's Office theme, which a document without a theme part is drawn
+    /// with.
+    pub fn office_default() -> Self {
+        const OFFICE: &str = r#"<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="44546A"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2><a:accent3><a:srgbClr val="A5A5A5"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4><a:accent5><a:srgbClr val="5B9BD5"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme></a:themeElements></a:theme>"#;
+        Self::from_xml(OFFICE).unwrap_or_default()
     }
 
     /// Resolves every theme font reference on `props` to a concrete face:

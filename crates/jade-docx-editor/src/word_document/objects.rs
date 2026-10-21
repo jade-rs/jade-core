@@ -205,6 +205,12 @@ impl WordDocument {
     ) -> Result<(), String> {
         let run_id = self.object_run_element_id(target)?;
         let reread = self.read_drawing(&drawing)?;
+        // Whether the text inside changed (WordArt's text, a text colour):
+        // then the model's text box paragraphs are read again too.
+        let text_of = |drawing: &XmlElement| {
+            crate::drawing_xml::descendant(drawing, "w:txbxContent").map(element_xml)
+        };
+        let content_changed = text_of(&drawing) != self.object_drawing(target).ok().as_ref().and_then(text_of);
         {
             let raw = self
                 .raw_document
@@ -243,12 +249,23 @@ impl WordDocument {
                 run.text_box = None;
             }
             (None, Some(mut text_box)) => {
-                if let Some(previous) = run.text_box.take() {
+                let previous = run.text_box.take();
+                let keep_text = previous.is_some() && !content_changed;
+                if let Some(previous) = previous.filter(|_| keep_text) {
                     text_box.blocks = previous.blocks;
                     text_box.text = previous.text;
                 }
                 run.text_box = Some(text_box);
                 run.image = None;
+                if !keep_text {
+                    // Its paragraphs are new: bind them to the XML they
+                    // came from, as loading does.
+                    if let (Some(document), Some(raw)) =
+                        (self.document.as_mut(), self.raw_document.as_ref())
+                    {
+                        attach_text_box_xml_ids(Rc::make_mut(document), raw);
+                    }
+                }
             }
             (None, None) => return Err("the drawing holds no object jade can show".into()),
         }
@@ -342,9 +359,21 @@ impl WordDocument {
         if let Some(doc_part) = self.document_part.as_ref() {
             Self::resolve_hyperlinks(&mut parsed, doc_part);
         }
-        if let Some(theme) = self.loaded_theme_part() {
-            Self::force_apply_theme_to_document(&mut parsed, &theme);
+        // What loading does to the body, for the paragraphs of a text box.
+        if let Some(body) = parsed.body.as_mut() {
+            Self::capture_direct_run_fonts(&mut body.elements);
         }
+        if let Some(styles_part) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles_part);
+            Self::apply_table_style_cell_margins_to_document(&mut parsed, styles_part);
+            Self::apply_table_styles_to_document(&mut parsed, styles_part);
+            Self::apply_style_numbering_to_document(&mut parsed, styles_part);
+            Self::apply_run_font_defaults_to_document(&mut parsed, styles_part);
+        }
+        // Without a theme part, Word draws with its Office theme.
+        let theme = self.loaded_theme_part().unwrap_or_else(ThemePart::office_default);
+        Self::apply_theme_to_document(&mut parsed, &theme);
+        Self::force_apply_theme_to_document(&mut parsed, &theme);
         let run = parsed
             .body
             .and_then(|body| {
