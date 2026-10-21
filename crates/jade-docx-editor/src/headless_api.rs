@@ -3314,6 +3314,46 @@ pub fn apply_headless_commands_with_executor_to_document(
                     .execute(Box::new(command), &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetSectionLayout { scope, patch } => {
+                let sections = word_doc
+                    .sections_in_scope(*scope, selection.map(|range| range.focus.paragraph));
+                let patch = patch.clone();
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_section_layout",
+                            move |document| document.set_section_layout(&sections, &patch),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetHeaderFooterLink {
+                section,
+                role,
+                variant,
+                linked,
+            } => {
+                let section = *section;
+                let linked = *linked;
+                let role = role.clone();
+                let variant = variant.clone();
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_header_footer_link",
+                            move |document| {
+                                document
+                                    .set_header_footer_link(section, &role, &variant, linked)
+                                    .map(|_| ())
+                            },
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetHeaderFooterVariants {
                 different_first_page,
                 different_odd_even_pages,
@@ -4605,6 +4645,9 @@ fn execute_headless_query(
         }),
         HeadlessQuery::PageSetup => Ok(HeadlessQueryResult::PageSetup {
             page_setup: page_setup_snapshot(word_doc),
+        }),
+        HeadlessQuery::SectionLayout { section } => Ok(HeadlessQueryResult::SectionLayout {
+            layout: word_doc.section_layout(*section),
         }),
         HeadlessQuery::HeaderFooterText => Ok(HeadlessQueryResult::HeaderFooterText {
             stories: header_footer_snapshots(word_doc),

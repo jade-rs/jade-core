@@ -53,6 +53,16 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
+// Included rather than declared as files: this file is also compiled by
+// jade-docx-document-core through `#[path]`, where a child module's file
+// would be looked for somewhere else.
+mod section_layout {
+    include!("word_document_section_layout.rs");
+}
+mod header_footer_story {
+    include!("word_document_header_footer_story.rs");
+}
+
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -810,7 +820,7 @@ impl TableBorderSpec {
 
 /// A page-margin change. Every field is optional: `None` leaves that edge as it
 /// is, so a caller can widen the gutter without restating the four margins.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PageMarginSpec {
     pub top: Option<f32>,
     pub bottom: Option<f32>,
@@ -2550,6 +2560,8 @@ impl WordDocument {
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
+            parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
@@ -9297,13 +9309,19 @@ impl WordDocument {
             return Err("document is unavailable".to_string());
         }
 
-        let next = PageNumberType {
-            format: Some(format.to_string()),
-            start,
-        };
         let current = self
             .section_properties(section)
             .and_then(|properties| properties.page_number_type.clone());
+        // The chapter number (章番号を含める) is another part of the same
+        // dialog; changing the format keeps it.
+        let next = PageNumberType {
+            format: Some(format.to_string()),
+            start,
+            chapter_style: current.as_ref().and_then(|value| value.chapter_style),
+            chapter_separator: current
+                .as_ref()
+                .and_then(|value| value.chapter_separator.clone()),
+        };
         if current.as_ref().is_some_and(|value| {
             value.start == next.start
                 && value
@@ -44776,6 +44794,7 @@ mod tests {
             PageNumberType {
                 format: Some("upperRoman".to_string()),
                 start: Some(7),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -44783,6 +44802,7 @@ mod tests {
             PageNumberType {
                 format: Some("lowerLetter".to_string()),
                 start: None,
+                ..Default::default()
             }
         );
         assert_eq!(

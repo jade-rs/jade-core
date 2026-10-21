@@ -500,6 +500,8 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
+    document.book_fold_printing = settings.book_fold_printing;
+    document.print_two_on_one = settings.print_two_on_one;
     if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
         document.snap_to_grid_default = settings.snap_to_grid_default;
         document.east_asian_line_breaking = settings.to_line_breaking_settings();
@@ -2474,6 +2476,10 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
+        document.book_fold_printing = settings.book_fold_printing;
+        document.print_two_on_one = settings.print_two_on_one;
+    document.book_fold_printing = settings.book_fold_printing;
+    document.print_two_on_one = settings.print_two_on_one;
         if needs_style_defaults {
             // Word oracle comparisons need selected document-level compatibility
             // settings. The contract trace

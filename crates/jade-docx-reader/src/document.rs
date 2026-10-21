@@ -82,6 +82,16 @@ pub struct Document {
     /// physical left/right margins to preserve inside/outside semantics.
     #[serde(default)]
     pub mirror_margins: bool,
+    /// Document-level `w:bookFoldPrinting` (本 (縦方向に谷折り)): each
+    /// sheet folds into two pages, so a page is half the sheet's width and
+    /// its margins face each other like mirror margins.
+    #[serde(default)]
+    pub book_fold_printing: bool,
+    /// Document-level `w:printTwoOnOne` (袋とじ / 2 pages per sheet): each
+    /// sheet carries two pages, so a page is half the sheet along its
+    /// longer side.
+    #[serde(default)]
+    pub print_two_on_one: bool,
     /// All bookmarks (`<w:bookmarkStart>` / `<w:bookmarkEnd>` pairs) found
     /// while parsing the body, indexed in document order. Used by internal
     /// hyperlinks (`w:anchor`) and by consumers that need to resolve or
@@ -5678,6 +5688,13 @@ pub struct SectionProperties {
     /// of the page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vertical_alignment: Option<String>,
+    /// The section reads right to left (`w:bidi`): columns run from the
+    /// right.
+    #[serde(default)]
+    pub bidi: bool,
+    /// The binding gutter is on the right edge (`w:rtlGutter`).
+    #[serde(default)]
+    pub rtl_gutter: bool,
 }
 
 /// Footnote/endnote numbering settings (`w:footnotePr` / `w:endnotePr`,
@@ -5759,12 +5776,20 @@ pub struct PageNumberType {
     /// means continue from the previous section.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<u32>,
+    /// `w:chapStyle` — the heading level whose number leads the page number
+    /// (Word's 章番号を含める), as `1-3` for page 3 of chapter 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter_style: Option<u8>,
+    /// `w:chapSep` — what separates the chapter number from the page number:
+    /// `hyphen` (the default), `period`, `colon`, `emDash` or `enDash`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter_separator: Option<String>,
 }
 
 impl PageNumberType {
     /// Returns true when neither a format nor a start value was supplied.
     pub fn is_empty(&self) -> bool {
-        self.format.is_none() && self.start.is_none()
+        self.format.is_none() && self.start.is_none() && self.chapter_style.is_none()
     }
 }
 
