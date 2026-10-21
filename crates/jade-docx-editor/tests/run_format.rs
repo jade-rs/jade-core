@@ -161,7 +161,9 @@ fn the_font_dialog_writes_every_property_and_reads_back() {
     assert_eq!(format.scale, Some(150.0));
     assert_eq!(format.spacing, Some(2.0));
     assert_eq!(format.position, Some(3.0));
-    assert_eq!(format.color.as_deref(), Some("4472C4"));
+    // A theme colour is shown as the document's theme has it, as Word
+    // does, not as the cached `w:val` the dialog also wrote.
+    assert_eq!(format.color.as_deref(), Some("00A2FF"));
     assert_eq!(
         format.theme_color.map(|theme| theme.name).as_deref(),
         Some("accent1")

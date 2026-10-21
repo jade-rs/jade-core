@@ -22,8 +22,7 @@ fn hello() -> WordDocument {
 fn apply(document: &mut WordDocument, executor: &mut CommandExecutor, commands: Value) {
     let request: HeadlessEditRequest =
         serde_json::from_value(json!({ "commands": commands })).unwrap();
-    apply_headless_commands_with_executor_to_document(document, executor, None, &request)
-        .unwrap();
+    apply_headless_commands_with_executor_to_document(document, executor, None, &request).unwrap();
 }
 
 #[allow(dead_code)]
@@ -82,7 +81,11 @@ fn a_selection_over_a_reference_mark_deletes_the_note() {
         json!([{ "type": "replace_range", "start_paragraph": paragraph, "start_offset": at,
                  "end_paragraph": paragraph, "end_offset": at + 1, "text": "" }]),
     );
-    let notes: Vec<String> = document.footnote_infos().into_iter().map(|n| n.text).collect();
+    let notes: Vec<String> = document
+        .footnote_infos()
+        .into_iter()
+        .map(|n| n.text)
+        .collect();
     assert_eq!(notes.len(), before - 1);
     assert!(notes.iter().all(|text| text != "gone"), "{notes:?}");
     assert!(notes.iter().any(|text| text == "kept"));
@@ -233,8 +236,10 @@ fn an_inline_field_is_written_with_its_result() {
         .unwrap();
     assert!(text(&document, paragraph).starts_with("[1]"));
     assert_eq!(document.inline_fields("TA").len(), 1);
-    assert!(part(&document, "word/document.xml").contains(r#"TA \l &quot;Case&quot; \c 1"#)
-        || part(&document, "word/document.xml").contains(r#"TA \l "Case" \c 1"#));
+    assert!(
+        part(&document, "word/document.xml").contains(r#"TA \l &quot;Case&quot; \c 1"#)
+            || part(&document, "word/document.xml").contains(r#"TA \l "Case" \c 1"#)
+    );
 }
 
 #[test]
@@ -248,7 +253,11 @@ fn a_field_block_is_inserted_listed_and_replaced() {
         ..FieldBlockLine::default()
     };
     document
-        .insert_field_block(paragraph, r#"INDEX \c "2" \z "1041""#, &[line("あ", "1"), line("い", "2")])
+        .insert_field_block(
+            paragraph,
+            r#"INDEX \c "2" \z "1041""#,
+            &[line("あ", "1"), line("い", "2")],
+        )
         .unwrap();
     let blocks = document.field_blocks();
     assert_eq!(blocks.len(), 1);
@@ -368,8 +377,16 @@ fn a_manual_table_of_contents_is_plain_text() {
             paragraph,
             "目次",
             &[
-                (1, "章のタイトル (レベル 1) を入力してください".to_string(), "1".to_string()),
-                (2, "章のタイトル (レベル 2) を入力してください".to_string(), "2".to_string()),
+                (
+                    1,
+                    "章のタイトル (レベル 1) を入力してください".to_string(),
+                    "1".to_string(),
+                ),
+                (
+                    2,
+                    "章のタイトル (レベル 2) を入力してください".to_string(),
+                    "2".to_string(),
+                ),
             ],
             "dot",
         )
@@ -402,7 +419,11 @@ fn a_caption_numbers_by_chapter_above_its_item() {
             },
         )
         .unwrap();
-    assert_eq!(text(&document, anchor + 1), anchor_text, "the item moved down");
+    assert_eq!(
+        text(&document, anchor + 1),
+        anchor_text,
+        "the item moved down"
+    );
     let caption = text(&document, anchor);
     assert!(caption.starts_with("図 1-"), "{caption}");
     assert!(caption.ends_with("配置"), "{caption}");
@@ -450,14 +471,21 @@ fn the_bibliography_style_is_switched_and_sources_removed() {
 fn a_footnote_separator_is_emptied_and_drawn_again() {
     let mut document = fixture("footnote.docx");
     assert!(document.note_separator_shown(true, false));
-    assert!(document.set_note_separator_shown(true, false, false).unwrap());
+    assert!(document
+        .set_note_separator_shown(true, false, false)
+        .unwrap());
     assert!(!document.note_separator_shown(true, false));
-    assert!(document.note_separator_shown(true, true), "the other one stays");
+    assert!(
+        document.note_separator_shown(true, true),
+        "the other one stays"
+    );
     let xml = part(&document, "word/footnotes.xml");
     assert!(!xml.contains("<w:separator/>"), "{xml}");
     assert!(xml.contains("<w:continuationSeparator/>"));
     assert!(!reload(&document).note_separator_shown(true, false));
-    assert!(document.set_note_separator_shown(true, false, true).unwrap());
+    assert!(document
+        .set_note_separator_shown(true, false, true)
+        .unwrap());
     assert!(part(&document, "word/footnotes.xml").contains("<w:separator/>"));
     assert!(reload(&document).note_separator_shown(true, false));
 }

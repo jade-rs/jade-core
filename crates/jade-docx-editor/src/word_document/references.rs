@@ -6,7 +6,6 @@
 
 use super::*;
 
-
 /// A field the host authors inline — a citation, a chapter number, a table
 /// of authorities entry — or one the document already has: where its run
 /// is, its instruction and what it shows.
@@ -94,7 +93,6 @@ fn field_name(instruction: &str) -> String {
         .unwrap_or_default()
         .to_ascii_uppercase()
 }
-
 
 /// 図表番号の挿入's choices beyond the label and the text after it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -228,16 +226,14 @@ impl WordDocument {
             paragraph.runs.extend(tail);
             self.sync_paragraph_text_preserving_drawings(position.paragraph);
         }
-        let body_element = |document: &Self, paragraph: usize| match document
-            .paragraph_surfaces
-            .get(paragraph)
-        {
-            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                [PathEntry::Element(index)] => Some(*index),
+        let body_element =
+            |document: &Self, paragraph: usize| match document.paragraph_surfaces.get(paragraph) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(index)] => Some(*index),
+                    _ => None,
+                },
                 _ => None,
-            },
-            _ => None,
-        };
+            };
         // The run each anchor sits before: the first one starting at (or,
         // for the end, the first one past) its offset.
         let run_at = |document: &Self, position: TextPosition, after_zero_width: bool| {
@@ -245,7 +241,8 @@ impl WordDocument {
             let mut offset = 0;
             for (index, run) in paragraph.runs.iter().enumerate() {
                 let starts_here = offset >= position.offset;
-                if starts_here && !(after_zero_width && run.text.is_empty() && offset == position.offset)
+                if starts_here
+                    && !(after_zero_width && run.text.is_empty() && offset == position.offset)
                 {
                     return Some((index, paragraph.node_id?, run.node_id));
                 }
@@ -279,9 +276,10 @@ impl WordDocument {
             };
             fn holds(element: &XmlElement, id: XmlNodeId) -> bool {
                 element.id == id
-                    || element.children.iter().any(
-                        |child| matches!(child, XmlNode::Element(child) if holds(child, id)),
-                    )
+                    || element
+                        .children
+                        .iter()
+                        .any(|child| matches!(child, XmlNode::Element(child) if holds(child, id)))
             }
             paragraph
                 .children
@@ -289,19 +287,20 @@ impl WordDocument {
                 .position(|child| matches!(child, XmlNode::Element(child) if holds(child, run_id)))
                 .or(Some(paragraph.children.len()))
         }
-        let anchor = |raw: &mut crate::docx_xml::DocxXmlDocument, element: &str, with_name: bool| {
-            let mut attributes = vec![XmlAttribute {
-                name: "w:id".to_string(),
-                value: bookmark_id.to_string(),
-            }];
-            if with_name {
-                attributes.push(XmlAttribute {
-                    name: "w:name".to_string(),
-                    value: name.to_string(),
-                });
-            }
-            raw.create_element(element, attributes, Vec::new())
-        };
+        let anchor =
+            |raw: &mut crate::docx_xml::DocxXmlDocument, element: &str, with_name: bool| {
+                let mut attributes = vec![XmlAttribute {
+                    name: "w:id".to_string(),
+                    value: bookmark_id.to_string(),
+                }];
+                if with_name {
+                    attributes.push(XmlAttribute {
+                        name: "w:name".to_string(),
+                        value: name.to_string(),
+                    });
+                }
+                raw.create_element(element, attributes, Vec::new())
+            };
         let end_index = child_index(raw, end_paragraph_id, end_run_id)
             .ok_or_else(|| "bookmark paragraph XML is unavailable".to_string())?;
         let end_node = anchor(raw, "w:bookmarkEnd", false);
@@ -314,17 +313,20 @@ impl WordDocument {
         }
         // Never ahead of the paragraph's properties.
         if let Some(paragraph) = raw.element(start_paragraph_id) {
-            let properties = paragraph
-                .children
-                .iter()
-                .position(|child| matches!(child, XmlNode::Element(element) if element.name == "w:pPr"));
+            let properties = paragraph.children.iter().position(
+                |child| matches!(child, XmlNode::Element(element) if element.name == "w:pPr"),
+            );
             if let Some(properties) = properties {
                 start_index = start_index.max(properties + 1);
             }
         }
         let start_node = anchor(raw, "w:bookmarkStart", true);
-        raw.insert_node(start_paragraph_id, start_index, XmlNode::Element(start_node))
-            .map_err(|error| error.to_string())?;
+        raw.insert_node(
+            start_paragraph_id,
+            start_index,
+            XmlNode::Element(start_node),
+        )
+        .map_err(|error| error.to_string())?;
         raw.rebuild_index_for_subtree(start_paragraph_id);
         if end_paragraph_id != start_paragraph_id {
             raw.rebuild_index_for_subtree(end_paragraph_id);
@@ -358,7 +360,6 @@ impl WordDocument {
         let model = TextPosition::new(paragraph, bookmark.end_offset.min(length));
         Some(self.model_to_rendered_text_position(model))
     }
-
 
     // ---- note separators ----------------------------------------------------
 
@@ -475,8 +476,7 @@ impl WordDocument {
             ],
             Vec::new(),
         );
-        let properties =
-            notes.create_element("w:pPr", Vec::new(), vec![XmlNode::Element(spacing)]);
+        let properties = notes.create_element("w:pPr", Vec::new(), vec![XmlNode::Element(spacing)]);
         let mut children = vec![XmlNode::Element(properties)];
         if shown {
             let rule = notes.create_element(
@@ -584,7 +584,10 @@ impl WordDocument {
         let instruction = instruction.trim();
         let hidden = authored_marker_field(instruction);
         if !hidden && !authored_result_field(instruction) {
-            return Err(format!("{} fields are not authored here", field_name(instruction)));
+            return Err(format!(
+                "{} fields are not authored here",
+                field_name(instruction)
+            ));
         }
         if instruction.chars().any(char::is_control) {
             return Err("field instructions must not contain control characters".to_string());
@@ -602,7 +605,11 @@ impl WordDocument {
         if hidden {
             properties.vanish = Some(true);
         }
-        let text = if hidden { String::new() } else { display.to_string() };
+        let text = if hidden {
+            String::new()
+        } else {
+            display.to_string()
+        };
         let kind = if hidden {
             RunFieldKind::NonDisplay {
                 instruction: instruction.to_string(),
@@ -678,7 +685,10 @@ impl WordDocument {
                     run.field
                         .as_ref()
                         .and_then(|field| {
-                            field.resolved_value.clone().or_else(|| field.cached_text.clone())
+                            field
+                                .resolved_value
+                                .clone()
+                                .or_else(|| field.cached_text.clone())
                         })
                         .unwrap_or_default()
                 } else {
@@ -717,8 +727,12 @@ impl WordDocument {
             .ok_or_else(|| "the run holds no field".to_string())?;
         if let Some(instruction) = instruction {
             match &mut field.kind {
-                RunFieldKind::NonDisplay { instruction: current }
-                | RunFieldKind::Unsupported { instruction: current } => {
+                RunFieldKind::NonDisplay {
+                    instruction: current,
+                }
+                | RunFieldKind::Unsupported {
+                    instruction: current,
+                } => {
                     *current = instruction.trim().to_string();
                 }
                 _ => return Err("the field's instruction cannot be changed".to_string()),
@@ -743,7 +757,12 @@ impl WordDocument {
         let model = self
             .paragraph_mut(paragraph)
             .ok_or_else(|| "field paragraph is unavailable".to_string())?;
-        if model.runs.get(run).and_then(|run| run.field.as_ref()).is_none() {
+        if model
+            .runs
+            .get(run)
+            .and_then(|run| run.field.as_ref())
+            .is_none()
+        {
             return Err("the run holds no field".to_string());
         }
         model.runs.remove(run);
@@ -821,10 +840,7 @@ impl WordDocument {
             .filter_map(|(start, end, instruction)| {
                 let instruction = instruction.trim().to_string();
                 let name = field_name(&instruction);
-                if !matches!(
-                    name.as_str(),
-                    "TOC" | "INDEX" | "TOA" | "BIBLIOGRAPHY"
-                ) {
+                if !matches!(name.as_str(), "TOC" | "INDEX" | "TOA" | "BIBLIOGRAPHY") {
                     return None;
                 }
                 Some(FieldBlock {
@@ -864,16 +880,14 @@ impl WordDocument {
         instruction: &str,
         lines: &[FieldBlockLine],
     ) -> Result<SelectionRange, String> {
-        let body_element = |document: &Self, surface: usize| match document
-            .paragraph_surfaces
-            .get(surface)
-        {
-            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                [PathEntry::Element(index)] => Some(*index),
+        let body_element =
+            |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(index)] => Some(*index),
+                    _ => None,
+                },
                 _ => None,
-            },
-            _ => None,
-        };
+            };
         let start = body_element(self, block.start)
             .ok_or_else(|| "the field's first paragraph is unavailable".to_string())?;
         let end = body_element(self, block.end)
@@ -893,7 +907,11 @@ impl WordDocument {
                 .ok_or_else(|| "document body is unavailable".to_string())?;
             (start..=end)
                 .filter_map(|index| body.elements.get(index))
-                .map(|element| element.as_paragraph().and_then(|paragraph| paragraph.node_id))
+                .map(|element| {
+                    element
+                        .as_paragraph()
+                        .and_then(|paragraph| paragraph.node_id)
+                })
                 .collect()
         };
         if let Some(raw) = self.raw_document.as_mut() {
@@ -923,7 +941,7 @@ impl WordDocument {
             body.elements.drain(start.min(end)..end);
         }
         document.bookmarks.retain(|bookmark| {
-            !(bookmark.start_paragraph >= start && bookmark.end_paragraph <= start + removed - 1)
+            !(bookmark.start_paragraph >= start && bookmark.end_paragraph < start + removed)
         });
         for bookmark in &mut document.bookmarks {
             for index in [&mut bookmark.start_paragraph, &mut bookmark.end_paragraph] {
@@ -951,7 +969,11 @@ impl WordDocument {
         }
         // An empty result still needs a paragraph to hold the field.
         let placeholder = [FieldBlockLine::default()];
-        let lines = if lines.is_empty() { &placeholder[..] } else { lines };
+        let lines = if lines.is_empty() {
+            &placeholder[..]
+        } else {
+            lines
+        };
         let tab_twips = self.toc_tab_position_twips();
         let tab_points = tab_twips as f32 / 20.0;
         let mut model_paragraphs = Vec::with_capacity(lines.len());
@@ -1003,10 +1025,7 @@ impl WordDocument {
             });
             let mut properties = String::new();
             if let Some(style) = &line.style {
-                properties.push_str(&format!(
-                    "<w:pStyle w:val=\"{}\"/>",
-                    xml_escape_attr(style)
-                ));
+                properties.push_str(&format!("<w:pStyle w:val=\"{}\"/>", xml_escape_attr(style)));
             }
             if tabbed {
                 properties.push_str(&format!(
@@ -1482,11 +1501,8 @@ impl WordDocument {
         anchor: usize,
         options: &CaptionOptions,
     ) -> Result<SelectionRange, String> {
-        let caret = self.insert_caption_after_paragraph(
-            anchor,
-            &options.label,
-            &options.description,
-        )?;
+        let caret =
+            self.insert_caption_after_paragraph(anchor, &options.label, &options.description)?;
         let caption = caret.focus.paragraph;
         let label = options.label.trim().to_string();
         // Rebuild the caption's runs from the plain one: label, chapter,
@@ -1502,7 +1518,12 @@ impl WordDocument {
         let seq_index = model
             .runs
             .iter()
-            .position(|run| matches!(run.field.as_ref().map(|field| &field.kind), Some(RunFieldKind::Seq { .. })))
+            .position(|run| {
+                matches!(
+                    run.field.as_ref().map(|field| &field.kind),
+                    Some(RunFieldKind::Seq { .. })
+                )
+            })
             .ok_or_else(|| "the caption has no number".to_string())?;
         let mut seq = model.runs[seq_index].clone();
         let rest: Vec<Run> = model.runs[seq_index + 1..].to_vec();
@@ -1555,25 +1576,23 @@ impl WordDocument {
         let paragraph_id = model.node_id;
         if let (Some(raw), Some(paragraph_id)) = (self.raw_document.as_mut(), paragraph_id) {
             if let Some(element) = raw.element_mut(paragraph_id) {
-                element.children.retain(|child| {
-                    matches!(child, XmlNode::Element(element) if element.name == "w:pPr")
-                });
+                element.children.retain(
+                    |child| matches!(child, XmlNode::Element(element) if element.name == "w:pPr"),
+                );
             }
             raw.rebuild_index_for_subtree(paragraph_id);
         }
         self.sync_paragraph_text_preserving_drawings(caption);
         if options.above {
             // Below is where it went; above is one paragraph up.
-            let element = |document: &Self, surface: usize| match document
-                .paragraph_surfaces
-                .get(surface)
-            {
-                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                    [PathEntry::Element(index)] => Some(*index),
+            let element =
+                |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
+                    Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                        [PathEntry::Element(index)] => Some(*index),
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
-            };
+                };
             let caption_element =
                 element(self, caption).ok_or_else(|| "the caption is unavailable".to_string())?;
             let anchor_element =
@@ -1606,7 +1625,13 @@ fn set_page_reference_result(paragraph: &mut XmlElement, name: &str, page: &str)
         Result,
         Done,
     }
-    fn visit(element: &mut XmlElement, name: &str, page: &str, state: &mut State, written: &mut bool) {
+    fn visit(
+        element: &mut XmlElement,
+        name: &str,
+        page: &str,
+        state: &mut State,
+        written: &mut bool,
+    ) {
         for child in &mut element.children {
             let XmlNode::Element(child) = child else {
                 continue;
@@ -1639,7 +1664,9 @@ fn set_page_reference_result(paragraph: &mut XmlElement, name: &str, page: &str)
                         .collect();
                     let mut words = text.split_whitespace();
                     if *state == State::Looking
-                        && words.next().is_some_and(|word| word.eq_ignore_ascii_case("PAGEREF"))
+                        && words
+                            .next()
+                            .is_some_and(|word| word.eq_ignore_ascii_case("PAGEREF"))
                         && words.next() == Some(name)
                     {
                         *state = State::Instruction;
