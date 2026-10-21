@@ -20931,7 +20931,7 @@ where
                     );
                 }
                 if draw_enabled {
-                    if image.data_uri.is_some() {
+                    if image.data_uri.is_some() || image.format().ink.is_some() {
                         self.draw_image_element(image, draw_spec)?;
                     } else if let Some(group) = image.shape_group.as_ref() {
                         self.draw_shape_group(group, draw_spec)?;
@@ -21673,7 +21673,7 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(Some(transform.y + transform.height));
         }
-        if image.data_uri.is_some() {
+        if image.data_uri.is_some() || image.format().ink.is_some() {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
             self.draw_shape_group(group, draw_spec)?;
@@ -26021,6 +26021,22 @@ where
         if !self.should_draw_current_page_for_render() || image.layout.hidden() {
             return Ok(());
         }
+        if let Some(ink) = image.format().ink.as_ref() {
+            let painter = self.host.painter();
+            painter.save();
+            Self::apply_centered_transform(
+                &painter,
+                draw_spec.x + draw_spec.width / 2.0,
+                draw_spec.y + draw_spec.height / 2.0,
+                draw_spec.rotation_deg,
+                draw_spec.flip_horizontal,
+                draw_spec.flip_vertical,
+            )
+            .map_err(PainterError::into_js_value)?;
+            Self::paint_ink(&painter, ink, draw_spec);
+            painter.restore();
+            return Ok(());
+        }
         let data_uri = match &image.data_uri {
             Some(uri) => uri.as_str(),
             None => return Ok(()),
@@ -26294,6 +26310,55 @@ where
             );
         }
         Ok(())
+    }
+
+    /// Ink's strokes, fitted to the drawing's box (which Word sizes to the
+    /// strokes and their pen).
+    fn paint_ink<P: Painter>(painter: &P, ink: &crate::document::InkDrawing, spec: ImageDrawSpec) {
+        const PX_PER_CM: f64 = 96.0 / 2.54;
+        let (left, top, width, height) = crate::ink::bounds(ink);
+        let pen = ink
+            .strokes
+            .iter()
+            .map(|stroke| stroke.width)
+            .fold(0.0, f64::max)
+            * PX_PER_CM;
+        let scale_x = ((spec.width - pen).max(1.0)) / width;
+        let scale_y = ((spec.height - pen).max(1.0)) / height;
+        let at = |(x, y): (f64, f64)| {
+            (
+                spec.x + pen / 2.0 + (x - left) * scale_x,
+                spec.y + pen / 2.0 + (y - top) * scale_y,
+            )
+        };
+        for stroke in &ink.strokes {
+            let line_width = (stroke.width * (scale_x + scale_y) / 2.0).max(0.5);
+            painter.save();
+            if stroke.highlighter {
+                painter.set_global_alpha(0.5);
+            }
+            painter.set_stroke_style_str(&stroke.color);
+            painter.set_fill_style_str(&stroke.color);
+            painter.set_line_width(line_width);
+            painter.set_line_dash(&[]);
+            painter.begin_path();
+            if stroke.points.len() == 1 {
+                let (x, y) = at(stroke.points[0]);
+                let _ = painter.arc(x, y, line_width / 2.0, 0.0, std::f64::consts::TAU);
+                painter.fill();
+            } else {
+                for (index, point) in stroke.points.iter().enumerate() {
+                    let (x, y) = at(*point);
+                    if index == 0 {
+                        painter.move_to(x, y);
+                    } else {
+                        painter.line_to(x, y);
+                    }
+                }
+                painter.stroke();
+            }
+            painter.restore();
+        }
     }
 
     /// What goes over a picture: its inner shadow, bevel and outline.

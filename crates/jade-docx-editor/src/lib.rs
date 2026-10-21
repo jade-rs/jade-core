@@ -27,6 +27,7 @@ pub mod drawing_xml;
 pub mod picture_effects;
 pub mod smartart;
 pub(crate) mod chart_paint;
+pub mod ink;
 pub(crate) mod wordart_paint;
 pub(crate) mod snapshot_plan;
 pub(crate) mod typed_autoformat;
