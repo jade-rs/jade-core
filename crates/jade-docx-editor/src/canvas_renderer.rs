@@ -1314,6 +1314,17 @@ struct PendingNumberingRender {
     deleted_text: Option<String>,
     suffix_space: bool,
     following_grapheme: Option<CompactString>,
+    /// A picture bullet (`w:lvlPicBulletId`), drawn instead of the text.
+    picture: Option<NumberingPicture>,
+}
+
+/// A list level's picture bullet as it is drawn: the image and its box in
+/// px, as tall as the bullet's text.
+#[derive(Clone, Debug, PartialEq)]
+struct NumberingPicture {
+    data_uri: String,
+    width: f64,
+    height: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -16748,6 +16759,7 @@ where
                                     deleted_text: None,
                                     suffix_space,
                                     following_grapheme: following_grapheme.map(CompactString::new),
+                                    picture: None,
                                 });
                             }
                             if render_changes {
@@ -16798,11 +16810,33 @@ where
                                 )? + 4.0;
                             }
                             let style = self.apply_run_style(numbering_run_props.as_ref())?;
-                            numbering_span_width += self.measure_numbering_text_plan(
-                                display_text.as_str(),
-                                &style,
-                                numbering_context,
-                            )?;
+                            // A picture bullet stands as tall as the bullet's
+                            // text would, in the picture's own aspect.
+                            let picture = numbering_part
+                                .level_picture_bullet(num_id, level)
+                                .and_then(|bullet| {
+                                    let data_uri = bullet.data_uri.clone()?;
+                                    let height = points_to_px(style.font_size_pt);
+                                    let aspect = match (bullet.width_pt, bullet.height_pt) {
+                                        (Some(width), Some(height)) if height > 0.0 => {
+                                            f64::from(width / height)
+                                        }
+                                        _ => 1.0,
+                                    };
+                                    Some(NumberingPicture {
+                                        data_uri,
+                                        width: height * aspect,
+                                        height,
+                                    })
+                                });
+                            numbering_span_width += match picture.as_ref() {
+                                Some(picture) => picture.width,
+                                None => self.measure_numbering_text_plan(
+                                    display_text.as_str(),
+                                    &style,
+                                    numbering_context,
+                                )?,
+                            };
 
                             numbering_first_line_offset =
                                 jade_docx_layout::line_wrap::numbering_first_line_offset(
@@ -16819,6 +16853,7 @@ where
                                 deleted_text,
                                 suffix_space,
                                 following_grapheme: following_grapheme.map(CompactString::new),
+                                picture,
                             });
                         }
                     }
@@ -25026,6 +25061,7 @@ where
                     deleted_text: None,
                     suffix_space,
                     following_grapheme: following_grapheme.map(CompactString::new),
+                    picture: None,
                 });
             }
         }
@@ -29278,6 +29314,30 @@ where
                 }
             }
             current_x += deleted_width + DELETED_INSERT_GAP_PX;
+        }
+
+        if let Some(picture) = pending.picture.as_ref() {
+            // The picture sits on the line's baseline, where the bullet's
+            // glyph would.
+            let image = RunImage {
+                data_uri: Some(picture.data_uri.clone()),
+                ..RunImage::default()
+            };
+            return self.draw_image_element(
+                &image,
+                ImageDrawSpec {
+                    x: current_x,
+                    y: baseline_y - picture.height * 0.85,
+                    width: picture.width,
+                    height: picture.height,
+                    rotation_deg: 0.0,
+                    flip_horizontal: false,
+                    flip_vertical: false,
+                    crop: None,
+                    paragraph_index: pending.paragraph_index,
+                    run_index: usize::MAX,
+                },
+            );
         }
 
         let style = self.apply_run_style(pending.display_props.as_ref())?;
@@ -37385,6 +37445,7 @@ mod tests {
             deleted_text: None,
             suffix_space: true,
             following_grapheme: Some("A".into()),
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 20.0, 16.0, None, &mut None)
@@ -37456,6 +37517,7 @@ mod tests {
                 deleted_text: None,
                 suffix_space: label.ends_with(' '),
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let style = renderer
                 .apply_run_style(pending.display_props.as_ref())
@@ -37538,6 +37600,7 @@ mod tests {
             deleted_text: None,
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         let style = renderer
             .apply_run_style(pending.display_props.as_ref())
@@ -37585,6 +37648,7 @@ mod tests {
             deleted_text: Some("第４３条".into()),
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 60.0, 16.0, None, &mut None)
@@ -37816,6 +37880,7 @@ mod tests {
                 deleted_text: deleted.map(str::to_string),
                 suffix_space,
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let mut commands = Vec::new();
             renderer

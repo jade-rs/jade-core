@@ -3637,6 +3637,11 @@ pub struct RunTextBox {
     /// represent shapes that do not contain `wps:txbx`.
     #[serde(default)]
     pub shape: TextBoxShape,
+    /// The theme effect style the shape names (`wps:style/a:effectRef
+    /// @idx`, 1-based; 0 for none), drawn when the shape sets no effects
+    /// of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect_ref: Option<u8>,
 }
 
 /// Text box inner margins in CSS pixels. The defaults mirror Word's standard
