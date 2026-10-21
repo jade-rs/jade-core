@@ -728,3 +728,57 @@ fn design_mode_is_a_setting() {
     .unwrap();
     assert!(!document.forms_design_mode());
 }
+
+#[test]
+fn typing_over_an_inserted_form_text_box_fills_it() {
+    let mut document = open(
+        r#"<w:p><w:r><w:t xml:space="preserve">Name: </w:t></w:r></w:p>"#,
+        "",
+    );
+    let mut executor = CommandExecutor::new();
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::InsertFormField {
+            kind: FormFieldKind::Text,
+        },
+        at(0, 6),
+    )
+    .expect("insert");
+    // A check box at the end of the text box's result goes after the field.
+    let end = document.legacy_form_fields()[0].result_end;
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::InsertFormField {
+            kind: FormFieldKind::CheckBox,
+        },
+        SelectionRange::collapsed(end),
+    )
+    .expect("insert a check box");
+    let kinds: Vec<_> = document
+        .legacy_form_fields()
+        .iter()
+        .map(|field| field.kind)
+        .collect();
+    assert_eq!(kinds, vec![FormFieldKind::Text, FormFieldKind::CheckBox]);
+    let field = document.legacy_form_fields().remove(0);
+    assert_eq!(field.result, forms::EMPTY_TEXT_FIELD, "{field:#?}");
+    run(
+        &mut document,
+        &mut executor,
+        ContentControlAction::SetFormText {
+            field: 0,
+            text: "Hanako".to_string(),
+        },
+        at(0, 6),
+    )
+    .expect("fill");
+    assert_eq!(
+        document.legacy_form_fields()[0].result,
+        "Hanako",
+        "{}",
+        document_xml(&document)
+    );
+    assert_eq!(text_of(&document, 0), "Name: Hanako");
+}
