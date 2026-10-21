@@ -144,7 +144,10 @@ fn tracked_changes_are_drawn_as_markup() {
         .unwrap();
     let (count, longest) = painted_in(&document, DELETED);
     assert!(count > 20, "the deletion is coloured: {count} pixels");
-    assert!(longest > 15, "and struck through: its longest line {longest}px");
+    assert!(
+        longest > 15,
+        "and struck through: its longest line {longest}px"
+    );
 
     document
         .apply_command(
