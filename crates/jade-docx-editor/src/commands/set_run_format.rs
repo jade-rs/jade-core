@@ -366,10 +366,17 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
         );
     }
     if let Some(value) = format.no_proof {
+        // Off is written as off rather than left out, so a w:noProof the
+        // run was read with follows it.
+        let attributes: &[(&str, String)] = if value {
+            &[]
+        } else {
+            &[("w:val", "0".to_string())]
+        };
         set_preserved(
             props,
             "w:noProof",
-            value.then(|| element("w:noProof", &[], Vec::new())),
+            Some(element("w:noProof", attributes, Vec::new())),
         );
     }
     if let Some(value) = format.outline {

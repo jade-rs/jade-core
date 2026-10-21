@@ -245,6 +245,11 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// A view's page box in place of the sections' (Web レイアウト, 閲覧
+    /// モード); kept here so a renderer built again keeps it.
+    view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    /// アウトライン's indent for each paragraph, while it shows.
+    outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
 }
 
 impl NativeDocument {
@@ -355,6 +360,8 @@ impl NativeDocument {
             fonts,
             field_datetime: None,
             field_codes: FieldCodeView::default(),
+            view_geometry: None,
+            outline_indents: None,
         })
     }
 
@@ -650,6 +657,8 @@ impl NativeDocument {
             .map_err(|_| "renderer setup failed".to_string())?;
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
+        renderer.set_view_geometry(self.view_geometry);
+        renderer.set_outline_indents(self.outline_indents.clone());
         renderer.set_selection_range(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
         if self.field_codes != FieldCodeView::default() {
@@ -1213,6 +1222,43 @@ impl NativeDocument {
     pub fn set_formatting_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_formatting_marks = show;
         self.repaint_all().map(|_| ())
+    }
+
+    /// Lays the document out in a view's page box — Web レイアウト's strips
+    /// the width of the window, 閲覧モード's screen-sized columns — or, with
+    /// `None`, in its sections' pages again. Everything is laid out anew.
+    pub fn set_view_geometry(
+        &mut self,
+        geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    ) -> Result<bool, String> {
+        if self.view_geometry == geometry {
+            return Ok(false);
+        }
+        self.view_geometry = geometry;
+        self.renderer.set_view_geometry(geometry);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// アウトライン: each paragraph set in by its outline level (CSS pixels
+    /// from the margin), or `None` for its own indents.
+    pub fn set_outline_indents(
+        &mut self,
+        indents: Option<std::collections::HashMap<usize, f64>>,
+    ) -> Result<bool, String> {
+        let indents = indents.map(Rc::new);
+        if self.outline_indents == indents {
+            return Ok(false);
+        }
+        self.outline_indents = indents.clone();
+        self.renderer.set_outline_indents(indents);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// The view's page box, while one is set.
+    pub fn view_geometry(&self) -> Option<jade_docx_editor::canvas_renderer::ViewGeometry> {
+        self.view_geometry
     }
 
     /// Whether formatting marks are being drawn.

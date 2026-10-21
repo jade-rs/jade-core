@@ -3546,6 +3546,12 @@ where
     dark_mode_text: bool,
     /// The formatting marks shown by kind in the current render.
     mark_kinds: crate::FormattingMarkKinds,
+    /// A view's own page box in place of the sections' (Web レイアウト,
+    /// 閲覧モード, アウトライン): see [`ViewGeometry`].
+    view_geometry: Option<ViewGeometry>,
+    /// アウトライン: how far each paragraph (by index) is set in for its
+    /// outline level, in CSS pixels, in place of its own indents' start.
+    outline_indents: Option<Rc<HashMap<usize, f64>>>,
     /// Set while painting the text of a shape that carries its own fill. Word
     /// keeps the document colour there, and the page-contrast remap would put
     /// white glyphs on Word's light fill.
@@ -8015,6 +8021,8 @@ where
             current_text_direction: None,
             dark_mode_text: false,
             mark_kinds: crate::FormattingMarkKinds::default(),
+            view_geometry: None,
+            outline_indents: None,
             dark_mode_text_suppressed: false,
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
@@ -9907,7 +9915,9 @@ where
             }
         }
         self.draw_watermark()?;
-        self.draw_page_borders(page);
+        if !self.hides_page_chrome() {
+            self.draw_page_borders(page);
+        }
         self.draw_column_separators();
         Ok(())
     }
@@ -12527,6 +12537,45 @@ where
         self.use_selection_overlay = value;
     }
 
+    /// Lays the document out in a view's page box (or the sections' again
+    /// with `None`) from the next render, which re-flows everything.
+    pub fn set_view_geometry(&mut self, geometry: Option<ViewGeometry>) {
+        if self.view_geometry == geometry {
+            return;
+        }
+        self.view_geometry = geometry;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    pub fn view_geometry(&self) -> Option<ViewGeometry> {
+        self.view_geometry
+    }
+
+    /// アウトライン: each paragraph (by index) set in by its level, from the
+    /// next render; `None` lays them out by their own indents again.
+    pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
+        if self.outline_indents == indents {
+            return;
+        }
+        self.outline_indents = indents;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    fn hides_page_chrome(&self) -> bool {
+        self.view_geometry
+            .is_some_and(|geometry| geometry.hide_page_chrome)
+    }
+
     /// Finds the first paragraph that has changed compared to the cached version.
     /// Returns `None` if incremental layout is disabled or no changes detected.
     pub fn find_first_changed_paragraph(&self, document: &Document) -> Option<usize> {
@@ -14667,18 +14716,27 @@ where
             margin_bottom_pt = pageless_margin_pt;
         }
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
         // Clear wrap cache if layout-affecting settings have changed
-        let effective_mirror_margins =
-            (document.mirror_margins || document.book_fold_printing) && !self.pageless_mode;
+        let effective_mirror_margins = (document.mirror_margins || document.book_fold_printing)
+            && !self.pageless_mode
+            && self.view_geometry.is_none();
         let binding_layout_changed = !self.pageless_mode
             && (self.mirror_margins != effective_mirror_margins
                 || (self.odd_page_margin_left_pt - odd_page_margins.left).abs() > 0.01
@@ -14899,12 +14957,20 @@ where
         margin_right_pt = current_page_margins.right;
         margin_top_pt = current_page_margins.top;
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
@@ -16534,6 +16600,18 @@ where
                         .insert(paragraph_index, offsets);
                 }
             }
+        }
+        // アウトライン: the paragraph sits at its level's indent from the
+        // margin, its own first-line indent gone.
+        if let Some(indent) = self
+            .outline_indents
+            .as_ref()
+            .and_then(|indents| indents.get(&paragraph_index).copied())
+        {
+            x = self.current_column_x() + indent;
+            paragraph_style.first_line_indent = 0.0;
+        }
+        if let Some(props) = &paragraph.properties {
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -30219,7 +30297,7 @@ where
     }
 
     fn apply_mirrored_margins_for_page(&mut self, page_number: usize) {
-        if !self.mirror_margins || self.pageless_mode {
+        if !self.mirror_margins || self.pageless_mode || self.view_geometry.is_some() {
             return;
         }
         let previous_left = self.margin_left;
@@ -32920,6 +32998,10 @@ where
         if self.pageless_mode {
             return Ok(());
         }
+        if self.hides_page_chrome() {
+            self.header_drawn = true;
+            return Ok(());
+        }
         if self.header_drawn {
             return Ok(());
         }
@@ -33053,6 +33135,10 @@ where
 
         self.render_pending_footnotes_for_current_page()?;
 
+        if self.hides_page_chrome() {
+            self.footer_drawn = true;
+            return Ok(());
+        }
         let draw_enabled = self.should_draw_current_page_for_render();
         if !draw_enabled && !self.auxiliary_story_capture_mode.enabled() {
             self.footer_drawn = true;
@@ -34568,6 +34654,22 @@ fn keep_next_requires_page_advance(
 /// widow/orphan rule requires two lines when that paragraph wraps.
 fn empty_keep_next_required_height(line_height: f64, keep_next_enabled: bool) -> f64 {
     line_height * if keep_next_enabled { 3.0 } else { 1.0 }
+}
+
+/// The page box a view lays the document out in instead of the sections':
+/// Web レイアウト's window-wide strips, 閲覧モード's screen-sized columns.
+/// Every section takes it; with `hide_page_chrome` no header, footer or page
+/// border is drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ViewGeometry {
+    /// CSS pixels.
+    pub page_width: f64,
+    pub page_height: f64,
+    pub margin_top: f64,
+    pub margin_right: f64,
+    pub margin_bottom: f64,
+    pub margin_left: f64,
+    pub hide_page_chrome: bool,
 }
 
 fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
