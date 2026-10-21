@@ -6420,10 +6420,50 @@ fn revision_groups(
     word_doc: &WordDocument,
 ) -> Vec<(HeadlessRevisionSnapshot, Vec<Option<String>>)> {
     let mut revisions: Vec<(HeadlessRevisionSnapshot, Vec<Option<String>>)> = Vec::new();
+    let rows = word_doc.table_row_revisions();
     for paragraph_index in 0..word_doc.paragraph_count() {
         let Some(paragraph) = word_doc.paragraph(paragraph_index) else {
             continue;
         };
+        // A table row inserted or deleted, listed at its first paragraph.
+        for row in rows
+            .iter()
+            .filter(|row| row.paragraphs.first() == Some(&paragraph_index))
+        {
+            let text = row
+                .paragraphs
+                .iter()
+                .filter_map(|&index| word_doc.paragraph(index))
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+                .join("\t");
+            revisions.push((
+                HeadlessRevisionSnapshot {
+                    id: row.mark.id.clone(),
+                    kind: if row.mark.is_deletion() {
+                        "deletedRow"
+                    } else {
+                        "insertedRow"
+                    }
+                    .to_string(),
+                    author: row.mark.author.clone(),
+                    date: row.mark.date.clone(),
+                    date_utc: row.mark.date_utc.clone(),
+                    paragraph: paragraph_index,
+                    start_offset: 0,
+                    end_offset: paragraph.runs.iter().map(|run| run.text.len()).sum(),
+                    text,
+                    paragraph_mark: false,
+                },
+                vec![row.mark.id.clone()],
+            ));
+        }
         let mut offset = 0usize;
         for run in &paragraph.runs {
             let run_start = offset;
