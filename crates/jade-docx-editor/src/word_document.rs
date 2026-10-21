@@ -706,6 +706,10 @@ impl BorderSide {
 
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
+
+#[path = "word_document/references.rs"]
+mod references;
+pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
@@ -14598,7 +14602,7 @@ impl WordDocument {
     /// Deletes the named bookmark anchors without deleting their paragraph or
     /// text. Existing links/fields deliberately remain as broken references,
     /// matching Word's bookmark Delete action.
-    pub(crate) fn delete_bookmark(&mut self, name: &str) -> Result<(), String> {
+    pub fn delete_bookmark(&mut self, name: &str) -> Result<(), String> {
         let bookmark = self
             .document
             .as_ref()
@@ -15059,6 +15063,18 @@ impl WordDocument {
         target: &CrossReferenceTarget,
         kind: CrossReferenceKind,
     ) -> Result<SelectionRange, String> {
+        self.insert_target_cross_reference(range, target, kind, true)
+    }
+
+    /// [`Self::insert_target_cross_reference_at_caret`], saying whether the
+    /// field links to its target (`\h`, 相互参照's ハイパーリンクとして挿入する).
+    pub fn insert_target_cross_reference(
+        &mut self,
+        range: SelectionRange,
+        target: &CrossReferenceTarget,
+        kind: CrossReferenceKind,
+        hyperlink: bool,
+    ) -> Result<SelectionRange, String> {
         // Resolve the descriptor again in the worker. A stale or forged target
         // must not create an orphan bookmark or add a history entry.
         if !self.cross_reference_targets().iter().any(|candidate| {
@@ -15081,7 +15097,7 @@ impl WordDocument {
             return Err("number references require a caption or note target".into());
         }
         if target.target_type == CrossReferenceTargetType::Bookmark {
-            return self.insert_cross_reference_at_caret(range, &target.id, kind);
+            return self.insert_bookmark_field_at_caret(range, &target.id, kind, None, hyperlink);
         }
         let note_source = note_kind.and_then(|kind| {
             (0..self.paragraph_count()).find_map(|index| {
@@ -15200,6 +15216,7 @@ impl WordDocument {
                 kind
             },
             note_source.map(|(_, _, kind, id)| (kind, id)),
+            hyperlink,
         )
     }
 
@@ -15210,7 +15227,7 @@ impl WordDocument {
         bookmark_name: &str,
         kind: CrossReferenceKind,
     ) -> Result<SelectionRange, String> {
-        self.insert_bookmark_field_at_caret(range, bookmark_name, kind, None)
+        self.insert_bookmark_field_at_caret(range, bookmark_name, kind, None, true)
     }
 
     fn insert_bookmark_field_at_caret(
@@ -15219,6 +15236,7 @@ impl WordDocument {
         bookmark_name: &str,
         kind: CrossReferenceKind,
         note: Option<(NoteKind, String)>,
+        hyperlink: bool,
     ) -> Result<SelectionRange, String> {
         if kind == CrossReferenceKind::Number && note.is_none() {
             return Err("number references require a caption or note target".into());
@@ -15264,7 +15282,7 @@ impl WordDocument {
         let field_kind = match kind {
             CrossReferenceKind::Number => RunFieldKind::NoteRef {
                 name: bookmark_name.to_string(),
-                hyperlink: true,
+                hyperlink,
                 formatted: false,
                 relative_position: false,
             },
@@ -15272,23 +15290,23 @@ impl WordDocument {
                 name: bookmark_name.to_string(),
                 case_format: None,
                 numbering: false,
-                hyperlink: true,
+                hyperlink,
             },
             CrossReferenceKind::Page => RunFieldKind::PageRef {
                 name: bookmark_name.to_string(),
-                hyperlink: true,
+                hyperlink,
             },
         };
         let resolved_value = matches!(kind, CrossReferenceKind::Text | CrossReferenceKind::Number)
             .then(|| display_text.clone());
-        let hyperlink = RunHyperlink {
+        let link = hyperlink.then(|| RunHyperlink {
             relationship_id: None,
             anchor: Some(bookmark_name.to_string()),
             target: None,
             target_mode: Some("Internal".to_string()),
             tooltip: None,
             target_frame: None,
-        };
+        });
         let zero_width = self.zero_width_runs(model_position.paragraph);
         let paragraph = self
             .paragraph_mut(model_position.paragraph)
@@ -15311,7 +15329,7 @@ impl WordDocument {
                 source_field_id: None,
                 resolved_value,
             }),
-            hyperlink: Some(hyperlink),
+            hyperlink: link,
             node_id: None,
             text_node_id: None,
             revision_node_id: None,
@@ -19702,7 +19720,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options)
+        self.generate_and_insert_toc_at(body_insert_index, options, "dot")
     }
 
     /// Updates the first table of contents in the document (Word's References ▸
@@ -19713,47 +19731,114 @@ impl WordDocument {
     /// Returns the number of entry paragraphs in the regenerated TOC. Errors
     /// (leaving the document unchanged) when no TOC field is found.
     pub fn update_table_of_contents(&mut self) -> Result<usize, String> {
-        let range = self
-            .find_toc_field_body_range()
+        self.update_table_of_contents_at(0)
+    }
+
+    /// Updates the `index`-th table of contents (tables of figures among
+    /// them) from its own field instruction, keeping its tab leader.
+    pub fn update_table_of_contents_at(&mut self, index: usize) -> Result<usize, String> {
+        let block = self
+            .tables_of_contents()
+            .into_iter()
+            .nth(index)
             .ok_or_else(|| "no table of contents found to update".to_string())?;
-        let options = self
-            .document
-            .as_ref()
-            .and_then(|doc| doc.toc_fields.first().cloned())
-            .unwrap_or_default();
-
-        // Remove the old TOC paragraphs from the model and the raw XML. Collect
-        // the raw node ids first (model removal would drop them otherwise).
-        let node_ids: Vec<Option<XmlNodeId>> = {
-            let body = self
-                .document
-                .as_ref()
-                .and_then(|doc| doc.body.as_ref())
-                .ok_or_else(|| "document body is unavailable".to_string())?;
-            (range.start..=range.end)
-                .filter_map(|i| body.elements.get(i))
-                .map(|el| el.as_paragraph().and_then(|p| p.node_id))
-                .collect()
+        let options = crate::document::parse_toc_switches(&block.instruction);
+        let leader = self.toc_leader(&block);
+        let start = match self.paragraph_surfaces.get(block.start) {
+            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                [PathEntry::Element(index)] => *index,
+                _ => return Err("the table of contents is not in the body".to_string()),
+            },
+            _ => return Err("the table of contents is not in the body".to_string()),
         };
-        if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-            for i in (range.start..=range.end).rev() {
-                if i < body.elements.len() {
-                    body.elements.remove(i);
-                }
-            }
-        }
-        if let Some(raw) = self.raw_document.as_mut() {
-            for node_id in node_ids.into_iter().flatten() {
-                if let Some(path) = raw.path(node_id) {
-                    let _ = raw.remove_node(&path);
-                }
-            }
-            raw.rebuild_index();
-        }
-        self.rebuild_paragraph_surfaces();
+        let end = match self.paragraph_surfaces.get(block.end) {
+            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                [PathEntry::Element(index)] => *index,
+                _ => return Err("the table of contents is not in the body".to_string()),
+            },
+            _ => return Err("the table of contents is not in the body".to_string()),
+        };
+        self.remove_body_elements(start, end)?;
+        self.generate_and_insert_toc_at(start, &options, &leader)
+    }
 
-        // Regenerate at the same position.
-        self.generate_and_insert_toc_at(range.start, &options)
+    /// Replaces the `index`-th table of contents with one built from new
+    /// options — the 目次 dialog's OK on an existing table.
+    pub fn replace_table_of_contents(
+        &mut self,
+        index: usize,
+        options: &TocOptions,
+        leader: &str,
+    ) -> Result<usize, String> {
+        let block = self
+            .tables_of_contents()
+            .into_iter()
+            .nth(index)
+            .ok_or_else(|| "no table of contents found to replace".to_string())?;
+        let element = |document: &Self, surface: usize| match document
+            .paragraph_surfaces
+            .get(surface)
+        {
+            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                [PathEntry::Element(index)] => Some(*index),
+                _ => None,
+            },
+            _ => None,
+        };
+        let start = element(self, block.start)
+            .ok_or_else(|| "the table of contents is not in the body".to_string())?;
+        let end = element(self, block.end)
+            .ok_or_else(|| "the table of contents is not in the body".to_string())?;
+        self.remove_body_elements(start, end)?;
+        self.generate_and_insert_toc_at(start, options, leader)
+    }
+
+    /// Inserts a table of contents whose entries' tabs have `leader`
+    /// (`dot`, `hyphen`, `underscore`, `none`).
+    pub fn insert_table_of_contents_with_leader(
+        &mut self,
+        after_paragraph: usize,
+        options: &TocOptions,
+        leader: &str,
+    ) -> Result<usize, String> {
+        let body_insert_index = if self.paragraph_count() == 0 {
+            0
+        } else {
+            match self.paragraph_surfaces.get(after_paragraph) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(index)] => index + 1,
+                    _ => {
+                        return Err(
+                            "tables of contents go after top-level body paragraphs".to_string()
+                        )
+                    }
+                },
+                _ => {
+                    return Err("tables of contents go after top-level body paragraphs".to_string())
+                }
+            }
+        };
+        self.generate_and_insert_toc_at(body_insert_index, options, leader)
+    }
+
+    /// The document's tables of contents and of figures, in order.
+    pub fn tables_of_contents(&self) -> Vec<FieldBlock> {
+        self.field_blocks()
+            .into_iter()
+            .filter(|block| field_instruction_is_toc(&block.instruction))
+            .collect()
+    }
+
+    /// The tab leader a table of contents' entries have: the first entry's
+    /// right tab's, `dot` when it has none.
+    pub fn toc_leader(&self, block: &FieldBlock) -> String {
+        (block.start..=block.end)
+            .filter_map(|index| self.paragraph(index))
+            .filter_map(|paragraph| paragraph.properties.as_ref())
+            .flat_map(|properties| properties.tabs.iter())
+            .find(|tab| tab.kind.as_deref() == Some("right"))
+            .and_then(|tab| tab.leader.clone())
+            .unwrap_or_else(|| "dot".to_string())
     }
 
     /// Generates TOC entry paragraphs from the current headings and inserts them
@@ -19762,6 +19847,7 @@ impl WordDocument {
         &mut self,
         body_insert_index: usize,
         options: &TocOptions,
+        leader: &str,
     ) -> Result<usize, String> {
         let mut entries = self
             .document
@@ -19905,6 +19991,7 @@ impl WordDocument {
                 bookmark,
                 tab_pos_pt,
                 TocEntryModelOptions {
+                    leader,
                     hide_page_number,
                     hyperlinks: options.hyperlinks,
                     page_number_separator: page_number_separator.as_deref(),
@@ -19918,6 +20005,7 @@ impl WordDocument {
                 tab_pos_twips,
                 &toc_instruction,
                 TocEntryFieldOptions {
+                    leader,
                     is_first,
                     is_last,
                     hide_page_number,
@@ -19949,6 +20037,16 @@ impl WordDocument {
             for (offset, paragraph) in model_paragraphs.into_iter().enumerate() {
                 body.elements
                     .insert(insert_at + offset, BodyElement::from_paragraph(paragraph));
+            }
+            // The bookmarks after the contents — the headings' among them —
+            // move down with their paragraphs.
+            for bookmark in &mut document.bookmarks {
+                if bookmark.start_paragraph >= insert_at {
+                    bookmark.start_paragraph += entry_count;
+                }
+                if bookmark.end_paragraph >= insert_at {
+                    bookmark.end_paragraph += entry_count;
+                }
             }
         }
 
@@ -20022,6 +20120,14 @@ impl WordDocument {
             let insert_at = body_insert_index.min(body.elements.len());
             body.elements
                 .insert(insert_at, BodyElement::from_paragraph(model_paragraph));
+            for bookmark in &mut document.bookmarks {
+                if bookmark.start_paragraph >= insert_at {
+                    bookmark.start_paragraph += 1;
+                }
+                if bookmark.end_paragraph >= insert_at {
+                    bookmark.end_paragraph += 1;
+                }
+            }
         }
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
@@ -20038,86 +20144,6 @@ impl WordDocument {
 
         self.rebuild_paragraph_surfaces();
         Ok(0)
-    }
-
-    /// Locates the first `TOC` field in the document body and returns the
-    /// inclusive range of body-element indices its paragraphs occupy (from the
-    /// paragraph holding the field `begin` to the one holding the matching
-    /// `end`). Scans the raw XML, which preserves the `fldChar`/`instrText`
-    /// markers, tracking field nesting so the nested `PAGEREF` fields inside the
-    /// TOC do not confuse the matching. Returns `None` when there is no TOC.
-    fn find_toc_field_body_range(&self) -> Option<TocFieldRange> {
-        let raw = self.raw_document.as_ref()?;
-        let body = raw.root().children.iter().find_map(|child| match child {
-            XmlNode::Element(element) if element.name == "w:body" => Some(element),
-            _ => None,
-        })?;
-
-        struct Frame {
-            instr: String,
-            parsed: bool,
-            is_toc: bool,
-            begin_body_index: usize,
-        }
-        let mut stack: Vec<Frame> = Vec::new();
-        let mut body_index = 0usize;
-        let mut result: Option<TocFieldRange> = None;
-
-        for child in &body.children {
-            let XmlNode::Element(element) = child else {
-                continue;
-            };
-            if element.name != "w:p" && element.name != "w:tbl" {
-                continue;
-            }
-            let current = body_index;
-            body_index += 1;
-            if element.name != "w:p" {
-                continue;
-            }
-            Self::visit_field_markers(element, &mut |marker| {
-                if result.is_some() {
-                    return;
-                }
-                match marker {
-                    FieldMarker::Begin => stack.push(Frame {
-                        instr: String::new(),
-                        parsed: false,
-                        is_toc: false,
-                        begin_body_index: current,
-                    }),
-                    FieldMarker::InstrText(text) => {
-                        if let Some(top) = stack.last_mut() {
-                            if !top.parsed {
-                                top.instr.push_str(text);
-                            }
-                        }
-                    }
-                    FieldMarker::Separate => {
-                        if let Some(top) = stack.last_mut() {
-                            top.parsed = true;
-                            if field_instruction_is_toc(&top.instr) {
-                                top.is_toc = true;
-                            }
-                        }
-                    }
-                    FieldMarker::End => {
-                        if let Some(frame) = stack.pop() {
-                            if frame.is_toc {
-                                result = Some(TocFieldRange {
-                                    start: frame.begin_body_index,
-                                    end: current,
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-            if result.is_some() {
-                break;
-            }
-        }
-        result
     }
 
     /// Visits the `fldChar`/`instrText` markers within a paragraph element in
@@ -20204,7 +20230,7 @@ impl WordDocument {
                 tabs.push(TabStop {
                     kind: Some("right".to_string()),
                     position: Some(tab_pos_pt),
-                    leader: Some("dot".to_string()),
+                    leader: Some(options.leader.to_string()),
                 });
             }
         }
@@ -20254,7 +20280,8 @@ impl WordDocument {
             String::new()
         } else {
             format!(
-                "<w:tabs><w:tab w:val=\"right\" w:leader=\"dot\" w:pos=\"{tab_pos_twips}\"/></w:tabs>"
+                "<w:tabs><w:tab w:val=\"right\" w:leader=\"{}\" w:pos=\"{tab_pos_twips}\"/></w:tabs>",
+                field_options.leader
             )
         };
         let page_number = if field_options.hide_page_number {
@@ -35137,6 +35164,18 @@ impl WordDocument {
             {
                 format!(" {instruction} ")
             }
+            // Fields the host authors with their result: a table of
+            // authorities entry, a citation, a chapter number.
+            RunFieldKind::NonDisplay { instruction }
+                if references::authored_marker_field(instruction) =>
+            {
+                format!(" {} ", instruction.trim())
+            }
+            RunFieldKind::Unsupported { instruction }
+                if references::authored_result_field(instruction) =>
+            {
+                format!(" {} ", instruction.trim())
+            }
             _ => return None,
         };
         let mut result_run = run.clone();
@@ -36125,14 +36164,9 @@ fn collect_max_revision_id(element: &XmlElement) -> u32 {
     max_id
 }
 
-/// Inclusive range of body-element indices spanned by a TOC field's paragraphs.
-struct TocFieldRange {
-    start: usize,
-    end: usize,
-}
-
 #[derive(Clone, Copy)]
 struct TocEntryModelOptions<'a> {
+    leader: &'a str,
     hide_page_number: bool,
     hyperlinks: bool,
     page_number_separator: Option<&'a str>,
@@ -36142,6 +36176,7 @@ struct TocEntryModelOptions<'a> {
 
 #[derive(Clone, Copy)]
 struct TocEntryFieldOptions<'a> {
+    leader: &'a str,
     is_first: bool,
     is_last: bool,
     hide_page_number: bool,
@@ -37391,6 +37426,7 @@ mod tests {
             9000,
             r#"TOC \o "1-3" \p "&""#,
             TocEntryFieldOptions {
+                leader: "dot",
                 is_first: true,
                 is_last: true,
                 hide_page_number: false,
@@ -37426,6 +37462,7 @@ mod tests {
             9000,
             r#"TOC \o "1-3" \w \x"#,
             TocEntryFieldOptions {
+                leader: "dot",
                 is_first: true,
                 is_last: true,
                 hide_page_number: false,
