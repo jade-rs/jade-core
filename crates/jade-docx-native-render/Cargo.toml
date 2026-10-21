@@ -22,6 +22,12 @@ web-sys = "0.3"
 futures = "0.3"
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 jade-selection = { path = "../jade-selection" }
+jade-opc = { path = "../jade-opc" }
+jade-docx-reader = { path = "../jade-docx-reader" }
+# The installed fonts a document names: found by any of their names, read
+# only when a document asks for them.
+fontdb = "0.23"
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 # Only so a failing render test can write the page out as a PNG to look at.

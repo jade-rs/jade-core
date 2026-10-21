@@ -53,6 +53,16 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
+// Included rather than declared as files: this file is also compiled by
+// jade-docx-document-core through `#[path]`, where a child module's file
+// would be looked for somewhere else.
+mod section_layout {
+    include!("word_document_section_layout.rs");
+}
+mod header_footer_story {
+    include!("word_document_header_footer_story.rs");
+}
+
 /// Page setup for the section addressed by a ribbon command. Units are points.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -446,9 +456,11 @@ fn rebase_run_style_properties(
         char_spacing => declared("w:spacing"),
         fit_text => declared("w:fitText"),
         color => declared("w:color"),
+        theme_color => declared("w:color"),
         highlight => declared("w:highlight"),
         shading => declared("w:shd"),
         border => declared("w:bdr"),
+        east_asian_layout => declared("w:eastAsianLayout"),
     );
     rebase!(
         font_family => declared("w:rFonts"),
@@ -692,6 +704,12 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/table_tools.rs"]
+mod table_tools;
+pub use table_tools::{
+    TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
+};
+
 /// A border change. Every edge is optional: the ones left out keep whatever
 /// they had, so switching off the inside lines does not disturb the frame.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -810,7 +828,7 @@ impl TableBorderSpec {
 
 /// A page-margin change. Every field is optional: `None` leaves that edge as it
 /// is, so a caller can widen the gutter without restating the four margins.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PageMarginSpec {
     pub top: Option<f32>,
     pub bottom: Option<f32>,
@@ -2550,6 +2568,8 @@ impl WordDocument {
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
+            parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
@@ -7392,6 +7412,7 @@ impl WordDocument {
                         | crate::document::RunFieldKind::DocumentProperty { .. }
                         | crate::document::RunFieldKind::DocumentVariable { .. }
                         | crate::document::RunFieldKind::Compare { .. }
+                        | crate::document::RunFieldKind::StyleRef { .. }
                         | crate::document::RunFieldKind::If { .. } => {
                             // Structural, package, and comparison fields are
                             // resolved at load time; prefer that value over
@@ -7411,7 +7432,8 @@ impl WordDocument {
                             }
                         }
                         crate::document::RunFieldKind::EqDistributed { text, .. }
-                        | crate::document::RunFieldKind::EqRuby { text, .. } => {
+                        | crate::document::RunFieldKind::EqRuby { text, .. }
+                        | crate::document::RunFieldKind::EqEnclosed { text, .. } => {
                             Self::push_header_text(
                                 &mut segments[idx],
                                 &mut rich_segments[idx],
@@ -7686,7 +7708,7 @@ impl WordDocument {
 
     /// Returns the current `word/settings.xml` text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
-    fn settings_xml_content(&self) -> Option<String> {
+    pub(crate) fn settings_xml_content(&self) -> Option<String> {
         const SETTINGS_PATH: &str = "word/settings.xml";
         if let Some(part) = self.parts.get(SETTINGS_PATH) {
             return Some(part.content.clone());
@@ -9297,13 +9319,19 @@ impl WordDocument {
             return Err("document is unavailable".to_string());
         }
 
-        let next = PageNumberType {
-            format: Some(format.to_string()),
-            start,
-        };
         let current = self
             .section_properties(section)
             .and_then(|properties| properties.page_number_type.clone());
+        // The chapter number (章番号を含める) is another part of the same
+        // dialog; changing the format keeps it.
+        let next = PageNumberType {
+            format: Some(format.to_string()),
+            start,
+            chapter_style: current.as_ref().and_then(|value| value.chapter_style),
+            chapter_separator: current
+                .as_ref()
+                .and_then(|value| value.chapter_separator.clone()),
+        };
         if current.as_ref().is_some_and(|value| {
             value.start == next.start
                 && value
@@ -14512,6 +14540,23 @@ impl WordDocument {
         Ok(())
     }
 
+    /// Where the bookmark `name` starts — what an internal hyperlink
+    /// (`w:hyperlink/@w:anchor`, ECMA-376 Part 1 §17.16.22) takes the caret
+    /// to — as a paragraph surface and an offset into its text. `None` when
+    /// the document has no such bookmark, or it is not in the body.
+    pub fn bookmark_position(&self, name: &str) -> Option<TextPosition> {
+        let bookmark = self
+            .document
+            .as_ref()?
+            .bookmarks
+            .iter()
+            .find(|bookmark| bookmark.name == name)?;
+        let paragraph = self.bookmark_surface_index(bookmark.start_paragraph)?;
+        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+        let model = TextPosition::new(paragraph, bookmark.start_offset.min(length));
+        Some(self.model_to_rendered_text_position(model))
+    }
+
     /// Converts the top-level body coordinates stored in bookmarks to the
     /// flattened paragraph surfaces used by the canvas and public selection API.
     pub(crate) fn bookmark_surface_index(&self, body_element: usize) -> Option<usize> {
@@ -18267,6 +18312,8 @@ impl WordDocument {
                     hanging,
                     left_chars,
                     right_chars,
+                    first_line_chars,
+                    hanging_chars,
                     clear_special,
                     ..
                 } => {
@@ -18276,6 +18323,8 @@ impl WordDocument {
                         || hanging.is_some()
                         || left_chars.is_some()
                         || right_chars.is_some()
+                        || first_line_chars.is_some()
+                        || hanging_chars.is_some()
                         || *clear_special;
                 }
                 HeadlessCommand::SetParagraphLineSpacing {
@@ -20629,6 +20678,21 @@ impl WordDocument {
         table_order_index: usize,
         style_id: Option<&str>,
     ) -> Result<(), String> {
+        // Word adds a built-in style's definition the first time it is used.
+        let builtin;
+        let style_id = match style_id {
+            Some(requested)
+                if self
+                    .styles_part
+                    .as_ref()
+                    .and_then(|styles| styles.resolve_table_style_id(requested))
+                    .is_none() =>
+            {
+                builtin = self.ensure_builtin_table_style(requested);
+                builtin.as_deref().or(Some(requested))
+            }
+            other => other,
+        };
         let resolved = match style_id {
             Some(requested) => {
                 let styles = self
@@ -20684,7 +20748,24 @@ impl WordDocument {
         first_row: Option<bool>,
         banded_rows: Option<bool>,
     ) -> Result<(), String> {
-        if first_row.is_none() && banded_rows.is_none() {
+        self.set_table_look_options(
+            table_order_index,
+            TableLookUpdate {
+                first_row,
+                banded_rows,
+                ..TableLookUpdate::default()
+            },
+        )
+    }
+
+    /// Word's 表スタイルのオプション: each switch that is `Some` is set, the
+    /// others keep their effective value.
+    pub fn set_table_look_options(
+        &mut self,
+        table_order_index: usize,
+        update: TableLookUpdate,
+    ) -> Result<(), String> {
+        if update == TableLookUpdate::default() {
             return Err("set_table_look needs at least one flag".to_string());
         }
         let (table_id, look) = {
@@ -20694,11 +20775,23 @@ impl WordDocument {
             // Start from the effective switches, which already include Word's
             // 0x04A0 default for an omitted `w:tblLook`.
             let mut look = crate::document::TableLook::from_mask(table.look.effective_mask());
-            if let Some(enabled) = first_row {
+            if let Some(enabled) = update.first_row {
                 look.first_row = Some(enabled);
             }
-            if let Some(enabled) = banded_rows {
+            if let Some(enabled) = update.last_row {
+                look.last_row = Some(enabled);
+            }
+            if let Some(enabled) = update.first_column {
+                look.first_column = Some(enabled);
+            }
+            if let Some(enabled) = update.last_column {
+                look.last_column = Some(enabled);
+            }
+            if let Some(enabled) = update.banded_rows {
                 look.no_h_band = Some(!enabled);
+            }
+            if let Some(enabled) = update.banded_columns {
+                look.no_v_band = Some(!enabled);
             }
             table.look = look;
             table.class_name = Some(format!("{:04X}", look.effective_mask()));
@@ -32935,6 +33028,30 @@ impl WordDocument {
                         "w:color",
                         color.trim_start_matches('#'),
                     );
+                    // A theme colour is written with the value it resolved
+                    // to, as Word writes a テーマの色 swatch; a plain colour
+                    // drops the theme attributes an earlier one left.
+                    let theme = props.theme_color.as_ref();
+                    for (attribute, value) in [
+                        ("w:themeColor", theme.map(|theme| theme.name.clone())),
+                        ("w:themeTint", theme.and_then(|theme| theme.tint.clone())),
+                        ("w:themeShade", theme.and_then(|theme| theme.shade.clone())),
+                    ] {
+                        match value {
+                            Some(value) => Self::upsert_run_property_child_attribute(
+                                doc,
+                                &mut element,
+                                "w:color",
+                                attribute,
+                                &value,
+                            ),
+                            None => Self::remove_run_property_child_attribute(
+                                &mut element,
+                                "w:color",
+                                attribute,
+                            ),
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -33596,12 +33713,18 @@ impl WordDocument {
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
                 }
-                PAGE_BREAK_CHAR => {
+                PAGE_BREAK_CHAR | crate::document::COLUMN_BREAK_CHAR => {
                     push_text_node(doc, &mut nodes, &mut buffer, &mut first_text_id);
                     let element = page_break_templates
                         .and_then(|templates| templates.get(page_break_index))
                         .cloned()
-                        .unwrap_or_else(|| Self::create_page_break_element(doc));
+                        .unwrap_or_else(|| {
+                            let mut element = Self::create_page_break_element(doc);
+                            if ch == crate::document::COLUMN_BREAK_CHAR {
+                                element.attributes[0].value = "column".to_string();
+                            }
+                            element
+                        });
                     page_break_index += 1;
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
@@ -34298,6 +34421,27 @@ impl WordDocument {
                 run_index += consumed;
                 continue;
             }
+            // A base with no ruby XML to take over: one `SetRubyCommand` made.
+            if runs[run_index].node_id.is_none() && Self::starts_ruby_base(&runs[run_index]) {
+                let end = (run_index + 1..runs.len())
+                    .take_while(|&index| {
+                        runs[index].node_id.is_none()
+                            && runs[index]
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.ruby.as_ref())
+                                .is_some_and(|ruby| ruby.continuation)
+                    })
+                    .last()
+                    .map_or(run_index + 1, |last| last + 1);
+                if let Some(ruby_run) =
+                    Self::create_authored_ruby_run(doc, &mut runs[run_index..end])
+                {
+                    new_children.push(XmlNode::Element(ruby_run));
+                    run_index = end;
+                    continue;
+                }
+            }
 
             let wrapped_result = match (tokens.front(), runs[run_index].node_id) {
                 (Some(ChildToken::NonRun(XmlNode::Element(element))), Some(run_id))
@@ -34772,11 +34916,28 @@ impl WordDocument {
             RunFieldKind::NumPages => " NUMPAGES ".to_string(),
             RunFieldKind::Date { format: None } => " DATE ".to_string(),
             RunFieldKind::Time { format: None } => " TIME ".to_string(),
+            RunFieldKind::Date {
+                format: Some(picture),
+            } => format!(" DATE \\@ \"{picture}\" \\* MERGEFORMAT "),
+            RunFieldKind::EqEnclosed { text, enclosure } => {
+                format!(" EQ \\o\\ac({enclosure},{text}) ")
+            }
+            RunFieldKind::Time {
+                format: Some(picture),
+            } => format!(" TIME \\@ \"{picture}\" \\* MERGEFORMAT "),
             RunFieldKind::Unsupported { instruction }
                 if instruction.trim().eq_ignore_ascii_case("FILENAME") =>
             {
                 " FILENAME ".to_string()
             }
+            // A table formula (計算式): written as it was given.
+            RunFieldKind::Unsupported { instruction } if instruction.trim().starts_with('=') => {
+                format!(" {} ", instruction.trim())
+            }
+            RunFieldKind::StyleRef { style, from_bottom } => format!(
+                " STYLEREF \"{style}\"{} ",
+                if *from_bottom { " \\l" } else { "" }
+            ),
             RunFieldKind::Ref {
                 name, hyperlink, ..
             } => format!(" REF {name}{} ", if *hyperlink { " \\h" } else { "" }),
@@ -34950,6 +35111,155 @@ impl WordDocument {
                 .as_ref()
                 .and_then(|props| props.ruby.as_ref())
                 .is_some_and(|ruby| Self::ruby_guide_text(element) == ruby.text)
+    }
+
+    /// Removes from a body paragraph's XML every run holding a `w:ruby`
+    /// whose base holds one of `run_ids`, so its base is written afresh
+    /// (with a new ruby, or none) at the next sync.
+    pub(crate) fn remove_ruby_run_elements(
+        &mut self,
+        paragraph_index: usize,
+        run_ids: &[XmlNodeId],
+    ) {
+        fn prune(element: &mut XmlElement, run_ids: &[XmlNodeId]) {
+            element.children.retain(|child| match child {
+                XmlNode::Element(child) if is_ruby_run(child) => !run_ids
+                    .iter()
+                    .any(|&id| WordDocument::element_contains_run_id(child, id)),
+                _ => true,
+            });
+            for child in element.children.iter_mut() {
+                if let XmlNode::Element(child) = child {
+                    if !is_ruby_run(child) {
+                        prune(child, run_ids);
+                    }
+                }
+            }
+        }
+        if run_ids.is_empty() {
+            return;
+        }
+        let Some(paragraph_id) = self.paragraph(paragraph_index).and_then(|p| p.node_id) else {
+            return;
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return;
+        };
+        if let Some(paragraph) = raw.element_mut(paragraph_id) {
+            prune(paragraph, run_ids);
+        }
+        raw.rebuild_index_for_subtree(paragraph_id);
+    }
+
+    /// Authors a run holding a `w:ruby` for `runs`, a base the model marked
+    /// with a ruby and no XML has yet (`SetRubyCommand`): `w:rubyPr` and the
+    /// `w:rt` guide from its [`RubyAnnotation`], the base runs from the
+    /// model, as Word writes a ruby from its ルビ dialog.
+    fn create_authored_ruby_run(doc: &mut DocxXmlDocument, runs: &mut [Run]) -> Option<XmlElement> {
+        let annotation = runs.first()?.properties.as_ref()?.ruby.as_deref()?.clone();
+        let attr = |name: &str, value: String| XmlAttribute {
+            name: name.to_string(),
+            value,
+        };
+        let base_points = runs
+            .iter()
+            .find_map(|run| run.properties.as_ref().and_then(|props| props.font_size))
+            .unwrap_or(10.5);
+        let base_half = (base_points * 2.0).round().max(2.0) as u32;
+        let guide_half = annotation
+            .size_pt
+            .map(|size| (size * 2.0).round().max(1.0) as u32)
+            .unwrap_or((base_half / 2).max(1));
+        let raise = annotation
+            .raise_half_points
+            .unwrap_or(base_half.saturating_sub(3));
+        let align = match annotation.align.as_deref().unwrap_or("distributespace") {
+            "center" => "center",
+            "distributeletter" => "distributeLetter",
+            "left" => "left",
+            "right" => "right",
+            "rightvertical" => "rightVertical",
+            _ => "distributeSpace",
+        };
+        let mut properties = Vec::new();
+        for (name, value) in [
+            ("w:rubyAlign", align.to_string()),
+            ("w:hps", guide_half.to_string()),
+            ("w:hpsRaise", raise.to_string()),
+            ("w:hpsBaseText", base_half.to_string()),
+            ("w:lid", "ja-JP".to_string()),
+        ] {
+            properties.push(XmlNode::Element(doc.create_element(
+                name,
+                vec![attr("w:val", value)],
+                Vec::new(),
+            )));
+        }
+        let ruby_pr = doc.create_element("w:rubyPr", Vec::new(), properties);
+        let mut guide_props = Vec::new();
+        let guide_font = annotation
+            .fonts
+            .as_ref()
+            .and_then(|fonts| fonts.east_asia.clone().or(fonts.ascii.clone()))
+            .or_else(|| {
+                runs.first()
+                    .and_then(|run| run.properties.as_ref())
+                    .and_then(|props| props.fonts.as_ref())
+                    .and_then(|fonts| fonts.east_asia.clone())
+            });
+        if let Some(font) = guide_font {
+            guide_props.push(XmlNode::Element(doc.create_element(
+                "w:rFonts",
+                vec![
+                    attr("w:ascii", font.to_string()),
+                    attr("w:eastAsia", font.to_string()),
+                    attr("w:hAnsi", font.to_string()),
+                ],
+                Vec::new(),
+            )));
+        }
+        guide_props.push(XmlNode::Element(doc.create_element(
+            "w:sz",
+            vec![attr("w:val", guide_half.to_string())],
+            Vec::new(),
+        )));
+        let guide_rpr = doc.create_element("w:rPr", Vec::new(), guide_props);
+        let guide_text = doc.create_element(
+            "w:t",
+            vec![attr("xml:space", "preserve".to_string())],
+            vec![XmlNode::Text(annotation.text.clone())],
+        );
+        let guide_run = doc.create_element(
+            "w:r",
+            Vec::new(),
+            vec![XmlNode::Element(guide_rpr), XmlNode::Element(guide_text)],
+        );
+        let rt = doc.create_element("w:rt", Vec::new(), vec![XmlNode::Element(guide_run)]);
+        let mut base_children = Vec::new();
+        for run in runs.iter_mut() {
+            let Some((element, text_id)) = Self::create_run_element(doc, run) else {
+                continue;
+            };
+            run.node_id = Some(element.id);
+            run.text_node_id = text_id;
+            run.revision_node_id = None;
+            base_children.push(XmlNode::Element(element));
+        }
+        let base = doc.create_element_preserving_child_ids("w:rubyBase", Vec::new(), base_children);
+        let ruby = doc.create_element_preserving_child_ids(
+            "w:ruby",
+            Vec::new(),
+            vec![
+                XmlNode::Element(ruby_pr),
+                XmlNode::Element(rt),
+                XmlNode::Element(base),
+            ],
+        );
+        Some(doc.create_element_preserving_child_ids(
+            "w:r",
+            Vec::new(),
+            vec![XmlNode::Element(ruby)],
+        ))
     }
 
     fn starts_ruby_base(run: &Run) -> bool {
@@ -42449,6 +42759,8 @@ mod tests {
                             hanging: None,
                             left_chars: None,
                             right_chars: None,
+                            first_line_chars: None,
+                            hanging_chars: None,
                             clear_special: true,
                         }]
                     )
@@ -44776,6 +45088,7 @@ mod tests {
             PageNumberType {
                 format: Some("upperRoman".to_string()),
                 start: Some(7),
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -44783,6 +45096,7 @@ mod tests {
             PageNumberType {
                 format: Some("lowerLetter".to_string()),
                 start: None,
+                ..Default::default()
             }
         );
         assert_eq!(
@@ -47322,11 +47636,11 @@ mod tests {
         let mut word_doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
 
-        // The reader approximates a column break with the shared page-break
-        // control for layout, but saving must retain the original OOXML type.
+        // A column break reads as its own control character, and saving
+        // retains the original OOXML type.
         let paragraph = word_doc.paragraph_mut(0).expect("column paragraph");
-        assert_eq!(paragraph.runs[0].text, format!("A{PAGE_BREAK_STR}B"));
-        paragraph.runs[0].text = format!("Column{PAGE_BREAK_STR}B");
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}B");
+        paragraph.runs[0].text = "Column\u{000E}B".to_string();
 
         // Future/extension break types are intentionally absent from editable
         // text, but lossless editing must still preserve their raw marker.

@@ -25,7 +25,7 @@ use jade_docx_headless_api::{
 use jade_selection::{SelectionRange, TextPosition};
 use jade_skia_painter::SkiaPainter;
 use std::cell::RefCell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -34,6 +34,57 @@ pub struct FaceSpec<'a> {
     pub family: &'a str,
     pub weight: u16,
     pub path: &'a Path,
+}
+
+/// A face to register under a family name: an upright or italic face, from a
+/// font file or one face of a collection (`.ttc`) — what a document's own
+/// fonts, found installed, are registered as.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FontFace {
+    pub family: String,
+    pub weight: u16,
+    pub italic: bool,
+    pub path: PathBuf,
+    pub index: u32,
+}
+
+impl From<&FaceSpec<'_>> for FontFace {
+    fn from(face: &FaceSpec<'_>) -> Self {
+        Self {
+            family: face.family.to_string(),
+            weight: face.weight,
+            italic: false,
+            path: face.path.to_path_buf(),
+            index: 0,
+        }
+    }
+}
+
+/// Registers `faces`, passing over one that cannot be read — a damaged or
+/// unreadable installed font must not keep the document from opening — and
+/// failing only when none could be.
+fn register_faces(host: &mut SkiaRenderHost, faces: &[FontFace]) -> Result<(), String> {
+    let mut first_error = None;
+    let mut registered = 0;
+    for face in faces {
+        match host.register_font_styled(
+            &face.family,
+            face.weight,
+            face.italic,
+            &face.path,
+            face.index,
+        ) {
+            Ok(()) => registered += 1,
+            Err(error) => {
+                eprintln!("font {} skipped: {error}", face.family);
+                first_error.get_or_insert(error);
+            }
+        }
+    }
+    match first_error {
+        Some(error) if registered == 0 => Err(error),
+        _ => Ok(()),
+    }
 }
 
 /// How a PDF represents the editor's painted page.
@@ -193,6 +244,17 @@ impl NativeDocument {
         page_height: f64,
         faces: &[FaceSpec<'_>],
     ) -> Result<Self, String> {
+        let faces: Vec<FontFace> = faces.iter().map(FontFace::from).collect();
+        Self::open_with_font_faces(docx_bytes, page_width, page_height, &faces)
+    }
+
+    /// [`Self::open`] with faces that may be italic or in a collection.
+    pub fn open_with_font_faces(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FontFace],
+    ) -> Result<Self, String> {
         let mut options = Options::default();
 
         let word_document = block_on(WordDocument::load(docx_bytes, &options))
@@ -215,9 +277,7 @@ impl NativeDocument {
 
         let mut host = SkiaRenderHost::new(page_width, page_height)
             .ok_or_else(|| "could not allocate the raster surface".to_string())?;
-        for face in faces {
-            host.register_font(face.family, face.weight, face.path)?;
-        }
+        register_faces(&mut host, faces)?;
         let fonts = host.font_environment();
         let pages = host.pages();
         let rendered_pages = host.rendered_pages();
@@ -630,6 +690,22 @@ impl NativeDocument {
         let (from, _) = range.normalized();
         self.repaint_bounded_to(from.paragraph, visible_end_page_1idx)
             .map(|_| ())
+    }
+
+    /// Selects whole cells, as Word does when a drag crosses from one cell
+    /// into another or a row, a column or the table is selected: the
+    /// rectangle the two cells span, by their ids in the last paint's cell
+    /// registry. The text range runs from the first cell's start to the last
+    /// one's end, which is what commands act on; the highlight is the cells.
+    pub fn select_cells(&mut self, anchor_cell: usize, focus_cell: usize) -> Result<(), String> {
+        let range = self
+            .renderer
+            .cell_selection_range(anchor_cell, focus_cell)
+            .ok_or_else(|| "the cells are not in one table".to_string())?;
+        self.selection = Some(range);
+        self.renderer.set_selection_range(Some(range));
+        self.renderer.set_cell_selection(anchor_cell, focus_cell);
+        self.repaint_all().map(|_| ())
     }
 
     /// Sets the text of a header or footer paragraph.
@@ -1316,6 +1392,8 @@ impl NativeDocument {
                 hanging: None,
                 left_chars: None,
                 right_chars: None,
+                first_line_chars: None,
+                hanging_chars: None,
                 clear_special: false,
             },
             visible_end_page_1idx,
@@ -1844,15 +1922,13 @@ impl NativeDocument {
     fn layout_page_size_of(
         word_document: &WordDocument,
         options: &Options,
-        faces: &[FaceSpec<'_>],
+        faces: &[FontFace],
         fallback_width: f64,
         fallback_height: f64,
     ) -> Result<(f64, f64), String> {
         let mut host = SkiaRenderHost::new(fallback_width, fallback_height)
             .ok_or_else(|| "could not allocate the probe surface".to_string())?;
-        for face in faces {
-            host.register_font(face.family, face.weight, face.path)?;
-        }
+        register_faces(&mut host, faces)?;
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
         renderer.sync_word_document(word_document);
@@ -2030,6 +2106,16 @@ impl NativeDocument {
     /// paragraph was laid out in.
     pub fn renderer(&self) -> &CanvasRenderer<SkiaPainter> {
         &self.renderer
+    }
+
+    /// The clock `DATE` and `TIME` fields show from the next repaint, as
+    /// Word updates them when a document is opened or printed; `None` keeps
+    /// their saved results.
+    pub fn set_field_clock(
+        &mut self,
+        now: Option<jade_docx_editor::canvas_renderer::FieldDateTime>,
+    ) {
+        self.renderer.set_current_datetime(now);
     }
 
     /// The selection as the engine holds it, a caret when collapsed.

@@ -46,6 +46,46 @@ pub(crate) fn sync_paragraph_bidi_xml(
     );
 }
 
+/// `w:snapToGrid`: absent (on, the default) or `w:val="0"` (off).
+pub(crate) fn sync_paragraph_snap_to_grid_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    snap: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        if snap {
+            remove_paragraph_property_child(paragraph_properties, "w:snapToGrid")
+        } else {
+            upsert_paragraph_property_child_with_value(
+                raw,
+                paragraph_properties,
+                "w:snapToGrid",
+                "0",
+            )
+        }
+    });
+}
+
+/// Sets (`Some`) or removes (`None`) a `w:val` paragraph property such as
+/// `w:kinsoku` or `w:autoSpaceDE`, keeping the rest of the paragraph's XML.
+pub(crate) fn sync_paragraph_value_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &str,
+    value: Option<&str>,
+) {
+    sync_paragraph_properties_xml(
+        word_doc,
+        paragraph_index,
+        |raw, paragraph_properties| match value {
+            Some(value) => {
+                upsert_paragraph_property_child_with_value(raw, paragraph_properties, tag, value)
+            }
+            None => remove_paragraph_property_child(paragraph_properties, tag),
+        },
+    );
+}
+
 pub(crate) fn sync_paragraph_style_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
@@ -161,6 +201,31 @@ pub(crate) fn reset_paragraph_formatting_xml(paragraph_properties: &mut XmlEleme
     ] {
         remove_paragraph_property_child(paragraph_properties, tag);
     }
+}
+
+/// Writes an on/off paragraph property (`w:keepNext`, `w:keepLines`,
+/// `w:pageBreakBefore`, `w:widowControl`) as direct formatting: the bare
+/// element for on, `w:val="0"` for off — which overrides a style that turns
+/// it on — in its `CT_PPrBase` place.
+pub(crate) fn sync_paragraph_toggle_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    on: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        let attributes = if on {
+            Vec::new()
+        } else {
+            vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: "0".to_string(),
+            }]
+        };
+        let child = raw.create_element(tag, attributes, Vec::new());
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
 }
 
 pub(crate) fn sync_paragraph_shading_xml(

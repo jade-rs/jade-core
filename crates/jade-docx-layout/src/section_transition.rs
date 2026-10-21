@@ -56,6 +56,32 @@ pub fn resolve_page_margins(
     ResolvedPageMargins { left, right, top }
 }
 
+/// The page a sheet carries when it is printed two pages to a sheet
+/// (`w:printTwoOnOne`, Word's 袋とじ) or folded into a booklet
+/// (`w:bookFoldPrinting`, 本 (縦方向に谷折り)): half the sheet. A book fold
+/// halves the long side, the way the sheet folds; two pages to a sheet halve
+/// the sheet along its longer side too, so an upright sheet carries two pages
+/// one above the other.
+pub fn folded_page_size(
+    width_pt: f32,
+    height_pt: f32,
+    print_two_on_one: bool,
+    book_fold: bool,
+) -> (f32, f32) {
+    if book_fold {
+        let (short, long) = (width_pt.min(height_pt), width_pt.max(height_pt));
+        return (long / 2.0, short);
+    }
+    if print_two_on_one {
+        return if width_pt > height_pt {
+            (width_pt / 2.0, height_pt)
+        } else {
+            (width_pt, height_pt / 2.0)
+        };
+    }
+    (width_pt, height_pt)
+}
+
 /// Applies a section gutter to the edge selected by `w:gutterAtTop`.
 pub fn apply_page_gutter(
     margin_left_pt: f32,
@@ -119,6 +145,15 @@ pub fn resolve_section_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_folded_sheet_carries_half_pages() {
+        // A4 landscape folded into a booklet: A5 upright pages.
+        assert_eq!(folded_page_size(842.0, 595.0, false, true), (421.0, 595.0));
+        // A4 upright, two pages to a sheet: two A5 landscape halves.
+        assert_eq!(folded_page_size(595.0, 842.0, true, false), (595.0, 421.0));
+        assert_eq!(folded_page_size(595.0, 842.0, false, false), (595.0, 842.0));
+    }
 
     #[test]
     fn omitted_section_type_defaults_to_next_page() {

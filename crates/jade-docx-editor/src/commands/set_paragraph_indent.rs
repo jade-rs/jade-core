@@ -16,6 +16,10 @@ pub struct SetParagraphIndentCommand {
     hanging: Option<f32>,
     left_chars: Option<i32>,
     right_chars: Option<i32>,
+    /// 特殊インデント in hundredths of a character (`w:firstLineChars`,
+    /// `w:hangingChars`): what a Japanese document's dialog writes.
+    first_line_chars: Option<i32>,
+    hanging_chars: Option<i32>,
     /// Word's paragraph dialog 特殊インデント「なし」: remove first-line and
     /// hanging indents (character twins included) while leaving the left and
     /// right edges alone.
@@ -43,6 +47,8 @@ impl SetParagraphIndentCommand {
             hanging,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special: false,
             previous_properties: Vec::new(),
             previous_raw_properties: Vec::new(),
@@ -62,6 +68,8 @@ impl SetParagraphIndentCommand {
             hanging: None,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special: true,
             previous_properties: Vec::new(),
             previous_raw_properties: Vec::new(),
@@ -92,11 +100,33 @@ impl SetParagraphIndentCommand {
             hanging: None,
             left_chars,
             right_chars,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special: false,
             previous_properties: Vec::new(),
             previous_raw_properties: Vec::new(),
             previous_selection: None,
         }
+    }
+
+    /// Also sets the left and right edges in hundredths of a character
+    /// (`w:leftChars`, `w:rightChars`), beside any point values.
+    pub fn with_edge_chars(mut self, left_chars: Option<i32>, right_chars: Option<i32>) -> Self {
+        self.left_chars = left_chars;
+        self.right_chars = right_chars;
+        self
+    }
+
+    /// Also sets 特殊インデント in hundredths of a character: a first-line
+    /// indent (`w:firstLineChars`) or a hanging one (`w:hangingChars`).
+    pub fn with_special_chars(
+        mut self,
+        first_line_chars: Option<i32>,
+        hanging_chars: Option<i32>,
+    ) -> Self {
+        self.first_line_chars = first_line_chars;
+        self.hanging_chars = hanging_chars;
+        self
     }
 
     fn normalized_range(&self) -> (usize, usize) {
@@ -114,6 +144,8 @@ impl SetParagraphIndentCommand {
             && self.hanging.is_none()
             && self.left_chars.is_none()
             && self.right_chars.is_none()
+            && self.first_line_chars.is_none()
+            && self.hanging_chars.is_none()
             && !self.clear_special
         {
             return Err(CommandError::Custom(
@@ -243,6 +275,22 @@ impl Command for SetParagraphIndentCommand {
                     } else {
                         indent.end = None;
                         indent.end_chars = None;
+                    }
+                }
+                if let Some(value) = self.first_line_chars {
+                    // Character units supersede points in Word: the point
+                    // twins go, and so does any hanging indent.
+                    indent.first_line_chars = Some(value);
+                    indent.first_line = None;
+                    indent.hanging = None;
+                    indent.hanging_chars = None;
+                }
+                if let Some(value) = self.hanging_chars {
+                    indent.hanging_chars = Some(value);
+                    indent.hanging = None;
+                    if self.first_line_chars.is_none() {
+                        indent.first_line = None;
+                        indent.first_line_chars = None;
                     }
                 }
                 if self.clear_special {

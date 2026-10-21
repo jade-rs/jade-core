@@ -58,6 +58,11 @@ use crate::commands::set_paragraph_line_spacing::SetParagraphLineSpacingCommand;
 use crate::commands::set_paragraph_metrics::{SetParagraphMetricsCommand, SpecialIndent};
 use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
 use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+use crate::commands::set_ruby::SetRubyCommand;
+use crate::commands::set_run_format::SetRunFormatCommand;
+use crate::commands::set_typography::{
+    SetJapaneseTypographyCommand, SetParagraphTypographyCommand,
+};
 use crate::commands::set_watermark::SetWatermarkCommand;
 use crate::commands::snapshot_edit::{EditScope, PackageSnapshotCommand, SnapshotEditCommand};
 use crate::commands::split_table::SplitTableCommand;
@@ -841,6 +846,13 @@ fn snapshot_effect(
             end_paragraph,
             end_offset,
             ..
+        }
+        | HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            ..
         } => {
             let first = snapshot_position(word_doc, index, *start_paragraph, *start_offset)?;
             let second = snapshot_position(word_doc, index, *end_paragraph, *end_offset)?;
@@ -1492,6 +1504,29 @@ fn rebase_snapshot_command(
                 end_paragraph: end.paragraph,
                 end_offset: end.offset,
                 color,
+            }
+        }
+        HeadlessCommand::SetRunFormat {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            format,
+        } => {
+            let (start, end) = rebase_snapshot_range(
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                index,
+                transforms,
+            )?;
+            HeadlessCommand::SetRunFormat {
+                start_paragraph: start.paragraph,
+                start_offset: start.offset,
+                end_paragraph: end.paragraph,
+                end_offset: end.offset,
+                format,
             }
         }
         unsupported => {
@@ -2341,31 +2376,23 @@ pub fn apply_headless_commands_with_executor_to_document(
                 hanging,
                 left_chars,
                 right_chars,
+                first_line_chars,
+                hanging_chars,
                 clear_special,
             } => {
-                let mut cmd = SetParagraphIndentCommand::new(
+                // Every field the call names is applied: points, character
+                // units beside them, and 特殊インデント「なし」 last.
+                let cmd = SetParagraphIndentCommand::new(
                     *start_paragraph,
                     *end_paragraph,
                     *left,
                     *right,
                     *first_line,
                     *hanging,
-                );
-                // If character-based indent is specified, use with_chars instead.
-                if left_chars.is_some() || right_chars.is_some() {
-                    cmd = SetParagraphIndentCommand::with_chars(
-                        *start_paragraph,
-                        *end_paragraph,
-                        *left_chars,
-                        *right_chars,
-                    );
-                }
-                if *clear_special {
-                    cmd = SetParagraphIndentCommand::clearing_special_indent(
-                        *start_paragraph,
-                        *end_paragraph,
-                    );
-                }
+                )
+                .with_edge_chars(*left_chars, *right_chars)
+                .with_special_chars(*first_line_chars, *hanging_chars)
+                .with_clear_special(*clear_special);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(Box::new(cmd), &mut ctx)
@@ -2404,6 +2431,34 @@ pub fn apply_headless_commands_with_executor_to_document(
                                 target,
                             ),
                         ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphPagination {
+                start_paragraph,
+                end_paragraph,
+                keep_next,
+                keep_lines,
+                page_break_before,
+                widow_control,
+            } => {
+                use crate::commands::set_paragraph_pagination::{
+                    Pagination, SetParagraphPaginationCommand,
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphPaginationCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            Pagination {
+                                keep_next: *keep_next,
+                                keep_lines: *keep_lines,
+                                page_break_before: *page_break_before,
+                                widow_control: *widow_control,
+                            },
+                        )),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -2716,6 +2771,96 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(SetHighlightColorCommand::new(range, color.clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetRunFormat {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                format,
+            } => {
+                let range =
+                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                selection = Some(range);
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRunFormatCommand::new(range, (**format).clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphTypography {
+                start_paragraph,
+                end_paragraph,
+                typography,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphTypographyCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            typography.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertEnclosedCharacter {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                text,
+                enclosure,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertFieldCommand::of_kind(
+                            range,
+                            crate::document::RunFieldKind::EqEnclosed {
+                                text: text.clone(),
+                                enclosure: enclosure.clone(),
+                            },
+                            text.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetRuby {
+                paragraph,
+                start_offset,
+                end_offset,
+                ruby,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetRubyCommand::new(
+                            *paragraph,
+                            *start_offset,
+                            *end_offset,
+                            ruby.clone(),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetJapaneseTypography { typography } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetJapaneseTypographyCommand::new(typography.clone())),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -3314,6 +3459,64 @@ pub fn apply_headless_commands_with_executor_to_document(
                     .execute(Box::new(command), &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetSectionLayout { scope, patch } => {
+                let sections = word_doc
+                    .sections_in_scope(*scope, selection.map(|range| range.focus.paragraph));
+                let patch = patch.clone();
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_section_layout",
+                            move |document| document.set_section_layout(&sections, &patch),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphSnapToGrid {
+                start_paragraph,
+                end_paragraph,
+                snap,
+            } => {
+                let (start, end, snap) = (*start_paragraph, *end_paragraph, *snap);
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::with_scope(
+                            "set_paragraph_snap_to_grid",
+                            EditScope::Paragraphs(Some((start.min(end), start.max(end)))),
+                            move |document| document.set_paragraphs_snap_to_grid(start, end, snap),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetHeaderFooterLink {
+                section,
+                role,
+                variant,
+                linked,
+            } => {
+                let section = *section;
+                let linked = *linked;
+                let role = role.clone();
+                let variant = variant.clone();
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_header_footer_link",
+                            move |document| {
+                                document
+                                    .set_header_footer_link(section, &role, &variant, linked)
+                                    .map(|_| ())
+                            },
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetHeaderFooterVariants {
                 different_first_page,
                 different_odd_even_pages,
@@ -3397,6 +3600,35 @@ pub fn apply_headless_commands_with_executor_to_document(
                 command_executor
                     .execute(
                         Box::new(InsertFieldCommand::new(range, *kind, cached_text.clone())),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::InsertDateTimeField {
+                start_paragraph,
+                start_offset,
+                end_paragraph,
+                end_offset,
+                time,
+                format,
+                cached_text,
+            } => {
+                let range = SelectionRange::new(
+                    TextPosition::new(*start_paragraph, *start_offset),
+                    TextPosition::new(*end_paragraph, *end_offset),
+                );
+                let kind = if *time {
+                    jade_docx_headless_api::HeadlessFieldKind::Time
+                } else {
+                    jade_docx_headless_api::HeadlessFieldKind::Date
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            InsertFieldCommand::new(range, kind, cached_text.clone())
+                                .with_format(Some(format.clone())),
+                        ),
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
@@ -3721,9 +3953,20 @@ pub fn apply_headless_commands_with_executor_to_document(
                 table_order_index,
                 first_row,
                 banded_rows,
+                last_row,
+                first_column,
+                last_column,
+                banded_columns,
             } => {
-                let (table_order_index, first_row, banded_rows) =
-                    (*table_order_index, *first_row, *banded_rows);
+                let table_order_index = *table_order_index;
+                let update = crate::word_document::TableLookUpdate {
+                    first_row: *first_row,
+                    last_row: *last_row,
+                    first_column: *first_column,
+                    last_column: *last_column,
+                    banded_rows: *banded_rows,
+                    banded_columns: *banded_columns,
+                };
                 execute_snapshot_edit(
                     word_doc,
                     command_executor,
@@ -3731,7 +3974,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     index,
                     "set_table_look",
                     EditScope::Document,
-                    move |doc| doc.set_table_look(table_order_index, first_row, banded_rows),
+                    move |doc| doc.set_table_look_options(table_order_index, update),
                 )?;
             }
             HeadlessCommand::SetTableBorders {
@@ -4298,6 +4541,207 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetTableCellSpacing {
+                table_order_index,
+                spacing,
+            } => {
+                let (table_order_index, spacing) = (*table_order_index, *spacing);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_spacing",
+                    EditScope::Document,
+                    move |doc| doc.set_table_cell_spacing(table_order_index, spacing),
+                )?;
+            }
+            HeadlessCommand::SetTableCellTextDirection {
+                table_order_index,
+                row,
+                column,
+                direction,
+            } => {
+                let (table_order_index, row, column) = (*table_order_index, *row, *column);
+                let direction = direction.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_text_direction",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.set_table_cell_text_direction(
+                            table_order_index,
+                            row,
+                            column,
+                            direction.as_deref(),
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::SetTableIndent {
+                table_order_index,
+                indent,
+            } => {
+                let (table_order_index, indent) = (*table_order_index, *indent);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_indent",
+                    EditScope::Document,
+                    move |doc| doc.set_table_indent(table_order_index, indent),
+                )?;
+            }
+            HeadlessCommand::SetTablePosition {
+                table_order_index,
+                horizontal_align,
+                horizontal_offset,
+                horizontal_anchor,
+                vertical_align,
+                vertical_offset,
+                vertical_anchor,
+                distance_top,
+                distance_bottom,
+                distance_left,
+                distance_right,
+                allow_overlap,
+            } => {
+                let table_order_index = *table_order_index;
+                let spec = crate::word_document::TablePositionSpec {
+                    horizontal_align: horizontal_align.clone(),
+                    horizontal_offset: *horizontal_offset,
+                    horizontal_anchor: horizontal_anchor.clone(),
+                    vertical_align: vertical_align.clone(),
+                    vertical_offset: *vertical_offset,
+                    vertical_anchor: vertical_anchor.clone(),
+                    distance_top: *distance_top,
+                    distance_bottom: *distance_bottom,
+                    distance_left: *distance_left,
+                    distance_right: *distance_right,
+                    allow_overlap: *allow_overlap,
+                };
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_position",
+                    EditScope::Document,
+                    move |doc| doc.set_table_position(table_order_index, &spec),
+                )?;
+            }
+            HeadlessCommand::ConvertTextToTable {
+                start_paragraph,
+                end_paragraph,
+                separator,
+                columns,
+            } => {
+                let (start, end, columns) = (*start_paragraph, *end_paragraph, *columns);
+                let separator = separator.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "convert_text_to_table",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.convert_text_to_table(start, end, &separator, columns)
+                            .map(|_| ())
+                    },
+                )?;
+            }
+            HeadlessCommand::ConvertTableToText {
+                table_order_index,
+                separator,
+            } => {
+                let table_order_index = *table_order_index;
+                let separator = separator.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "convert_table_to_text",
+                    EditScope::Document,
+                    move |doc| doc.convert_table_to_text(table_order_index, &separator),
+                )?;
+            }
+            HeadlessCommand::SortTable {
+                table_order_index,
+                keys,
+                header_rows,
+            } => {
+                let (table_order_index, header_rows) = (*table_order_index, *header_rows);
+                let keys: Vec<crate::word_document::TableSortKey> = keys
+                    .iter()
+                    .map(|key| crate::word_document::TableSortKey {
+                        column: key.column,
+                        kind: match key.kind {
+                            jade_docx_headless_api::HeadlessTableSortKind::Text => {
+                                crate::word_document::TableSortKind::Text
+                            }
+                            jade_docx_headless_api::HeadlessTableSortKind::Number => {
+                                crate::word_document::TableSortKind::Number
+                            }
+                            jade_docx_headless_api::HeadlessTableSortKind::Date => {
+                                crate::word_document::TableSortKind::Date
+                            }
+                        },
+                        descending: key.descending,
+                    })
+                    .collect();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "sort_table",
+                    EditScope::Document,
+                    move |doc| doc.sort_table(table_order_index, &keys, header_rows),
+                )?;
+            }
+            HeadlessCommand::InsertTableFormula {
+                paragraph,
+                offset,
+                formula,
+                number_format,
+            } => {
+                let (paragraph, offset) = (*paragraph, *offset);
+                validate_text_offset(word_doc, index, paragraph, offset)?;
+                let (formula, number_format) = (formula.clone(), number_format.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "insert_table_formula",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.insert_table_formula(
+                            paragraph,
+                            offset,
+                            &formula,
+                            number_format.as_deref(),
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::UpdateTableFormulas => {
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "update_table_formulas",
+                    EditScope::Document,
+                    move |doc| doc.update_table_formulas().map(|_| ()),
+                )?;
+            }
         }
     }
 
@@ -4605,6 +5049,9 @@ fn execute_headless_query(
         }),
         HeadlessQuery::PageSetup => Ok(HeadlessQueryResult::PageSetup {
             page_setup: page_setup_snapshot(word_doc),
+        }),
+        HeadlessQuery::SectionLayout { section } => Ok(HeadlessQueryResult::SectionLayout {
+            layout: Box::new(word_doc.section_layout(*section)),
         }),
         HeadlessQuery::HeaderFooterText => Ok(HeadlessQueryResult::HeaderFooterText {
             stories: header_footer_snapshots(word_doc),
@@ -6633,6 +7080,8 @@ mod tests {
                     output.extend(character.to_uppercase());
                 }
                 HeadlessChangeCaseMode::Sentence => output.extend(character.to_lowercase()),
+                // The property tests only draw the four case modes.
+                _ => output.push(character),
             }
             if mode == HeadlessChangeCaseMode::Title {
                 if character.is_alphabetic() {
@@ -9675,6 +10124,10 @@ mod tests {
                     table_order_index: 0,
                     first_row: None,
                     banded_rows: Some(false),
+                    last_row: None,
+                    first_column: None,
+                    last_column: None,
+                    banded_columns: None,
                 }],
             },
         )
@@ -13692,6 +14145,8 @@ mod tests {
                     hanging: None,
                     left_chars: None,
                     right_chars: None,
+                    first_line_chars: None,
+                    hanging_chars: None,
                     clear_special: false,
                 },
             ],

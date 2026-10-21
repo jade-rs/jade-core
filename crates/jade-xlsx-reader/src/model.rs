@@ -256,6 +256,16 @@ pub struct Sheet {
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]
     pub phonetic_readings: std::collections::BTreeMap<CellRef, String>,
+    /// String cells made of formatted runs, by cell: the value is their
+    /// joined text, the runs how to draw it.
+    #[serde(default)]
+    pub rich_text: std::collections::BTreeMap<CellRef, Vec<crate::rich_text::TextRun>>,
+    /// `sheetPr/tabColor`: the colour of the sheet's tab.
+    #[serde(default)]
+    pub tab_color: Option<Color>,
+    /// Sparklines (`x14:sparklineGroups`).
+    #[serde(default)]
+    pub sparkline_groups: Vec<crate::sparkline::SparklineGroup>,
     /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
     /// protected: what it still allows.
     #[serde(default)]
@@ -327,6 +337,18 @@ pub struct Table {
     pub columns: Vec<String>,
     /// `tableStyleInfo/@name`, e.g. `TableStyleMedium2`.
     pub style_name: Option<String>,
+    /// `tableStyleInfo/@showFirstColumn`: the first column is emphasised.
+    #[serde(default)]
+    pub show_first_column: bool,
+    /// `tableStyleInfo/@showLastColumn`.
+    #[serde(default)]
+    pub show_last_column: bool,
+    /// `tableStyleInfo/@showRowStripes`: banded rows.
+    #[serde(default)]
+    pub show_row_stripes: bool,
+    /// `tableStyleInfo/@showColumnStripes`: banded columns.
+    #[serde(default)]
+    pub show_column_stripes: bool,
     /// Whether the table carries an `<autoFilter>` (the header dropdowns).
     pub auto_filter: bool,
 }
@@ -516,6 +538,72 @@ pub struct Shape {
     pub picture: Option<Picture>,
     #[serde(default)]
     pub chart: Option<crate::chart::Chart>,
+    /// A shape's or connector's geometry, fill, outline and text format.
+    #[serde(default)]
+    pub style: Option<Box<ShapeStyle>>,
+}
+
+/// A DrawingML colour: an RGB value or a theme colour, with its transforms
+/// (`lumMod`, `lumOff`, `shade`, `tint`, `satMod`, `alpha`) in file order.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DrawingColor {
+    pub rgb: Option<[u8; 3]>,
+    /// `schemeClr/@val`: `accent1`, `lt1`, `tx1`, `phClr`...
+    pub scheme: Option<String>,
+    /// Transforms as (name, value in 1/1000 percent).
+    pub transforms: Vec<(String, i32)>,
+}
+
+/// How a shape is filled or outlined.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ShapePaint {
+    /// The file says nothing: the shape style (`xdr:style`) decides.
+    #[default]
+    Unset,
+    /// `a:noFill`.
+    None,
+    Solid(DrawingColor),
+    /// A gradient's stops, drawn as their blend.
+    Gradient(Vec<DrawingColor>),
+}
+
+/// A shape's look from its `spPr`, `xdr:style` and text body.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ShapeStyle {
+    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...
+    pub geometry: Option<String>,
+    /// `avLst` guides as (name, value).
+    pub adjustments: Vec<(String, i64)>,
+    pub fill: ShapePaint,
+    pub line: ShapePaint,
+    /// `ln/@w` in EMUs.
+    pub line_width: Option<i64>,
+    /// `prstDash/@val`.
+    pub line_dash: Option<String>,
+    /// `headEnd/@type` and `tailEnd/@type` of a line: `triangle`, `arrow`...
+    pub head_end: Option<String>,
+    pub tail_end: Option<String>,
+    /// `xfrm/@rot` in 60000ths of a degree, and the flips.
+    pub rotation: i32,
+    pub flip_h: bool,
+    pub flip_v: bool,
+    /// The style's references: `fillRef`, `lnRef` (index and colour) and
+    /// `fontRef`'s colour.
+    pub style_fill: Option<(u32, DrawingColor)>,
+    pub style_line: Option<(u32, DrawingColor)>,
+    pub style_font: Option<DrawingColor>,
+    /// The text's first run: colour, size in 1/100 pt, bold, italic.
+    pub text_color: Option<DrawingColor>,
+    pub text_size: Option<u32>,
+    pub text_bold: bool,
+    pub text_italic: bool,
+    /// `pPr/@algn` of the first paragraph: `l`, `ctr`, `r`.
+    pub text_align: Option<String>,
+    /// `bodyPr/@anchor`: `t`, `ctr`, `b`.
+    pub text_anchor: Option<String>,
+    /// `bodyPr` insets in EMUs: left, top, right, bottom.
+    #[serde(default)]
+    pub text_insets: [Option<i64>; 4],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -815,6 +903,9 @@ pub struct Font {
     pub underline: bool,
     pub strike: bool,
     pub color: Option<Color>,
+    /// `vertAlign`: `superscript` or `subscript`.
+    #[serde(default)]
+    pub vert_align: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -916,6 +1007,31 @@ pub struct StyleTable {
     /// Custom `numFmt` codes by id. Built-in ids (0-49) are not in the file and
     /// are not in this map.
     pub number_formats: HashMap<u32, String>,
+    /// The theme's twelve colours (`lt1`, `dk1`, `lt2`, `dk2`, accents,
+    /// links) in `theme="N"` order, when the workbook has a theme.
+    #[serde(default)]
+    pub theme_colors: Vec<Option<[u8; 3]>>,
+    /// Custom table styles (`<tableStyles>`); built-in ones are not stored.
+    #[serde(default)]
+    pub table_styles: Vec<TableStyleDefinition>,
+}
+
+/// A custom table style: which differential format each part of a table
+/// takes.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TableStyleDefinition {
+    pub name: String,
+    pub elements: Vec<TableStyleElement>,
+}
+
+/// `<tableStyleElement type dxfId size>`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TableStyleElement {
+    /// `wholeTable`, `headerRow`, `firstRowStripe`...
+    pub kind: String,
+    pub differential_style_index: Option<u32>,
+    /// How many rows or columns a stripe spans.
+    pub size: u32,
 }
 
 impl StyleTable {
