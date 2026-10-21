@@ -2530,6 +2530,33 @@ fn line_number_to_display(line_ordinal: u32, settings: &ResolvedLineNumbering) -
 /// the corresponding CSS hex colour.  Returns `None` for the "none" value
 /// or unrecognised names.
 fn word_highlight_to_css(name: &str) -> Option<&'static str> {
+    // `w:highlight` is an enumeration, but writers differ in case (`darkblue`).
+    if name.bytes().any(|byte| byte.is_ascii_uppercase())
+        && !matches!(
+            name,
+            "darkBlue"
+                | "darkCyan"
+                | "darkGreen"
+                | "darkMagenta"
+                | "darkRed"
+                | "darkYellow"
+                | "darkGray"
+                | "lightGray"
+        )
+    {
+        return word_highlight_to_css(&name.to_ascii_lowercase());
+    }
+    match name {
+        "darkblue" => return Some("#000080"),
+        "darkcyan" => return Some("#008080"),
+        "darkgreen" => return Some("#008000"),
+        "darkmagenta" => return Some("#800080"),
+        "darkred" => return Some("#800000"),
+        "darkyellow" => return Some("#808000"),
+        "darkgray" => return Some("#808080"),
+        "lightgray" => return Some("#c0c0c0"),
+        _ => {}
+    }
     match name {
         "yellow" => Some("#ffff00"),
         "green" => Some("#00ff00"),
@@ -2549,6 +2576,25 @@ fn word_highlight_to_css(name: &str) -> Option<&'static str> {
         "white" => Some("#ffffff"),
         "none" | "" => None,
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod highlight_tests {
+    #[test]
+    fn every_highlight_colour_is_drawn_whatever_its_case() {
+        for (name, css) in [
+            ("white", "#ffffff"),
+            ("black", "#000000"),
+            ("darkBlue", "#000080"),
+            ("DarkBlue", "#000080"),
+            ("darkblue", "#000080"),
+            ("lightGray", "#c0c0c0"),
+            ("YELLOW", "#ffff00"),
+        ] {
+            assert_eq!(super::word_highlight_to_css(name), Some(css), "{name}");
+        }
+        assert_eq!(super::word_highlight_to_css("none"), None);
     }
 }
 

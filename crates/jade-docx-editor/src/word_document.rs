@@ -24401,7 +24401,25 @@ impl WordDocument {
             children.push(value_element(raw, "w:start", start.to_string()));
         }
         if let Some(format) = level.num_fmt.as_ref() {
-            children.push(value_element(raw, "w:numFmt", format.clone()));
+            match format.strip_prefix(jade_docx_reader::numbering::CUSTOM_FORMAT_PREFIX) {
+                // A custom format goes back as Word writes it: `custom` and
+                // the sample (ISO/IEC 29500 §17.9.17).
+                Some(sample) => children.push(XmlNode::Element(raw.create_element(
+                    "w:numFmt",
+                    vec![
+                        XmlAttribute {
+                            name: "w:val".to_string(),
+                            value: "custom".to_string(),
+                        },
+                        XmlAttribute {
+                            name: "w:format".to_string(),
+                            value: sample.to_string(),
+                        },
+                    ],
+                    Vec::new(),
+                ))),
+                None => children.push(value_element(raw, "w:numFmt", format.clone())),
+            }
         }
         if let Some(text) = level.lvl_text.as_ref() {
             children.push(value_element(raw, "w:lvlText", text.clone()));
