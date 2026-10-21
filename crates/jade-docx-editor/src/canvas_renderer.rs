@@ -1,4 +1,5 @@
 use crate::document::*;
+use crate::docx_xml::XmlNodeId;
 use crate::draw_command::executor::{execute_commands_with_font_state, FontStateTracker};
 use crate::draw_command::{
     DrawCommand, GlyphRunStep, TabLeaderStyle as CmdTabLeaderStyle, TextStyle as CmdTextStyle,
@@ -926,6 +927,10 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
         || group.groups.iter().any(shape_group_contains_text)
 }
 
+/// What each body run shows while field codes are on: the field (by its
+/// first run) and its `{ CODE }`.
+pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -957,67 +962,14 @@ impl FieldDateTime {
     }
 }
 
-const MONTH_NAMES: [&str; 12] = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
-
-const WEEKDAY_NAMES: [&str; 7] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-];
-
 /// Formats a [`FieldDateTime`] using a Word date/time picture string
-/// (ECMA-376 Part 1 §17.16.4.1). Supports the common tokens — `yyyy`/`yy`,
-/// `MMMM`/`MMM`/`MM`/`M`, `dddd`/`ddd`/`dd`/`d`, `HH`/`H` (24h), `hh`/`h`
-/// (12h), `mm`/`m`, `ss`/`s`, and `AM/PM` (or `am/pm`). Text inside single
-/// quotes is emitted literally; any other character passes through verbatim.
-/// Longest tokens are matched first so `MMMM` is never mistaken for `MM`+`MM`.
+/// (ECMA-376 Part 1 §17.16.4.1), Japanese era and weekday tokens included.
 fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
-    let chars: Vec<char> = picture.chars().collect();
-    let mut out = String::with_capacity(picture.len());
-    let mut i = 0;
-    let month_idx = (dt.month.clamp(1, 12) - 1) as usize;
-    let weekday_idx = (dt.weekday % 7) as usize;
-    let hour12 = {
-        let h = dt.hour % 12;
-        if h == 0 {
-            12
-        } else {
-            h
-        }
-    };
-    while i < chars.len() {
-        // Literal text within single quotes.
-        if chars[i] == '\'' {
-            i += 1;
-            while i < chars.len() && chars[i] != '\'' {
-                out.push(chars[i]);
-                i += 1;
-            }
-            if i < chars.len() {
-                i += 1; // consume closing quote
-            }
-            continue;
-        }
-
-        let rest: String = chars[i..].iter().collect();
-        let japanese = crate::field_datetime::FieldDateTime {
+    // The reader's formatter has Word's Japanese tokens (和暦, 元年, 曜日)
+    // as well as the Gregorian ones; one implementation for both paths.
+    crate::field_datetime::format_word_date(
+        picture,
+        &crate::field_datetime::FieldDateTime {
             year: dt.year,
             month: dt.month,
             day: dt.day,
@@ -1025,64 +977,8 @@ fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
             minute: dt.minute,
             second: dt.second,
             weekday: dt.weekday,
-        };
-        let matched: Option<(usize, String)> =
-            if let Some(token) = crate::field_datetime::japanese_date_token(&rest, &japanese) {
-                Some(token)
-            } else if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
-                Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
-            } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
-                Some((4, format!("{:04}", dt.year)))
-            } else if rest.starts_with("yy") || rest.starts_with("YY") {
-                Some((2, format!("{:02}", dt.year.rem_euclid(100))))
-            } else if rest.starts_with("MMMM") {
-                Some((4, MONTH_NAMES[month_idx].to_string()))
-            } else if rest.starts_with("MMM") {
-                Some((3, MONTH_NAMES[month_idx][..3].to_string()))
-            } else if rest.starts_with("MM") {
-                Some((2, format!("{:02}", dt.month)))
-            } else if rest.starts_with('M') {
-                Some((1, dt.month.to_string()))
-            } else if rest.starts_with("dddd") || rest.starts_with("DDDD") {
-                Some((4, WEEKDAY_NAMES[weekday_idx].to_string()))
-            } else if rest.starts_with("ddd") || rest.starts_with("DDD") {
-                Some((3, WEEKDAY_NAMES[weekday_idx][..3].to_string()))
-            } else if rest.starts_with("dd") || rest.starts_with("DD") {
-                Some((2, format!("{:02}", dt.day)))
-            } else if rest.starts_with('d') || rest.starts_with('D') {
-                Some((1, dt.day.to_string()))
-            } else if rest.starts_with("HH") {
-                Some((2, format!("{:02}", dt.hour)))
-            } else if rest.starts_with('H') {
-                Some((1, dt.hour.to_string()))
-            } else if rest.starts_with("hh") {
-                Some((2, format!("{:02}", hour12)))
-            } else if rest.starts_with('h') {
-                Some((1, hour12.to_string()))
-            } else if rest.starts_with("mm") {
-                Some((2, format!("{:02}", dt.minute)))
-            } else if rest.starts_with('m') {
-                Some((1, dt.minute.to_string()))
-            } else if rest.starts_with("ss") {
-                Some((2, format!("{:02}", dt.second)))
-            } else if rest.starts_with('s') {
-                Some((1, dt.second.to_string()))
-            } else {
-                None
-            };
-
-        match matched {
-            Some((len, text)) => {
-                out.push_str(&text);
-                i += len;
-            }
-            None => {
-                out.push(chars[i]);
-                i += 1;
-            }
-        }
-    }
-    out
+        },
+    )
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -3489,6 +3385,10 @@ where
     /// load time (wasm: `js_sys::Date`); `None` falls back to the field's
     /// cached result text so the field never renders blank.
     current_datetime: Option<FieldDateTime>,
+    /// While field codes are shown (⌥F9, ⇧F9): what a body run shows in
+    /// place of its field — `(field, code)`, the field named by its first
+    /// run. A field's runs show its code once.
+    field_code_display: Option<Rc<FieldCodeDisplay>>,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -7990,6 +7890,7 @@ where
             bookmark_paragraphs: HashMap::new(),
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
+            field_code_display: None,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -10558,6 +10459,7 @@ where
             if let Some(field) = run.field.as_ref() {
                 let field_tag: u8 = match &field.kind {
                     RunFieldKind::Locked { .. } => 255,
+                    RunFieldKind::Formatted { .. } => 254,
                     RunFieldKind::PageNumber => 1,
                     RunFieldKind::NumPages => 2,
                     RunFieldKind::NumWords => 14,
@@ -16945,9 +16847,19 @@ where
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
         let track_footnote_placement = self.tracks_footnote_placement();
 
+        let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
+            }
+            // With field codes shown, a field's first run carries `{ CODE }`
+            // and its other runs nothing.
+            let field_code = self.field_code_for(run);
+            if let Some((field, _)) = &field_code {
+                if shown_field_codes.contains(field) {
+                    continue;
+                }
+                shown_field_codes.push(*field);
             }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
@@ -16969,7 +16881,7 @@ where
                 continue;
             }
 
-            if let Some(text_box) = run.text_box.as_ref() {
+            if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
                     floating_text_boxes.push((run_index, text_box.clone()));
                     continue;
@@ -16999,7 +16911,7 @@ where
                 continue;
             }
 
-            if let Some(image) = run.image.as_ref() {
+            if let Some(image) = run.image.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(image.layout.kind, RunImageKind::Floating) {
                     floating_images.push((run_index, image.clone()));
                     continue;
@@ -17045,7 +16957,9 @@ where
             } else {
                 resolved_run_properties
             };
-            if let Some(field) = run.field.as_ref() {
+            if let Some((_, code)) = &field_code {
+                segment.push_str(code);
+            } else if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
                 // the same visible byte space as ordinary text. A freshly
@@ -33019,6 +32933,26 @@ where
                     Some(field.cached_text.clone().unwrap_or_default())
                 }
             }
+            RunFieldKind::Formatted { kind, instruction } => {
+                let number = match kind.as_ref() {
+                    RunFieldKind::PageNumber => {
+                        Some(self.page_number_value(self.current_page_number))
+                    }
+                    RunFieldKind::NumPages => Some(self.resolved_total_page_count()),
+                    RunFieldKind::SectionPages => self.current_section_page_count(),
+                    RunFieldKind::SectionNumber => Some(self.active_section_index + 1),
+                    _ => None,
+                };
+                let format = jade_docx_reader::field_format::FieldCode::parse(instruction)
+                    .map(|code| code.format)
+                    .unwrap_or_default();
+                number.map(|number| {
+                    jade_docx_reader::field_format::apply_general_format(
+                        &jade_docx_reader::field_format::FieldValue::Number(number as f64),
+                        &format,
+                    )
+                })
+            }
             RunFieldKind::PageNumber => Some(self.displayed_page_number(self.current_page_number)),
             RunFieldKind::NumPages => Some(self.resolved_total_page_count().to_string()),
             RunFieldKind::SectionPages => self
@@ -33279,6 +33213,28 @@ where
         self.current_datetime = datetime;
     }
 
+    /// Shows field codes in place of results for the body runs in
+    /// `display` (see `fields::field_code_display`), or results again with
+    /// `None`. Paint and layout caches are dropped, as the text changes.
+    pub fn set_field_code_display(&mut self, display: Option<FieldCodeDisplay>) {
+        let display = display.filter(|map| !map.is_empty());
+        if display.as_ref() == self.field_code_display.as_deref() {
+            return;
+        }
+        self.field_code_display = display.map(Rc::new);
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// The field code a body run shows instead of its content.
+    fn field_code_for(&self, run: &Run) -> Option<(XmlNodeId, Rc<str>)> {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return None;
+        }
+        let display = self.field_code_display.as_ref()?;
+        display.get(&run.node_id?).cloned()
+    }
+
     /// Best-effort total-page-count used for resolving `NUMPAGES` fields.
     ///
     /// Word recomputes `NUMPAGES` at field-update time (or at print); our
@@ -33309,6 +33265,34 @@ where
     /// Maps a 1-based physical page to the string a `PAGE` field should display,
     /// applying the section's `w:pgNumType` start offset and numeral format.
     /// ECMA-376 Part 1 §17.6.12.
+    /// The number a page shows (sections' starts applied), unformatted.
+    fn page_number_value(&self, physical_page: usize) -> usize {
+        if self.section_page_numbering.is_empty() {
+            let start = self.page_number_start.unwrap_or(1) as usize;
+            return start + physical_page.saturating_sub(1);
+        }
+        let page = physical_page.max(1);
+        let section = self.section_index_for_page(page);
+        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
+        let mut first_page_of_section = 1usize;
+        for index in 0..=section {
+            let first_page = self.first_page_of_section_index(index).unwrap_or(page);
+            if index > 0 {
+                number_at_section_start += first_page.saturating_sub(first_page_of_section);
+            }
+            first_page_of_section = first_page;
+            if let Some(start) = self
+                .section_page_numbering
+                .get(index)
+                .and_then(|numbering| numbering.as_ref())
+                .and_then(|numbering| numbering.start)
+            {
+                number_at_section_start = start as usize;
+            }
+        }
+        number_at_section_start + page.saturating_sub(first_page_of_section)
+    }
+
     fn displayed_page_number(&self, physical_page: usize) -> String {
         if self.section_page_numbering.is_empty() {
             let start = self.page_number_start.unwrap_or(1) as usize;
@@ -41473,6 +41457,46 @@ mod tests {
         let (x, width) = rects[0];
         assert!((x - 20.0).abs() < 1e-6);
         assert!((width - 30.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn page_fields_draw_their_number_switches_live() {
+        let mut renderer = test_renderer();
+        renderer.current_page_number = 4;
+        for (instruction, expected) in [
+            ("PAGE \\* ROMAN", "IV"),
+            ("PAGE \\* alphabetic", "d"),
+            ("PAGE \\# \"00\"", "04"),
+            ("PAGE \\* KANJINUM1", "四"),
+            ("SECTION \\* ArabicDash", "- 1 -"),
+        ] {
+            let kind =
+                jade_docx_reader::parser::DocumentParser::parse_field_instruction(instruction)
+                    .expect("a field");
+            assert!(
+                matches!(kind, RunFieldKind::Formatted { .. }),
+                "{instruction}"
+            );
+            let field = RunField {
+                word_mac_body_result: None,
+                kind,
+                source_field_id: None,
+                cached_text: Some("stale".to_string()),
+                resolved_value: None,
+            };
+            assert_eq!(
+                renderer.resolve_run_field(&field).as_deref(),
+                Some(expected),
+                "{instruction}"
+            );
+        }
+        // Formatting switches alone change nothing.
+        assert_eq!(
+            jade_docx_reader::parser::DocumentParser::parse_field_instruction(
+                "PAGE \\* MERGEFORMAT"
+            ),
+            Some(RunFieldKind::PageNumber)
+        );
     }
 
     #[test]

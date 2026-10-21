@@ -9987,6 +9987,45 @@ impl DocumentParser {
             }),
             _ => None,
         })();
+        // A page-number field with a number format keeps it for live
+        // display (`PAGE \* ROMAN`, `NUMPAGES \# "00"`).
+        let parsed = parsed.map(|kind| {
+            let numbered = matches!(
+                kind,
+                RunFieldKind::PageNumber
+                    | RunFieldKind::NumPages
+                    | RunFieldKind::SectionPages
+                    | RunFieldKind::SectionNumber
+            );
+            let format = crate::field_format::FieldCode::parse(normalized)
+                .map(|code| code.format)
+                .unwrap_or_default();
+            let formats_number = format.numeric_picture.is_some()
+                || format.formats.iter().any(|name| {
+                    crate::field_format::format_number_switch(1.0, name).is_some()
+                        || !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT"
+                        )
+                })
+                // Arabic only matters where a section numbers pages otherwise.
+                && (matches!(kind, RunFieldKind::PageNumber)
+                    || format.numeric_picture.is_some()
+                    || format.formats.iter().any(|name| {
+                        !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT" | "ARABIC"
+                        )
+                    }));
+            if numbered && formats_number {
+                RunFieldKind::Formatted {
+                    kind: Rc::new(kind),
+                    instruction: Rc::from(normalized),
+                }
+            } else {
+                kind
+            }
+        });
         // A known evaluator can decline unsafe or incomplete operands (for
         // example `TEMPLATE \p`, a mutating INFO form, or malformed PAGEREF).
         // Those are still Word fields. Keep the instruction and cached result

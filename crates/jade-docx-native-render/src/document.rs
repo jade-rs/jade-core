@@ -11,6 +11,8 @@ use jade_docx_editor::canvas_renderer::CanvasRenderer;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{Command, CommandContext, CommandExecutor};
+use jade_docx_editor::field_datetime::FieldDateTime;
+use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
     apply_headless_commands_with_executor_to_document, execute_headless_queries_on_document,
 };
@@ -28,6 +30,19 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+
+/// The renderer's form of a field clock reading.
+fn renderer_datetime(datetime: FieldDateTime) -> jade_docx_editor::canvas_renderer::FieldDateTime {
+    jade_docx_editor::canvas_renderer::FieldDateTime {
+        year: datetime.year,
+        month: datetime.month,
+        day: datetime.day,
+        hour: datetime.hour,
+        minute: datetime.minute,
+        second: datetime.second,
+        weekday: datetime.weekday,
+    }
+}
 
 /// A face to register, as a family name and a font file.
 pub struct FaceSpec<'a> {
@@ -226,6 +241,10 @@ pub struct NativeDocument {
     dark_paper: Rc<std::cell::Cell<bool>>,
     options: Options,
     fonts: crate::FontEnvironment,
+    /// The clock DATE and TIME show; `None` shows their saved results.
+    field_datetime: Option<FieldDateTime>,
+    /// Which fields show their codes (⌥F9, ⇧F9).
+    field_codes: FieldCodeView,
 }
 
 impl NativeDocument {
@@ -334,6 +353,8 @@ impl NativeDocument {
             dark_paper,
             options,
             fonts,
+            field_datetime: None,
+            field_codes: FieldCodeView::default(),
         })
     }
 
@@ -543,6 +564,7 @@ impl NativeDocument {
             .clone();
         let started = Instant::now();
         self.renderer.sync_word_document(&self.word_document);
+        self.refresh_field_display();
         // History can restore different paragraph contents at an address
         // previously used by another snapshot. Recompute address-keyed hashes
         // before deciding whether old paragraph paint can be replayed.
@@ -597,6 +619,13 @@ impl NativeDocument {
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
         renderer.set_selection_range(self.selection);
+        renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
+        if self.field_codes != FieldCodeView::default() {
+            renderer.set_field_code_display(Some(field_code_display(
+                &self.word_document,
+                &self.field_codes,
+            )));
+        }
         renderer.mark_full_repaint();
         let document = self
             .word_document
@@ -881,6 +910,7 @@ impl NativeDocument {
             .ok_or_else(|| "document went missing".to_string())?
             .clone();
         let started = Instant::now();
+        self.refresh_field_display();
         self.pass_covers_whole_document.set(false);
         self.renderer
             .prepare_incremental_repaint(paragraph, visible_end_page_1idx);
@@ -1156,6 +1186,37 @@ impl NativeDocument {
     /// Whether formatting marks are being drawn.
     pub fn formatting_marks(&self) -> bool {
         self.options.show_formatting_marks
+    }
+
+    /// Sets the clock DATE and TIME fields show from the next repaint on.
+    /// Without one they show the result Word saved.
+    pub fn set_field_datetime(&mut self, datetime: Option<FieldDateTime>) {
+        self.field_datetime = datetime;
+    }
+
+    /// Which fields show their codes.
+    pub fn field_code_view(&self) -> &FieldCodeView {
+        &self.field_codes
+    }
+
+    /// Shows the codes of the fields `view` names (⌥F9 every field, ⇧F9 the
+    /// selected ones) and repaints.
+    pub fn set_field_code_view(&mut self, view: FieldCodeView) -> Result<(), String> {
+        self.field_codes = view;
+        self.renderer.set_field_code_display(None);
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Gives the renderer the clock and, while codes are shown, what each
+    /// field's runs show. Edits move runs, so the codes are found afresh.
+    fn refresh_field_display(&mut self) {
+        self.renderer
+            .set_current_datetime(self.field_datetime.map(renderer_datetime));
+        if self.field_codes == FieldCodeView::default() {
+            return;
+        }
+        let display = field_code_display(&self.word_document, &self.field_codes);
+        self.renderer.set_field_code_display(Some(display));
     }
 
     /// Shows or hides the crop marks around the document's content area.
