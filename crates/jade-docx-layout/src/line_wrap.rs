@@ -2683,6 +2683,8 @@ pub enum LineBreakKind {
     Soft,
     Hard,
     Page,
+    /// 段区切り: the next line starts the next column.
+    Column,
     ParagraphEnd,
 }
 
@@ -3932,6 +3934,60 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
+        // the run is one upright horizontal group taking one character's
+        // height in the column. Runs of the same group (one `w:id`) join it.
+        let tate_chu_yoko = run_style
+            .properties
+            .as_deref()
+            .and_then(|props| props.east_asian_layout.as_deref())
+            .filter(|layout| layout.vert);
+        if let Some(layout) = tate_chu_yoko {
+            let group_start = base_offset + start_aligned;
+            let group_end = base_offset + end;
+            let joins = lines.last().is_some_and(|line: &WrappedLine| {
+                line.break_kind == LineBreakKind::Soft
+                    && line.segments.last().is_some_and(|segment| {
+                        segment.end == group_start
+                            && segment
+                                .properties
+                                .as_deref()
+                                .and_then(|props| props.east_asian_layout.as_deref())
+                                .is_some_and(|previous| previous.vert && previous.id == layout.id)
+                    })
+            }) && pending_ascii.is_none();
+            if joins {
+                let line = lines.last_mut().expect("checked");
+                if let Some(segment) = line.segments.last_mut() {
+                    segment.text.push_str(run_text);
+                    segment.end = group_end;
+                }
+                if let Some(cluster) = line.clusters.last_mut() {
+                    cluster.end = group_end;
+                }
+                continue;
+            }
+            flush_pending_ascii(ctx, &mut lines, &mut pending_ascii, &mut max_line_width)?;
+            let (descriptor, hash, id) =
+                style.descriptor_key_for_grapheme("国", ScriptCategory::EastAsia);
+            let em = (ctx
+                .measure_text_for_vertical_stack_with_font_key("国", descriptor, hash, id)?
+                * style.text_scale_x.max(0.01))
+            .max(1.0);
+            max_line_width = max_line_width.max(em);
+            push_vertical_line(
+                &mut lines,
+                run_text.replace(['\r', '\n'], ""),
+                group_start..group_end,
+                em,
+                SegmentMeta {
+                    properties: &run_style.properties,
+                    revision: &run_style.revision,
+                    hyperlink: &run_style.hyperlink,
+                },
+            );
+            continue;
+        }
         for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
             let grapheme_start_abs = base_offset + start_aligned + rel_offset;
             let grapheme_end_abs = grapheme_start_abs + grapheme.len();
@@ -5679,7 +5735,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         && paragraph_style.float_line_segments.is_empty()
         && !paragraph_style.bidi
         && paragraph_style.tab_stops.is_empty()
-        && !text.contains(['\t', '\n', jade_docx_reader::PAGE_BREAK_CHAR])
+        && !text.contains([
+            '\t',
+            '\n',
+            jade_docx_reader::PAGE_BREAK_CHAR,
+            jade_docx_reader::COLUMN_BREAK_CHAR,
+        ])
         && text.chars().any(|ch| {
             matches!(
                 ch,
@@ -5918,7 +5979,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 continue;
             }
 
-            if grapheme == PAGE_BREAK_STR {
+            if grapheme == PAGE_BREAK_STR || grapheme == jade_docx_reader::COLUMN_BREAK_STR {
+                let page_or_column = if grapheme == PAGE_BREAK_STR {
+                    LineBreakKind::Page
+                } else {
+                    LineBreakKind::Column
+                };
                 if !buffer.is_empty() {
                     let segment_text = std::mem::take(&mut buffer);
                     push_text_segment(
@@ -5938,7 +6004,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
 
                 lines.push(WrappedLine {
                     segments: std::mem::take(&mut current_line),
-                    break_kind: LineBreakKind::Page,
+                    break_kind: page_or_column,
                     break_range: Some((grapheme_start_abs, grapheme_end_abs)),
                     break_properties: run_style.properties.clone(),
                     leaders: std::mem::take(&mut current_line_leaders),
@@ -7413,7 +7479,11 @@ fn measure_tab_segment<C: LineWrapContext>(
             if grapheme == "\r" {
                 continue;
             }
-            if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+            if grapheme == "\n"
+                || grapheme == PAGE_BREAK_STR
+                || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                || grapheme == "\t"
+            {
                 return Ok(width + character_border_extent_px(previous_border));
             }
             if first_grapheme_in_run {
@@ -15969,7 +16039,11 @@ mod tests {
                 if grapheme == "\r" {
                     continue;
                 }
-                if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+                if grapheme == "\n"
+                    || grapheme == PAGE_BREAK_STR
+                    || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                    || grapheme == "\t"
+                {
                     return Ok(width);
                 }
                 let grapheme_start_abs = base_offset + run_start + rel_offset;

@@ -11934,6 +11934,10 @@ impl OffscreenDocumentView {
             table_order_index: cell.table_order_index,
             first_row,
             banded_rows,
+            last_row: None,
+            first_column: None,
+            last_column: None,
+            banded_columns: None,
         })
     }
 
@@ -18119,6 +18123,8 @@ impl OffscreenDocumentView {
             hanging: None,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special: false,
         })
     }
@@ -18164,6 +18170,8 @@ impl OffscreenDocumentView {
             hanging,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special,
         })
     }

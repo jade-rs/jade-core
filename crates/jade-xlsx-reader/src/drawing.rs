@@ -10,7 +10,7 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
 use crate::error::Result;
-use crate::model::{CellRef, Picture, Shape, ShapeKind};
+use crate::model::{CellRef, DrawingColor, Picture, Shape, ShapeKind, ShapePaint, ShapeStyle};
 use jade_opc::local_name;
 
 /// Parses a drawing part into its anchored objects, in document order.
@@ -34,6 +34,7 @@ pub fn parse_drawing(xml: &str) -> Result<Vec<Shape>> {
     let mut in_text = false;
     let mut paragraph: Option<String> = None;
     let mut paragraphs: Vec<String> = Vec::new();
+    let mut styles = shape_styles(xml)?.into_iter();
 
     loop {
         let event = reader.read_event_into(&mut buf)?;
@@ -44,7 +45,10 @@ pub fn parse_drawing(xml: &str) -> Result<Vec<Shape>> {
                 let name = local_name(qualified.as_ref());
                 match name {
                     b"twoCellAnchor" | b"oneCellAnchor" | b"absoluteAnchor" => {
-                        anchor = Some(Anchor::default());
+                        anchor = Some(Anchor {
+                            style: styles.next().flatten(),
+                            ..Anchor::default()
+                        });
                         object_depth = 0;
                         paragraphs.clear();
                     }
@@ -316,6 +320,17 @@ pub fn parse_drawing(xml: &str) -> Result<Vec<Shape>> {
                                     text: anchor.text,
                                     picture: anchor.picture,
                                     chart: anchor.chart,
+                                    style: anchor
+                                        .style
+                                        .filter(|_| {
+                                            matches!(
+                                                kind,
+                                                ShapeKind::Shape
+                                                    | ShapeKind::TextBox
+                                                    | ShapeKind::Connector
+                                            )
+                                        })
+                                        .map(Box::new),
                                 });
                             }
                         }
@@ -344,6 +359,304 @@ struct Anchor {
     text: Option<String>,
     picture: Option<Picture>,
     chart: Option<crate::chart::Chart>,
+    style: Option<ShapeStyle>,
+}
+
+/// An element of a drawing, kept whole to read a shape's look from.
+#[derive(Default)]
+struct Node {
+    name: String,
+    attributes: Vec<(String, String)>,
+    children: Vec<Node>,
+}
+
+impl Node {
+    fn attr(&self, name: &str) -> Option<&str> {
+        self.attributes
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.as_str())
+    }
+    fn child(&self, name: &str) -> Option<&Node> {
+        self.children.iter().find(|node| node.name == name)
+    }
+    fn find(&self, name: &str) -> Option<&Node> {
+        self.children.iter().find_map(|node| {
+            if node.name == name {
+                Some(node)
+            } else {
+                node.find(name)
+            }
+        })
+    }
+}
+
+/// Each anchor's shape look, in document order (`None` for an anchor whose
+/// object is not a shape or connector).
+fn shape_styles(xml: &str) -> Result<Vec<Option<ShapeStyle>>> {
+    let mut reader = Reader::from_str(xml);
+    let mut stack: Vec<Node> = vec![Node::default()];
+    let mut buf = Vec::new();
+    loop {
+        let event = reader.read_event_into(&mut buf)?;
+        match event {
+            Event::Start(ref element) | Event::Empty(ref element) => {
+                let mut node = Node {
+                    name: String::from_utf8_lossy(local_name(element.name().as_ref())).into_owned(),
+                    ..Node::default()
+                };
+                for attribute in element.attributes() {
+                    let attribute = attribute?;
+                    node.attributes.push((
+                        String::from_utf8_lossy(local_name(attribute.key.as_ref())).into_owned(),
+                        attribute.unescape_value()?.into_owned(),
+                    ));
+                }
+                if matches!(event, Event::Empty(_)) {
+                    stack.last_mut().unwrap().children.push(node);
+                } else {
+                    stack.push(node);
+                }
+            }
+            Event::End(_) => {
+                if stack.len() > 1 {
+                    let node = stack.pop().unwrap();
+                    stack.last_mut().unwrap().children.push(node);
+                }
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    let root = stack.remove(0);
+    let mut anchors = Vec::new();
+    collect_anchors(&root, &mut anchors);
+    Ok(anchors
+        .into_iter()
+        .map(|anchor| {
+            let object = anchor
+                .children
+                .iter()
+                .find(|node| matches!(node.name.as_str(), "sp" | "cxnSp"))?;
+            Some(shape_style(object))
+        })
+        .collect())
+}
+
+fn collect_anchors<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
+    for child in &node.children {
+        if matches!(
+            child.name.as_str(),
+            "twoCellAnchor" | "oneCellAnchor" | "absoluteAnchor"
+        ) {
+            out.push(child);
+        } else {
+            collect_anchors(child, out);
+        }
+    }
+}
+
+fn drawing_color(node: &Node) -> Option<DrawingColor> {
+    let color = node.children.iter().find(|child| {
+        matches!(
+            child.name.as_str(),
+            "srgbClr" | "schemeClr" | "sysClr" | "prstClr" | "scrgbClr"
+        )
+    })?;
+    let hex = |value: &str| -> Option<[u8; 3]> {
+        if value.len() != 6 {
+            return None;
+        }
+        Some([
+            u8::from_str_radix(&value[0..2], 16).ok()?,
+            u8::from_str_radix(&value[2..4], 16).ok()?,
+            u8::from_str_radix(&value[4..6], 16).ok()?,
+        ])
+    };
+    let rgb =
+        match color.name.as_str() {
+            "srgbClr" => color.attr("val").and_then(hex),
+            "sysClr" => color.attr("lastClr").and_then(hex).or(Some(
+                if color.attr("val") == Some("window") {
+                    [255, 255, 255]
+                } else {
+                    [0, 0, 0]
+                },
+            )),
+            "scrgbClr" => {
+                let channel = |name: &str| {
+                    let linear = color.attr(name)?.parse::<f64>().ok()? / 100_000.0;
+                    let srgb = if linear <= 0.003_130_8 {
+                        linear * 12.92
+                    } else {
+                        1.055 * linear.powf(1.0 / 2.4) - 0.055
+                    };
+                    Some((srgb.clamp(0.0, 1.0) * 255.0).round() as u8)
+                };
+                Some([channel("r")?, channel("g")?, channel("b")?])
+            }
+            "prstClr" => Some(match color.attr("val")? {
+                "black" => [0, 0, 0],
+                "white" => [255, 255, 255],
+                "red" => [255, 0, 0],
+                "green" => [0, 128, 0],
+                "blue" => [0, 0, 255],
+                "yellow" => [255, 255, 0],
+                "gray" | "grey" => [128, 128, 128],
+                "orange" => [255, 165, 0],
+                _ => [0, 0, 0],
+            }),
+            _ => None,
+        };
+    Some(DrawingColor {
+        rgb,
+        scheme: (color.name == "schemeClr")
+            .then(|| color.attr("val").map(str::to_string))
+            .flatten(),
+        transforms: color
+            .children
+            .iter()
+            .filter_map(|transform| {
+                Some((
+                    transform.name.clone(),
+                    transform.attr("val")?.parse::<i32>().ok()?,
+                ))
+            })
+            .collect(),
+    })
+}
+
+fn paint(node: &Node) -> ShapePaint {
+    for child in &node.children {
+        match child.name.as_str() {
+            "noFill" => return ShapePaint::None,
+            "solidFill" => {
+                return drawing_color(child).map_or(ShapePaint::Unset, ShapePaint::Solid);
+            }
+            "gradFill" => {
+                let stops: Vec<DrawingColor> = child
+                    .child("gsLst")
+                    .map(|list| list.children.iter().filter_map(drawing_color).collect())
+                    .unwrap_or_default();
+                return if stops.is_empty() {
+                    ShapePaint::Unset
+                } else {
+                    ShapePaint::Gradient(stops)
+                };
+            }
+            "pattFill" => {
+                return child
+                    .child("fgClr")
+                    .and_then(drawing_color)
+                    .map_or(ShapePaint::Unset, ShapePaint::Solid);
+            }
+            _ => {}
+        }
+    }
+    ShapePaint::Unset
+}
+
+fn shape_style(object: &Node) -> ShapeStyle {
+    let mut style = ShapeStyle::default();
+    if let Some(properties) = object.child("spPr") {
+        if let Some(geometry) = properties.child("prstGeom") {
+            style.geometry = geometry.attr("prst").map(str::to_string);
+            if let Some(list) = geometry.child("avLst") {
+                style.adjustments = list
+                    .children
+                    .iter()
+                    .filter_map(|guide| {
+                        let formula = guide.attr("fmla")?;
+                        let value = formula.strip_prefix("val ")?.trim().parse().ok()?;
+                        Some((guide.attr("name")?.to_string(), value))
+                    })
+                    .collect();
+            }
+        } else if properties.child("custGeom").is_some() {
+            style.geometry = Some("rect".into());
+        }
+        if let Some(transform) = properties.child("xfrm") {
+            style.rotation = transform
+                .attr("rot")
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0);
+            let flag = |name: &str| {
+                transform
+                    .attr(name)
+                    .is_some_and(|v| v == "1" || v == "true")
+            };
+            style.flip_h = flag("flipH");
+            style.flip_v = flag("flipV");
+        }
+        style.fill = paint(properties);
+        if let Some(line) = properties.child("ln") {
+            style.line = paint(line);
+            style.line_width = line.attr("w").and_then(|value| value.parse().ok());
+            style.line_dash = line
+                .child("prstDash")
+                .and_then(|dash| dash.attr("val"))
+                .map(str::to_string);
+            style.head_end = line
+                .child("headEnd")
+                .and_then(|end| end.attr("type"))
+                .filter(|kind| *kind != "none")
+                .map(str::to_string);
+            style.tail_end = line
+                .child("tailEnd")
+                .and_then(|end| end.attr("type"))
+                .filter(|kind| *kind != "none")
+                .map(str::to_string);
+        }
+    }
+    if let Some(references) = object.child("style") {
+        let reference = |name: &str| {
+            let node = references.child(name)?;
+            let index = node
+                .attr("idx")
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0);
+            Some((index, drawing_color(node).unwrap_or_default()))
+        };
+        style.style_fill = reference("fillRef");
+        style.style_line = reference("lnRef");
+        style.style_font = references.child("fontRef").and_then(drawing_color);
+    }
+    if let Some(body) = object.child("txBody") {
+        let properties = body.child("bodyPr");
+        style.text_anchor = properties
+            .and_then(|properties| properties.attr("anchor"))
+            .map(str::to_string);
+        for (slot, key) in style
+            .text_insets
+            .iter_mut()
+            .zip(["lIns", "tIns", "rIns", "bIns"])
+        {
+            *slot = properties
+                .and_then(|properties| properties.attr(key))
+                .and_then(|value| value.parse().ok());
+        }
+        if let Some(paragraph) = body.child("p") {
+            style.text_align = paragraph
+                .child("pPr")
+                .and_then(|properties| properties.attr("algn"))
+                .map(str::to_string);
+            let run = paragraph
+                .children
+                .iter()
+                .find(|node| node.name == "r")
+                .and_then(|run| run.child("rPr"))
+                .or_else(|| paragraph.child("endParaRPr"))
+                .or_else(|| body.find("defRPr"));
+            if let Some(run) = run {
+                style.text_size = run.attr("sz").and_then(|value| value.parse().ok());
+                style.text_bold = run.attr("b").is_some_and(|v| v == "1" || v == "true");
+                style.text_italic = run.attr("i").is_some_and(|v| v == "1" || v == "true");
+                style.text_color = run.child("solidFill").and_then(drawing_color);
+            }
+        }
+    }
+    style
 }
 
 #[derive(Clone, Copy)]

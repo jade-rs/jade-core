@@ -34,6 +34,7 @@ fn shape(name: &str, transform: Transform) -> Shape {
         source_rect: None,
         text: None,
         shadow: None,
+        effects: Default::default(),
     }
 }
 

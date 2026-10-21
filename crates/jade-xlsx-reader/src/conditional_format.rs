@@ -32,6 +32,9 @@ pub struct ConditionalRule {
     /// What `top10` and `aboveAverage` rules rank by.
     #[serde(default)]
     pub ranking: RuleRanking,
+    /// A `timePeriod` rule's period: `today`, `last7Days`, `thisMonth`...
+    #[serde(default)]
+    pub time_period: Option<String>,
 }
 
 /// A `top10` or `aboveAverage` rule's settings; the defaults are what the
@@ -53,6 +56,22 @@ pub struct RuleRanking {
 pub struct ConditionalThreshold {
     pub kind: String,
     pub value: Option<String>,
+    /// An icon set's threshold counts a value equal to it (`gte`, the
+    /// default); without it only greater values reach the icon.
+    #[serde(default = "default_true")]
+    pub gte: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// One icon of a custom (x14) icon set: the set it is borrowed from and its
+/// position there, or none for `NoIcons`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomIcon {
+    pub icon_set: String,
+    pub index: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -69,6 +88,18 @@ pub enum ConditionalVisual {
         show_value: bool,
         #[serde(default)]
         options: Option<Box<DataBarOptions>>,
+    },
+    /// `iconSet`: one icon per threshold band, the lowest band first.
+    IconSet {
+        /// `3TrafficLights1` when the file leaves it out.
+        icon_set: String,
+        thresholds: Vec<ConditionalThreshold>,
+        reverse: bool,
+        show_value: bool,
+        /// x14 custom icons, one per threshold (lowest first); `None` is
+        /// `NoIcons`. Empty for a set used as it is.
+        #[serde(default)]
+        custom: Vec<Option<CustomIcon>>,
     },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,12 +131,17 @@ pub struct DataBarOptions {
 }
 
 impl ConditionalVisual {
-    fn parts_mut(&mut self) -> (&mut Vec<ConditionalThreshold>, &mut Vec<Color>) {
+    fn thresholds_mut(&mut self) -> &mut Vec<ConditionalThreshold> {
         match self {
-            Self::ColorScale { thresholds, colors }
-            | Self::DataBar {
-                thresholds, colors, ..
-            } => (thresholds, colors),
+            Self::ColorScale { thresholds, .. }
+            | Self::DataBar { thresholds, .. }
+            | Self::IconSet { thresholds, .. } => thresholds,
+        }
+    }
+    fn colors_mut(&mut self) -> Option<&mut Vec<Color>> {
+        match self {
+            Self::ColorScale { colors, .. } | Self::DataBar { colors, .. } => Some(colors),
+            Self::IconSet { .. } => None,
         }
     }
 }
@@ -123,6 +159,12 @@ pub struct DifferentialStyle {
     pub right: Option<DifferentialBorder>,
     pub top: Option<DifferentialBorder>,
     pub bottom: Option<DifferentialBorder>,
+    /// A table style's borders between its cells (`<vertical>`,
+    /// `<horizontal>`); conditional formats do not use them.
+    #[serde(default)]
+    pub inside_vertical: Option<DifferentialBorder>,
+    #[serde(default)]
+    pub inside_horizontal: Option<DifferentialBorder>,
     pub number_format_code: Option<String>,
     pub unsupported_properties: Vec<String>,
 }
@@ -222,6 +264,7 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                                 formulas: Vec::new(),
                                 visual: None,
                                 issues: Vec::new(),
+                                time_period: attribute(element, b"timePeriod")?,
                                 ranking: RuleRanking {
                                     rank: attribute(element, b"rank")?
                                         .and_then(|value| value.parse().ok()),
@@ -251,6 +294,27 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                                 formula_depth = Some(stack.len() + 1);
                                 formula = Some(String::new());
                             }
+                        }
+                        b"iconSet"
+                            if rule_depth == Some(stack.len())
+                                && parent(b"cfRule")
+                                && rule.is_some() =>
+                        {
+                            if !empty {
+                                visual_depth = Some(stack.len() + 1);
+                            }
+                            let rule = rule.as_mut().unwrap();
+                            if rule.visual.is_some() {
+                                rule.issues.push("multiple visual definitions".into());
+                            }
+                            rule.visual = Some(ConditionalVisual::IconSet {
+                                icon_set: attribute(element, b"iconSet")?
+                                    .unwrap_or_else(|| "3TrafficLights1".into()),
+                                thresholds: Vec::new(),
+                                reverse: flag(attribute(element, b"reverse")?),
+                                show_value: enabled(attribute(element, b"showValue")?),
+                                custom: Vec::new(),
+                            });
                         }
                         b"colorScale" | b"dataBar"
                             if rule_depth == Some(stack.len())
@@ -301,13 +365,16 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                         }
                         b"cfvo"
                             if visual_depth == Some(stack.len())
-                                && (parent(b"colorScale") || parent(b"dataBar"))
+                                && (parent(b"colorScale")
+                                    || parent(b"dataBar")
+                                    || parent(b"iconSet"))
                                 && rule.is_some() =>
                         {
                             if let Some(visual) = rule.as_mut().unwrap().visual.as_mut() {
-                                visual.parts_mut().0.push(ConditionalThreshold {
+                                visual.thresholds_mut().push(ConditionalThreshold {
                                     kind: attribute(element, b"type")?.unwrap_or_default(),
                                     value: attribute(element, b"val")?,
+                                    gte: enabled(attribute(element, b"gte")?),
                                 });
                             }
                         }
@@ -326,8 +393,10 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                             }
                             match crate::styles::parse_color(element)? {
                                 Some(color) => {
-                                    if let Some(visual) = rule.visual.as_mut() {
-                                        visual.parts_mut().1.push(color);
+                                    if let Some(colors) =
+                                        rule.visual.as_mut().and_then(ConditionalVisual::colors_mut)
+                                    {
+                                        colors.push(color);
                                     }
                                 }
                                 None => rule.issues.push("invalid visual color".into()),
@@ -407,7 +476,9 @@ pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>
                             }
                             format_depth = None;
                         }
-                        b"colorScale" | b"dataBar" if visual_depth == Some(stack.len()) => {
+                        b"colorScale" | b"dataBar" | b"iconSet"
+                            if visual_depth == Some(stack.len()) =>
+                        {
                             visual_depth = None;
                         }
                         _ => {}
@@ -452,7 +523,7 @@ pub(crate) fn apply_theme(
                     }
                 }
             }
-            for color in visual.parts_mut().1 {
+            for color in visual.colors_mut().into_iter().flatten() {
                 if let Color::Theme {
                     index, resolved, ..
                 } = color
@@ -530,7 +601,9 @@ pub fn parse_differential_styles(xml: &str) -> Result<Vec<DifferentialStyle>> {
                                 crate::styles::parse_color(element)?
                         }
                         b"border" => border = !empty,
-                        b"left" | b"right" | b"top" | b"bottom" if border => {
+                        b"left" | b"right" | b"top" | b"bottom" | b"vertical" | b"horizontal"
+                            if border =>
+                        {
                             let name = String::from_utf8_lossy(&name).into_owned();
                             let parsed = attribute(element, b"style")?
                                 .map(|style| BorderEdge { style, color: None });
@@ -567,7 +640,7 @@ pub fn parse_differential_styles(xml: &str) -> Result<Vec<DifferentialStyle>> {
                 b"font" => font = false,
                 b"fill" => fill = false,
                 b"border" => border = false,
-                b"left" | b"right" | b"top" | b"bottom" => {
+                b"left" | b"right" | b"top" | b"bottom" | b"vertical" | b"horizontal" => {
                     if let (Some(style), Some((name, edge))) = (style.as_mut(), edge.take()) {
                         set_edge(style, &name, edge);
                     }
@@ -592,6 +665,8 @@ fn set_edge(style: &mut DifferentialStyle, side: &str, edge: Option<BorderEdge>)
         "right" => style.right = edge,
         "top" => style.top = edge,
         "bottom" => style.bottom = edge,
+        "vertical" => style.inside_vertical = edge,
+        "horizontal" => style.inside_horizontal = edge,
         _ => {}
     }
 }

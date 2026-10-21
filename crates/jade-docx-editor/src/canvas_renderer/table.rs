@@ -3149,6 +3149,21 @@ where
                     );
 
                     if let Some(direction) = cell.text_direction {
+                        // The cell's fill set the painter's colour; vertical
+                        // text paints with the current fill, so it would come
+                        // out in the shading colour and vanish into it.
+                        if draw_enabled {
+                            let first_run_color = paragraph
+                                .styled_runs
+                                .first()
+                                .and_then(|run| run.properties.as_ref())
+                                .and_then(|properties| properties.color.clone());
+                            let color = self.resolve_text_fill_color(
+                                first_run_color.as_deref().unwrap_or(text_color),
+                            );
+                            #[allow(deprecated)]
+                            clip_painter.set_fill_style_str(color.as_ref());
+                        }
                         if direction_requires_rotated_layout(direction) {
                             let mut base_y = block_top + paragraph.spacing_before;
                             if matches!(direction, TextDirection::BtLr | TextDirection::BtLrV) {
@@ -3692,7 +3707,40 @@ where
                     visual_text_top
                 };
 
-                if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                // 縦中横: the group upright and across the column, centred,
+                // and with 行の幅に合わせる squeezed to the column's width.
+                let tate_chu_yoko = turned_angle
+                    .is_none()
+                    .then(|| paragraph_line_tate_chu_yoko(paragraph, line))
+                    .flatten();
+                if let Some((compress, font)) = tate_chu_yoko.as_ref() {
+                    if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                        context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
+                        context.set_text_baseline(if center_glyphs { "alphabetic" } else { "top" });
+                        let width = context
+                            .measure_text_width(&line.text)
+                            .map_err(PainterError::into_js_value)?
+                            .max(0.01);
+                        // One character's width: the cell the group takes.
+                        let fit = line_advance.max(1.0);
+                        let squeeze = if *compress && width > fit {
+                            fit / width
+                        } else {
+                            1.0
+                        };
+                        let drawn = width * squeeze;
+                        let _guard = StateGuard::new(context);
+                        context
+                            .translate(column_x + (column_width - drawn) * 0.5, paint_y)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .scale(squeeze, 1.0)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .fill_text(&line.text, 0.0, 0.0)
+                            .map_err(PainterError::into_js_value)?;
+                    }
+                } else if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
                     let font = paragraph_line_font_descriptor(paragraph, line);
                     context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
                     if turned_angle.is_none() {
@@ -11220,9 +11268,12 @@ fn collect_paragraph_text(
         }
         if !run.text.is_empty() || field_text.as_deref().is_some_and(|text| !text.is_empty()) {
             let start = text.len();
-            text.push_str(&run.text);
-            if let Some(value) = field_text.as_deref() {
-                text.push_str(value);
+            // As in body paragraphs: a field's result lives in `run.text`
+            // once authored or brought up to date, and a resolved value
+            // replaces it — appended, a field in a cell drew twice.
+            match field_text.as_deref().filter(|value| !value.is_empty()) {
+                Some(value) => text.push_str(value),
+                None => text.push_str(&run.text),
             }
             let end = text.len();
             styled_runs.push(StyledRunRange {
@@ -11597,6 +11648,26 @@ fn paragraph_line_text_scale(paragraph: &CellParagraph, line: &LineLayout) -> f6
         .find(|run| run.start <= line.start && line.end <= run.end)
         .map(|run| run_text_scale(run.properties.as_ref()))
         .unwrap_or(1.0)
+}
+
+/// Whether a vertical line is a 縦中横 group (`w:eastAsianLayout w:vert`),
+/// with whether it is fitted to the line (`w:vertCompress`) and the font of
+/// the run it starts in.
+fn paragraph_line_tate_chu_yoko(
+    paragraph: &CellParagraph,
+    line: &LineLayout,
+) -> Option<(bool, Option<Rc<str>>)> {
+    let run = paragraph
+        .styled_runs
+        .iter()
+        .find(|run| run.start <= line.start && line.start < run.end)?;
+    let layout = run.properties.as_ref()?.east_asian_layout.as_deref()?;
+    layout.vert.then(|| {
+        (
+            layout.vert_compress,
+            table_font_descriptor_for_text(run.properties.as_ref(), &line.text),
+        )
+    })
 }
 
 fn paragraph_line_font_descriptor(paragraph: &CellParagraph, line: &LineLayout) -> Option<Rc<str>> {
@@ -12441,6 +12512,20 @@ mod tests {
                 renderer.resolve_run_field(field)
             });
         assert_eq!(text, "editable");
+        // An authored field keeps its result in the run as well as in the
+        // field; a cell draws it once, as a body paragraph does.
+        let mut paragraph = paragraph_with_field(
+            RunFieldKind::Unsupported {
+                instruction: "=SUM(ABOVE)".into(),
+            },
+            "8",
+        );
+        paragraph.runs[0].text = "8".into();
+        let (text, _, _) =
+            collect_paragraph_text(&paragraph, true, false, &NoteMarkers::default(), &|field| {
+                renderer.resolve_run_field(field)
+            });
+        assert_eq!(text, "8");
     }
 
     #[test]
@@ -15020,6 +15105,77 @@ mod tests {
         assert_eq!(
             rotated_visual_anchor_x(TextDirection::BtLr, base_x, content_right, line_height),
             base_x
+        );
+    }
+
+    /// A shaded cell set in 縦書き draws its text in the text colour: the
+    /// shading's fill used to stay on the painter, and the text vanished
+    /// into it.
+    #[test]
+    fn vertical_text_in_a_shaded_cell_is_drawn_in_the_text_colour() {
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        let paragraph = |text: &str| {
+            BodyElement::from_paragraph(crate::document::Paragraph {
+                runs: vec![serde_json::from_value(serde_json::json!({ "text": text })).unwrap()],
+                properties: None,
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+            })
+        };
+        let mut cell = TableCell {
+            blocks: vec![paragraph("縦書き")],
+            text_direction: Some(TextDirection::TbRlV),
+            ..Default::default()
+        };
+        cell.style
+            .insert("background-color".into(), "#FFF2CC".into());
+        let table = Table {
+            rows: vec![TableRow {
+                cells: vec![cell],
+                ..Default::default()
+            }],
+            columns: vec![crate::document::TableColumn { width: Some(100.0) }],
+            ..Default::default()
+        };
+        let document = crate::document::Document {
+            body: Some(crate::document::Body {
+                elements: vec![BodyElement::from_table(table), paragraph("")],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &crate::Options::default())
+            .expect("render");
+        let mut fill = String::new();
+        let mut saved = Vec::new();
+        let mut drawn = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::Save => saved.push(fill.clone()),
+                Op::Restore => fill = saved.pop().unwrap_or_default(),
+                Op::SetFillStyle(value) => fill = value,
+                Op::FillText(text, _, _)
+                    if "縦書き".contains(text.as_str()) && !text.is_empty() =>
+                {
+                    drawn.push(fill.clone())
+                }
+                _ => {}
+            }
+        }
+        assert!(!drawn.is_empty(), "the vertical text was drawn");
+        assert!(
+            drawn
+                .iter()
+                .all(|fill| !fill.eq_ignore_ascii_case("#FFF2CC")),
+            "drawn in the shading colour: {drawn:?}"
         );
     }
 

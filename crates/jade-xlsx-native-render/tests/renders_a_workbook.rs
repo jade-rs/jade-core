@@ -166,7 +166,8 @@ fn charts_render_series_pixels_and_doughnut_holes_through_the_native_painter() {
             .iter()
             .filter(|chart| chart.rendered)
             .count(),
-        9
+        // Every chart, the column-and-line combination among them.
+        10
     );
     let metrics = workbook.header_metrics();
     let (pixels, _, _) = workbook.viewport_pixels((190.0, 0.0), (440, 310)).unwrap();

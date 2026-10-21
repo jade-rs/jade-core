@@ -2155,7 +2155,10 @@ impl SelectionManager {
             // Word places a click after the visible text before its page break.
             // The end offset belongs to the next page, whose placeholder line
             // can be hit independently. Do not move input to an invisible page.
-            let offset = if paragraph.text.get(start..end) == Some(PAGE_BREAK_STR) {
+            let offset = if paragraph.text.get(start..end) == Some(PAGE_BREAK_STR)
+                || paragraph.text.get(start..end)
+                    == Some(jade_docx_reader::document::COLUMN_BREAK_STR)
+            {
                 start
             } else {
                 end
