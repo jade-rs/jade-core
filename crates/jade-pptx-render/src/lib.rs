@@ -246,7 +246,7 @@ fn draw_content<P: Painter>(
             clear_outline(painter, outline);
         }
     }
-    draw_text(painter, shape, options)?;
+    draw_text(painter, shape, options, draw_image)?;
     if opacity < 1.0 {
         painter.restore();
     }
@@ -320,6 +320,7 @@ fn draw_text<P: Painter>(
     painter: &P,
     shape: &PlacedShape,
     options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
 ) -> Result<(), P::Error> {
     // Vertical text: the lines were laid out in a frame turned inside the
     // shape, so turn the canvas the same way around the shape's centre and
@@ -364,6 +365,36 @@ fn draw_text<P: Painter>(
         for run in &line.runs {
             let x = origin_x + run.x;
             let baseline = origin_y + run.baseline_y;
+            if let Some(part) = &run.bullet_image {
+                // A picture bullet: the host draws it in the run's square,
+                // sitting on the baseline; the glyph stands in otherwise.
+                let side = run.width;
+                let mut bullet = shape.clone();
+                bullet.lines = Vec::new();
+                bullet.name = format!("{} bullet", shape.name);
+                bullet.rect = jade_pptx_layout::Rect {
+                    x,
+                    y: baseline - side,
+                    width: side,
+                    height: side,
+                };
+                bullet.local_rect = None;
+                bullet.group_transforms = Vec::new();
+                bullet.rotation_rad = 0.0;
+                bullet.flip_h = false;
+                bullet.flip_v = false;
+                bullet.geometry = PlacedGeometry::Rect;
+                bullet.image_part = Some(part.clone());
+                bullet.source_rect = None;
+                bullet.image_alpha = None;
+                painter.save();
+                painter.set_fill_style_str("#000000");
+                let drew = draw_image(&bullet);
+                painter.restore();
+                if drew {
+                    continue;
+                }
+            }
             if let Some(highlight) = &run.highlight {
                 let size_px = run.size_pt as f64 * PX_PER_PT;
                 painter.set_fill_style_str(highlight);
@@ -568,7 +599,7 @@ fn draw_soft_edged<P: Painter>(
         if let Some(inner) = &shape.effects.inner_shadow {
             draw_inner_shadow(painter, shape, inner)?;
         }
-        return draw_text(painter, shape, options);
+        return draw_text(painter, shape, options, draw_image);
     }
     let rings = SOFT_EDGE_RINGS;
     let mut covered = 0.0;

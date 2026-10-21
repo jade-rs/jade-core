@@ -482,6 +482,88 @@ fn resolve_content_images(
             .map(|target| jade_opc::resolve_target(part, target));
     }
     resolve_image_parts(&mut content.shapes, relationships, part);
+    // Picture bullets, in the paragraphs and in every list style the part
+    // states (its shapes' own and, on a master, the text styles).
+    let mut resolve = |bullet: &mut Bullet| {
+        if let Bullet::Picture { rel_id, image_part } = bullet {
+            *image_part = relationships
+                .target(rel_id)
+                .map(|target| jade_opc::resolve_target(part, target));
+        }
+    };
+    if let Some(styles) = &mut content.text_styles {
+        for list in [&mut styles.title, &mut styles.body, &mut styles.other] {
+            visit_list_bullets(list, &mut resolve);
+        }
+    }
+    visit_shape_bullets(&mut content.shapes, &mut resolve);
+}
+
+impl SlideContent {
+    /// The image parts its picture bullets draw, each once: what a host
+    /// that loads media up front needs besides its shapes' pictures.
+    pub fn bullet_image_parts(&self) -> Vec<String> {
+        let mut copy = self.clone();
+        let mut parts: Vec<String> = Vec::new();
+        let mut collect = |bullet: &mut Bullet| {
+            if let Bullet::Picture {
+                image_part: Some(part),
+                ..
+            } = bullet
+            {
+                if !parts.contains(part) {
+                    parts.push(part.clone());
+                }
+            }
+        };
+        if let Some(styles) = &mut copy.text_styles {
+            for list in [&mut styles.title, &mut styles.body, &mut styles.other] {
+                visit_list_bullets(list, &mut collect);
+            }
+        }
+        visit_shape_bullets(&mut copy.shapes, &mut collect);
+        parts
+    }
+}
+
+fn visit_list_bullets(list: &mut ListStyle, visit: &mut dyn FnMut(&mut Bullet)) {
+    for level in list.levels.iter_mut().flatten() {
+        if let Some(bullet) = &mut level.bullet {
+            visit(bullet);
+        }
+    }
+}
+
+fn visit_body_bullets(body: &mut TextBody, visit: &mut dyn FnMut(&mut Bullet)) {
+    if let Some(list) = &mut body.list_style {
+        visit_list_bullets(list, visit);
+    }
+    for paragraph in &mut body.paragraphs {
+        if let Some(bullet) = &mut paragraph.bullet {
+            visit(bullet);
+        }
+    }
+}
+
+fn visit_shape_bullets(shapes: &mut [ShapeItem], visit: &mut dyn FnMut(&mut Bullet)) {
+    for item in shapes {
+        match item {
+            ShapeItem::Shape(shape) => {
+                if let Some(body) = &mut shape.text {
+                    visit_body_bullets(body, visit);
+                }
+            }
+            ShapeItem::Group(group) => visit_shape_bullets(&mut group.children, visit),
+            ShapeItem::Table(table) => {
+                for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                    if let Some(body) = &mut cell.text {
+                        visit_body_bullets(body, visit);
+                    }
+                }
+            }
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+        }
+    }
 }
 
 fn resolve_image_parts(
