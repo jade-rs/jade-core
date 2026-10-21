@@ -528,6 +528,176 @@ impl WordDocument {
     }
 }
 
+/// The formatting 文書の比較 compares: what a reader sees of a run.
+fn visible_formatting(properties: Option<&RunProperties>) -> RunProperties {
+    let Some(properties) = properties else {
+        return RunProperties::default();
+    };
+    RunProperties {
+        style: properties.style.clone(),
+        bold: properties.bold,
+        italic: properties.italic,
+        underline: properties.underline,
+        underline_kind: properties.underline_kind.clone(),
+        strike: properties.strike,
+        double_strike: properties.double_strike,
+        caps: properties.caps,
+        small_caps: properties.small_caps,
+        font_size: properties.font_size,
+        font_family: properties.font_family.clone(),
+        color: properties.color.clone(),
+        highlight: properties.highlight.clone(),
+        baseline: properties.baseline.clone(),
+        ..RunProperties::default()
+    }
+}
+
+impl WordDocument {
+    /// 文書の比較 › 書式: in each paragraph whose text `original` has too
+    /// and that carries no tracked change, every run formatted otherwise in
+    /// `original` gets a formatting change (`w:rPrChange`) holding the
+    /// original's formatting, put down to `author` at `date`. Returns how many
+    /// runs were marked.
+    pub fn mark_formatting_differences(
+        &mut self,
+        original: &WordDocument,
+        author: &str,
+        date: &str,
+    ) -> usize {
+        let text_of = |document: &WordDocument, index: usize| -> Option<String> {
+            Some(
+                document
+                    .paragraph(index)?
+                    .runs
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect(),
+            )
+        };
+        let mut used = vec![false; original.paragraph_count()];
+        let mut from = 0usize;
+        let mut marked = 0usize;
+        for index in 0..self.paragraph_count() {
+            let Some(paragraph) = self.paragraph(index) else {
+                continue;
+            };
+            if paragraph.runs.iter().any(|run| run.revision.is_some()) {
+                continue;
+            }
+            let Some(text) = text_of(self, index).filter(|text| !text.trim().is_empty()) else {
+                continue;
+            };
+            // The same text in the original, the nearest after the last match.
+            let Some(matched) =
+                (from..original.paragraph_count())
+                    .chain(0..from)
+                    .find(|&candidate| {
+                        !used[candidate] && text_of(original, candidate).as_deref() == Some(&text)
+                    })
+            else {
+                continue;
+            };
+            used[matched] = true;
+            from = matched + 1;
+            let Some(old) = original.paragraph(matched) else {
+                continue;
+            };
+            let mut old_runs = Vec::new();
+            let mut offset = 0usize;
+            for run in &old.runs {
+                old_runs.push((offset, offset + run.text.len(), run.properties.as_ref()));
+                offset += run.text.len();
+            }
+            let mut changes = Vec::new();
+            let mut offset = 0usize;
+            for (run_index, run) in paragraph.runs.iter().enumerate() {
+                let start = offset;
+                offset += run.text.len();
+                if run.text.is_empty() {
+                    continue;
+                }
+                let before = old_runs
+                    .iter()
+                    .find(|(from, to, _)| *from <= start && start < *to)
+                    .map(|(_, _, properties)| visible_formatting(*properties))
+                    .unwrap_or_default();
+                if before != visible_formatting(run.properties.as_ref()) {
+                    changes.push((run_index, before));
+                }
+            }
+            if changes.is_empty() {
+                continue;
+            }
+            let mut restyled = Vec::new();
+            for (run_index, before) in changes {
+                let id = self.allocate_revision_id().to_string();
+                let Some(run) = self
+                    .paragraph_mut(index)
+                    .and_then(|paragraph| paragraph.runs.get_mut(run_index))
+                else {
+                    continue;
+                };
+                // The original's formatting where this run's differs.
+                let mut previous = run.properties.clone().unwrap_or_default();
+                let visible = visible_formatting(Some(&previous));
+                if visible.bold != before.bold {
+                    previous.bold = before.bold;
+                }
+                if visible.italic != before.italic {
+                    previous.italic = before.italic;
+                }
+                if visible.underline != before.underline
+                    || visible.underline_kind != before.underline_kind
+                {
+                    previous.underline = before.underline;
+                    previous.underline_kind = before.underline_kind.clone();
+                }
+                if visible.strike != before.strike || visible.double_strike != before.double_strike
+                {
+                    previous.strike = before.strike;
+                    previous.double_strike = before.double_strike;
+                }
+                if visible.caps != before.caps || visible.small_caps != before.small_caps {
+                    previous.caps = before.caps;
+                    previous.small_caps = before.small_caps;
+                }
+                if visible.font_size != before.font_size {
+                    previous.font_size = before.font_size;
+                }
+                if visible.font_family != before.font_family {
+                    previous.font_family = before.font_family.clone();
+                }
+                if visible.color != before.color {
+                    previous.color = before.color.clone();
+                    previous.theme_color = None;
+                }
+                if visible.highlight != before.highlight {
+                    previous.highlight = before.highlight.clone();
+                }
+                if visible.baseline != before.baseline {
+                    previous.baseline = before.baseline.clone();
+                }
+                if visible.style != before.style {
+                    previous.style = before.style.clone();
+                }
+                previous.change = None;
+                run.properties
+                    .get_or_insert_with(RunProperties::default)
+                    .change = Some(Box::new(crate::document::RunPropertiesChange {
+                    id: Some(id),
+                    author: Some(author.to_string()),
+                    date: Some(date.to_string()),
+                    previous,
+                }));
+                restyled.extend(run.node_id);
+                marked += 1;
+            }
+            self.sync_paragraph_run_properties(index, &restyled);
+        }
+        marked
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -809,6 +979,43 @@ mod tests {
         let xml = document_xml(&reopened.export_docx().unwrap());
         assert!(!xml.contains("pPrChange"), "{xml}");
         assert!(xml.contains(r#"w:val="right""#), "{xml}");
+    }
+
+    /// 文書の比較 › 書式: a run bold now and not in the original is marked
+    /// as a formatting change holding the original's formatting.
+    #[test]
+    fn formatting_differences_from_an_original_are_marked() {
+        let original = executor::block_on(WordDocument::load(
+            &docx_with_body(r#"<w:p><w:r><w:t>same text</w:t></w:r></w:p>"#),
+            &Options::default(),
+        ))
+        .unwrap();
+        let mut revised = executor::block_on(WordDocument::load(
+            &docx_with_body(
+                r#"<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>same</w:t></w:r><w:r><w:t xml:space="preserve"> text</w:t></w:r></w:p>"#,
+            ),
+            &Options::default(),
+        ))
+        .unwrap();
+        assert_eq!(
+            revised.mark_formatting_differences(&original, "Ann", "2026-10-22T00:00:00Z"),
+            1
+        );
+        let change = revised.paragraph(0).unwrap().runs[0]
+            .properties
+            .as_ref()
+            .and_then(|properties| properties.change.clone())
+            .unwrap();
+        assert_eq!(change.author.as_deref(), Some("Ann"));
+        assert_ne!(change.previous.bold, Some(true));
+        assert!(document_xml(&revised.export_docx().unwrap()).contains("<w:rPrChange"));
+        // The same formatting both sides: nothing to mark.
+        let mut same = executor::block_on(WordDocument::load(
+            &docx_with_body(r#"<w:p><w:r><w:t>same text</w:t></w:r></w:p>"#),
+            &Options::default(),
+        ))
+        .unwrap();
+        assert_eq!(same.mark_formatting_differences(&original, "Ann", "x"), 0);
     }
 
     fn picture(document: &WordDocument) -> FloatingObjectTarget {
