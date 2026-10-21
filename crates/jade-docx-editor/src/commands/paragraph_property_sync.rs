@@ -1,5 +1,5 @@
 use crate::document::{
-    BorderEdge, DropCap, DropCapKind, Indent, ParagraphBorders, Shading, Spacing,
+    BorderEdge, DropCap, DropCapKind, Indent, ParagraphBorders, Shading, Spacing, TabStop,
 };
 use crate::docx_xml::{DocxXmlDocument, XmlAttribute, XmlElement, XmlNode, XmlNodeId};
 use crate::word_document::WordDocument;
@@ -228,6 +228,76 @@ pub(crate) fn sync_paragraph_borders_xml(
             return;
         }
         let child = raw.create_element_preserving_child_ids("w:pBdr", Vec::new(), children);
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
+/// Writes a paragraph on/off switch (`w:contextualSpacing`,
+/// `w:suppressLineNumbers`, …): `Some(true)` the bare element, `Some(false)`
+/// `w:val="0"` (which turns off what the style turns on), `None` none.
+pub(crate) fn sync_paragraph_flag_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    value: Option<bool>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        let Some(value) = value else {
+            return;
+        };
+        let attributes = if value {
+            Vec::new()
+        } else {
+            vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: "0".to_string(),
+            }]
+        };
+        let child = raw.create_element(tag, attributes, Vec::new());
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
+/// Writes the paragraph's own `w:tabs`, positions in points, or takes it off
+/// when `tabs` is empty.
+pub(crate) fn sync_paragraph_tabs_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tabs: &[TabStop],
+) {
+    let tabs = tabs.to_vec();
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, "w:tabs");
+        let children: Vec<XmlNode> = tabs
+            .iter()
+            .filter_map(|tab| {
+                let position = tab.position?;
+                let mut attributes = vec![XmlAttribute {
+                    name: "w:val".to_string(),
+                    value: tab.kind.clone().unwrap_or_else(|| "left".to_string()),
+                }];
+                if let Some(leader) = tab.leader.as_deref().filter(|leader| *leader != "none") {
+                    attributes.push(XmlAttribute {
+                        name: "w:leader".to_string(),
+                        value: leader.to_string(),
+                    });
+                }
+                attributes.push(XmlAttribute {
+                    name: "w:pos".to_string(),
+                    value: ((position * 20.0).round() as i32).to_string(),
+                });
+                Some(XmlNode::Element(raw.create_element(
+                    "w:tab",
+                    attributes,
+                    Vec::new(),
+                )))
+            })
+            .collect();
+        if children.is_empty() {
+            return;
+        }
+        let child = raw.create_element_preserving_child_ids("w:tabs", Vec::new(), children);
         insert_paragraph_property_child(paragraph_properties, child);
     });
 }
