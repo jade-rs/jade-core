@@ -833,9 +833,11 @@ impl NumberingPart {
                                 }
                             }
                         }
-                        // A legal level writes every level it names in
-                        // decimal, whatever their own formats.
-                        let formatted = if legal {
+                        // A legal level writes the levels above it that
+                        // it names in decimal, whatever their own formats;
+                        // its own number keeps its format (Word's
+                        // `Section 1.01` under `Article I`).
+                        let formatted = if legal && placeholder_level != level {
                             value.to_string()
                         } else {
                             self.format_counter_value(num_id, placeholder_level, value)
@@ -2710,8 +2712,9 @@ mod legal_numbering_tests {
     use super::{NumberingCounter, NumberingPart};
 
     /// Word's 正規形式の番号を使用する (`w:isLgl`): a 第一章 heading's
-    /// second level reads `1.1`, not `一.1`; the level without it keeps the
-    /// first level's own format.
+    /// second level reads `2.1`, not `二.1`; the level without it keeps the
+    /// first level's own format, and a legal level keeps its own (the
+    /// `Section 1.01` of Word's `Article I` list).
     #[test]
     fn a_legal_level_names_every_level_in_decimal() {
         let xml = r#"
@@ -2734,7 +2737,21 @@ mod legal_numbering_tests {
                   <w:lvlText w:val="%1-%3"/>
                 </w:lvl>
               </w:abstractNum>
+              <w:abstractNum w:abstractNumId="8">
+                <w:lvl w:ilvl="0">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="upperRoman"/>
+                  <w:lvlText w:val="Article %1."/>
+                </w:lvl>
+                <w:lvl w:ilvl="1">
+                  <w:start w:val="1"/>
+                  <w:numFmt w:val="decimalZero"/>
+                  <w:isLgl/>
+                  <w:lvlText w:val="Section %1.%2"/>
+                </w:lvl>
+              </w:abstractNum>
               <w:num w:numId="7"><w:abstractNumId w:val="7"/></w:num>
+              <w:num w:numId="8"><w:abstractNumId w:val="8"/></w:num>
             </w:numbering>
         "#;
         let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
@@ -2754,5 +2771,18 @@ mod legal_numbering_tests {
         assert_eq!(numbering.format_number("7", 0, &counter), "第二章");
         assert_eq!(numbering.format_number("7", 1, &counter), "2.1");
         assert_eq!(numbering.format_number("7", 2, &counter), "二-1");
+        let mut counter = NumberingCounter::new();
+        for level in [0, 0, 0, 1] {
+            counter.increment_with(
+                Some(&numbering),
+                "8",
+                "8",
+                level,
+                numbering.start_value("8", level),
+                numbering.has_start_override("8", level),
+            );
+        }
+        assert_eq!(numbering.format_number("8", 0, &counter), "Article III.");
+        assert_eq!(numbering.format_number("8", 1, &counter), "Section 3.01");
     }
 }
