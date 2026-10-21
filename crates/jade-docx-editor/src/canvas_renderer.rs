@@ -494,6 +494,9 @@ const REVISION_DELETED_FILL: &str = "rgba(239, 154, 154, 0.35)";
 // plain edits.
 const REVISION_MOVED_COLOR: &str = "#1b5e20";
 const REVISION_MOVED_FILL: &str = "rgba(165, 214, 167, 0.40)";
+/// Word's changed-line bar: a hairline a little way into the left margin.
+const CHANGE_BAR_DISTANCE_PX: f64 = 10.0;
+const CHANGE_BAR_WIDTH_PX: f64 = 1.0;
 const DARK_MODE_TEXT_COLOR: &str = "#f5f8ff";
 // Word keeps CJK glyph boxes tight to the top of the computed line box.
 // Reserving extra leading below text avoids artificial gaps right after tables.
@@ -3628,6 +3631,13 @@ where
     paragraph_join_surfaces: std::collections::BTreeMap<usize, usize>,
     /// Set while a join's paragraphs are laid out as one.
     joined_render: Option<paragraph_join::JoinedRender>,
+    /// The layout offsets of the changes in the paragraph about to be laid
+    /// out, handed from the run pass to its lines for change bars: a range
+    /// for a change that is drawn, an offset for one the view leaves out.
+    /// Keyed by the paragraph's index: a keep-with-next measurement draws
+    /// the same paragraph's lines more than once, and another paragraph's
+    /// lines must not take them.
+    pending_change_marks: (usize, Vec<(usize, usize)>),
     cell_highlighted: RefCell<HashSet<usize>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
@@ -5602,6 +5612,7 @@ where
         // render-affecting option flags are unchanged.
         last.render_changes == options.render_changes
             && last.render_original == options.render_original
+            && last.revision_view() == options.revision_view()
             && last.render_comments == options.render_comments
             && last.show_formatting_marks == options.show_formatting_marks
             && last.render_footnotes == options.render_footnotes
@@ -5620,6 +5631,7 @@ where
             || (self.document_has_comments && options.render_comments)
             || options.render_changes
             || options.render_original
+            || !options.revision_view().is_plain()
             || options.show_formatting_marks
         {
             return false;
@@ -8063,6 +8075,7 @@ where
             paragraph_join_last: None,
             paragraph_join_surfaces: std::collections::BTreeMap::new(),
             joined_render: None,
+            pending_change_marks: (usize::MAX, Vec::new()),
             cell_highlighted: RefCell::new(HashSet::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
@@ -10359,6 +10372,7 @@ where
         self.dark_mode_text.hash(&mut hasher);
         options.render_changes.hash(&mut hasher);
         options.render_original.hash(&mut hasher);
+        options.revision_view().hash(&mut hasher);
         options.render_comments.hash(&mut hasher);
         options.show_formatting_marks.hash(&mut hasher);
         options.render_footnotes.hash(&mut hasher);
@@ -15802,7 +15816,8 @@ where
                 )
             )
             && paragraph.runs.iter().all(|run| {
-                (!options.render_changes || run.revision.is_none())
+                ((!options.render_changes && options.revision_view().is_plain())
+                    || run.revision.is_none())
                     && run.image.is_none()
                     && run.text_box.is_none()
                     && run.math.is_none()
@@ -16940,6 +16955,9 @@ where
         let mut segment = String::new();
         let mut note_marker_text = String::new();
         let mut pending_note_separator = None;
+        // Where the changes the layout leaves out stood, for change bars.
+        let mut dropped_change_offsets: Vec<usize> = Vec::new();
+        let revision_view = Rc::clone(options.revision_view_rc());
         // Footnotes this paragraph references first; their marks' layout
         // offsets decide which line carries them onto a page.
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
@@ -16965,7 +16983,21 @@ where
             // width, so the layout failed to tighten up. Skipping here keeps
             // `layout_text` consistent with `debug_text` (which already excludes
             // these runs) for both measurement and selection.
-            if run_is_hidden_revision(run, render_changes, render_original) {
+            if run_is_hidden_revision(run, render_changes, render_original)
+                || (render_changes
+                    && run
+                        .revision
+                        .as_ref()
+                        .is_some_and(|mark| revision_view.drops(mark)))
+            {
+                if !run.text.is_empty()
+                    && run
+                        .revision
+                        .as_ref()
+                        .is_some_and(|mark| revision_view.marks_up(mark))
+                {
+                    dropped_change_offsets.push(current_pos);
+                }
                 continue;
             }
 
@@ -17130,40 +17162,30 @@ where
                     }
                 }
                 if render_changes {
-                    if let Some(mark) = run.revision.as_ref() {
-                        match mark.kind {
-                            RevisionKind::Inserted => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.underline = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_INSERTED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::Deleted => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.strike = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_DELETED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::MovedFrom => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.strike = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_MOVED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::MovedTo => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.underline = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_MOVED_COLOR.into());
-                                }
-                            }
+                    if let Some(mark) = run
+                        .revision
+                        .as_ref()
+                        .filter(|mark| revision_view.marks_up(mark))
+                    {
+                        let props = effective_props.get_or_insert_with(RunProperties::default);
+                        let (default_color, struck) = match mark.kind {
+                            RevisionKind::Inserted => (REVISION_INSERTED_COLOR, false),
+                            RevisionKind::Deleted => (REVISION_DELETED_COLOR, true),
+                            RevisionKind::MovedFrom => (REVISION_MOVED_COLOR, true),
+                            RevisionKind::MovedTo => (REVISION_MOVED_COLOR, false),
+                        };
+                        if struck {
+                            props.strike = Some(true);
+                        } else {
+                            props.underline = Some(true);
+                        }
+                        // 作成者別: the reviewer's colour wins over the text's own,
+                        // as Word draws it.
+                        if let Some(color) = revision_view.color_for(mark) {
+                            props.color = Some(Rc::clone(color));
+                            props.theme_color = None;
+                        } else if props.color.is_none() {
+                            props.color = Some(default_color.into());
                         }
                     }
                 }
@@ -17628,6 +17650,23 @@ where
                 } else {
                     (&layout_text, Cow::Borrowed(&run_styles))
                 };
+                self.pending_change_marks = (paragraph_index, Vec::new());
+                if revision_view.change_bar.is_some() {
+                    let start = if resuming { resume_from } else { 0 };
+                    self.pending_change_marks.1 = run_styles
+                        .iter()
+                        .filter(|style| {
+                            style
+                                .revision
+                                .as_ref()
+                                .is_some_and(|mark| revision_view.marks_up(mark))
+                        })
+                        .map(|style| (style.start, style.end))
+                        .chain(dropped_change_offsets.iter().map(|&at| (at, at)))
+                        .filter(|&(_, end)| end >= start)
+                        .map(|(from, to)| (from.saturating_sub(start), to - start))
+                        .collect();
+                }
                 self.render_text_line(
                     paragraph_index,
                     if resuming {
@@ -19326,6 +19365,13 @@ where
         *target = merged;
     }
 
+    /// Whether the view marks `mark` up (its author and kind are shown).
+    fn revision_marked_up(&self, mark: &jade_docx_reader::document::RevisionMark) -> bool {
+        self.last_options
+            .as_ref()
+            .is_none_or(|options| options.revision_view().marks_up(mark))
+    }
+
     /// Fills a single thin border rectangle for a paragraph border edge,
     /// painting immediately (when the current page is being drawn) and pushing
     /// a `DrawCommand::FillRect` so the border survives cache replay. No-ops on
@@ -19513,6 +19559,18 @@ where
         let mut commands_out = commands_out;
         let mut selection_lines_out = selection_lines_out;
         let mut hyperlink_regions_out = hyperlink_regions_out;
+        let change_marks = if self.pending_change_marks.0 == paragraph_index {
+            self.pending_change_marks.1.clone()
+        } else {
+            Vec::new()
+        };
+        let change_bar = if change_marks.is_empty() || self.measuring_keep_next {
+            None
+        } else {
+            self.last_options
+                .as_ref()
+                .and_then(|options| options.revision_view().change_bar.clone())
+        };
 
         // While rendering the EDITED paragraph under a band redraw, disable the
         // band-below paint skip so none of its (possibly wrapped) lines are culled
@@ -20447,6 +20505,36 @@ where
             let right_limit =
                 base_x + paragraph_style.line_base_width(default_base_width, line_index);
 
+            // 変更された行: a bar in the left margin beside a line a change is
+            // on, as Word marks changed lines.
+            if let Some(color) = change_bar.as_ref() {
+                let line_end = wrapped_line
+                    .segments
+                    .iter()
+                    .map(|segment| segment.end)
+                    .max()
+                    .unwrap_or(line_start);
+                let changed = change_marks.iter().any(|&(start, end)| {
+                    if start == end {
+                        line_start <= start && start <= line_end
+                    } else {
+                        start < line_end.max(line_start + 1) && line_start < end
+                    }
+                });
+                if changed {
+                    // On whole pixels, so the hairline is drawn in its colour
+                    // rather than smeared over two.
+                    self.fill_border_rect(
+                        (self.margin_left - CHANGE_BAR_DISTANCE_PX).round(),
+                        top,
+                        CHANGE_BAR_WIDTH_PX,
+                        line_box_height,
+                        color,
+                        &mut commands_out,
+                    );
+                }
+            }
+
             // Paint the paragraph shading band behind this line's content
             // (before highlights, selection, and glyphs). The band spans the
             // paragraph content box (left indent → right indent) and is the
@@ -21098,7 +21186,12 @@ where
                 prepared_segments.iter().zip(positions.iter()).enumerate()
             {
                 if render_changes {
-                    if let Some(revision_mark) = prepared.segment.revision.as_ref() {
+                    if let Some(revision_mark) = prepared
+                        .segment
+                        .revision
+                        .as_ref()
+                        .filter(|mark| self.revision_marked_up(mark))
+                    {
                         let fill_color = match revision_mark.kind {
                             RevisionKind::Inserted => REVISION_INSERTED_FILL,
                             RevisionKind::Deleted => REVISION_DELETED_FILL,
@@ -42696,6 +42789,148 @@ mod tests {
             insertion: None,
         });
         run
+    }
+
+    /// A paragraph of plain text and one change by `author`, drawn with
+    /// `markup` and the view; the fill colours used and the rectangles
+    /// filled in each, in order.
+    fn draw_with_revision_view(
+        kind: RevisionKind,
+        author: &str,
+        markup: bool,
+        view: crate::revision_view::RevisionView,
+    ) -> Vec<(String, (f64, f64, f64, f64))> {
+        use jade_painter::recording::Op;
+        let mut document = doc_with_paragraph_texts(&["plain words before the change "]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        let mut change = build_revision_run(kind);
+        change.text = "changed words".into();
+        if let Some(mark) = change.revision.as_mut() {
+            mark.author = Some(author.into());
+        }
+        paragraph.runs.push(change);
+        let (mut renderer, painter) = recording_renderer();
+        let mut options = Options {
+            render_changes: markup,
+            show_formatting_marks: false,
+            ..Options::default()
+        };
+        options.set_revision_view(view);
+        renderer.render(&document, &options).unwrap();
+        let mut fill = String::new();
+        let mut filled = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::SetFillStyle(color) => fill = color.clone(),
+                Op::FillRect(x, y, width, height) => {
+                    filled.push((fill.clone(), (x, y, width, height)))
+                }
+                _ => {}
+            }
+        }
+        filled
+    }
+
+    /// 変更された行: the view's bar is drawn down the left margin beside a
+    /// changed line — inserted text shown, or deleted text left out as in
+    /// シンプルな変更履歴 — and not for a reviewer the view leaves out.
+    #[test]
+    fn change_bars_mark_changed_lines_in_the_margin() {
+        use crate::revision_view::RevisionView;
+        let bar = |kind, markup, hidden: &[&str]| {
+            draw_with_revision_view(
+                kind,
+                "Ann",
+                markup,
+                RevisionView {
+                    change_bar: Some("#C00000".into()),
+                    hidden_authors: hidden.iter().map(|name| name.to_string()).collect(),
+                    ..RevisionView::default()
+                },
+            )
+            .into_iter()
+            .filter(|(color, _)| color == "#C00000")
+            .map(|(_, rect)| rect)
+            .collect::<Vec<_>>()
+        };
+        for (kind, markup) in [
+            (RevisionKind::Inserted, true),
+            (RevisionKind::Inserted, false),
+            (RevisionKind::Deleted, true),
+            (RevisionKind::Deleted, false),
+        ] {
+            let bars = bar(kind.clone(), markup, &[]);
+            assert_eq!(bars.len(), 1, "{kind:?} markup={markup}: {bars:?}");
+            let (x, _, width, height) = bars[0];
+            assert!(x < 96.0 && width < 3.0 && height > 10.0, "{bars:?}");
+            assert!(bar(kind, markup, &["Ann"]).is_empty());
+        }
+        assert!(draw_with_revision_view(
+            RevisionKind::Inserted,
+            "Ann",
+            true,
+            RevisionView::default()
+        )
+        .iter()
+        .all(|(color, _)| color != "#C00000"));
+    }
+
+    /// 作成者別: a reviewer's change is drawn in their colour; unticked, it
+    /// reads as accepted — an insertion as plain text, a deletion gone.
+    #[test]
+    fn reviewers_changes_take_their_colour_or_read_as_accepted() {
+        use crate::revision_view::RevisionView;
+        use jade_painter::recording::Op;
+        let mut document = doc_with_paragraph_texts(&["kept "]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        for (kind, text) in [
+            (RevisionKind::Inserted, "added"),
+            (RevisionKind::Deleted, "gone"),
+        ] {
+            let mut run = build_revision_run(kind);
+            run.text = text.into();
+            run.revision.as_mut().unwrap().author = Some("Ann".into());
+            paragraph.runs.push(run);
+        }
+        let draw = |view: RevisionView| {
+            let (mut renderer, painter) = recording_renderer();
+            let mut options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Options::default()
+            };
+            options.set_revision_view(view);
+            renderer.render(&document, &options).unwrap();
+            let ops = painter.ops();
+            let text: String = ops
+                .iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, _) => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            let colored = ops.contains(&Op::SetFillStyle("#2E74B5".into()));
+            (text, colored)
+        };
+        let (text, colored) = draw(RevisionView {
+            author_colors: vec![("Ann".into(), Rc::from("#2E74B5"))],
+            ..RevisionView::default()
+        });
+        assert!(text.contains("added") && text.contains("gone"), "{text}");
+        assert!(colored, "Ann's colour");
+        let (text, colored) = draw(RevisionView {
+            author_colors: vec![("Ann".into(), Rc::from("#2E74B5"))],
+            hidden_authors: vec!["Ann".into()],
+            ..RevisionView::default()
+        });
+        assert!(text.contains("added") && !text.contains("gone"), "{text}");
+        assert!(!colored);
     }
 
     /// Final preview hides deletions, while Original preview hides insertions.
