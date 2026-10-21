@@ -21,6 +21,7 @@ pub mod render_host;
 #[cfg(not(feature = "otel"))]
 #[macro_use]
 pub(crate) mod tracing_stub;
+pub mod fields;
 pub mod serializer;
 pub mod shortcuts;
 pub(crate) mod snapshot_plan;
@@ -206,6 +207,9 @@ pub struct Options {
     /// the binding table is the bulk of them.
     shortcut_config: std::rc::Rc<ShortcutConfig>,
     dark_mode: bool,
+    /// Top-level body elements a collapsed heading hides (Word's 見出しの
+    /// 折りたたみ), sorted: laid out as if absent, until expanded again.
+    collapsed_blocks: std::rc::Rc<Vec<usize>>,
 }
 
 #[wasm_bindgen]
@@ -652,7 +656,23 @@ impl Default for Options {
             preview_mode: false,
             shortcut_config: std::rc::Rc::new(ShortcutConfig::default()),
             dark_mode: false,
+            collapsed_blocks: std::rc::Rc::new(Vec::new()),
         }
+    }
+}
+
+impl Options {
+    /// The top-level body elements collapsed headings hide, sorted.
+    pub fn collapsed_blocks(&self) -> &[usize] {
+        &self.collapsed_blocks
+    }
+
+    /// Hides top-level body elements under collapsed headings; empty shows
+    /// them all.
+    pub fn set_collapsed_blocks(&mut self, mut blocks: Vec<usize>) {
+        blocks.sort_unstable();
+        blocks.dedup();
+        self.collapsed_blocks = std::rc::Rc::new(blocks);
     }
 }
 

@@ -361,6 +361,21 @@ impl Document {
         }
     }
 
+    /// Whether a section's footnotes sit right under its text
+    /// (`w:footnotePr/w:pos="beneathText"`) rather than at the page bottom.
+    pub fn resolved_footnote_beneath_text(&self, section_index: Option<usize>) -> bool {
+        let section = match section_index {
+            Some(index) if !self.sections.is_empty() => self
+                .sections
+                .get(index)
+                .and_then(|section| section.properties.as_ref()),
+            _ => self.default_section.as_ref(),
+        };
+        section
+            .and_then(|section| section.footnote_beneath_text)
+            .unwrap_or(false)
+    }
+
     /// Resolves section placement over the document-wide endnote default.
     pub fn resolved_endnote_position(&self, section_index: Option<usize>) -> EndnotePosition {
         let section = match section_index {
@@ -2320,6 +2335,14 @@ pub enum RunFieldKind {
     Locked {
         kind: Rc<RunFieldKind>,
     },
+    /// A page-number family field (PAGE, NUMPAGES, SECTIONPAGES, SECTION)
+    /// whose general switches (`\* ROMAN`, `\# "0"`) format the number
+    /// live. `instruction` is the field's instruction, from which the
+    /// renderer reads the switches.
+    Formatted {
+        kind: Rc<RunFieldKind>,
+        instruction: Rc<str>,
+    },
     PageNumber,
     /// Total number of pages in the document (`NUMPAGES` field). Commonly
     /// paired with `PAGE` in headers/footers to produce "X / Y" style page
@@ -2651,10 +2674,20 @@ impl RunFieldKind {
     /// Original semantic kind, for formatting/inspection rather than refresh.
     pub fn base_kind(&self) -> &Self {
         let mut kind = self;
-        while let Self::Locked { kind: inner } = kind {
-            kind = inner;
+        loop {
+            match kind {
+                Self::Locked { kind: inner } | Self::Formatted { kind: inner, .. } => kind = inner,
+                _ => return kind,
+            }
         }
-        kind
+    }
+
+    /// The kind without a [`Self::Formatted`] wrapper (a lock is kept).
+    pub fn without_format(&self) -> &Self {
+        match self {
+            Self::Formatted { kind, .. } => kind,
+            other => other,
+        }
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -3619,6 +3652,11 @@ pub struct RunTextBox {
     /// represent shapes that do not contain `wps:txbx`.
     #[serde(default)]
     pub shape: TextBoxShape,
+    /// The theme effect style the shape names (`wps:style/a:effectRef
+    /// @idx`, 1-based; 0 for none), drawn when the shape sets no effects
+    /// of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect_ref: Option<u8>,
 }
 
 /// Text box inner margins in CSS pixels. The defaults mirror Word's standard
@@ -5828,6 +5866,11 @@ pub struct SectionProperties {
     /// Section-wide endnote placement (`w:endnotePr/w:pos`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endnote_position: Option<EndnotePosition>,
+    /// Footnote placement (`w:footnotePr/w:pos`, §17.11.21): `Some(true)`
+    /// for `beneathText` — the notes right under the page's last line —
+    /// `Some(false)` for `pageBottom`, the default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub footnote_beneath_text: Option<bool>,
     /// Vertical justification of the section's text on the page
     /// (`w:vAlign`, ECMA-376 Part 1 §17.6.22 — ST_VerticalJc). One of
     /// `top` (default), `center`, `both` (justified), or `bottom`,
