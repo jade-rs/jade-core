@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 pub mod encryption;
 pub mod package_limits;
+pub mod signature;
 mod snapshot;
 pub use package_limits::{PackageLimitError, PackageLoadLimits};
 pub use snapshot::{ArchiveSnapshot, SnapshotStore};
