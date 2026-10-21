@@ -861,15 +861,17 @@ impl DocumentParser {
                             Self::consume_element(reader, b"w:lnNumType")?;
                         }
                         b"w:footnotePr" if parsing_section_props => {
-                            let (note, _) = Self::parse_note_numbering(reader, b"w:footnotePr")?;
-                            if !note.is_empty() {
-                                if let Some(section) = current_section_props.as_mut() {
+                            let (note, _, beneath) =
+                                Self::parse_note_numbering(reader, b"w:footnotePr")?;
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.footnote_beneath_text = beneath;
+                                if !note.is_empty() {
                                     section.footnote_properties = Some(note);
                                 }
                             }
                         }
                         b"w:endnotePr" if parsing_section_props => {
-                            let (note, position) =
+                            let (note, position, _) =
                                 Self::parse_note_numbering(reader, b"w:endnotePr")?;
                             if let Some(section) = current_section_props.as_mut() {
                                 section.endnote_position = position;
@@ -1689,20 +1691,15 @@ impl DocumentParser {
                                         props.theme_color = theme.clone().map(Box::new);
                                     },
                                 );
-                                for attr in e.attributes().flatten() {
-                                    if attr.key.as_ref() == b"w:val" {
-                                        let color_val =
-                                            String::from_utf8_lossy(&attr.value).to_string();
-                                        let formatted = format!("#{}", color_val);
-                                        Self::apply_to_active_run_props(
-                                            parsing_paragraph_run_props,
-                                            &mut current_paragraph_run_props,
-                                            &mut current_run_props,
-                                            |props| {
-                                                props.color = Some(Rc::from(formatted.as_str()));
-                                            },
-                                        );
-                                    }
+                                if let Some(formatted) = Self::run_color(e) {
+                                    Self::apply_to_active_run_props(
+                                        parsing_paragraph_run_props,
+                                        &mut current_paragraph_run_props,
+                                        &mut current_run_props,
+                                        |props| {
+                                            props.color = Some(Rc::from(formatted.as_str()));
+                                        },
+                                    );
                                 }
                             }
                         }
@@ -3203,20 +3200,15 @@ impl DocumentParser {
                                     props.theme_color = theme.clone().map(Box::new);
                                 },
                             );
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    let color_val =
-                                        String::from_utf8_lossy(&attr.value).to_string();
-                                    let formatted = format!("#{}", color_val);
-                                    Self::apply_to_active_run_props(
-                                        parsing_paragraph_run_props,
-                                        &mut current_paragraph_run_props,
-                                        &mut current_run_props,
-                                        |props| {
-                                            props.color = Some(Rc::from(formatted.as_str()));
-                                        },
-                                    );
-                                }
+                            if let Some(formatted) = Self::run_color(e) {
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.color = Some(Rc::from(formatted.as_str()));
+                                    },
+                                );
                             }
                         }
                     }
@@ -4533,20 +4525,16 @@ impl DocumentParser {
     fn parse_note_numbering(
         reader: &mut dyn XmlEventSource,
         end_tag: &[u8],
-    ) -> Result<
-        (
-            crate::document::NoteNumbering,
-            Option<crate::document::EndnotePosition>,
-        ),
-        Box<dyn std::error::Error>,
-    > {
+    ) -> Result<NoteProperties, Box<dyn std::error::Error>> {
         use crate::document::{EndnotePosition, NoteNumbering};
         let mut note = NoteNumbering::default();
         let mut position = None;
+        let mut beneath = None;
         let mut buf = Vec::new();
 
         let assign = |note: &mut NoteNumbering,
                       position: &mut Option<EndnotePosition>,
+                      beneath: &mut Option<bool>,
                       name: &[u8],
                       attrs: Attributes<'_>| {
             let val = attrs.flatten().find_map(|attr| {
@@ -4559,6 +4547,11 @@ impl DocumentParser {
             let Some(val) = val else { return };
             match name {
                 b"w:pos" => {
+                    *beneath = match val.as_str() {
+                        "beneathText" => Some(true),
+                        "pageBottom" => Some(false),
+                        _ => None,
+                    };
                     *position = match val.as_str() {
                         "sectEnd" => Some(EndnotePosition::SectionEnd),
                         "docEnd" => Some(EndnotePosition::DocumentEnd),
@@ -4589,12 +4582,24 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
-                    assign(&mut note, &mut position, name.as_ref(), e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        name.as_ref(),
+                        e.attributes(),
+                    );
                 }
                 Ok(Event::Start(ref e)) => {
                     let owned = e.name();
                     let name = owned.as_ref().to_vec();
-                    assign(&mut note, &mut position, &name, e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        &name,
+                        e.attributes(),
+                    );
                     Self::consume_element(reader, &name)?;
                 }
                 Ok(Event::Eof) => break,
@@ -4604,7 +4609,7 @@ impl DocumentParser {
             buf.clear();
         }
 
-        Ok((note, position))
+        Ok((note, position, beneath))
     }
 
     /// Consumes a `w:rubyPr` subtree (ECMA-376 Part 1 §17.3.3.26) and returns
@@ -5049,6 +5054,7 @@ impl DocumentParser {
         let mut text_box_glow: Option<ShapeGlow> = None;
         let mut text_box_blur_radius_px: Option<f64> = None;
         let mut text_box_soft_edge_radius_px: Option<f64> = None;
+        let mut text_box_effect_ref: Option<u8> = None;
         let mut in_line_definition = false;
         let mut in_line_solid_fill = false;
         let mut in_shape_solid_fill = false;
@@ -5221,6 +5227,18 @@ impl DocumentParser {
                             }
                         }
                         b"a:effectLst" => in_effect_list = true,
+                        b"a:effectRef" => {
+                            text_box_effect_ref = e
+                                .attributes()
+                                .flatten()
+                                .find(|attribute| attribute.key.as_ref() == b"idx")
+                                .and_then(|attribute| {
+                                    String::from_utf8_lossy(&attribute.value)
+                                        .trim()
+                                        .parse()
+                                        .ok()
+                                });
+                        }
                         b"a:outerShdw" if in_effect_list => {
                             in_outer_shadow = true;
                             text_box_shadow = Some(Self::drawingml_outer_shadow(e));
@@ -5859,6 +5877,7 @@ impl DocumentParser {
                 insets: text_box_insets,
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
+                effect_ref: text_box_effect_ref,
             };
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
@@ -7496,6 +7515,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
+            effect_ref: None,
         })))
     }
 
@@ -8302,6 +8322,30 @@ impl DocumentParser {
             }
         }
         shading
+    }
+
+    /// A run's `w:color`, as `#RRGGBB` (or `#auto`): the theme colour it
+    /// names in the scheme being read, else its `w:val`.
+    fn run_color(e: &BytesStart) -> Option<String> {
+        let mut value = None;
+        let mut theme = None;
+        let mut tint = None;
+        let mut shade = None;
+        for attr in e.attributes().flatten() {
+            let text = String::from_utf8_lossy(&attr.value).to_string();
+            match attr.key.as_ref() {
+                b"w:val" => value = Some(text),
+                b"w:themeColor" => theme = Some(text),
+                b"w:themeTint" => tint = Some(text),
+                b"w:themeShade" => shade = Some(text),
+                _ => {}
+            }
+        }
+        theme
+            .and_then(|theme| {
+                crate::theme::text_theme_color(&theme, tint.as_deref(), shade.as_deref())
+            })
+            .or_else(|| value.map(|value| format!("#{value}")))
     }
 
     /// Normalizes an OOXML hex color (`RRGGBB` or `#RRGGBB`) to `#RRGGBB`.
@@ -9987,6 +10031,45 @@ impl DocumentParser {
             }),
             _ => None,
         })();
+        // A page-number field with a number format keeps it for live
+        // display (`PAGE \* ROMAN`, `NUMPAGES \# "00"`).
+        let parsed = parsed.map(|kind| {
+            let numbered = matches!(
+                kind,
+                RunFieldKind::PageNumber
+                    | RunFieldKind::NumPages
+                    | RunFieldKind::SectionPages
+                    | RunFieldKind::SectionNumber
+            );
+            let format = crate::field_format::FieldCode::parse(normalized)
+                .map(|code| code.format)
+                .unwrap_or_default();
+            let formats_number = format.numeric_picture.is_some()
+                || format.formats.iter().any(|name| {
+                    crate::field_format::format_number_switch(1.0, name).is_some()
+                        || !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT"
+                        )
+                })
+                // Arabic only matters where a section numbers pages otherwise.
+                && (matches!(kind, RunFieldKind::PageNumber)
+                    || format.numeric_picture.is_some()
+                    || format.formats.iter().any(|name| {
+                        !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT" | "ARABIC"
+                        )
+                    }));
+            if numbered && formats_number {
+                RunFieldKind::Formatted {
+                    kind: Rc::new(kind),
+                    instruction: Rc::from(normalized),
+                }
+            } else {
+                kind
+            }
+        });
         // A known evaluator can decline unsafe or incomplete operands (for
         // example `TEMPLATE \p`, a mutating INFO form, or malformed PAGEREF).
         // Those are still Word fields. Keep the instruction and cached result
@@ -10990,6 +11073,14 @@ fn reference_event_to_string(event: &quick_xml::events::BytesRef<'_>) -> Option<
         .ok()
         .map(|value| value.into_owned())
 }
+
+/// A `w:footnotePr` / `w:endnotePr`: its numbering, the endnotes'
+/// position, and whether the notes sit beneath the text.
+type NoteProperties = (
+    crate::document::NoteNumbering,
+    Option<crate::document::EndnotePosition>,
+    Option<bool>,
+);
 
 #[cfg(test)]
 mod tests {

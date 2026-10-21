@@ -1,4 +1,5 @@
 use crate::document::*;
+use crate::docx_xml::XmlNodeId;
 use crate::draw_command::executor::{execute_commands_with_font_state, FontStateTracker};
 use crate::draw_command::{
     DrawCommand, GlyphRunStep, TabLeaderStyle as CmdTabLeaderStyle, TextStyle as CmdTextStyle,
@@ -926,6 +927,10 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
         || group.groups.iter().any(shape_group_contains_text)
 }
 
+/// What each body run shows while field codes are on: the field (by its
+/// first run) and its `{ CODE }`.
+pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -957,67 +962,14 @@ impl FieldDateTime {
     }
 }
 
-const MONTH_NAMES: [&str; 12] = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
-
-const WEEKDAY_NAMES: [&str; 7] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-];
-
 /// Formats a [`FieldDateTime`] using a Word date/time picture string
-/// (ECMA-376 Part 1 §17.16.4.1). Supports the common tokens — `yyyy`/`yy`,
-/// `MMMM`/`MMM`/`MM`/`M`, `dddd`/`ddd`/`dd`/`d`, `HH`/`H` (24h), `hh`/`h`
-/// (12h), `mm`/`m`, `ss`/`s`, and `AM/PM` (or `am/pm`). Text inside single
-/// quotes is emitted literally; any other character passes through verbatim.
-/// Longest tokens are matched first so `MMMM` is never mistaken for `MM`+`MM`.
+/// (ECMA-376 Part 1 §17.16.4.1), Japanese era and weekday tokens included.
 fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
-    let chars: Vec<char> = picture.chars().collect();
-    let mut out = String::with_capacity(picture.len());
-    let mut i = 0;
-    let month_idx = (dt.month.clamp(1, 12) - 1) as usize;
-    let weekday_idx = (dt.weekday % 7) as usize;
-    let hour12 = {
-        let h = dt.hour % 12;
-        if h == 0 {
-            12
-        } else {
-            h
-        }
-    };
-    while i < chars.len() {
-        // Literal text within single quotes.
-        if chars[i] == '\'' {
-            i += 1;
-            while i < chars.len() && chars[i] != '\'' {
-                out.push(chars[i]);
-                i += 1;
-            }
-            if i < chars.len() {
-                i += 1; // consume closing quote
-            }
-            continue;
-        }
-
-        let rest: String = chars[i..].iter().collect();
-        let japanese = crate::field_datetime::FieldDateTime {
+    // The reader's formatter has Word's Japanese tokens (和暦, 元年, 曜日)
+    // as well as the Gregorian ones; one implementation for both paths.
+    crate::field_datetime::format_word_date(
+        picture,
+        &crate::field_datetime::FieldDateTime {
             year: dt.year,
             month: dt.month,
             day: dt.day,
@@ -1025,64 +977,8 @@ fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
             minute: dt.minute,
             second: dt.second,
             weekday: dt.weekday,
-        };
-        let matched: Option<(usize, String)> =
-            if let Some(token) = crate::field_datetime::japanese_date_token(&rest, &japanese) {
-                Some(token)
-            } else if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
-                Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
-            } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
-                Some((4, format!("{:04}", dt.year)))
-            } else if rest.starts_with("yy") || rest.starts_with("YY") {
-                Some((2, format!("{:02}", dt.year.rem_euclid(100))))
-            } else if rest.starts_with("MMMM") {
-                Some((4, MONTH_NAMES[month_idx].to_string()))
-            } else if rest.starts_with("MMM") {
-                Some((3, MONTH_NAMES[month_idx][..3].to_string()))
-            } else if rest.starts_with("MM") {
-                Some((2, format!("{:02}", dt.month)))
-            } else if rest.starts_with('M') {
-                Some((1, dt.month.to_string()))
-            } else if rest.starts_with("dddd") || rest.starts_with("DDDD") {
-                Some((4, WEEKDAY_NAMES[weekday_idx].to_string()))
-            } else if rest.starts_with("ddd") || rest.starts_with("DDD") {
-                Some((3, WEEKDAY_NAMES[weekday_idx][..3].to_string()))
-            } else if rest.starts_with("dd") || rest.starts_with("DD") {
-                Some((2, format!("{:02}", dt.day)))
-            } else if rest.starts_with('d') || rest.starts_with('D') {
-                Some((1, dt.day.to_string()))
-            } else if rest.starts_with("HH") {
-                Some((2, format!("{:02}", dt.hour)))
-            } else if rest.starts_with('H') {
-                Some((1, dt.hour.to_string()))
-            } else if rest.starts_with("hh") {
-                Some((2, format!("{:02}", hour12)))
-            } else if rest.starts_with('h') {
-                Some((1, hour12.to_string()))
-            } else if rest.starts_with("mm") {
-                Some((2, format!("{:02}", dt.minute)))
-            } else if rest.starts_with('m') {
-                Some((1, dt.minute.to_string()))
-            } else if rest.starts_with("ss") {
-                Some((2, format!("{:02}", dt.second)))
-            } else if rest.starts_with('s') {
-                Some((1, dt.second.to_string()))
-            } else {
-                None
-            };
-
-        match matched {
-            Some((len, text)) => {
-                out.push_str(&text);
-                i += len;
-            }
-            None => {
-                out.push(chars[i]);
-                i += 1;
-            }
-        }
-    }
-    out
+        },
+    )
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1418,6 +1314,17 @@ struct PendingNumberingRender {
     deleted_text: Option<String>,
     suffix_space: bool,
     following_grapheme: Option<CompactString>,
+    /// A picture bullet (`w:lvlPicBulletId`), drawn instead of the text.
+    picture: Option<NumberingPicture>,
+}
+
+/// A list level's picture bullet as it is drawn: the image and its box in
+/// px, as tall as the bullet's text.
+#[derive(Clone, Debug, PartialEq)]
+struct NumberingPicture {
+    data_uri: String,
+    width: f64,
+    height: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -3489,6 +3396,10 @@ where
     /// load time (wasm: `js_sys::Date`); `None` falls back to the field's
     /// cached result text so the field never renders blank.
     current_datetime: Option<FieldDateTime>,
+    /// While field codes are shown (⌥F9, ⇧F9): what a body run shows in
+    /// place of its field — `(field, code)`, the field named by its first
+    /// run. A field's runs show its code once.
+    field_code_display: Option<Rc<FieldCodeDisplay>>,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -5608,6 +5519,7 @@ where
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
             && last.dark_mode() == options.dark_mode()
+            && last.collapsed_blocks() == options.collapsed_blocks()
     }
 
     /// Returns true if it is safe to attempt unchecked paragraph render-cache replay.
@@ -5621,6 +5533,7 @@ where
             || options.render_changes
             || options.render_original
             || options.show_formatting_marks
+            || !options.collapsed_blocks().is_empty()
         {
             return false;
         }
@@ -6334,8 +6247,16 @@ where
                 .flatten()
                 .filter(|height| *height > 0.0)
                 .map(|height| (available_bottom - separator_height - height).max(self.current_y));
+            // `w:pos="beneathText"`: the notes follow the page's last line
+            // rather than sitting at the bottom of the body area.
+            let beneath_text =
+                document.resolved_footnote_beneath_text(Some(self.active_section_index));
             self.current_y = fragment_top.unwrap_or_else(|| {
-                note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                if beneath_text {
+                    self.current_y
+                } else {
+                    note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                }
             });
             self.last_line_baseline = self.current_y;
             if self.current_y + note_block_height > available_bottom + 0.5 {
@@ -6346,7 +6267,28 @@ where
             // `w:separator` rule, a short line spanning roughly a third of the
             // column. An area continuing a note from the previous page uses
             // the `w:continuationSeparator` rule across the whole column.
-            if self.should_draw_current_page_for_render() && !self.render_skip_draw {
+            // A separator emptied in Word's notes pane draws no rule.
+            let wanted = if continuing {
+                "continuationSeparator"
+            } else {
+                "separator"
+            };
+            let rule_shown = document
+                .footnotes
+                .values()
+                .find(|note| {
+                    note.note_type
+                        .as_deref()
+                        .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+                })
+                .is_none_or(|note| {
+                    note.body
+                        .iter()
+                        .filter_map(BodyElement::as_paragraph)
+                        .flat_map(|paragraph| paragraph.runs.iter())
+                        .any(|run| run.note_separator.is_some())
+                });
+            if rule_shown && self.should_draw_current_page_for_render() && !self.render_skip_draw {
                 let column_width =
                     (self.page_width - self.margin_left - self.margin_right).max(0.0);
                 let separator_width = if continuing {
@@ -7990,6 +7932,7 @@ where
             bookmark_paragraphs: HashMap::new(),
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
+            field_code_display: None,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -10558,6 +10501,7 @@ where
             if let Some(field) = run.field.as_ref() {
                 let field_tag: u8 = match &field.kind {
                     RunFieldKind::Locked { .. } => 255,
+                    RunFieldKind::Formatted { .. } => 254,
                     RunFieldKind::PageNumber => 1,
                     RunFieldKind::NumPages => 2,
                     RunFieldKind::NumWords => 14,
@@ -13963,6 +13907,64 @@ where
         section_index: usize,
     ) -> Result<(), JsValue> {
         self.last_render_body_element_count += 1;
+        // Under a collapsed heading: laid out as if absent, its paragraphs
+        // keeping their indices but taking no room and no caret.
+        if body_element_index != usize::MAX
+            && section_index != usize::MAX
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && options
+                .collapsed_blocks()
+                .binary_search(&body_element_index)
+                .is_ok()
+        {
+            // A hidden list paragraph still counts: the items after it keep
+            // their numbers, as in Word.
+            if let (BodyElement::Paragraph(paragraph), Some(numbering_part)) =
+                (element, numbering_part)
+            {
+                let numbering = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.numbering.as_ref());
+                if let Some((num_id, level)) =
+                    numbering.and_then(|numbering| Some((numbering.id.as_ref()?, numbering.level?)))
+                {
+                    if !Self::paragraph_is_entirely_deleted(paragraph) {
+                        if let Some(abstract_num_id) = numbering_part.abstract_num_id(num_id) {
+                            numbering_counter.initialize_ancestor_levels(
+                                Some(numbering_part),
+                                num_id,
+                                level,
+                            );
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
+                                num_id,
+                                abstract_num_id,
+                                level,
+                                numbering_part.start_value(num_id, level),
+                                numbering_part.has_start_override(num_id, level),
+                            );
+                        }
+                    }
+                }
+            }
+            let count =
+                Self::body_element_paragraph_surface_count(std::slice::from_ref(element)).max(1);
+            for paragraph_index in self.paragraph_counter..self.paragraph_counter + count {
+                self.selection.ensure_paragraph(paragraph_index);
+                self.selection
+                    .set_paragraph_selectable(paragraph_index, false);
+            }
+            self.paragraph_counter += count;
+            if !self.footnote_surface_extras.is_empty() {
+                let anchor_index = self.paragraph_counter.saturating_sub(1);
+                if let Some(extra) = self.footnote_surface_extras.get(&anchor_index) {
+                    self.paragraph_counter = self.paragraph_counter.saturating_add(*extra);
+                }
+            }
+            return Ok(());
+        }
         match element {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph_index = self.paragraph_counter;
@@ -16846,6 +16848,7 @@ where
                                     deleted_text: None,
                                     suffix_space,
                                     following_grapheme: following_grapheme.map(CompactString::new),
+                                    picture: None,
                                 });
                             }
                             if render_changes {
@@ -16896,11 +16899,33 @@ where
                                 )? + 4.0;
                             }
                             let style = self.apply_run_style(numbering_run_props.as_ref())?;
-                            numbering_span_width += self.measure_numbering_text_plan(
-                                display_text.as_str(),
-                                &style,
-                                numbering_context,
-                            )?;
+                            // A picture bullet stands as tall as the bullet's
+                            // text would, in the picture's own aspect.
+                            let picture = numbering_part
+                                .level_picture_bullet(num_id, level)
+                                .and_then(|bullet| {
+                                    let data_uri = bullet.data_uri.clone()?;
+                                    let height = points_to_px(style.font_size_pt);
+                                    let aspect = match (bullet.width_pt, bullet.height_pt) {
+                                        (Some(width), Some(height)) if height > 0.0 => {
+                                            f64::from(width / height)
+                                        }
+                                        _ => 1.0,
+                                    };
+                                    Some(NumberingPicture {
+                                        data_uri,
+                                        width: height * aspect,
+                                        height,
+                                    })
+                                });
+                            numbering_span_width += match picture.as_ref() {
+                                Some(picture) => picture.width,
+                                None => self.measure_numbering_text_plan(
+                                    display_text.as_str(),
+                                    &style,
+                                    numbering_context,
+                                )?,
+                            };
 
                             numbering_first_line_offset =
                                 jade_docx_layout::line_wrap::numbering_first_line_offset(
@@ -16917,6 +16942,7 @@ where
                                 deleted_text,
                                 suffix_space,
                                 following_grapheme: following_grapheme.map(CompactString::new),
+                                picture,
                             });
                         }
                     }
@@ -16945,9 +16971,19 @@ where
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
         let track_footnote_placement = self.tracks_footnote_placement();
 
+        let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
+            }
+            // With field codes shown, a field's first run carries `{ CODE }`
+            // and its other runs nothing.
+            let field_code = self.field_code_for(run);
+            if let Some((field, _)) = &field_code {
+                if shown_field_codes.contains(field) {
+                    continue;
+                }
+                shown_field_codes.push(*field);
             }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
@@ -16969,7 +17005,7 @@ where
                 continue;
             }
 
-            if let Some(text_box) = run.text_box.as_ref() {
+            if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
                     floating_text_boxes.push((run_index, text_box.clone()));
                     continue;
@@ -16999,7 +17035,7 @@ where
                 continue;
             }
 
-            if let Some(image) = run.image.as_ref() {
+            if let Some(image) = run.image.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(image.layout.kind, RunImageKind::Floating) {
                     floating_images.push((run_index, image.clone()));
                     continue;
@@ -17045,7 +17081,9 @@ where
             } else {
                 resolved_run_properties
             };
-            if let Some(field) = run.field.as_ref() {
+            if let Some((_, code)) = &field_code {
+                segment.push_str(code);
+            } else if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
                 // the same visible byte space as ordinary text. A freshly
@@ -25112,6 +25150,7 @@ where
                     deleted_text: None,
                     suffix_space,
                     following_grapheme: following_grapheme.map(CompactString::new),
+                    picture: None,
                 });
             }
         }
@@ -29366,6 +29405,30 @@ where
             current_x += deleted_width + DELETED_INSERT_GAP_PX;
         }
 
+        if let Some(picture) = pending.picture.as_ref() {
+            // The picture sits on the line's baseline, where the bullet's
+            // glyph would.
+            let image = RunImage {
+                data_uri: Some(picture.data_uri.clone()),
+                ..RunImage::default()
+            };
+            return self.draw_image_element(
+                &image,
+                ImageDrawSpec {
+                    x: current_x,
+                    y: baseline_y - picture.height * 0.85,
+                    width: picture.width,
+                    height: picture.height,
+                    rotation_deg: 0.0,
+                    flip_horizontal: false,
+                    flip_vertical: false,
+                    crop: None,
+                    paragraph_index: pending.paragraph_index,
+                    run_index: usize::MAX,
+                },
+            );
+        }
+
         let style = self.apply_run_style(pending.display_props.as_ref())?;
         let text_y = baseline_y + style.baseline_shift_px;
         let marker_width = self.draw_numbering_text_plan(
@@ -30184,6 +30247,13 @@ where
 
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         self.selection.caret_metrics()
+    }
+
+    /// Where a caret at `position` would be drawn, from the last layout,
+    /// without moving the selection: what a page number for a heading or a
+    /// bookmark's bracket is read from.
+    pub fn caret_metrics_at(&self, position: TextPosition) -> Option<CaretMetrics> {
+        self.selection.caret_metrics_at_position(position)
     }
 
     /// Which line a caret on a soft wrap is drawn on — the end of the line
@@ -33019,6 +33089,26 @@ where
                     Some(field.cached_text.clone().unwrap_or_default())
                 }
             }
+            RunFieldKind::Formatted { kind, instruction } => {
+                let number = match kind.as_ref() {
+                    RunFieldKind::PageNumber => {
+                        Some(self.page_number_value(self.current_page_number))
+                    }
+                    RunFieldKind::NumPages => Some(self.resolved_total_page_count()),
+                    RunFieldKind::SectionPages => self.current_section_page_count(),
+                    RunFieldKind::SectionNumber => Some(self.active_section_index + 1),
+                    _ => None,
+                };
+                let format = jade_docx_reader::field_format::FieldCode::parse(instruction)
+                    .map(|code| code.format)
+                    .unwrap_or_default();
+                number.map(|number| {
+                    jade_docx_reader::field_format::apply_general_format(
+                        &jade_docx_reader::field_format::FieldValue::Number(number as f64),
+                        &format,
+                    )
+                })
+            }
             RunFieldKind::PageNumber => Some(self.displayed_page_number(self.current_page_number)),
             RunFieldKind::NumPages => Some(self.resolved_total_page_count().to_string()),
             RunFieldKind::SectionPages => self
@@ -33279,6 +33369,28 @@ where
         self.current_datetime = datetime;
     }
 
+    /// Shows field codes in place of results for the body runs in
+    /// `display` (see `fields::field_code_display`), or results again with
+    /// `None`. Paint and layout caches are dropped, as the text changes.
+    pub fn set_field_code_display(&mut self, display: Option<FieldCodeDisplay>) {
+        let display = display.filter(|map| !map.is_empty());
+        if display.as_ref() == self.field_code_display.as_deref() {
+            return;
+        }
+        self.field_code_display = display.map(Rc::new);
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// The field code a body run shows instead of its content.
+    fn field_code_for(&self, run: &Run) -> Option<(XmlNodeId, Rc<str>)> {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return None;
+        }
+        let display = self.field_code_display.as_ref()?;
+        display.get(&run.node_id?).cloned()
+    }
+
     /// Best-effort total-page-count used for resolving `NUMPAGES` fields.
     ///
     /// Word recomputes `NUMPAGES` at field-update time (or at print); our
@@ -33309,6 +33421,34 @@ where
     /// Maps a 1-based physical page to the string a `PAGE` field should display,
     /// applying the section's `w:pgNumType` start offset and numeral format.
     /// ECMA-376 Part 1 §17.6.12.
+    /// The number a page shows (sections' starts applied), unformatted.
+    fn page_number_value(&self, physical_page: usize) -> usize {
+        if self.section_page_numbering.is_empty() {
+            let start = self.page_number_start.unwrap_or(1) as usize;
+            return start + physical_page.saturating_sub(1);
+        }
+        let page = physical_page.max(1);
+        let section = self.section_index_for_page(page);
+        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
+        let mut first_page_of_section = 1usize;
+        for index in 0..=section {
+            let first_page = self.first_page_of_section_index(index).unwrap_or(page);
+            if index > 0 {
+                number_at_section_start += first_page.saturating_sub(first_page_of_section);
+            }
+            first_page_of_section = first_page;
+            if let Some(start) = self
+                .section_page_numbering
+                .get(index)
+                .and_then(|numbering| numbering.as_ref())
+                .and_then(|numbering| numbering.start)
+            {
+                number_at_section_start = start as usize;
+            }
+        }
+        number_at_section_start + page.saturating_sub(first_page_of_section)
+    }
+
     fn displayed_page_number(&self, physical_page: usize) -> String {
         if self.section_page_numbering.is_empty() {
             let start = self.page_number_start.unwrap_or(1) as usize;
@@ -37401,6 +37541,7 @@ mod tests {
             deleted_text: None,
             suffix_space: true,
             following_grapheme: Some("A".into()),
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 20.0, 16.0, None, &mut None)
@@ -37472,6 +37613,7 @@ mod tests {
                 deleted_text: None,
                 suffix_space: label.ends_with(' '),
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let style = renderer
                 .apply_run_style(pending.display_props.as_ref())
@@ -37554,6 +37696,7 @@ mod tests {
             deleted_text: None,
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         let style = renderer
             .apply_run_style(pending.display_props.as_ref())
@@ -37601,6 +37744,7 @@ mod tests {
             deleted_text: Some("第４３条".into()),
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 60.0, 16.0, None, &mut None)
@@ -37832,6 +37976,7 @@ mod tests {
                 deleted_text: deleted.map(str::to_string),
                 suffix_space,
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let mut commands = Vec::new();
             renderer
@@ -41473,6 +41618,46 @@ mod tests {
         let (x, width) = rects[0];
         assert!((x - 20.0).abs() < 1e-6);
         assert!((width - 30.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn page_fields_draw_their_number_switches_live() {
+        let mut renderer = test_renderer();
+        renderer.current_page_number = 4;
+        for (instruction, expected) in [
+            ("PAGE \\* ROMAN", "IV"),
+            ("PAGE \\* alphabetic", "d"),
+            ("PAGE \\# \"00\"", "04"),
+            ("PAGE \\* KANJINUM1", "四"),
+            ("SECTION \\* ArabicDash", "- 1 -"),
+        ] {
+            let kind =
+                jade_docx_reader::parser::DocumentParser::parse_field_instruction(instruction)
+                    .expect("a field");
+            assert!(
+                matches!(kind, RunFieldKind::Formatted { .. }),
+                "{instruction}"
+            );
+            let field = RunField {
+                word_mac_body_result: None,
+                kind,
+                source_field_id: None,
+                cached_text: Some("stale".to_string()),
+                resolved_value: None,
+            };
+            assert_eq!(
+                renderer.resolve_run_field(&field).as_deref(),
+                Some(expected),
+                "{instruction}"
+            );
+        }
+        // Formatting switches alone change nothing.
+        assert_eq!(
+            jade_docx_reader::parser::DocumentParser::parse_field_instruction(
+                "PAGE \\* MERGEFORMAT"
+            ),
+            Some(RunFieldKind::PageNumber)
+        );
     }
 
     #[test]
