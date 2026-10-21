@@ -1177,6 +1177,55 @@ impl NativeDocument {
         (self.options.render_changes, self.options.render_original)
     }
 
+    /// 入力時にスペルチェックを行う: marks misspellings and grammar on the
+    /// pages, or takes the marks off. Each change starts afresh.
+    pub fn set_proofing(&mut self, on: bool) -> Result<(), String> {
+        let (_, generation) = self.renderer.spelling_state();
+        self.renderer
+            .configure_spelling(on, generation.wrapping_add(1));
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Whether the pages are marked for spelling and grammar.
+    pub fn proofing(&self) -> bool {
+        self.renderer.spelling_state().0
+    }
+
+    /// Asks `check` about every span drawn since the last call — its text,
+    /// the span's byte range in it, and its `w:lang` — and draws what it
+    /// finds. Returns whether the pages changed.
+    #[allow(clippy::type_complexity)]
+    pub fn proof_pending(
+        &mut self,
+        check: &mut dyn FnMut(
+            &str,
+            usize,
+            usize,
+            Option<&str>,
+        ) -> Vec<jade_docx_editor::plugins::spelling::ProofingIssue>,
+    ) -> Result<bool, String> {
+        let (on, generation) = self.renderer.spelling_state();
+        if !on {
+            return Ok(false);
+        }
+        let mut changed = false;
+        for request in self.renderer.take_pending_spelling() {
+            let issues = check(
+                &request.text,
+                request.start,
+                request.end,
+                request.language.as_deref(),
+            );
+            changed |= self
+                .renderer
+                .apply_proofing_issues(generation, &request.key, &issues);
+        }
+        if changed {
+            self.repaint_all()?;
+        }
+        Ok(changed)
+    }
+
     /// Shows or hides Word's formatting marks.
     pub fn set_formatting_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_formatting_marks = show;
