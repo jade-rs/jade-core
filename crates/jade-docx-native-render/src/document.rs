@@ -225,7 +225,7 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        renderer.sync_document_header_footer_stories(&word_document);
+        renderer.sync_word_document(&word_document);
 
         let document = word_document
             .document
@@ -315,7 +315,7 @@ impl NativeDocument {
         let count = host.rendered_pages();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "PDF renderer setup failed".to_string())?;
-        renderer.sync_document_header_footer_stories(&self.word_document);
+        renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
         options.show_crop_marks = false;
@@ -482,8 +482,7 @@ impl NativeDocument {
             .ok_or_else(|| "document went missing".to_string())?
             .clone();
         let started = Instant::now();
-        self.renderer
-            .sync_document_header_footer_stories(&self.word_document);
+        self.renderer.sync_word_document(&self.word_document);
         // History can restore different paragraph contents at an address
         // previously used by another snapshot. Recompute address-keyed hashes
         // before deciding whether old paragraph paint can be replayed.
@@ -535,7 +534,7 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        renderer.sync_document_header_footer_stories(&self.word_document);
+        renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
         renderer.set_selection_range(self.selection);
         renderer.mark_full_repaint();
@@ -1856,7 +1855,7 @@ impl NativeDocument {
         }
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        renderer.sync_document_header_footer_stories(word_document);
+        renderer.sync_word_document(word_document);
         let document = word_document
             .document
             .as_ref()
