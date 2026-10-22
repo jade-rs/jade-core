@@ -67,3 +67,63 @@ fn automatic_hyphenation_draws_hyphens_at_line_ends() {
 fn a_paragraph_can_suppress_automatic_hyphenation() {
     assert_eq!(hyphens(&render(true, true)), 0);
 }
+
+/// Renders `body_xml` with automatic hyphenation `auto`.
+fn render_body(body_xml: &str, auto: bool) -> Vec<Op> {
+    let data = super::section_tests::build_docx_with_body(body_xml);
+    let model =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut document = (**model.document.as_ref().expect("document")).clone();
+    document.hyphenation.auto = auto;
+    // Ten pixels a character, as the host measures, in table cells too.
+    let painter = RecordingPainter::with_width_per_char(10.0);
+    let mut renderer = CanvasRenderer::with_host(
+        Box::new(RecordingHost {
+            painter: painter.clone(),
+        }),
+        false,
+    )
+    .expect("recording renderer");
+    renderer
+        .render(&Rc::new(document), &Options::default())
+        .expect("render");
+    painter.ops()
+}
+
+#[test]
+fn text_in_a_table_cell_is_hyphenated_and_draws_its_hyphens() {
+    let body = format!(
+        r#"<w:tbl><w:tblPr><w:tblW w:w="4000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>{TEXT}</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/>"#
+    );
+    assert_eq!(hyphens(&render_body(&body, false)), 0);
+    let hyphenated = render_body(&body, true);
+    assert!(hyphens(&hyphenated) > 0, "the cell's lines end in hyphens");
+    // Each hyphen follows the letters kept on its line.
+    let position = hyphenated
+        .iter()
+        .position(|op| matches!(op, Op::FillText(text, _, _) if text == "-"))
+        .unwrap();
+    assert!(hyphenated[..position]
+        .iter()
+        .rev()
+        .find_map(|op| match op {
+            Op::FillText(text, _, _) => Some(text.chars().all(char::is_alphabetic)),
+            _ => None,
+        })
+        .unwrap_or(false));
+}
+
+#[test]
+fn german_text_is_hyphenated_with_german_patterns() {
+    let german = "Die Bundesregierung veröffentlicht regelmäßig umfangreiche \
+        Verwaltungsvorschriften über Steuerangelegenheiten, Sozialversicherungsbeiträge \
+        und Wirtschaftsförderungsmaßnahmen für mittelständische Unternehmen.";
+    let paragraph = |lang: &str| {
+        format!(
+            r#"<w:p><w:r><w:rPr><w:lang w:val="{lang}"/></w:rPr><w:t>{german}</w:t></w:r></w:p>"#
+        )
+    };
+    assert!(hyphens(&render_body(&paragraph("de-DE"), true)) > 0);
+    // A language without patterns is left whole.
+    assert_eq!(hyphens(&render_body(&paragraph("pl-PL"), true)), 0);
+}
