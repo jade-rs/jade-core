@@ -477,7 +477,12 @@ impl WordDocument {
                 .paragraph(model.paragraph)
                 .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
                 .unwrap_or_default();
-            let offset = model.offset.min(text.len());
+            // A caret placed by byte offset can sit inside a character;
+            // step from the character's start.
+            let mut offset = model.offset.min(text.len());
+            while !text.is_char_boundary(offset) {
+                offset -= 1;
+            }
             let next = if backwards {
                 if offset == 0 {
                     if model.paragraph == 0 {
