@@ -9,6 +9,7 @@
 use super::*;
 use crate::word_document::mail_merge::address::{AddressBlockOptions, GreetingLineOptions};
 use crate::word_document::mail_merge::fields::MergeProblem;
+use crate::word_document::mail_merge::layouts::{EnvelopeSpec, ENVELOPE_SIZES, LABEL_PRODUCTS};
 use crate::word_document::mail_merge::{
     MailMergeAction, MainDocumentType, MergeData, MergeFieldSpec, MergeRequest, MergeRule,
 };
@@ -20,6 +21,46 @@ struct MailMergeSettingsJs {
     data_source: Option<String>,
     preview: bool,
     active_record: usize,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct EnvelopeJs {
+    /// A name from `envelopeSizes`.
+    size: String,
+    #[serde(default)]
+    delivery: String,
+    #[serde(default)]
+    return_address: String,
+    #[serde(default)]
+    omit_return: bool,
+    #[serde(default)]
+    merge: bool,
+    #[serde(default)]
+    delivery_left_mm: Option<f32>,
+    #[serde(default)]
+    delivery_top_mm: Option<f32>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EnvelopeSizeJs {
+    name: &'static str,
+    width_mm: f32,
+    height_mm: f32,
+    vertical: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LabelProductJs {
+    vendor: &'static str,
+    number: &'static str,
+    description: &'static str,
+    columns: usize,
+    rows: usize,
+    label_width_mm: f32,
+    label_height_mm: f32,
 }
 
 #[derive(serde::Deserialize)]
@@ -329,5 +370,92 @@ impl OffscreenDocumentView {
             .map(WordDocument::merge_field_names)
             .unwrap_or_default();
         serde_wasm_bindgen::to_value(&names).unwrap_or(JsValue::NULL)
+    }
+
+    /// The sizes 封筒オプション offers.
+    #[wasm_bindgen(js_name = envelopeSizes)]
+    pub fn envelope_sizes(&self) -> JsValue {
+        let sizes: Vec<EnvelopeSizeJs> = ENVELOPE_SIZES
+            .iter()
+            .map(|size| EnvelopeSizeJs {
+                name: size.name,
+                width_mm: size.width_mm,
+                height_mm: size.height_mm,
+                vertical: size.vertical,
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&sizes).unwrap_or(JsValue::NULL)
+    }
+
+    /// The label sheets ラベル オプション offers.
+    #[wasm_bindgen(js_name = labelProducts)]
+    pub fn label_products(&self) -> JsValue {
+        let products: Vec<LabelProductJs> = LABEL_PRODUCTS
+            .iter()
+            .map(|product| LabelProductJs {
+                vendor: product.vendor,
+                number: product.number,
+                description: product.description,
+                columns: product.columns,
+                rows: product.rows,
+                label_width_mm: product.label_width_mm,
+                label_height_mm: product.label_height_mm,
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&products).unwrap_or(JsValue::NULL)
+    }
+
+    /// 封筒: the document made an envelope of a size, with the delivery
+    /// address (or, with `merge`, the address block) and the return address.
+    #[wasm_bindgen(js_name = makeEnvelope)]
+    pub fn make_envelope(&self, envelope: JsValue, japanese: bool) -> Result<JsValue, JsValue> {
+        let envelope: EnvelopeJs = serde_wasm_bindgen::from_value(envelope)
+            .map_err(|error| JsValue::from_str(&format!("invalid envelope: {error}")))?;
+        let size = ENVELOPE_SIZES
+            .iter()
+            .copied()
+            .find(|size| size.name == envelope.size)
+            .ok_or_else(|| JsValue::from_str("unknown envelope size"))?;
+        self.apply_mail_merge(MailMergeAction::MakeEnvelope(EnvelopeSpec {
+            size,
+            delivery: envelope.delivery,
+            return_address: envelope.return_address,
+            omit_return: envelope.omit_return,
+            merge: envelope.merge,
+            delivery_left_mm: envelope.delivery_left_mm,
+            delivery_top_mm: envelope.delivery_top_mm,
+            japanese,
+        }))
+    }
+
+    /// ラベル: the document made a sheet of `vendor` `number` labels, each
+    /// with `text` — or, with `merge`, the address block in the first and
+    /// Next Record in the rest.
+    #[wasm_bindgen(js_name = makeLabels)]
+    pub fn make_labels(
+        &self,
+        vendor: String,
+        number: String,
+        text: Option<String>,
+        merge: bool,
+        japanese: bool,
+    ) -> Result<JsValue, JsValue> {
+        let product = LABEL_PRODUCTS
+            .iter()
+            .copied()
+            .find(|product| product.vendor == vendor && product.number == number)
+            .ok_or_else(|| JsValue::from_str("unknown label product"))?;
+        self.apply_mail_merge(MailMergeAction::MakeLabels {
+            product,
+            text,
+            merge,
+            japanese,
+        })
+    }
+
+    /// ラベルの更新: the first label copied to every other one.
+    #[wasm_bindgen(js_name = propagateLabels)]
+    pub fn propagate_labels(&self) -> Result<JsValue, JsValue> {
+        self.apply_mail_merge(MailMergeAction::PropagateLabels)
     }
 }
