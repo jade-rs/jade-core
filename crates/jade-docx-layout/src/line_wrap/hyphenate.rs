@@ -10,9 +10,8 @@
 //! `w:doNotHyphenateCaps` a word in capitals is left whole.
 
 use super::{
-    detach_leading_cluster, is_latin_word_grapheme, InlineCluster, InlineClusterKind,
-    LineBreakKind, LineHyphen, LineWrapContext, ParagraphStyle, TextSegment, WrappedLine,
-    WRAP_FIT_TOLERANCE_PX,
+    classify_script, detach_leading_cluster, InlineCluster, InlineClusterKind, LineBreakKind,
+    LineHyphen, LineWrapContext, ParagraphStyle, TextSegment, WrappedLine, WRAP_FIT_TOLERANCE_PX,
 };
 
 /// Hyphenates `lines` as `paragraph_style.hyphenation` asks, and reflows the
@@ -90,7 +89,7 @@ fn hyphenate_line_end<C: LineWrapContext>(
         .clusters
         .iter()
         .take_while(|cluster| {
-            cluster.kind == InlineClusterKind::Grapheme && is_latin_word_grapheme(&cluster.text)
+            cluster.kind == InlineClusterKind::Grapheme && is_word_letter(&cluster.text)
         })
         .count();
     if letters == 0
@@ -162,6 +161,13 @@ fn hyphenate_line_end<C: LineWrapContext>(
     }
     line.hyphen = Some(LineHyphen { width: hyphen });
     Ok(true)
+}
+
+/// A letter of a word the patterns can hyphenate: any Latin-script letter,
+/// accented ones included (`ä`, `é`, `ñ`, `ĳ`).
+fn is_word_letter(grapheme: &str) -> bool {
+    classify_script(grapheme) == super::ScriptCategory::Latin
+        && grapheme.chars().all(char::is_alphabetic)
 }
 
 /// The segment of `line` holding the byte at `offset`.
@@ -264,7 +270,7 @@ fn reflow_after(lines: &mut Vec<WrappedLine>, from: usize, available: &dyn Fn(us
 fn leading_unit(clusters: &[InlineCluster]) -> usize {
     let mut end = clusters
         .iter()
-        .take_while(|cluster| !cluster.is_whitespace && is_latin_word_grapheme(&cluster.text))
+        .take_while(|cluster| !cluster.is_whitespace && is_word_letter(&cluster.text))
         .count();
     if end == 0 {
         if clusters.first().is_none_or(|cluster| cluster.is_whitespace) {

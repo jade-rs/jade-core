@@ -27,6 +27,8 @@ use std::rc::Rc;
 use std::sync::OnceLock;
 use subsetter::{Profile, subset};
 
+mod borders;
+
 const CSS_PX_PER_PT: f64 = 96.0 / 72.0;
 const EMBEDDED_FONT_BYTES: &[u8] =
     include_bytes!("../../../fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
@@ -241,6 +243,9 @@ struct RenderTable {
     y: f64,
     column_widths: Vec<f64>,
     row_heights: Vec<f64>,
+    /// The table's own `w:tblBorders`, each in its line style; `None` keeps
+    /// the plain grid.
+    borders: Option<borders::RenderTableBorders>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -407,6 +412,8 @@ struct RenderLayout {
     images: Vec<RenderImage>,
     tables: Vec<RenderTable>,
     text_boxes: Vec<RenderTextBox>,
+    /// Paragraph and character borders.
+    border_boxes: Vec<borders::RenderBorderBox>,
     links: Vec<RenderLink>,
     rendered_header_footer_parts: usize,
     rendered_notes: usize,
@@ -572,6 +579,7 @@ fn build_render_layout(
             );
             let images = collect_supported_render_images(context, &layout).unwrap_or_default();
             let tables = collect_table_render_grids(context, &layout);
+            let border_boxes = collect_border_boxes(context, &layout);
             let (text_boxes, text_box_lines) =
                 collect_text_box_render_items(context, &layout, &lines);
             lines.extend(text_box_lines);
@@ -595,6 +603,7 @@ fn build_render_layout(
                 images,
                 tables,
                 text_boxes,
+                border_boxes,
                 links,
                 rendered_header_footer_parts,
                 rendered_notes,
@@ -614,6 +623,7 @@ fn build_render_layout(
         images: Vec::new(),
         tables: Vec::new(),
         text_boxes: Vec::new(),
+        border_boxes: Vec::new(),
         links: Vec::new(),
         rendered_header_footer_parts: 0,
         rendered_notes: 0,
@@ -1235,7 +1245,6 @@ fn run_has_unsupported_pdf_visual_styling(properties: &jade_docx_reader::RunProp
             .color
             .as_deref()
             .is_some_and(|color| color != "#000000" && parse_hex_color(color).is_none())
-        || properties.border.is_some()
 }
 
 fn scan_run_fonts(run: &jade_docx_reader::Run, features: &mut ReadinessFeatures) {
@@ -1941,6 +1950,28 @@ fn collect_header_footer_render_lines(
     Ok((rendered_parts.len(), lines))
 }
 
+/// The paragraph borders of the body's paragraphs and the character borders
+/// of every laid-out line.
+fn collect_border_boxes(
+    context: &RenderDocxContext,
+    layout: &DocumentLineLayout,
+) -> Vec<borders::RenderBorderBox> {
+    let page_settings = context.document.page_settings.as_ref();
+    let content_left = points_to_px(page_settings.and_then(|s| s.margin_left).unwrap_or(72.0));
+    let page_width = points_to_px(page_settings.and_then(|s| s.width).unwrap_or(595.0));
+    let margin_right = points_to_px(page_settings.and_then(|s| s.margin_right).unwrap_or(72.0));
+    let mut boxes = borders::collect_paragraph_border_boxes(
+        &context.document,
+        layout,
+        content_left,
+        page_width - margin_right,
+    );
+    for line in layout.get_lines() {
+        boxes.extend(borders::collect_character_border_boxes(line));
+    }
+    boxes
+}
+
 fn collect_table_render_grids(
     context: &RenderDocxContext,
     layout: &DocumentLineLayout,
@@ -2027,6 +2058,10 @@ fn render_grid_for_top_level_table(
         y,
         column_widths,
         row_heights,
+        borders: table
+            .borders
+            .as_ref()
+            .map(borders::RenderTableBorders::from_table_borders),
     })
 }
 
@@ -3358,6 +3393,13 @@ fn build_pdf_bytes(
         for table in tables.iter().filter(|table| table.page == page_index + 1) {
             push_table_grid_operations(&mut operations, table, page_height_pt);
         }
+        for bordered in layout
+            .border_boxes
+            .iter()
+            .filter(|bordered| bordered.page == page_index + 1)
+        {
+            borders::push_border_box_operations(&mut operations, bordered, page_height_pt);
+        }
         operations.push(Operation::new("BT", vec![]));
         for line in lines.iter().filter(|line| line.page == page_index + 1) {
             if line.spans.is_empty() {
@@ -3840,6 +3882,17 @@ fn push_table_grid_operations(
     table: &RenderTable,
     page_height_pt: f64,
 ) {
+    if let Some(table_borders) = table.borders.as_ref() {
+        borders::push_table_border_operations(
+            operations,
+            table_borders,
+            (table.x, table.y),
+            &table.column_widths,
+            &table.row_heights,
+            page_height_pt,
+        );
+        return;
+    }
     let x0 = px_to_pt(table.x);
     let y0 = page_height_pt - px_to_pt(table.y);
     let table_width = px_to_pt(table.column_widths.iter().sum::<f64>());
@@ -4306,6 +4359,7 @@ mod tests {
                 images: Vec::new(),
                 tables: Vec::new(),
                 text_boxes: Vec::new(),
+                border_boxes: Vec::new(),
                 links: Vec::new(),
                 rendered_header_footer_parts: 0,
                 rendered_notes: 0,
@@ -4355,6 +4409,7 @@ mod tests {
                 images: Vec::new(),
                 tables: Vec::new(),
                 text_boxes: Vec::new(),
+                border_boxes: Vec::new(),
                 links: vec![RenderLink {
                     page: 1,
                     x: 72.0,
@@ -4419,6 +4474,7 @@ mod tests {
             images: Vec::new(),
             tables: Vec::new(),
             text_boxes: Vec::new(),
+            border_boxes: Vec::new(),
             links: Vec::new(),
             rendered_header_footer_parts: 0,
             rendered_notes: 0,
@@ -4501,6 +4557,7 @@ mod tests {
             images: Vec::new(),
             tables: Vec::new(),
             text_boxes: Vec::new(),
+            border_boxes: Vec::new(),
             links: Vec::new(),
             rendered_header_footer_parts: 1,
             rendered_notes: 0,
@@ -4890,6 +4947,7 @@ mod tests {
                 images: Vec::new(),
                 tables: Vec::new(),
                 text_boxes: Vec::new(),
+                border_boxes: Vec::new(),
                 links: Vec::new(),
                 rendered_header_footer_parts: 0,
                 rendered_notes: 0,

@@ -1452,6 +1452,7 @@ dependencies = [
  "cfb",
  "jade-doc-reader",
  "jade-docx-convert",
+ "jade-opc",
 ]
 
 [[package]]

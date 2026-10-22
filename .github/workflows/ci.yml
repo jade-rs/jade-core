@@ -51,6 +51,13 @@ jobs:
       - name: Cargo check
         run: cargo check --all --all-features
 
+      - name: Cargo check the file writers the browser build uses (wasm32)
+        # `.doc` and password-protected packages are written in the browser
+        # too; their compound-file writer must not need a clock there.
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo check --target wasm32-unknown-unknown -p jade-doc-writer -p jade-opc
+
   test:
     runs-on: ubuntu-latest
     # A stalled dependency install used to burn the full six-hour default.

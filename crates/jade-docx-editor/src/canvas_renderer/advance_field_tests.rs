@@ -115,3 +115,103 @@ fn advance_y_puts_the_line_down_the_page() {
     let (_, by) = drawn_at(&ops, "b");
     assert_eq!(ay, by, "the whole line moves");
 }
+
+/// hello.docx's first paragraph as `a`, `ADVANCE <switches>` when given,
+/// then `after`, with `indent_pt` of left indent.
+fn render_paragraph(switches: Option<&str>, after: &str, indent_pt: f32) -> Vec<Op> {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/hello.docx");
+    let bytes = std::fs::read(path).expect("hello.docx");
+    let model =
+        futures::executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+    let mut document = (**model.document.as_ref().expect("document")).clone();
+    let mut first = true;
+    for element in document
+        .body
+        .iter_mut()
+        .flat_map(|body| body.elements.iter_mut())
+    {
+        let Some(paragraph) = element.as_paragraph_mut() else {
+            continue;
+        };
+        if !first {
+            paragraph.runs.clear();
+            continue;
+        }
+        first = false;
+        let properties = paragraph.properties.get_or_insert_with(Default::default);
+        properties.indent = Some(jade_docx_reader::document::Indent {
+            left: Some(indent_pt),
+            ..Default::default()
+        });
+        let mut a = paragraph.runs[0].clone();
+        a.text = "a".into();
+        a.field = None;
+        let mut rest = a.clone();
+        rest.text = after.into();
+        let mut runs = vec![a.clone()];
+        if let Some(switches) = switches {
+            let mut field = a.clone();
+            field.text = String::new();
+            field.field = Some(RunField {
+                kind: RunFieldKind::Unsupported {
+                    instruction: format!("ADVANCE {switches}"),
+                },
+                source_field_id: None,
+                cached_text: None,
+                resolved_value: None,
+                word_mac_body_result: None,
+            });
+            runs.push(field);
+        }
+        runs.push(rest);
+        paragraph.runs = runs;
+    }
+    let painter = RecordingPainter::new();
+    let mut renderer = CanvasRenderer::with_host(
+        Box::new(RecordingHost {
+            painter: painter.clone(),
+        }),
+        false,
+    )
+    .expect("recording renderer");
+    renderer
+        .render(&Rc::new(document), &Options::default())
+        .expect("render");
+    painter.ops()
+}
+
+#[test]
+fn advance_x_is_measured_from_the_column_edge_not_the_indent() {
+    let (column_a, _) = drawn_at(&render_paragraph(None, "b", 0.0), "a");
+    // 36pt of indent: `a` starts 48px in, but \x 72 still puts `b` 96px from
+    // the column's edge.
+    let indented = render_paragraph(Some("\\x 72"), "b", 36.0);
+    let (ax, _) = drawn_at(&indented, "a");
+    assert!((ax - (column_a + 48.0)).abs() < 0.01, "{ax} vs {column_a}");
+    let (bx, _) = drawn_at(&indented, "b");
+    assert!((bx - (column_a + 96.0)).abs() < 0.01, "{bx} vs {column_a}");
+}
+
+#[test]
+fn advance_up_and_down_move_the_rest_of_their_line_only() {
+    // Enough words after the field to fill a second line, which ends in `z`.
+    let words = format!(" {}z", "word ".repeat(30));
+    let plain = render_paragraph(None, &words, 0.0);
+    let lowered = render_paragraph(Some("\\d 6"), &words, 0.0);
+    let (_, plain_w) = drawn_at(&plain, "w");
+    let (_, lowered_w) = drawn_at(&lowered, "w");
+    assert!(
+        (lowered_w - (plain_w + 8.0)).abs() < 0.01,
+        "the field's line drops"
+    );
+    // The next line is laid out at its own baseline, where the plain
+    // paragraph's second line is.
+    let (_, plain_z) = drawn_at(&plain, "z");
+    let (_, lowered_z) = drawn_at(&lowered, "z");
+    assert!(plain_z > plain_w + 1.0, "z is on a later line");
+    assert!(
+        (lowered_z - plain_z).abs() < 0.01,
+        "the next line is not lowered: {lowered_z} vs {plain_z}"
+    );
+}

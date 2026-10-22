@@ -76,3 +76,52 @@ fn plain_runs_stay_on_the_per_character_path() {
         .iter()
         .any(|op| matches!(op, Op::SetFont(font) if font.contains("ot:"))));
 }
+
+#[test]
+fn a_word_2007_compatibility_mode_document_draws_without_its_typography() {
+    let ligatures = || {
+        Some(RunTextEffects {
+            ligatures: Some("standard".into()),
+            ..Default::default()
+        })
+    };
+    let shaped = |ops: &[Op]| ops.iter().any(|op| matches!(op, Op::FillShapedText(..)));
+    let model = hello();
+    let mut document = (**model.document.as_ref().expect("document")).clone();
+    for element in document
+        .body
+        .iter_mut()
+        .flat_map(|body| body.elements.iter_mut())
+    {
+        if let Some(paragraph) = element.as_paragraph_mut() {
+            for run in paragraph.runs.iter_mut() {
+                run.text = "office files".into();
+                let mut properties = run.properties.clone().unwrap_or_default();
+                properties.text_effects = ligatures().map(Box::new);
+                run.properties = Some(properties);
+            }
+        }
+    }
+    let render_mode = |mode: u32| {
+        let mut document = document.clone();
+        document.east_asian_line_breaking.compatibility_mode = Some(mode);
+        let painter = RecordingPainter::new();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
+        renderer
+            .render(&Rc::new(document), &Options::default())
+            .expect("render");
+        painter.ops()
+    };
+    assert!(
+        shaped(&render_mode(14)),
+        "Word 2010 layout shapes ligatures"
+    );
+    assert!(!shaped(&render_mode(12)), "Word 2007 layout does not");
+    assert!(shaped(&render_mode(15)), "and the setting does not stick");
+}

@@ -2501,15 +2501,19 @@ fn merge_indent_override(target: &mut Indent, source: &Indent) {
 fn merge_spacing_override(target: &mut Spacing, source: &Spacing) {
     if source.before.is_some() {
         target.before = source.before;
+        target.before_auto = source.before_auto;
     }
     if source.after.is_some() {
         target.after = source.after;
+        target.after_auto = source.after_auto;
     }
     if source.before_lines.is_some() {
         target.before_lines = source.before_lines;
+        target.before_auto = false;
     }
     if source.after_lines.is_some() {
         target.after_lines = source.after_lines;
+        target.after_auto = false;
     }
     if source.line.is_some() {
         target.line = source.line;

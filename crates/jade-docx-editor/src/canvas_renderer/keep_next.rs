@@ -216,6 +216,7 @@ where
         measurer.document_hyphenation = self.document_hyphenation;
         measurer.document_expands_shift_return = self.document_expands_shift_return;
         measurer.document_underlines_trailing_spaces = self.document_underlines_trailing_spaces;
+        measurer.document_html_auto_spacing = self.document_html_auto_spacing;
         measurer.document_adjust_line_height_in_table = self.document_adjust_line_height_in_table;
         measurer.document_east_asian_rules = self.document_east_asian_rules.clone();
         measurer
