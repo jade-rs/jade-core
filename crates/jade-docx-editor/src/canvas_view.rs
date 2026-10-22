@@ -854,6 +854,8 @@ impl<T: PartialEq> UniformField<T> {
 
 #[path = "canvas_view/word_autocorrect.rs"]
 mod word_autocorrect;
+#[path = "canvas_view/word_checks.rs"]
+mod word_checks;
 #[path = "canvas_view/word_controls.rs"]
 mod word_controls;
 #[path = "canvas_view/word_equation.rs"]
