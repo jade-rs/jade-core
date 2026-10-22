@@ -258,7 +258,9 @@ fn command_mutates_header_footer_stories(name: &str) -> bool {
 }
 
 fn command_mutates_style_definitions(name: &str) -> bool {
-    matches!(name, "edit_document_package" | "set_document_theme")
+    // A Word model action (`word_*`, see `canvas_view/word_session.rs`) can
+    // rewrite the styles part or the package with it.
+    matches!(name, "edit_document_package" | "set_document_theme") || name.starts_with("word_")
 }
 
 fn sync_renderer_header_footer_stories(renderer: &mut CanvasRenderer, word_doc: &WordDocument) {
@@ -852,12 +854,16 @@ mod word_controls;
 mod word_ink;
 #[path = "canvas_view/word_mailings.rs"]
 mod word_mailings;
+#[path = "canvas_view/word_models.rs"]
+mod word_models;
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
 #[path = "canvas_view/word_references.rs"]
 mod word_references;
 #[path = "canvas_view/word_review.rs"]
 mod word_review;
+#[path = "canvas_view/word_session.rs"]
+mod word_session;
 
 mod ordered_size {
     /// f32 font sizes wrapped for equality comparison in [`super::UniformField`].
