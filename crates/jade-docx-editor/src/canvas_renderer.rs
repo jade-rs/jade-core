@@ -22704,7 +22704,6 @@ where
         paint_result
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Traces a preset geometry from ECMA-376's shape-guide definitions,
     /// honouring the shape's own adjust values; a rectangle when the preset is
     /// unknown. `filled` picks the paths the preset fills (for a fill,
@@ -22751,6 +22750,7 @@ where
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn trace_text_box_shape_with_line_ends<P: Painter>(
         context: &P,
         shape: TextBoxShape,
