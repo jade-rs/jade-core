@@ -198,6 +198,14 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let facts = Rc::new(self.layout_facts());
         let selection = self.current_selection();
+        // Models that edit the package (themes, styles, the glossary) need
+        // the round-trip XML a lazily opened document builds on its first
+        // export.
+        if let Some(document) = self.state.borrow_mut().word_doc.as_mut() {
+            document
+                .ensure_roundtrip_xml()
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        }
         let action = RefCell::new(Some(action));
         let outcome: Rc<RefCell<Option<Outcome<T>>>> = Rc::new(RefCell::new(None));
         let sink = Rc::clone(&outcome);
