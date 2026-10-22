@@ -32,12 +32,15 @@ where
     serde::Deserialize::deserialize(deserializer).map(Some)
 }
 
-fn from_js<T: serde::de::DeserializeOwned>(value: JsValue, what: &str) -> Result<T, JsValue> {
+pub(super) fn from_js<T: serde::de::DeserializeOwned>(
+    value: JsValue,
+    what: &str,
+) -> Result<T, JsValue> {
     serde_wasm_bindgen::from_value(value)
         .map_err(|error| JsValue::from_str(&format!("invalid {what}: {error}")))
 }
 
-fn to_js<T: serde::Serialize>(value: &T) -> JsValue {
+pub(super) fn to_js<T: serde::Serialize>(value: &T) -> JsValue {
     value
         .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
         .unwrap_or(JsValue::NULL)
