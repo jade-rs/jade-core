@@ -926,3 +926,24 @@ fn emptying_a_control_keeps_it() {
     .expect("typed over");
     assert_eq!(text_of(&document, 0), "A z B");
 }
+
+#[test]
+fn a_delete_from_inside_a_character_does_not_panic() {
+    // A caret placed by byte offset can land inside a multi-byte character
+    // (here byte 1 of 秘, and byte 4 of 密); stepping over a character from
+    // there must not slice the text off a char boundary.
+    let document = open("<w:p><w:r><w:t>秘密保持</w:t></w:r></w:p>", "");
+    for (offset, direction) in [
+        (1, HeadlessDeleteDirection::Forward),
+        (4, HeadlessDeleteDirection::Backward),
+        (4, HeadlessDeleteDirection::Forward),
+    ] {
+        let command = HeadlessCommand::DeleteText {
+            paragraph: 0,
+            offset,
+            direction,
+            count: 1,
+        };
+        assert_eq!(document.headless_edit_refusal(&command), None);
+    }
+}
