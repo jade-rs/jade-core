@@ -11,6 +11,7 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
+pub mod compound_file;
 pub mod encryption;
 pub mod package_limits;
 pub mod signature;

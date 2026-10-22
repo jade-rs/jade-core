@@ -70,10 +70,17 @@ pub struct ParagraphAdvance {
     pub offset: usize,
     /// Horizontal move in px.
     pub dx_px: f64,
-    /// `\x` in px from the line's start.
+    /// `\x` in px from the paragraph's text edge (its left indent): the
+    /// field's distance from the column edge less that indent. The line's
+    /// own first-line or hanging indent is taken off where it applies.
     pub x_px: Option<f64>,
     /// `\y` in px down the page: where the line holding the field goes.
     pub y_px: Option<f64>,
+    /// `\u` less `\d`, in points: how far the text after the field rises
+    /// on the field's line. The caller raises every run after the field by
+    /// it; the wrapper lowers the runs on later lines back (Word moves the
+    /// rest of that line only).
+    pub raise_pt: f32,
 }
 
 #[cfg(test)]

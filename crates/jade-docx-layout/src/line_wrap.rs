@@ -372,17 +372,96 @@ impl ParagraphStyle {
 }
 
 /// The move `ADVANCE` fields at `offset` give the character there: `\r`
-/// and `\l` by their points, `\x` to its distance from the line's start.
-fn advance_field_shift(paragraph_style: &ParagraphStyle, offset: usize, current_width: f64) -> f64 {
+/// and `\l` by their points, `\x` to its distance from the column edge
+/// (`line_indent` is how far the line starts inside the paragraph's text edge,
+/// see [`crate::advance_field::ParagraphAdvance::x_px`]).
+fn advance_field_shift(
+    paragraph_style: &ParagraphStyle,
+    offset: usize,
+    current_width: f64,
+    line_indent: f64,
+) -> f64 {
     paragraph_style
         .advances
         .iter()
         .filter(|advance| advance.offset == offset)
         .fold(0.0, |shift, advance| match advance.x_px {
-            Some(x) => x - current_width,
+            Some(x) => x - line_indent - current_width,
             None => shift + advance.dx_px,
         })
         .max(-current_width)
+}
+
+/// `run_styles` with the rise of each `ADVANCE` `\u`/`\d` (already in the
+/// runs after the field, see [`crate::advance_field::ParagraphAdvance::raise_pt`])
+/// taken back off the text past the end of the line holding the field.
+/// `None` when nothing changes.
+fn advance_raises_limited_to_their_lines(
+    run_styles: &[RunStyle],
+    paragraph_style: &ParagraphStyle,
+    lines: &[WrappedLine],
+    base_offset: usize,
+) -> Option<Vec<RunStyle>> {
+    // (end of the field's line, rise to take off after it), text-relative.
+    let mut ends: Vec<(usize, f32)> = Vec::new();
+    for advance in &paragraph_style.advances {
+        if advance.raise_pt.abs() <= f32::EPSILON {
+            continue;
+        }
+        let at = advance.offset + base_offset;
+        let Some(line_end) = lines
+            .iter()
+            .map(|line| {
+                line.clusters
+                    .iter()
+                    .map(|cluster| cluster.end)
+                    .chain(line.segments.iter().map(|segment| segment.end))
+                    .max()
+                    .unwrap_or(0)
+            })
+            .find(|&end| at < end)
+        else {
+            continue;
+        };
+        let end = line_end.saturating_sub(base_offset);
+        if run_styles.iter().any(|run| run.end > end) {
+            ends.push((end, advance.raise_pt));
+        }
+    }
+    if ends.is_empty() {
+        return None;
+    }
+    let mut cuts: Vec<usize> = ends.iter().map(|(end, _)| *end).collect();
+    cuts.sort_unstable();
+    cuts.dedup();
+    let mut out = Vec::with_capacity(run_styles.len() + cuts.len());
+    for run in run_styles {
+        let mut start = run.start;
+        let pieces = cuts
+            .iter()
+            .copied()
+            .filter(|&cut| cut > run.start && cut < run.end)
+            .chain(std::iter::once(run.end));
+        for piece_end in pieces {
+            let lowered: f32 = ends
+                .iter()
+                .filter(|(end, _)| *end <= start)
+                .map(|(_, raise)| raise)
+                .sum();
+            let mut piece = run.clone();
+            piece.start = start;
+            piece.end = piece_end;
+            if lowered.abs() > f32::EPSILON {
+                let mut properties = piece.properties.as_deref().cloned().unwrap_or_default();
+                let position = properties.text_position.unwrap_or(0.0) - lowered;
+                properties.text_position = (position.abs() > f32::EPSILON).then_some(position);
+                piece.properties = Some(Rc::new(properties));
+            }
+            out.push(piece);
+            start = piece_end;
+        }
+    }
+    Some(out)
 }
 
 /// Returns the single `char` of `text` when it is exactly one code point.
@@ -797,6 +876,9 @@ pub struct EastAsianLineBreakingRules {
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
     pub compatibility_mode: Option<u32>,
+    /// `w:compat/w:spaceForUL`: underlined East Asian text deepens its line
+    /// to hold the underline ([`crate::line_metrics::word_space_for_underline_depth_pt`]).
+    pub space_for_underline: bool,
 }
 
 impl EastAsianLineBreakingRules {
@@ -831,6 +913,7 @@ impl EastAsianLineBreakingRules {
             no_line_break_after_replaces_default: settings.no_line_break_after_replaces_default,
             strict_first_and_last_chars: settings.strict_first_and_last_chars,
             compatibility_mode: settings.compatibility_mode,
+            space_for_underline: settings.space_for_underline,
         }
     }
 }
@@ -884,6 +967,7 @@ pub fn merge_east_asian_rules(
     if settings.compatibility_mode.is_some() {
         merged.compatibility_mode = settings.compatibility_mode;
     }
+    merged.space_for_underline |= settings.space_for_underline;
     merged
 }
 
@@ -5832,7 +5916,7 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
     base_offset: usize,
     column_right_edge: f64,
 ) -> Result<Vec<WrappedLine>, C::Error> {
-    wrap_text_into_lines_with_terminal_candidate(
+    let lines = wrap_text_into_lines_with_terminal_candidate(
         ctx,
         text,
         run_styles,
@@ -5841,7 +5925,22 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
         base_offset,
         column_right_edge,
         true,
-    )
+    )?;
+    // An ADVANCE \u or \d moves the rest of its own line only: lay the
+    // lines after it out again at the baseline.
+    match advance_raises_limited_to_their_lines(run_styles, paragraph_style, &lines, base_offset) {
+        Some(lowered) => wrap_text_into_lines_with_terminal_candidate(
+            ctx,
+            text,
+            &lowered,
+            base_x,
+            paragraph_style,
+            base_offset,
+            column_right_edge,
+            true,
+        ),
+        None => Ok(lines),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -6390,6 +6489,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         paragraph_style,
                         grapheme_start_abs.saturating_sub(base_offset),
                         current_width,
+                        current_line_indent,
                     )
                 };
                 let candidate_width = (marker_gap
@@ -6588,6 +6688,19 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     run_style.properties.as_deref(),
                 )) * 96.0
                     / 72.0;
+                // `w:spaceForUL`: underlined East Asian text keeps its
+                // underline inside the line.
+                let underline_depth_px = if paragraph_style.east_asian_rules.space_for_underline
+                    && script == ScriptCategory::EastAsia
+                {
+                    f64::from(crate::line_metrics::word_space_for_underline_depth_pt(
+                        run_style.properties.as_deref(),
+                        font_desc,
+                    )) * 96.0
+                        / 72.0
+                } else {
+                    0.0
+                };
                 auto_space = (
                     computed.advance.implicit_latin_gap + computed.advance.implicit_numeric_gap,
                     computed.advance.implicit_latin_trailing_gap,
@@ -6613,7 +6726,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             .and_then(|ruby| ruby.ascent_px)
                             .map_or(ascent, |guide| ascent.max(guide))
                     }),
-                    font_descent: font_vertical_metrics.map(|metrics| metrics.1 + border_extent_px),
+                    font_descent: font_vertical_metrics
+                        .map(|metrics| metrics.1.max(underline_depth_px) + border_extent_px),
                 };
             };
 

@@ -1,7 +1,7 @@
 use crate::{line_wrap::ScriptCategory, units::points_to_px};
 use jade_docx_reader::document::{FontHint, RunProperties};
 use rustc_hash::{FxHashMap, FxHasher};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -22,6 +22,36 @@ thread_local! {
     /// [`set_host_font_fallbacks`].
     static HOST_FONT_FALLBACKS: RefCell<Vec<HostFontFallback>> =
         const { RefCell::new(Vec::new()) };
+    /// See [`set_document_opentype_features_enabled`].
+    static DOCUMENT_OPENTYPE_FEATURES: Cell<bool> = const { Cell::new(true) };
+}
+
+/// Whether Word applies Word 2010 typography (`w14:ligatures`, `w14:numForm`,
+/// `w14:numSpacing`, `w14:stylisticSets`, `w14:cntxtAlts`) in a document of
+/// `compatibility_mode`: only in Word 2010 layout (14) or later. A document in
+/// Word 2007 (12) or Word 2003 (11) compatibility mode has the フォント
+/// dialog's OpenType features greyed out and its text set without them, as
+/// Word 2007 would. An unknown mode keeps them.
+pub fn word_opentype_features_apply(compatibility_mode: Option<u32>) -> bool {
+    compatibility_mode.is_none_or(|mode| mode >= 14)
+}
+
+/// Installs whether the current document applies OpenType typography
+/// ([`word_opentype_features_apply`]) for this thread's font resolution.
+/// Returns whether it changed; the resolver's caches are then cleared, and a
+/// caller that caches resolved styles itself must clear its own.
+pub fn set_document_opentype_features_enabled(enabled: bool) -> bool {
+    if DOCUMENT_OPENTYPE_FEATURES.with(Cell::get) == enabled {
+        return false;
+    }
+    DOCUMENT_OPENTYPE_FEATURES.with(|flag| flag.set(enabled));
+    RESOLVED_RUN_STYLE_CACHE.with(|cache| cache.borrow_mut().clear());
+    true
+}
+
+/// See [`set_document_opentype_features_enabled`].
+pub fn document_opentype_features_enabled() -> bool {
+    DOCUMENT_OPENTYPE_FEATURES.with(Cell::get)
 }
 
 /// Faces a host registered under its own family name to stand in for Word
@@ -743,6 +773,9 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
 pub fn opentype_features_token(props: &RunProperties, pair_kerning: bool) -> Option<String> {
     use jade_painter::font_features::{token, FontFeature};
     let effects = props.text_effects.as_deref()?;
+    if !document_opentype_features_enabled() {
+        return None;
+    }
     let on = |tag: &[u8; 4]| FontFeature {
         tag: *tag,
         value: 1,
@@ -980,6 +1013,10 @@ pub struct ResolvedRunStyle {
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
     pub joins_characters: bool,
+    /// Whether the Latin or East Asian descriptor carries OpenType features
+    /// ([`jade_painter::font_features::has_features`]), worked out once here
+    /// rather than for every stretch of text drawn in the style.
+    pub has_font_features: bool,
     fixed_ascii_metrics: std::cell::OnceCell<CachedAsciiMetrics>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
@@ -1035,6 +1072,9 @@ impl ResolvedRunStyle {
         let joins_characters = descriptor_joins_characters(&font_descriptor_latin_ascii)
             || descriptor_joins_characters(&font_descriptor_latin_hansi)
             || descriptor_joins_characters(&font_descriptor_east_asia);
+        let has_font_features =
+            jade_painter::font_features::has_features(&font_descriptor_latin_ascii)
+                || jade_painter::font_features::has_features(&font_descriptor_east_asia);
         let font_descriptor_latin_ascii_hash = hash_font_descriptor(&font_descriptor_latin_ascii);
         let font_descriptor_latin_hansi_hash = hash_font_descriptor(&font_descriptor_latin_hansi);
         let font_descriptor_east_asia_hash = hash_font_descriptor(&font_descriptor_east_asia);
@@ -1066,6 +1106,7 @@ impl ResolvedRunStyle {
             enable_pair_kerning,
             font_hint,
             joins_characters,
+            has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
             fixed_east_asia_descriptor,
             fixed_east_asia_em_px,
@@ -1775,5 +1816,34 @@ mod tests {
             cached_style_elapsed.as_micros(),
             ITERS,
         );
+    }
+
+    #[test]
+    fn word_2007_layout_sets_text_without_opentype_features() {
+        let props = RunProperties {
+            text_effects: Some(Box::new(jade_docx_reader::document::RunTextEffects {
+                ligatures: Some("standard".into()),
+                ..Default::default()
+            })),
+            ..RunProperties::default()
+        };
+        assert!(word_opentype_features_apply(Some(14)));
+        assert!(word_opentype_features_apply(Some(15)));
+        assert!(word_opentype_features_apply(None));
+        assert!(!word_opentype_features_apply(Some(12)));
+        assert!(!word_opentype_features_apply(Some(11)));
+        assert!(opentype_features_token(&props, false).is_some());
+        let with = resolve_run_style_for_wrap(Some(&props), None);
+        assert!(set_document_opentype_features_enabled(false));
+        assert_eq!(opentype_features_token(&props, false), None);
+        let without = resolve_run_style_for_wrap(Some(&props), None);
+        assert!(set_document_opentype_features_enabled(true));
+        assert!(!set_document_opentype_features_enabled(true));
+        assert!(jade_painter::font_features::has_features(
+            &with.font_descriptor_latin_ascii
+        ));
+        assert!(!jade_painter::font_features::has_features(
+            &without.font_descriptor_latin_ascii
+        ));
     }
 }

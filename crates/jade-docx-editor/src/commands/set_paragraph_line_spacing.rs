@@ -178,10 +178,12 @@ impl Command for SetParagraphLineSpacingCommand {
                 if self.before.is_some() {
                     spacing.before = self.before;
                     spacing.before_lines = None;
+                    spacing.before_auto = false;
                 }
                 if self.after.is_some() {
                     spacing.after = self.after;
                     spacing.after_lines = None;
+                    spacing.after_auto = false;
                 }
             }
 

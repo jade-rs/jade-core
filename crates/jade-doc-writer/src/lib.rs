@@ -17,9 +17,9 @@
 //! headers and footers, hyperlinks as HYPERLINK fields, and PNG and JPEG
 //! pictures; lists are written as their markers and a hanging indent.
 
-use std::io::{Cursor, Write};
-
 use jade_docx_convert::flow::*;
+
+use jade_opc::compound_file;
 
 const FIB_SIZE: usize = 900;
 /// Where the text starts in the WordDocument stream.
@@ -867,22 +867,11 @@ impl Builder {
         debug_assert_eq!(fib.len(), FIB_SIZE);
         word[..fib.len()].copy_from_slice(&fib);
 
-        let mut file =
-            cfb::CompoundFile::create_with_version(cfb::Version::V3, Cursor::new(Vec::new()))
-                .map_err(|error| error.to_string())?;
-        let mut write_stream = |name: &str, bytes: &[u8]| -> Result<(), String> {
-            let mut stream = file
-                .create_stream(name)
-                .map_err(|error| error.to_string())?;
-            stream.write_all(bytes).map_err(|error| error.to_string())
-        };
-        write_stream("/WordDocument", &word)?;
-        write_stream("/1Table", &table)?;
+        let mut streams: Vec<(&str, &[u8])> = vec![("/WordDocument", &word), ("/1Table", &table)];
         if !self.data.is_empty() {
-            write_stream("/Data", &self.data)?;
+            streams.push(("/Data", &self.data));
         }
-        file.flush().map_err(|error| error.to_string())?;
-        Ok(file.into_inner().into_inner())
+        compound_file::write(&streams)
     }
 
     /// The style sheet: Normal and Heading 1–9, Default Paragraph Font,
@@ -1406,6 +1395,23 @@ mod tests {
         assert_eq!(*bounds.last().unwrap(), 1026 + 299 * 2);
         let total: usize = pages.iter().map(|page| page[511] as usize).sum();
         assert_eq!(total, 300);
+    }
+
+    /// The browser build writes `.doc` files on `wasm32-unknown-unknown`,
+    /// where asking for the time panics: the file carries no time at all,
+    /// and still reads back.
+    #[test]
+    fn a_document_is_written_without_asking_the_clock_and_reads_back() {
+        let bytes = write_doc(&sample()).unwrap();
+        let file = cfb::CompoundFile::open(std::io::Cursor::new(bytes.clone())).unwrap();
+        // A zero CFB time, 1601-01-01.
+        let no_time = std::time::UNIX_EPOCH - std::time::Duration::from_secs(11_644_473_600);
+        for entry in file.walk() {
+            assert_eq!(entry.created(), no_time, "{}", entry.path().display());
+            assert_eq!(entry.modified(), no_time, "{}", entry.path().display());
+        }
+        let read = jade_doc_reader::read_doc(&bytes).unwrap();
+        assert_eq!(read.paragraphs()[0].text(), "第一章 概要");
     }
 
     #[test]

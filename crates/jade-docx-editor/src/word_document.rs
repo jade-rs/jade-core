@@ -4544,10 +4544,12 @@ impl WordDocument {
         if target.before.is_none() && target.before_lines.is_none() {
             target.before = fallback.before;
             target.before_lines = fallback.before_lines;
+            target.before_auto = fallback.before_auto;
         }
         if target.after.is_none() && target.after_lines.is_none() {
             target.after = fallback.after;
             target.after_lines = fallback.after_lines;
+            target.after_auto = fallback.after_auto;
         }
         if target.line.is_none() && target.line_rule.is_none() {
             target.line = fallback.line;
@@ -8089,12 +8091,18 @@ impl WordDocument {
     /// Returns the current `word/settings.xml` text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
     pub(crate) fn settings_xml_content(&self) -> Option<String> {
+        self.settings_xml_str().map(std::borrow::Cow::into_owned)
+    }
+
+    /// [`Self::settings_xml_content`], borrowed where it can be: what a
+    /// reader that only looks at it takes, instead of copying the part.
+    pub(crate) fn settings_xml_str(&self) -> Option<std::borrow::Cow<'_, str>> {
         const SETTINGS_PATH: &str = "word/settings.xml";
         if let Some(part) = self.parts.get(SETTINGS_PATH) {
-            return Some(part.content.clone());
+            return Some(std::borrow::Cow::Borrowed(part.content.as_str()));
         }
         let bytes = self.package.as_ref()?.files.get(SETTINGS_PATH)?;
-        Some(String::from_utf8_lossy(bytes).into_owned())
+        Some(String::from_utf8_lossy(bytes))
     }
 
     /// Reads Word's editing restriction from `word/settings.xml`.
@@ -13183,9 +13191,19 @@ impl WordDocument {
                 "offset {offset} is not a UTF-8 boundary in paragraph {paragraph_index}"
             ));
         }
+        // A line's box is as thin as the line across it: a perfectly straight
+        // vertical or horizontal one is a pixel wide or tall.
+        let min_extent = if matches!(
+            spec.shape,
+            TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble
+        ) {
+            1.0
+        } else {
+            12.0
+        };
         for (label, value, min, max) in [
-            ("width", spec.width_px, 12.0, 4096.0),
-            ("height", spec.height_px, 12.0, 4096.0),
+            ("width", spec.width_px, min_extent, 4096.0),
+            ("height", spec.height_px, min_extent, 4096.0),
             ("border width", spec.border_width_px, 0.0, 64.0),
         ] {
             if !value.is_finite() || !(min..=max).contains(&value) {
