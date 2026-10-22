@@ -213,6 +213,7 @@ where
         measurer.document_snap_to_grid_default = self.document_snap_to_grid_default;
         measurer.document_default_tab_width = self.document_default_tab_width;
         measurer.document_no_tab_hanging_indent = self.document_no_tab_hanging_indent;
+        measurer.document_hyphenation = self.document_hyphenation;
         measurer.document_adjust_line_height_in_table = self.document_adjust_line_height_in_table;
         measurer.document_east_asian_rules = self.document_east_asian_rules.clone();
         measurer

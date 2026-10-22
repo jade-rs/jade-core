@@ -12,8 +12,8 @@ pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
 pub use jade_docx_reader::{
-    comments, common, document, docx_xml, field_datetime, numbering, parser, settings, styles,
-    theme,
+    comments, common, document, docx_xml, field_datetime, inkml, numbering, parser, settings,
+    styles, theme,
 };
 #[cfg(feature = "otel")]
 pub mod otel_layer;
@@ -24,7 +24,6 @@ pub(crate) mod tracing_stub;
 pub(crate) mod chart_paint;
 pub mod drawing_xml;
 pub mod fields;
-pub mod ink;
 pub mod picture_effects;
 pub mod serializer;
 pub mod shortcuts;

@@ -973,6 +973,24 @@ pub struct HeadlessDocumentProtection {
     pub algorithm_sid: Option<u32>,
 }
 
+/// The ハイフネーション dialog's settings; each one left out is kept.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct HeadlessHyphenationPatch {
+    /// 文書を自動的にハイフネーションする (`w:autoHyphenation`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto: Option<bool>,
+    /// ハイフネーション ゾーン in points (`w:hyphenationZone`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone: Option<f32>,
+    /// 連続するハイフンの制限: at most this many lines in a row end in a
+    /// hyphen; 0 for no limit (`w:consecutiveHyphenLimit`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consecutive_limit: Option<u32>,
+    /// 英大文字の単語をハイフネーションする (`w:doNotHyphenateCaps` off).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyphenate_caps: Option<bool>,
+}
+
 // テストで組み立てた値と比較できるようにする（デシリアライズ結果の検証に要る）。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -1619,6 +1637,12 @@ pub enum HeadlessCommand {
         #[serde(default)]
         scope: HeadlessSectionScope,
         patch: Box<HeadlessSectionLayoutPatch>,
+    },
+    /// Word's ハイフネーション dialog: the document's automatic hyphenation,
+    /// changing only what the patch names. One history step.
+    SetHyphenation {
+        #[serde(flatten)]
+        patch: HeadlessHyphenationPatch,
     },
     /// The 段落 dialog's 1 ページの行数を指定時に文字を行グリッド線に合わせる
     /// (`w:snapToGrid`): whether the paragraphs follow the section's line
@@ -2336,6 +2360,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetHeaderFooterVariants { .. } => "set_header_footer_variants",
             HeadlessCommand::SetSectionLayout { .. } => "set_section_layout",
             HeadlessCommand::SetParagraphSnapToGrid { .. } => "set_paragraph_snap_to_grid",
+            HeadlessCommand::SetHyphenation { .. } => "set_hyphenation",
             HeadlessCommand::SetHeaderFooterLink { .. } => "set_header_footer_link",
             HeadlessCommand::InsertTable { .. } => "insert_table",
             HeadlessCommand::InsertTableOfContents { .. } => "insert_table_of_contents",

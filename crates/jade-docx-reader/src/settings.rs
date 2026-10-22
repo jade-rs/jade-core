@@ -186,6 +186,9 @@ pub struct DocumentSettings {
     /// `w:printTwoOnOne`.
     #[serde(default)]
     pub print_two_on_one: bool,
+    /// Automatic hyphenation (`w:autoHyphenation` and its companions).
+    #[serde(default)]
+    pub hyphenation: crate::document::HyphenationSettings,
     /// Values declared by `w:docVars/w:docVar`. Keys are normalized for the
     /// case-insensitive lookup Word applies to `DOCVARIABLE` instructions.
     #[serde(default)]
@@ -354,6 +357,39 @@ impl DocumentSettings {
         }
     }
 
+    /// Reads one of the hyphenation settings (ECMA-376 §17.15.1.10, .21,
+    /// .53, .37) into `hyphenation`; false when `name` is none of them.
+    fn parse_hyphenation_setting<'a, I>(
+        name: &[u8],
+        attrs: I,
+        hyphenation: &mut crate::document::HyphenationSettings,
+    ) -> bool
+    where
+        I: IntoIterator<Item = quick_xml::events::attributes::Attribute<'a>>,
+    {
+        let number = |attrs: I| {
+            attrs
+                .into_iter()
+                .find(|attr| local_name(attr.key.as_ref()) == b"val")
+                .and_then(|attr| {
+                    String::from_utf8_lossy(&attr.value)
+                        .trim()
+                        .parse::<u32>()
+                        .ok()
+                })
+        };
+        match name {
+            b"autoHyphenation" => hyphenation.auto = Self::parse_on_off_attribute(attrs),
+            b"doNotHyphenateCaps" => {
+                hyphenation.do_not_hyphenate_caps = Self::parse_on_off_attribute(attrs)
+            }
+            b"hyphenationZone" => hyphenation.zone_twips = number(attrs),
+            b"consecutiveHyphenLimit" => hyphenation.consecutive_limit = number(attrs),
+            _ => return false,
+        }
+        true
+    }
+
     fn parse_twips_attribute<'a, I>(attrs: I) -> Option<f32>
     where
         I: IntoIterator<Item = quick_xml::events::attributes::Attribute<'a>>,
@@ -482,6 +518,11 @@ impl DocumentSettings {
                     } else if name == b"printTwoOnOne" {
                         settings.print_two_on_one =
                             Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if Self::parse_hyphenation_setting(
+                        name,
+                        e.attributes().flatten(),
+                        &mut settings.hyphenation,
+                    ) {
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =
                             Self::parse_twips_attribute(e.attributes().flatten());
@@ -642,6 +683,11 @@ impl DocumentSettings {
                     } else if name == b"printTwoOnOne" {
                         settings.print_two_on_one =
                             Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if Self::parse_hyphenation_setting(
+                        name,
+                        e.attributes().flatten(),
+                        &mut settings.hyphenation,
+                    ) {
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =
                             Self::parse_twips_attribute(e.attributes().flatten());
@@ -1215,6 +1261,28 @@ mod tests {
         "#;
         let settings = DocumentSettings::from_xml(off_xml).expect("parse settings");
         assert!(!settings.gutter_at_top);
+    }
+
+    #[test]
+    fn parses_hyphenation_settings() {
+        let settings = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:autoHyphenation/>
+                <w:consecutiveHyphenLimit w:val="2"/>
+                <w:hyphenationZone w:val="425"/>
+                <w:doNotHyphenateCaps/>
+            </w:settings>"#,
+        )
+        .unwrap();
+        assert!(settings.hyphenation.auto);
+        assert_eq!(settings.hyphenation.consecutive_limit, Some(2));
+        assert_eq!(settings.hyphenation.zone_twips, Some(425));
+        assert!(settings.hyphenation.do_not_hyphenate_caps);
+        let off = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:autoHyphenation w:val="0"/></w:settings>"#,
+        )
+        .unwrap();
+        assert!(!off.hyphenation.auto);
     }
 
     #[test]

@@ -1823,18 +1823,24 @@ impl DocumentParser {
                                         .unwrap_or(false)
                             });
                         }
-                        b"w:drawing"
-                            if current_run_image.as_ref().is_some_and(|image| {
-                                image.format().ink_relationship_id.is_some()
-                            }) =>
-                        {
-                            // Ink's fallback picture: the choice is read.
-                            Self::consume_element(reader, b"w:drawing")?;
-                        }
                         b"w:drawing" => {
                             if let Some(drawing) = self.parse_drawing(reader)? {
                                 match drawing {
-                                    DrawingObject::Image(image) => {
+                                    DrawingObject::Image(mut image) => {
+                                        // Word ink's choice and its picture
+                                        // fallback are one drawing: the
+                                        // strokes, with the picture for
+                                        // consumers without ink.
+                                        if let Some(previous) = current_run_image.take() {
+                                            if image.ink.is_none() && previous.ink.is_some() {
+                                                image.ink = previous.ink;
+                                            } else if image.ink.is_some() && previous.ink.is_none()
+                                            {
+                                                let ink = image.ink.take();
+                                                image = previous;
+                                                image.ink = ink;
+                                            }
+                                        }
                                         current_run_image = Some(image);
                                     }
                                     DrawingObject::TextBox(text_box) => {
@@ -5874,8 +5880,7 @@ impl DocumentParser {
             image.placeholder_label = Some("SmartArt".to_string());
         }
 
-        let has_ink = extras.ink_relationship_id.is_some();
-        if has_embed || has_chart || has_group || has_smartart || has_ink {
+        if has_embed || has_chart || has_group || has_smartart {
             let mut format = PictureFormat::default();
             if has_embed && !has_chart && !has_group && !has_smartart {
                 // A picture's own outline, effects and shape.
@@ -7888,6 +7893,26 @@ impl DocumentParser {
         has_embed: &mut bool,
     ) {
         match element.name().as_ref() {
+            // Word ink: the drawing's graphic is an InkML part.
+            b"w14:contentPart" | b"wp14:contentPart" => {
+                let relationship_id = element.attributes().flatten().find_map(|attribute| {
+                    (attribute.key.as_ref() == b"r:id")
+                        .then(|| {
+                            attribute
+                                .unescape_value()
+                                .ok()
+                                .map(|value| value.to_string())
+                        })
+                        .flatten()
+                });
+                if let Some(relationship_id) = relationship_id {
+                    image.ink = Some(Box::new(crate::inkml::InkContent {
+                        relationship_id: Some(relationship_id),
+                        traces: Vec::new(),
+                    }));
+                    *has_embed = true;
+                }
+            }
             b"wp:extent" | b"a:ext" => {
                 let is_outer_extent = element.name().as_ref() == b"wp:extent";
                 for attr in element.attributes().flatten() {
