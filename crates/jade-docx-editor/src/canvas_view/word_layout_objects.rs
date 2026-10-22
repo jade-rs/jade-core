@@ -15,6 +15,7 @@ use crate::word::objects::{
 };
 use crate::word::picture::{PlacedObject, Wrap};
 use crate::word::shapes::{ShapeStyle, WordShapes};
+use crate::word::WordSession;
 use serde_json::{json, Value};
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
@@ -410,6 +411,95 @@ impl OffscreenDocumentView {
         let target = self.object_target(JsValue::NULL)?;
         self.run_word_session("word_shape_style", move |session| {
             session.apply_shape_style(target, ShapeStyle::gallery(row, column))
+        })
+    }
+
+    /// 頂点の編集: the selected shape's (or `target`'s) first geometry path —
+    /// `{width, height, fill, stroke, commands}` — or `null` for a shape with
+    /// none of its own.
+    #[wasm_bindgen(js_name = shapePath)]
+    pub fn shape_path(&self, target: JsValue) -> Result<JsValue, JsValue> {
+        let target = self.object_target(target)?;
+        let path = self.read_word_session(|session| {
+            crate::word::objects::object_run(session.word_document(), target)
+                .and_then(|run| run.text_box.as_ref())
+                .and_then(|text_box| text_box.extras().custom_geometry.as_ref())
+                .and_then(|geometry| geometry.paths.first().cloned())
+        })?;
+        Ok(path.map_or(JsValue::NULL, |path| to_js(&path)))
+    }
+
+    /// 頂点の編集's result: the shape's path rewritten, one undo step.
+    #[wasm_bindgen(js_name = setShapePath)]
+    pub fn set_shape_path(&self, target: JsValue, path: JsValue) -> Result<JsValue, JsValue> {
+        use crate::word::connectors::WordConnectors;
+        let target = self.object_target(target)?;
+        let path: crate::document::GeometryPath = from_js(path, "shape path")?;
+        self.run_word_session("word_edit_points", move |session| {
+            session.set_freeform_path(target, path)
+        })
+    }
+
+    /// 折り返し点の編集: the tight or through wrap's polygon, in the
+    /// 21600-square space, or `null` when the object has none.
+    #[wasm_bindgen(js_name = wrapPoints)]
+    pub fn wrap_points(&self, target: JsValue) -> Result<JsValue, JsValue> {
+        let target = self.object_target(target)?;
+        let points = self.read_word_session(|session| {
+            crate::word::objects::wrap_polygon(session.word_document(), target)
+        })?;
+        Ok(points.map_or(JsValue::NULL, |points| to_js(&points)))
+    }
+
+    /// 折り返し点の編集's result: the wrap polygon (21600-square space,
+    /// three points or more), one undo step.
+    #[wasm_bindgen(js_name = setWrapPoints)]
+    pub fn set_wrap_points(&self, target: JsValue, points: JsValue) -> Result<JsValue, JsValue> {
+        use crate::word::objects::WordObjectLayout;
+        let target = self.object_target(target)?;
+        let mut points: Vec<(i64, i64)> = from_js(points, "wrap points")?;
+        // The polygon as read is closed (its start repeated at the end); the
+        // model closes it again, so the repeat goes.
+        if points.len() > 3 && points.first() == points.last() {
+            points.pop();
+        }
+        self.run_word_session("word_wrap_points", move |session| {
+            session.set_wrap_polygon(target, points)
+        })
+    }
+
+    /// 図形 ▸ フリーフォーム: a shape through `points` (page px from the
+    /// caret's page), closed or open, at the caret, one undo step.
+    #[wasm_bindgen(js_name = insertFreeform)]
+    pub fn insert_freeform(&self, points: JsValue, closed: bool) -> Result<JsValue, JsValue> {
+        use crate::word::connectors::WordConnectors;
+        let points: Vec<(f64, f64)> = from_js(points, "freeform points")?;
+        if points.len() < 2 {
+            return Err(JsValue::from_str("a freeform needs two points or more"));
+        }
+        self.run_word_session("word_insert_freeform", move |session| {
+            session.insert_freeform(&points, closed)
+        })
+    }
+
+    /// 文字列の折り返し for the selected object (or `target`): `inline`,
+    /// `square`, `tight`, `through`, `topAndBottom`, `behindText` or
+    /// `inFrontOfText`, one undo step.
+    #[wasm_bindgen(js_name = setObjectWrap)]
+    pub fn set_object_wrap(&self, target: JsValue, wrap: String) -> Result<JsValue, JsValue> {
+        let target = self.object_target(target)?;
+        let wrap = match wrap.as_str() {
+            "inline" => Wrap::Inline,
+            "square" => Wrap::Square,
+            "tight" => Wrap::Tight,
+            "through" => Wrap::Through,
+            "topAndBottom" => Wrap::TopAndBottom,
+            "behindText" => Wrap::BehindText,
+            "inFrontOfText" => Wrap::InFrontOfText,
+            other => return Err(JsValue::from_str(&format!("unknown wrap {other}"))),
+        };
+        self.run_word_session("word_object_wrap", move |session| {
+            session.set_object_wrap(target, wrap)
         })
     }
 }
