@@ -18426,10 +18426,25 @@ impl OffscreenDocumentView {
         state_mut.options.set_revision_author(name);
     }
 
+    /// Sets the initials written on comments (ユーザー名の頭文字); `None` or
+    /// a blank string takes them from the author name.
+    #[wasm_bindgen(js_name = "setAuthorInitials")]
+    pub fn set_author_initials(&self, initials: Option<String>) {
+        self.state
+            .borrow_mut()
+            .options
+            .set_author_initials(initials);
+    }
+
     /// Author recorded on new comments. Shares the revision identity because
     /// Word takes both from the same user name.
     fn comment_author(&self) -> String {
         self.state.borrow().options.author_name_or_default()
+    }
+
+    /// The initials recorded on new comments beside [`Self::comment_author`].
+    fn comment_initials(&self) -> String {
+        self.state.borrow().options.author_initials_or_default()
     }
 
     /// Adds a comment anchored to the current (non-collapsed, single-paragraph)
@@ -18458,6 +18473,7 @@ impl OffscreenDocumentView {
         let start_offset = start.offset;
         let end_offset = end.offset;
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // Word と同じくコメントには付けた日時を書く。書かないと、取り込む側で 1970/01/01 のコメントになる。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |start_para, _end_para| {
@@ -18468,7 +18484,7 @@ impl OffscreenDocumentView {
                 end_offset: Some(end_offset),
                 text,
                 author: Some(author),
-                initials: None,
+                initials: Some(initials),
                 date: Some(date),
             }
         })
@@ -18796,13 +18812,14 @@ impl OffscreenDocumentView {
             return Err(JsValue::from_str("返信の本文を入力してください"));
         }
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // 返信もコメントと同じく付けた日時を書く（`add_comment` 参照）。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |_s, _e| HeadlessCommand::ReplyToComment {
             comment_id: comment_id.clone(),
             text: text.clone(),
             author: Some(author.clone()),
-            initials: None,
+            initials: Some(initials.clone()),
             date: Some(date.clone()),
         })
     }

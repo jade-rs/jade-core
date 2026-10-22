@@ -32963,6 +32963,14 @@ where
     }
 
     /// Selects All Markup, No Markup, or Original without mutating revisions.
+    /// Updates how tracked changes are drawn (reviewers, kinds, change bars)
+    /// for the next cached-state re-render.
+    pub fn set_revision_view_flag(&mut self, view: crate::revision_view::RevisionView) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_revision_view(view);
+        }
+    }
+
     pub fn set_revision_display_flags(&mut self, render_changes: bool, render_original: bool) {
         if let Some(options) = self.last_options.as_mut() {
             options.render_changes = render_changes;

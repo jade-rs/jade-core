@@ -166,6 +166,7 @@ impl OffscreenDocumentView {
             match mode.as_str() {
                 "print" => (None, None),
                 "web" => (view_geometry(ViewKind::Web, (width, height), zoom), None),
+                "read" => (view_geometry(ViewKind::Read, (width, height), zoom), None),
                 "outline" => (
                     outline_geometry(&document.section_layout(Some(0))),
                     Some(std::rc::Rc::new(crate::word::outline::indents(document))),
