@@ -260,3 +260,13 @@ pub fn ruler_ticks(unit: &str, char_width: f32, from: f32, to: f32) -> Result<Js
     }
     Ok(out.into())
 }
+
+/// PDF の再フロー: a PDF opened as an editable document, as Word's PDF 変換
+/// opens one — paragraphs, headings, lists, simple tables, pictures and
+/// the repeated header and footer worked out from where the text is drawn
+/// (jade-docx-convert's reader).
+#[wasm_bindgen(js_name = pdfToDocx)]
+pub fn pdf_to_docx(pdf: &[u8]) -> Result<Vec<u8>, JsValue> {
+    let flow = jade_docx_convert::pdf::read_pdf(pdf).map_err(|error| JsValue::from_str(&error))?;
+    jade_docx_convert::write_docx(&flow).map_err(|error| JsValue::from_str(&error))
+}
