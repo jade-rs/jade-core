@@ -13,7 +13,8 @@ license = "MIT"
 [features]
 default = []
 # Opening a PDF as an editable document. lopdf's random numbers need a
-# JavaScript host in wasm, so the browser build leaves it out.
+# JavaScript host in wasm: the browser build (jade-docx-editor) turns on
+# lopdf's `wasm_js` alongside this.
 pdf = ["dep:lopdf", "dep:flate2"]
 
 [dependencies]

@@ -673,6 +673,9 @@ pub struct StyleChange {
     pub format: StyleFormat,
     pub quick: Option<bool>,
     pub auto_update: Option<bool>,
+    /// `w:uiPriority`: where the style sorts in the gallery and the スタイル
+    /// pane's 推奨 order (lower first).
+    pub priority: Option<i32>,
 }
 
 /// A style id from a name: its letters and digits, made unique.
@@ -801,6 +804,231 @@ pub fn add_style(styles: &mut Element, new: &NewStyle) -> Result<String, String>
     Ok(id)
 }
 
+/// 新しい表スタイル / 表スタイルの変更: what a table style draws — its
+/// borders, its text colour, and its title row, first column and banded rows.
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableStyleSpec {
+    pub name: String,
+    #[serde(default)]
+    pub based_on: Option<String>,
+    /// Every border, `RRGGBB`; `None` for none.
+    #[serde(default)]
+    pub border_color: Option<String>,
+    /// The borders' width in points.
+    #[serde(default)]
+    pub border_width: Option<f32>,
+    /// The text's colour, `RRGGBB`.
+    #[serde(default)]
+    pub font_color: Option<String>,
+    /// タイトル行: bold, its fill and its text's colour.
+    #[serde(default)]
+    pub header_bold: bool,
+    #[serde(default)]
+    pub header_fill: Option<String>,
+    #[serde(default)]
+    pub header_font_color: Option<String>,
+    /// 縞模様 (行): every other row's fill.
+    #[serde(default)]
+    pub banded_fill: Option<String>,
+    /// 最初の列: bold.
+    #[serde(default)]
+    pub first_column_bold: bool,
+}
+
+/// `RRGGBB` or nothing: what goes in a `w:color` or `w:fill`.
+fn hex_color(value: &Option<String>) -> Option<String> {
+    let value = value.as_deref()?.trim().trim_start_matches('#');
+    (value.len() == 6 && value.chars().all(|ch| ch.is_ascii_hexdigit()))
+        .then(|| value.to_ascii_uppercase())
+}
+
+/// The formatting part of a table style — everything after its name, base
+/// and gallery flags — as `spec` says.
+fn table_style_body(spec: &TableStyleSpec) -> Result<Vec<Element>, String> {
+    let mut xml = String::new();
+    if let Some(color) = hex_color(&spec.font_color) {
+        xml.push_str(&format!(r#"<w:rPr><w:color w:val="{color}"/></w:rPr>"#));
+    }
+    xml.push_str("<w:tblPr>");
+    if spec.banded_fill.is_some() {
+        xml.push_str(r#"<w:tblStyleRowBandSize w:val="1"/>"#);
+    }
+    if let Some(color) = hex_color(&spec.border_color) {
+        let size = ((spec.border_width.unwrap_or(0.5) * 8.0).round() as u32).clamp(2, 96);
+        xml.push_str("<w:tblBorders>");
+        for edge in ["top", "left", "bottom", "right", "insideH", "insideV"] {
+            xml.push_str(&format!(
+                r#"<w:{edge} w:val="single" w:sz="{size}" w:space="0" w:color="{color}"/>"#
+            ));
+        }
+        xml.push_str("</w:tblBorders>");
+    }
+    xml.push_str("</w:tblPr>");
+    let shading = |fill: String| {
+        format!(r#"<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="{fill}"/></w:tcPr>"#)
+    };
+    let header_color = hex_color(&spec.header_font_color);
+    let header_fill = hex_color(&spec.header_fill);
+    if spec.header_bold || header_color.is_some() || header_fill.is_some() {
+        xml.push_str(r#"<w:tblStylePr w:type="firstRow">"#);
+        if spec.header_bold || header_color.is_some() {
+            xml.push_str("<w:rPr>");
+            if spec.header_bold {
+                xml.push_str("<w:b/><w:bCs/>");
+            }
+            if let Some(color) = &header_color {
+                xml.push_str(&format!(r#"<w:color w:val="{color}"/>"#));
+            }
+            xml.push_str("</w:rPr>");
+        }
+        if let Some(fill) = header_fill {
+            xml.push_str(&shading(fill));
+        }
+        xml.push_str("</w:tblStylePr>");
+    }
+    if spec.first_column_bold {
+        xml.push_str(
+            r#"<w:tblStylePr w:type="firstCol"><w:rPr><w:b/><w:bCs/></w:rPr></w:tblStylePr>"#,
+        );
+    }
+    if let Some(fill) = hex_color(&spec.banded_fill) {
+        xml.push_str(&format!(
+            r#"<w:tblStylePr w:type="band1Horz">{}</w:tblStylePr>"#,
+            shading(fill)
+        ));
+    }
+    let wrapped = Document::parse(&format!(
+        r#"<w:style xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{xml}</w:style>"#
+    ))?;
+    Ok(wrapped.root.elements().cloned().collect())
+}
+
+/// 新しい表スタイル: a table style as `spec` says; returns its id.
+pub fn add_table_style(styles: &mut Element, spec: &TableStyleSpec) -> Result<String, String> {
+    let name = spec.name.trim();
+    if name.is_empty() {
+        return Err("a style needs a name".to_string());
+    }
+    if style_id_named(styles, name).is_some() {
+        return Err(format!("a style named {name} already exists"));
+    }
+    let id = new_style_id(name, &style_ids(styles));
+    let mut style = Element::new("w:style")
+        .attr("w:type", "table")
+        .attr("w:customStyle", "1")
+        .attr("w:styleId", &id);
+    style.put(Element::with_val("w:name", name), STYLE_ORDER);
+    let base = spec
+        .based_on
+        .clone()
+        .unwrap_or_else(|| "TableNormal".to_string());
+    style.put(Element::with_val("w:basedOn", &base), STYLE_ORDER);
+    style.put(Element::with_val("w:uiPriority", "99"), STYLE_ORDER);
+    for element in table_style_body(spec)? {
+        style.children.push(Node::Element(element));
+    }
+    styles.children.push(Node::Element(style));
+    Ok(id)
+}
+
+/// 表スタイルの変更: table style `id` drawn as `spec` says, renamed if its
+/// name changed; what it does not set goes.
+pub fn change_table_style(
+    styles: &mut Element,
+    id: &str,
+    spec: &TableStyleSpec,
+) -> Result<(), String> {
+    let name = spec.name.trim().to_string();
+    let renamed_to_taken =
+        !name.is_empty() && style_id_named(styles, &name).is_some_and(|other| other != id);
+    if renamed_to_taken {
+        return Err(format!("a style named {name} already exists"));
+    }
+    let body = table_style_body(spec)?;
+    let style = find_style_mut(styles, id).ok_or_else(|| format!("no style {id}"))?;
+    if style.get("w:type").as_deref() != Some("table") {
+        return Err(format!("{id} is not a table style"));
+    }
+    if !name.is_empty() {
+        style.put(Element::with_val("w:name", &name), STYLE_ORDER);
+    }
+    if let Some(base) = spec.based_on.as_deref() {
+        style.put(Element::with_val("w:basedOn", base), STYLE_ORDER);
+    }
+    for part in [
+        "w:pPr",
+        "w:rPr",
+        "w:tblPr",
+        "w:trPr",
+        "w:tcPr",
+        "w:tblStylePr",
+    ] {
+        style.remove(part);
+    }
+    for element in body {
+        style.children.push(Node::Element(element));
+    }
+    Ok(())
+}
+
+/// What table style `id` draws, as its 表スタイルの変更 dialog opens on it.
+pub fn table_style_spec(styles: &Element, id: &str) -> Option<TableStyleSpec> {
+    let style = styles.elements().find(|element| {
+        element.name == "w:style"
+            && element.get("w:styleId").as_deref() == Some(id)
+            && element.get("w:type").as_deref() == Some("table")
+    })?;
+    let region = |kind: &str| {
+        style.elements().find(|element| {
+            element.name == "w:tblStylePr" && element.get("w:type").as_deref() == Some(kind)
+        })
+    };
+    let fill_of = |element: Option<&Element>| {
+        element
+            .and_then(|element| element.find("w:tcPr"))
+            .and_then(|tc| tc.find("w:shd"))
+            .and_then(|shd| shd.get("w:fill"))
+            .filter(|fill| fill != "auto")
+    };
+    let border = style
+        .find("w:tblPr")
+        .and_then(|tbl| tbl.find("w:tblBorders"))
+        .and_then(|borders| borders.find("w:top"))
+        .filter(|top| {
+            top.get("w:val")
+                .is_some_and(|val| val != "nil" && val != "none")
+        });
+    let header = region("firstRow");
+    Some(TableStyleSpec {
+        name: style.child_val("w:name").unwrap_or_default(),
+        based_on: style.child_val("w:basedOn"),
+        border_color: border
+            .and_then(|top| top.get("w:color"))
+            .filter(|color| color != "auto"),
+        border_width: border
+            .and_then(|top| top.get("w:sz"))
+            .and_then(|size| size.parse::<f32>().ok())
+            .map(|size| size / 8.0),
+        font_color: style
+            .find("w:rPr")
+            .and_then(|run| run.find("w:color"))
+            .and_then(|color| color.get("w:val")),
+        header_bold: header
+            .and_then(|header| header.find("w:rPr"))
+            .is_some_and(|run| run.find("w:b").is_some()),
+        header_fill: fill_of(header),
+        header_font_color: header
+            .and_then(|header| header.find("w:rPr"))
+            .and_then(|run| run.find("w:color"))
+            .and_then(|color| color.get("w:val")),
+        banded_fill: fill_of(region("band1Horz")),
+        first_column_bold: region("firstCol")
+            .and_then(|column| column.find("w:rPr"))
+            .is_some_and(|run| run.find("w:b").is_some()),
+    })
+}
+
 /// Applies `change` to style `id` in `styles`.
 pub fn change_style(styles: &mut Element, id: &str, change: &StyleChange) -> Result<(), String> {
     if let Some(name) = change.name.as_deref() {
@@ -849,6 +1077,12 @@ pub fn change_style(styles: &mut Element, id: &str, change: &StyleChange) -> Res
         }
         if let Some(quick) = change.quick {
             style.set_flag("w:qFormat", quick, STYLE_ORDER);
+        }
+        if let Some(priority) = change.priority {
+            style.put(
+                Element::with_val("w:uiPriority", &priority.clamp(0, 99).to_string()),
+                STYLE_ORDER,
+            );
         }
         if let (Some(auto), true) = (change.auto_update, paragraph) {
             style.set_flag("w:autoRedefine", auto, STYLE_ORDER);
@@ -1167,6 +1401,61 @@ pub trait WordStyles: WordSession {
     }
 
     /// スタイルの変更.
+    /// 新しい表スタイル: added to the document and put on the caret's table;
+    /// returns its id.
+    fn create_table_style(&mut self, spec: &TableStyleSpec) -> Result<String, String> {
+        let current = self
+            .word_document()
+            .related_part_xml("styles")
+            .unwrap_or_default();
+        let mut probe = Document::parse(&current)
+            .map(|document| document.root)
+            .unwrap_or_else(|_| Element::new("w:styles"));
+        let id = add_table_style(&mut probe, spec)?;
+        let then = match self.caret_table_cell() {
+            Some(cell) => vec![HeadlessStep::boxed(vec![
+                HeadlessCommand::ApplyTableNamedStyle {
+                    table_order_index: cell.table_order_index,
+                    style_id: Some(id.clone()),
+                },
+            ])],
+            None => Vec::new(),
+        };
+        let spec = spec.clone();
+        edit_package(
+            self,
+            move |package| {
+                package.edit(PartKind::Styles, |styles| {
+                    add_table_style(styles, &spec).map(|_| ())
+                })
+            },
+            then,
+        )?;
+        Ok(id)
+    }
+
+    /// 表スタイルの変更 for table style `id`.
+    fn modify_table_style(&mut self, id: &str, spec: &TableStyleSpec) -> Result<(), String> {
+        let id = id.to_string();
+        let spec = spec.clone();
+        edit_package(
+            self,
+            move |package| {
+                package.edit(PartKind::Styles, |styles| {
+                    change_table_style(styles, &id, &spec)
+                })
+            },
+            Vec::new(),
+        )
+    }
+
+    /// What table style `id` draws, for its 表スタイルの変更 dialog.
+    fn table_style_spec(&self, id: &str) -> Option<TableStyleSpec> {
+        let xml = self.word_document().related_part_xml("styles")?;
+        let document = Document::parse(&xml).ok()?;
+        table_style_spec(&document.root, id)
+    }
+
     fn modify_style(&mut self, id: &str, change: &StyleChange) -> Result<(), String> {
         let id = id.to_string();
         let change = change.clone();
@@ -1451,6 +1740,97 @@ mod tests {
             .find(|other| Some(&other.id) == style.link.as_ref())
             .unwrap();
         assert_eq!(character.format.bold, Some(true));
+    }
+
+    #[test]
+    fn a_new_table_style_draws_its_regions_and_reads_back_as_set() {
+        let mut document = Document::parse(STYLES).unwrap();
+        let spec = TableStyleSpec {
+            name: "契約表".into(),
+            border_color: Some("#2e74b5".into()),
+            border_width: Some(1.0),
+            font_color: Some("1F1F1F".into()),
+            header_bold: true,
+            header_fill: Some("DEEAF6".into()),
+            header_font_color: Some("1F4E79".into()),
+            banded_fill: Some("F2F2F2".into()),
+            first_column_bold: true,
+            ..TableStyleSpec::default()
+        };
+        let id = add_table_style(&mut document.root, &spec).unwrap();
+        let xml = document.to_xml();
+        assert!(xml.contains(r#"w:type="table""#));
+        assert!(
+            xml.contains(r#"<w:insideV w:val="single" w:sz="8" w:space="0" w:color="2E74B5"/>"#)
+        );
+        assert!(xml.contains(r#"<w:tblStylePr w:type="firstRow">"#));
+        assert!(xml.contains(r#"<w:tblStylePr w:type="band1Horz">"#));
+        let read = table_style_spec(&document.root, &id).unwrap();
+        assert_eq!(read.name, "契約表");
+        assert_eq!(read.border_color.as_deref(), Some("2E74B5"));
+        assert_eq!(read.border_width, Some(1.0));
+        assert_eq!(read.header_fill.as_deref(), Some("DEEAF6"));
+        assert_eq!(read.banded_fill.as_deref(), Some("F2F2F2"));
+        assert!(read.header_bold && read.first_column_bold);
+        // 変更: no borders and no banding any more; the rest as set.
+        change_table_style(
+            &mut document.root,
+            &id,
+            &TableStyleSpec {
+                border_color: None,
+                banded_fill: None,
+                ..read
+            },
+        )
+        .unwrap();
+        let changed = table_style_spec(&document.root, &id).unwrap();
+        assert_eq!(changed.border_color, None);
+        assert_eq!(changed.banded_fill, None);
+        assert!(changed.header_bold);
+        assert!(!document.to_xml().contains("band1Horz"));
+        assert!(add_table_style(&mut document.root, &spec).is_err());
+    }
+
+    #[test]
+    fn a_style_change_moves_it_in_the_gallery_order() {
+        let mut document = Document::parse(STYLES).unwrap();
+        change_style(
+            &mut document.root,
+            "Quote",
+            &StyleChange {
+                priority: Some(1),
+                ..StyleChange::default()
+            },
+        )
+        .unwrap();
+        let catalog = catalog_of(&document.to_xml());
+        let priority = |id: &str| {
+            catalog
+                .iter()
+                .find(|style| style.id == id)
+                .unwrap()
+                .priority
+        };
+        assert_eq!(priority("Quote"), 1);
+        assert_eq!(priority("Title"), 10);
+        // Word keeps it within 0–99.
+        change_style(
+            &mut document.root,
+            "Quote",
+            &StyleChange {
+                priority: Some(150),
+                ..StyleChange::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            catalog_of(&document.to_xml())
+                .iter()
+                .find(|style| style.id == "Quote")
+                .unwrap()
+                .priority,
+            99
+        );
     }
 
     #[test]

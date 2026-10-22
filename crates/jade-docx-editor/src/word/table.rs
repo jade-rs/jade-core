@@ -2330,6 +2330,14 @@ pub trait WordTables: WordSession {
         self.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
             jade_selection::TextPosition::new(paragraph, offset),
         )));
+        // Where the body's tables are, to tell the new one by: the layout is
+        // the last paint's and does not have it yet.
+        let table_body_indices = |document: &crate::word_document::WordDocument| {
+            (0..)
+                .map_while(|order| document.body_index_of_table_order(order))
+                .collect::<Vec<_>>()
+        };
+        let tables_before = table_body_indices(self.word_document());
         // A drawn table has Word's 表 (格子) lines, as one inserted does.
         self.execute_command(
             Box::new(
@@ -2344,44 +2352,28 @@ pub trait WordTables: WordSession {
             ),
             false,
         )?;
-        let first = [paragraph, paragraph + 1]
-            .into_iter()
-            .find(|candidate| self.cell_id_for_paragraph(*candidate).is_some())
-            .unwrap_or(paragraph);
-        if height > 12.0 {
-            if let Some(cell) = self.caret_cell_at(first) {
-                self.apply_command(
-                    HeadlessCommand::SetTableRowHeightProperties {
-                        table_order_index: cell.table_order_index,
-                        row: 0,
-                        mode: "atLeast".to_string(),
-                        height: Some(height),
-                    },
-                    true,
-                )?;
-            }
+        // The insert leaves the caret in the new table's first cell.
+        let first = self
+            .selection_range()
+            .map_or(paragraph, |selection| selection.focus.paragraph);
+        let tables_after = table_body_indices(self.word_document());
+        let table_order_index = (0..tables_after.len())
+            .find(|&order| tables_before.get(order) != tables_after.get(order));
+        if let (true, Some(table_order_index)) = (height > 12.0, table_order_index) {
+            self.apply_command(
+                HeadlessCommand::SetTableRowHeightProperties {
+                    table_order_index,
+                    row: 0,
+                    mode: "atLeast".to_string(),
+                    height: Some(height),
+                },
+                true,
+            )?;
         }
         self.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
             jade_selection::TextPosition::new(first, 0),
         )));
         Ok(Some((first, 0)))
-    }
-
-    /// The table cell paragraph `paragraph` is in.
-    fn caret_cell_at(&self, paragraph: usize) -> Option<TableCell> {
-        let layout = self.cell_layout(self.cell_id_for_paragraph(paragraph)?)?;
-        let table_order_index = self.table_order_for(layout.table_id)?;
-        let (rows, columns) = self.word_document().table_dimensions(table_order_index)?;
-        Some(TableCell {
-            table_order_index,
-            row: layout.row,
-            column: layout.column,
-            rows,
-            columns,
-            can_merge: false,
-            can_unmerge: false,
-            repeat_header: false,
-        })
     }
 
     /// The eraser on the border at (`x`, `y`): the two cells it separates

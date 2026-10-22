@@ -230,6 +230,66 @@ impl OffscreenDocumentView {
         self.apply_mail_merge(MailMergeAction::Settings(settings))
     }
 
+    /// フィールドの対応: each of Word's address fields (by its data-source
+    /// name: `First Name`, `Company`, …) and the column it takes from
+    /// `recipients`, or `null`; set columns win over names that match.
+    #[wasm_bindgen(js_name = mailMergeFieldMapping)]
+    pub fn mail_merge_field_mapping(&self, recipients: JsValue) -> Result<JsValue, JsValue> {
+        use crate::word_document::mail_merge::AddressField;
+        let request = self.merge_request(recipients)?;
+        let fields = js_sys::Array::new();
+        for field in AddressField::ALL {
+            let entry = js_sys::Object::new();
+            let column = request
+                .mapping
+                .column(field)
+                .and_then(|index| request.data.columns.get(index).cloned());
+            let _ = Reflect::set(
+                &entry,
+                &"field".into(),
+                &JsValue::from_str(field.odso_name()),
+            );
+            let _ = Reflect::set(
+                &entry,
+                &"column".into(),
+                &column.map_or(JsValue::NULL, |column| JsValue::from_str(&column)),
+            );
+            fields.push(&entry);
+        }
+        Ok(fields.into())
+    }
+
+    /// Sets フィールドの対応: `mapping` is `{field: column}` by the fields'
+    /// data-source names; a `null` or empty column clears that field's own
+    /// choice. One undo step.
+    #[wasm_bindgen(js_name = setMailMergeFieldMapping)]
+    pub fn set_mail_merge_field_mapping(&self, mapping: JsValue) -> Result<JsValue, JsValue> {
+        use crate::word_document::mail_merge::AddressField;
+        let mapping: std::collections::HashMap<String, Option<String>> =
+            serde_wasm_bindgen::from_value(mapping)
+                .map_err(|error| JsValue::from_str(&format!("invalid field mapping: {error}")))?;
+        let mut settings = self
+            .state
+            .borrow()
+            .word_doc
+            .as_ref()
+            .map(WordDocument::mail_merge_settings)
+            .unwrap_or_default();
+        for (name, column) in mapping {
+            let field = AddressField::ALL
+                .into_iter()
+                .find(|field| field.odso_name() == name)
+                .ok_or_else(|| JsValue::from_str(&format!("unknown address field {name}")))?;
+            settings
+                .mapping
+                .retain(|(candidate, _)| *candidate != field);
+            if let Some(column) = column.filter(|column| !column.trim().is_empty()) {
+                settings.mapping.push((field, column));
+            }
+        }
+        self.apply_mail_merge(MailMergeAction::Settings(settings))
+    }
+
     /// 標準の Word 文書: the document is no longer a main document.
     #[wasm_bindgen(js_name = stopMailMerge)]
     pub fn stop_mail_merge(&self) -> Result<JsValue, JsValue> {

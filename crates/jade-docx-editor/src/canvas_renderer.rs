@@ -12757,6 +12757,35 @@ where
         self.view_geometry
     }
 
+    /// Switches the live view (Web レイアウト, アウトライン, back to the
+    /// pages) for [`Self::rerender_with_cached_state`] to lay out again. The
+    /// setters forget the last options so the next full render sees a change;
+    /// the cached re-render needs them, and its full repaint already
+    /// bypasses change detection.
+    pub fn set_view_layout(
+        &mut self,
+        geometry: Option<ViewGeometry>,
+        indents: Option<Rc<HashMap<usize, f64>>>,
+    ) {
+        let options = self.last_options.clone();
+        self.set_view_geometry(geometry);
+        self.set_outline_indents(indents);
+        if self.last_options.is_none() {
+            self.last_options = options;
+        }
+    }
+
+    /// 見出しの折りたたみ: the top-level body elements collapsed headings hide,
+    /// for [`Self::rerender_with_cached_state`] to lay out without them.
+    pub fn set_collapsed_blocks(&mut self, blocks: Vec<usize>) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_collapsed_blocks(blocks);
+        }
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
     /// アウトライン: each paragraph (by index) set in by its level, from the
     /// next render; `None` lays them out by their own indents again.
     pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
@@ -32934,6 +32963,14 @@ where
     }
 
     /// Selects All Markup, No Markup, or Original without mutating revisions.
+    /// Updates how tracked changes are drawn (reviewers, kinds, change bars)
+    /// for the next cached-state re-render.
+    pub fn set_revision_view_flag(&mut self, view: crate::revision_view::RevisionView) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_revision_view(view);
+        }
+    }
+
     pub fn set_revision_display_flags(&mut self, render_changes: bool, render_original: bool) {
         if let Some(options) = self.last_options.as_mut() {
             options.render_changes = render_changes;

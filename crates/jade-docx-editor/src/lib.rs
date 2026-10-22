@@ -212,6 +212,9 @@ pub struct Options {
     pub show_crop_marks: bool,
     record_changes: bool,
     revision_author: Option<String>,
+    /// ユーザー名の頭文字: written on comments beside the author. `None`
+    /// takes the author name's.
+    author_initials: Option<String>,
     revision_date: Option<String>,
     revision_date_utc: Option<String>,
     pageless: bool,
@@ -706,6 +709,7 @@ impl Default for Options {
             show_crop_marks: true,
             record_changes: false,
             revision_author: None,
+            author_initials: None,
             revision_date: None,
             revision_date_utc: None,
             pageless: false,
@@ -793,6 +797,25 @@ impl Options {
         self.revision_author
             .clone()
             .unwrap_or_else(|| DEFAULT_AUTHOR_NAME.to_string())
+    }
+
+    pub(crate) fn set_author_initials(&mut self, value: Option<String>) {
+        self.author_initials = value.and_then(normalize_optional_string);
+    }
+
+    /// The initials written on comments: the ones set, or — as Word makes
+    /// them from the user name — the first letter of each word of the
+    /// author's name, at most three.
+    pub(crate) fn author_initials_or_default(&self) -> String {
+        if let Some(initials) = &self.author_initials {
+            return initials.clone();
+        }
+        self.author_name_or_default()
+            .split_whitespace()
+            .filter_map(|word| word.chars().next())
+            .flat_map(char::to_uppercase)
+            .take(3)
+            .collect()
     }
 
     pub(crate) fn revision_date_internal(&self) -> Option<String> {
