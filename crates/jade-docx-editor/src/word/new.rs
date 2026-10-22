@@ -168,6 +168,29 @@ pub fn document_from_template(template: &[u8]) -> Result<Vec<u8>, String> {
         .map_err(|error| format!("cannot write the document: {error}"))
 }
 
+/// 名前を付けて保存 as a Word テンプレート: the document's main part
+/// declared a template's, its content kept, so it saves as `.dotx` (or
+/// `.dotm` for a macro-enabled document). A template given here comes back
+/// as it is.
+pub fn template_from_document(docx: &[u8]) -> Result<Vec<u8>, String> {
+    let mut package =
+        OpcPackage::open(docx).map_err(|error| format!("cannot read the document: {error}"))?;
+    let types = package
+        .part_str("[Content_Types].xml")
+        .map_err(|error| format!("cannot read the document: {error}"))?
+        .ok_or("the document has no content types")?;
+    let declared = types
+        .replace(DOCUMENT, TEMPLATE)
+        .replace(MACRO_DOCUMENT, MACRO_TEMPLATE);
+    if declared == types {
+        return Ok(docx.to_vec());
+    }
+    package.replace("[Content_Types].xml", declared.into_bytes());
+    package
+        .write()
+        .map_err(|error| format!("cannot write the template: {error}"))
+}
+
 /// Whether a template keeps macros, so a document made from it is a
 /// `.docm`.
 pub fn is_macro_enabled(template: &[u8]) -> bool {
@@ -231,5 +254,32 @@ mod tests {
         assert_eq!(document_from_template(&blank).unwrap(), blank);
         assert!(is_template_name("Report.DOTX"));
         assert!(!is_template_name("report.docx"));
+    }
+
+    #[test]
+    fn a_document_saves_as_a_template_and_back() {
+        let blank = blank_document(Blank::Japanese);
+        let template = template_from_document(&blank).unwrap();
+        let types = OpcPackage::open(&template)
+            .unwrap()
+            .part_str("[Content_Types].xml")
+            .unwrap()
+            .unwrap();
+        assert!(types.contains(TEMPLATE));
+        assert!(!types.contains(DOCUMENT));
+        // The content is kept, and a template is left as it is.
+        let body = |bytes: &[u8]| {
+            OpcPackage::open(bytes)
+                .unwrap()
+                .part_str("word/document.xml")
+                .unwrap()
+                .unwrap()
+        };
+        assert_eq!(body(&template), body(&blank));
+        assert_eq!(template_from_document(&template).unwrap(), template);
+        assert_eq!(
+            body(&document_from_template(&template).unwrap()),
+            body(&blank)
+        );
     }
 }
