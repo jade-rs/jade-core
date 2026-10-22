@@ -310,8 +310,7 @@ fn replace_digits(pattern: &str, digits: &str, full: bool) -> String {
     let start = pattern.find(is_digit).unwrap_or(0);
     let end = pattern
         .char_indices()
-        .filter(|(_, c)| is_digit(*c))
-        .last()
+        .rfind(|(_, c)| is_digit(*c))
         .map_or(start, |(index, c)| index + c.len_utf8());
     let digits: String = if full {
         digits
