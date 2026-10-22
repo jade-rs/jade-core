@@ -470,4 +470,51 @@ impl OffscreenDocumentView {
     pub fn set_design_as_default(&self) -> Result<JsValue, JsValue> {
         self.run_word_session("word_set_as_default", |session| session.set_as_default())
     }
+
+    /// フォントの色 ▸ テーマの色: six rows of ten swatches — the document
+    /// theme's colours, then their lighter and darker variations — each with
+    /// its `RRGGBB` and the `{name, tint, shade}` a run's `themeColor` takes.
+    #[wasm_bindgen(js_name = themePalette)]
+    pub fn theme_palette_js(&self) -> JsValue {
+        let slots: Vec<(String, String)> = self
+            .state
+            .borrow()
+            .word_doc
+            .as_ref()
+            .and_then(|document| document.document_theme())
+            .map(|theme| {
+                [
+                    ("dk2", theme.dark2),
+                    ("lt2", theme.light2),
+                    ("accent1", theme.accent1),
+                    ("accent2", theme.accent2),
+                    ("accent3", theme.accent3),
+                    ("accent4", theme.accent4),
+                    ("accent5", theme.accent5),
+                    ("accent6", theme.accent6),
+                ]
+                .into_iter()
+                .map(|(slot, value)| (slot.to_string(), value))
+                .collect()
+            })
+            .unwrap_or_default();
+        let rows: Vec<Vec<serde_json::Value>> = crate::word::font::theme_palette(&slots)
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|swatch| {
+                        serde_json::json!({
+                            "color": swatch.color,
+                            "theme": {
+                                "name": swatch.theme.name,
+                                "tint": swatch.theme.tint,
+                                "shade": swatch.theme.shade,
+                            },
+                        })
+                    })
+                    .collect()
+            })
+            .collect();
+        to_js(&rows)
+    }
 }

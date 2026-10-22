@@ -336,4 +336,16 @@ impl OffscreenDocumentView {
             )
         })
     }
+
+    /// 画像 → このデバイス for any picture Word takes — PNG, JPEG, GIF, or an
+    /// SVG, which goes in as Word puts one in: a PNG fallback as the picture
+    /// and the SVG beside it. In line at the caret, at its own size unless
+    /// wider than the text; one undo step.
+    #[wasm_bindgen(js_name = insertPicture)]
+    pub fn insert_picture_js(&self, bytes: Vec<u8>) -> Result<JsValue, JsValue> {
+        use crate::word::picture::WordPicture;
+        self.run_word_session("word_insert_picture", move |session| {
+            session.insert_picture(bytes)
+        })
+    }
 }

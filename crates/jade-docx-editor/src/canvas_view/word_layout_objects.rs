@@ -502,4 +502,110 @@ impl OffscreenDocumentView {
             session.set_object_wrap(target, wrap)
         })
     }
+
+    /// トリミング → 図形に合わせてトリミング's shapes: every closed one, as
+    /// `{preset, name}` (the DrawingML preset and its Japanese name).
+    #[wasm_bindgen(js_name = cropShapes)]
+    pub fn crop_shapes_js(&self) -> JsValue {
+        let shapes: Vec<Value> = crate::word::shape_gallery::crop_shapes()
+            .map(|(shape, ja, _)| json!({ "preset": shape.preset_name(), "name": ja }))
+            .collect();
+        to_js(&shapes)
+    }
+
+    /// 図形に合わせてトリミング: the selected picture (or `target`) drawn in
+    /// the shape `preset` names, one undo step.
+    #[wasm_bindgen(js_name = cropPictureToShape)]
+    pub fn crop_picture_to_shape_js(
+        &self,
+        target: JsValue,
+        preset: String,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::picture_format::WordPictureFormat;
+        let target = self.object_target(target)?;
+        let shape = crate::document::TextBoxShape::from_preset_name(&preset)
+            .ok_or_else(|| JsValue::from_str(&format!("unknown shape {preset}")))?;
+        self.run_word_session("word_crop_to_shape", move |session| {
+            session.crop_picture_to_shape(target, shape)
+        })
+    }
+
+    /// 図形 ▸ 線 ▸ コネクタ between two objects: drawn between their nearest
+    /// connection points and glued to them, so it follows them when they
+    /// move. `kind`: `straight`, `elbow` or `curved`; one undo step.
+    #[wasm_bindgen(js_name = connectShapes)]
+    pub fn connect_shapes(
+        &self,
+        from: JsValue,
+        to: JsValue,
+        kind: String,
+        arrow: bool,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::connectors::{
+            connection_point, ConnectorEnd, ConnectorKind, WordConnectors,
+        };
+        let kind = match kind.as_str() {
+            "straight" => ConnectorKind::Straight,
+            "elbow" => ConnectorKind::Elbow,
+            "curved" => ConnectorKind::Curved,
+            other => return Err(JsValue::from_str(&format!("unknown connector {other}"))),
+        };
+        let (from, to) = (self.object_target(from)?, self.object_target(to)?);
+        let placed = self.placed_objects(&[from, to])?;
+        let (a, b) = (placed[0], placed[1]);
+        let mut nearest = (0, 0, f64::INFINITY);
+        for i in 0..4 {
+            for j in 0..4 {
+                let (p, q) = (connection_point(&a, i), connection_point(&b, j));
+                let distance = (p.0 - q.0).hypot(p.1 - q.1);
+                if distance < nearest.2 {
+                    nearest = (i, j, distance);
+                }
+            }
+        }
+        let start = ConnectorEnd {
+            point: connection_point(&a, nearest.0),
+            glued: Some((from, nearest.0)),
+        };
+        let end = ConnectorEnd {
+            point: connection_point(&b, nearest.1),
+            glued: Some((to, nearest.1)),
+        };
+        self.run_word_session("word_connect_shapes", move |session| {
+            session.insert_connector(kind, arrow, start, end)
+        })
+    }
+
+    /// After objects moved: every connector glued to one set between its
+    /// ends again, one undo step. `null` when the document has no glued
+    /// connector, so nothing is recorded.
+    #[wasm_bindgen(js_name = rerouteConnectors)]
+    pub fn reroute_connectors_js(&self) -> Result<JsValue, JsValue> {
+        use crate::word::connectors::WordConnectors;
+        let (targets, glued) = self.read_word_session(|session| {
+            let objects = session.body_objects();
+            let glued = objects.iter().any(|object| {
+                crate::word::objects::object_run(session.word_document(), object.target)
+                    .and_then(|run| run.text_box.as_ref())
+                    .is_some_and(|text_box| text_box.extras().connector.is_some())
+            });
+            (
+                objects
+                    .into_iter()
+                    .map(|object| object.target)
+                    .collect::<Vec<_>>(),
+                glued,
+            )
+        })?;
+        if !glued {
+            return Ok(JsValue::NULL);
+        }
+        let regions: Vec<PlacedObject> = targets
+            .iter()
+            .filter_map(|target| self.placed_objects(&[*target]).ok()?.into_iter().next())
+            .collect();
+        self.run_word_session("word_reroute_connectors", move |session| {
+            session.reroute_connectors(&regions).map(|_| ())
+        })
+    }
 }

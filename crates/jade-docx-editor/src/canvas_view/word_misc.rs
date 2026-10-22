@@ -174,6 +174,32 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// 脚注の配置: the caret's section's footnotes at the bottom of the page
+    /// (`false`, ページの最後) or right after the text (`true`, 文字列の直後),
+    /// one undo step.
+    #[wasm_bindgen(js_name = setFootnoteBeneathText)]
+    pub fn set_footnote_beneath_text(&self, beneath: bool) -> Result<JsValue, JsValue> {
+        use crate::word::references::notes::FootnotePlace;
+        self.run_word_session("word_footnote_place", move |session| {
+            let mut dialog = session.note_dialog(NoteKind::Footnote);
+            dialog.footnote_place = if beneath {
+                FootnotePlace::BeneathText
+            } else {
+                FootnotePlace::PageBottom
+            };
+            session.apply_note_dialog(&dialog)
+        })
+    }
+
+    /// Whether the caret's section puts its footnotes right after the text.
+    #[wasm_bindgen(js_name = footnoteBeneathText)]
+    pub fn footnote_beneath_text(&self) -> Result<bool, JsValue> {
+        use crate::word::references::notes::FootnotePlace;
+        self.read_word_session(|session| {
+            session.note_dialog(NoteKind::Footnote).footnote_place == FootnotePlace::BeneathText
+        })
+    }
+
     /// Whether `kind`'s separator and continuation separator draw their rules.
     #[wasm_bindgen(js_name = noteSeparators)]
     pub fn note_separators(&self, kind: String) -> Result<JsValue, JsValue> {
@@ -367,6 +393,121 @@ impl OffscreenDocumentView {
         }
         self.run_word_session("word_erase_border", move |session| {
             session.erase_border(x, y).map(|_| ())
+        })
+    }
+
+    /// レイアウト ▸ 選択: the cell, row or column the caret is in, or the
+    /// whole table (`part`: `cell`, `row`, `column`, `table`), as a cell
+    /// selection.
+    #[wasm_bindgen(js_name = selectTablePart)]
+    pub fn select_table_part_js(&self, part: &str) -> Result<(), JsValue> {
+        use crate::word::table::{TablePart, WordTables};
+        let part = match part {
+            "cell" => TablePart::Cell,
+            "row" => TablePart::Row,
+            "column" => TablePart::Column,
+            "table" => TablePart::Table,
+            other => return Err(JsValue::from_str(&format!("unknown table part {other}"))),
+        };
+        self.select_with_word_session(move |session| session.select_table_part(part))
+    }
+
+    /// 校閲者: everyone who made a change or a comment, in the order they
+    /// first appear — the list 変更履歴とコメントの表示 ticks.
+    #[wasm_bindgen(js_name = markupReviewers)]
+    pub fn markup_reviewers(&self) -> Result<JsValue, JsValue> {
+        use crate::word::markup::WordMarkup;
+        let reviewers = self.read_word_session(|session| session.reviewers())?;
+        Ok(to_js(&reviewers))
+    }
+
+    /// 変更内容の表示 and 変更履歴とコメントの表示: `mode` (`simple`, `all`,
+    /// `none`, `original`), whether insertions and deletions and formatting
+    /// are marked up, and the reviewers whose changes are not. Only what is
+    /// drawn changes.
+    #[wasm_bindgen(js_name = setMarkupView)]
+    pub fn set_markup_view(
+        &self,
+        mode: &str,
+        insertions_deletions: bool,
+        formatting: bool,
+        hidden_reviewers: Vec<String>,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::markup::{MarkupMode, MarkupOptions, WordMarkup};
+        let mode = match mode {
+            "simple" => MarkupMode::Simple,
+            "all" => MarkupMode::All,
+            "none" | "final" => MarkupMode::NoMarkup,
+            "original" => MarkupMode::Original,
+            other => return Err(JsValue::from_str(&format!("unknown markup view {other}"))),
+        };
+        let options = MarkupOptions {
+            mode,
+            insertions_deletions,
+            formatting,
+            hidden_reviewers,
+            ..MarkupOptions::default()
+        };
+        let reviewers = self.read_word_session(|session| session.reviewers())?;
+        let (render_changes, render_original, view) = options.display(&reviewers);
+        {
+            let mut state_mut = self.state.borrow_mut();
+            state_mut.options.revision_display_explicit = true;
+            state_mut.options.render_changes = render_changes;
+            state_mut.options.render_original = render_original;
+            state_mut.options.set_revision_view(view.clone());
+        }
+        self.rerender_after_display_change(move |renderer| {
+            renderer.set_revision_display_flags(render_changes, render_original);
+            renderer.set_revision_view_flag(view);
+        })
+    }
+
+    /// 引用文の登録: a `TA` field for the selection's citation — its long
+    /// form, short form and 1-based category — at the selection's end, one
+    /// undo step.
+    #[wasm_bindgen(js_name = markCitation)]
+    pub fn mark_citation_js(
+        &self,
+        long: String,
+        short: String,
+        category: u8,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::references::index::{MarkCitationDialog, WordIndex};
+        self.run_word_session("word_mark_citation", move |session| {
+            session.mark_citation(&MarkCitationDialog {
+                long,
+                short,
+                category: category.max(1),
+            })
+        })
+    }
+
+    /// 引用文献一覧の挿入: a `TOA` field per category (or for `category`),
+    /// with 前掲 for a citation on five pages or more when `passim`, after
+    /// the caret's paragraph; one undo step.
+    #[wasm_bindgen(js_name = insertTableOfAuthorities)]
+    pub fn insert_table_of_authorities_js(
+        &self,
+        category: Option<u8>,
+        passim: bool,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::references::index::{AuthoritiesDialog, WordIndex};
+        self.run_word_session("word_table_of_authorities", move |session| {
+            session.insert_table_of_authorities(&AuthoritiesDialog {
+                category,
+                passim,
+                ..AuthoritiesDialog::default()
+            })
+        })
+    }
+
+    /// 引用文献一覧の更新: each table built again; the result is how many.
+    #[wasm_bindgen(js_name = updateTablesOfAuthorities)]
+    pub fn update_tables_of_authorities_js(&self) -> Result<JsValue, JsValue> {
+        use crate::word::references::index::WordIndex;
+        self.run_word_session("word_update_authorities", move |session| {
+            session.update_tables_of_authorities()
         })
     }
 }
