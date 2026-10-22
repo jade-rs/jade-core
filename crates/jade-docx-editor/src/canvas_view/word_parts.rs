@@ -95,6 +95,54 @@ impl OffscreenDocumentView {
         Ok(to_js(&utterances))
     }
 
+    /// 表示 ▸ イマーシブ リーダー: each body paragraph with text as the reader
+    /// shows it (テキストの間隔, 音節), with the reader's column widths, page
+    /// colours and line metrics at its font size.
+    #[wasm_bindgen(js_name = immersiveReader)]
+    pub fn immersive_reader(
+        &self,
+        syllables: bool,
+        text_spacing: bool,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::immersive::{shown_paragraphs, ColumnWidth, ImmersiveSettings, PageColor};
+        let settings = ImmersiveSettings {
+            syllables,
+            text_spacing,
+            ..ImmersiveSettings::default()
+        };
+        let paragraphs = self.read_word_session(|session| {
+            let document = session.word_document();
+            shown_paragraphs(session, &settings)
+                .into_iter()
+                .filter_map(|shown| {
+                    Some(json!({
+                        "paragraph": document.body_index_for_surface(shown.paragraph)?,
+                        "text": shown.text,
+                    }))
+                })
+                .collect::<Vec<_>>()
+        })?;
+        let hex = |color: u32| format!("#{color:06X}");
+        Ok(to_js(&json!({
+            "paragraphs": paragraphs,
+            "fontSize": settings.font_size,
+            "lineHeight": settings.line_height(),
+            "paragraphGap": settings.paragraph_gap(),
+            "columns": ColumnWidth::ALL.iter().map(|column| json!({
+                "name": column.label_key().rsplit('.').next(),
+                "width": column.pixels(),
+            })).collect::<Vec<_>>(),
+            "pages": PageColor::ALL.iter().map(|page| {
+                let (background, text) = page.colors();
+                json!({
+                    "name": page.label_key().rsplit('.').next(),
+                    "background": hex(background),
+                    "text": hex(text),
+                })
+            }).collect::<Vec<_>>(),
+        })))
+    }
+
     /// 文書パーツ オーガナイザー's 削除.
     #[wasm_bindgen(js_name = deleteQuickPart)]
     pub fn delete_quick_part(&self, index: usize) -> Result<JsValue, JsValue> {
