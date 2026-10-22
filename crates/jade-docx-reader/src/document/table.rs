@@ -442,6 +442,8 @@ pub enum TextDirection {
     TbRlV,
     BtLr,
     BtLrV,
+    /// Vertical text with its lines running left to right (`tbLrV`).
+    TbLrV,
 }
 
 impl TextDirection {
@@ -453,6 +455,7 @@ impl TextDirection {
             "tbRlV" => Some(TextDirection::TbRlV),
             "btLr" => Some(TextDirection::BtLr),
             "btLrV" => Some(TextDirection::BtLrV),
+            "tbLrV" => Some(TextDirection::TbLrV),
             _ => None,
         }
     }

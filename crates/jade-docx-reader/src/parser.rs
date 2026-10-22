@@ -5136,6 +5136,8 @@ impl DocumentParser {
         let mut has_wordprocessing_shape = false;
         let mut text_box_shape = TextBoxShape::Rectangle;
         let mut text_box_preset: Option<String> = None;
+        let mut text_box_adjustments: Vec<(String, i64)> = Vec::new();
+        let mut in_preset_geometry = false;
         let mut line_head_arrow = None;
         let mut line_tail_arrow = None;
         // DrawingML anchor can contain either a modern `a:ln` definition or a legacy VML
@@ -5279,6 +5281,11 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                            in_preset_geometry = true;
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -5598,6 +5605,10 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -5806,6 +5817,7 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) => {
                     extras.end(e.name().as_ref());
                     match e.name().as_ref() {
+                        b"a:prstGeom" => in_preset_geometry = false,
                         b"wp:positionH" => {
                             in_position_h = false;
                             pending_offset = None;
@@ -5927,6 +5939,15 @@ impl DocumentParser {
             buf.clear();
         }
 
+        // A preset outside the hand-traced set, or one whose adjust handles
+        // moved, is drawn from its shape-guide definition.
+        if let Some(name) = text_box_preset.as_deref() {
+            if !text_box_shape.is_line() {
+                text_box_shape =
+                    TextBoxShape::from_preset(name, std::mem::take(&mut text_box_adjustments));
+            }
+        }
+
         if matches!(
             text_box_preset.as_deref(),
             Some("line" | "straightConnector1")
@@ -6026,8 +6047,23 @@ impl DocumentParser {
     fn parse_text_box_shape(element: &BytesStart<'_>) -> TextBoxShape {
         Self::parse_text_box_preset(element)
             .as_deref()
-            .and_then(TextBoxShape::from_preset_name)
+            .map(|name| TextBoxShape::from_preset(name, Vec::new()))
             .unwrap_or_default()
+    }
+
+    /// One `a:avLst/a:gd` adjust value, `(name, value)`.
+    fn preset_adjustment(element: &BytesStart<'_>) -> Option<(String, i64)> {
+        let mut name = None;
+        let mut formula = None;
+        for attribute in element.attributes().flatten() {
+            let value = attribute.unescape_value().ok()?.into_owned();
+            match attribute.key.as_ref() {
+                b"name" => name = Some(value),
+                b"fmla" => formula = Some(value),
+                _ => {}
+            }
+        }
+        Some((name?, crate::document::parse_adjust_formula(&formula?)?))
     }
 
     fn parse_text_box_preset(element: &BytesStart<'_>) -> Option<String> {
@@ -6170,6 +6206,9 @@ impl DocumentParser {
         let mut current_shape: Option<RunGroupShape> = None;
         let mut in_group_properties = false;
         let mut in_shape_properties = false;
+        // The open `a:prstGeom`'s name and its `a:avLst/a:gd` values.
+        let mut shape_preset: Option<String> = None;
+        let mut shape_adjustments: Vec<(String, i64)> = Vec::new();
         let mut in_transform = false;
         let mut in_line = false;
         let mut in_shape_fill = false;
@@ -6265,6 +6304,11 @@ impl DocumentParser {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
+                            shape_preset = Self::parse_text_box_preset(element);
+                            shape_adjustments.clear();
+                        }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
                         }
                         b"a:ln" if in_shape_properties => {
                             in_line = true;
@@ -6600,6 +6644,9 @@ impl DocumentParser {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
                         }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
+                        }
                         b"a:ln" if in_shape_properties => {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.border = Some(group_shape_border(element));
@@ -6870,6 +6917,18 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:prstGeom" => {
+                            if let (Some(name), Some(shape)) =
+                                (shape_preset.take(), current_shape.as_mut())
+                            {
+                                if !shape.shape.is_line() && !shape_adjustments.is_empty() {
+                                    shape.shape = TextBoxShape::from_preset(
+                                        &name,
+                                        std::mem::take(&mut shape_adjustments),
+                                    );
+                                }
+                            }
+                        }
                         b"wpg:grpSpPr" => in_group_properties = false,
                         b"wps:wsp" | b"pic:pic" => {
                             if let Some(shape) = current_shape.take() {
@@ -15604,6 +15663,76 @@ mod tests {
         assert_eq!(shape.height_px, Some(96.0));
         assert!(shape.blocks.is_empty());
         assert_eq!(shape.fill_color.as_deref(), Some("#4472C4"));
+    }
+
+    fn shape_with_geometry(geometry: &str) -> TextBoxShape {
+        let body = format!(
+            r#"
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                     xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                     xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+            <wp:extent cx="1828800" cy="914400"/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                <wps:wsp>
+                  <wps:spPr>{geometry}</wps:spPr>
+                  <wps:bodyPr/>
+                </wps:wsp>
+              </a:graphicData>
+            </a:graphic>
+          </wp:anchor>
+        </w:drawing>
+      </w:r>
+    </w:p>
+"#
+        );
+        let document = parse_document_from_body(&body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        paragraph.runs[0].text_box.as_ref().expect("shape").shape
+    }
+
+    #[test]
+    fn presets_beyond_the_traced_set_and_moved_handles_keep_their_geometry() {
+        let TextBoxShape::Preset(gear) =
+            shape_with_geometry(r#"<a:prstGeom prst="gear6"><a:avLst/></a:prstGeom>"#)
+        else {
+            panic!("gear6 must not be flattened to a rectangle");
+        };
+        assert_eq!(gear.name(), "gear6");
+        assert!(gear.geometry().adjustments.is_empty());
+
+        let TextBoxShape::Preset(rounded) = shape_with_geometry(
+            r#"<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 40000"/></a:avLst></a:prstGeom>"#,
+        ) else {
+            panic!("a moved corner handle must be kept");
+        };
+        assert_eq!(rounded.geometry().adjustments, vec![("adj".into(), 40_000)]);
+        assert_eq!(
+            TextBoxShape::Preset(rounded).hand_traced(),
+            TextBoxShape::RoundedRectangle
+        );
+
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>"#),
+            TextBoxShape::RoundedRectangle
+        );
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="rect"/>"#),
+            TextBoxShape::Rectangle
+        );
+        // Connectors keep their hand-traced line kinds, handles or not.
+        assert_eq!(
+            shape_with_geometry(
+                r#"<a:prstGeom prst="bentConnector3"><a:avLst><a:gd name="adj1" fmla="val 30000"/></a:avLst></a:prstGeom>"#
+            ),
+            TextBoxShape::LineBent
+        );
     }
 
     #[test]

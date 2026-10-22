@@ -9,10 +9,12 @@ use std::rc::Rc;
 
 mod drawing;
 mod math;
+mod preset_geometry;
 mod table;
 pub use drawing::*;
 mod table_conditional;
 pub use math::{math_elements_to_omml, MathElement, MathElementKind, MathParagraph, MathRun};
+pub use preset_geometry::{parse_adjust_formula, PresetGeometry, PresetGeometryId};
 pub use table::{
     resolve_cell_margin_edge_points, StyleMap, Table, TableBorders, TableCell, TableCellMargins,
     TableColumn, TableLayoutMode, TableRow, TableRowHeightRule, TableStyleDisplay,
@@ -72,6 +74,12 @@ pub struct Document {
     /// lines in table cells. Absent, table cells ignore the line grid.
     #[serde(default)]
     pub adjust_line_height_in_table: bool,
+    /// `w:compat`: every compatibility setting and legacy layout option.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::settings::CompatOptions::is_empty"
+    )]
+    pub compat: crate::settings::CompatOptions,
     /// Effective `w:docDefaults/w:rPrDefault/w:rPr/w:sz` font size in points.
     /// Empty paragraphs need this value even though they contain no run to
     /// carry the materialized style cascade.
@@ -3189,6 +3197,9 @@ pub enum TextBoxShape {
     RoundOneRectangle,
     RoundTwoSameRectangle,
     RoundTwoDiagonalRectangle,
+    /// Any other ECMA-376 preset, or a preset with moved adjust handles:
+    /// drawn from the shape-guide definitions with its own `a:avLst`.
+    Preset(PresetGeometryId),
 }
 
 impl TextBoxShape {
@@ -3306,9 +3317,36 @@ impl TextBoxShape {
         Self::RoundTwoDiagonalRectangle,
     ];
 
-    /// DrawingML `a:prstGeom@prst` token.
-    pub const fn preset_name(self) -> &'static str {
+    /// The hand-traced shape this one is drawn and measured like: itself, or
+    /// for a [`Self::Preset`] the hand-traced shape of the same name
+    /// (a rectangle when there is none).
+    pub fn hand_traced(self) -> Self {
         match self {
+            Self::Preset(id) => Self::from_preset_name(id.name()).unwrap_or_default(),
+            shape => shape,
+        }
+    }
+
+    /// The shape for `prst` with `adjustments` (`a:avLst/a:gd`): the
+    /// hand-traced shape when there is one and no handle moved, the preset
+    /// geometry otherwise. Connectors and lines stay hand-traced.
+    pub fn from_preset(name: &str, adjustments: Vec<(String, i64)>) -> Self {
+        let traced = Self::from_preset_name(name);
+        match traced {
+            Some(shape) if shape.is_line() => shape,
+            Some(shape) if adjustments.is_empty() => shape,
+            _ if name.is_empty() || (name == "rect" && adjustments.is_empty()) => Self::Rectangle,
+            _ => Self::Preset(PresetGeometryId::intern(PresetGeometry {
+                name: name.to_string(),
+                adjustments,
+            })),
+        }
+    }
+
+    /// DrawingML `a:prstGeom@prst` token.
+    pub fn preset_name(self) -> &'static str {
+        match self {
+            Self::Preset(id) => id.name(),
             Self::Rectangle => "rect",
             Self::Line => "line",
             Self::LineArrow | Self::LineArrowDouble => "straightConnector1",

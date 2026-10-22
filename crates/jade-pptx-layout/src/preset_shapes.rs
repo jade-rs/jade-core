@@ -125,6 +125,19 @@ pub fn is_known(name: &str) -> bool {
     definitions().contains_key(name)
 }
 
+/// The outline of preset `name` at `w` × `h` with `adjustments` (an
+/// `<a:avLst>`'s `(name, value)` pairs): its paths in normalized shape
+/// coordinates and its text rectangle in pixels. For any DrawingML host —
+/// Word's shapes evaluate the same definitions PowerPoint's do.
+pub fn outline(
+    name: &str,
+    adjustments: &[(String, i64)],
+    w: f64,
+    h: f64,
+) -> Option<(Vec<PlacedPath>, Rect)> {
+    evaluate(name, adjustments, w, h).map(|preset| (preset.paths, preset.text))
+}
+
 /// One evaluated preset: its paths in normalized shape coordinates (0..1
 /// is the shape's box; some presets reach outside it) and its text rect in
 /// shape pixels.

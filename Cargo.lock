@@ -1537,6 +1537,7 @@ dependencies = [
  "jade-docx-reader",
  "jade-docx-writer",
  "jade-painter",
+ "jade-pptx-layout",
  "jade-preview-plugin-api",
  "jade-xlsx-layout",
  "jade-xlsx-reader",

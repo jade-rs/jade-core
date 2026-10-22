@@ -33,9 +33,9 @@
 
 use crate::compact_string::CompactString;
 use crate::constants::{
-    self, BALANCED_SBCS_EXTRA_RATIO, DEFAULT_NO_LINE_BREAK_AFTER, DEFAULT_NO_LINE_BREAK_BEFORE,
-    DEFAULT_TAB_WIDTH_PT, IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_DEFAULT,
-    IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_EXPLICIT, IMPLICIT_NUMERIC_GAP_SIDE_RATIO_DEFAULT_ENABLED,
+    self, BALANCED_SBCS_EXTRA_RATIO, DEFAULT_TAB_WIDTH_PT,
+    IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_DEFAULT, IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_EXPLICIT,
+    IMPLICIT_NUMERIC_GAP_SIDE_RATIO_DEFAULT_ENABLED,
     IMPLICIT_NUMERIC_GAP_SIDE_RATIO_EXPLICIT_AUTO_DN, WRAP_SAFETY_PX,
 };
 use crate::font_resolver::{ResolvedFontSlot, ResolvedRunStyle};
@@ -222,6 +222,9 @@ pub struct ParagraphStyle {
     /// Whether a negative first-line indent contributes the implicit custom
     /// tab stop required by OOXML `w:ind/@w:hanging`.
     pub use_hanging_indent_tab_stop: bool,
+    /// A justified line that ends in a manual line break is spread like any
+    /// other: Word does so unless the document sets `doNotExpandShiftReturn`.
+    pub expand_lines_ending_in_breaks: bool,
     pub east_asian_rules: EastAsianLineBreakingRules,
     pub enable_line_break_rules: bool,
     pub doc_grid_snap_to_chars: bool,
@@ -309,6 +312,7 @@ impl Default for ParagraphStyle {
             default_tab_width: points_to_px(DEFAULT_TAB_WIDTH_PT),
             tab_origin_offset: 0.0,
             use_hanging_indent_tab_stop: true,
+            expand_lines_ending_in_breaks: false,
             east_asian_rules: EastAsianLineBreakingRules::default(),
             enable_line_break_rules: false,
             doc_grid_snap_to_chars: false,
@@ -657,9 +661,10 @@ impl ParagraphStyle {
         }
         !self.east_asian_rules.no_line_break_before_replaces_default
             && single_char(text).is_some_and(|c| {
-                DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c)
-                    && (self.east_asian_rules.strict_first_and_last_chars
-                        || !STRICT_ONLY_NO_LINE_BREAK_BEFORE.contains(&c))
+                crate::word_kinsoku::forbids_line_start(
+                    c,
+                    self.east_asian_rules.strict_first_and_last_chars,
+                )
             })
     }
 
@@ -672,17 +677,18 @@ impl ParagraphStyle {
             return true;
         }
         !self.east_asian_rules.no_line_break_after_replaces_default
-            && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_AFTER.contains(&c))
+            && single_char(text).is_some_and(crate::word_kinsoku::forbids_line_end)
+    }
+
+    /// 分割禁止: Word does not break between the two halves of `――` or `……`.
+    pub fn forbids_break_between(&self, text: &str, next: Option<&str>) -> bool {
+        self.kinsoku_enabled()
+            && single_char(text).is_some_and(crate::word_kinsoku::is_inseparable)
+            && next
+                .and_then(single_char)
+                .is_some_and(crate::word_kinsoku::is_inseparable)
     }
 }
-
-/// Members of the default line-start table that Word forbids only under
-/// `w:strictFirstAndLastChars`: its standard set (標準) lets the small kana and
-/// `ー` start a line (trust-beneficiary-sale-keep-next page 12, `ーシング`).
-const STRICT_ONLY_NO_LINE_BREAK_BEFORE: &[char] = &[
-    'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ', 'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ッ',
-    'ャ', 'ュ', 'ョ', 'ヮ', 'ヵ', 'ヶ', 'ー',
-];
 
 /// Splits the first printable grapheme into a synthetic enlarged run and
 /// returns the exact geometry consumed by [`wrap_text_into_lines`]. Both the
@@ -786,7 +792,7 @@ pub struct EastAsianLineBreakingRules {
     /// them (a Japanese `w:noLineBreaksBefore`/`After`, ECMA-376 §17.15.1.58-59).
     pub no_line_break_before_replaces_default: bool,
     pub no_line_break_after_replaces_default: bool,
-    /// `w:strictFirstAndLastChars` (see [`STRICT_ONLY_NO_LINE_BREAK_BEFORE`]).
+    /// `w:strictFirstAndLastChars`: 高レベル (see [`crate::word_kinsoku`]).
     pub strict_first_and_last_chars: bool,
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
@@ -1647,6 +1653,22 @@ fn is_ascii_digit_grapheme(grapheme: &str) -> bool {
             .is_some_and(|value| value.is_ascii_digit())
 }
 
+/// Whether `w:characterSpacingControl` compresses punctuation: both
+/// `compressPunctuation` and `compressPunctuationAndJapaneseKana` do.
+pub fn compresses_punctuation(control: Option<&str>) -> bool {
+    matches!(
+        control,
+        Some("compressPunctuation" | "compressPunctuationAndJapaneseKana")
+    )
+}
+
+/// Hiragana and katakana, which `compressPunctuationAndJapaneseKana` sets
+/// narrower than their full-width cells.
+fn is_compressible_kana(grapheme: &str) -> bool {
+    single_char(grapheme)
+        .is_some_and(|c| matches!(c, '\u{3041}'..='\u{3096}' | '\u{30A1}'..='\u{30FA}'))
+}
+
 fn is_compressible_east_asian_punctuation(grapheme: &str) -> bool {
     matches!(
         grapheme,
@@ -1663,27 +1685,51 @@ pub fn punctuation_compression_adjustment(
     if !paragraph_style.enable_line_break_rules {
         return 0.0;
     }
-    if paragraph_style
+    let control = paragraph_style
         .east_asian_rules
         .character_spacing_control
-        .as_deref()
-        != Some("compressPunctuation")
+        .as_deref();
+    if !compresses_punctuation(control)
         || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
     {
         return 0.0;
     }
-    if script != ScriptCategory::EastAsia || !is_compressible_east_asian_punctuation(grapheme) {
+    if script != ScriptCategory::EastAsia {
         return 0.0;
     }
-
-    // Keep compression conservative so punctuation rhythm remains stable.
-    glyph_width * -0.18
+    if is_compressible_east_asian_punctuation(grapheme) {
+        // Keep compression conservative so punctuation rhythm remains stable.
+        return glyph_width * -0.18;
+    }
+    // 句読点とかなを詰める: kana take the narrower, proportional advances of
+    // the face; a tenth of the cell stands in for them.
+    if control == Some("compressPunctuationAndJapaneseKana") && is_compressible_kana(grapheme) {
+        return glyph_width * -0.1;
+    }
+    0.0
 }
 
+/// 行頭の記号を 1/2 の幅にする (`w:topLinePunct`) sets a full-width bracket
+/// or mark that starts a line in half its cell. With kinsoku on only opening
+/// brackets can start a line, so they are what Word narrows; closing marks
+/// reach a line start only with kinsoku off.
 fn is_top_line_half_width_target(grapheme: &str) -> bool {
     matches!(
         grapheme,
-        "、" | "。"
+        "「" | "『"
+            | "（"
+            | "［"
+            | "｛"
+            | "〈"
+            | "《"
+            | "【"
+            | "〔"
+            | "〖"
+            | "〘"
+            | "‘"
+            | "“"
+            | "、"
+            | "。"
             | "，"
             | "．"
             | "・"
@@ -3033,7 +3079,16 @@ impl WrappedLine {
     /// edge. The trailing separator keeps its natural advance outside that
     /// edge. Consumers retain these cluster positions for painting and carets.
     pub fn justify_word_spaces_to_width(&mut self, available_width: f64) {
-        if self.break_kind != LineBreakKind::Soft || !self.tab_stops.is_empty() {
+        self.justify_word_spaces_to_width_with(available_width, false);
+    }
+
+    /// [`Self::justify_word_spaces_to_width`], spreading a line that ends in a
+    /// manual line break too when `expand_breaks` (see
+    /// [`ParagraphStyle::expand_lines_ending_in_breaks`]).
+    pub fn justify_word_spaces_to_width_with(&mut self, available_width: f64, expand_breaks: bool) {
+        let justified_break = self.break_kind == LineBreakKind::Soft
+            || expand_breaks && self.break_kind == LineBreakKind::Hard;
+        if !justified_break || !self.tab_stops.is_empty() {
             return;
         }
         let interior_end = self
@@ -6599,7 +6654,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 grapheme,
                 is_whitespace,
                 paragraph_style.forbids_line_start(grapheme),
-                paragraph_style.forbids_line_end(grapheme),
+                paragraph_style.forbids_line_end(grapheme)
+                    || paragraph_style.forbids_break_between(grapheme, next_grapheme),
                 cluster_layout,
             );
             (cluster.auto_space_leading, cluster.auto_space_trailing) = auto_space;
@@ -7019,8 +7075,7 @@ fn mac_squeeze_enabled(style: &ParagraphStyle) -> bool {
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
     style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-        && style.east_asian_rules.character_spacing_control.as_deref()
-            == Some("compressPunctuation")
+        && compresses_punctuation(style.east_asian_rules.character_spacing_control.as_deref())
         && is_justified_alignment(&style.alignment)
         && style.oracle_advance_px_by_text_offset.is_none()
 }
@@ -18718,6 +18773,97 @@ mod tests {
             .collect::<String>();
         assert_eq!(reconstructed, long);
         assert!(wrapped.iter().all(|line| !line.clusters.is_empty()));
+    }
+
+    fn japanese_paragraph(
+        configure: impl FnOnce(&mut EastAsianLineBreakingRules),
+    ) -> ParagraphStyle {
+        let mut rules = EastAsianLineBreakingRules {
+            use_east_asian_layout: true,
+            ..EastAsianLineBreakingRules::default()
+        };
+        configure(&mut rules);
+        ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: rules,
+            ..ParagraphStyle::default()
+        }
+    }
+
+    fn first_line(text: &str, style: &ParagraphStyle, width: f64) -> String {
+        let ctx = TestContext::new(10.0);
+        let run = make_run(text);
+        let lines = wrap_text_into_lines(&ctx, text, &[run], 0.0, style, 0, width).expect("wrap");
+        collect_line_infos(&lines)
+            .first()
+            .map(|line| line.text.clone())
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn kinsoku_uses_words_own_standard_and_strict_lists() {
+        let standard = japanese_paragraph(|_| {});
+        for c in crate::word_kinsoku::STANDARD_NO_LINE_START.chars() {
+            assert!(standard.forbids_line_start(&c.to_string()), "{c}");
+        }
+        for c in crate::word_kinsoku::NO_LINE_END.chars() {
+            assert!(standard.forbids_line_end(&c.to_string()), "{c}");
+        }
+        assert!(!standard.forbids_line_start("ｯ"));
+        assert!(!standard.forbids_line_start("〗"), "not in Word's list");
+        let strict = japanese_paragraph(|rules| rules.strict_first_and_last_chars = true);
+        for c in crate::word_kinsoku::STRICT_NO_LINE_START.chars() {
+            assert!(strict.forbids_line_start(&c.to_string()), "{c}");
+        }
+        // The ASCII members bind too: `!` does not start the next line.
+        assert_eq!(first_line("ああ!い", &standard, 29.0), "あ");
+    }
+
+    #[test]
+    fn a_two_em_dash_or_leader_is_not_split_across_lines() {
+        let style = japanese_paragraph(|_| {});
+        // Room for three cells: `ああ―` would split `――`.
+        assert_eq!(first_line("ああ――い", &style, 31.0), "ああ");
+        assert_eq!(first_line("ああ……い", &style, 31.0), "ああ");
+        let off = japanese_paragraph(|rules| rules.kinsoku = Some(false));
+        assert_eq!(first_line("ああ――い", &off, 31.0), "ああ―");
+    }
+
+    #[test]
+    fn compressing_kana_narrows_kana_and_punctuation_on_windows() {
+        crate::line_metrics::set_word_layout_platform(
+            crate::line_metrics::WordLayoutPlatform::Windows,
+        );
+        let kana = japanese_paragraph(|rules| {
+            rules.character_spacing_control = Some("compressPunctuationAndJapaneseKana".into())
+        });
+        let punctuation = japanese_paragraph(|rules| {
+            rules.character_spacing_control = Some("compressPunctuation".into())
+        });
+        let adjust = |style: &ParagraphStyle, grapheme: &str| {
+            punctuation_compression_adjustment(style, grapheme, ScriptCategory::EastAsia, 10.0)
+        };
+        assert!(adjust(&kana, "あ") < 0.0 && adjust(&kana, "カ") < 0.0);
+        assert!(adjust(&kana, "、") < 0.0);
+        assert_eq!(adjust(&kana, "漢"), 0.0);
+        assert_eq!(adjust(&punctuation, "あ"), 0.0);
+        assert!(adjust(&punctuation, "、") < 0.0);
+        assert!(compresses_punctuation(Some(
+            "compressPunctuationAndJapaneseKana"
+        )));
+        assert!(!compresses_punctuation(Some("doNotCompress")));
+    }
+
+    #[test]
+    fn top_line_punctuation_halves_an_opening_bracket_at_a_line_start() {
+        let half = japanese_paragraph(|rules| rules.top_line_punctuation = Some(true));
+        let adjust = |grapheme: &str, start: bool| {
+            top_line_punctuation_adjustment(&half, grapheme, ScriptCategory::EastAsia, 10.0, start)
+        };
+        assert_eq!(adjust("「", true), -5.0);
+        assert_eq!(adjust("（", true), -5.0);
+        assert_eq!(adjust("「", false), 0.0);
+        assert_eq!(adjust("あ", true), 0.0);
     }
 
     #[test]

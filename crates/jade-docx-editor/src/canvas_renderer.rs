@@ -217,6 +217,7 @@ where
     P::Error: PainterError,
 {
     value: Option<BoxedRenderHost<P>>,
+    layers: page_layers::PageLayers,
 }
 impl<P: Painter> std::ops::Deref for RenderHostSlot<P>
 where
@@ -242,6 +243,10 @@ where
 
 #[cfg(test)]
 mod advance_field_tests;
+mod art_borders;
+mod border_styles;
+#[cfg(test)]
+mod compat_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod hyphenation_tests;
@@ -253,7 +258,10 @@ mod keep_next;
 mod note_tests;
 #[cfg(test)]
 mod opentype_features_tests;
+mod page_layers;
 mod paragraph_join;
+#[cfg(test)]
+mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
 #[cfg(test)]
@@ -2095,69 +2103,30 @@ struct ResolvedBorderEdge {
     kind: BorderKind,
 }
 
-/// Splits a border's total thickness into one or more parallel sub-bands along
-/// the thickness axis, returning `(offset_from_near_edge, sub_thickness)` pairs
-/// in px. `Double` draws two equal lines separated by an equal gap (1/3 each);
-/// `Triple` draws three equal lines with equal gaps (1/5 each). Every other
-/// kind collapses to a single solid band spanning the full thickness, so the
-/// caller paints it exactly as before. Axis-agnostic: the caller decides
-/// whether the offset applies to X (vertical rule) or Y (horizontal rule).
+/// Splits a border's total thickness into its rules across the thickness
+/// axis, returning `(offset_from_outer_edge, sub_thickness)` pairs in px:
+/// [`border_styles::stripes`] in pixels. `Double` draws two equal lines
+/// separated by an equal gap (1/3 each); `Triple` three with equal gaps (1/5
+/// each).
+#[cfg(test)]
 fn border_band_offsets(kind: BorderKind, thickness: f64) -> Vec<(f64, f64)> {
     if thickness <= 0.0 {
         return Vec::new();
     }
-    match kind {
-        BorderKind::Double => {
-            let unit = thickness / 3.0;
-            vec![(0.0, unit), (2.0 * unit, unit)]
-        }
-        BorderKind::Triple => {
-            let unit = thickness / 5.0;
-            vec![(0.0, unit), (2.0 * unit, unit), (4.0 * unit, unit)]
-        }
-        _ => vec![(0.0, thickness)],
-    }
+    border_styles::stripes(kind)
+        .into_iter()
+        .map(|stripe| (stripe.start * thickness, stripe.width * thickness))
+        .collect()
 }
 
 /// Splits a border edge into "lit" run segments along its length axis,
-/// returning `(start_offset, run_length)` pairs in px. Solid kinds (Single,
-/// Thick, Double, Triple, None) return a single full-length run so the caller
-/// paints them exactly as before; dash/dot kinds emit a repeating on/off
-/// pattern scaled to the edge thickness (so thicker rules get longer dashes,
-/// matching Word's proportional dashing). Axis-agnostic: `length` is the edge's
-/// running direction (Y for vertical rules, X for horizontal rules), and
-/// `thickness` is the cross-axis weight used to scale the pattern.
+/// returning `(start_offset, run_length)` pairs in px. Solid kinds return a
+/// single full-length run; dash/dot kinds emit a repeating on/off pattern
+/// scaled to the edge thickness (so thicker rules get longer dashes, matching
+/// Word's proportional dashing).
+#[cfg(test)]
 fn border_dash_segments(kind: BorderKind, length: f64, thickness: f64) -> Vec<(f64, f64)> {
-    if length <= 0.0 {
-        return Vec::new();
-    }
-    // Pattern is a sequence of (on_units, off_units) repeated; one "unit" is the
-    // edge thickness clamped to a 1px floor so hairline rules still dash.
-    let pattern: &[(f64, f64)] = match kind {
-        BorderKind::Dashed => &[(3.0, 2.0)],
-        BorderKind::DashSmallGap => &[(3.0, 1.0)],
-        BorderKind::Dotted => &[(1.0, 1.0)],
-        BorderKind::DotDash => &[(4.0, 2.0), (1.0, 2.0)],
-        BorderKind::DotDotDash => &[(4.0, 2.0), (1.0, 2.0), (1.0, 2.0)],
-        // Canvas has no wave primitive; approximate with an even dash.
-        BorderKind::Wave => &[(2.0, 2.0)],
-        // Solid kinds span the full length in one run.
-        _ => return vec![(0.0, length)],
-    };
-    let unit = thickness.max(1.0);
-    let mut segments = Vec::new();
-    let mut pos = 0.0;
-    let mut idx = 0usize;
-    while pos < length {
-        let (on, off) = pattern[idx % pattern.len()];
-        let on_len = (on * unit).min(length - pos);
-        if on_len > 0.0 {
-            segments.push((pos, on_len));
-        }
-        pos += (on + off) * unit;
-        idx += 1;
-    }
-    segments
+    border_styles::pattern_runs(border_styles::pattern(kind), length, thickness)
 }
 
 /// Renderer-ready paragraph borders. `bar` is Word's additional vertical rule
@@ -2586,6 +2555,33 @@ fn line_number_to_display(line_ordinal: u32, settings: &ResolvedLineNumbering) -
 /// the corresponding CSS hex colour.  Returns `None` for the "none" value
 /// or unrecognised names.
 fn word_highlight_to_css(name: &str) -> Option<&'static str> {
+    // `w:highlight` is an enumeration, but writers differ in case (`darkblue`).
+    if name.bytes().any(|byte| byte.is_ascii_uppercase())
+        && !matches!(
+            name,
+            "darkBlue"
+                | "darkCyan"
+                | "darkGreen"
+                | "darkMagenta"
+                | "darkRed"
+                | "darkYellow"
+                | "darkGray"
+                | "lightGray"
+        )
+    {
+        return word_highlight_to_css(&name.to_ascii_lowercase());
+    }
+    match name {
+        "darkblue" => return Some("#000080"),
+        "darkcyan" => return Some("#008080"),
+        "darkgreen" => return Some("#008000"),
+        "darkmagenta" => return Some("#800080"),
+        "darkred" => return Some("#800000"),
+        "darkyellow" => return Some("#808000"),
+        "darkgray" => return Some("#808080"),
+        "lightgray" => return Some("#c0c0c0"),
+        _ => {}
+    }
     match name {
         "yellow" => Some("#ffff00"),
         "green" => Some("#00ff00"),
@@ -2605,6 +2601,25 @@ fn word_highlight_to_css(name: &str) -> Option<&'static str> {
         "white" => Some("#ffffff"),
         "none" | "" => None,
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod highlight_tests {
+    #[test]
+    fn every_highlight_colour_is_drawn_whatever_its_case() {
+        for (name, css) in [
+            ("white", "#ffffff"),
+            ("black", "#000000"),
+            ("darkBlue", "#000080"),
+            ("DarkBlue", "#000080"),
+            ("darkblue", "#000080"),
+            ("lightGray", "#c0c0c0"),
+            ("YELLOW", "#ffff00"),
+        ] {
+            assert_eq!(super::word_highlight_to_css(name), Some(css), "{name}");
+        }
+        assert_eq!(super::word_highlight_to_css("none"), None);
     }
 }
 
@@ -3636,6 +3651,11 @@ where
     document_no_tab_hanging_indent: bool,
     /// The document's automatic hyphenation (`w:autoHyphenation`, …).
     document_hyphenation: jade_docx_reader::HyphenationSettings,
+    /// Whether justified lines ending in a manual break are spread (no
+    /// `doNotExpandShiftReturn`).
+    document_expands_shift_return: bool,
+    /// `ulTrailSpace`: spaces at a line's end are underlined.
+    document_underlines_trailing_spaces: bool,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -4463,6 +4483,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             Some("vertical_text")
@@ -4806,6 +4827,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             count_miss();
@@ -5051,6 +5073,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return None;
@@ -5637,6 +5660,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         )
     }
@@ -7934,7 +7958,7 @@ where
         let page_height = points_to_px(DEFAULT_PAGE_HEIGHT_PT);
         let margin = points_to_px(DEFAULT_MARGIN_PT);
         Self {
-            host: RenderHostSlot { value: host },
+            host: RenderHostSlot::new(host),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -8145,6 +8169,8 @@ where
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
             document_hyphenation: jade_docx_reader::HyphenationSettings::default(),
+            document_expands_shift_return: false,
+            document_underlines_trailing_spaces: false,
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -10156,22 +10182,25 @@ where
         context.save();
         // Reuse the table-cell border drawing pipeline so page borders honor
         // line styles (single/double/dashed/dotted/…), not just solid.
-        let draw_edge =
-            |edge: &jade_docx_reader::document::BorderEdge, x0: f64, y0: f64, x1: f64, y1: f64| {
-                let spec = border_edge_to_spec(edge);
-                let _ = self.draw_cell_border_side(&context, x0, y0, x1, y1, &spec);
-            };
+        use border_styles::BorderSide;
+        let draw_edge = |edge: &jade_docx_reader::document::BorderEdge,
+                         side: BorderSide,
+                         (x0, y0): (f64, f64),
+                         (x1, y1): (f64, f64)| {
+            let spec = border_edge_to_spec(edge);
+            let _ = self.draw_border_side(&context, x0, y0, x1, y1, &spec, side);
+        };
         if let Some(edge) = borders.top.as_ref() {
-            draw_edge(edge, left, top, right, top);
+            draw_edge(edge, BorderSide::Top, (left, top), (right, top));
         }
         if let Some(edge) = borders.bottom.as_ref() {
-            draw_edge(edge, left, bottom, right, bottom);
+            draw_edge(edge, BorderSide::Bottom, (left, bottom), (right, bottom));
         }
         if let Some(edge) = borders.left.as_ref() {
-            draw_edge(edge, left, top, left, bottom);
+            draw_edge(edge, BorderSide::Left, (left, top), (left, bottom));
         }
         if let Some(edge) = borders.right.as_ref() {
-            draw_edge(edge, right, top, right, bottom);
+            draw_edge(edge, BorderSide::Right, (right, top), (right, bottom));
         }
         // `context.restore()` resets the line-dash / stroke state mutated by
         // `draw_cell_border_side`, keeping subsequent page chrome (crop marks)
@@ -10464,6 +10493,7 @@ where
             Some(TextDirection::BtLrV) => 4,
             Some(TextDirection::LrTb) => 5,
             Some(TextDirection::LrTbV) => 6,
+            Some(TextDirection::TbLrV) => 7,
         };
         dir_tag.hash(&mut hasher);
         self.document_snap_to_grid_default.hash(&mut hasher);
@@ -11656,6 +11686,25 @@ where
                     return None;
                 }
             }
+        }
+        // Gate 4b: an object of another paragraph reaching into the band. The
+        // band is cleared and only the edited paragraph repainted, so the
+        // object would be erased there; and the page's layer order (objects
+        // behind and in front of text) can only be honoured by a page paint.
+        if self.object_debug_regions.borrow().iter().any(|object| {
+            let reach = if object.rotation_deg.abs() > f64::EPSILON {
+                object.width.max(object.height)
+            } else {
+                0.0
+            };
+            object.page == page
+                && object.paragraph_index != edited
+                && object.y - reach < paint_bottom
+                && object.y + object.height + reach > local_top
+        }) {
+            self.band_redraw_fallback_floating
+                .set(self.band_redraw_fallback_floating.get() + 1);
+            return None;
         }
         Some(BandRedrawPlan {
             page,
@@ -12851,6 +12900,7 @@ where
         footer_lines: Option<&[HeaderLine]>,
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
+        self.reset_page_layers(&document_rc);
         let align_is_offset = |value| {
             matches!(
                 resolve_section_vertical_align(value),
@@ -13220,6 +13270,8 @@ where
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
         self.math_settings = math::settings_from(&document.math_properties);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
+        self.document_expands_shift_return = !document.compat.do_not_expand_shift_return();
+        self.document_underlines_trailing_spaces = document.compat.underline_trailing_spaces();
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
         if self.document_hyphenation != document.hyphenation {
             // Every paragraph's lines may end elsewhere.
@@ -14359,6 +14411,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return false;
@@ -15676,12 +15729,12 @@ where
                     self.current_doc_grid.as_ref(),
                 ),
             );
-        if paragraph_style
-            .east_asian_rules
-            .character_spacing_control
-            .as_deref()
-            == Some("compressPunctuation")
-            && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
+        if jade_docx_layout::line_wrap::compresses_punctuation(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+        ) && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
             && !doc_grid_has_active_char_grid(self.current_doc_grid.as_ref())
         {
             paragraph_style.east_asian_advance_scale =
@@ -16071,6 +16124,7 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
             && (options.revision_view().is_plain()
@@ -16758,6 +16812,7 @@ where
                     .and_then(|props| props.suppress_auto_hyphens)
                     .unwrap_or(false),
             );
+        paragraph_style.expand_lines_ending_in_breaks = self.document_expands_shift_return;
         let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
@@ -17832,6 +17887,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 )
             })
@@ -17957,6 +18013,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 })
         }) {
@@ -18046,6 +18103,7 @@ where
             .iter()
             .filter(|object| object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -18071,6 +18129,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if !layout_text.is_empty() {
@@ -18448,6 +18507,7 @@ where
             .into_iter()
             .filter(|object| !object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -18473,6 +18533,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if let (true, Some(render_hash)) = (cache_eligible, cache_render_hash) {
@@ -18992,6 +19053,7 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
         {
@@ -19929,89 +19991,173 @@ where
         let box_right = right_limit + right_space + right_w;
         let box_width = (box_right - box_left).max(0.0);
 
-        // Vertical rules: the thickness axis is X. The band starts at the outer
-        // edge and `border_band_offsets` distributes it across X for double/triple.
+        use border_styles::BorderSide;
+        // Vertical rules run down this line's box; their bands are given by
+        // their outer edge.
         if let Some(edge) = &borders.left {
-            for (off, sub) in border_band_offsets(edge.kind, left_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, left_w) {
-                    self.fill_border_rect(
-                        box_left + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                box_left,
+                left_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.bar {
-            for (off, sub) in border_band_offsets(edge.kind, bar_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, bar_w) {
-                    self.fill_border_rect(
-                        base_x - left_space - left_w - edge.space_px - bar_w + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                base_x - left_space - left_w - edge.space_px - bar_w,
+                bar_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.right {
-            for (off, sub) in border_band_offsets(edge.kind, right_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, right_w)
-                {
-                    self.fill_border_rect(
-                        right_limit + right_space + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Right,
+                top,
+                line_box_height,
+                right_limit + right_space + right_w,
+                right_w,
+                commands_out,
+            );
         }
-        // Horizontal rules: the thickness axis is Y.
+        // Horizontal rules span the box.
         if is_first_line {
             if let Some(edge) = &borders.top {
-                let band_top = top - edge.space_px - edge.width_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
-                }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Top,
+                    box_left,
+                    box_width,
+                    top - edge.space_px - edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
             }
         }
         if is_last_line {
             if let Some(edge) = &borders.bottom {
-                let band_top = top + line_box_height + edge.space_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Bottom,
+                    box_left,
+                    box_width,
+                    top + line_box_height + edge.space_px + edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
+            }
+        }
+    }
+
+    /// Paints one paragraph border rule in its line style. The rule runs
+    /// `length` from `start` along its edge (x for top and bottom, y for
+    /// left and right); its band is `thickness` across, from `outer` — the
+    /// band edge away from the text — inwards.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_paragraph_border_edge(
+        &self,
+        edge: &ResolvedBorderEdge,
+        side: border_styles::BorderSide,
+        start: f64,
+        length: f64,
+        outer: f64,
+        thickness: f64,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        use border_styles::BorderSide;
+        if length <= 0.0 || thickness <= 0.0 {
+            return;
+        }
+        // Position across the band, measured inwards from its outer edge.
+        let across = |from_outer: f64| match side {
+            BorderSide::Top | BorderSide::Left => outer + from_outer,
+            BorderSide::Bottom | BorderSide::Right => outer - from_outer,
+        };
+        let horizontal = matches!(side, BorderSide::Top | BorderSide::Bottom);
+        let pattern = border_styles::pattern(edge.kind);
+        let (line_width, polylines) = border_styles::pattern_polylines(pattern, length, thickness);
+        if !polylines.is_empty() {
+            let color = Rc::clone(&edge.color);
+            for line in polylines {
+                let points: Rc<[(f64, f64)]> = line
+                    .into_iter()
+                    .map(|(along, from_outer)| {
+                        if horizontal {
+                            (start + along, across(from_outer))
+                        } else {
+                            (across(from_outer), start + along)
+                        }
+                    })
+                    .collect();
+                self.stroke_border_polyline(points, line_width, &color, commands_out);
+            }
+            return;
+        }
+        for stripe in border_styles::stripes(edge.kind) {
+            let near = stripe.start * thickness;
+            let far = (stripe.start + stripe.width) * thickness;
+            let band_start = across(near).min(across(far));
+            let band = far - near;
+            let color: Rc<str> = match stripe.tone {
+                border_styles::Tone::Line => Rc::clone(&edge.color),
+                tone => Rc::from(border_styles::tone_color(&edge.color, tone, side)),
+            };
+            for (offset, run) in border_styles::pattern_runs(pattern, length, thickness) {
+                if horizontal {
+                    self.fill_border_rect(
+                        start + offset,
+                        band_start,
+                        run,
+                        band,
+                        &color,
+                        commands_out,
+                    );
+                } else {
+                    self.fill_border_rect(
+                        band_start,
+                        start + offset,
+                        band,
+                        run,
+                        &color,
+                        commands_out,
+                    );
                 }
             }
+        }
+    }
+
+    /// Strokes one polyline of a border rule, recording it for cache replay.
+    fn stroke_border_polyline(
+        &self,
+        points: Rc<[(f64, f64)]>,
+        line_width: f64,
+        color: &Rc<str>,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+        let command = DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color: Rc::clone(color),
+        };
+        if self.should_draw_current_page_for_render() {
+            let _ = crate::draw_command::executor::execute_commands(
+                &self.host.painter(),
+                std::slice::from_ref(&command),
+            );
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.push(command);
         }
     }
 
@@ -20084,6 +20230,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             ) {
                 let result = self.render_text_line_with_direction(
                     paragraph_index,
@@ -20283,7 +20430,10 @@ where
         }
 
         let distribute_justification_to_whitespace =
-            |prepared_segments: &mut [PreparedSegment<'_, '_>], extra_total: f64| -> f64 {
+            |prepared_segments: &mut [PreparedSegment<'_, '_>],
+             extra_total: f64,
+             soft_break: bool|
+             -> f64 {
                 if extra_total <= 0.0 {
                     return 0.0;
                 }
@@ -20338,8 +20488,10 @@ where
                     opportunities
                         .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
                 }
+                // A line ending in a manual break has no trailing break
+                // space: its last space is dropped only when nothing follows.
                 if matches!(opportunities.last(), Some(&(last_segment, last_glyph))
-                    if !mac || only_whitespace_from(last_segment, last_glyph + 1))
+                    if !mac && soft_break || only_whitespace_from(last_segment, last_glyph + 1))
                 {
                     opportunities.pop();
                 }
@@ -21106,7 +21258,9 @@ where
 
             let available_for_line = right_limit - (base_x + first_line_offset);
             let justify = is_justified_alignment(&paragraph_style.alignment)
-                && matches!(break_kind, LineBreakKind::Soft);
+                && (matches!(break_kind, LineBreakKind::Soft)
+                    || paragraph_style.expand_lines_ending_in_breaks
+                        && matches!(break_kind, LineBreakKind::Hard));
 
             let has_inline_objects = wrapped_line
                 .clusters
@@ -21534,6 +21688,7 @@ where
                     distribute_justification_to_whitespace(
                         prepared_segments.as_mut_slice(),
                         extra_total,
+                        matches!(break_kind, LineBreakKind::Soft),
                     )
                 } else {
                     0.0
@@ -21734,6 +21889,19 @@ where
                 })
                 .collect::<Vec<_>>();
             let character_borders = merge_character_border_fragments(&character_border_fragments);
+            // Where the line's trailing spaces start, as (segment, x within
+            // it): Word underlines them only under `ulTrailSpace`.
+            let trailing_spaces_from = (!self.document_underlines_trailing_spaces)
+                .then(|| {
+                    trailing_whitespace_start(prepared_segments.iter().map(|prepared| {
+                        (
+                            prepared.segment.text.as_str(),
+                            prepared.glyph_steps.as_slice(),
+                            prepared.width,
+                        )
+                    }))
+                })
+                .flatten();
             for (segment_index, (prepared, start_x)) in
                 prepared_segments.iter().zip(positions.iter()).enumerate()
             {
@@ -21980,12 +22148,21 @@ where
                         .underline_color
                         .clone()
                         .unwrap_or_else(|| text_style.fill_color.clone());
+                    let underline_end = match trailing_spaces_from {
+                        Some((segment, _)) if segment_index > segment => 0.0,
+                        Some((segment, x)) if segment_index == segment => x,
+                        _ => f64::INFINITY,
+                    };
                     for (offset, underline_width) in underline_spans_for_planned_glyphs(
                         style.underline_kind.as_deref(),
                         &prepared.segment.text,
                         &prepared.glyph_steps,
                         width,
                     ) {
+                        let underline_width = underline_width.min(underline_end - offset);
+                        if underline_width <= 0.0 {
+                            continue;
+                        }
                         let underline_x = *start_x + offset;
                         self.draw_underline(
                             &context,
@@ -23142,6 +23319,13 @@ where
         width: f64,
         height: f64,
     ) -> Result<(), P::Error> {
+        if let TextBoxShape::Preset(id) = shape {
+            // The outline that is filled: a preset's stroke-only paths (a
+            // scroll's curls, a brace) are not part of its area.
+            context.begin_path();
+            Self::trace_preset_geometry(context, id, x, y, width, height, true);
+            return Ok(());
+        }
         Self::trace_text_box_shape_with_line_ends(context, shape, None, None, x, y, width, height)
     }
 
@@ -23333,6 +23517,52 @@ where
         paint_result
     }
 
+    /// Traces a preset geometry from ECMA-376's shape-guide definitions,
+    /// honouring the shape's own adjust values; a rectangle when the preset is
+    /// unknown. `filled` picks the paths the preset fills (for a fill,
+    /// shadow or glow) rather than the ones it strokes (for its outline).
+    fn trace_preset_geometry<P: Painter>(
+        context: &P,
+        id: jade_docx_reader::document::PresetGeometryId,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        filled: bool,
+    ) {
+        let geometry = id.geometry();
+        let Some((paths, _)) = jade_pptx_layout::preset_shapes::outline(
+            &geometry.name,
+            &geometry.adjustments,
+            width,
+            height,
+        ) else {
+            context.rect(x, y, width, height);
+            return;
+        };
+        for path in paths.iter().filter(|path| {
+            if filled {
+                path.fill != jade_pptx_layout::PathFill::None
+            } else {
+                path.stroked
+            }
+        }) {
+            for subpath in &path.subpaths {
+                for (index, &(px, py)) in subpath.points.iter().enumerate() {
+                    let (px, py) = (x + px * width, y + py * height);
+                    if index == 0 {
+                        context.move_to(px, py);
+                    } else {
+                        context.line_to(px, py);
+                    }
+                }
+                if subpath.closed {
+                    context.close_path();
+                }
+            }
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn trace_text_box_shape_with_line_ends<P: Painter>(
         context: &P,
@@ -23356,6 +23586,9 @@ where
         match shape {
             TextBoxShape::Rectangle => {
                 context.rect(x, y, width, height);
+            }
+            TextBoxShape::Preset(id) => {
+                Self::trace_preset_geometry(context, id, x, y, width, height, false);
             }
             TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble => {
                 // DrawingML's line runs from the frame's top left to its
@@ -28103,7 +28336,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => table_layout_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => table_layout_vertical_paragraph(
                 self,
                 text,
                 run_styles,
@@ -28168,7 +28402,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => self.render_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => self.render_vertical_paragraph(
                 &paragraph_layout,
                 paragraph_index,
                 direction,
@@ -28193,7 +28428,9 @@ where
     fn paragraph_table_align(style: &ParagraphStyle, direction: TextDirection) -> TableTextAlign {
         let default_align = match direction {
             TextDirection::TbRl | TextDirection::TbRlV => TableTextAlign::Right,
-            TextDirection::BtLr | TextDirection::BtLrV => TableTextAlign::Left,
+            TextDirection::BtLr | TextDirection::BtLrV | TextDirection::TbLrV => {
+                TableTextAlign::Left
+            }
             TextDirection::LrTb | TextDirection::LrTbV => TableTextAlign::Left,
         };
 
@@ -31599,6 +31836,8 @@ where
         &mut self,
         switch: impl FnOnce(&mut crate::render_host::BoxedRenderHost<HostPainter>) -> R,
     ) -> R {
+        // Whatever the page held back is painted before leaving it.
+        let _ = self.composite_page_layers();
         self.restore_band_clip_if_active();
         let result = switch(&mut self.host);
         self.resume_structure_on_new_page();
@@ -34393,6 +34632,7 @@ where
     /// area carried onto the page is reserved here too (#294).
     fn render_header_simple(&mut self) -> Result<(), JsValue> {
         self.render_page_header()?;
+        self.begin_page_body_layer();
         self.reserve_carried_footnote_on_new_page()
     }
 
@@ -34528,6 +34768,13 @@ where
     }
 
     fn render_footer_simple(&mut self) -> Result<(), JsValue> {
+        let footer = self.render_page_footer_and_notes();
+        // Footnotes and footer are on the page: paint what it held back.
+        let layers = self.composite_page_layers();
+        footer.and(layers)
+    }
+
+    fn render_page_footer_and_notes(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode {
             return Ok(());
         }
@@ -34536,6 +34783,8 @@ where
         }
 
         self.render_pending_footnotes_for_current_page()?;
+        // The footer belongs under the body's floating objects.
+        self.end_page_body_layer();
 
         if self.hides_page_chrome() {
             self.footer_drawn = true;
@@ -34859,58 +35108,17 @@ where
         &self,
         text: &str,
         properties: Option<&RunProperties>,
-        paragraph_style: &ParagraphStyle,
+        _paragraph_style: &ParagraphStyle,
     ) -> Result<Option<Vec<(String, RunProperties)>>, JsValue> {
         let Some(props) = properties else {
             return Ok(None);
         };
-        if !props
-            .east_asian_layout
-            .as_deref()
-            .is_some_and(|layout| layout.combine)
-        {
-            return Ok(None);
-        }
-        let characters: Vec<&str> = jade_docx_layout::graphemes::grapheme_indices(text)
-            .map(|(_, grapheme)| grapheme)
-            .collect();
-        if characters.len() < 2 || text.contains(['\t', '\n']) {
-            return Ok(None);
-        }
-        let base = self
-            .resolve_applied_run_style_uncached(Some(props))
-            .font_size_pt;
-        let half = base / 2.0;
-        let split = characters.len().div_ceil(2);
-        let top: String = characters[..split].concat();
-        let bottom: String = characters[split..].concat();
-        let mut small = props.clone();
-        small.font_size = Some(half);
-        small.font_size_complex = Some(half);
-        let style = self.resolve_applied_run_style_uncached(Some(&small));
-        let top_width = self.measure_text_with_spacing(&top, &style, Some(paragraph_style))?;
-        let bottom_width =
-            self.measure_text_with_spacing(&bottom, &style, Some(paragraph_style))?;
-        let total = top_width + bottom_width;
-        if total <= f64::EPSILON {
-            return Ok(None);
-        }
-        // 割注's brackets take full-size room either side of the lines.
-        let brackets = props
-            .east_asian_layout
-            .as_deref()
-            .and_then(|layout| combine_brackets(layout.combine_brackets.as_deref()));
-        let full = self.resolve_applied_run_style_uncached(Some(props));
-        let bracket_width = match brackets {
-            Some((open, close)) => {
-                self.measure_text_with_spacing(open, &full, Some(paragraph_style))?
-                    + self.measure_text_with_spacing(close, &full, Some(paragraph_style))?
-            }
-            None => 0.0,
-        };
-        let scale = (top_width.max(bottom_width) + bracket_width) / total;
-        small.text_scale = Some(props.text_scale.unwrap_or(100.0) * scale as f32);
-        Ok(Some(vec![(text.to_string(), small)]))
+        // One rule for layout and drawing (`jade_docx_layout::combined_characters`),
+        // so the headless line breaks are the drawn ones.
+        Ok(
+            jade_docx_layout::combined_characters::combined_run_properties(self, text, props)?
+                .map(|small| vec![(text.to_string(), small)]),
+        )
     }
 
     fn apply_eq_distributed_text_scale(
@@ -35443,6 +35651,30 @@ fn word_only_underline_spans(glyphs: &[(f64, bool)], segment_width: f64) -> Vec<
         }
     }
     spans
+}
+
+/// Where a line's trailing whitespace starts: the segment holding the first
+/// trailing blank and the x within it. `None` when the line ends in ink.
+fn trailing_whitespace_start<'a>(
+    segments: impl DoubleEndedIterator<Item = (&'a str, &'a [PlannedGlyphLayoutStep], f64)>
+        + ExactSizeIterator,
+) -> Option<(usize, f64)> {
+    let mut trailing = None;
+    for (index, (text, steps, width)) in segments.enumerate().rev() {
+        let last_ink = steps
+            .iter()
+            .rposition(|step| !step.text(text).chars().all(char::is_whitespace));
+        match last_ink {
+            Some(ink) => {
+                let end = steps.get(ink + 1).map_or(width, |next| next.x_offset);
+                return (end < width - 1e-6 || trailing.is_some())
+                    .then_some((index, end.min(width)));
+            }
+            None if steps.is_empty() && width <= 0.0 => {}
+            None => trailing = Some((index, 0.0)),
+        }
+    }
+    trailing
 }
 
 fn underline_spans_for_planned_glyphs(
@@ -38398,7 +38630,7 @@ mod tests {
             .filter(|&index| renderer.cached_paragraph_start_page(index) == Some(1))
             .count();
         assert!(on_first_page > 3);
-        let painter = renderer.host.painter();
+        let painter = (**renderer.host).painter();
         painter.clear();
         rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
             renderer.arm_fast_replay_for_complete_layout_edit(0, height);

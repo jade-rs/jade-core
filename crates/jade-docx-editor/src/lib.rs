@@ -22,6 +22,7 @@ pub mod render_host;
 #[cfg(not(feature = "otel"))]
 #[macro_use]
 pub(crate) mod tracing_stub;
+pub(crate) mod art_border_names;
 pub(crate) mod chart_paint;
 pub mod drawing_xml;
 pub mod fields;
