@@ -13185,9 +13185,19 @@ impl WordDocument {
                 "offset {offset} is not a UTF-8 boundary in paragraph {paragraph_index}"
             ));
         }
+        // A line's box is as thin as the line across it: a perfectly straight
+        // vertical or horizontal one is a pixel wide or tall.
+        let min_extent = if matches!(
+            spec.shape,
+            TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble
+        ) {
+            1.0
+        } else {
+            12.0
+        };
         for (label, value, min, max) in [
-            ("width", spec.width_px, 12.0, 4096.0),
-            ("height", spec.height_px, 12.0, 4096.0),
+            ("width", spec.width_px, min_extent, 4096.0),
+            ("height", spec.height_px, min_extent, 4096.0),
             ("border width", spec.border_width_px, 0.0, 64.0),
         ] {
             if !value.is_finite() || !(min..=max).contains(&value) {

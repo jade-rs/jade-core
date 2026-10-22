@@ -136,3 +136,73 @@ fn a_resized_ink_drawing_scales_its_strokes() {
     let after = extent(&render(&model));
     assert!((after - 2.0 * before).abs() < 2.0, "{before} -> {after}");
 }
+
+/// [`word_ink_docx`] with its stroke made perfectly vertical and its box
+/// saved with no width (`cx="0"`).
+fn vertical_word_ink_docx() -> Vec<u8> {
+    let mut input = zip::ZipArchive::new(std::io::Cursor::new(word_ink_docx())).unwrap();
+    let mut cursor = std::io::Cursor::new(Vec::new());
+    {
+        let mut zip = zip::ZipWriter::new(&mut cursor);
+        for index in 0..input.len() {
+            let mut file = input.by_index(index).unwrap();
+            let name = file.name().to_string();
+            let mut data = String::new();
+            std::io::Read::read_to_string(&mut file, &mut data).unwrap();
+            let data = data
+                .replace(
+                    "5000 5000 0,'500'0'10,'500'250'10,\"0\"0'10",
+                    "5000 5000 0,'0'500'10,'0'500'10",
+                )
+                .replace(r#"cx="381000" cy="114300""#, r#"cx="0" cy="381000""#);
+            zip.start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(data.as_bytes()).unwrap();
+        }
+        zip.finish().unwrap();
+    }
+    cursor.into_inner()
+}
+
+#[test]
+fn a_straight_stroke_saved_with_no_width_gets_a_box_as_wide_as_the_stroke() {
+    let model = futures::executor::block_on(WordDocument::load(
+        &vertical_word_ink_docx(),
+        &Options::default(),
+    ))
+    .expect("load");
+    let drawings = model.ink_drawings();
+    let brush = drawings[0].traces[0].brush.width_px;
+    assert!(brush > 1.5, "{brush}");
+    assert!(
+        (drawings[0].width_px - brush).abs() < 1e-6,
+        "the box is the stroke's width: {:?}",
+        drawings[0]
+    );
+    // Drawn as the line it is, at the brush's width, where Word put it.
+    let ops = render(&model);
+    let red = ops
+        .iter()
+        .position(|op| matches!(op, Op::SetStrokeStyle(color) if color == "#E71224"))
+        .expect("the stroke's colour");
+    let width = ops[red..]
+        .iter()
+        .find_map(|op| match op {
+            Op::SetLineWidth(width) => Some(*width),
+            _ => None,
+        })
+        .unwrap();
+    assert!((width - brush).abs() < 0.01, "{width} vs {brush}");
+    let xs: Vec<f64> = ops[red..]
+        .iter()
+        .take_while(|op| !matches!(op, Op::Stroke))
+        .filter_map(|op| match op {
+            Op::MoveTo(x, _) | Op::LineTo(x, _) => Some(*x),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        xs.iter().all(|x| (x - (200.0 + brush / 2.0)).abs() < 0.01),
+        "{xs:?}"
+    );
+}

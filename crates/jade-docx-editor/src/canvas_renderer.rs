@@ -25551,13 +25551,26 @@ where
             run_index,
             kind: FloatingObjectKind::TextBox,
         };
-        let transform = self.resolve_floating_object_transform(
-            target,
-            text_box.width_px.unwrap_or(200.0).max(1.0),
+        // A text box is at least a line tall. A line shape is its own extent:
+        // a perfectly horizontal one (`cy` of a pixel, or none) made a line
+        // tall is drawn as a slope across that height.
+        let height = if text_box.shape.is_line() {
+            text_box.height_px.unwrap_or(0.0).max(0.0)
+        } else {
             text_box
                 .height_px
                 .unwrap_or(line_height * 2.0)
-                .max(line_height),
+                .max(line_height)
+        };
+        let width = if text_box.shape.is_line() {
+            text_box.width_px.unwrap_or(0.0).max(0.0)
+        } else {
+            text_box.width_px.unwrap_or(200.0).max(1.0)
+        };
+        let transform = self.resolve_floating_object_transform(
+            target,
+            width,
+            height,
             &text_box.layout,
             paragraph_start_y,
             line_height,
