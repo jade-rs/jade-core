@@ -12757,6 +12757,24 @@ where
         self.view_geometry
     }
 
+    /// Switches the live view (Web レイアウト, アウトライン, back to the
+    /// pages) for [`Self::rerender_with_cached_state`] to lay out again. The
+    /// setters forget the last options so the next full render sees a change;
+    /// the cached re-render needs them, and its full repaint already
+    /// bypasses change detection.
+    pub fn set_view_layout(
+        &mut self,
+        geometry: Option<ViewGeometry>,
+        indents: Option<Rc<HashMap<usize, f64>>>,
+    ) {
+        let options = self.last_options.clone();
+        self.set_view_geometry(geometry);
+        self.set_outline_indents(indents);
+        if self.last_options.is_none() {
+            self.last_options = options;
+        }
+    }
+
     /// アウトライン: each paragraph (by index) set in by its level, from the
     /// next render; `None` lays them out by their own indents again.
     pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
