@@ -175,6 +175,22 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// 区切り ▸ ページ区切り: `page`, `column` (段区切り) or `textWrapping`
+    /// (文字列の折り返し) at the caret, as one undo step.
+    #[wasm_bindgen(js_name = insertBreak)]
+    pub fn insert_break(&self, kind: String) -> Result<JsValue, JsValue> {
+        use crate::word::page_setup::{PageBreak, WordPageSetup};
+        let kind = match kind.as_str() {
+            "page" => PageBreak::Page,
+            "column" => PageBreak::Column,
+            "textWrapping" => PageBreak::TextWrapping,
+            other => return Err(JsValue::from_str(&format!("unknown break {other}"))),
+        };
+        self.run_word_session("word_insert_break", move |session| {
+            session.insert_page_break(kind)
+        })
+    }
+
     /// A list style applied to the selection: it joins that style's list.
     #[wasm_bindgen(js_name = applyListStyle)]
     pub fn apply_list_style(&self, num_id: String) -> Result<JsValue, JsValue> {
