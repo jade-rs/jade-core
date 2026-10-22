@@ -1,5 +1,6 @@
 pub mod advance_field;
 pub mod border_geometry;
+pub mod border_styles;
 pub mod combined_characters;
 pub mod compact_string;
 pub mod constants;

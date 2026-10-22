@@ -268,3 +268,31 @@ fn html_auto_spacing_drops_at_the_top_and_bottom_of_a_table_cell() {
         "{html:?} vs {fixed:?}"
     );
 }
+
+/// Character borders are drawn in table cells too, in their line style.
+#[test]
+fn a_character_border_in_a_table_cell_is_drawn_in_its_line_style() {
+    let fills = |style: &str| {
+        let body = format!(
+            r#"<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="5000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:bdr w:val="{style}" w:sz="12" w:space="0" w:color="00FF00"/></w:rPr><w:t>boxed</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/>"#
+        );
+        let data = super::section_tests::build_docx_with_body(&body);
+        let word_doc = futures::executor::block_on(crate::word_document::WordDocument::load(
+            &data,
+            &Options::default(),
+        ))
+        .expect("load");
+        let ops = ops(word_doc.document.as_ref().expect("document"));
+        let mut green = false;
+        ops.iter()
+            .filter(|op| {
+                if let Op::SetFillStyle(color) = op {
+                    green = color.eq_ignore_ascii_case("#00ff00");
+                }
+                green && matches!(op, Op::FillRect(..))
+            })
+            .count()
+    };
+    assert_eq!(fills("single"), 4);
+    assert_eq!(fills("double"), 8);
+}
