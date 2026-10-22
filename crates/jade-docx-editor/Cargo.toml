@@ -26,6 +26,13 @@ sha2 = "0.10"
 cfb = "0.7"
 bumpalo = { version = "3", features = ["collections"] }
 png = "0.17"
+resvg = { version = "0.45.1", default-features = false }
+futures = "0.3"
+flate2 = "1"
+encoding_rs = "0.8"
+jade-selection = { path = "../jade-selection" }
+jade-opc = { path = "../jade-opc" }
+quick-xml = "0.39"
 # Pictures drawn with their colour adjustments and soft edges applied, and
 # the picture tools' pixel work (background removal).
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
@@ -36,6 +43,10 @@ rustc-hash = "2.1"
 jade-docx-writer = { path = "../jade-docx-writer" }
 jade-docx-reader = { path = "../jade-docx-reader" }
 jade-docx-convert = { path = "../jade-docx-convert" }
+jade-docx-diff = { path = "../jade-docx-diff" }
+jade-docx-merge = { path = "../jade-docx-merge" }
+hypher = { version = "0.1", default-features = false, features = ["english"] }
+getrandom = { version = "0.2", features = ["js"] }
 jade-doc-reader = { path = "../jade-doc-reader" }
 jade-doc-writer = { path = "../jade-doc-writer" }
 # Word charts drawn by the chart layout the spreadsheet renderer uses.
