@@ -13,6 +13,11 @@ pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
 pub mod revision_view;
+pub mod text_edit;
+/// Word's ribbon and dialogs as UI-free models over a [`word::WordSession`]:
+/// what every shell — the browser IDE, jade-office's native and web apps —
+/// edits a document with.
+pub mod word;
 pub use jade_docx_reader::{
     comments, common, document, docx_xml, field_datetime, inkml, numbering, parser, settings,
     styles, theme,
