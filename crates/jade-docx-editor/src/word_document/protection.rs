@@ -617,8 +617,13 @@ impl WordDocument {
         else {
             return Ok(());
         };
-        // Setting or lifting the protection itself is not an edit.
-        if self.protection_lifted || name.contains("protection") || name.contains("restriction") {
+        // Setting or lifting the protection itself is not an edit
+        // (保護の開始 here, フォームの保護 on the 開発 tab).
+        if self.protection_lifted
+            || name.contains("protection")
+            || name.contains("restriction")
+            || name == "protect_forms"
+        {
             return Ok(());
         }
         let commenting = matches!(
@@ -640,10 +645,19 @@ impl WordDocument {
                 .iter()
                 .any(|range| range.start <= at && at <= range.end)
         });
+        // フォームへの入力: filling a form's fields and controls is what the
+        // protection leaves; where typing may land is the content controls'
+        // own check (`edit_refusal`).
+        let filling_form = restriction.kind == Some(EditingKind::Forms)
+            && (FORM_FILLING_COMMANDS.contains(&name)
+                || at.is_some_and(|(paragraph, offset)| {
+                    let at = TextPosition::new(paragraph, offset);
+                    self.edit_refusal(at, at, false).is_none()
+                }));
         match restriction.kind {
             None | Some(EditingKind::TrackedChanges) => Ok(()),
             Some(EditingKind::Comments) if commenting => Ok(()),
-            _ if inside_exception => Ok(()),
+            _ if inside_exception || filling_form => Ok(()),
             Some(kind) => Err(format!("protected: {}", kind.attribute())),
         }
     }
@@ -667,6 +681,19 @@ impl WordDocument {
 }
 
 /// The commands that format characters directly.
+/// The commands that fill a form in — its check boxes, lists, dates and
+/// text — which a document protected for forms still runs.
+const FORM_FILLING_COMMANDS: [&str; 8] = [
+    "set_content_control_checked",
+    "choose_content_control_entry",
+    "set_content_control_text",
+    "set_content_control_date",
+    "set_content_control_picture",
+    "set_form_check_box",
+    "choose_form_entry",
+    "set_form_text",
+];
+
 const FORMATTING_COMMANDS: [&str; 18] = [
     "apply_bold",
     "apply_italic",

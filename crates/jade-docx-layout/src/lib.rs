@@ -1,5 +1,6 @@
 pub mod advance_field;
 pub mod border_geometry;
+pub mod combined_characters;
 pub mod compact_string;
 pub mod constants;
 pub mod font_measurer;
@@ -22,5 +23,6 @@ pub mod shaping_measurer;
 pub mod text_box_geometry;
 pub mod text_extract;
 pub mod units;
+pub mod word_kinsoku;
 
 pub mod paragraph_pagination;

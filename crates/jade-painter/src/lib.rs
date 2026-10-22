@@ -19,6 +19,7 @@
 //! the renderer paints from `&self` methods throughout. Backends that need
 //! mutable state use interior mutability.
 
+pub mod capture;
 pub mod font_features;
 pub mod paper;
 pub mod recording;

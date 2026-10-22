@@ -40,6 +40,7 @@ jade-xlsx-reader = { path = "../jade-xlsx-reader" }
 jade-xlsx-layout = { path = "../jade-xlsx-layout" }
 jade-docx-annotations = { path = "../jade-docx-annotations" }
 jade-docx-layout = { path = "../jade-docx-layout" }
+jade-pptx-layout = { path = "../jade-pptx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }
 jade-painter = { path = "../jade-painter" }
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }

@@ -16,7 +16,7 @@ mod number_format;
 pub use number_format::format_chart_number;
 mod paragraph_format;
 mod placeholder;
-mod preset_shapes;
+pub mod preset_shapes;
 mod presets;
 mod style;
 mod table;

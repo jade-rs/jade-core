@@ -498,6 +498,7 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.default_tab_stop = settings.default_tab_stop;
     document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+    document.compat = settings.compat.clone();
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
     document.hyphenation = settings.hyphenation;
@@ -862,6 +863,18 @@ fn build_paragraph_input<C: LineWrapContext>(
             hyperlink: run.hyperlink.clone(),
             inline_object: None,
         });
+        // 組み文字 / 割注 take the width the renderer draws them in.
+        if let Some(last) = run_styles.last_mut() {
+            if let Some(properties) = last.properties.as_deref() {
+                if let Some(combined) = crate::combined_characters::combined_run_properties(
+                    layout_context.context,
+                    &run_text,
+                    properties,
+                )? {
+                    last.properties = Some(Rc::new(combined));
+                }
+            }
+        }
     }
     if text.trim().is_empty() {
         return Ok(None);
@@ -994,12 +1007,12 @@ fn build_paragraph_input<C: LineWrapContext>(
             merge_east_asian_rules(&defaults, props.east_asian_settings.as_ref());
         paragraph_style.enable_line_break_rules =
             paragraph_style.east_asian_rules.use_east_asian_layout;
-        if paragraph_style
-            .east_asian_rules
-            .character_spacing_control
-            .as_deref()
-            == Some("compressPunctuation")
-            && !doc_grid_has_active_line_grid(doc_grid)
+        if crate::line_wrap::compresses_punctuation(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+        ) && !doc_grid_has_active_line_grid(doc_grid)
             && !doc_grid_has_active_char_grid(doc_grid)
         {
             paragraph_style.east_asian_advance_scale =
@@ -1062,6 +1075,7 @@ fn build_paragraph_input<C: LineWrapContext>(
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         });
     if let Some(drop_cap) = paragraph
@@ -1280,13 +1294,20 @@ fn should_emit_word_oracle_line(line_text: &str) -> bool {
 }
 
 fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
-    matches!(direction, TextDirection::TbRl | TextDirection::TbRlV)
+    matches!(
+        direction,
+        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::TbLrV
+    )
 }
 
 fn table_direction_emits_vertical_oracle_lines(direction: TextDirection) -> bool {
     matches!(
         direction,
-        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::BtLr | TextDirection::BtLrV
+        TextDirection::TbRl
+            | TextDirection::TbRlV
+            | TextDirection::BtLr
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV
     )
 }
 
@@ -2483,6 +2504,7 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.default_tab_stop = settings.default_tab_stop;
         document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+        document.compat = settings.compat.clone();
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
         document.hyphenation = settings.hyphenation;
@@ -3452,6 +3474,104 @@ mod tests {
         assert!(
             lines[4].y < lines[3].y,
             "btLr should report later glyphs upward"
+        );
+    }
+
+    #[test]
+    fn a_tb_lr_v_cell_stacks_glyphs_down_and_columns_left_to_right() {
+        assert_eq!(
+            TextDirection::try_from_str("tbLrV"),
+            Some(TextDirection::TbLrV)
+        );
+        let cell = |direction| TableCell {
+            text_direction: Some(direction),
+            blocks: vec![BodyElement::from_paragraph(paragraph_with_runs(vec![
+                plain_run("abcdefghijklmnopqrstuvwxyz"),
+            ]))],
+            ..TableCell::default()
+        };
+        let lines_for = |direction| {
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![BodyElement::from_table(Table {
+                        columns: vec![TableColumn { width: Some(160.0) }],
+                        rows: vec![TableRow {
+                            height: Some(40.0),
+                            cells: vec![cell(direction)],
+                            ..TableRow::default()
+                        }],
+                        ..Table::default()
+                    })],
+                }),
+                page_settings: Some(PageSettings {
+                    width: Some(220.0),
+                    height: Some(160.0),
+                    margin_left: Some(20.0),
+                    margin_right: Some(20.0),
+                    margin_top: Some(20.0),
+                    margin_bottom: Some(20.0),
+                    ..PageSettings::default()
+                }),
+                ..Document::default()
+            };
+            let context = FixedWidthContext::new(5.0);
+            let layout = layout_document_lines(&document, &context).expect("layout table lines");
+            layout
+                .get_lines()
+                .map(|line| (line.text.clone(), line.x, line.y))
+                .collect::<Vec<_>>()
+        };
+        let left_to_right = lines_for(TextDirection::TbLrV);
+        let right_to_left = lines_for(TextDirection::TbRlV);
+        assert_eq!(left_to_right.len(), 26);
+        assert!(
+            left_to_right[1].2 > left_to_right[0].2,
+            "glyphs advance down"
+        );
+        let first = left_to_right.first().unwrap();
+        let last = left_to_right.last().unwrap();
+        assert!(
+            last.1 > first.1,
+            "later columns sit to the right: {left_to_right:?}"
+        );
+        assert!(
+            right_to_left.last().unwrap().1 < right_to_left.first().unwrap().1,
+            "tbRlV's later columns sit to the left"
+        );
+    }
+
+    #[test]
+    fn combined_characters_take_their_wider_half_and_brackets() {
+        let context = FixedWidthContext::new(5.0);
+        let mut properties = jade_docx_reader::RunProperties {
+            font_size: Some(10.5),
+            east_asian_layout: Some(Box::new(jade_docx_reader::document::EastAsianLayout {
+                combine: true,
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        let combined =
+            crate::combined_characters::combined_run_properties(&context, "abcd", &properties)
+                .unwrap()
+                .expect("a combined run");
+        assert_eq!(combined.font_size, Some(5.25));
+        // Two halves of 10px over 20px of characters.
+        assert_eq!(combined.text_scale, Some(50.0));
+        properties
+            .east_asian_layout
+            .as_mut()
+            .unwrap()
+            .combine_brackets = Some("round".into());
+        let bracketed =
+            crate::combined_characters::combined_run_properties(&context, "abcd", &properties)
+                .unwrap()
+                .unwrap();
+        assert_eq!(bracketed.text_scale, Some(100.0));
+        assert!(
+            crate::combined_characters::combined_run_properties(&context, "a", &properties)
+                .unwrap()
+                .is_none()
         );
     }
 

@@ -187,6 +187,42 @@ mod tests {
         assert_eq!(document.export_docx().unwrap(), baseline);
     }
 
+    #[test]
+    fn line_styles_keep_their_schema_spelling_and_art_takes_whole_points() {
+        let mut document = load_fixture();
+        let frame = PageBorderSpec {
+            top: Some(edge("thinthicksmallgap", 3.0, "auto")),
+            bottom: Some(edge("threeDEmboss", 1.5, "auto")),
+            left: Some(edge("Hearts", 20.0, "auto")),
+            right: Some(edge("hearts", 20.0, "auto")),
+            offset_from: Some("page".into()),
+        };
+        document
+            .set_page_borders(Some(&frame))
+            .expect("set the frame");
+        let xml = document_xml(&document.export_docx().unwrap());
+        let borders = page_borders_xml(&xml);
+        assert!(
+            borders.contains(r#"w:val="thinThickSmallGap" w:sz="24""#),
+            "{borders}"
+        );
+        assert!(
+            borders.contains(r#"w:val="threeDEmboss" w:sz="12""#),
+            "{borders}"
+        );
+        assert!(
+            borders.contains(r#"<w:left w:val="hearts" w:sz="20""#),
+            "{borders}"
+        );
+        let back = document.page_borders(None).unwrap();
+        assert_eq!(back.left.as_ref().unwrap().size_eighths, Some(20));
+        let too_wide = PageBorderSpec {
+            top: Some(edge("hearts", 40.0, "auto")),
+            ..PageBorderSpec::default()
+        };
+        assert!(document.set_page_borders(Some(&too_wide)).is_err());
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 

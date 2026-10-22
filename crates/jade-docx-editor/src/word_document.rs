@@ -665,16 +665,64 @@ pub struct BorderEdgeSpec {
     pub color: Option<String>,
 }
 
+/// Every `ST_Border` line style (ECMA-376 Part 1 §17.18.2), spelled as the
+/// schema spells it: `w:val` is case-sensitive, and Word does not read
+/// `thinthicksmallgap` as `thinThickSmallGap`.
+pub const BORDER_LINE_STYLES: [&str; 27] = [
+    "none",
+    "nil",
+    "single",
+    "thick",
+    "double",
+    "dotted",
+    "dashed",
+    "dotDash",
+    "dotDotDash",
+    "triple",
+    "thinThickSmallGap",
+    "thickThinSmallGap",
+    "thinThickThinSmallGap",
+    "thinThickMediumGap",
+    "thickThinMediumGap",
+    "thinThickThinMediumGap",
+    "thinThickLargeGap",
+    "thickThinLargeGap",
+    "thinThickThinLargeGap",
+    "wave",
+    "doubleWave",
+    "dashSmallGap",
+    "dashDotStroked",
+    "threeDEmboss",
+    "threeDEngrave",
+    "outset",
+    "inset",
+];
+
+/// `style` as the schema spells it: a line style, or (for page borders) an
+/// art border. `None` for anything else.
+pub fn canonical_border_style(style: &str) -> Option<&'static str> {
+    BORDER_LINE_STYLES
+        .iter()
+        .copied()
+        .find(|known| known.eq_ignore_ascii_case(style))
+        .or_else(|| crate::art_border_names::art_border_name(style))
+}
+
 impl BorderEdgeSpec {
     fn to_border_edge(&self) -> BorderEdge {
+        let style = self.style.as_deref().unwrap_or("single");
+        let art = crate::art_border_names::art_border_name(style).is_some();
         BorderEdge {
             val: Some(
-                self.style
-                    .clone()
-                    .unwrap_or_else(|| "single".to_string())
-                    .to_ascii_lowercase(),
+                canonical_border_style(style)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| style.to_ascii_lowercase()),
             ),
-            size_eighths: self.width.map(|pt| (pt * 8.0).round().max(0.0) as u32),
+            // An art border's `w:sz` is its tile size in whole points.
+            size_eighths: self.width.map(|pt| {
+                let units = if art { pt } else { pt * 8.0 };
+                units.round().max(0.0) as u32
+            }),
             space: None,
             color: self.color.as_deref().and_then(|color| {
                 (!color.eq_ignore_ascii_case("auto"))
@@ -805,20 +853,7 @@ fn table_style_preset_border(preset: &str) -> Result<BorderEdgeSpec, String> {
 impl TableBorderSpec {
     /// Word's line styles. `none` is the way to remove a line; the rest are the
     /// tokens `w:val` takes.
-    const STYLES: &'static [&'static str] = &[
-        "none",
-        "nil",
-        "single",
-        "double",
-        "dashed",
-        "dotted",
-        "thick",
-        "wave",
-        "dashSmallGap",
-        "dotDash",
-        "dotDotDash",
-        "triple",
-    ];
+    const STYLES: &'static [&'static str] = &BORDER_LINE_STYLES;
 
     fn validated_edges(&self) -> Result<Vec<(BorderSide, BorderEdgeSpec)>, String> {
         let edges = [
@@ -943,22 +978,50 @@ impl PageBorderSpec {
                 ));
             }
         };
+        // Art borders belong to pages alone; validate them as a line style
+        // and keep their own name.
+        let as_line =
+            |edge: &Option<BorderEdgeSpec>| {
+                edge.clone().map(|mut edge| {
+                    if edge.style.as_deref().is_some_and(|style| {
+                        crate::art_border_names::art_border_name(style).is_some()
+                    }) {
+                        edge.style = Some("single".to_string());
+                    }
+                    edge
+                })
+            };
         let validation = TableBorderSpec {
-            top: self.top.clone(),
-            bottom: self.bottom.clone(),
-            left: self.left.clone(),
-            right: self.right.clone(),
+            top: as_line(&self.top),
+            bottom: as_line(&self.bottom),
+            left: as_line(&self.left),
+            right: as_line(&self.right),
             ..TableBorderSpec::default()
         };
-        let edges = validation.validated_edges()?;
+        validation.validated_edges()?;
+        let edges = [
+            (BorderSide::Top, self.top.as_ref()),
+            (BorderSide::Bottom, self.bottom.as_ref()),
+            (BorderSide::Left, self.left.as_ref()),
+            (BorderSide::Right, self.right.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(side, edge)| edge.cloned().map(|edge| (side, edge)));
         let mut borders = PageBorders {
             offset_from,
             ..PageBorders::default()
         };
         let mut visible = false;
         for (side, spec) in edges {
+            let art = spec
+                .style
+                .as_deref()
+                .is_some_and(|style| crate::art_border_names::art_border_name(style).is_some());
             if let Some(width) = spec.width {
-                if !(0.25..=12.0).contains(&width) {
+                if art && !(1.0..=31.0).contains(&width) {
+                    return Err("art page border width must be between 1 and 31 points".to_string());
+                }
+                if !art && !(0.25..=12.0).contains(&width) {
                     return Err("page border width must be between 0.25 and 12 points".to_string());
                 }
             }
@@ -2639,6 +2702,7 @@ impl WordDocument {
             parsed_doc.math_properties = doc_settings.math.clone();
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
             parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
+            parsed_doc.compat = doc_settings.compat.clone();
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
@@ -24837,7 +24901,25 @@ impl WordDocument {
             children.push(value_element(raw, "w:start", start.to_string()));
         }
         if let Some(format) = level.num_fmt.as_ref() {
-            children.push(value_element(raw, "w:numFmt", format.clone()));
+            match format.strip_prefix(jade_docx_reader::numbering::CUSTOM_FORMAT_PREFIX) {
+                // A custom format goes back as Word writes it: `custom` and
+                // the sample (ISO/IEC 29500 §17.9.17).
+                Some(sample) => children.push(XmlNode::Element(raw.create_element(
+                    "w:numFmt",
+                    vec![
+                        XmlAttribute {
+                            name: "w:val".to_string(),
+                            value: "custom".to_string(),
+                        },
+                        XmlAttribute {
+                            name: "w:format".to_string(),
+                            value: sample.to_string(),
+                        },
+                    ],
+                    Vec::new(),
+                ))),
+                None => children.push(value_element(raw, "w:numFmt", format.clone())),
+            }
         }
         if let Some(text) = level.lvl_text.as_ref() {
             children.push(value_element(raw, "w:lvlText", text.clone()));
@@ -33404,7 +33486,23 @@ impl WordDocument {
         } else {
             doc.create_element("a:noFill", Vec::new(), Vec::new())
         };
-        let av_lst = doc.create_element("a:avLst", Vec::new(), Vec::new());
+        // A preset's moved adjust handles go back as `a:gd` values.
+        let adjustments = match text_box.shape {
+            TextBoxShape::Preset(id) => id
+                .geometry()
+                .adjustments
+                .into_iter()
+                .map(|(name, value)| {
+                    XmlNode::Element(doc.create_element(
+                        "a:gd",
+                        vec![attr("name", name), attr("fmla", format!("val {value}"))],
+                        Vec::new(),
+                    ))
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let av_lst = doc.create_element("a:avLst", Vec::new(), adjustments);
         let prst_geom = doc.create_element(
             "a:prstGeom",
             vec![attr("prst", text_box.shape.preset_name())],
