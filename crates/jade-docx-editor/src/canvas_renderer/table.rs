@@ -1846,7 +1846,7 @@ where
         // 描く関数から見えるように、ここで置いておく。
         self.table_render_changes.set(options.render_changes);
         self.table_show_formatting_marks
-            .set(options.show_formatting_marks);
+            .set(options.shown_formatting_marks().paragraph_marks);
         if table.rows.is_empty() {
             return Ok(());
         }

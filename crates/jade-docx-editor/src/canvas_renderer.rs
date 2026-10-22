@@ -3609,6 +3609,14 @@ where
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
     dark_mode_text: bool,
+    /// The formatting marks shown by kind in the current render.
+    mark_kinds: crate::FormattingMarkKinds,
+    /// A view's own page box in place of the sections' (Web レイアウト,
+    /// 閲覧モード, アウトライン): see [`ViewGeometry`].
+    view_geometry: Option<ViewGeometry>,
+    /// アウトライン: how far each paragraph (by index) is set in for its
+    /// outline level, in CSS pixels, in place of its own indents' start.
+    outline_indents: Option<Rc<HashMap<usize, f64>>>,
     /// Set while painting the text of a shape that carries its own fill. Word
     /// keeps the document colour there, and the page-contrast remap would put
     /// white glyphs on Word's light fill.
@@ -5582,6 +5590,7 @@ where
             && last.render_original == options.render_original
             && last.render_comments == options.render_comments
             && last.show_formatting_marks == options.show_formatting_marks
+            && last.formatting_mark_kinds() == options.formatting_mark_kinds()
             && last.render_footnotes == options.render_footnotes
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
@@ -5599,7 +5608,7 @@ where
             || (self.document_has_comments && options.render_comments)
             || options.render_changes
             || options.render_original
-            || options.show_formatting_marks
+            || options.any_formatting_marks()
             || !options.collapsed_blocks().is_empty()
         {
             return false;
@@ -8115,6 +8124,9 @@ where
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
             dark_mode_text: false,
+            mark_kinds: crate::FormattingMarkKinds::default(),
+            view_geometry: None,
+            outline_indents: None,
             dark_mode_text_suppressed: false,
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
@@ -10023,7 +10035,9 @@ where
             }
         }
         self.draw_watermark()?;
-        self.draw_page_borders(page);
+        if !self.hides_page_chrome() {
+            self.draw_page_borders(page);
+        }
         self.draw_column_separators();
         Ok(())
     }
@@ -10425,6 +10439,7 @@ where
         options.render_original.hash(&mut hasher);
         options.render_comments.hash(&mut hasher);
         options.show_formatting_marks.hash(&mut hasher);
+        options.formatting_mark_kinds().hash(&mut hasher);
         options.render_footnotes.hash(&mut hasher);
         options.render_endnotes.hash(&mut hasher);
         let dir_tag: u8 = match self.current_text_direction {
@@ -12643,6 +12658,45 @@ where
         self.use_selection_overlay = value;
     }
 
+    /// Lays the document out in a view's page box (or the sections' again
+    /// with `None`) from the next render, which re-flows everything.
+    pub fn set_view_geometry(&mut self, geometry: Option<ViewGeometry>) {
+        if self.view_geometry == geometry {
+            return;
+        }
+        self.view_geometry = geometry;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    pub fn view_geometry(&self) -> Option<ViewGeometry> {
+        self.view_geometry
+    }
+
+    /// アウトライン: each paragraph (by index) set in by its level, from the
+    /// next render; `None` lays them out by their own indents again.
+    pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
+        if self.outline_indents == indents {
+            return;
+        }
+        self.outline_indents = indents;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    fn hides_page_chrome(&self) -> bool {
+        self.view_geometry
+            .is_some_and(|geometry| geometry.hide_page_chrome)
+    }
+
     /// Finds the first paragraph that has changed compared to the cached version.
     /// Returns `None` if incremental layout is disabled or no changes detected.
     pub fn find_first_changed_paragraph(&self, document: &Document) -> Option<usize> {
@@ -12989,6 +13043,7 @@ where
                 .clear(self.page_width, self.pageless_mode, self.page_height)?;
         }
         self.dark_mode_text = options.dark_mode();
+        self.mark_kinds = options.shown_formatting_marks();
 
         let context = self.host.painter();
         context.set_font("12pt 'Times New Roman', serif");
@@ -14845,18 +14900,27 @@ where
             margin_bottom_pt = pageless_margin_pt;
         }
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
         // Clear wrap cache if layout-affecting settings have changed
-        let effective_mirror_margins =
-            (document.mirror_margins || document.book_fold_printing) && !self.pageless_mode;
+        let effective_mirror_margins = (document.mirror_margins || document.book_fold_printing)
+            && !self.pageless_mode
+            && self.view_geometry.is_none();
         let binding_layout_changed = !self.pageless_mode
             && (self.mirror_margins != effective_mirror_margins
                 || (self.odd_page_margin_left_pt - odd_page_margins.left).abs() > 0.01
@@ -15077,12 +15141,20 @@ where
         margin_right_pt = current_page_margins.right;
         margin_top_pt = current_page_margins.top;
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
@@ -15977,7 +16049,7 @@ where
                     .as_ref()
                     .and_then(|properties| properties.numbering.as_ref())
                     .is_none())
-            && !options.show_formatting_marks
+            && !options.any_formatting_marks()
             && !matches!(
                 current_direction,
                 Some(
@@ -16721,6 +16793,18 @@ where
                         .insert(paragraph_index, offsets);
                 }
             }
+        }
+        // アウトライン: the paragraph sits at its level's indent from the
+        // margin, its own first-line indent gone.
+        if let Some(indent) = self
+            .outline_indents
+            .as_ref()
+            .and_then(|indents| indents.get(&paragraph_index).copied())
+        {
+            x = self.current_column_x() + indent;
+            paragraph_style.first_line_indent = 0.0;
+        }
+        if let Some(props) = &paragraph.properties {
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -17212,9 +17296,25 @@ where
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
             // not display such runs and they occupy no layout space, so skip the
             // run entirely. (A "show hidden text" toggle is a follow-up.)
-            if run_properties_are_hidden(resolved_run_properties.as_deref()) {
-                continue;
-            }
+            // With 隠し文字 shown, hidden text is laid out like any other,
+            // underlined with dots as Word marks it.
+            let resolved_run_properties =
+                if run_properties_are_hidden(resolved_run_properties.as_deref()) {
+                    if !self.mark_kinds.hidden_text {
+                        continue;
+                    }
+                    let mut shown = resolved_run_properties
+                        .as_deref()
+                        .cloned()
+                        .unwrap_or_default();
+                    shown.vanish = None;
+                    shown.spec_vanish = None;
+                    shown.underline = Some(true);
+                    shown.underline_kind = Some(Rc::from("dotted"));
+                    Some(Rc::new(shown))
+                } else {
+                    resolved_run_properties
+                };
             // Text after an ADVANCE \u or \d sits that much higher or lower.
             let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
                 let mut properties = resolved_run_properties
@@ -17866,6 +17966,20 @@ where
             .collect::<Vec<_>>();
         floating_paint_objects.sort_by_key(FloatingPaintObject::paint_order_key);
 
+        // アンカー: the paragraph a floating object is anchored to carries an
+        // anchor in the left margin, beside its first line.
+        if self.mark_kinds.anchors
+            && !floating_paint_objects.is_empty()
+            && !self.measuring_keep_next
+            && self.should_draw_current_page_for_render()
+        {
+            let style = self.apply_run_style(None)?;
+            let context = self.host.painter();
+            let baseline = self.current_y + points_to_px(style.font_size_pt).max(10.0);
+            let x = (self.margin_left - 18.0).max(2.0);
+            self.draw_control_mark(&context, "\u{2693}", x, baseline, &style)?;
+        }
+
         // `wp:anchor behindDoc="1"` participates in the same positioning and
         // hit-testing model as every other floating object, but it must be
         // painted before the paragraph glyphs. This applies to text boxes and
@@ -17990,7 +18104,7 @@ where
                     &inline_maths,
                     column_right,
                     line_height,
-                    options.show_formatting_marks,
+                    options.shown_formatting_marks().paragraph_marks,
                     render_changes,
                     comment_ranges,
                     comment_markers,
@@ -18185,7 +18299,7 @@ where
                 }
             }
 
-            if options.show_formatting_marks && !self.measuring_keep_next {
+            if options.shown_formatting_marks().paragraph_marks && !self.measuring_keep_next {
                 let default_properties: Option<RunProperties> = None;
                 let style = self.apply_run_style(default_properties.as_ref())?;
                 let context = self.host.painter();
@@ -21992,6 +22106,26 @@ where
                     commands_out.as_deref_mut(),
                 );
             }
+            // スペース, タブ and 任意指定のハイフン marks, over the laid-out
+            // line.
+            // Inside the line's clip, as its text is, so a line painted again
+            // takes them as its text does.
+            if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
+                && draw_enabled
+                && !self.measuring_keep_next
+            {
+                let segments: Vec<&TextSegment> = prepared_segments
+                    .iter()
+                    .map(|prepared| prepared.segment)
+                    .collect();
+                self.draw_whitespace_marks(
+                    &segments,
+                    &line_layout,
+                    baseline,
+                    commands_out.as_deref_mut(),
+                )?;
+            }
+
             if draw_enabled {
                 context.restore();
                 // The line's first run sets its font inside this save, so the
@@ -31106,6 +31240,92 @@ where
         )
     }
 
+    /// Word's marks for the spaces, tabs and optional hyphens of a laid-out
+    /// line: a centred dot in a space, a square in a full-width one, an
+    /// arrow at a tab's start, ¬ for an optional hyphen.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_whitespace_marks(
+        &mut self,
+        segments: &[&TextSegment],
+        line: &SelectionLineLayout,
+        baseline: f64,
+        mut commands_out: Option<&mut Vec<DrawCommand>>,
+    ) -> Result<(), JsValue> {
+        // Each mark in the font of the run it marks, found through the
+        // segment the glyph belongs to.
+        let mut marks: Vec<(&'static str, f64, f64, Option<Rc<RunProperties>>)> = Vec::new();
+        for fragment in line.fragments.iter() {
+            for glyph in fragment.glyphs.iter() {
+                let Some(segment) = segments.iter().find(|segment| {
+                    segment.end.saturating_sub(segment.start) == segment.text.len()
+                        && glyph.start >= segment.start
+                        && glyph.start < segment.end
+                }) else {
+                    continue;
+                };
+                let ch = segment
+                    .text
+                    .get(glyph.start - segment.start..)
+                    .and_then(|rest| rest.chars().next());
+                let symbol = match ch {
+                    Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
+                    Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
+                    Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
+                    _ => continue,
+                };
+                marks.push((
+                    symbol,
+                    fragment.x + glyph.x,
+                    glyph.width,
+                    segment.properties.clone(),
+                ));
+            }
+        }
+        if self.mark_kinds.tabs {
+            let properties = segments
+                .first()
+                .and_then(|segment| segment.properties.clone());
+            for tab in line.tab_stops.iter() {
+                marks.push((
+                    "\u{2192}",
+                    tab.start_x,
+                    (tab.end_x - tab.start_x).max(0.0),
+                    properties.clone(),
+                ));
+            }
+        }
+        for (symbol, x, width, properties) in marks {
+            let style = self.apply_run_style(properties.as_deref())?;
+            let context = self.host.painter();
+            // Centred in what it marks: measured first, then drawn.
+            let mark_width = self.text_width_with_spacing(
+                symbol,
+                style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
+                &style,
+            )?;
+            let mark_x = x + ((width - mark_width) / 2.0).max(0.0);
+            let command = DrawCommand::ControlMark {
+                symbol: Rc::from(symbol),
+                x: mark_x,
+                baseline,
+                style: self.cmd_control_mark_style(properties.as_deref(), &style),
+            };
+            // Drawn as its command replays, so a painted line and a cached
+            // one show the same mark.
+            if self.should_draw_current_page_for_render() {
+                context.save();
+                crate::draw_command::executor::execute_command(&context, &command)
+                    .map_err(PainterError::into_js_value)?;
+                context.restore();
+                self.invalidate_context_state_tracking();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(command);
+            }
+        }
+        Ok(())
+    }
+
     fn draw_control_mark<P>(
         &self,
         context: &P,
@@ -31260,7 +31480,7 @@ where
     }
 
     fn apply_mirrored_margins_for_page(&mut self, page_number: usize) {
-        if !self.mirror_margins || self.pageless_mode {
+        if !self.mirror_margins || self.pageless_mode || self.view_geometry.is_some() {
             return;
         }
         let previous_left = self.margin_left;
@@ -33982,6 +34202,10 @@ where
         if self.pageless_mode {
             return Ok(());
         }
+        if self.hides_page_chrome() {
+            self.header_drawn = true;
+            return Ok(());
+        }
         if self.header_drawn {
             return Ok(());
         }
@@ -34115,6 +34339,10 @@ where
 
         self.render_pending_footnotes_for_current_page()?;
 
+        if self.hides_page_chrome() {
+            self.footer_drawn = true;
+            return Ok(());
+        }
         let draw_enabled = self.should_draw_current_page_for_render();
         if !draw_enabled && !self.auxiliary_story_capture_mode.enabled() {
             self.footer_drawn = true;
@@ -35624,6 +35852,22 @@ fn keep_next_requires_page_advance(
 /// widow/orphan rule requires two lines when that paragraph wraps.
 fn empty_keep_next_required_height(line_height: f64, keep_next_enabled: bool) -> f64 {
     line_height * if keep_next_enabled { 3.0 } else { 1.0 }
+}
+
+/// The page box a view lays the document out in instead of the sections':
+/// Web レイアウト's window-wide strips, 閲覧モード's screen-sized columns.
+/// Every section takes it; with `hide_page_chrome` no header, footer or page
+/// border is drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ViewGeometry {
+    /// CSS pixels.
+    pub page_width: f64,
+    pub page_height: f64,
+    pub margin_top: f64,
+    pub margin_right: f64,
+    pub margin_bottom: f64,
+    pub margin_left: f64,
+    pub hide_page_chrome: bool,
 }
 
 fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
@@ -58159,9 +58403,18 @@ mod tests {
                 paragraph_marks, 4,
                 "only the real body paints paragraph marks {middle:?}"
             );
+            // With ¶ on every space shows its dot too, as in Word.
+            let space_marks = painter
+                .ops()
+                .iter()
+                .filter(|op| {
+                    matches!(op, jade_painter::recording::Op::FillText(text, ..) if text == "\u{00B7}")
+                })
+                .count();
             let control_styles = painter.ops().iter().filter(|op| matches!(op, jade_painter::recording::Op::SetFillStyle(color) if color == CONTROL_MARK_COLOR)).count();
             assert_eq!(
-                control_styles, 4,
+                control_styles,
+                4 + space_marks,
                 "measurement does not prepare editor-only marks {middle:?}"
             );
             assert_eq!(unbalanced_saves(&painter), 0);

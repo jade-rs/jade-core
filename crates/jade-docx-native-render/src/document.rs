@@ -255,6 +255,11 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// A view's page box in place of the sections' (Web レイアウト, 閲覧
+    /// モード); kept here so a renderer built again keeps it.
+    view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    /// アウトライン's indent for each paragraph, while it shows.
+    outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
     /// The math face the renderers bind (Cambria Math), when installed.
     math_face: Option<FontFace>,
 }
@@ -396,6 +401,8 @@ impl NativeDocument {
             field_datetime: None,
             field_codes: FieldCodeView::default(),
             math_face: math_face_of(faces),
+            view_geometry: None,
+            outline_indents: None,
         })
     }
 
@@ -445,6 +452,7 @@ impl NativeDocument {
         renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
+        options.set_formatting_mark_kinds(Default::default());
         options.show_crop_marks = false;
         if let Some(markup) = pdf_options.markup {
             options.render_changes = markup;
@@ -524,6 +532,37 @@ impl NativeDocument {
 
     pub fn can_redo(&self) -> bool {
         !self.redo_history.is_empty() || self.executor.can_redo()
+    }
+
+    /// How many undoable steps there are: a mark for [`Self::merge_history_since`].
+    pub fn history_len(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Makes every command step taken since `mark` one step, so a single
+    /// undo takes them all back — what formatting several ranges at once,
+    /// or a drag-and-drop made of several edits, needs. Steps of another
+    /// kind (a header edit) are left as they are.
+    pub fn merge_history_since(&mut self, mark: usize) {
+        if mark >= self.history.len() {
+            return;
+        }
+        let tail = &self.history[mark..];
+        if !tail
+            .iter()
+            .all(|step| matches!(step, HistoryStep::Command { .. }))
+        {
+            return;
+        }
+        let executor_steps = tail
+            .iter()
+            .map(|step| match step {
+                HistoryStep::Command { executor_steps } => *executor_steps,
+                HistoryStep::HeaderFooter => 0,
+            })
+            .sum();
+        self.history.truncate(mark);
+        self.history.push(HistoryStep::Command { executor_steps });
     }
 
     /// Undoes the last edit and repaints, reporting the selection it restored.
@@ -687,6 +726,8 @@ impl NativeDocument {
         register_math_face(&mut renderer, self.math_face.as_slice());
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
+        renderer.set_view_geometry(self.view_geometry);
+        renderer.set_outline_indents(self.outline_indents.clone());
         renderer.set_selection_range(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
         if self.field_codes != FieldCodeView::default() {
@@ -1276,9 +1317,64 @@ impl NativeDocument {
         self.repaint_all().map(|_| ())
     }
 
+    /// Lays the document out in a view's page box — Web レイアウト's strips
+    /// the width of the window, 閲覧モード's screen-sized columns — or, with
+    /// `None`, in its sections' pages again. Everything is laid out anew.
+    pub fn set_view_geometry(
+        &mut self,
+        geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    ) -> Result<bool, String> {
+        if self.view_geometry == geometry {
+            return Ok(false);
+        }
+        self.view_geometry = geometry;
+        self.renderer.set_view_geometry(geometry);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// アウトライン: each paragraph set in by its outline level (CSS pixels
+    /// from the margin), or `None` for its own indents.
+    pub fn set_outline_indents(
+        &mut self,
+        indents: Option<std::collections::HashMap<usize, f64>>,
+    ) -> Result<bool, String> {
+        let indents = indents.map(Rc::new);
+        if self.outline_indents == indents {
+            return Ok(false);
+        }
+        self.outline_indents = indents.clone();
+        self.renderer.set_outline_indents(indents);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// The view's page box, while one is set.
+    pub fn view_geometry(&self) -> Option<jade_docx_editor::canvas_renderer::ViewGeometry> {
+        self.view_geometry
+    }
+
     /// Whether formatting marks are being drawn.
     pub fn formatting_marks(&self) -> bool {
         self.options.show_formatting_marks
+    }
+
+    /// Shows the formatting marks of some kinds whatever the ¶ toggle says
+    /// (Word のオプション → 表示 → 常に画面に表示する編集記号).
+    pub fn set_formatting_mark_kinds(
+        &mut self,
+        kinds: jade_docx_editor::FormattingMarkKinds,
+    ) -> Result<(), String> {
+        if self.options.formatting_mark_kinds() == kinds {
+            return Ok(());
+        }
+        self.options.set_formatting_mark_kinds(kinds);
+        self.repaint_all().map(|_| ())
+    }
+
+    /// The kinds shown beside the ¶ toggle.
+    pub fn formatting_mark_kinds(&self) -> jade_docx_editor::FormattingMarkKinds {
+        self.options.formatting_mark_kinds()
     }
 
     /// Sets the clock DATE and TIME fields show from the next repaint on.
