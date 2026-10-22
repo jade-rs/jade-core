@@ -11,6 +11,7 @@ pub mod headless_api;
 pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
+pub mod revision_view;
 pub use jade_docx_reader::{
     comments, common, document, docx_xml, field_datetime, inkml, numbering, parser, settings,
     styles, theme,
@@ -212,6 +213,9 @@ pub struct Options {
     /// the binding table is the bulk of them.
     shortcut_config: std::rc::Rc<ShortcutConfig>,
     dark_mode: bool,
+    /// Whose changes are marked up, in which colours, with change bars or
+    /// not: see [`revision_view::RevisionView`].
+    revision_view: std::rc::Rc<revision_view::RevisionView>,
     /// Top-level body elements a collapsed heading hides (Word's 見出しの
     /// 折りたたみ), sorted: laid out as if absent, until expanded again.
     collapsed_blocks: std::rc::Rc<Vec<usize>>,
@@ -703,6 +707,7 @@ impl Default for Options {
             dark_mode: false,
             collapsed_blocks: std::rc::Rc::new(Vec::new()),
             formatting_mark_kinds: FormattingMarkKinds::default(),
+            revision_view: std::rc::Rc::default(),
         }
     }
 }
@@ -746,6 +751,19 @@ impl Options {
 }
 
 impl Options {
+    /// How tracked changes are drawn beyond markup on or off.
+    pub fn revision_view(&self) -> &revision_view::RevisionView {
+        &self.revision_view
+    }
+
+    pub fn set_revision_view(&mut self, view: revision_view::RevisionView) {
+        self.revision_view = std::rc::Rc::new(view);
+    }
+
+    pub(crate) fn revision_view_rc(&self) -> &std::rc::Rc<revision_view::RevisionView> {
+        &self.revision_view
+    }
+
     pub(crate) fn shortcut_config(&self) -> &ShortcutConfig {
         &self.shortcut_config
     }

@@ -2824,6 +2824,13 @@ pub struct RunImage {
     pub title: Option<String>,
     /// Optional alternative text/description for accessibility.
     pub description: Option<String>,
+    /// 装飾用にする: the drawing is decorative and has no alternative text
+    /// (`adec:decorative` in `wp:docPr`'s extension list).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub decorative: bool,
+    /// 署名欄: a VML shape asking for a signature (`o:signatureline`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_line: Option<Box<SignatureLine>>,
     /// Optional label shown when the image bytes cannot be decoded (e.g. WMF/EMF placeholder).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
@@ -3762,6 +3769,26 @@ pub enum TextBoxVerticalAlignment {
     Distributed,
 }
 
+/// A signature line's setup (`o:signatureline`): who is asked to sign.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureLine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// 署名者 (`o:suggestedsigner`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signer: Option<String>,
+    /// 署名者の役職 (`o:suggestedsigner2`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// 署名者の電子メール アドレス (`o:suggestedsigneremail`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    /// 署名者への説明 (`o:signinginstructions`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+}
+
 /// Tracks revision metadata (e.g. change tracking) attached to a run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -3961,8 +3988,11 @@ mod tests {
         // `RunTextBox::extras`, `RunImageLayout::options`, twice). 40 more:
         // a chart's legend and the part XML it is drawn from
         // (`RunChart::legend`, `RunChart::xml`). 8 more: a picture's boxed
-        // Word ink strokes (`RunImage::ink`).
-        assert_eq!(std::mem::size_of::<Run>(), 3136);
+        // Word ink strokes (`RunImage::ink`). 24 more: a picture's 装飾用
+        // flag (`RunImage::decorative`), the boxed tracked formatting change
+        // (`RunProperties::change`) and a picture's boxed 署名欄 setup
+        // (`RunImage::signature_line`).
+        assert_eq!(std::mem::size_of::<Run>(), 3160);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -4720,6 +4750,14 @@ pub struct ParagraphProperties {
     /// is applied, as Word's final view shows it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mark_revision: Option<Box<RevisionMark>>,
+    /// Who changed the paragraph's own formatting with changes tracked
+    /// (`w:pPrChange`, ECMA-376 Part 1 §17.13.5.29), for the change bar; the
+    /// formatting before it stays in the XML.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format_change_author: Option<Rc<str>>,
+    /// Whether the paragraph's formatting carries a tracked change.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub has_format_change: bool,
     pub alignment: Option<Rc<str>>,
     /// Base paragraph direction (`w:bidi`, ECMA-376 Part 1 §17.3.1.6).
     /// `Some(true)` selects an RTL paragraph base direction, while
@@ -5342,6 +5380,17 @@ impl PartialEq for DirectRunFontProperties {
     }
 }
 
+/// A run's formatting before a tracked change to it (`w:rPrChange`):
+/// rejecting the change puts `previous` back, accepting it drops the record.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct RunPropertiesChange {
+    pub id: Option<String>,
+    pub author: Option<String>,
+    pub date: Option<String>,
+    /// The run's direct formatting before the change.
+    pub previous: RunProperties,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct RunProperties {
     pub style: Option<Rc<str>>,
@@ -5515,6 +5564,10 @@ pub struct RunProperties {
     /// color). `None` means no character border.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub border: Option<BorderEdge>,
+    /// A tracked formatting change (`w:rPrChange`, ECMA-376 Part 1
+    /// §17.13.5.31): who changed the run's formatting, and what it was before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change: Option<Box<RunPropertiesChange>>,
     /// Ruby (phonetic guide / ふりがな) annotation (`w:ruby`, ECMA-376 Part 1
     /// §17.3.3.25). Attached by the parser to every run produced from the
     /// `w:rubyBase` contents (see [`RubyAnnotation::continuation`]); the guide

@@ -12,6 +12,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 [dependencies]
 base64 = "0.22"
 cfb = "0.7"
+sha2 = "0.10"
 png = "0.17"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 rustc-hash = "2.1"

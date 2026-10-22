@@ -1034,6 +1034,15 @@ pub fn mutate_run_properties(
         let mut props = before.clone();
         mutate(&mut props);
         if props != before {
+            // Text still a tracked insertion is new as it stands: Word
+            // records no formatting change on it.
+            let inserted = run
+                .revision
+                .as_ref()
+                .is_some_and(|mark| !mark.is_deletion());
+            if !inserted {
+                record_format_change(&before, &mut props);
+            }
             restyled.extend(run.node_id);
         }
         run.properties = Some(props);
@@ -1044,6 +1053,63 @@ pub fn mutate_run_properties(
     *runs = left;
     normalize_break_runs(runs);
     restyled
+}
+
+/// Who is changing formatting while changes are tracked, and the next
+/// `w:id` to give a change: set by the command executor around each command
+/// while a revision session is open.
+#[derive(Clone, Debug)]
+pub(crate) struct FormatRevisionStamp {
+    pub author: Option<String>,
+    pub date: Option<String>,
+    pub next_id: u32,
+}
+
+thread_local! {
+    static FORMAT_REVISION: std::cell::RefCell<Option<FormatRevisionStamp>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `apply` with formatting edits recorded as tracked changes under
+/// `stamp`, and returns its result and the next id left unused.
+pub(crate) fn with_format_revision<R>(
+    stamp: Option<FormatRevisionStamp>,
+    apply: impl FnOnce() -> R,
+) -> (R, Option<u32>) {
+    let previous = FORMAT_REVISION.with(|slot| slot.replace(stamp));
+    let result = apply();
+    let left = FORMAT_REVISION.with(|slot| slot.replace(previous));
+    (result, left.map(|stamp| stamp.next_id))
+}
+
+/// A formatting edit with changes tracked: the run keeps what its
+/// formatting was before the first change (`w:rPrChange`), and an edit that
+/// puts that formatting back leaves no change.
+fn record_format_change(before: &RunProperties, after: &mut RunProperties) {
+    FORMAT_REVISION.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(stamp) = slot.as_mut() else {
+            return;
+        };
+        match before.change.clone() {
+            Some(change) => {
+                let mut bare = after.clone();
+                bare.change = None;
+                after.change = (bare != change.previous).then_some(change);
+            }
+            None => {
+                let mut previous = before.clone();
+                previous.change = None;
+                after.change = Some(Box::new(crate::document::RunPropertiesChange {
+                    id: Some(stamp.next_id.to_string()),
+                    author: stamp.author.clone(),
+                    date: stamp.date.clone(),
+                    previous,
+                }));
+                stamp.next_id = stamp.next_id.saturating_add(1);
+            }
+        }
+    });
 }
 
 fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
