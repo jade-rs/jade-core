@@ -78,7 +78,7 @@ impl OffscreenDocumentView {
     /// shape: page-local `top`, and `absolute_top` down the run of pages.
     /// The height of the pages above 1-based `page`, with the gaps between
     /// them: where the page starts down the run of pages.
-    fn pages_above(&self, page: usize) -> f64 {
+    pub(super) fn pages_above(&self, page: usize) -> f64 {
         let renderer = self.renderer.borrow();
         (0..page.saturating_sub(1))
             .filter_map(|index| renderer.page_dimensions(index).map(|(_, height)| height))
