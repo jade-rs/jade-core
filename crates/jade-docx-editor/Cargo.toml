@@ -11,6 +11,9 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# jade-docx-convert's PDF reflow reads PDFs through lopdf, whose random
+# numbers come from the JavaScript host in the browser build.
+lopdf = { version = "=0.39.0", default-features = false, features = ["wasm_js"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
@@ -42,7 +45,7 @@ indexmap = "2.7"
 rustc-hash = "2.1"
 jade-docx-writer = { path = "../jade-docx-writer" }
 jade-docx-reader = { path = "../jade-docx-reader" }
-jade-docx-convert = { path = "../jade-docx-convert" }
+jade-docx-convert = { path = "../jade-docx-convert", features = ["pdf"] }
 jade-docx-diff = { path = "../jade-docx-diff" }
 jade-docx-merge = { path = "../jade-docx-merge" }
 hypher = { version = "0.1", default-features = false, features = ["english"] }
