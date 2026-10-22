@@ -9,7 +9,7 @@ use jade_docx_layout::border_styles::{
 };
 use jade_docx_layout::text_extract::{DocumentLineLayout, LineInfo};
 use jade_docx_layout::units::points_to_px;
-use jade_docx_reader::document::{BorderEdge, ParagraphBorders};
+use jade_docx_reader::document::{BorderEdge, ParagraphBorders, TableBorders};
 use jade_docx_reader::{BodyElement, Document as DocxDocument, Paragraph as DocxParagraph};
 use lopdf::Object;
 use lopdf::content::Operation;
@@ -288,6 +288,154 @@ pub(crate) fn push_border_box_operations(
     }
 }
 
+/// A table's own borders (`w:tblBorders`), each drawn in its line style:
+/// the outer edges and the rules between rows and between columns.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct RenderTableBorders {
+    pub top: Option<RenderBorderEdge>,
+    pub bottom: Option<RenderBorderEdge>,
+    pub left: Option<RenderBorderEdge>,
+    pub right: Option<RenderBorderEdge>,
+    pub inside_h: Option<RenderBorderEdge>,
+    pub inside_v: Option<RenderBorderEdge>,
+}
+
+impl RenderTableBorders {
+    pub(crate) fn from_table_borders(borders: &TableBorders) -> Self {
+        let resolve = |edge: &Option<BorderEdge>| {
+            edge.as_ref()
+                .and_then(|edge| RenderBorderEdge::from_edge(edge, None))
+        };
+        Self {
+            top: resolve(&borders.top),
+            bottom: resolve(&borders.bottom),
+            left: resolve(
+                borders
+                    .start
+                    .as_ref()
+                    .map_or(&borders.left, |_| &borders.start),
+            ),
+            right: resolve(
+                borders
+                    .end
+                    .as_ref()
+                    .map_or(&borders.right, |_| &borders.end),
+            ),
+            inside_h: resolve(&borders.inside_h),
+            inside_v: resolve(&borders.inside_v),
+        }
+    }
+}
+
+/// One plain rule of `edge`'s colour and width from `from` to `to` (px).
+fn push_rule(
+    operations: &mut Vec<Operation>,
+    edge: &RenderBorderEdge,
+    from: (f64, f64),
+    to: (f64, f64),
+    page_height_pt: f64,
+) {
+    operations.push(Operation::new("q", vec![]));
+    crate::push_stroke_color(operations, edge.color);
+    operations.push(Operation::new(
+        "w",
+        vec![Object::Real(px_to_pt(edge.width) as f32)],
+    ));
+    for (operator, (x, y)) in [("m", from), ("l", to)] {
+        operations.push(Operation::new(
+            operator,
+            vec![
+                Object::Real(px_to_pt(x) as f32),
+                Object::Real((page_height_pt - px_to_pt(y)) as f32),
+            ],
+        ));
+    }
+    operations.push(Operation::new("S", vec![]));
+    operations.push(Operation::new("Q", vec![]));
+}
+
+/// Draws a table grid from `origin` (px) with `borders`: each rule centred on
+/// its grid line, in its line style (a single one as a stroked rule).
+pub(crate) fn push_table_border_operations(
+    operations: &mut Vec<Operation>,
+    borders: &RenderTableBorders,
+    origin: (f64, f64),
+    column_widths: &[f64],
+    row_heights: &[f64],
+    page_height_pt: f64,
+) {
+    let width: f64 = column_widths.iter().sum();
+    let height: f64 = row_heights.iter().sum();
+    let mut ys = vec![origin.1];
+    for row in row_heights {
+        ys.push(ys[ys.len() - 1] + row);
+    }
+    let mut xs = vec![origin.0];
+    for column in column_widths {
+        xs.push(xs[xs.len() - 1] + column);
+    }
+    for (index, &y) in ys.iter().enumerate() {
+        let edge = if index == 0 {
+            &borders.top
+        } else if index + 1 == ys.len() {
+            &borders.bottom
+        } else {
+            &borders.inside_h
+        };
+        if let Some(edge) = edge
+            .as_ref()
+            .filter(|edge| edge.style == BorderLineStyle::Single)
+        {
+            push_rule(
+                operations,
+                edge,
+                (origin.0, y),
+                (origin.0 + width, y),
+                page_height_pt,
+            );
+        } else if let Some(edge) = edge {
+            push_border_edge_operations(
+                operations,
+                edge,
+                BorderSide::Top,
+                (origin.0, width),
+                (y - edge.width / 2.0, edge.width),
+                page_height_pt,
+            );
+        }
+    }
+    for (index, &x) in xs.iter().enumerate() {
+        let edge = if index == 0 {
+            &borders.left
+        } else if index + 1 == xs.len() {
+            &borders.right
+        } else {
+            &borders.inside_v
+        };
+        if let Some(edge) = edge
+            .as_ref()
+            .filter(|edge| edge.style == BorderLineStyle::Single)
+        {
+            push_rule(
+                operations,
+                edge,
+                (x, origin.1),
+                (x, origin.1 + height),
+                page_height_pt,
+            );
+        } else if let Some(edge) = edge {
+            push_border_edge_operations(
+                operations,
+                edge,
+                BorderSide::Left,
+                (origin.1, height),
+                (x - edge.width / 2.0, edge.width),
+                page_height_pt,
+            );
+        }
+    }
+}
+
 /// One side: `length` px along its edge from `start` (x for top and bottom,
 /// y for left and right), its band `thickness` px across from `outer`, the
 /// band edge away from the box's inside.
@@ -461,5 +609,41 @@ mod tests {
         // PDF y grows upwards: the outer (top) rule is the higher one.
         assert!(rects[0].0 > rects[1].0, "{rects:?}");
         assert!(rects[0].1 < rects[1].1, "thin outside, thick inside");
+    }
+
+    #[test]
+    fn table_borders_draw_each_rule_in_its_style() {
+        let borders = RenderTableBorders {
+            top: Some(edge("double")),
+            bottom: Some(edge("single")),
+            left: None,
+            right: None,
+            inside_h: Some(edge("dotted")),
+            inside_v: Some(edge("thinThickSmallGap")),
+        };
+        let mut operations = Vec::new();
+        push_table_border_operations(
+            &mut operations,
+            &borders,
+            (10.0, 10.0),
+            &[100.0, 100.0],
+            &[30.0, 30.0, 30.0],
+            800.0,
+        );
+        let rects = operations
+            .iter()
+            .filter(|operation| operation.operator == "re")
+            .count();
+        // Double top (2), two dotted rows (many), one thin-thick column rule
+        // (2), no outer sides; the single bottom is one stroked rule.
+        assert!(rects > 2 + 2 + 2 * 10, "{rects}");
+        let strokes = operations
+            .iter()
+            .filter(|operation| operation.operator == "S")
+            .count();
+        assert_eq!(strokes, 1);
+        let none = TableBorders::default();
+        let resolved = RenderTableBorders::from_table_borders(&none);
+        assert!(resolved.top.is_none() && resolved.inside_v.is_none());
     }
 }

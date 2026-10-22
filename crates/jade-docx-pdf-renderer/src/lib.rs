@@ -243,6 +243,9 @@ struct RenderTable {
     y: f64,
     column_widths: Vec<f64>,
     row_heights: Vec<f64>,
+    /// The table's own `w:tblBorders`, each in its line style; `None` keeps
+    /// the plain grid.
+    borders: Option<borders::RenderTableBorders>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -2055,6 +2058,10 @@ fn render_grid_for_top_level_table(
         y,
         column_widths,
         row_heights,
+        borders: table
+            .borders
+            .as_ref()
+            .map(borders::RenderTableBorders::from_table_borders),
     })
 }
 
@@ -3875,6 +3882,17 @@ fn push_table_grid_operations(
     table: &RenderTable,
     page_height_pt: f64,
 ) {
+    if let Some(table_borders) = table.borders.as_ref() {
+        borders::push_table_border_operations(
+            operations,
+            table_borders,
+            (table.x, table.y),
+            &table.column_widths,
+            &table.row_heights,
+            page_height_pt,
+        );
+        return;
+    }
     let x0 = px_to_pt(table.x);
     let y0 = page_height_pt - px_to_pt(table.y);
     let table_width = px_to_pt(table.column_widths.iter().sum::<f64>());
