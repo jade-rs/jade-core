@@ -97,6 +97,9 @@ pub struct Document {
     /// longer side.
     #[serde(default)]
     pub print_two_on_one: bool,
+    /// Document-level automatic hyphenation (ハイフネーション).
+    #[serde(default)]
+    pub hyphenation: HyphenationSettings,
     /// All bookmarks (`<w:bookmarkStart>` / `<w:bookmarkEnd>` pairs) found
     /// while parsing the body, indexed in document order. Used by internal
     /// hyperlinks (`w:anchor`) and by consumers that need to resolve or
@@ -2854,6 +2857,10 @@ pub struct RunImage {
     /// apart so a run without them stays small.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub format: Option<Box<PictureFormat>>,
+    /// Word ink (`w14:contentPart` over an InkML part): the strokes this
+    /// drawing holds, which are drawn in place of its fallback picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink: Option<Box<crate::inkml::InkContent>>,
 }
 
 /// Coordinate system and supported child shapes from a DrawingML group.
@@ -3953,8 +3960,9 @@ mod tests {
         // shape extras and anchor options (`RunImage::format`,
         // `RunTextBox::extras`, `RunImageLayout::options`, twice). 40 more:
         // a chart's legend and the part XML it is drawn from
-        // (`RunChart::legend`, `RunChart::xml`).
-        assert_eq!(std::mem::size_of::<Run>(), 3128);
+        // (`RunChart::legend`, `RunChart::xml`). 8 more: a picture's boxed
+        // Word ink strokes (`RunImage::ink`).
+        assert_eq!(std::mem::size_of::<Run>(), 3136);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -5638,6 +5646,36 @@ impl RunProperties {
             && self.theme_color.is_none()
             && self.east_asian_layout.is_none()
             && self.text_effects.is_none()
+    }
+}
+
+/// Word's automatic hyphenation settings (`settings.xml`).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
+pub struct HyphenationSettings {
+    /// `w:autoHyphenation`: 文書を自動的にハイフネーションする.
+    #[serde(default)]
+    pub auto: bool,
+    /// `w:hyphenationZone` in twips: how much room a line may leave at its
+    /// end before the next word is hyphenated. Word's default is 360 (0.25").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone_twips: Option<u32>,
+    /// `w:consecutiveHyphenLimit`: at most this many lines in a row end in a
+    /// hyphen; absent or 0, no limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consecutive_limit: Option<u32>,
+    /// `w:doNotHyphenateCaps`: words in capitals are left whole.
+    #[serde(default)]
+    pub do_not_hyphenate_caps: bool,
+}
+
+impl HyphenationSettings {
+    /// Word's hyphenation zone when the document names none: 0.25".
+    pub const DEFAULT_ZONE_TWIPS: u32 = 360;
+
+    /// The hyphenation zone in points.
+    pub fn zone_pt(&self) -> f32 {
+        self.zone_twips.unwrap_or(Self::DEFAULT_ZONE_TWIPS) as f32 / 20.0
     }
 }
 

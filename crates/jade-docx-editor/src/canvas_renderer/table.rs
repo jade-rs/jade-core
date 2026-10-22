@@ -4948,7 +4948,7 @@ where
                 paragraph_index,
                 run_index: picture.run_index,
             };
-            if image.data_uri.is_some() || image.format().ink.is_some() {
+            if image.data_uri.is_some() || super::has_ink_strokes(image) {
                 self.draw_image_element(image, draw_spec)?;
             } else if let Some(group) = image.shape_group.as_ref() {
                 self.draw_shape_group(group, draw_spec)?;
@@ -14449,6 +14449,7 @@ mod tests {
             break_properties: None,
             leaders: Vec::new(),
             tab_stops: Vec::new(),
+            hyphen: None,
         };
         let mut style = ParagraphStyle {
             word_east_asian_font_line_box: true,

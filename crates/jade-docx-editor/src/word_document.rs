@@ -714,6 +714,12 @@ mod table_tools;
 
 #[path = "word_document/references.rs"]
 mod references;
+
+#[path = "word_document/hyphenation.rs"]
+mod hyphenation;
+
+#[path = "word_document/ink_drawing.rs"]
+pub mod ink_drawing;
 pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
@@ -2613,6 +2619,7 @@ impl WordDocument {
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.hyphenation = doc_settings.hyphenation;
             parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
             parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =
@@ -7233,21 +7240,7 @@ impl WordDocument {
                         });
                     }
                     if let Some(image) = run.image.as_mut() {
-                        // Ink: its InkML part's strokes, which are drawn.
-                        if let Some(id) = image.format().ink_relationship_id.clone() {
-                            if image.format().ink.is_none() {
-                                let ink = rel_map
-                                    .get(id.as_str())
-                                    .map(|rel| {
-                                        Self::resolve_target_path(&doc_part.path, &rel.target)
-                                    })
-                                    .and_then(|path| package.get(&path))
-                                    .and_then(|bytes| std::str::from_utf8(bytes).ok())
-                                    .and_then(crate::ink::parse_inkml);
-                                image.format_mut().ink = ink;
-                            }
-                            continue;
-                        }
+                        Self::resolve_ink_part(image, doc_part, package, rel_map);
                         if image.data_uri.is_some() {
                             continue;
                         }
@@ -32217,6 +32210,24 @@ impl WordDocument {
         image: &RunImage,
         existing: Option<XmlElement>,
     ) -> XmlElement {
+        // Word ink: the drawing over its InkML part, with its picture as the
+        // fallback.
+        if let Some(relationship_id) = image
+            .ink
+            .as_ref()
+            .and_then(|ink| ink.relationship_id.clone())
+        {
+            let plain = RunImage {
+                ink: None,
+                ..image.clone()
+            };
+            let choice = Self::build_image_drawing_element(doc, &plain);
+            let fallback = plain
+                .relationship_id
+                .is_some()
+                .then(|| Self::build_image_drawing_element(doc, &plain));
+            return Self::create_ink_alternate_content(doc, &relationship_id, choice, fallback);
+        }
         if let Some(existing) = existing {
             match Self::patch_image_drawing_element(doc, image, existing) {
                 Ok(patched) => return patched,

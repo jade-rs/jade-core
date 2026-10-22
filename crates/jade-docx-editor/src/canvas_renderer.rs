@@ -240,10 +240,19 @@ where
     }
 }
 
+#[cfg(test)]
+mod advance_field_tests;
 mod float_lookahead;
+#[cfg(test)]
+mod hyphenation_tests;
+mod ink;
+#[cfg(test)]
+mod ink_tests;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
+#[cfg(test)]
+mod opentype_features_tests;
 mod paragraph_join;
 #[cfg(test)]
 mod recording_host;
@@ -3021,6 +3030,11 @@ impl ParagraphRenderCache {
 
 /// The instruction of an EQ field this renderer draws as math: one the
 /// reader did not already model as ruby, an enclosure or distributed text.
+/// Whether a drawing is Word ink with strokes to draw (`RunImage::ink`).
+fn has_ink_strokes(image: &RunImage) -> bool {
+    image.ink.as_ref().is_some_and(|ink| !ink.traces.is_empty())
+}
+
 fn eq_field_instruction(kind: &RunFieldKind) -> Option<&str> {
     match kind {
         RunFieldKind::Unsupported { instruction } => {
@@ -3602,6 +3616,8 @@ where
     document_snap_to_grid_default: bool,
     document_default_tab_width: Option<f64>,
     document_no_tab_hanging_indent: bool,
+    /// The document's automatic hyphenation (`w:autoHyphenation`, …).
+    document_hyphenation: jade_docx_reader::HyphenationSettings,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -8103,6 +8119,7 @@ where
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
+            document_hyphenation: jade_docx_reader::HyphenationSettings::default(),
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -9285,6 +9302,21 @@ where
             .doc_grid_char_space_px
             .map(|value| value.to_bits())
             .hash(&mut hasher);
+        for advance in &paragraph_style.advances {
+            advance.offset.hash(&mut hasher);
+            advance.dx_px.to_bits().hash(&mut hasher);
+            advance.x_px.map(f64::to_bits).hash(&mut hasher);
+        }
+        paragraph_style
+            .hyphenation
+            .map(|hyphenation| {
+                (
+                    hyphenation.zone_px.to_bits(),
+                    hyphenation.consecutive_limit,
+                    hyphenation.hyphenate_caps,
+                )
+            })
+            .hash(&mut hasher);
         for segment in &paragraph_style.float_line_segments {
             segment.start_x.to_bits().hash(&mut hasher);
             segment.width.to_bits().hash(&mut hasher);
@@ -10209,6 +10241,7 @@ where
             indent.and_then(|i| i.first_line_chars).hash(&mut hasher);
             indent.and_then(|i| i.hanging_chars).hash(&mut hasher);
             props.mirror_indents.hash(&mut hasher);
+            props.suppress_auto_hyphens.hash(&mut hasher);
             props.keep_lines.hash(&mut hasher);
             props.keep_next.hash(&mut hasher);
             props.page_break_before.hash(&mut hasher);
@@ -13119,6 +13152,13 @@ where
         self.math_settings = math::settings_from(&document.math_properties);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
+        if self.document_hyphenation != document.hyphenation {
+            // Every paragraph's lines may end elsewhere.
+            self.document_hyphenation = document.hyphenation;
+            self.clear_paragraph_wrap_cache();
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+        }
         let new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
         if self.document_east_asian_rules != new_east_asian_rules {
@@ -16613,6 +16653,15 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        paragraph_style.hyphenation =
+            jade_docx_layout::line_wrap::ParagraphHyphenation::for_paragraph(
+                &self.document_hyphenation,
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.suppress_auto_hyphens)
+                    .unwrap_or(false),
+            );
         let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
@@ -17117,6 +17166,7 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
@@ -17130,6 +17180,33 @@ where
                 }
                 shown_field_codes.push(*field);
             }
+            // An ADVANCE field moves the text after it: along the line from
+            // here, and up or down from here on.
+            if field_code.is_none() {
+                if let Some(advance) =
+                    run.field
+                        .as_ref()
+                        .and_then(|field| match field.kind.base_kind() {
+                            RunFieldKind::Unsupported { instruction } => {
+                                jade_docx_layout::advance_field::AdvanceField::parse(instruction)
+                            }
+                            _ => None,
+                        })
+                {
+                    // \x is measured from the text's left edge on the line.
+                    let x_px = advance.x.map(points_to_px);
+                    paragraph_style.advances.push(
+                        jade_docx_layout::advance_field::ParagraphAdvance {
+                            offset: current_pos,
+                            dx_px: points_to_px(advance.dx()),
+                            x_px: x_px.map(|x| x.max(0.0)),
+                            y_px: advance.y.map(points_to_px),
+                        },
+                    );
+                    advance_raise_pt += advance.raise();
+                    continue;
+                }
+            }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
@@ -17138,6 +17215,18 @@ where
             if run_properties_are_hidden(resolved_run_properties.as_deref()) {
                 continue;
             }
+            // Text after an ADVANCE \u or \d sits that much higher or lower.
+            let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                properties.text_position =
+                    Some(properties.text_position.unwrap_or(0.0) + advance_raise_pt);
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
 
             // Final-preview state (changes not shown): tracked deletions and
             // move-source runs are removed from the layout entirely so they
@@ -20611,6 +20700,31 @@ where
             ));
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
+            // ADVANCE \y puts the line holding it at a position down the page
+            // (Word ignores it in headers, footers and notes).
+            let advance_line_shift = if paragraph_style
+                .advances
+                .iter()
+                .any(|advance| advance.y_px.is_some())
+                && !self.rendering_header_footer_story
+                && !self.rendering_note_story
+            {
+                let line_end = wrapped_line
+                    .segments
+                    .iter()
+                    .map(|segment| segment.end)
+                    .max()
+                    .unwrap_or(line_start);
+                paragraph_style
+                    .advances
+                    .iter()
+                    .filter(|advance| (line_start..=line_end).contains(&advance.offset))
+                    .filter_map(|advance| advance.y_px)
+                    .next_back()
+                    .map_or(0.0, |y| y - top)
+            } else {
+                0.0
+            };
             // Band-mode ink coverage guard: the band rect was computed from the
             // PRE-edit layout cache via `band_local_bounds`, whose bottom split
             // assumes normal spacing. Verify against the ACTUAL measured ink of
@@ -21336,7 +21450,7 @@ where
                     );
                 }
                 if draw_enabled {
-                    if image.data_uri.is_some() || image.format().ink.is_some() {
+                    if image.data_uri.is_some() || has_ink_strokes(image) {
                         self.draw_image_element(image, draw_spec)?;
                     } else if let Some(group) = image.shape_group.as_ref() {
                         self.draw_shape_group(group, draw_spec)?;
@@ -21433,7 +21547,7 @@ where
                     );
                 }
                 let text_style = self.cmd_text_style(prepared.segment.properties.as_deref(), style);
-                let text_y = baseline + style.baseline_shift_px;
+                let text_y = baseline + style.baseline_shift_px + advance_line_shift;
                 // Draw highlight background behind the text when present.
                 if let Some(hl_color) = text_style.highlight_color.as_deref() {
                     let (hl_top, hl_height) = Self::text_highlight_vertical_bounds(
@@ -21556,6 +21670,45 @@ where
                     &prepared.glyph_steps,
                 )
                 .map_err(PainterError::into_js_value)?;
+                // Automatic hyphenation's hyphen, after the line's last
+                // letter in its run's style: not in the text, only drawn.
+                if let (Some(hyphen), Some(last_step), true) = (
+                    wrapped_line.hyphen,
+                    prepared.glyph_steps.last(),
+                    segment_index + 1 == prepared_segments.len(),
+                ) {
+                    let letter = wrapped_line
+                        .clusters
+                        .last()
+                        .and_then(|cluster| cluster.layout.as_ref())
+                        .map_or(0.0, |layout| layout.glyph_box_width - hyphen.width);
+                    let hyphen_x = *start_x + last_step.x_offset + letter.max(0.0);
+                    let hyphen_step = [PlannedGlyphLayoutStep {
+                        text_start: 0,
+                        text_end: 1,
+                        font_slot: ResolvedFontSlot::LatinAscii,
+                        x_offset: 0.0,
+                    }];
+                    if let Some(buf) = commands_out.as_deref_mut() {
+                        self.push_text_commands_for_plan(
+                            buf,
+                            hyphen_x,
+                            text_y,
+                            &text_style,
+                            "-",
+                            &hyphen_step,
+                        );
+                    }
+                    self.draw_planned_text(
+                        &context,
+                        hyphen_x,
+                        text_y,
+                        &text_style,
+                        ("-", style.resolved.as_ref()),
+                        &hyphen_step,
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                }
                 let width = prepared.width;
                 if style.strike || style.double_strike {
                     self.draw_strike_through(
@@ -22104,7 +22257,7 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(Some(transform.y + transform.height));
         }
-        if image.data_uri.is_some() || image.format().ink.is_some() {
+        if image.data_uri.is_some() || has_ink_strokes(image) {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
             self.draw_shape_group(group, draw_spec)?;
@@ -26643,7 +26796,16 @@ where
         if !self.should_draw_current_page_for_render() || image.layout.hidden() {
             return Ok(());
         }
-        if let Some(ink) = image.format().ink.as_ref() {
+        if let Some(ink) = image.ink.as_ref().filter(|ink| !ink.traces.is_empty()) {
+            // Word ink: its strokes, not its fallback picture. The strokes
+            // fill the box they were laid in; a drawing resized since scales
+            // them onto its new one.
+            let natural = jade_docx_reader::inkml::InkContent::bounds(&ink.traces)
+                .map(|(_, _, right, bottom)| (right, bottom))
+                .unwrap_or((
+                    image.width_px.unwrap_or(draw_spec.width),
+                    image.height_px.unwrap_or(draw_spec.height),
+                ));
             let painter = self.host.painter();
             painter.save();
             Self::apply_centered_transform(
@@ -26655,9 +26817,9 @@ where
                 draw_spec.flip_vertical,
             )
             .map_err(PainterError::into_js_value)?;
-            Self::paint_ink(&painter, ink, draw_spec);
+            let drawn = self.draw_ink(ink, draw_spec, natural);
             painter.restore();
-            return Ok(());
+            return drawn;
         }
         // A picture is a figure in a tagged PDF, with its alternative text.
         let tagged = self.begin_structure(StructureKind::Figure {
@@ -26944,55 +27106,6 @@ where
             );
         }
         Ok(())
-    }
-
-    /// Ink's strokes, fitted to the drawing's box (which Word sizes to the
-    /// strokes and their pen).
-    fn paint_ink<P: Painter>(painter: &P, ink: &crate::document::InkDrawing, spec: ImageDrawSpec) {
-        const PX_PER_CM: f64 = 96.0 / 2.54;
-        let (left, top, width, height) = crate::ink::bounds(ink);
-        let pen = ink
-            .strokes
-            .iter()
-            .map(|stroke| stroke.width)
-            .fold(0.0, f64::max)
-            * PX_PER_CM;
-        let scale_x = ((spec.width - pen).max(1.0)) / width;
-        let scale_y = ((spec.height - pen).max(1.0)) / height;
-        let at = |(x, y): (f64, f64)| {
-            (
-                spec.x + pen / 2.0 + (x - left) * scale_x,
-                spec.y + pen / 2.0 + (y - top) * scale_y,
-            )
-        };
-        for stroke in &ink.strokes {
-            let line_width = (stroke.width * (scale_x + scale_y) / 2.0).max(0.5);
-            painter.save();
-            if stroke.highlighter {
-                painter.set_global_alpha(0.5);
-            }
-            painter.set_stroke_style_str(&stroke.color);
-            painter.set_fill_style_str(&stroke.color);
-            painter.set_line_width(line_width);
-            painter.set_line_dash(&[]);
-            painter.begin_path();
-            if stroke.points.len() == 1 {
-                let (x, y) = at(stroke.points[0]);
-                let _ = painter.arc(x, y, line_width / 2.0, 0.0, std::f64::consts::TAU);
-                painter.fill();
-            } else {
-                for (index, point) in stroke.points.iter().enumerate() {
-                    let (x, y) = at(*point);
-                    if index == 0 {
-                        painter.move_to(x, y);
-                    } else {
-                        painter.line_to(x, y);
-                    }
-                }
-                painter.stroke();
-            }
-            painter.restore();
-        }
     }
 
     /// What goes over a picture: its inner shadow, bevel and outline.
@@ -28932,6 +29045,15 @@ where
                 }
             }
 
+            // Word 2010 typography (ligatures, figure styles, stylistic
+            // sets) travels in the descriptor, as layout's does.
+            if let Some(token) =
+                jade_docx_layout::font_resolver::opentype_features_token(props, enable_pair_kerning)
+            {
+                font_style.insert_str(0, &format!("{token} "));
+                complex_font_style.insert_str(0, &format!("{token} "));
+            }
+
             if props.strike.unwrap_or(false) {
                 strike = true;
             }
@@ -29427,6 +29549,38 @@ where
                 context.restore();
             }
         } else {
+            if resolved_style.joins_characters
+                || jade_painter::font_features::has_features(
+                    &resolved_style.font_descriptor_latin_ascii,
+                )
+                || jade_painter::font_features::has_features(
+                    &resolved_style.font_descriptor_east_asia,
+                )
+            {
+                let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> =
+                    glyph_steps
+                        .iter()
+                        .map(|step| crate::draw_command::executor::PlacedCharacter {
+                            start: step.text_start as usize,
+                            end: step.text_end as usize,
+                            font: resolved_style.descriptor_for_slot(step.font_slot).as_ref(),
+                            x_offset: step.x_offset,
+                        })
+                        .collect();
+                if crate::draw_command::executor::try_fill_featured_text(
+                    context,
+                    segment_text,
+                    x,
+                    y,
+                    &characters,
+                    &mut |context, font| {
+                        self.set_font_if_changed(context, font);
+                    },
+                )? {
+                    self.record_glyph_batch_run(glyph_steps.len() as u64);
+                    return Ok(());
+                }
+            }
             if self.try_draw_planned_text_batch(
                 context,
                 x,
@@ -29685,6 +29839,20 @@ where
             &resolved_override
         };
 
+        // A run asking for OpenType features (Word's ligatures, figure
+        // styles) is placed a character at a time as usual, then drawn
+        // shaped once its characters' x are known.
+        let shaped = draw_enabled
+            && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+            && (resolved_run_style.joins_characters
+                || jade_painter::font_features::has_features(
+                    &resolved_run_style.font_descriptor_latin_ascii,
+                )
+                || jade_painter::font_features::has_features(
+                    &resolved_run_style.font_descriptor_east_asia,
+                ));
+        let mut placed: Vec<(usize, usize, Rc<str>, f64)> = Vec::new();
+        let start_x = x;
         let end_state = walk_text_advance_steps(
             self,
             text,
@@ -29694,6 +29862,29 @@ where
             next_grapheme_after_segment,
             &mut snap_to_chars_cell_width_cache,
             |step| {
+                if shaped {
+                    let leading_advance = step.advance.implicit_latin_gap
+                        + step.advance.implicit_numeric_gap
+                        + step.advance.kerning_adjustment
+                        + step.advance.snap_leading;
+                    x += leading_advance;
+                    width += leading_advance;
+                    let font = match placed.last() {
+                        Some((_, _, last, _)) if last.as_ref() == step.font_descriptor => {
+                            Rc::clone(last)
+                        }
+                        _ => Rc::from(step.font_descriptor),
+                    };
+                    placed.push((
+                        step.rel_offset,
+                        step.rel_offset + step.grapheme.len(),
+                        font,
+                        x - start_x,
+                    ));
+                    x += step.advance.glyph_box_width;
+                    width += step.advance.glyph_box_width;
+                    return Ok(());
+                }
                 // Advances come from the measurer, which sets its own font, so
                 // an undrawn line (band cull, undrawn page) needs no painter font.
                 if draw_enabled {
@@ -29731,6 +29922,42 @@ where
                 Ok(())
             },
         )?;
+        if shaped && !placed.is_empty() {
+            let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> = placed
+                .iter()
+                .map(|(start, end, font, x_offset)| {
+                    crate::draw_command::executor::PlacedCharacter {
+                        start: *start,
+                        end: *end,
+                        font: font.as_ref(),
+                        x_offset: *x_offset,
+                    }
+                })
+                .collect();
+            let drawn = crate::draw_command::executor::try_fill_featured_text(
+                context,
+                text,
+                start_x,
+                y,
+                &characters,
+                &mut |context, font| {
+                    self.set_font_if_changed(context, font);
+                },
+            )
+            .map_err(PainterError::into_js_value)?;
+            if !drawn {
+                for character in &characters {
+                    self.set_font_if_changed(context, character.font);
+                    context
+                        .fill_text(
+                            &text[character.start..character.end],
+                            start_x + character.x_offset,
+                            y,
+                        )
+                        .map_err(PainterError::into_js_value)?;
+                }
+            }
+        }
 
         Ok((width, end_state))
     }
@@ -45208,6 +45435,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -45236,6 +45464,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -45415,6 +45644,7 @@ mod tests {
                     leaders: Vec::new(),
                     tab_stops: Vec::new(),
                     clusters: Vec::new(),
+                    hyphen: None,
                 })
                 .collect()
         }
@@ -54273,6 +54503,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "b", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -54286,6 +54517,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, ",", false, true, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];
@@ -54352,6 +54584,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "(", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -54365,6 +54598,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, "b", false, false, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];

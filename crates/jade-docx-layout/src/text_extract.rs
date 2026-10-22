@@ -500,6 +500,7 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
+    document.hyphenation = settings.hyphenation;
     document.book_fold_printing = settings.book_fold_printing;
     document.print_two_on_one = settings.print_two_on_one;
     if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
@@ -872,6 +873,14 @@ fn build_paragraph_input<C: LineWrapContext>(
         paragraph_style.default_tab_width = points_to_px(default_tab_stop);
     }
     paragraph_style.use_hanging_indent_tab_stop = !document.no_tab_hanging_indent;
+    paragraph_style.hyphenation = crate::line_wrap::ParagraphHyphenation::for_paragraph(
+        &document.hyphenation,
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.suppress_auto_hyphens)
+            .unwrap_or(false),
+    );
     if let Some(char_advances) = layout_context
         .oracle_advances_px_by_paragraph
         .and_then(|by_paragraph| by_paragraph.get(&paragraph_index))
@@ -2476,6 +2485,7 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
+        document.hyphenation = settings.hyphenation;
         document.book_fold_printing = settings.book_fold_printing;
         document.print_two_on_one = settings.print_two_on_one;
         document.book_fold_printing = settings.book_fold_printing;
