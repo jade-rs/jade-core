@@ -137,3 +137,17 @@ fn pictures_come_back() {
 fn a_file_that_is_not_a_pdf_is_refused() {
     assert!(jade_docx_convert::pdf::read_pdf(b"%PDF-1.4 garbage").is_err());
 }
+
+/// Word for Mac draws 影付き text twice, the copy a little off: it is read
+/// once, through the fonts' ToUnicode maps.
+#[test]
+fn a_word_for_mac_pdf_reads_shadowed_text_once() {
+    let text = read("char-effects-word-mac").plain_text();
+    assert!(text.contains("Shadowed"), "{text:?}");
+    assert!(!text.contains("SShh"), "{text:?}");
+    assert!(
+        text.contains("Embossed") && !text.contains("EEEmm"),
+        "{text:?}"
+    );
+    assert!(text.contains("Imprinted"), "{text:?}");
+}
