@@ -116,7 +116,7 @@ fn to_js<T: serde::Serialize>(value: &T) -> JsValue {
         .unwrap_or(JsValue::NULL)
 }
 
-fn snake_case(key: &str) -> String {
+pub(super) fn snake_case(key: &str) -> String {
     let mut snake = String::with_capacity(key.len() + 4);
     for ch in key.chars() {
         if ch.is_ascii_uppercase() {
@@ -132,7 +132,7 @@ fn snake_case(key: &str) -> String {
 /// `marginTop` → `margin_top`, recursively over object keys. The section
 /// layout types speak snake_case (as the CLI and MCP tools write them); the
 /// browser API speaks camelCase like the rest of the runtime.
-fn snake_keys(value: serde_json::Value) -> serde_json::Value {
+pub(super) fn snake_keys(value: serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Object(map) => serde_json::Value::Object(
             map.into_iter()
@@ -147,7 +147,7 @@ fn snake_keys(value: serde_json::Value) -> serde_json::Value {
 }
 
 /// The reverse of [`snake_keys`], for what the browser reads back.
-fn camel_keys(value: serde_json::Value) -> serde_json::Value {
+pub(super) fn camel_keys(value: serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Object(map) => serde_json::Value::Object(
             map.into_iter()
@@ -198,7 +198,7 @@ fn whole_document() -> HeadlessApplyOverrides {
 }
 
 impl OffscreenDocumentView {
-    fn current_selection(&self) -> SelectionRange {
+    pub(super) fn current_selection(&self) -> SelectionRange {
         let state = self.state.borrow();
         state.selection.unwrap_or_else(|| {
             self.renderer
