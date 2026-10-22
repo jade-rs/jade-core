@@ -181,6 +181,8 @@ struct CanvasDocumentState {
     options: Options,
     /// Which fields show their codes (⌥F9 / ⇧F9).
     field_code_view: crate::fields::FieldCodeView,
+    /// Word's オートコレクト while typing; `None` while it is off.
+    word_autocorrect: Option<crate::word::autocorrect::AutoCorrectOptions>,
     word_doc: Option<WordDocument>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
@@ -848,6 +850,8 @@ impl<T: PartialEq> UniformField<T> {
     }
 }
 
+#[path = "canvas_view/word_autocorrect.rs"]
+mod word_autocorrect;
 #[path = "canvas_view/word_controls.rs"]
 mod word_controls;
 #[path = "canvas_view/word_ink.rs"]
@@ -8557,6 +8561,7 @@ impl OffscreenDocumentView {
         let state = Rc::new(RefCell::new(CanvasDocumentState {
             options: opts.clone(),
             field_code_view: Default::default(),
+            word_autocorrect: None,
             word_doc: None,
             paged_images: Vec::new(),
             lazy_mode: false,
