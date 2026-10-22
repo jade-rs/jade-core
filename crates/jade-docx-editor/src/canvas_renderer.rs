@@ -17409,14 +17409,19 @@ where
                             _ => None,
                         })
                 {
-                    // \x is measured from the text's left edge on the line.
-                    let x_px = advance.x.map(points_to_px);
+                    // \x is measured from the column's left edge: from the
+                    // paragraph's text edge, the left indent less.
+                    let text_edge = x - column_x;
+                    let x_px = advance
+                        .x
+                        .map(|from_column| points_to_px(from_column).max(0.0) - text_edge);
                     paragraph_style.advances.push(
                         jade_docx_layout::advance_field::ParagraphAdvance {
                             offset: current_pos,
                             dx_px: points_to_px(advance.dx()),
-                            x_px: x_px.map(|x| x.max(0.0)),
+                            x_px,
                             y_px: advance.y.map(points_to_px),
+                            raise_pt: advance.raise(),
                         },
                     );
                     advance_raise_pt += advance.raise();
