@@ -79,4 +79,94 @@ impl OffscreenDocumentView {
     pub fn clear_ink_drawings(&self) -> Result<JsValue, JsValue> {
         self.set_ink(Vec::new())
     }
+
+    /// The document's ink as strokes on pages (0-based, page px), in the
+    /// order the ink tools number them: `{index, page, points, color,
+    /// width}`.
+    #[wasm_bindgen(js_name = inkStrokes)]
+    pub fn ink_strokes_js(&self) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let strokes = self.read_word_session(|session| session.ink_strokes())?;
+        let value: Vec<serde_json::Value> = strokes
+            .iter()
+            .enumerate()
+            .map(|(index, stroke)| {
+                serde_json::json!({
+                    "index": index,
+                    "page": stroke.page,
+                    "points": stroke.trace.points,
+                    "color": stroke.trace.brush.color,
+                    "width": stroke.trace.brush.width_px,
+                })
+            })
+            .collect();
+        Ok(super::word_models::to_js(&value))
+    }
+
+    /// なげなわ選択: the strokes on `page` mostly inside `polygon`
+    /// (`[[x, y], …]`, page px).
+    #[wasm_bindgen(js_name = lassoInkStrokes)]
+    pub fn lasso_ink_strokes(&self, page: usize, polygon: JsValue) -> Result<Vec<u32>, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let polygon: Vec<(f64, f64)> = serde_wasm_bindgen::from_value(polygon)
+            .map_err(|error| JsValue::from_str(&format!("invalid lasso: {error}")))?;
+        let caught = self.read_word_session(|session| session.lasso_strokes(page, &polygon))?;
+        Ok(caught.into_iter().map(|index| index as u32).collect())
+    }
+
+    /// The selected strokes moved and resized onto `[left, top, right,
+    /// bottom]` (page px), one undo step.
+    #[wasm_bindgen(js_name = transformInkStrokes)]
+    pub fn transform_ink_strokes(
+        &self,
+        selection: Vec<u32>,
+        to: Vec<f64>,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let [left, top, right, bottom] = to[..] else {
+            return Err(JsValue::from_str("a box is four numbers"));
+        };
+        let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
+        self.run_word_session("word_transform_ink", move |session| {
+            session.transform_strokes(&selection, (left, top, right, bottom))
+        })
+    }
+
+    /// The selected strokes deleted, one undo step.
+    #[wasm_bindgen(js_name = deleteInkStrokes)]
+    pub fn delete_ink_strokes(&self, selection: Vec<u32>) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
+        self.run_word_session("word_delete_ink", move |session| {
+            session.delete_strokes(&selection)
+        })
+    }
+
+    /// The selected strokes given a pen's `color` (`#RRGGBB`) and
+    /// `thickness_mm`, one undo step.
+    #[wasm_bindgen(js_name = restyleInkStrokes)]
+    pub fn restyle_ink_strokes(
+        &self,
+        selection: Vec<u32>,
+        color: String,
+        thickness_mm: f64,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::{Pen, WordInkTools};
+        use jade_docx_reader::inkml::InkTool;
+        let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
+        self.run_word_session("word_restyle_ink", move |session| {
+            session.restyle_strokes(&selection, &Pen::new(InkTool::Pen, &color, thickness_mm))
+        })
+    }
+
+    /// インクを図形に変換: each selected stroke that draws a shape the
+    /// recogniser knows becomes that shape. `result` is how many did.
+    #[wasm_bindgen(js_name = convertInkStrokesToShapes)]
+    pub fn convert_ink_strokes_to_shapes(&self, selection: Vec<u32>) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
+        self.run_word_session("word_ink_to_shape", move |session| {
+            session.convert_strokes_to_shapes(&selection)
+        })
+    }
 }
