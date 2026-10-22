@@ -312,4 +312,61 @@ impl OffscreenDocumentView {
             Ok(())
         })
     }
+
+    /// 罫線を引く: the pencil's stroke from (`from_x`, `from_y`) to (`to_x`,
+    /// `to_y`), as pointer events give them. Across a cell it splits the
+    /// cell — into two rows when mostly horizontal, two columns when
+    /// vertical; a rectangle outside any table becomes a one-cell table that
+    /// size where its top-left corner is. One undo step; `null` when the
+    /// stroke drew nothing.
+    #[wasm_bindgen(js_name = drawTableStroke)]
+    pub fn draw_table_stroke(
+        &self,
+        from_x: f64,
+        from_y: f64,
+        to_x: f64,
+        to_y: f64,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::table::WordTables;
+        let (from, to) = ((from_x, from_y), (to_x, to_y));
+        let middle = ((from_x + to_x) / 2.0, (from_y + to_y) / 2.0);
+        let in_cell = self.read_word_session(|session| {
+            session.cell_layouts().iter().any(|cell| {
+                middle.0 > cell.left
+                    && middle.0 < cell.right
+                    && middle.1 > cell.top
+                    && middle.1 < cell.bottom
+            })
+        })?;
+        let at = self
+            .renderer
+            .borrow()
+            .hit_test_position(from_x.min(to_x), from_y.min(to_y))
+            .map(|at| (at.paragraph, at.offset));
+        if !in_cell && (at.is_none() || (to_x - from_x).abs() * 0.75 < 9.0) {
+            return Ok(JsValue::NULL);
+        }
+        self.run_word_session("word_draw_table", move |session| {
+            session.draw_stroke(from, to, at).map(|_| ())
+        })
+    }
+
+    /// 罫線の削除: the eraser on the border at (`x`, `y`) — the two cells it
+    /// separates become one. One undo step; `null` when no border is there.
+    #[wasm_bindgen(js_name = eraseTableBorder)]
+    pub fn erase_table_border(&self, x: f64, y: f64) -> Result<JsValue, JsValue> {
+        use crate::word::table::{TableHit, WordTables};
+        let border = self.read_word_session(|session| {
+            matches!(
+                session.table_hit(x, y),
+                Some(TableHit::ColumnBorder { .. } | TableHit::RowBorder { .. })
+            )
+        })?;
+        if !border {
+            return Ok(JsValue::NULL);
+        }
+        self.run_word_session("word_erase_border", move |session| {
+            session.erase_border(x, y).map(|_| ())
+        })
+    }
 }
