@@ -878,6 +878,8 @@ mod word_objects;
 mod word_parity;
 #[path = "canvas_view/word_parts.rs"]
 mod word_parts;
+#[path = "canvas_view/word_ranges.rs"]
+mod word_ranges;
 #[path = "canvas_view/word_references.rs"]
 mod word_references;
 #[path = "canvas_view/word_review.rs"]
