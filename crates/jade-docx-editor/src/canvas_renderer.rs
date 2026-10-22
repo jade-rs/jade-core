@@ -30151,14 +30151,7 @@ where
                 context.restore();
             }
         } else {
-            if resolved_style.joins_characters
-                || jade_painter::font_features::has_features(
-                    &resolved_style.font_descriptor_latin_ascii,
-                )
-                || jade_painter::font_features::has_features(
-                    &resolved_style.font_descriptor_east_asia,
-                )
-            {
+            if resolved_style.joins_characters || resolved_style.has_font_features {
                 let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> =
                     glyph_steps
                         .iter()
@@ -30446,13 +30439,7 @@ where
         // shaped once its characters' x are known.
         let shaped = draw_enabled
             && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
-            && (resolved_run_style.joins_characters
-                || jade_painter::font_features::has_features(
-                    &resolved_run_style.font_descriptor_latin_ascii,
-                )
-                || jade_painter::font_features::has_features(
-                    &resolved_run_style.font_descriptor_east_asia,
-                ));
+            && (resolved_run_style.joins_characters || resolved_run_style.has_font_features);
         let mut placed: Vec<(usize, usize, Rc<str>, f64)> = Vec::new();
         let start_x = x;
         let end_state = walk_text_advance_steps(

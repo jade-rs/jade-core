@@ -35,6 +35,11 @@ pub fn features_token(descriptor: &str) -> Option<&str> {
 
 /// Whether `descriptor` asks for any OpenType features.
 pub fn has_features(descriptor: &str) -> bool {
+    // The token leads the descriptor wherever jade puts one in; a plain
+    // descriptor is answered without scanning it.
+    if descriptor.starts_with(PREFIX) {
+        return true;
+    }
     descriptor.contains(PREFIX) && features_token(descriptor).is_some()
 }
 
@@ -112,6 +117,14 @@ pub fn token(features: &[FontFeature]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn features_are_found_leading_or_not() {
+        assert!(has_features("ot:liga 11.00pt Calibri, sans-serif"));
+        assert!(has_features("bold ot:onum 11.00pt Calibri"));
+        assert!(!has_features("italic 11.00pt Calibri, sans-serif"));
+        assert!(!has_features("11.00pt 'Not:a font'"));
+    }
 
     #[test]
     fn token_round_trips_and_strips() {
