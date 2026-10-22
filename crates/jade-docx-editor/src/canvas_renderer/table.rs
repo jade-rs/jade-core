@@ -5306,6 +5306,14 @@ where
         if run_props.and_then(|props| props.underline).unwrap_or(false) {
             self.draw_table_underline_line(context, x, y, width, line_height, resolved.as_ref());
         }
+        // A character border (`w:bdr`) in a cell, in its line style, as in
+        // the body.
+        if let Some(edge) = run_props
+            .and_then(|props| props.border.as_ref())
+            .and_then(|border| super::resolve_character_border(border, Some(requested)))
+        {
+            self.draw_character_border(context, &edge, (x, y, width, line_height), None);
+        }
 
         Ok(width)
     }

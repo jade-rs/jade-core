@@ -31612,8 +31612,10 @@ where
     /// The immediate fill is gated on the page-draw flag, while the
     /// `DrawCommand::FillRect` entries are always emitted so the cache-replay
     /// path reproduces identical geometry. Layout already includes border width
-    /// and `w:space`; painting must not expand that box again. MVP: a solid
-    /// stroke (double/dashed line styles remain follow-ups).
+    /// and `w:space`; painting must not expand that box again. A line style
+    /// other than `single` (double, thin–thick, dashed, wave, 3-D, …) draws
+    /// each side the way the same `w:pBdr` edge would
+    /// ([`Self::paint_paragraph_border_edge`]).
     fn draw_character_border<P: Painter>(
         &self,
         context: &P,
@@ -31623,6 +31625,27 @@ where
     ) {
         let (x, y, w, h) = rect;
         if w <= 0.0 || h <= 0.0 {
+            return;
+        }
+        if edge.kind != BorderKind::Single {
+            use border_styles::BorderSide;
+            let thickness = edge.width_px.max(1.0).min(w).min(h);
+            for (side, start, length, outer) in [
+                (BorderSide::Top, x, w, y),
+                (BorderSide::Bottom, x, w, y + h),
+                (BorderSide::Left, y, h, x),
+                (BorderSide::Right, y, h, x + w),
+            ] {
+                self.paint_paragraph_border_edge(
+                    edge,
+                    side,
+                    start,
+                    length,
+                    outer,
+                    thickness,
+                    &mut commands_out,
+                );
+            }
             return;
         }
         let rects = character_border_side_rects(x, y, w, h, edge.width_px);
@@ -44359,6 +44382,67 @@ mod tests {
                 (48.0, 20.0, 2.0, 16.0)
             ]
         );
+    }
+
+    /// A character border in another line style draws each side as the same
+    /// `w:pBdr` edge would: a double one two rules a side, a wave a wavy
+    /// stroke a side — on screen and through the draw commands the PDF
+    /// export and cache replay repeat.
+    #[test]
+    fn character_borders_draw_every_line_style() {
+        let renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
+        let painter = jade_painter::recording::RecordingPainter::new();
+        let commands = |kind: BorderKind| {
+            let edge = ResolvedBorderEdge {
+                width_px: 3.0,
+                space_px: 0.0,
+                color: Rc::from("#808080"),
+                kind,
+            };
+            let mut commands = Vec::new();
+            renderer.draw_character_border(
+                &painter,
+                &edge,
+                (10.0, 20.0, 60.0, 20.0),
+                Some(&mut commands),
+            );
+            commands
+        };
+        let fills = |commands: &[DrawCommand]| {
+            commands
+                .iter()
+                .filter(|command| matches!(command, DrawCommand::FillRect { .. }))
+                .count()
+        };
+        let strokes = |commands: &[DrawCommand]| {
+            commands
+                .iter()
+                .filter(|command| matches!(command, DrawCommand::StrokePolyline { .. }))
+                .count()
+        };
+        assert_eq!(fills(&commands(BorderKind::Single)), 4);
+        assert_eq!(fills(&commands(BorderKind::Double)), 8);
+        assert_eq!(fills(&commands(BorderKind::Triple)), 12);
+        assert_eq!(fills(&commands(BorderKind::ThinThickThinSmallGap)), 12);
+        assert!(fills(&commands(BorderKind::Dotted)) > 8);
+        assert_eq!(strokes(&commands(BorderKind::Wave)), 4);
+        assert_eq!(strokes(&commands(BorderKind::DoubleWave)), 8);
+        assert!(strokes(&commands(BorderKind::DashDotStroked)) > 8);
+        // The 3-D styles shade each side in two tones.
+        let tones: std::collections::HashSet<String> = commands(BorderKind::ThreeDEmboss)
+            .iter()
+            .filter_map(|command| match command {
+                DrawCommand::FillRect { color, .. } => Some(color.to_string()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(tones.len(), 2, "{tones:?}");
     }
 
     #[test]
