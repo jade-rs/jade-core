@@ -266,4 +266,50 @@ impl OffscreenDocumentView {
             },
         )
     }
+
+    /// Whether the point (`x` page-local, `y` down the pages, as pointer
+    /// events give them) is inside the selection: where a press starts
+    /// dragging the selected text rather than a new selection.
+    #[wasm_bindgen(js_name = selectionContainsPoint)]
+    pub fn selection_contains_point(&self, x: f64, y: f64) -> bool {
+        let selection = self.current_selection();
+        if selection.is_collapsed() {
+            return false;
+        }
+        let Some(at) = self.renderer.borrow().hit_test_position(x, y) else {
+            return false;
+        };
+        let (start, end) = selection.normalized();
+        (start.paragraph, start.offset) < (at.paragraph, at.offset)
+            && (at.paragraph, at.offset) < (end.paragraph, end.offset)
+    }
+
+    /// ドラッグ アンド ドロップ: the selected text, with its formatting, put
+    /// where the pointer let go (`x`, `y` as pointer events give them) —
+    /// moved, or copied with `copy` — as one undo step; the dropped text is
+    /// selected after. `null` when it was let go inside the selection.
+    #[wasm_bindgen(js_name = dropSelectionAt)]
+    pub fn drop_selection_at(&self, x: f64, y: f64, copy: bool) -> Result<JsValue, JsValue> {
+        use crate::word::clipboard::WordClipboard;
+        let selection = self.current_selection();
+        let Some(target) = self.renderer.borrow().hit_test_position(x, y) else {
+            return Ok(JsValue::NULL);
+        };
+        if selection.is_collapsed() || self.selection_contains_point(x, y) {
+            return Ok(JsValue::NULL);
+        }
+        let (start, end) = selection.normalized();
+        self.run_word_session("word_drop_text", move |session| {
+            let clip = session.copy_rich().ok_or("nothing is selected")?;
+            let moved_from =
+                (!copy).then_some(((start.paragraph, start.offset), (end.paragraph, end.offset)));
+            let dropped_end =
+                session.drop_rich(&clip, moved_from, (target.paragraph, target.offset))?;
+            session.set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
+                dropped_end.0,
+                dropped_end.1,
+            ))));
+            Ok(())
+        })
+    }
 }
