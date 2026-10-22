@@ -844,6 +844,9 @@ impl<T: PartialEq> UniformField<T> {
     }
 }
 
+#[path = "canvas_view/word_parity.rs"]
+mod word_parity;
+
 mod ordered_size {
     /// f32 font sizes wrapped for equality comparison in [`super::UniformField`].
     #[derive(Debug, PartialEq)]
@@ -10373,9 +10376,15 @@ impl OffscreenDocumentView {
             "lower" => HeadlessChangeCaseMode::Lower,
             "title" => HeadlessChangeCaseMode::Title,
             "sentence" => HeadlessChangeCaseMode::Sentence,
+            "toggle" => HeadlessChangeCaseMode::Toggle,
+            "halfWidth" => HeadlessChangeCaseMode::HalfWidth,
+            "fullWidth" => HeadlessChangeCaseMode::FullWidth,
+            "katakana" => HeadlessChangeCaseMode::Katakana,
+            "hiragana" => HeadlessChangeCaseMode::Hiragana,
             _ => {
                 return Err(JsValue::from_str(
-                    "case mode must be upper, lower, title, or sentence",
+                    "case mode must be upper, lower, title, sentence, toggle, halfWidth, \
+                     fullWidth, katakana, or hiragana",
                 ));
             }
         };
@@ -10505,6 +10514,8 @@ impl OffscreenDocumentView {
                 HeadlessCommand::SetWatermark { .. }
                     | HeadlessCommand::SetDocumentTheme { .. }
                     | HeadlessCommand::SetHeaderFooterVariants { .. }
+                    | HeadlessCommand::SetHeaderFooterLink { .. }
+                    | HeadlessCommand::SetSectionLayout { .. }
             )
         });
         let mut refresh_styles = commands
@@ -10573,12 +10584,35 @@ impl OffscreenDocumentView {
                 | HeadlessCommand::InsertField { .. }
                 | HeadlessCommand::InsertEquation { .. }
                 | HeadlessCommand::ReplaceEquation { .. }
+                | HeadlessCommand::InsertDateTimeField { .. }
+                | HeadlessCommand::InsertEnclosedCharacter { .. }
+                | HeadlessCommand::InsertTableFormula { .. }
+                | HeadlessCommand::UpdateTableFormulas
                 | HeadlessCommand::InsertIndex { .. }
                 | HeadlessCommand::UpdateTableOfContents
                 | HeadlessCommand::SetParagraphStyle { .. }
                 | HeadlessCommand::SetCharacterStyle { .. }
                 | HeadlessCommand::SetDropCap { .. }
                 | HeadlessCommand::SetHeaderFooterVariants { .. }
+                | HeadlessCommand::SetHeaderFooterLink { .. }
+                // The Office-parity dialogs: each reflows past the edited
+                // paragraph (pagination, typography, grid snapping, ruby line
+                // height) or reshapes the body (sections, tables).
+                | HeadlessCommand::SetParagraphOptions { .. }
+                | HeadlessCommand::SetParagraphPagination { .. }
+                | HeadlessCommand::SetParagraphTypography { .. }
+                | HeadlessCommand::SetParagraphSnapToGrid { .. }
+                | HeadlessCommand::SetJapaneseTypography { .. }
+                | HeadlessCommand::SetRuby { .. }
+                | HeadlessCommand::SetSectionLayout { .. }
+                | HeadlessCommand::SetHyphenation { .. }
+                | HeadlessCommand::SetTableCellSpacing { .. }
+                | HeadlessCommand::SetTableCellTextDirection { .. }
+                | HeadlessCommand::SetTableIndent { .. }
+                | HeadlessCommand::SetTablePosition { .. }
+                | HeadlessCommand::ConvertTextToTable { .. }
+                | HeadlessCommand::ConvertTableToText { .. }
+                | HeadlessCommand::SortTable { .. }
                 | HeadlessCommand::InsertTableRow { .. }
                 | HeadlessCommand::DeleteTableRow { .. }
                 | HeadlessCommand::InsertTableColumn { .. }

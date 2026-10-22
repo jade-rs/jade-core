@@ -778,6 +778,9 @@ mod references;
 #[path = "word_document/hyphenation.rs"]
 mod hyphenation;
 
+#[path = "word_document/format_state.rs"]
+pub mod format_state;
+
 #[path = "word_document/ink_drawing.rs"]
 pub mod ink_drawing;
 pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
