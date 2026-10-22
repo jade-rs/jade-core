@@ -711,6 +711,8 @@ mod review_tools;
 pub use protection::{
     hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
 };
+#[path = "word_document/signature_lines.rs"]
+mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
 mod table_revisions;
 pub use table_revisions::RowRevision;
@@ -13301,6 +13303,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -13459,6 +13462,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -16878,6 +16882,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -41173,6 +41178,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
                             decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
@@ -41258,6 +41264,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
                             decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
@@ -41609,6 +41616,7 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
                             decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
