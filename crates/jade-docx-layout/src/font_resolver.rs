@@ -1013,6 +1013,10 @@ pub struct ResolvedRunStyle {
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
     pub joins_characters: bool,
+    /// Whether the Latin or East Asian descriptor carries OpenType features
+    /// ([`jade_painter::font_features::has_features`]), worked out once here
+    /// rather than for every stretch of text drawn in the style.
+    pub has_font_features: bool,
     fixed_ascii_metrics: std::cell::OnceCell<CachedAsciiMetrics>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
@@ -1068,6 +1072,9 @@ impl ResolvedRunStyle {
         let joins_characters = descriptor_joins_characters(&font_descriptor_latin_ascii)
             || descriptor_joins_characters(&font_descriptor_latin_hansi)
             || descriptor_joins_characters(&font_descriptor_east_asia);
+        let has_font_features =
+            jade_painter::font_features::has_features(&font_descriptor_latin_ascii)
+                || jade_painter::font_features::has_features(&font_descriptor_east_asia);
         let font_descriptor_latin_ascii_hash = hash_font_descriptor(&font_descriptor_latin_ascii);
         let font_descriptor_latin_hansi_hash = hash_font_descriptor(&font_descriptor_latin_hansi);
         let font_descriptor_east_asia_hash = hash_font_descriptor(&font_descriptor_east_asia);
@@ -1099,6 +1106,7 @@ impl ResolvedRunStyle {
             enable_pair_kerning,
             font_hint,
             joins_characters,
+            has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
             fixed_east_asia_descriptor,
             fixed_east_asia_em_px,

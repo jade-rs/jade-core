@@ -234,7 +234,12 @@ fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribut
 
 impl WordDocument {
     fn settings_element(&self, local: &str) -> Option<XmlElement> {
-        let xml = self.settings_xml_content()?;
+        let xml = self.settings_xml_str()?;
+        // Every edit asks for `w:documentProtection` (`restriction_allows`):
+        // a document without one is answered without parsing its settings.
+        if !xml.contains(local) {
+            return None;
+        }
         let parsed = DocxXmlDocument::parse(&xml).ok()?;
         parsed.root().children.iter().find_map(|child| match child {
             XmlNode::Element(element) if Self::xml_local_name(&element.name) == local => {

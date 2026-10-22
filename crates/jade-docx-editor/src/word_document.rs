@@ -8091,12 +8091,18 @@ impl WordDocument {
     /// Returns the current `word/settings.xml` text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
     pub(crate) fn settings_xml_content(&self) -> Option<String> {
+        self.settings_xml_str().map(std::borrow::Cow::into_owned)
+    }
+
+    /// [`Self::settings_xml_content`], borrowed where it can be: what a
+    /// reader that only looks at it takes, instead of copying the part.
+    pub(crate) fn settings_xml_str(&self) -> Option<std::borrow::Cow<'_, str>> {
         const SETTINGS_PATH: &str = "word/settings.xml";
         if let Some(part) = self.parts.get(SETTINGS_PATH) {
-            return Some(part.content.clone());
+            return Some(std::borrow::Cow::Borrowed(part.content.as_str()));
         }
         let bytes = self.package.as_ref()?.files.get(SETTINGS_PATH)?;
-        Some(String::from_utf8_lossy(bytes).into_owned())
+        Some(String::from_utf8_lossy(bytes))
     }
 
     /// Reads Word's editing restriction from `word/settings.xml`.
