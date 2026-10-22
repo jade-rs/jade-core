@@ -471,6 +471,12 @@ impl CommandExecutor {
         Ok(self.redo_with_footprint(ctx)?.is_some())
     }
 
+    /// Forgets the newest redo entry: an undo that only took back a
+    /// provisional edit, such as a gallery preview.
+    pub fn discard_newest_redo(&mut self) {
+        self.redo_stack.pop();
+    }
+
     /// Reverts the newest history entry and forgets it, leaving the redo
     /// history alone. For edits that were only ever provisional, like the
     /// live preview of a table border drag.

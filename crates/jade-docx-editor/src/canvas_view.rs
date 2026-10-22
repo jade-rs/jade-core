@@ -1359,6 +1359,9 @@ pub struct OffscreenDocumentView {
     /// Whether the column/row drag in progress is applied to the document as
     /// a live preview (its history entry is retracted before the next one).
     table_resize_preview: Rc<Cell<bool>>,
+    /// The live preview of a gallery choice under the pointer: the history
+    /// revision its provisional edit left, taken back when the pointer goes.
+    style_preview: Rc<Cell<Option<u64>>>,
     resize_debug: Rc<RefCell<Option<String>>>,
     pending_image_wait: Rc<RefCell<Option<Promise>>>,
 }
@@ -8604,6 +8607,7 @@ impl OffscreenDocumentView {
             state,
             drag_state: Rc::new(RefCell::new(PointerDragState::None)),
             table_resize_preview: Rc::new(Cell::new(false)),
+            style_preview: Rc::new(Cell::new(None)),
             resize_debug: Rc::new(RefCell::new(None)),
             pending_image_wait: Rc::new(RefCell::new(None)),
         })
@@ -8660,6 +8664,7 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen]
     pub fn undo(&self) -> js_sys::Promise {
+        self.style_preview.set(None);
         let view = self.clone();
         future_to_promise(async move {
             let protection_history = {
@@ -8680,6 +8685,58 @@ impl OffscreenDocumentView {
                     &JsValue::TRUE,
                 )?;
             }
+            Ok(payload)
+        })
+    }
+
+    /// リアルタイムのプレビュー: style `id` on the selection while the pointer
+    /// is over it in the gallery — applied as an edit that
+    /// [`Self::end_style_preview`] takes back without a trace in the history.
+    /// A preview already showing gives way first.
+    #[wasm_bindgen(js_name = previewStyle)]
+    pub fn preview_style(&self, id: String) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            if view.state.borrow().preview_mode {
+                return Ok(JsValue::NULL);
+            }
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            let payload = view.run_word_session("word_style_preview", move |session| {
+                use crate::word::styles::WordStyles;
+                session.apply_style(&id)
+            });
+            match payload {
+                Ok(payload) => {
+                    let revision = view.state.borrow().command_executor.history_revision();
+                    view.style_preview.set(Some(revision));
+                    Ok(payload)
+                }
+                // A style that cannot go on the selection previews nothing.
+                Err(_) => Ok(ended),
+            }
+        })
+    }
+
+    /// Takes the gallery preview back off the document, leaving neither an
+    /// undo nor a redo step; `null` when none is showing or anything was
+    /// edited since.
+    #[wasm_bindgen(js_name = endStylePreview)]
+    pub fn end_style_preview(&self) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            let Some(revision) = view.style_preview.replace(None) else {
+                return Ok(JsValue::NULL);
+            };
+            if view.state.borrow().command_executor.history_revision() != revision {
+                return Ok(JsValue::NULL);
+            }
+            let payload = view
+                .perform_history_action_async(HistoryAction::Undo)
+                .await?;
+            view.state
+                .borrow_mut()
+                .command_executor
+                .discard_newest_redo();
             Ok(payload)
         })
     }

@@ -21,6 +21,8 @@ struct StyleChangeJs {
     quick: Option<bool>,
     #[serde(default)]
     auto_update: Option<bool>,
+    #[serde(default)]
+    priority: Option<i32>,
 }
 
 /// A field that is present — even as `null` — is `Some`.
@@ -68,6 +70,32 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// 新しい表スタイル: added and put on the caret's table; `result` is its id.
+    #[wasm_bindgen(js_name = createTableStyle)]
+    pub fn create_table_style(&self, spec: JsValue) -> Result<JsValue, JsValue> {
+        let spec: crate::word::styles::TableStyleSpec = from_js(spec, "table style")?;
+        self.run_word_session("word_create_table_style", move |session| {
+            session.create_table_style(&spec)
+        })
+    }
+
+    /// 表スタイルの変更 for table style `id`.
+    #[wasm_bindgen(js_name = modifyTableStyle)]
+    pub fn modify_table_style(&self, id: String, spec: JsValue) -> Result<JsValue, JsValue> {
+        let spec: crate::word::styles::TableStyleSpec = from_js(spec, "table style")?;
+        self.run_word_session("word_modify_table_style", move |session| {
+            session.modify_table_style(&id, &spec)
+        })
+    }
+
+    /// What table style `id` draws, as 表スタイルの変更 opens on it; `null`
+    /// when it is not a table style of the document.
+    #[wasm_bindgen(js_name = tableStyleSpec)]
+    pub fn table_style_spec(&self, id: String) -> Result<JsValue, JsValue> {
+        let spec = self.read_word_session(|session| session.table_style_spec(&id))?;
+        Ok(spec.map_or(JsValue::NULL, |spec| to_js(&spec)))
+    }
+
     /// スタイルの変更 for style `id`.
     #[wasm_bindgen(js_name = modifyStyle)]
     pub fn modify_style(&self, id: String, change: JsValue) -> Result<JsValue, JsValue> {
@@ -79,6 +107,7 @@ impl OffscreenDocumentView {
             format: change.format,
             quick: change.quick,
             auto_update: change.auto_update,
+            priority: change.priority,
         };
         self.run_word_session("word_modify_style", move |session| {
             session.modify_style(&id, &change)

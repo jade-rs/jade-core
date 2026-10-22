@@ -83,8 +83,144 @@ fn number(object: &Object) -> f64 {
     object.as_float().map(f64::from).unwrap_or(0.0)
 }
 
+/// A font's `/ToUnicode` CMap: each code — `code_bytes` long — to its text.
+/// The PDF reference reads text through it before the font's encoding: a
+/// subset font's codes (Word for Mac's, for one) are only its own numbering
+/// of the glyphs it kept, whatever `/Encoding` names.
+struct ToUnicode {
+    code_bytes: usize,
+    map: HashMap<u32, String>,
+}
+
+impl ToUnicode {
+    fn parse(content: &[u8]) -> Option<Self> {
+        let text = String::from_utf8_lossy(content);
+        // Tokens: hex strings, array brackets and keywords.
+        let mut tokens: Vec<String> = Vec::new();
+        let mut chars = text.chars().peekable();
+        while let Some(ch) = chars.next() {
+            match ch {
+                '<' => {
+                    let hex: String = chars.by_ref().take_while(|ch| *ch != '>').collect();
+                    tokens.push(format!("<{}", hex.split_whitespace().collect::<String>()));
+                }
+                '[' | ']' => tokens.push(ch.to_string()),
+                '%' => {
+                    for ch in chars.by_ref() {
+                        if ch == '\n' || ch == '\r' {
+                            break;
+                        }
+                    }
+                }
+                ch if ch.is_whitespace() => {}
+                ch => {
+                    let mut word = ch.to_string();
+                    while let Some(next) = chars.peek() {
+                        if next.is_whitespace() || matches!(next, '<' | '[' | ']' | '/' | '%') {
+                            break;
+                        }
+                        word.push(*next);
+                        chars.next();
+                    }
+                    tokens.push(word);
+                }
+            }
+        }
+        let hex = |token: &str| -> Option<(u32, usize)> {
+            let digits = token.strip_prefix('<')?;
+            Some((u32::from_str_radix(digits, 16).ok()?, digits.len() / 2))
+        };
+        let utf16 = |token: &str| -> Option<String> {
+            let digits = token.strip_prefix('<')?;
+            let units: Vec<u16> = (0..digits.len() / 4)
+                .filter_map(|at| u16::from_str_radix(digits.get(at * 4..at * 4 + 4)?, 16).ok())
+                .collect();
+            Some(String::from_utf16_lossy(&units))
+        };
+        let mut map = HashMap::new();
+        let mut code_bytes = 0;
+        let mut at = 0;
+        let mut mode = "";
+        while at < tokens.len() {
+            let token = tokens[at].as_str();
+            match token {
+                "begincodespacerange" | "beginbfchar" | "beginbfrange" => {
+                    mode = token;
+                    at += 1;
+                    continue;
+                }
+                "endcodespacerange" | "endbfchar" | "endbfrange" => {
+                    mode = "";
+                    at += 1;
+                    continue;
+                }
+                _ => {}
+            }
+            match mode {
+                "begincodespacerange" => {
+                    if let Some((_, bytes)) = hex(token) {
+                        code_bytes = code_bytes.max(bytes);
+                    }
+                    at += 1;
+                }
+                "beginbfchar" => {
+                    if let (Some((code, bytes)), Some(text)) =
+                        (hex(token), tokens.get(at + 1).and_then(|next| utf16(next)))
+                    {
+                        code_bytes = code_bytes.max(bytes);
+                        map.insert(code, text);
+                    }
+                    at += 2;
+                }
+                "beginbfrange" => {
+                    let (Some((low, bytes)), Some((high, _))) =
+                        (hex(token), tokens.get(at + 1).and_then(|next| hex(next)))
+                    else {
+                        at += 1;
+                        continue;
+                    };
+                    code_bytes = code_bytes.max(bytes);
+                    let high = high.min(low + 0xFFFF);
+                    if tokens.get(at + 2).map(String::as_str) == Some("[") {
+                        let mut index = at + 3;
+                        let mut code = low;
+                        while index < tokens.len() && tokens[index] != "]" {
+                            if let Some(text) = utf16(&tokens[index]) {
+                                if code <= high {
+                                    map.insert(code, text);
+                                }
+                                code += 1;
+                            }
+                            index += 1;
+                        }
+                        at = index + 1;
+                    } else if let Some(start) = tokens.get(at + 2).and_then(|next| utf16(next)) {
+                        // Consecutive codes: the destination's last unit counts up.
+                        let mut units: Vec<u16> = start.encode_utf16().collect();
+                        for code in low..=high {
+                            map.insert(code, String::from_utf16_lossy(&units));
+                            if let Some(last) = units.last_mut() {
+                                *last = last.wrapping_add(1);
+                            }
+                        }
+                        at += 3;
+                    } else {
+                        at += 3;
+                    }
+                }
+                _ => at += 1,
+            }
+        }
+        (!map.is_empty()).then_some(Self {
+            code_bytes: code_bytes.clamp(1, 4),
+            map,
+        })
+    }
+}
+
 /// A font as the text in it is decoded and measured.
 struct FontInfo<'a> {
+    to_unicode: Option<ToUnicode>,
     encoding: Option<lopdf::Encoding<'a>>,
     /// Two-byte codes (a CID font).
     two_byte: bool,
@@ -97,6 +233,23 @@ struct FontInfo<'a> {
 
 impl FontInfo<'_> {
     fn decode(&self, bytes: &[u8]) -> String {
+        if let Some(cmap) = &self.to_unicode {
+            let width = if self.two_byte { 2 } else { cmap.code_bytes };
+            let mut text = String::new();
+            let mut unmapped = false;
+            for chunk in bytes.chunks(width) {
+                let code = chunk
+                    .iter()
+                    .fold(0u32, |code, byte| (code << 8) | *byte as u32);
+                match cmap.map.get(&code) {
+                    Some(mapped) => text.push_str(mapped),
+                    None => unmapped = true,
+                }
+            }
+            if !unmapped {
+                return text;
+            }
+        }
         if let Some(encoding) = &self.encoding {
             if let Ok(text) = encoding.bytes_to_string(bytes) {
                 return text;
@@ -241,7 +394,14 @@ fn font_info<'a>(document: &'a Document, font: &'a Dictionary) -> FontInfo<'a> {
             default_width = average.max(250.0);
         }
     }
+    let to_unicode = font
+        .get_deref(b"ToUnicode", document)
+        .and_then(Object::as_stream)
+        .ok()
+        .and_then(|stream| stream.get_plain_content().ok())
+        .and_then(|content| ToUnicode::parse(&content));
     FontInfo {
+        to_unicode,
         encoding: font.get_font_encoding(document).ok(),
         two_byte,
         widths,
@@ -812,7 +972,29 @@ fn is_cjk(ch: char) -> bool {
 
 /// The pieces in lines: those on one baseline, left to right, with a space
 /// where a gap is a word's.
-fn lines_of(mut pieces: Vec<TextPiece>) -> Vec<Line> {
+fn lines_of(pieces: Vec<TextPiece>) -> Vec<Line> {
+    // 影付き and 中抜き text is drawn twice, the copy a little off: one of
+    // each is the text.
+    let mut kept: HashMap<String, Vec<(f64, f64, f64)>> = HashMap::new();
+    let mut pieces: Vec<TextPiece> = pieces
+        .into_iter()
+        .filter(|piece| {
+            if piece.text.trim().is_empty() {
+                return true;
+            }
+            let near = piece.size.max(1.0) * 0.2;
+            let drawn = kept.entry(piece.text.clone()).or_default();
+            if drawn.iter().any(|&(x, y, size)| {
+                (size - piece.size).abs() < 0.5
+                    && (x - piece.x).abs() < near
+                    && (y - piece.y).abs() < near
+            }) {
+                return false;
+            }
+            drawn.push((piece.x, piece.y, piece.size));
+            true
+        })
+        .collect();
     pieces.sort_by(|a, b| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
     let mut lines: Vec<Line> = Vec::new();
     for piece in pieces {
@@ -1622,6 +1804,24 @@ pub fn read_pdf(bytes: &[u8]) -> Result<FlowDocument, String> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_to_unicode_cmap_maps_codes_by_char_and_by_range() {
+        let cmap = ToUnicode::parse(
+            b"/CIDInit /ProcSet findresource begin\n1 begincodespacerange\n<00> <FF>\nendcodespacerange\n\
+2 beginbfchar\n<03> <0020>\n<11> <3042>\nendbfchar\n\
+2 beginbfrange\n<20> <22> <0041>\n<30> <31> [<65E5> <672C>]\nendbfrange\nendcmap",
+        )
+        .unwrap();
+        assert_eq!(cmap.code_bytes, 1);
+        let text =
+            |codes: &[u32]| -> String { codes.iter().map(|code| cmap.map[code].clone()).collect() };
+        assert_eq!(
+            text(&[0x11, 0x03, 0x20, 0x21, 0x22, 0x30, 0x31]),
+            "あ ABC日本"
+        );
+    }
+
     use super::*;
 
     #[test]
