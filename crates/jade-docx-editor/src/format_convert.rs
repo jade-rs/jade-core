@@ -96,3 +96,51 @@ pub fn compare_documents(
     set("formatting", JsValue::from(summary.formatting as u32))?;
     Ok(result.into())
 }
+
+/// テンプレートとアドイン: the attached template's path and whether
+/// 文書のスタイルを自動的に更新する is on, as `{template, linkStyles}`.
+#[wasm_bindgen(js_name = templateInfo)]
+pub fn template_info(docx: &[u8]) -> JsValue {
+    let result = js_sys::Object::new();
+    let template = crate::word::templates::attached_template(docx)
+        .map_or(JsValue::NULL, |path| JsValue::from_str(&path));
+    let _ = js_sys::Reflect::set(&result, &JsValue::from_str("template"), &template);
+    let _ = js_sys::Reflect::set(
+        &result,
+        &JsValue::from_str("linkStyles"),
+        &JsValue::from_bool(crate::word::templates::links_styles(docx)),
+    );
+    result.into()
+}
+
+/// 添付: `docx` attached to the template named `path`; with the template's
+/// bytes and `link_styles`, its styles are taken as Word updates them.
+#[wasm_bindgen(js_name = attachTemplate)]
+pub fn attach_template(
+    docx: &[u8],
+    path: &str,
+    template: Option<Vec<u8>>,
+    link_styles: bool,
+) -> Result<Vec<u8>, JsValue> {
+    crate::word::templates::attach_template(docx, path, template.as_deref(), link_styles)
+        .map_err(|error| JsValue::from_str(&error))
+}
+
+/// The template taken off: the document is attached to Normal again.
+#[wasm_bindgen(js_name = detachTemplate)]
+pub fn detach_template(docx: &[u8]) -> Result<Vec<u8>, JsValue> {
+    crate::word::templates::detach_template(docx).map_err(|error| JsValue::from_str(&error))
+}
+
+/// A new document from a template (`.dotx` / `.dotm`): its content,
+/// styles and settings, typed as a document.
+#[wasm_bindgen(js_name = documentFromTemplate)]
+pub fn document_from_template(template: &[u8]) -> Result<Vec<u8>, JsValue> {
+    crate::word::new::document_from_template(template).map_err(|error| JsValue::from_str(&error))
+}
+
+/// The document saved as a template (`.dotx`): Word テンプレート.
+#[wasm_bindgen(js_name = templateFromDocument)]
+pub fn template_from_document(docx: &[u8]) -> Result<Vec<u8>, JsValue> {
+    crate::word::new::template_from_document(docx).map_err(|error| JsValue::from_str(&error))
+}
