@@ -1595,33 +1595,49 @@ fn lift(xml: &DocxXmlDocument, mut mark: Mark, paragraph_id: XmlNodeId) -> Mark 
     }
 }
 
-/// Splits a run of plain text at `at` bytes into it: the first part keeps
-/// the element, the second is a copy of its properties with the rest; its
-/// id is returned. `None` when the run holds more than text.
+/// Splits a run at `at` bytes into its text: the first part keeps the
+/// element, the second is a copy of its properties with the rest; its id is
+/// returned. Tabs, breaks and hyphens count as the text the model gives them
+/// (`\t`, `\n` or `\f`, U+00AD, U+2011), so text that shares its run with a
+/// break splits before it. `None` when the run holds anything else, or `at`
+/// is not inside it.
 fn split_run(xml: &mut DocxXmlDocument, id: XmlNodeId, at: usize) -> Option<XmlNodeId> {
     let run = xml.element(id)?.clone();
     let mut properties = None;
-    let mut text = String::new();
+    // Each piece of content and how many bytes of the run's text it is.
+    let mut content: Vec<(XmlNode, usize)> = Vec::new();
     for node in &run.children {
         match node {
             XmlNode::Element(element) if element.name == "w:rPr" => {
                 properties = Some(element.clone());
             }
             XmlNode::Element(element) if element.name == "w:t" => {
-                for node in &element.children {
-                    if let XmlNode::Text(part) = node {
-                        text.push_str(part);
-                    }
-                }
+                let length = element
+                    .children
+                    .iter()
+                    .map(|node| match node {
+                        XmlNode::Text(part) => part.len(),
+                        _ => 0,
+                    })
+                    .sum();
+                content.push((node.clone(), length));
             }
-            XmlNode::Element(_) => return None,
+            XmlNode::Element(element) => {
+                let length = match element.name.as_str() {
+                    "w:tab" | "w:br" | "w:cr" => 1,
+                    "w:softHyphen" => '\u{00AD}'.len_utf8(),
+                    "w:noBreakHyphen" => '\u{2011}'.len_utf8(),
+                    _ => return None,
+                };
+                content.push((node.clone(), length));
+            }
             _ => {}
         }
     }
-    if at == 0 || at >= text.len() || !text.is_char_boundary(at) {
+    let total: usize = content.iter().map(|(_, length)| length).sum();
+    if at == 0 || at >= total {
         return None;
     }
-    let (head, tail) = text.split_at(at);
     let text_element = |xml: &mut DocxXmlDocument, text: &str| {
         XmlNode::Element(xml.create_element(
             "w:t",
@@ -1632,12 +1648,42 @@ fn split_run(xml: &mut DocxXmlDocument, id: XmlNodeId, at: usize) -> Option<XmlN
             vec![XmlNode::Text(text.to_string())],
         ))
     };
+    let mut head: Vec<XmlNode> = Vec::new();
+    let mut tail: Vec<XmlNode> = Vec::new();
+    let mut position = 0;
+    for (node, length) in content {
+        if position + length <= at {
+            head.push(node);
+        } else if position >= at {
+            tail.push(node);
+        } else {
+            // `at` falls inside this text.
+            let XmlNode::Element(element) = &node else {
+                return None;
+            };
+            let text: String = element
+                .children
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Text(part) => Some(part.as_str()),
+                    _ => None,
+                })
+                .collect();
+            let local = at - position;
+            if !text.is_char_boundary(local) {
+                return None;
+            }
+            head.push(text_element(xml, &text[..local]));
+            tail.push(text_element(xml, &text[local..]));
+        }
+        position += length;
+    }
     let mut first_children: Vec<XmlNode> = properties
         .clone()
         .map(XmlNode::Element)
         .into_iter()
         .collect();
-    first_children.push(text_element(xml, head));
+    first_children.extend(head);
     let mut second_children: Vec<XmlNode> = properties
         .map(|properties| {
             XmlNode::Element(xml.create_element(
@@ -1648,8 +1694,9 @@ fn split_run(xml: &mut DocxXmlDocument, id: XmlNodeId, at: usize) -> Option<XmlN
         })
         .into_iter()
         .collect();
-    second_children.push(text_element(xml, tail));
-    let second = xml.create_element("w:r", run.attributes.clone(), second_children);
+    second_children.extend(tail);
+    let second =
+        xml.create_element_preserving_child_ids("w:r", run.attributes.clone(), second_children);
     let second_id = second.id;
     let parent_id = xml.parent_id(id)?;
     {
