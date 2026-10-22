@@ -2432,6 +2432,31 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.ruby.is_some() {
         target.ruby = source.ruby.clone();
     }
+    // Word 2010 typography and text effects (`w14:ligatures`, `w14:glow`, …)
+    // inherit setting by setting, as the other run properties do.
+    if let Some(source_effects) = source.text_effects.as_deref() {
+        let effects = target.text_effects.get_or_insert_with(Default::default);
+        macro_rules! inherit {
+            ($($field:ident),*) => {
+                $(if source_effects.$field.is_some() {
+                    effects.$field = source_effects.$field.clone();
+                })*
+            };
+        }
+        inherit!(
+            ligatures,
+            number_form,
+            number_spacing,
+            stylistic_set,
+            contextual_alternates,
+            glow_color,
+            glow_radius,
+            glow_alpha,
+            outline_color,
+            outline_width,
+            enclosure
+        );
+    }
 }
 
 fn merge_indent_override(target: &mut Indent, source: &Indent) {

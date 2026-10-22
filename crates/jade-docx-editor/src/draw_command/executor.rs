@@ -642,6 +642,27 @@ pub fn execute_command_with_font_state<P: Painter>(
             context.fill_rect(*x, *y, *width, *height);
             font_state.invalidate_fill_style();
         }
+        DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color,
+        } => {
+            context.save();
+            context.set_line_dash(&[]);
+            context.set_stroke_style_str(color);
+            context.set_line_width(*line_width);
+            context.begin_path();
+            for (index, &(x, y)) in points.iter().enumerate() {
+                if index == 0 {
+                    context.move_to(x, y);
+                } else {
+                    context.line_to(x, y);
+                }
+            }
+            context.stroke();
+            context.restore();
+            font_state.invalidate();
+        }
         DrawCommand::ClearRect {
             x,
             y,
@@ -1110,6 +1131,32 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
+    let characters: Vec<PlacedCharacter<'_>> = if fonts
+        .iter()
+        .any(|font| jade_painter::font_features::has_features(font))
+    {
+        glyphs
+            .iter()
+            .filter_map(|glyph| {
+                Some(PlacedCharacter {
+                    start: glyph.text_start as usize,
+                    end: glyph.text_end as usize,
+                    font: fonts.get(glyph.font_index as usize)?.as_ref(),
+                    x_offset: glyph.x_offset,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    if !characters.is_empty()
+        && try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
+            font_state.set_font_if_changed(context, font);
+        })?
+    {
+        record_replay_batch_run(glyphs.len() as u64);
+        return Ok(());
+    }
     if try_execute_bmp_glyph_run_batch(context, text, x, y, fonts, glyphs, font_state)? {
         record_replay_batch_run(glyphs.len() as u64);
         return Ok(());
@@ -1126,6 +1173,77 @@ fn draw_text_run_glyphs<P: Painter>(
         context.fill_text(glyph_text, x + glyph.x_offset, y)?;
     }
     Ok(())
+}
+
+/// One character of a text run as layout placed it: its byte range in the
+/// run's text, its font, and its x from the run's origin.
+pub(crate) struct PlacedCharacter<'a> {
+    pub start: usize,
+    pub end: usize,
+    pub font: &'a str,
+    pub x_offset: f64,
+}
+
+/// Draws a run whose fonts carry OpenType features (Word 2010 typography:
+/// ligatures, figure styles, stylistic sets) shaped a font's stretch at a
+/// time, so a ligature is drawn as the font's ligature glyph rather than its
+/// letters side by side. Each character keeps the x layout gave it.
+///
+/// `Ok(false)` — nothing drawn — when no font in the run carries features;
+/// the caller draws it as before. A stretch the painter cannot shape is
+/// drawn a character at a time.
+pub(crate) fn try_fill_featured_text<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    characters: &[PlacedCharacter<'_>],
+    set_font: &mut dyn FnMut(&P, &str),
+) -> Result<bool, P::Error> {
+    if !characters
+        .iter()
+        .any(|character| jade_painter::font_features::has_features(character.font))
+    {
+        return Ok(false);
+    }
+    let mut index = 0;
+    while index < characters.len() {
+        let first = &characters[index];
+        let mut end = index + 1;
+        while end < characters.len()
+            && characters[end].font == first.font
+            && characters[end].start == characters[end - 1].end
+        {
+            end += 1;
+        }
+        let group = &characters[index..end];
+        set_font(context, first.font);
+        let shaped = if jade_painter::font_features::has_features(first.font) {
+            let start = first.start;
+            let stop = group[group.len() - 1].end;
+            match text.get(start..stop) {
+                Some(stretch) => {
+                    let clusters: Vec<(usize, f64)> = group
+                        .iter()
+                        .map(|character| (character.start - start, x + character.x_offset))
+                        .collect();
+                    context.try_fill_shaped_text(stretch, &clusters, y)?
+                }
+                None => false,
+            }
+        } else {
+            false
+        };
+        if !shaped {
+            for character in group {
+                if let Some(glyph) = text.get(character.start..character.end) {
+                    context.fill_text(glyph, x + character.x_offset, y)?;
+                }
+            }
+        }
+        index = end;
+    }
+    Ok(true)
 }
 
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
@@ -1501,7 +1619,7 @@ fn execute_strike_through<P: Painter>(
 }
 
 /// Executes underline drawing.
-fn execute_underline<P: Painter>(
+pub(crate) fn execute_underline<P: Painter>(
     context: &P,
     start_x: f64,
     baseline_y: f64,

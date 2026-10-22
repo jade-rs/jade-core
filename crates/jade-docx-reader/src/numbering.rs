@@ -1,3 +1,5 @@
+mod more_formats;
+
 use crate::document::{FontHint, ParagraphProperties, RunFonts, RunProperties};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
@@ -359,7 +361,20 @@ impl NumberingPart {
             b"w:numFmt" => {
                 if let Some(level) = current_level.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        level.num_fmt = Some(val);
+                        let format = attr_value(e, b"w:format");
+                        if val == "custom" {
+                            if let Some(format) = format {
+                                level.num_fmt = Some(format!("{CUSTOM_FORMAT_PREFIX}{format}"));
+                            }
+                        } else if !level
+                            .num_fmt
+                            .as_deref()
+                            .is_some_and(|current| current.starts_with(CUSTOM_FORMAT_PREFIX))
+                        {
+                            // A custom format's mc:Fallback decimal does not
+                            // replace the custom format read before it.
+                            level.num_fmt = Some(val);
+                        }
                     }
                 }
             }
@@ -1124,6 +1139,18 @@ pub fn format_number_value(format: &str, value: u32, language: Option<&str>) -> 
         "hebrew2" => to_repeated_letter(value, HEBREW_ALPHABET),
         "arabicAlpha" => to_repeated_letter(value, ARABIC_ALPHA),
         "arabicAbjad" => to_repeated_letter(value, ARABIC_ABJAD),
+        "koreanDigital2" => more_formats::korean_digital2(value),
+        "vietnameseCounting" => more_formats::vietnamese_counting(value),
+        "hindiVowels" => to_repeated_letter(value, more_formats::HINDI_VOWELS),
+        "hindiConsonants" => to_repeated_letter(value, more_formats::HINDI_CONSONANTS),
+        "hindiCounting" => more_formats::hindi_counting(value),
+        "thaiLetters" => to_repeated_letter(value, more_formats::THAI_LETTERS),
+        "thaiCounting" => more_formats::thai_counting(value),
+        "bahtText" => more_formats::baht_text(value),
+        "dollarText" => more_formats::dollar_text(value),
+        custom if custom.starts_with(CUSTOM_FORMAT_PREFIX) => {
+            more_formats::custom(&custom[CUSTOM_FORMAT_PREFIX.len()..], value)
+        }
         "none" => String::new(),
         "bullet" => "•".to_string(),
         _ => value.to_string(),
@@ -1185,7 +1212,21 @@ const NUMBER_FORMAT_TOKENS: &[&str] = &[
     "arabicAbjad",
     "hindiNumbers",
     "thaiNumbers",
+    "koreanDigital2",
+    "vietnameseCounting",
+    "hindiVowels",
+    "hindiConsonants",
+    "hindiCounting",
+    "thaiLetters",
+    "thaiCounting",
+    "bahtText",
+    "dollarText",
 ];
+
+/// How a level's custom format is kept in `num_fmt`: Word writes
+/// `w:numFmt w:val="custom" w:format="001, 002, 003, ..."` (with a decimal
+/// fallback for older readers), and the sample is what to format by.
+pub const CUSTOM_FORMAT_PREFIX: &str = "custom:";
 
 /// The schema spelling of an `ST_NumberFormat` token this module formats,
 /// matched case-insensitively (`"upperroman"` → `"upperRoman"`).
@@ -2138,6 +2179,54 @@ mod decimal_full_width_tests {
 #[cfg(test)]
 mod additional_word_number_format_tests {
     use super::{NumberingCounter, NumberingPart};
+
+    #[test]
+    fn the_formats_that_used_to_fall_back_to_decimal_are_formatted() {
+        for (format, start, expected) in [
+            ("koreanDigital2", 12, "一二"),
+            ("vietnameseCounting", 21, "hai mươi mốt"),
+            ("hindiVowels", 2, "आ"),
+            ("hindiConsonants", 3, "ग"),
+            ("hindiCounting", 3, "तीन"),
+            ("thaiLetters", 3, "ค"),
+            ("thaiCounting", 11, "สิบเอ็ด"),
+            ("bahtText", 2, "สองบาทถ้วน"),
+            ("dollarText", 5, "five and 00/100"),
+        ] {
+            assert_eq!(format_at_start(format, start), expected, "{format}");
+        }
+    }
+
+    #[test]
+    fn a_custom_format_wins_over_its_decimal_fallback() {
+        let xml = r#"
+            <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                         xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+              <w:abstractNum w:abstractNumId="1">
+                <w:lvl w:ilvl="0">
+                  <w:start w:val="7"/>
+                  <mc:AlternateContent>
+                    <mc:Choice Requires="w14"><w:numFmt w:val="custom" w:format="001, 002, 003, ..."/></mc:Choice>
+                    <mc:Fallback><w:numFmt w:val="decimal"/></mc:Fallback>
+                  </mc:AlternateContent>
+                  <w:lvlText w:val="%1."/>
+                </w:lvl>
+              </w:abstractNum>
+              <w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num>
+            </w:numbering>
+        "#;
+        let numbering = NumberingPart::from_xml(xml).expect("parse numbering xml");
+        let mut counter = NumberingCounter::new();
+        counter.increment(
+            "1",
+            numbering.abstract_num_id("1").unwrap_or_default(),
+            0,
+            numbering.start_value("1", 0),
+            numbering.has_start_override("1", 0),
+        );
+        assert_eq!(numbering.format_number("1", 0, &counter), "007.");
+    }
 
     fn format_at_start(num_fmt: &str, start: u32) -> String {
         format_at_start_with_template(num_fmt, start, "%1")

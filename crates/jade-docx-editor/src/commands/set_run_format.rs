@@ -322,6 +322,63 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
     if let Some(value) = format.hidden {
         props.vanish = on(value);
     }
+    if format.language.is_some() || format.east_asia_language.is_some() {
+        let current = props.preserved_rpr.0.iter().find_map(|child| match child {
+            XmlNode::Element(element) if element.name == "w:lang" => Some(element.clone()),
+            _ => None,
+        });
+        let attribute = |name: &str| {
+            current.as_ref().and_then(|element| {
+                element
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == name)
+                    .map(|attribute| attribute.value.clone())
+            })
+        };
+        let latin = match &format.language {
+            Some(value) if is_none(value) => None,
+            Some(value) => Some(value.trim().to_string()),
+            None => attribute("w:val"),
+        };
+        let east_asia = match &format.east_asia_language {
+            Some(value) if is_none(value) => None,
+            Some(value) => Some(value.trim().to_string()),
+            None => attribute("w:eastAsia"),
+        };
+        let bidi = attribute("w:bidi");
+        props.language = latin.as_deref().map(Rc::from);
+        props.east_asia_language = east_asia.as_deref().map(Rc::from);
+        let mut attributes = Vec::new();
+        if let Some(latin) = latin {
+            attributes.push(("w:val", latin));
+        }
+        if let Some(east_asia) = east_asia {
+            attributes.push(("w:eastAsia", east_asia));
+        }
+        if let Some(bidi) = bidi {
+            attributes.push(("w:bidi", bidi));
+        }
+        set_preserved(
+            props,
+            "w:lang",
+            (!attributes.is_empty()).then(|| element("w:lang", &attributes, Vec::new())),
+        );
+    }
+    if let Some(value) = format.no_proof {
+        // Off is written as off rather than left out, so a w:noProof the
+        // run was read with follows it.
+        let attributes: &[(&str, String)] = if value {
+            &[]
+        } else {
+            &[("w:val", "0".to_string())]
+        };
+        set_preserved(
+            props,
+            "w:noProof",
+            Some(element("w:noProof", attributes, Vec::new())),
+        );
+    }
     if let Some(value) = format.outline {
         props.outline = on(value);
     }
@@ -708,6 +765,14 @@ pub fn run_format_of(props: &RunProperties) -> HeadlessRunFormat {
         caps: props.caps,
         small_caps: props.small_caps,
         hidden: props.vanish,
+        language: text(&props.language),
+        east_asia_language: text(&props.east_asia_language),
+        no_proof: props
+            .preserved_rpr
+            .0
+            .iter()
+            .any(|child| matches!(child, XmlNode::Element(element) if element.name == "w:noProof"))
+            .then_some(true),
         emphasis: props.emphasis.as_deref().map(|mark| match mark {
             "underdot" => "underDot".to_string(),
             other => other.to_string(),

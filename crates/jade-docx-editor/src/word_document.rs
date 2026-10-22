@@ -665,16 +665,64 @@ pub struct BorderEdgeSpec {
     pub color: Option<String>,
 }
 
+/// Every `ST_Border` line style (ECMA-376 Part 1 §17.18.2), spelled as the
+/// schema spells it: `w:val` is case-sensitive, and Word does not read
+/// `thinthicksmallgap` as `thinThickSmallGap`.
+pub const BORDER_LINE_STYLES: [&str; 27] = [
+    "none",
+    "nil",
+    "single",
+    "thick",
+    "double",
+    "dotted",
+    "dashed",
+    "dotDash",
+    "dotDotDash",
+    "triple",
+    "thinThickSmallGap",
+    "thickThinSmallGap",
+    "thinThickThinSmallGap",
+    "thinThickMediumGap",
+    "thickThinMediumGap",
+    "thinThickThinMediumGap",
+    "thinThickLargeGap",
+    "thickThinLargeGap",
+    "thinThickThinLargeGap",
+    "wave",
+    "doubleWave",
+    "dashSmallGap",
+    "dashDotStroked",
+    "threeDEmboss",
+    "threeDEngrave",
+    "outset",
+    "inset",
+];
+
+/// `style` as the schema spells it: a line style, or (for page borders) an
+/// art border. `None` for anything else.
+pub fn canonical_border_style(style: &str) -> Option<&'static str> {
+    BORDER_LINE_STYLES
+        .iter()
+        .copied()
+        .find(|known| known.eq_ignore_ascii_case(style))
+        .or_else(|| crate::art_border_names::art_border_name(style))
+}
+
 impl BorderEdgeSpec {
     fn to_border_edge(&self) -> BorderEdge {
+        let style = self.style.as_deref().unwrap_or("single");
+        let art = crate::art_border_names::art_border_name(style).is_some();
         BorderEdge {
             val: Some(
-                self.style
-                    .clone()
-                    .unwrap_or_else(|| "single".to_string())
-                    .to_ascii_lowercase(),
+                canonical_border_style(style)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| style.to_ascii_lowercase()),
             ),
-            size_eighths: self.width.map(|pt| (pt * 8.0).round().max(0.0) as u32),
+            // An art border's `w:sz` is its tile size in whole points.
+            size_eighths: self.width.map(|pt| {
+                let units = if art { pt } else { pt * 8.0 };
+                units.round().max(0.0) as u32
+            }),
             space: None,
             color: self.color.as_deref().and_then(|color| {
                 (!color.eq_ignore_ascii_case("auto"))
@@ -709,12 +757,32 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/protection.rs"]
+mod protection;
+#[path = "word_document/review_tools.rs"]
+mod review_tools;
+pub use protection::{
+    hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
+};
+#[path = "word_document/signature_lines.rs"]
+mod signature_lines;
+#[path = "word_document/table_revisions.rs"]
+mod table_revisions;
+pub use table_revisions::RowRevision;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 
 #[path = "word_document/references.rs"]
 mod references;
+
+#[path = "word_document/hyphenation.rs"]
+mod hyphenation;
+
+#[path = "word_document/ink_drawing.rs"]
+pub mod ink_drawing;
 pub use references::{CaptionOptions, FieldBlock, FieldBlockLine, InlineField};
+pub(crate) use review_tools::PARAGRAPH_FORMAT_COMMANDS;
+pub use review_tools::{AltText, ParagraphFormatChange};
 pub use table_tools::{
     TableLookUpdate, TablePositionSpec, TableSortKey, TableSortKind, BUILTIN_TABLE_STYLES,
 };
@@ -785,20 +853,7 @@ fn table_style_preset_border(preset: &str) -> Result<BorderEdgeSpec, String> {
 impl TableBorderSpec {
     /// Word's line styles. `none` is the way to remove a line; the rest are the
     /// tokens `w:val` takes.
-    const STYLES: &'static [&'static str] = &[
-        "none",
-        "nil",
-        "single",
-        "double",
-        "dashed",
-        "dotted",
-        "thick",
-        "wave",
-        "dashSmallGap",
-        "dotDash",
-        "dotDotDash",
-        "triple",
-    ];
+    const STYLES: &'static [&'static str] = &BORDER_LINE_STYLES;
 
     fn validated_edges(&self) -> Result<Vec<(BorderSide, BorderEdgeSpec)>, String> {
         let edges = [
@@ -923,22 +978,50 @@ impl PageBorderSpec {
                 ));
             }
         };
+        // Art borders belong to pages alone; validate them as a line style
+        // and keep their own name.
+        let as_line =
+            |edge: &Option<BorderEdgeSpec>| {
+                edge.clone().map(|mut edge| {
+                    if edge.style.as_deref().is_some_and(|style| {
+                        crate::art_border_names::art_border_name(style).is_some()
+                    }) {
+                        edge.style = Some("single".to_string());
+                    }
+                    edge
+                })
+            };
         let validation = TableBorderSpec {
-            top: self.top.clone(),
-            bottom: self.bottom.clone(),
-            left: self.left.clone(),
-            right: self.right.clone(),
+            top: as_line(&self.top),
+            bottom: as_line(&self.bottom),
+            left: as_line(&self.left),
+            right: as_line(&self.right),
             ..TableBorderSpec::default()
         };
-        let edges = validation.validated_edges()?;
+        validation.validated_edges()?;
+        let edges = [
+            (BorderSide::Top, self.top.as_ref()),
+            (BorderSide::Bottom, self.bottom.as_ref()),
+            (BorderSide::Left, self.left.as_ref()),
+            (BorderSide::Right, self.right.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(side, edge)| edge.cloned().map(|edge| (side, edge)));
         let mut borders = PageBorders {
             offset_from,
             ..PageBorders::default()
         };
         let mut visible = false;
         for (side, spec) in edges {
+            let art = spec
+                .style
+                .as_deref()
+                .is_some_and(|style| crate::art_border_names::art_border_name(style).is_some());
             if let Some(width) = spec.width {
-                if !(0.25..=12.0).contains(&width) {
+                if art && !(1.0..=31.0).contains(&width) {
+                    return Err("art page border width must be between 1 and 31 points".to_string());
+                }
+                if !art && !(0.25..=12.0).contains(&width) {
                     return Err("page border width must be between 0.25 and 12 points".to_string());
                 }
             }
@@ -1196,6 +1279,13 @@ pub struct WordDocument {
     text_metrics_cache: RefCell<DocumentTextMetricsCache>,
     #[serde(skip)]
     revision_session: Option<RevisionSession>,
+    /// 保護の中止 with the password: the restriction does not hold until
+    /// the document is opened again.
+    #[serde(skip)]
+    protection_lifted: bool,
+    /// Opened 読み取り専用: see `set_opened_read_only`.
+    #[serde(skip)]
+    opened_read_only: bool,
     #[serde(skip)]
     next_revision_id: u32,
     pub relationships: Vec<Relationship>,
@@ -2211,6 +2301,8 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
+            protection_lifted: false,
+            opened_read_only: false,
             next_revision_id: 1,
             document: None,
             numbering_part: Some(NumberingPart::new()),
@@ -2610,9 +2702,11 @@ impl WordDocument {
             parsed_doc.math_properties = doc_settings.math.clone();
             parsed_doc.no_tab_hanging_indent = doc_settings.no_tab_hanging_indent;
             parsed_doc.adjust_line_height_in_table = doc_settings.adjust_line_height_in_table;
+            parsed_doc.compat = doc_settings.compat.clone();
             parsed_doc.east_asian_line_breaking = doc_settings.to_line_breaking_settings();
             parsed_doc.gutter_at_top = doc_settings.gutter_at_top;
             parsed_doc.mirror_margins = doc_settings.mirror_margins;
+            parsed_doc.hyphenation = doc_settings.hyphenation;
             parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
             parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
             parsed_doc.watermark_text =
@@ -4686,6 +4780,8 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
+            protection_lifted: false,
+            opened_read_only: false,
             next_revision_id: 1,
             document: Some(Rc::new(document)),
             numbering_part: None,
@@ -7233,21 +7329,7 @@ impl WordDocument {
                         });
                     }
                     if let Some(image) = run.image.as_mut() {
-                        // Ink: its InkML part's strokes, which are drawn.
-                        if let Some(id) = image.format().ink_relationship_id.clone() {
-                            if image.format().ink.is_none() {
-                                let ink = rel_map
-                                    .get(id.as_str())
-                                    .map(|rel| {
-                                        Self::resolve_target_path(&doc_part.path, &rel.target)
-                                    })
-                                    .and_then(|path| package.get(&path))
-                                    .and_then(|bytes| std::str::from_utf8(bytes).ok())
-                                    .and_then(crate::ink::parse_inkml);
-                                image.format_mut().ink = ink;
-                            }
-                            continue;
-                        }
+                        Self::resolve_ink_part(image, doc_part, package, rel_map);
                         if image.data_uri.is_some() {
                             continue;
                         }
@@ -11478,7 +11560,16 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        self.apply_revision_decision(
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // Rows are found before the paragraphs are decided, and taken out
+        // or unmarked after, by their places then.
+        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
+        let decided = self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11486,7 +11577,8 @@ impl WordDocument {
             id_filter,
             targets,
             true,
-        )
+        )?;
+        Ok(decided + self.decide_rows(rows)?)
     }
 
     /// [`Self::decide_revisions`] for a caller that puts the document back
@@ -11502,7 +11594,16 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        self.apply_revision_decision(
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // Rows are found before the paragraphs are decided, and taken out
+        // or unmarked after, by their places then.
+        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
+        let decided = self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11510,7 +11611,8 @@ impl WordDocument {
             id_filter,
             targets,
             false,
-        )
+        )?;
+        Ok(decided + self.decide_rows(rows)?)
     }
 
     /// What [`Self::decide_revisions`] would change: the package, the
@@ -11526,6 +11628,19 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> EditScope {
+        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
+            (
+                start_paragraph.unwrap_or(0),
+                end_paragraph.unwrap_or(usize::MAX),
+            )
+        });
+        // A row taken out changes the paragraphs after it.
+        if !self
+            .rows_to_decide(accept, kind_filter, id_filter, range, targets)
+            .is_empty()
+        {
+            return EditScope::Document;
+        }
         let paragraph_count = self.paragraph_count();
         let Ok(bounds) = self.revision_decision_bounds(start_paragraph, end_paragraph, targets)
         else {
@@ -11719,6 +11834,27 @@ impl WordDocument {
             // decision takes exactly that part.
             let cuts = targets.map_or_else(Vec::new, |targets| targets.run_cuts(paragraph_index));
             let mut paragraph_changed = !cuts.is_empty();
+            let mut restyled_runs: Vec<XmlNodeId> = Vec::new();
+            // The paragraph's own formatting change, decided whole.
+            if let Some(change) = self.paragraph_format_change(paragraph_index) {
+                let length = self
+                    .paragraph(paragraph_index)
+                    .map(|paragraph| paragraph.runs.iter().map(|run| run.text.len()).sum())
+                    .unwrap_or(0);
+                let selected = kind_filter.is_none()
+                    && id_filter.is_none_or(|filter| filter.matches(change.id.as_deref()))
+                    && targets.is_none_or(|targets| {
+                        targets.contains_run(paragraph_index, 0, length, change.id.as_deref())
+                    });
+                if selected {
+                    self.decide_paragraph_format_change(
+                        paragraph_index,
+                        decision == RevisionDecision::Accept,
+                    )?;
+                    paragraph_changed = true;
+                    changed_runs = changed_runs.saturating_add(1);
+                }
+            }
             let zero_width = (!cuts.is_empty()).then(|| self.zero_width_runs(paragraph_index));
             {
                 let Some(paragraph) = self.paragraph_mut(paragraph_index) else {
@@ -11738,6 +11874,37 @@ impl WordDocument {
                     let run_start = original_offset;
                     let run_end = run_start.saturating_add(run.text.len());
                     original_offset = run_end;
+                    // A formatting change: accepted, the record goes;
+                    // rejected, the formatting before it comes back.
+                    let format_change = run
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| properties.change.as_deref())
+                        .filter(|change| {
+                            kind_filter.is_none()
+                                && id_filter
+                                    .is_none_or(|filter| filter.matches(change.id.as_deref()))
+                                && targets.is_none_or(|targets| {
+                                    targets.contains_run(
+                                        paragraph_index,
+                                        run_start,
+                                        run_end,
+                                        change.id.as_deref(),
+                                    )
+                                })
+                        })
+                        .cloned();
+                    if let Some(change) = format_change {
+                        if let Some(properties) = run.properties.as_mut() {
+                            match decision {
+                                RevisionDecision::Accept => properties.change = None,
+                                RevisionDecision::Reject => *properties = change.previous,
+                            }
+                        }
+                        restyled_runs.extend(run.node_id);
+                        paragraph_changed = true;
+                        changed_runs = changed_runs.saturating_add(1);
+                    }
                     let Some(mark) = run.revision.clone() else {
                         new_runs.push(run);
                         continue;
@@ -11837,7 +12004,12 @@ impl WordDocument {
 
             if paragraph_changed {
                 touched_paragraphs.push(paragraph_index);
-                self.sync_paragraph_text(paragraph_index);
+                if restyled_runs.is_empty() {
+                    self.sync_paragraph_text(paragraph_index);
+                } else {
+                    // The decided runs' `w:rPr` is written again from the model.
+                    self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
+                }
             }
         }
 
@@ -13490,6 +13662,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -13497,6 +13670,7 @@ impl WordDocument {
                     height_px: Some(spec.height_px),
                     title: Some(spec.title.clone()),
                     description: Some("Editable Word chart".to_string()),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: Some(chart),
@@ -13645,6 +13819,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -13654,6 +13829,7 @@ impl WordDocument {
                     description: description
                         .filter(|value| !value.is_empty())
                         .map(str::to_string),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: None,
@@ -17268,6 +17444,7 @@ impl WordDocument {
                 text: String::new(),
                 properties: None,
                 image: Some(RunImage {
+                    signature_line: None,
                     relationship_id: Some(relationship.id),
                     ole_relationship_id: None,
                     ole_program_id: None,
@@ -17275,6 +17452,7 @@ impl WordDocument {
                     height_px: Some(annotation.height_px),
                     title: Some(format!("{INK_TITLE_PREFIX} {}", annotation.id)),
                     description: annotation.payload.filter(|payload| !payload.is_empty()),
+                    decorative: false,
                     placeholder_label: None,
                     data_uri: Some(data_uri),
                     chart: None,
@@ -23920,6 +24098,7 @@ impl WordDocument {
         Table {
             rows: (0..rows)
                 .map(|_| TableRow {
+                    revision: None,
                     cells: (0..columns)
                         .map(|column| {
                             Self::new_empty_table_cell_with_width(
@@ -24722,7 +24901,25 @@ impl WordDocument {
             children.push(value_element(raw, "w:start", start.to_string()));
         }
         if let Some(format) = level.num_fmt.as_ref() {
-            children.push(value_element(raw, "w:numFmt", format.clone()));
+            match format.strip_prefix(jade_docx_reader::numbering::CUSTOM_FORMAT_PREFIX) {
+                // A custom format goes back as Word writes it: `custom` and
+                // the sample (ISO/IEC 29500 §17.9.17).
+                Some(sample) => children.push(XmlNode::Element(raw.create_element(
+                    "w:numFmt",
+                    vec![
+                        XmlAttribute {
+                            name: "w:val".to_string(),
+                            value: "custom".to_string(),
+                        },
+                        XmlAttribute {
+                            name: "w:format".to_string(),
+                            value: sample.to_string(),
+                        },
+                    ],
+                    Vec::new(),
+                ))),
+                None => children.push(value_element(raw, "w:numFmt", format.clone())),
+            }
         }
         if let Some(text) = level.lvl_text.as_ref() {
             children.push(value_element(raw, "w:lvlText", text.clone()));
@@ -28549,6 +28746,15 @@ impl WordDocument {
         )
     }
 
+    /// Whether surface `index` is a text box's paragraph, which Find
+    /// searches with the main text.
+    pub fn is_text_box_paragraph_surface(&self, index: usize) -> bool {
+        matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::TextBox { .. })
+        )
+    }
+
     /// The zero-width runs an edit inside the paragraph at surface `index`
     /// keeps (see [`ZeroWidthRuns`]): those bound to a `w:r` that holds more
     /// than its properties and an empty `w:t`. Read before the edit's sync,
@@ -28691,7 +28897,7 @@ impl WordDocument {
         })
     }
 
-    pub(crate) fn is_note_paragraph_surface(&self, index: usize) -> bool {
+    pub fn is_note_paragraph_surface(&self, index: usize) -> bool {
         matches!(
             self.paragraph_surfaces.get(index),
             Some(ParagraphSurface::Note { .. })
@@ -29262,6 +29468,59 @@ impl WordDocument {
             ParagraphSurface::TextBox { host_path, .. } => contains_table_path(host_path),
             ParagraphSurface::Note { path, .. } => contains_table_path(path),
         }
+    }
+
+    /// The tags (`w:sdtPr/w:tag/@w:val`) of the block-level content
+    /// controls (`w:sdt`, ECMA-376 Part 1 §17.5.2) the body paragraph at
+    /// surface `index` is inside, outermost first. Read from the XML the
+    /// paragraph is bound to, so they follow edits; empty for a paragraph
+    /// bound to none (a note's, or one only just split off and not yet
+    /// synced).
+    pub fn block_content_control_tags(&self, index: usize) -> Vec<String> {
+        let mut tags = Vec::new();
+        if !matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) {
+            return tags;
+        }
+        let (Some(id), Some(raw)) = (
+            self.paragraph(index)
+                .and_then(|paragraph| paragraph.node_id),
+            self.raw_document.as_ref(),
+        ) else {
+            return tags;
+        };
+        let Some(path) = raw.path(id) else {
+            return tags;
+        };
+        let mut element = raw.root();
+        for &position in path.as_slice() {
+            let Some(XmlNode::Element(child)) = element.children.get(position) else {
+                break;
+            };
+            if child.name == "w:sdt" {
+                let tag = child
+                    .children
+                    .iter()
+                    .filter_map(|node| match node {
+                        XmlNode::Element(element) if element.name == "w:sdtPr" => Some(element),
+                        _ => None,
+                    })
+                    .flat_map(|properties| properties.children.iter())
+                    .find_map(|node| match node {
+                        XmlNode::Element(element) if element.name == "w:tag" => element
+                            .attributes
+                            .iter()
+                            .find(|attribute| attribute.name == "w:val")
+                            .map(|attribute| attribute.value.clone()),
+                        _ => None,
+                    });
+                tags.push(tag.unwrap_or_default());
+            }
+            element = child;
+        }
+        tags
     }
 
     pub fn paragraph(&self, index: usize) -> Option<&Paragraph> {
@@ -32164,6 +32423,24 @@ impl WordDocument {
         image: &RunImage,
         existing: Option<XmlElement>,
     ) -> XmlElement {
+        // Word ink: the drawing over its InkML part, with its picture as the
+        // fallback.
+        if let Some(relationship_id) = image
+            .ink
+            .as_ref()
+            .and_then(|ink| ink.relationship_id.clone())
+        {
+            let plain = RunImage {
+                ink: None,
+                ..image.clone()
+            };
+            let choice = Self::build_image_drawing_element(doc, &plain);
+            let fallback = plain
+                .relationship_id
+                .is_some()
+                .then(|| Self::build_image_drawing_element(doc, &plain));
+            return Self::create_ink_alternate_content(doc, &relationship_id, choice, fallback);
+        }
         if let Some(existing) = existing {
             match Self::patch_image_drawing_element(doc, image, existing) {
                 Ok(patched) => return patched,
@@ -32728,7 +33005,35 @@ impl WordDocument {
         {
             doc_pr_attributes.push(attr("descr", description));
         }
-        let doc_pr = doc.create_element("wp:docPr", doc_pr_attributes, Vec::new());
+        let doc_pr_children = if image.decorative {
+            let flag = doc.create_element(
+                "adec:decorative",
+                vec![
+                    attr(
+                        "xmlns:adec",
+                        "http://schemas.microsoft.com/office/drawing/2017/decorative",
+                    ),
+                    attr("val", "1"),
+                ],
+                Vec::new(),
+            );
+            let ext = doc.create_element(
+                "a:ext",
+                vec![attr("uri", review_tools::DECORATIVE_EXT_URI)],
+                vec![XmlNode::Element(flag)],
+            );
+            vec![XmlNode::Element(doc.create_element(
+                "a:extLst",
+                vec![attr(
+                    "xmlns:a",
+                    "http://schemas.openxmlformats.org/drawingml/2006/main",
+                )],
+                vec![XmlNode::Element(ext)],
+            ))]
+        } else {
+            Vec::new()
+        };
+        let doc_pr = doc.create_element("wp:docPr", doc_pr_attributes, doc_pr_children);
         let extent = doc.create_element(
             "wp:extent",
             vec![attr("cx", width_emu), attr("cy", height_emu)],
@@ -33181,7 +33486,23 @@ impl WordDocument {
         } else {
             doc.create_element("a:noFill", Vec::new(), Vec::new())
         };
-        let av_lst = doc.create_element("a:avLst", Vec::new(), Vec::new());
+        // A preset's moved adjust handles go back as `a:gd` values.
+        let adjustments = match text_box.shape {
+            TextBoxShape::Preset(id) => id
+                .geometry()
+                .adjustments
+                .into_iter()
+                .map(|(name, value)| {
+                    XmlNode::Element(doc.create_element(
+                        "a:gd",
+                        vec![attr("name", name), attr("fmla", format!("val {value}"))],
+                        Vec::new(),
+                    ))
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let av_lst = doc.create_element("a:avLst", Vec::new(), adjustments);
         let prst_geom = doc.create_element(
             "a:prstGeom",
             vec![attr("prst", text_box.shape.preset_name())],
@@ -33934,10 +34255,19 @@ impl WordDocument {
         run: &Run,
         existing: Option<XmlElement>,
     ) -> Option<XmlElement> {
+        Self::sync_run_properties_element(doc, run.properties.as_ref(), existing)
+    }
+
+    /// A run's `w:rPr` written from `properties`, patching `existing`.
+    fn sync_run_properties_element(
+        doc: &mut DocxXmlDocument,
+        properties: Option<&RunProperties>,
+        existing: Option<XmlElement>,
+    ) -> Option<XmlElement> {
         let mut element =
             existing.unwrap_or_else(|| doc.create_element("w:rPr", Vec::new(), Vec::new()));
 
-        if let Some(props) = run.properties.as_ref() {
+        if let Some(props) = properties {
             match props.style.as_deref().filter(|style| !style.is_empty()) {
                 Some(style) => Self::upsert_run_property_child_with_str_value(
                     doc,
@@ -34184,7 +34514,25 @@ impl WordDocument {
         // them) does not duplicate, while the create path (fresh rPr for a split
         // fragment) gets them back. `create_element` allocates fresh node ids,
         // avoiding collisions with the original run's element ids.
-        if let Some(props) = run.properties.as_ref() {
+        if let Some(props) = properties {
+            // 校正言語 and スペル チェックと文章校正を行わない are edited through
+            // the preserved children: the XML follows them, a changed value
+            // replacing the one read.
+            for managed in ["w:lang", "w:noProof"] {
+                let wanted = props.preserved_rpr.0.iter().find_map(|node| match node {
+                    XmlNode::Element(child) if child.name == managed => Some(child),
+                    _ => None,
+                });
+                if let Some(wanted) = wanted {
+                    for existing in element.children.iter_mut() {
+                        if let XmlNode::Element(existing) = existing {
+                            if existing.name == managed {
+                                existing.attributes = wanted.attributes.clone();
+                            }
+                        }
+                    }
+                }
+            }
             for node in props.preserved_rpr.0.iter() {
                 if let XmlNode::Element(child) = node {
                     let already_present = element.children.iter().any(|existing| {
@@ -34201,6 +34549,32 @@ impl WordDocument {
                     }
                 }
             }
+        }
+
+        // A tracked formatting change: the formatting before it, last in
+        // the `w:rPr` as the schema puts it. Accepted or rejected, it goes.
+        match properties.and_then(|props| props.change.as_deref()) {
+            Some(change) => {
+                let previous = Self::sync_run_properties_element(doc, Some(&change.previous), None)
+                    .unwrap_or_else(|| doc.create_element("w:rPr", Vec::new(), Vec::new()));
+                let mut attributes = vec![XmlAttribute {
+                    name: "w:id".into(),
+                    value: change.id.clone().unwrap_or_else(|| "0".into()),
+                }];
+                for (name, value) in [("w:author", &change.author), ("w:date", &change.date)] {
+                    if let Some(value) = value {
+                        attributes.push(XmlAttribute {
+                            name: name.into(),
+                            value: value.clone(),
+                        });
+                    }
+                }
+                let change_element =
+                    doc.create_element("w:rPrChange", attributes, vec![XmlNode::Element(previous)]);
+                Self::remove_run_property_child(&mut element, "w:rPrChange");
+                element.children.push(XmlNode::Element(change_element));
+            }
+            None => Self::remove_run_property_child(&mut element, "w:rPrChange"),
         }
 
         if element.children.is_empty() && element.attributes.is_empty() {
@@ -42012,6 +42386,8 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,
@@ -42097,6 +42473,8 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,
@@ -42448,6 +42826,8 @@ mod tests {
                         text: String::new(),
                         properties: None,
                         image: Some(RunImage {
+                            signature_line: None,
+                            decorative: false,
                             relationship_id: Some("rId1".to_string()),
                             ole_relationship_id: None,
                             ole_program_id: None,
@@ -50437,6 +50817,7 @@ mod tests {
 
         let table = Table {
             rows: vec![TableRow {
+                revision: None,
                 cells: vec![TableCell {
                     blocks: vec![BodyElement::from_paragraph(make_paragraph("Cell"))],
                     style: StyleMap::default(),

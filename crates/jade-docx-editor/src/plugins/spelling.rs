@@ -15,6 +15,27 @@ pub struct SpellingRequest {
     pub language: Option<String>,
 }
 
+/// What a checker found wrong with a span of text.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ProofingKind {
+    /// A misspelt word: Word's red wavy underline.
+    Spelling,
+    /// A grammar or style issue: Word's blue double underline.
+    Grammar,
+}
+
+/// One issue a checker found, as byte offsets into the request's text.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ProofingIssue {
+    pub start: usize,
+    pub end: usize,
+    pub kind: ProofingKind,
+}
+
+/// Word's colours: red for spelling, blue for grammar.
+pub const SPELLING_COLOR: &str = "#e53935";
+pub const GRAMMAR_COLOR: &str = "#2B6CD4";
+
 #[derive(Default)]
 pub struct SpellingCache {
     pub enabled: bool,
@@ -102,13 +123,34 @@ impl SpellingCache {
         key: &str,
         matches: &[(usize, usize)],
     ) -> Option<String> {
+        let issues: Vec<ProofingIssue> = matches
+            .iter()
+            .map(|&(start, end)| ProofingIssue {
+                start,
+                end,
+                kind: ProofingKind::Spelling,
+            })
+            .collect();
+        self.apply_issues(generation, key, &issues)
+    }
+
+    /// Records what a checker found in request `key`'s span — misspellings
+    /// drawn with a red wave, grammar with a blue double line — and returns
+    /// the paragraph text when that changes what it shows.
+    pub fn apply_issues(
+        &mut self,
+        generation: u32,
+        key: &str,
+        issues: &[ProofingIssue],
+    ) -> Option<String> {
         if !self.enabled || generation != self.generation {
             return None;
         }
         let request = self.requests.get(key)?;
-        let ranges: Vec<_> = matches
+        let ranges: Vec<_> = issues
             .iter()
-            .filter_map(|&(start, end)| {
+            .filter_map(|issue| {
+                let (start, end) = (issue.start, issue.end);
                 if start >= end
                     || start < request.start
                     || end > request.end
@@ -120,8 +162,13 @@ impl SpellingCache {
                 Some(DecoratedRange {
                     start,
                     end,
-                    style: DecorationStyle::Squiggly {
-                        color: "#e53935".into(),
+                    style: match issue.kind {
+                        ProofingKind::Spelling => DecorationStyle::Squiggly {
+                            color: SPELLING_COLOR.into(),
+                        },
+                        ProofingKind::Grammar => DecorationStyle::DoubleUnderline {
+                            color: GRAMMAR_COLOR.into(),
+                        },
                     },
                 })
             })
@@ -174,6 +221,42 @@ mod tests {
         assert!(cache
             .decorations(text, [(0, text.len(), Some(&english))])
             .is_empty());
+    }
+
+    #[test]
+    fn grammar_issues_are_drawn_as_a_blue_double_line() {
+        let mut cache = SpellingCache::default();
+        cache.configure(true, 3);
+        let text = "Their is a dog.";
+        cache.decorations(text, [(0, text.len(), None)]);
+        let request = cache.take_pending().pop().unwrap();
+        let issues = [
+            ProofingIssue {
+                start: 0,
+                end: 5,
+                kind: ProofingKind::Grammar,
+            },
+            ProofingIssue {
+                start: 11,
+                end: 14,
+                kind: ProofingKind::Spelling,
+            },
+        ];
+        assert!(cache.apply_issues(3, &request.key, &issues).is_some());
+        let drawn = cache.decorations(text, [(0, text.len(), None)]);
+        assert_eq!(
+            drawn.iter().map(|range| &range.style).collect::<Vec<_>>(),
+            [
+                &DecorationStyle::DoubleUnderline {
+                    color: GRAMMAR_COLOR.into()
+                },
+                &DecorationStyle::Squiggly {
+                    color: SPELLING_COLOR.into()
+                },
+            ]
+        );
+        // The same answer again changes nothing.
+        assert!(cache.apply_issues(3, &request.key, &issues).is_none());
     }
 
     #[test]

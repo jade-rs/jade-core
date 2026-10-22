@@ -31,9 +31,9 @@ pub mod drawing_xml;
 #[path = "../../jade-docx-editor/src/picture_effects.rs"]
 pub mod picture_effects;
 
-/// Word ink's InkML parts.
-#[path = "../../jade-docx-editor/src/ink.rs"]
-pub mod ink;
+/// The art borders' names, which the document model tells borders by.
+#[path = "../../jade-docx-editor/src/art_border_names.rs"]
+pub(crate) mod art_border_names;
 
 /// SmartArt laid out from its data, and its parts written.
 #[path = "../../jade-docx-editor/src/smartart.rs"]

@@ -28,6 +28,9 @@ mod pdf_text;
 pub use skia_safe::Typeface;
 
 /// A link in the painter's logical CSS-pixel page coordinate space.
+/// A font file's bytes and its face index in the file.
+type FontData = Rc<(Vec<u8>, u32)>;
+
 pub struct PdfLink {
     pub page_index: usize,
     pub rect: (f64, f64, f64, f64),
@@ -38,6 +41,39 @@ pub struct PdfLink {
 pub enum PdfLinkTarget {
     Uri(String),
     Page { page_index: usize, x: f64, y: f64 },
+}
+
+/// A node of a tagged PDF's structure tree (ISO 32000 §14.7): its standard
+/// structure type (`Document`, `P`, `H1`, `Table`, `TR`, `TD`, `Figure`),
+/// the node id the drawing was marked with ([`jade_painter::Painter::set_structure_node`]),
+/// a figure's alternative text, and the nodes inside it in reading order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTag {
+    pub kind: String,
+    pub node_id: i32,
+    pub alt: Option<String>,
+    pub children: Vec<PdfTag>,
+}
+
+/// What makes an exported PDF tagged: its structure, title and language.
+/// The headings among the structure become the PDF's bookmarks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTagging {
+    pub root: PdfTag,
+    pub title: Option<String>,
+    pub language: Option<String>,
+}
+
+fn structure_node(tag: &PdfTag) -> skia_safe::pdf::StructureElementNode {
+    let mut node = skia_safe::pdf::StructureElementNode::new(&tag.kind);
+    node.set_node_id(tag.node_id);
+    if let Some(alt) = &tag.alt {
+        node.set_alt(alt);
+    }
+    for child in &tag.children {
+        node.append_child(structure_node(child));
+    }
+    node
 }
 
 use skia_safe::{
@@ -363,16 +399,45 @@ impl SkiaPainter {
 
     /// Adds link annotations without changing the recorded page drawing.
     pub fn encode_pdf_with_links(pages: &[Self], links: &[PdfLink]) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, None)
+    }
+
+    /// A tagged PDF (PDF/UA's structure): the vector pages' drawing marked
+    /// with the nodes of `tagging`'s structure tree, the headings as
+    /// bookmarks, and the document's title shown as the window's.
+    pub fn encode_tagged_pdf(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: &PdfTagging,
+    ) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, Some(tagging))
+    }
+
+    fn encode_pdf_with(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: Option<&PdfTagging>,
+    ) -> Result<Vec<u8>, String> {
         if pages.is_empty() {
             return Err("no PDF pages".to_string());
         }
         let mut bytes = Vec::new();
         let mut sizes = Vec::with_capacity(pages.len());
-        let metadata = skia_safe::pdf::Metadata {
+        let mut metadata = skia_safe::pdf::Metadata {
             creator: "Jade".into(),
             raster_dpi: Some(96.0),
             ..Default::default()
         };
+        if let Some(tagging) = tagging {
+            metadata.structure_element_tree_root = Some(structure_node(&tagging.root));
+            metadata.outline = skia_safe::pdf::Outline::StructureElementHeaders;
+            if let Some(title) = &tagging.title {
+                metadata.title = title.clone();
+            }
+            if let Some(language) = &tagging.language {
+                metadata.lang = language.clone();
+            }
+        }
         let mut document = skia_safe::pdf::new_document(&mut bytes, Some(&metadata));
         for painter in pages {
             let mut surface = painter.shared.surface.borrow_mut();
@@ -516,6 +581,15 @@ impl SkiaPainter {
                 .and_then(lopdf::Object::as_array_mut)
                 .map_err(|err| err.to_string())?
                 .push(id.into());
+        }
+        if tagging.is_some_and(|tagging| tagging.title.is_some()) {
+            // A tagged document's window shows its title, not its file name.
+            if let Ok(catalog) = pdf.catalog_mut() {
+                catalog.set(
+                    "ViewerPreferences",
+                    lopdf::dictionary! { "DisplayDocTitle" => true },
+                );
+            }
         }
         pdf.prune_objects();
         pdf.compress();
@@ -741,6 +815,104 @@ impl SkiaPainter {
             canvas.draw_path(&path, paint);
             canvas.restore();
         });
+    }
+
+    /// The font file behind `typeface`, parsed once per face for the shaper.
+    fn shaping_data(typeface: &Typeface) -> Option<FontData> {
+        thread_local! {
+            static DATA: RefCell<HashMap<u32, Option<FontData>>> =
+                RefCell::new(HashMap::new());
+        }
+        let id = typeface.unique_id();
+        DATA.with(|data| {
+            data.borrow_mut()
+                .entry(id)
+                .or_insert_with(|| {
+                    typeface
+                        .to_font_data()
+                        .map(|(bytes, index)| Rc::new((bytes, index as u32)))
+                })
+                .clone()
+        })
+    }
+
+    /// [`Painter::try_fill_shaped_text`]: shapes `text` with the descriptor's
+    /// OpenType features and draws the glyphs the font substitutes, each at
+    /// its cluster's x.
+    fn fill_shaped(&self, text: &str, clusters: &[(usize, f64)], y: f64) -> bool {
+        let descriptor = self.shared.style.borrow().font_descriptor.clone();
+        let features = jade_painter::font_features::parse(&descriptor);
+        if features.is_empty() || text.is_empty() || clusters.is_empty() {
+            return false;
+        }
+        let font = self.font();
+        let typeface = font.typeface();
+        // One face draws the whole stretch, or the caller draws it per
+        // character with fallback.
+        if text
+            .chars()
+            .any(|ch| typeface.unichar_to_glyph(ch as i32) == 0)
+        {
+            return false;
+        }
+        let Some(data) = Self::shaping_data(&typeface) else {
+            return false;
+        };
+        let Some(face) = rustybuzz::Face::from_slice(&data.0, data.1) else {
+            return false;
+        };
+        let mut buffer = rustybuzz::UnicodeBuffer::new();
+        buffer.push_str(text);
+        buffer.guess_segment_properties();
+        let features: Vec<rustybuzz::Feature> = features
+            .iter()
+            .map(|feature| {
+                rustybuzz::Feature::new(
+                    rustybuzz::ttf_parser::Tag::from_bytes(&feature.tag),
+                    feature.value,
+                    ..,
+                )
+            })
+            .collect();
+        let shaped = rustybuzz::shape(&face, &features, buffer);
+        let scale = font.size() / f32::from(face.units_per_em() as u16);
+        let infos = shaped.glyph_infos();
+        let positions = shaped.glyph_positions();
+        let paint = self.fill_paint();
+        let baseline_y = self.baseline_y(&font, y);
+        let cluster_x = |byte: usize| -> f32 {
+            let at = clusters.partition_point(|(start, _)| *start <= byte);
+            clusters[at.saturating_sub(1)].1 as f32
+        };
+        let mut builder = skia_safe::TextBlobBuilder::new();
+        let (glyphs, points, utf8, blob_clusters) =
+            builder.alloc_run_text_pos(&font, infos.len(), text.len(), None);
+        utf8.copy_from_slice(text.as_bytes());
+        let mut pen = 0.0_f32;
+        let mut cluster_pen = 0.0_f32;
+        let mut current_cluster = None;
+        for (index, (info, position)) in infos.iter().zip(positions).enumerate() {
+            if current_cluster != Some(info.cluster) {
+                current_cluster = Some(info.cluster);
+                cluster_pen = pen;
+            }
+            glyphs[index] = info.glyph_id as u16;
+            blob_clusters[index] = info.cluster;
+            points[index] = skia_safe::Point::new(
+                cluster_x(info.cluster as usize)
+                    + (pen - cluster_pen)
+                    + position.x_offset as f32 * scale,
+                -(position.y_offset as f32) * scale,
+            );
+            pen += position.x_advance as f32 * scale;
+        }
+        let Some(blob) = builder.make() else {
+            return false;
+        };
+        self.with_canvas(|canvas| {
+            canvas.draw_text_blob(&blob, (0.0, baseline_y), &paint);
+        });
+        true
     }
 
     /// PNG bytes of everything painted so far.
@@ -1401,6 +1573,22 @@ fn pdf_rect_axis_spans(start: f32, end: f32) -> Vec<(f32, f32, f32)> {
 }
 
 impl Painter for SkiaPainter {
+    fn set_structure_node(&self, node: i32) {
+        // Only a vector recording keeps the marks: a raster one draws its
+        // page as a picture.
+        let vector = matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                picture: None,
+                ..
+            }
+        );
+        if vector {
+            self.with_canvas(|canvas| skia_safe::pdf::set_node_id(canvas, node));
+        }
+    }
+
     fn draw_image(
         &self,
         image: jade_painter::ImageSource<'_>,
@@ -1544,6 +1732,18 @@ impl Painter for SkiaPainter {
         let paint = self.fill_paint();
         self.draw_segments(text, x, y, &paint);
         Ok(())
+    }
+
+    fn try_fill_shaped_text(
+        &self,
+        text: &str,
+        clusters: &[(usize, f64)],
+        y: f64,
+    ) -> Result<bool, Self::Error> {
+        self.shared
+            .fill_text_calls
+            .set(self.shared.fill_text_calls.get() + 1);
+        Ok(self.fill_shaped(text, clusters, y))
     }
 
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
