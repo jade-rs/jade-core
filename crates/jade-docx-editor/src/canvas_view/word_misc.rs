@@ -219,4 +219,51 @@ impl OffscreenDocumentView {
             clear_special: false,
         })
     }
+
+    /// 上書き入力 (Insert key): `text` typed over the characters after the
+    /// caret, as many as it has, never past the paragraph's end; with a
+    /// selection, the selection is replaced as usual. One undo step.
+    #[wasm_bindgen(js_name = insertTextOvertype)]
+    pub fn insert_text_overtype(&self, text: String) -> Result<JsValue, JsValue> {
+        let selection = self.current_selection();
+        let (start, end) = selection.normalized();
+        let end_offset = if selection.is_collapsed() {
+            let state = self.state.borrow();
+            let paragraph_text: String = state
+                .word_doc
+                .as_ref()
+                .and_then(|document| document.paragraph(start.paragraph))
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default();
+            let rest = paragraph_text.get(start.offset..).unwrap_or("");
+            start.offset
+                + rest
+                    .char_indices()
+                    .nth(text.chars().count())
+                    .map_or(rest.len(), |(at, _)| at)
+        } else {
+            end.offset
+        };
+        let end_paragraph = if selection.is_collapsed() {
+            start.paragraph
+        } else {
+            end.paragraph
+        };
+        let caret = TextPosition::new(start.paragraph, start.offset + text.len());
+        self.apply_paragraph_style_headless_many_with(
+            move |_, _| {
+                vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: start.paragraph,
+                    start_offset: start.offset,
+                    end_paragraph,
+                    end_offset,
+                    text,
+                }]
+            },
+            HeadlessApplyOverrides {
+                dirty_from: Some(start.paragraph),
+                selection_after: Some(Box::new(move |_| Some(SelectionRange::collapsed(caret)))),
+            },
+        )
+    }
 }
