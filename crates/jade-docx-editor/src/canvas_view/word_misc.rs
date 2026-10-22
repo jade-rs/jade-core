@@ -188,4 +188,35 @@ impl OffscreenDocumentView {
             "continuationSeparator": dialog.continuation_separator,
         })))
     }
+
+    /// 段落 ▸ インデント in 字 (Japanese Word's character units, as
+    /// `w:leftChars` and friends keep them): `left`, `right` and either
+    /// `firstLine` or `hanging`, each in characters (0.5 steps); a field left
+    /// out stays.
+    #[wasm_bindgen(js_name = setParagraphIndentChars)]
+    pub fn set_paragraph_indent_chars(&self, indent: JsValue) -> Result<JsValue, JsValue> {
+        #[derive(serde::Deserialize, Default)]
+        #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+        struct IndentCharsJs {
+            left: Option<f32>,
+            right: Option<f32>,
+            first_line: Option<f32>,
+            hanging: Option<f32>,
+        }
+        let indent: IndentCharsJs = from_js(indent, "indent")?;
+        let hundredths = |chars: Option<f32>| chars.map(|chars| (chars * 100.0).round() as i32);
+        self.apply_paragraph_style_headless(move |start, end| HeadlessCommand::SetParagraphIndent {
+            start_paragraph: start,
+            end_paragraph: end,
+            left: None,
+            right: None,
+            first_line: None,
+            hanging: None,
+            left_chars: hundredths(indent.left),
+            right_chars: hundredths(indent.right),
+            first_line_chars: hundredths(indent.first_line),
+            hanging_chars: hundredths(indent.hanging),
+            clear_special: false,
+        })
+    }
 }
