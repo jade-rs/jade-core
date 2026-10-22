@@ -496,6 +496,59 @@ fn property_fields_read_and_write_document_properties() {
     );
 }
 
+/// SUBJECT, KEYWORDS and COMMENTS read `dc:subject`, `cp:keywords` and
+/// `dc:description`, honour `\*` case, and with an operand write the
+/// property as Word does.
+#[test]
+fn subject_keywords_and_comments_fields_read_and_write_their_properties() {
+    let body = [
+        paragraph(&field("SUBJECT", "old")),
+        paragraph(&field("KEYWORDS \\* Upper", "old")),
+        paragraph(&field("COMMENTS", "old")),
+    ]
+    .concat();
+    let mut doc = load(&package(&body, &[]));
+    let mut properties = document_properties(&doc);
+    properties.subject = "業務委託".into();
+    properties.keywords = "contract, draft".into();
+    properties.comments = "第2版".into();
+    set_document_properties(&mut doc, &properties).unwrap();
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(result_of(&doc, "SUBJECT"), "業務委託");
+    assert_eq!(result_of(&doc, "KEYWORDS"), "CONTRACT, DRAFT");
+    assert_eq!(result_of(&doc, "COMMENTS"), "第2版");
+
+    let rewrite = paragraph(&field("SUBJECT \"新しい件名\"", "old"));
+    let mut doc = load(&package(&rewrite, &[]));
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(result_of(&doc, "SUBJECT"), "新しい件名");
+    assert_eq!(document_properties(&doc).subject, "新しい件名");
+}
+
+/// AUTOTEXT shows a building block's text from the glossary document, and
+/// Word's error for a name it does not hold.
+#[test]
+fn autotext_fields_show_glossary_entries() {
+    let glossary = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:glossaryDocument {W}><w:docParts><w:docPart><w:docPartPr><w:name w:val=\"Closing\"/></w:docPartPr><w:docPartBody><w:p><w:r><w:t>以上</w:t></w:r></w:p></w:docPartBody></w:docPart></w:docParts></w:glossaryDocument>"
+    );
+    let body = [
+        paragraph(&field("AUTOTEXT Closing", "old")),
+        paragraph(&field("AUTOTEXT Missing", "old")),
+    ]
+    .concat();
+    let mut doc = load(&package(
+        &body,
+        &[("word/glossary/document.xml", &glossary)],
+    ));
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(result_of(&doc, "AUTOTEXT Closing"), "以上");
+    assert_eq!(
+        result_of(&doc, "AUTOTEXT Missing"),
+        "エラー! 定型句が定義されていません。"
+    );
+}
+
 #[test]
 fn headers_update_with_the_document_and_include_text_reads_local_files() {
     let header = format!(
