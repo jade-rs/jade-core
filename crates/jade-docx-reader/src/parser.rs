@@ -434,6 +434,15 @@ impl DocumentParser {
                             parsing_paragraph_props = true;
                         }
                         b"w:pPrChange" => {
+                            let author = e
+                                .attributes()
+                                .flatten()
+                                .find(|attr| attr.key.as_ref() == b"w:author")
+                                .map(|attr| String::from_utf8_lossy(&attr.value).into_owned());
+                            let props = current_paragraph_props
+                                .get_or_insert_with(ParagraphProperties::default);
+                            props.has_format_change = true;
+                            props.format_change_author = author.map(Into::into);
                             if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
                                 if let Some(numbering) = Self::parse_numbering_from_ppr_change(&raw)
                                 {
@@ -447,6 +456,16 @@ impl DocumentParser {
                                             ..ParagraphProperties::default()
                                         });
                                     }
+                                }
+                            }
+                        }
+                        // A tracked change to a run's formatting: what the
+                        // run's formatting was before it, for review.
+                        b"w:rPrChange" if parsing_run_props && !parsing_paragraph_run_props => {
+                            if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
+                                if let Some(props) = current_run_props.as_mut() {
+                                    props.change =
+                                        self.parse_run_properties_change(&raw).map(Box::new);
                                 }
                             }
                         }
@@ -4279,6 +4298,59 @@ impl DocumentParser {
         Ok(String::from_utf8(bytes)?)
     }
 
+    /// A captured `<w:rPrChange>`: its id, author and date, and the
+    /// formatting inside it, read by parsing that `w:rPr` as a run's own.
+    fn parse_run_properties_change(
+        &self,
+        xml: &str,
+    ) -> Option<crate::document::RunPropertiesChange> {
+        let mut reader = Reader::from_str(xml);
+        let mut buf = Vec::new();
+        let (mut id, mut author, mut date) = (None, None, None);
+        if let Ok(Event::Start(start)) = reader.read_event_into(&mut buf) {
+            for attr in start.attributes().flatten() {
+                let value = attr
+                    .unescape_value()
+                    .map(|value| value.into_owned())
+                    .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).into_owned());
+                match attr.key.as_ref() {
+                    b"w:id" => id = Some(value),
+                    b"w:author" => author = Some(value),
+                    b"w:date" => date = Some(value),
+                    _ => {}
+                }
+            }
+        }
+        let inner_start = xml.find('>')? + 1;
+        let inner_end = xml.rfind("</")?.max(inner_start);
+        let inner = &xml[inner_start..inner_end];
+        let wrapper = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r>{inner}<w:t>x</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let previous = self
+            .parse_document_xml(&wrapper)
+            .ok()
+            .and_then(|document| {
+                let body = document.body?;
+                let paragraph = body
+                    .elements
+                    .into_iter()
+                    .find_map(|element| match element {
+                        crate::document::BodyElement::Paragraph(paragraph) => Some(paragraph),
+                        _ => None,
+                    })?;
+                paragraph.runs.into_iter().next()
+            })
+            .and_then(|run| run.properties)
+            .unwrap_or_default();
+        Some(crate::document::RunPropertiesChange {
+            id,
+            author,
+            date,
+            previous,
+        })
+    }
+
     fn parse_numbering_from_ppr_change(xml: &str) -> Option<crate::document::Numbering> {
         // Word stores paragraph property revisions (including numbering) inside
         // `<w:pPrChange>` containers. These revisions only apply when tracked
@@ -7715,6 +7787,26 @@ impl DocumentParser {
     }
 
     fn apply_vml_imagedata_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
+        if element.name().as_ref() == b"o:signatureline" {
+            let mut line = SignatureLine::default();
+            for attr in element.attributes().flatten() {
+                let value = attr
+                    .unescape_value()
+                    .map(|value| value.into_owned())
+                    .unwrap_or_default();
+                let value = (!value.is_empty()).then_some(value);
+                match attr.key.as_ref() {
+                    b"id" => line.id = value,
+                    b"o:suggestedsigner" => line.signer = value,
+                    b"o:suggestedsigner2" => line.title = value,
+                    b"o:suggestedsigneremail" => line.email = value,
+                    b"o:signinginstructions" => line.instructions = value,
+                    _ => {}
+                }
+            }
+            image.signature_line = Some(Box::new(line));
+            return;
+        }
         if element.name().as_ref() != b"v:imagedata" {
             return;
         }
@@ -8036,6 +8128,14 @@ impl DocumentParser {
                 if let Some(title) = ink_name.or(explicit_title) {
                     image.title = Some(title);
                 }
+            }
+            // `<adec:decorative val="1"/>`, under `wp:docPr`'s extensions.
+            name if name.rsplit(|byte| *byte == b':').next() == Some(b"decorative".as_slice()) => {
+                image.decorative = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"val")
+                    .is_none_or(|attr| matches!(attr.value.as_ref(), b"1" | b"true"));
             }
             _ => {}
         }

@@ -2,7 +2,7 @@ use super::table_conditional::{
     table_style_condition_matches, TableLook, TableStyleBandSizes, TableStyleCellFormat,
     TableStyleCellPosition, TableStyleCondition, TableStyleConditionalFormat,
 };
-use super::{BodyElement, BorderEdge};
+use super::{BodyElement, BorderEdge, RevisionMark};
 use crate::docx_xml::XmlNodeId;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, str::FromStr};
@@ -425,6 +425,10 @@ pub struct TableRow {
     pub height_rule: Option<TableRowHeightRule>,
     #[serde(skip_serializing, skip_deserializing)]
     pub node_id: Option<XmlNodeId>,
+    /// The row inserted or deleted with changes tracked (`w:trPr/w:ins` or
+    /// `w:trPr/w:del`, ECMA-376 Part 1 §17.13.5.17 and §17.13.5.12).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<Box<RevisionMark>>,
 }
 
 /// A single table cell. Cells can contain arbitrary block elements, allowing

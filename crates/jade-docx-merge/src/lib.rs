@@ -35,12 +35,38 @@ const DOCUMENT_PART: &str = "word/document.xml";
 
 /// 旧と新から、変更履歴付きの docx を組み立てる。
 pub fn merge(old_docx: &[u8], new_docx: &[u8], diff: &DocumentDiff) -> Result<Vec<u8>> {
+    merge_with(old_docx, new_docx, diff, RevisionIds::default())
+}
+
+/// [`merge`] with the changes put down to `author` at `date` (an ISO 8601
+/// time), as Word's 文書の比較 labels them with the name it is given.
+pub fn merge_labelled(
+    old_docx: &[u8],
+    new_docx: &[u8],
+    diff: &DocumentDiff,
+    author: &str,
+    date: &str,
+) -> Result<Vec<u8>> {
+    merge_with(
+        old_docx,
+        new_docx,
+        diff,
+        RevisionIds::labelled(author, date),
+    )
+}
+
+fn merge_with(
+    old_docx: &[u8],
+    new_docx: &[u8],
+    diff: &DocumentDiff,
+    ids: RevisionIds,
+) -> Result<Vec<u8>> {
     let old_xml = read_part(old_docx, DOCUMENT_PART).context("旧の document.xml")?;
     let new_xml = read_part(new_docx, DOCUMENT_PART).context("新の document.xml")?;
     let old_body = split_body(&old_xml).context("旧の本文")?;
     let new_body = split_body(&new_xml).context("新の本文")?;
 
-    let merged = merge_body(&old_body, &new_body, diff)?;
+    let merged = merge_body(&old_body, &new_body, diff, ids)?;
     repack(new_docx, &merged)
 }
 
@@ -49,7 +75,7 @@ pub fn merge(old_docx: &[u8], new_docx: &[u8], diff: &DocumentDiff) -> Result<Ve
 /// 並べる順は**新の文書の並び**を軸にする。差分のブロックの並びは文書順とは
 /// 限らない (表がまとめて先に来る)。消えたものは、旧の文書で直前にあった
 /// 「新にも残っているもの」の後ろへ差し込む。
-fn merge_body(old: &Body, new: &Body, diff: &DocumentDiff) -> Result<String> {
+fn merge_body(old: &Body, new: &Body, diff: &DocumentDiff, ids: RevisionIds) -> Result<String> {
     // 番号から差分を引けるようにする。
     let mut para_by_new: HashMap<usize, &BlockChange> = HashMap::new();
     let mut table_by_new: HashMap<usize, &BlockChange> = HashMap::new();
@@ -120,7 +146,7 @@ fn merge_body(old: &Body, new: &Body, diff: &DocumentDiff) -> Result<String> {
         }
     }
 
-    let mut ids = RevisionIds::default();
+    let mut ids = ids;
     let mut out = String::with_capacity(new.prologue.len() + new.epilogue.len() + 4096);
     out.push_str(&new.prologue);
     for child in &leading {

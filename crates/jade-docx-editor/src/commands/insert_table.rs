@@ -345,6 +345,7 @@ mod tests {
     fn table_with_blocks(blocks: Vec<BodyElement>) -> BodyElement {
         BodyElement::Table(Box::new(Table {
             rows: vec![TableRow {
+                revision: None,
                 cells: vec![TableCell {
                     blocks,
                     style: StyleMap::default(),

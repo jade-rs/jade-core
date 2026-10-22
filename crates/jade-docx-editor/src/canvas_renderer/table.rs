@@ -1845,6 +1845,7 @@ where
         // 表の描画は本文と経路が分かれていて Options を持ち回っていない。
         // 描く関数から見えるように、ここで置いておく。
         self.table_render_changes.set(options.render_changes);
+        ROW_REVISION_VIEW.with(|view| view.set((options.render_changes, options.render_original)));
         self.table_show_formatting_marks
             .set(options.shown_formatting_marks().paragraph_marks);
         if table.rows.is_empty() {
@@ -4493,8 +4494,10 @@ where
         let context = &painter;
         // The shared cell layout supplies every advance; painting does not measure spelling ranges.
         for decoration in decorations {
-            let crate::plugins::DecorationStyle::Squiggly { color } = &decoration.style else {
-                continue;
+            let (color, double) = match &decoration.style {
+                crate::plugins::DecorationStyle::Squiggly { color } => (color, false),
+                crate::plugins::DecorationStyle::DoubleUnderline { color } => (color, true),
+                _ => continue,
             };
             let mut spans: Vec<(f64, f64)> = Vec::new();
             for glyph in &line.glyphs {
@@ -4512,6 +4515,19 @@ where
                 spans.push((x0, x1));
             }
             for (x0, x1) in spans {
+                if double {
+                    crate::draw_command::executor::execute_underline(
+                        context,
+                        x0,
+                        line_top + line_height * 0.8,
+                        x1 - x0,
+                        12.0,
+                        color,
+                        Some("double"),
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                    continue;
+                }
                 self.draw_colored_squiggly(
                     context,
                     x0,
@@ -8658,9 +8674,33 @@ fn add_row_border_extents(
     bottom
 }
 
+thread_local! {
+    /// The table being drawn shows the markup (`.0`), or else the original
+    /// (`.1`) or the final text: set where a table's drawing starts, read by
+    /// the row checks that have no options to hand.
+    static ROW_REVISION_VIEW: std::cell::Cell<(bool, bool)> = const { std::cell::Cell::new((true, false)) };
+}
+
+/// Word's colours for inserted and deleted table cells.
+const INSERTED_ROW_FILL: &str = "#CCE4F7";
+const DELETED_ROW_FILL: &str = "#F9D2DC";
+
+/// A row a tracked change takes out of the view shown: a deleted row in the
+/// final text, an inserted one in the original.
+fn row_revision_hides(row: &TableRow) -> bool {
+    let Some(mark) = row.revision.as_deref() else {
+        return false;
+    };
+    let (changes, original) = ROW_REVISION_VIEW.with(std::cell::Cell::get);
+    !changes && mark.is_deletion() != original
+}
+
 /// `w:hidden` hides the row-end marker, not visible cell content.
 /// A row collapses only when its content and paragraph markers are hidden too.
 fn table_row_is_hidden(row: &TableRow) -> bool {
+    if row_revision_hides(row) {
+        return true;
+    }
     row.style
         .get("hidden")
         .is_some_and(|value| value.eq_ignore_ascii_case("true"))
@@ -11071,7 +11111,21 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         // Exact row heights remain authoritative later.
         let cell_height = content_height + padding.vertical() + 2.0 * cell_spacing;
 
-        let background = resolve_cell_background(cell, table, &style_format);
+        // A row inserted or deleted with changes tracked is shaded as Word
+        // shades inserted and deleted cells, while the markup is shown.
+        let background = row
+            .revision
+            .as_deref()
+            .filter(|_| config.render_changes)
+            .map(|mark| {
+                if mark.is_deletion() {
+                    DELETED_ROW_FILL
+                } else {
+                    INSERTED_ROW_FILL
+                }
+                .to_string()
+            })
+            .or_else(|| resolve_cell_background(cell, table, &style_format));
 
         let text_color = cell
             .style
@@ -16920,6 +16974,39 @@ mod tests {
             leading_header_row_count(&[hidden_header, header_row(true)]),
             0
         );
+    }
+
+    #[test]
+    fn tracked_rows_leave_the_view_their_change_takes_them_out_of() {
+        use jade_docx_reader::{RevisionKind, RevisionMark};
+        let row_of = |kind| TableRow {
+            revision: Some(Box::new(RevisionMark {
+                kind,
+                id: None,
+                author: None,
+                date: None,
+                date_utc: None,
+                insertion: None,
+            })),
+            ..TableRow::default()
+        };
+        let (inserted, deleted) = (
+            row_of(RevisionKind::Inserted),
+            row_of(RevisionKind::Deleted),
+        );
+        let hidden = |view: (bool, bool)| {
+            ROW_REVISION_VIEW.with(|cell| cell.set(view));
+            (
+                table_row_is_hidden(&inserted),
+                table_row_is_hidden(&deleted),
+            )
+        };
+        // All Markup shows both; the final text drops the deleted row, the
+        // original the inserted one.
+        assert_eq!(hidden((true, false)), (false, false));
+        assert_eq!(hidden((false, false)), (false, true));
+        assert_eq!(hidden((false, true)), (true, false));
+        ROW_REVISION_VIEW.with(|cell| cell.set((true, false)));
     }
 
     #[test]

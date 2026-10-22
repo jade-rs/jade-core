@@ -11,7 +11,7 @@
 use anyhow::Result;
 use docx_diff::{Segment, SegmentKind};
 
-use crate::revision::{RevisionIds, AUTHOR, DATE};
+use crate::revision::RevisionIds;
 
 /// 変わった段落を 1 つの `w:p` に組み直す。
 ///
@@ -37,16 +37,18 @@ pub fn rebuild_changed(
                 out.push_str(&run(&run_props, &text, false));
             }
             SegmentKind::Insert => {
+                let id = ids.next();
                 out.push_str(&format!(
-                    r#"<w:ins w:id="{}" w:author="{AUTHOR}" w:date="{DATE}">{}</w:ins>"#,
-                    ids.next(),
+                    "<w:ins{}>{}</w:ins>",
+                    ids.attrs(id),
                     run(&run_props, &text, false),
                 ));
             }
             SegmentKind::Delete => {
+                let id = ids.next();
                 out.push_str(&format!(
-                    r#"<w:del w:id="{}" w:author="{AUTHOR}" w:date="{DATE}">{}</w:del>"#,
-                    ids.next(),
+                    "<w:del{}>{}</w:del>",
+                    ids.attrs(id),
                     run(&run_props, &text, true),
                 ));
             }
@@ -156,6 +158,26 @@ mod tests {
         );
         // run の書式は引き継ぐ。
         assert_eq!(out.matches("<w:b/>").count(), 3, "{out}");
+    }
+
+    #[test]
+    fn 変更は渡した名前と日時で記録する() {
+        let mut ids = RevisionIds::labelled("Ann & Co", "2026-10-22T09:00:00Z");
+        let out = rebuild_changed(
+            r#"<w:p><w:r><w:t>x</w:t></w:r></w:p>"#,
+            &[
+                seg(SegmentKind::Delete, "old"),
+                seg(SegmentKind::Insert, "new"),
+            ],
+            &mut ids,
+        )
+        .unwrap();
+        assert_eq!(
+            out.matches(r#"w:author="Ann &amp; Co""#).count(),
+            2,
+            "{out}"
+        );
+        assert!(out.contains(r#"w:date="2026-10-22T09:00:00Z""#), "{out}");
     }
 
     #[test]
