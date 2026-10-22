@@ -43,3 +43,56 @@ pub fn convert_from_docx(docx: &[u8], format: &str) -> Result<Vec<u8>, JsValue> 
     };
     bytes.map_err(|error| JsValue::from_str(&error))
 }
+
+/// 比較の設定 as script passes them; a field left out takes Word's default.
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase", default, deny_unknown_fields)]
+struct CompareOptionsJs {
+    author: Option<String>,
+    formatting: Option<bool>,
+    case_changes: Option<bool>,
+    white_space: Option<bool>,
+    comments: Option<bool>,
+    by_word: Option<bool>,
+    /// 組み込み: the revised copy's changes go down to its reviewer.
+    combine: bool,
+}
+
+/// 比較 / 組み込み: `original` with the differences to `revised` as tracked
+/// changes, dated `date` (ISO 8601). Returns `{docx, insertions,
+/// deletions, formatting}`.
+#[wasm_bindgen(js_name = compareDocuments)]
+pub fn compare_documents(
+    original: &[u8],
+    revised: &[u8],
+    options: JsValue,
+    date: &str,
+) -> Result<JsValue, JsValue> {
+    let js: CompareOptionsJs = if options.is_undefined() || options.is_null() {
+        CompareOptionsJs::default()
+    } else {
+        serde_wasm_bindgen::from_value(options)
+            .map_err(|error| JsValue::from_str(&format!("invalid compare options: {error}")))?
+    };
+    let mut settings =
+        crate::word::compare::CompareOptions::new(js.author.as_deref().unwrap_or("jade"));
+    settings.formatting = js.formatting.unwrap_or(settings.formatting);
+    settings.case_changes = js.case_changes.unwrap_or(settings.case_changes);
+    settings.white_space = js.white_space.unwrap_or(settings.white_space);
+    settings.comments = js.comments.unwrap_or(settings.comments);
+    settings.by_word = js.by_word.unwrap_or(settings.by_word);
+    let (docx, summary) = if js.combine {
+        crate::word::compare::combine_documents(original, revised, &settings, date)
+    } else {
+        crate::word::compare::compare_documents(original, revised, &settings, date)
+    }
+    .map_err(|error| JsValue::from_str(&error))?;
+    let result = js_sys::Object::new();
+    let set =
+        |key: &str, value: JsValue| js_sys::Reflect::set(&result, &JsValue::from_str(key), &value);
+    set("docx", js_sys::Uint8Array::from(docx.as_slice()).into())?;
+    set("insertions", JsValue::from(summary.insertions as u32))?;
+    set("deletions", JsValue::from(summary.deletions as u32))?;
+    set("formatting", JsValue::from(summary.formatting as u32))?;
+    Ok(result.into())
+}
