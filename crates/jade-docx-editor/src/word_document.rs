@@ -4544,10 +4544,12 @@ impl WordDocument {
         if target.before.is_none() && target.before_lines.is_none() {
             target.before = fallback.before;
             target.before_lines = fallback.before_lines;
+            target.before_auto = fallback.before_auto;
         }
         if target.after.is_none() && target.after_lines.is_none() {
             target.after = fallback.after;
             target.after_lines = fallback.after_lines;
+            target.after_auto = fallback.after_auto;
         }
         if target.line.is_none() && target.line_rule.is_none() {
             target.line = fallback.line;

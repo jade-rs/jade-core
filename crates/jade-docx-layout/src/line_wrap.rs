@@ -797,6 +797,9 @@ pub struct EastAsianLineBreakingRules {
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
     pub compatibility_mode: Option<u32>,
+    /// `w:compat/w:spaceForUL`: underlined East Asian text deepens its line
+    /// to hold the underline ([`crate::line_metrics::word_space_for_underline_depth_pt`]).
+    pub space_for_underline: bool,
 }
 
 impl EastAsianLineBreakingRules {
@@ -831,6 +834,7 @@ impl EastAsianLineBreakingRules {
             no_line_break_after_replaces_default: settings.no_line_break_after_replaces_default,
             strict_first_and_last_chars: settings.strict_first_and_last_chars,
             compatibility_mode: settings.compatibility_mode,
+            space_for_underline: settings.space_for_underline,
         }
     }
 }
@@ -884,6 +888,7 @@ pub fn merge_east_asian_rules(
     if settings.compatibility_mode.is_some() {
         merged.compatibility_mode = settings.compatibility_mode;
     }
+    merged.space_for_underline |= settings.space_for_underline;
     merged
 }
 
@@ -6588,6 +6593,19 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     run_style.properties.as_deref(),
                 )) * 96.0
                     / 72.0;
+                // `w:spaceForUL`: underlined East Asian text keeps its
+                // underline inside the line.
+                let underline_depth_px = if paragraph_style.east_asian_rules.space_for_underline
+                    && script == ScriptCategory::EastAsia
+                {
+                    f64::from(crate::line_metrics::word_space_for_underline_depth_pt(
+                        run_style.properties.as_deref(),
+                        font_desc,
+                    )) * 96.0
+                        / 72.0
+                } else {
+                    0.0
+                };
                 auto_space = (
                     computed.advance.implicit_latin_gap + computed.advance.implicit_numeric_gap,
                     computed.advance.implicit_latin_trailing_gap,
@@ -6613,7 +6631,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             .and_then(|ruby| ruby.ascent_px)
                             .map_or(ascent, |guide| ascent.max(guide))
                     }),
-                    font_descent: font_vertical_metrics.map(|metrics| metrics.1 + border_extent_px),
+                    font_descent: font_vertical_metrics
+                        .map(|metrics| metrics.1.max(underline_depth_px) + border_extent_px),
                 };
             };
 

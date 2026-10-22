@@ -5208,6 +5208,11 @@ pub struct EastAsianLineBreakingSettings {
     /// 14 = Word 2010, 15 = Word 2013 and later). `None` when absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compatibility_mode: Option<u32>,
+    /// `w:compat/w:spaceForUL` (ECMA-376 Part 1 §17.15.3.46): a line of
+    /// underlined East Asian text grows below its baseline far enough to hold
+    /// the underline instead of letting it run into the next line.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub space_for_underline: bool,
 }
 
 /// Numbering metadata that associates a paragraph with a numbering definition.
@@ -5966,10 +5971,12 @@ impl Spacing {
         if before {
             self.before = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
             self.before_lines = None;
+            self.before_auto = true;
         }
         if after {
             self.after = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
             self.after_lines = None;
+            self.after_auto = true;
         }
     }
 }
@@ -5982,6 +5989,14 @@ pub struct Spacing {
     pub after_lines: Option<f32>,
     pub line: Option<f32>,
     pub line_rule: Option<String>,
+    /// `before` came from `w:beforeAutospacing`: unless the document sets
+    /// `w:doNotUseHTMLParagraphAutoSpacing`, Word drops it where HTML would
+    /// collapse the margin (see [`Self::apply_autospacing`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub before_auto: bool,
+    /// `after` came from `w:afterAutospacing`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub after_auto: bool,
 }
 
 /// Page size and margin information derived from the section properties.

@@ -1120,6 +1120,9 @@ struct LayoutConfig {
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
     word_modern_border_insets: bool,
+    /// Auto paragraph spacing collapses like HTML margins (no
+    /// `doNotUseHTMLParagraphAutoSpacing`).
+    html_auto_spacing: bool,
 }
 
 /// Rendered reference marks ("1", "ⅰ", …) keyed by note id, one map per note
@@ -1985,6 +1988,7 @@ where
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
+            html_auto_spacing: self.document_html_auto_spacing,
         };
 
         let column_count = compute_column_count(table);
@@ -11042,7 +11046,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                 content_height_hint
             };
             let (suppress_before, suppress_after) =
-                super::compute_contextual_spacing_suppression(&cell.blocks);
+                super::compute_cell_spacing_suppression(&cell.blocks, config.html_auto_spacing);
             let mut previous_after = 0.0_f64;
             for (block_index, block) in cell.blocks.iter().enumerate() {
                 if contains_only_hidden_end_marker && matches!(block, BodyElement::Paragraph(_)) {
@@ -13378,6 +13382,7 @@ mod tests {
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
+                html_auto_spacing: true,
                 styles_part: None,
             };
             let marks = if footnote {
@@ -13485,6 +13490,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             styles_part: None,
         };
         let context = FixedWidthWrapContext::new();
@@ -14826,6 +14832,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             styles_part: None,
         };
         let paragraph = |text: &str| -> Paragraph {
@@ -15919,6 +15926,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             styles_part: None,
         };
         for exact_middle in [false, true] {
@@ -17433,6 +17441,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             styles_part: None,
         };
         let row = TableRow {
@@ -18351,6 +18360,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
+            html_auto_spacing: true,
             styles_part: None,
         };
         for bidi in [false, true] {
@@ -18468,6 +18478,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             styles_part: None,
         };
         let table = Table {
@@ -19460,6 +19471,7 @@ mod tests {
             paragraph_east_asian_rules: FxHashMap::default(),
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
             available_width: 120.0,
             render_changes: false,
             render_original: false,
