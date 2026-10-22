@@ -9,7 +9,7 @@
 //! over a random salt; the package is AES-256-CBC in 4096-byte segments, and
 //! an HMAC-SHA512 over the encrypted stream guards it.
 
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Read};
 
 use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
 use base64::Engine;
@@ -301,30 +301,14 @@ pub fn encrypt_package(
     let mut info = vec![4, 0, 4, 0, 0x40, 0, 0, 0];
     info.extend(xml.as_bytes());
 
-    let mut file = cfb::CompoundFile::create(Cursor::new(Vec::new()))
-        .map_err(|error| DecryptError::Malformed(error.to_string()))?;
-    let mut write = |path: &str, data: &[u8]| -> Result<(), DecryptError> {
-        if let Some(parent) = std::path::Path::new(path).parent() {
-            if parent != std::path::Path::new("/") {
-                file.create_storage_all(parent)
-                    .map_err(|error| DecryptError::Malformed(error.to_string()))?;
-            }
-        }
-        let mut stream = file
-            .create_stream(path)
-            .map_err(|error| DecryptError::Malformed(error.to_string()))?;
-        stream
-            .write_all(data)
-            .map_err(|error| DecryptError::Malformed(error.to_string()))
-    };
-    for (path, data) in data_spaces() {
-        write(path, &data)?;
-    }
-    write("/EncryptionInfo", &info)?;
-    write("/EncryptedPackage", &package)?;
-    file.flush()
-        .map_err(|error| DecryptError::Malformed(error.to_string()))?;
-    Ok(file.into_inner().into_inner())
+    let data_spaces = data_spaces();
+    let mut streams: Vec<(&str, &[u8])> = data_spaces
+        .iter()
+        .map(|(path, data)| (*path, data.as_slice()))
+        .collect();
+    streams.push(("/EncryptionInfo", &info));
+    streams.push(("/EncryptedPackage", &package));
+    crate::compound_file::write(&streams).map_err(DecryptError::Malformed)
 }
 
 /// What `EncryptionInfo`'s descriptor says.
@@ -502,6 +486,7 @@ pub fn decrypt_package(bytes: &[u8], password: &str) -> Result<Vec<u8>, DecryptE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     fn counter() -> impl FnMut(&mut [u8]) {
         let mut next = 7u8;
