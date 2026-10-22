@@ -12,7 +12,10 @@ license = "MIT"
 
 [dependencies]
 jade-docx-convert = { path = "../jade-docx-convert" }
-cfb = "0.7"
+jade-opc = { path = "../jade-opc" }
 
 [dev-dependencies]
+# Reads the compound files written by `compound_file` back in tests; the
+# writer itself has no clock to ask (see `compound_file`).
+cfb = "0.7"
 jade-doc-reader = { path = "../jade-doc-reader" }
