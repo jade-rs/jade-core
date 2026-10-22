@@ -848,6 +848,8 @@ impl<T: PartialEq> UniformField<T> {
 
 #[path = "canvas_view/word_controls.rs"]
 mod word_controls;
+#[path = "canvas_view/word_mailings.rs"]
+mod word_mailings;
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
 #[path = "canvas_view/word_references.rs"]
