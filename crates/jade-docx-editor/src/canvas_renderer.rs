@@ -249,6 +249,8 @@ mod border_styles;
 mod compat_tests;
 mod float_lookahead;
 #[cfg(test)]
+mod font_state_tests;
+#[cfg(test)]
 mod hyphenation_tests;
 mod ink;
 #[cfg(test)]
@@ -20249,6 +20251,12 @@ where
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
         hyperlink_regions_out: Option<&mut Vec<CachedHyperlinkRegion>>,
     ) -> Result<(), JsValue> {
+        // What the surface's font and fill are is not known here: a cached
+        // paragraph replayed just before, or anything else drawn straight to
+        // the surface, may have set its own. Trusting the trackers' last
+        // value let a plain paragraph after a replayed italic one skip its
+        // `set_font` and be drawn in italics.
+        self.invalidate_context_state_tracking();
         // Group measurement consumes line geometry, never editor-only marks.
         let show_formatting_marks = show_formatting_marks && !self.measuring_keep_next;
         let mut commands_out = commands_out;
@@ -26830,6 +26838,8 @@ where
         line_gap: f64,
         remaining_line_gaps: &mut usize,
     ) -> Result<f64, JsValue> {
+        // As for body lines: the surface's font is not the trackers' to assume.
+        self.invalidate_context_state_tracking();
         let paragraph_index = self.paragraph_counter;
         self.paragraph_counter += 1;
         // A text-box paragraph is registered whole by this call; a same-pass
