@@ -862,6 +862,8 @@ mod word_equation;
 mod word_ink;
 #[path = "canvas_view/word_layout_objects.rs"]
 mod word_layout_objects;
+#[path = "canvas_view/word_lists.rs"]
+mod word_lists;
 #[path = "canvas_view/word_mailings.rs"]
 mod word_mailings;
 #[path = "canvas_view/word_models.rs"]
