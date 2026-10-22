@@ -82,7 +82,10 @@ fn render(word: &WordDocument, visible: Option<std::ops::RangeInclusive<usize>>)
             None,
         )
         .expect("render");
-    assert!(renderer.page_count() >= 3, "the paragraphs fill three pages");
+    assert!(
+        renderer.page_count() >= 3,
+        "the paragraphs fill three pages"
+    );
     let pixels = pages.borrow()[1]
         .read_bgra_premultiplied()
         .expect("read pixels")
