@@ -59,6 +59,18 @@ pub enum InkDrawingSpec {
 /// A box: left, top, width, height in px.
 pub type InkBox = (f64, f64, f64, f64);
 
+/// The least an ink drawing's box measures across: its widest stroke (and a
+/// pixel). A perfectly straight vertical or horizontal stroke has no extent
+/// of its own across it; a box of none leaves the drawing's size to whatever
+/// lays it out.
+pub fn ink_min_extent(traces: &[InkTrace]) -> f64 {
+    traces
+        .iter()
+        .map(|trace| trace.brush.width_px.max(trace.brush.height_px))
+        .filter(|width| width.is_finite())
+        .fold(1.0, f64::max)
+}
+
 /// The page-coordinate box of `traces` with their brushes, and the traces
 /// moved into it.
 pub fn traces_in_box(traces: &[InkTrace]) -> Option<(InkBox, Vec<InkTrace>)> {
@@ -74,8 +86,9 @@ pub fn traces_in_box(traces: &[InkTrace]) -> Option<(InkBox, Vec<InkTrace>)> {
             brush: trace.brush.clone(),
         })
         .collect();
+    let min = ink_min_extent(traces);
     Some((
-        (left, top, (right - left).max(1.0), (bottom - top).max(1.0)),
+        (left, top, (right - left).max(min), (bottom - top).max(min)),
         moved,
     ))
 }
@@ -109,6 +122,19 @@ impl WordDocument {
             return;
         };
         let traces = parse_inkml(xml);
+        // A box with no width or height (a straight stroke saved so) takes
+        // its strokes' own extent, at least their width.
+        if let Some((left, top, right, bottom)) = InkContent::bounds(&traces) {
+            let min = ink_min_extent(&traces);
+            for (extent, natural) in [
+                (&mut image.width_px, right - left),
+                (&mut image.height_px, bottom - top),
+            ] {
+                if let Some(value) = extent.as_mut().filter(|value| **value < min) {
+                    *value = natural.max(min);
+                }
+            }
+        }
         ink.traces = match (image.width_px, image.height_px) {
             (Some(width), Some(height)) => fit_traces_to_box(traces, width, height),
             _ => fit_traces_to_box(traces, 0.0, 0.0),
