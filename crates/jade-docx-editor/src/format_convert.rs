@@ -157,3 +157,81 @@ pub fn mark_final(docx: &[u8], final_: bool) -> Result<Vec<u8>, JsValue> {
 pub fn is_marked_final(docx: &[u8]) -> bool {
     crate::word::protection::is_marked_final(docx)
 }
+
+/// 文書の検査's すべて削除 for what lives in package parts: personal
+/// information (author, last saved by, manager, company) and custom XML.
+#[wasm_bindgen(js_name = cleanPackage)]
+pub fn clean_package(docx: &[u8], personal: bool, custom_xml: bool) -> Result<Vec<u8>, JsValue> {
+    crate::word::inspect::clean_package(
+        docx,
+        crate::word::inspect::PackageCleaning {
+            personal,
+            custom_xml,
+        },
+    )
+    .map_err(|error| JsValue::from_str(&error))
+}
+
+/// 互換モード: the Word version the document is laid out for
+/// (`w:compatibilityMode`; 15 is current).
+#[wasm_bindgen(js_name = compatibilityMode)]
+pub fn compatibility_mode(docx: &[u8]) -> u32 {
+    crate::word::compat::compatibility_mode(docx)
+}
+
+/// 変換: the document taken out of compatibility mode.
+#[wasm_bindgen(js_name = upgradeCompatibility)]
+pub fn upgrade_compatibility(docx: &[u8]) -> Result<Vec<u8>, JsValue> {
+    crate::word::compat::upgrade(docx).map_err(|error| JsValue::from_str(&error))
+}
+
+/// 互換性チェック for `version` (`2003`, `2007` or `2010`): each issue's
+/// message key and how many times it occurs.
+#[wasm_bindgen(js_name = checkCompatibility)]
+pub fn check_compatibility(docx: &[u8], version: &str) -> Result<JsValue, JsValue> {
+    use crate::word::compat::{check, WordVersion};
+    let version = match version {
+        "2003" => WordVersion::Word2003,
+        "2007" => WordVersion::Word2007,
+        "2010" => WordVersion::Word2010,
+        other => return Err(JsValue::from_str(&format!("unknown Word version {other}"))),
+    };
+    let issues = js_sys::Array::new();
+    for (issue, count) in check(docx, version) {
+        let entry = js_sys::Object::new();
+        let _ = js_sys::Reflect::set(&entry, &"key".into(), &JsValue::from_str(issue.key()));
+        let _ = js_sys::Reflect::set(&entry, &"count".into(), &JsValue::from(count as u32));
+        issues.push(&entry);
+    }
+    Ok(issues.into())
+}
+
+/// 図の圧縮: every picture brought down to `resolution` (`hd`, `print`,
+/// `web`, `email`), with 図のトリミング部分を削除する. Returns `{docx,
+/// resampled, uncropped, bytesBefore, bytesAfter}`.
+#[wasm_bindgen(js_name = compressPictures)]
+pub fn compress_pictures(
+    docx: &[u8],
+    resolution: &str,
+    delete_crops: bool,
+) -> Result<JsValue, JsValue> {
+    use crate::word::compress::Resolution;
+    let resolution = match resolution {
+        "hd" => Resolution::Hd,
+        "print" => Resolution::Print,
+        "web" => Resolution::Web,
+        "email" => Resolution::Email,
+        other => return Err(JsValue::from_str(&format!("unknown resolution {other}"))),
+    };
+    let (bytes, summary) = crate::word::compress::compress_pictures(docx, resolution, delete_crops)
+        .map_err(|error| JsValue::from_str(&error))?;
+    let result = js_sys::Object::new();
+    let set =
+        |key: &str, value: JsValue| js_sys::Reflect::set(&result, &JsValue::from_str(key), &value);
+    set("docx", js_sys::Uint8Array::from(bytes.as_slice()).into())?;
+    set("resampled", JsValue::from(summary.resampled as u32))?;
+    set("uncropped", JsValue::from(summary.uncropped as u32))?;
+    set("bytesBefore", JsValue::from(summary.bytes_before as u32))?;
+    set("bytesAfter", JsValue::from(summary.bytes_after as u32))?;
+    Ok(result.into())
+}
