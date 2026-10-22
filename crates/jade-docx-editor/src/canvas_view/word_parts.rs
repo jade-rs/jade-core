@@ -178,6 +178,31 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// 下書き: what of a page the view keeps — its text band, with a strip of
+    /// the left margin — for the caret's section, as `{top, height, left,
+    /// width, pageWidth, pageHeight}` in the page's CSS pixels.
+    #[wasm_bindgen(js_name = draftCrop)]
+    pub fn draft_crop(&self) -> Result<JsValue, JsValue> {
+        use crate::word::view::{points_to_px, PageBand, ViewKind};
+        let section = self.ribbon_target_section();
+        let state = self.state.borrow();
+        let document = state
+            .word_doc
+            .as_ref()
+            .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+        let layout = document.section_layout(section);
+        let page = (points_to_px(layout.width), points_to_px(layout.height));
+        let crop = PageBand::of(&layout).crop(ViewKind::Draft, page);
+        Ok(to_js(&json!({
+            "top": crop.top,
+            "height": crop.height,
+            "left": crop.left,
+            "width": crop.width,
+            "pageWidth": page.0,
+            "pageHeight": page.1,
+        })))
+    }
+
     /// 文書パーツ オーガナイザー's 削除.
     #[wasm_bindgen(js_name = deleteQuickPart)]
     pub fn delete_quick_part(&self, index: usize) -> Result<JsValue, JsValue> {
