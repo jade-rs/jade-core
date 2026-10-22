@@ -7685,6 +7685,26 @@ impl DocumentParser {
     }
 
     fn apply_vml_imagedata_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
+        if element.name().as_ref() == b"o:signatureline" {
+            let mut line = SignatureLine::default();
+            for attr in element.attributes().flatten() {
+                let value = attr
+                    .unescape_value()
+                    .map(|value| value.into_owned())
+                    .unwrap_or_default();
+                let value = (!value.is_empty()).then_some(value);
+                match attr.key.as_ref() {
+                    b"id" => line.id = value,
+                    b"o:suggestedsigner" => line.signer = value,
+                    b"o:suggestedsigner2" => line.title = value,
+                    b"o:suggestedsigneremail" => line.email = value,
+                    b"o:signinginstructions" => line.instructions = value,
+                    _ => {}
+                }
+            }
+            image.signature_line = Some(Box::new(line));
+            return;
+        }
         if element.name().as_ref() != b"v:imagedata" {
             return;
         }

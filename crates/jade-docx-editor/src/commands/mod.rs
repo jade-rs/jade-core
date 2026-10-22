@@ -45,6 +45,7 @@ pub mod insert_index;
 pub mod insert_paragraph_break;
 pub mod insert_section_break;
 pub mod insert_shape;
+pub mod insert_signature_line;
 pub mod insert_table;
 pub mod insert_text;
 pub mod insert_text_box;

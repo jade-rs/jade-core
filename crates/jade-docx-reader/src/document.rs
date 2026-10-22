@@ -2774,6 +2774,9 @@ pub struct RunImage {
     /// (`adec:decorative` in `wp:docPr`'s extension list).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub decorative: bool,
+    /// 署名欄: a VML shape asking for a signature (`o:signatureline`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_line: Option<Box<SignatureLine>>,
     /// Optional label shown when the image bytes cannot be decoded (e.g. WMF/EMF placeholder).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
@@ -3662,6 +3665,26 @@ pub enum TextBoxVerticalAlignment {
     Distributed,
 }
 
+/// A signature line's setup (`o:signatureline`): who is asked to sign.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureLine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// 署名者 (`o:suggestedsigner`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signer: Option<String>,
+    /// 署名者の役職 (`o:suggestedsigner2`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// 署名者の電子メール アドレス (`o:suggestedsigneremail`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    /// 署名者への説明 (`o:signinginstructions`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+}
+
 /// Tracks revision metadata (e.g. change tracking) attached to a run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -3858,8 +3881,9 @@ mod tests {
         // (`RevisionMark::insertion`); 24 the boxed theme colour, East Asian
         // layout and text effects the フォント dialog sets; 8 a picture's
         // 装飾用 flag (`RunImage::decorative`); 8 the boxed tracked
-        // formatting change (`RunProperties::change`).
-        assert_eq!(std::mem::size_of::<Run>(), 3072);
+        // formatting change (`RunProperties::change`); 8 a picture's boxed
+        // 署名欄 setup (`RunImage::signature_line`).
+        assert_eq!(std::mem::size_of::<Run>(), 3080);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
