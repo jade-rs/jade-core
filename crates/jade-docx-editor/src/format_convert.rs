@@ -144,3 +144,16 @@ pub fn document_from_template(template: &[u8]) -> Result<Vec<u8>, JsValue> {
 pub fn template_from_document(docx: &[u8]) -> Result<Vec<u8>, JsValue> {
     crate::word::new::template_from_document(docx).map_err(|error| JsValue::from_str(&error))
 }
+
+/// 最終版にする (`final_` true) or undo it: the package's
+/// `_MarkAsFinal` custom property, which Word opens read-only on.
+#[wasm_bindgen(js_name = markFinal)]
+pub fn mark_final(docx: &[u8], final_: bool) -> Result<Vec<u8>, JsValue> {
+    crate::word::protection::mark_final(docx, final_).map_err(|error| JsValue::from_str(&error))
+}
+
+/// Whether the package is marked final.
+#[wasm_bindgen(js_name = isMarkedFinal)]
+pub fn is_marked_final(docx: &[u8]) -> bool {
+    crate::word::protection::is_marked_final(docx)
+}

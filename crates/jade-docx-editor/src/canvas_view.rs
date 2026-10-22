@@ -866,6 +866,8 @@ mod word_layout_objects;
 mod word_lists;
 #[path = "canvas_view/word_mailings.rs"]
 mod word_mailings;
+#[path = "canvas_view/word_misc.rs"]
+mod word_misc;
 #[path = "canvas_view/word_models.rs"]
 mod word_models;
 #[path = "canvas_view/word_objects.rs"]
