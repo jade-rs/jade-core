@@ -181,8 +181,10 @@ impl OffscreenDocumentView {
     /// 下書き: what of a page the view keeps — its text band, with a strip of
     /// the left margin — for the caret's section, as `{top, height, left,
     /// width, pageWidth, pageHeight}` in the page's CSS pixels.
+    /// With `hide_white_space`, 余白を表示しない's crop instead: the page's
+    /// width, cut above and below its text.
     #[wasm_bindgen(js_name = draftCrop)]
-    pub fn draft_crop(&self) -> Result<JsValue, JsValue> {
+    pub fn draft_crop(&self, hide_white_space: Option<bool>) -> Result<JsValue, JsValue> {
         use crate::word::view::{points_to_px, PageBand, ViewKind};
         let section = self.ribbon_target_section();
         let state = self.state.borrow();
@@ -192,7 +194,12 @@ impl OffscreenDocumentView {
             .ok_or_else(|| JsValue::from_str("No document loaded"))?;
         let layout = document.section_layout(section);
         let page = (points_to_px(layout.width), points_to_px(layout.height));
-        let crop = PageBand::of(&layout).crop(ViewKind::Draft, page);
+        let kind = if hide_white_space.unwrap_or(false) {
+            ViewKind::Print
+        } else {
+            ViewKind::Draft
+        };
+        let crop = PageBand::of(&layout).crop(kind, page);
         Ok(to_js(&json!({
             "top": crop.top,
             "height": crop.height,
