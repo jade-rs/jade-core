@@ -928,6 +928,39 @@ fn emptying_a_control_keeps_it() {
 }
 
 #[test]
+fn wraps_text_that_shares_its_run_with_a_break() {
+    // Word keeps "Hello" and the page break after it in one run; wrapping
+    // the text splits the run before the break.
+    let mut document = open(
+        r#"<w:p><w:r><w:t>Hello</w:t><w:br w:type="page"/></w:r></w:p>"#,
+        "",
+    );
+    let range = SelectionRange {
+        anchor: TextPosition::new(0, 0),
+        focus: TextPosition::new(0, 5),
+    };
+    run(
+        &mut document,
+        &mut CommandExecutor::new(),
+        ContentControlAction::Insert {
+            kind: ContentControlKind::RichText,
+            japanese: true,
+        },
+        range,
+    )
+    .unwrap();
+    let controls = document.content_controls();
+    assert_eq!(controls.len(), 1);
+    assert_eq!(controls[0].text, "Hello");
+    let xml = document_xml(&document);
+    assert!(xml.contains(r#"<w:br w:type="page"/>"#), "{xml}");
+    assert!(
+        xml.find("</w:sdt>") < xml.find("<w:br"),
+        "the break stays outside the control: {xml}"
+    );
+}
+
+#[test]
 fn a_delete_from_inside_a_character_does_not_panic() {
     // A caret placed by byte offset can land inside a multi-byte character
     // (here byte 1 of 秘, and byte 4 of 密); stepping over a character from
