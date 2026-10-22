@@ -66,6 +66,9 @@ pub enum PaintOp {
     Stroke,
     Clip,
     UseFillStyleForStroke,
+    /// The tagged-PDF structure node what follows belongs to (see
+    /// [`Painter::set_structure_node`]).
+    StructureNode(i32),
     /// A drawing step the capturing code performs itself at replay time —
     /// typically a host-level image draw that does not go through
     /// [`Painter`]. The number identifies it to the caller of [`replay`].
@@ -202,6 +205,7 @@ pub fn replay<P: Painter>(
             PaintOp::Stroke => painter.stroke(),
             PaintOp::Clip => painter.clip(),
             PaintOp::UseFillStyleForStroke => painter.use_fill_style_for_stroke(),
+            PaintOp::StructureNode(node) => painter.set_structure_node(*node),
             PaintOp::Marker(id) => on_marker(*id),
         }
     }
@@ -210,6 +214,14 @@ pub fn replay<P: Painter>(
 
 impl<P: Painter> Painter for RoutedPainter<P> {
     type Error = P::Error;
+
+    // Tagged PDF marks go where the drawing goes: into a capture, to be
+    // replayed with it, or on to the painter — never dropped.
+    fn set_structure_node(&self, node: i32) {
+        if !self.record(|| PaintOp::StructureNode(node)) {
+            self.inner.set_structure_node(node);
+        }
+    }
 
     fn draw_image(
         &self,
@@ -607,6 +619,19 @@ mod tests {
         .unwrap();
         assert_eq!(seen, vec![7]);
         assert_eq!(surface.ops(), vec![Op::Save, Op::Restore]);
+    }
+
+    #[test]
+    fn structure_nodes_are_captured_and_replayed_in_order() {
+        let sink = new_sink();
+        let captured = RoutedPainter::new(RecordingPainter::new(), Some(sink.clone()));
+        captured.set_structure_node(3);
+        captured.fill_rect(0.0, 0.0, 1.0, 1.0);
+        captured.set_structure_node(0);
+        let ops = sink.borrow();
+        assert!(matches!(ops[0], PaintOp::StructureNode(3)));
+        assert!(matches!(ops[1], PaintOp::FillRect(..)));
+        assert!(matches!(ops[2], PaintOp::StructureNode(0)));
     }
 
     #[test]
