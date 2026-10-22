@@ -7,6 +7,7 @@ pub mod canvas_view;
 pub(crate) mod chart;
 pub mod commands;
 pub mod draw_command;
+pub mod format_convert;
 pub mod headless_api;
 pub(crate) mod legal_structure;
 pub(crate) mod number_format;
