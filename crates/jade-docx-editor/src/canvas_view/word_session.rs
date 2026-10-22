@@ -38,6 +38,9 @@ pub(super) struct DetachedSession<'a> {
     selection: Option<SelectionRange>,
     executor: CommandExecutor,
     facts: Rc<LayoutFacts>,
+    /// Cells a model selected (the first and last cell ids): the view's own
+    /// cell selection, put in by [`OffscreenDocumentView::select_with_word_session`].
+    cells_selected: Option<(usize, usize)>,
 }
 
 impl WordSession for DetachedSession<'_> {
@@ -115,8 +118,10 @@ impl WordSession for DetachedSession<'_> {
         self.facts.hyperlinks.clone()
     }
 
-    fn select_cells(&mut self, _anchor_cell: usize, _focus_cell: usize) -> Result<(), String> {
-        Err("cell selection is the editor's own".to_string())
+    fn select_cells(&mut self, anchor_cell: usize, focus_cell: usize) -> Result<(), String> {
+        // The view takes it after the action (`select_with_word_session`).
+        self.cells_selected = Some((anchor_cell, focus_cell));
+        Ok(())
     }
 
     fn page_count(&self) -> Option<usize> {
@@ -183,8 +188,57 @@ impl OffscreenDocumentView {
             selection: Some(selection),
             executor: CommandExecutor::new(),
             facts,
+            cells_selected: None,
         };
         Ok(read(&session))
+    }
+
+    /// Runs a model action that only selects — 選択 ▸ セル/行/列/表, a word,
+    /// a sentence — and puts the selection it made, cells included, in the
+    /// view. Nothing in the document changes and no undo step is recorded.
+    pub(super) fn select_with_word_session(
+        &self,
+        action: impl FnOnce(&mut DetachedSession<'_>) -> Result<(), String>,
+    ) -> Result<(), JsValue> {
+        let facts = Rc::new(self.layout_facts());
+        let selection = self.current_selection();
+        let (selection, cells) = {
+            let mut state = self.state.borrow_mut();
+            let document = state
+                .word_doc
+                .as_mut()
+                .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+            let mut session = DetachedSession {
+                document,
+                selection: Some(selection),
+                executor: CommandExecutor::new(),
+                facts,
+                cells_selected: None,
+            };
+            action(&mut session).map_err(|error| JsValue::from_str(&error))?;
+            (session.selection, session.cells_selected)
+        };
+        let range = {
+            let mut renderer = self.renderer.borrow_mut();
+            match cells.and_then(|(anchor, focus)| {
+                Some((anchor, focus, renderer.cell_selection_range(anchor, focus)?))
+            }) {
+                Some((anchor, focus, range)) => {
+                    renderer.set_selection_range(Some(range));
+                    renderer.set_cell_selection(anchor, focus);
+                    Some(range)
+                }
+                None => {
+                    renderer.clear_cell_selection();
+                    renderer.set_selection_range(selection);
+                    selection
+                }
+            }
+        };
+        if let Some(range) = range {
+            self.state.borrow_mut().selection = Some(range);
+        }
+        Ok(())
     }
 
     /// Runs one Word model action — a dialog's OK, a ribbon button — as one
@@ -198,6 +252,14 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let facts = Rc::new(self.layout_facts());
         let selection = self.current_selection();
+        // Models that edit the package (themes, styles, the glossary) need
+        // the round-trip XML a lazily opened document builds on its first
+        // export.
+        if let Some(document) = self.state.borrow_mut().word_doc.as_mut() {
+            document
+                .ensure_roundtrip_xml()
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        }
         let action = RefCell::new(Some(action));
         let outcome: Rc<RefCell<Option<Outcome<T>>>> = Rc::new(RefCell::new(None));
         let sink = Rc::clone(&outcome);
@@ -218,6 +280,7 @@ impl OffscreenDocumentView {
                     selection: Some(selection),
                     executor: CommandExecutor::new(),
                     facts: Rc::clone(&facts),
+                    cells_selected: None,
                 };
                 let result = action(&mut session)?;
                 *sink.borrow_mut() = Some((session.selection, result));
@@ -239,5 +302,18 @@ impl OffscreenDocumentView {
             let _ = Reflect::set(&payload, &JsValue::from_str("result"), &value);
         }
         Ok(payload)
+    }
+}
+
+/// The view shows markup itself ([`OffscreenDocumentView::set_markup_view`]);
+/// a detached session only reads what the markup models read.
+impl crate::word::markup::WordMarkupDisplay for DetachedSession<'_> {
+    fn set_revision_display(
+        &mut self,
+        _markup: bool,
+        _original: bool,
+        _view: crate::revision_view::RevisionView,
+    ) -> Result<bool, String> {
+        Err("markup is the view's own".to_string())
     }
 }

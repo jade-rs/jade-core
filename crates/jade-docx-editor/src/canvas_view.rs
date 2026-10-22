@@ -181,6 +181,10 @@ struct CanvasDocumentState {
     options: Options,
     /// Which fields show their codes (⌥F9 / ⇧F9).
     field_code_view: crate::fields::FieldCodeView,
+    /// Word's オートコレクト while typing; `None` while it is off.
+    word_autocorrect: Option<crate::word::autocorrect::AutoCorrectOptions>,
+    /// The equation being edited in place, its caret inside the structure.
+    equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
@@ -848,18 +852,34 @@ impl<T: PartialEq> UniformField<T> {
     }
 }
 
+#[path = "canvas_view/word_autocorrect.rs"]
+mod word_autocorrect;
+#[path = "canvas_view/word_checks.rs"]
+mod word_checks;
 #[path = "canvas_view/word_controls.rs"]
 mod word_controls;
+#[path = "canvas_view/word_equation.rs"]
+mod word_equation;
 #[path = "canvas_view/word_ink.rs"]
 mod word_ink;
+#[path = "canvas_view/word_layout_objects.rs"]
+mod word_layout_objects;
+#[path = "canvas_view/word_lists.rs"]
+mod word_lists;
 #[path = "canvas_view/word_mailings.rs"]
 mod word_mailings;
+#[path = "canvas_view/word_misc.rs"]
+mod word_misc;
 #[path = "canvas_view/word_models.rs"]
 mod word_models;
 #[path = "canvas_view/word_objects.rs"]
 mod word_objects;
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
+#[path = "canvas_view/word_parts.rs"]
+mod word_parts;
+#[path = "canvas_view/word_ranges.rs"]
+mod word_ranges;
 #[path = "canvas_view/word_references.rs"]
 mod word_references;
 #[path = "canvas_view/word_review.rs"]
@@ -1339,6 +1359,9 @@ pub struct OffscreenDocumentView {
     /// Whether the column/row drag in progress is applied to the document as
     /// a live preview (its history entry is retracted before the next one).
     table_resize_preview: Rc<Cell<bool>>,
+    /// The live preview of a gallery choice under the pointer: the history
+    /// revision its provisional edit left, taken back when the pointer goes.
+    style_preview: Rc<Cell<Option<u64>>>,
     resize_debug: Rc<RefCell<Option<String>>>,
     pending_image_wait: Rc<RefCell<Option<Promise>>>,
 }
@@ -8555,6 +8578,8 @@ impl OffscreenDocumentView {
         let state = Rc::new(RefCell::new(CanvasDocumentState {
             options: opts.clone(),
             field_code_view: Default::default(),
+            word_autocorrect: None,
+            equation_editor: None,
             word_doc: None,
             paged_images: Vec::new(),
             lazy_mode: false,
@@ -8582,6 +8607,7 @@ impl OffscreenDocumentView {
             state,
             drag_state: Rc::new(RefCell::new(PointerDragState::None)),
             table_resize_preview: Rc::new(Cell::new(false)),
+            style_preview: Rc::new(Cell::new(None)),
             resize_debug: Rc::new(RefCell::new(None)),
             pending_image_wait: Rc::new(RefCell::new(None)),
         })
@@ -8638,6 +8664,7 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen]
     pub fn undo(&self) -> js_sys::Promise {
+        self.style_preview.set(None);
         let view = self.clone();
         future_to_promise(async move {
             let protection_history = {
@@ -8658,6 +8685,58 @@ impl OffscreenDocumentView {
                     &JsValue::TRUE,
                 )?;
             }
+            Ok(payload)
+        })
+    }
+
+    /// リアルタイムのプレビュー: style `id` on the selection while the pointer
+    /// is over it in the gallery — applied as an edit that
+    /// [`Self::end_style_preview`] takes back without a trace in the history.
+    /// A preview already showing gives way first.
+    #[wasm_bindgen(js_name = previewStyle)]
+    pub fn preview_style(&self, id: String) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            if view.state.borrow().preview_mode {
+                return Ok(JsValue::NULL);
+            }
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            let payload = view.run_word_session("word_style_preview", move |session| {
+                use crate::word::styles::WordStyles;
+                session.apply_style(&id)
+            });
+            match payload {
+                Ok(payload) => {
+                    let revision = view.state.borrow().command_executor.history_revision();
+                    view.style_preview.set(Some(revision));
+                    Ok(payload)
+                }
+                // A style that cannot go on the selection previews nothing.
+                Err(_) => Ok(ended),
+            }
+        })
+    }
+
+    /// Takes the gallery preview back off the document, leaving neither an
+    /// undo nor a redo step; `null` when none is showing or anything was
+    /// edited since.
+    #[wasm_bindgen(js_name = endStylePreview)]
+    pub fn end_style_preview(&self) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            let Some(revision) = view.style_preview.replace(None) else {
+                return Ok(JsValue::NULL);
+            };
+            if view.state.borrow().command_executor.history_revision() != revision {
+                return Ok(JsValue::NULL);
+            }
+            let payload = view
+                .perform_history_action_async(HistoryAction::Undo)
+                .await?;
+            view.state
+                .borrow_mut()
+                .command_executor
+                .discard_newest_redo();
             Ok(payload)
         })
     }
@@ -18404,10 +18483,25 @@ impl OffscreenDocumentView {
         state_mut.options.set_revision_author(name);
     }
 
+    /// Sets the initials written on comments (ユーザー名の頭文字); `None` or
+    /// a blank string takes them from the author name.
+    #[wasm_bindgen(js_name = "setAuthorInitials")]
+    pub fn set_author_initials(&self, initials: Option<String>) {
+        self.state
+            .borrow_mut()
+            .options
+            .set_author_initials(initials);
+    }
+
     /// Author recorded on new comments. Shares the revision identity because
     /// Word takes both from the same user name.
     fn comment_author(&self) -> String {
         self.state.borrow().options.author_name_or_default()
+    }
+
+    /// The initials recorded on new comments beside [`Self::comment_author`].
+    fn comment_initials(&self) -> String {
+        self.state.borrow().options.author_initials_or_default()
     }
 
     /// Adds a comment anchored to the current (non-collapsed, single-paragraph)
@@ -18436,6 +18530,7 @@ impl OffscreenDocumentView {
         let start_offset = start.offset;
         let end_offset = end.offset;
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // Word と同じくコメントには付けた日時を書く。書かないと、取り込む側で 1970/01/01 のコメントになる。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |start_para, _end_para| {
@@ -18446,7 +18541,7 @@ impl OffscreenDocumentView {
                 end_offset: Some(end_offset),
                 text,
                 author: Some(author),
-                initials: None,
+                initials: Some(initials),
                 date: Some(date),
             }
         })
@@ -18774,13 +18869,14 @@ impl OffscreenDocumentView {
             return Err(JsValue::from_str("返信の本文を入力してください"));
         }
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // 返信もコメントと同じく付けた日時を書く（`add_comment` 参照）。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |_s, _e| HeadlessCommand::ReplyToComment {
             comment_id: comment_id.clone(),
             text: text.clone(),
             author: Some(author.clone()),
-            initials: None,
+            initials: Some(initials.clone()),
             date: Some(date.clone()),
         })
     }
