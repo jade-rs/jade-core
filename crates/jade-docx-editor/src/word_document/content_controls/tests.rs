@@ -958,7 +958,9 @@ fn wraps_text_that_shares_its_run_with_a_break() {
         xml.find("</w:sdt>") < xml.find("<w:br"),
         "the break stays outside the control: {xml}"
     );
+}
 
+#[test]
 fn a_delete_from_inside_a_character_does_not_panic() {
     // A caret placed by byte offset can land inside a multi-byte character
     // (here byte 1 of 秘, and byte 4 of 密); stepping over a character from
