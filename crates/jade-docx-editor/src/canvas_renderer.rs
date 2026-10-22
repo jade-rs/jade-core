@@ -20476,7 +20476,6 @@ where
             }
         }
 
-        let draw_enabled = self.should_draw_current_page_for_render();
         let lines_len = lines.len();
 
         struct PreparedSegment<'segment, 'arena> {
@@ -21831,6 +21830,10 @@ where
                 base_x + first_line_offset,
                 right_limit + line_layout.allowed_trailing_overflow_width,
             );
+            // Asked per line, on the page the line landed on: a paragraph
+            // that starts on a page this render skips and breaks onto one it
+            // draws has its lines drawn, clip and marks with the text.
+            let draw_enabled = self.should_draw_current_page_for_render();
             if draw_enabled {
                 context.save();
                 context.begin_path();
@@ -22502,9 +22505,12 @@ where
             // スペース, タブ and 任意指定のハイフン marks, over the laid-out
             // line.
             // Inside the line's clip, as its text is, so a line painted again
-            // takes them as its text does.
+            // takes them as its text does. Recorded even when this page is not
+            // drawn (a band redraw, a page outside the render): the recording
+            // is what the page replays later, and a line recorded without its
+            // marks would come back without them.
             if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
-                && draw_enabled
+                && (draw_enabled || commands_out.is_some())
                 && !self.measuring_keep_next
             {
                 let segments: Vec<&TextSegment> = prepared_segments
