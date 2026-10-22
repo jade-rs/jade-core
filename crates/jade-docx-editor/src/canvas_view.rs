@@ -183,6 +183,8 @@ struct CanvasDocumentState {
     field_code_view: crate::fields::FieldCodeView,
     /// Word's オートコレクト while typing; `None` while it is off.
     word_autocorrect: Option<crate::word::autocorrect::AutoCorrectOptions>,
+    /// The equation being edited in place, its caret inside the structure.
+    equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
@@ -8564,6 +8566,7 @@ impl OffscreenDocumentView {
             options: opts.clone(),
             field_code_view: Default::default(),
             word_autocorrect: None,
+            equation_editor: None,
             word_doc: None,
             paged_images: Vec::new(),
             lazy_mode: false,
