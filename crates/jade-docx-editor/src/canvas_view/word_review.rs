@@ -8,9 +8,13 @@
 
 use super::word_parity::{camel_keys, snake_case};
 use super::*;
+use crate::commands::insert_image::InsertImageCommand;
+use crate::commands::insert_signature_line::InsertSignatureLineCommand;
 use crate::commands::snapshot_edit::{EditScope, SnapshotEditCommand};
 use crate::fields::{self, DocumentProperties, FieldCommand, FieldEnvironment, FieldScope};
-use crate::word_document::{EditingKind, EditingRestriction, PasswordHash, WriteProtection};
+use crate::word_document::{
+    AltText, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
+};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -57,6 +61,24 @@ struct EditableRangeJs {
     start: EditablePositionJs,
     end: EditablePositionJs,
     editors: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AltTextJs {
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    decorative: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SignatureLineJs {
+    paragraph: usize,
+    run: usize,
+    #[serde(flatten)]
+    line: jade_docx_reader::SignatureLine,
 }
 
 #[derive(serde::Serialize)]
@@ -504,5 +526,91 @@ impl OffscreenDocumentView {
                 move |document| document.set_write_protection(Some(&protection)),
             ))
         })
+    }
+
+    /// The selected picture's or shape's 代替テキスト; `null` with no object
+    /// selected.
+    #[wasm_bindgen(js_name = objectAltText)]
+    pub fn object_alt_text(&self) -> JsValue {
+        let state = self.state.borrow();
+        let (Some(target), Some(document)) = (state.object_selection, state.word_doc.as_ref())
+        else {
+            return JsValue::NULL;
+        };
+        document
+            .object_alt_text(target)
+            .map_or(JsValue::NULL, |alt| {
+                json_js(&AltTextJs {
+                    description: alt.description,
+                    decorative: alt.decorative,
+                })
+            })
+    }
+
+    /// Sets the selected object's 代替テキスト (`{ description, decorative }`);
+    /// a decorative object keeps no description, as in Word.
+    #[wasm_bindgen(js_name = setObjectAltText)]
+    pub fn set_object_alt_text(&self, alt: JsValue) -> Result<JsValue, JsValue> {
+        let alt: AltTextJs = serde_wasm_bindgen::from_value(alt)
+            .map_err(|error| JsValue::from_str(&format!("invalid alt text: {error}")))?;
+        let Some(target) = self.state.borrow().object_selection else {
+            return Ok(JsValue::NULL);
+        };
+        let paragraph = target.paragraph_index;
+        let alt = AltText {
+            description: alt.description,
+            decorative: alt.decorative,
+        };
+        self.apply_document_command(move |_| {
+            Box::new(SnapshotEditCommand::with_scope(
+                "set_object_alt_text",
+                EditScope::Paragraphs(Some((paragraph, paragraph))),
+                move |document| document.set_object_alt_text(target, &alt),
+            ))
+        })
+    }
+
+    /// 挿入 ▸ 署名欄: `image` (the line's picture, drawn by the caller) at
+    /// the caret, made a signature line asking `line`'s signer to sign.
+    #[wasm_bindgen(js_name = insertSignatureLine)]
+    pub fn insert_signature_line(
+        &self,
+        image: Vec<u8>,
+        mime_type: String,
+        width_px: f64,
+        height_px: f64,
+        line: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let line: jade_docx_reader::SignatureLine = serde_wasm_bindgen::from_value(line)
+            .map_err(|error| JsValue::from_str(&format!("invalid signature line: {error}")))?;
+        // The page images are cached by page; the new picture joins them.
+        self.state.borrow_mut().paged_images.clear();
+        self.apply_document_command(move |selection| {
+            Box::new(InsertSignatureLineCommand::new(
+                InsertImageCommand::new(
+                    selection, image, mime_type, width_px, height_px, None, None,
+                ),
+                line,
+            ))
+        })
+    }
+
+    /// The document's signature lines, with where their pictures are.
+    #[wasm_bindgen(js_name = signatureLines)]
+    pub fn signature_lines(&self) -> JsValue {
+        let state = self.state.borrow();
+        let lines: Vec<SignatureLineJs> = state
+            .word_doc
+            .as_ref()
+            .map(WordDocument::signature_lines)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(paragraph, run, line)| SignatureLineJs {
+                paragraph,
+                run,
+                line,
+            })
+            .collect();
+        json_js(&lines)
     }
 }
