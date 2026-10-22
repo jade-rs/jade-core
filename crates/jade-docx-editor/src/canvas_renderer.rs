@@ -12775,6 +12775,17 @@ where
         }
     }
 
+    /// 見出しの折りたたみ: the top-level body elements collapsed headings hide,
+    /// for [`Self::rerender_with_cached_state`] to lay out without them.
+    pub fn set_collapsed_blocks(&mut self, blocks: Vec<usize>) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_collapsed_blocks(blocks);
+        }
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
     /// アウトライン: each paragraph (by index) set in by its level, from the
     /// next render; `None` lays them out by their own indents again.
     pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
