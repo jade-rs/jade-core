@@ -179,6 +179,8 @@ const HF_EDIT_CONTENT_START_RATIO: f64 = 0.5;
 
 struct CanvasDocumentState {
     options: Options,
+    /// Which fields show their codes (⌥F9 / ⇧F9).
+    field_code_view: crate::fields::FieldCodeView,
     word_doc: Option<WordDocument>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
@@ -846,6 +848,8 @@ impl<T: PartialEq> UniformField<T> {
 
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
+#[path = "canvas_view/word_references.rs"]
+mod word_references;
 #[path = "canvas_view/word_review.rs"]
 mod word_review;
 
@@ -8534,6 +8538,7 @@ impl OffscreenDocumentView {
 
         let state = Rc::new(RefCell::new(CanvasDocumentState {
             options: opts.clone(),
+            field_code_view: Default::default(),
             word_doc: None,
             paged_images: Vec::new(),
             lazy_mode: false,

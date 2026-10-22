@@ -164,7 +164,7 @@ impl OffscreenDocumentView {
     }
 
     /// Runs one field or protection command over the whole document.
-    fn apply_document_command(
+    pub(super) fn apply_document_command(
         &self,
         command: impl FnOnce(SelectionRange) -> Box<dyn Command>,
     ) -> Result<JsValue, JsValue> {
