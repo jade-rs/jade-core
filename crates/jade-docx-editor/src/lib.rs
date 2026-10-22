@@ -11,9 +11,10 @@ pub mod headless_api;
 pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
+pub mod revision_view;
 pub use jade_docx_reader::{
-    comments, common, document, docx_xml, field_datetime, numbering, parser, settings, styles,
-    theme,
+    comments, common, document, docx_xml, field_datetime, inkml, numbering, parser, settings,
+    styles, theme,
 };
 #[cfg(feature = "otel")]
 pub mod otel_layer;
@@ -21,10 +22,10 @@ pub mod render_host;
 #[cfg(not(feature = "otel"))]
 #[macro_use]
 pub(crate) mod tracing_stub;
+pub(crate) mod art_border_names;
 pub(crate) mod chart_paint;
 pub mod drawing_xml;
 pub mod fields;
-pub mod ink;
 pub mod picture_effects;
 pub mod serializer;
 pub mod shortcuts;
@@ -213,9 +214,52 @@ pub struct Options {
     /// the binding table is the bulk of them.
     shortcut_config: std::rc::Rc<ShortcutConfig>,
     dark_mode: bool,
+    /// Whose changes are marked up, in which colours, with change bars or
+    /// not: see [`revision_view::RevisionView`].
+    revision_view: std::rc::Rc<revision_view::RevisionView>,
     /// Top-level body elements a collapsed heading hides (Word's 見出しの
     /// 折りたたみ), sorted: laid out as if absent, until expanded again.
     collapsed_blocks: std::rc::Rc<Vec<usize>>,
+    /// Word のオプション → 表示's 常に画面に表示する編集記号: the marks shown
+    /// whatever the ¶ toggle says.
+    formatting_mark_kinds: FormattingMarkKinds,
+}
+
+/// Which formatting marks show, by kind (Word のオプション → 表示 →
+/// 常に画面に表示する編集記号). With [`Options::show_formatting_marks`] on,
+/// every kind shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FormattingMarkKinds {
+    /// タブ: an arrow across each tab.
+    pub tabs: bool,
+    /// スペース: a dot in each space, a square in each full-width one.
+    pub spaces: bool,
+    /// 段落記号: the paragraph, line and page break marks.
+    pub paragraph_marks: bool,
+    /// 隠し文字: hidden text laid out, underlined with dots.
+    pub hidden_text: bool,
+    /// 任意指定のハイフン: ¬ where an optional hyphen is.
+    pub optional_hyphens: bool,
+    /// アンカー: an anchor beside each paragraph a floating object is
+    /// anchored to.
+    pub anchors: bool,
+}
+
+impl FormattingMarkKinds {
+    pub fn all() -> Self {
+        FormattingMarkKinds {
+            tabs: true,
+            spaces: true,
+            paragraph_marks: true,
+            hidden_text: true,
+            optional_hyphens: true,
+            anchors: true,
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        *self != FormattingMarkKinds::default()
+    }
 }
 
 #[wasm_bindgen]
@@ -663,11 +707,36 @@ impl Default for Options {
             shortcut_config: std::rc::Rc::new(ShortcutConfig::default()),
             dark_mode: false,
             collapsed_blocks: std::rc::Rc::new(Vec::new()),
+            formatting_mark_kinds: FormattingMarkKinds::default(),
+            revision_view: std::rc::Rc::default(),
         }
     }
 }
 
 impl Options {
+    /// The marks shown by kind, beside the ¶ toggle.
+    pub fn formatting_mark_kinds(&self) -> FormattingMarkKinds {
+        self.formatting_mark_kinds
+    }
+
+    pub fn set_formatting_mark_kinds(&mut self, kinds: FormattingMarkKinds) {
+        self.formatting_mark_kinds = kinds;
+    }
+
+    /// The marks that show: every kind with ¶ on, else the chosen ones.
+    pub fn shown_formatting_marks(&self) -> FormattingMarkKinds {
+        if self.show_formatting_marks {
+            FormattingMarkKinds::all()
+        } else {
+            self.formatting_mark_kinds
+        }
+    }
+
+    /// Whether any mark shows, which keeps the render caches off.
+    pub fn any_formatting_marks(&self) -> bool {
+        self.show_formatting_marks || self.formatting_mark_kinds.any()
+    }
+
     /// The top-level body elements collapsed headings hide, sorted.
     pub fn collapsed_blocks(&self) -> &[usize] {
         &self.collapsed_blocks
@@ -683,6 +752,19 @@ impl Options {
 }
 
 impl Options {
+    /// How tracked changes are drawn beyond markup on or off.
+    pub fn revision_view(&self) -> &revision_view::RevisionView {
+        &self.revision_view
+    }
+
+    pub fn set_revision_view(&mut self, view: revision_view::RevisionView) {
+        self.revision_view = std::rc::Rc::new(view);
+    }
+
+    pub(crate) fn revision_view_rc(&self) -> &std::rc::Rc<revision_view::RevisionView> {
+        &self.revision_view
+    }
+
     pub(crate) fn shortcut_config(&self) -> &ShortcutConfig {
         &self.shortcut_config
     }

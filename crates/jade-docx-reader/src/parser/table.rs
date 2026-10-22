@@ -466,6 +466,11 @@ impl DocumentParser {
                         row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
+                    b"w:ins" | b"w:del" => {
+                        let kind = Self::revision_kind(e);
+                        row.revision = Some(Box::new(Self::build_revision_mark(e, kind)));
+                        self.skip_element(reader, e.name().as_ref())?;
+                    }
                     _ => self.skip_element(reader, e.name().as_ref())?,
                 },
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
@@ -506,6 +511,10 @@ impl DocumentParser {
                     }
                     b"w:tblCellSpacing" => {
                         row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                    }
+                    b"w:ins" | b"w:del" => {
+                        let kind = Self::revision_kind(e);
+                        row.revision = Some(Box::new(Self::build_revision_mark(e, kind)));
                     }
                     _ => {}
                 },
@@ -1812,6 +1821,26 @@ mod tests {
         }
 
         row
+    }
+
+    #[test]
+    fn a_tracked_row_insertion_or_deletion_is_read() {
+        let inserted = parse_row_pr(
+            r#"<w:trPr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:ins w:id="7" w:author="Ann" w:date="2026-01-02T03:04:05Z"/>
+            </w:trPr>"#,
+        );
+        let mark = inserted.revision.expect("the row is an insertion");
+        assert_eq!(mark.kind, RevisionKind::Inserted);
+        assert_eq!(mark.id.as_deref(), Some("7"));
+        assert_eq!(mark.author.as_deref(), Some("Ann"));
+        let deleted = parse_row_pr(
+            r#"<w:trPr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:del w:id="8" w:author="Bob"></w:del>
+            </w:trPr>"#,
+        );
+        assert_eq!(deleted.revision.unwrap().kind, RevisionKind::Deleted);
+        assert!(parse_row_pr("<w:trPr></w:trPr>").revision.is_none());
     }
 
     #[test]

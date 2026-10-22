@@ -118,6 +118,14 @@ pub struct PdfExportOptions {
     pub rendering: PdfRenderingMode,
     /// Pixels per CSS pixel for editor appearance mode, from 0.5 through 4.
     pub scale: f64,
+    /// Whether tracked changes and comments print (Word's 変更履歴/コメント
+    /// の印刷): `Some(false)` prints the document as it reads with every
+    /// change accepted and no comments; `None` prints what the view shows.
+    pub markup: Option<bool>,
+    /// A tagged PDF: its structure tree — headings, paragraphs, tables,
+    /// figures with their alternative text — in reading order, bookmarks
+    /// from the headings and the document's title. Tagged pages are vector.
+    pub tagged: bool,
 }
 
 impl Default for PdfExportOptions {
@@ -125,6 +133,8 @@ impl Default for PdfExportOptions {
         Self {
             rendering: PdfRenderingMode::Editor,
             scale: 1.0,
+            markup: None,
+            tagged: false,
         }
     }
 }
@@ -245,6 +255,11 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// A view's page box in place of the sections' (Web レイアウト, 閲覧
+    /// モード); kept here so a renderer built again keeps it.
+    view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    /// アウトライン's indent for each paragraph, while it shows.
+    outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
     /// The math face the renderers bind (Cambria Math), when installed.
     math_face: Option<FontFace>,
 }
@@ -386,6 +401,8 @@ impl NativeDocument {
             field_datetime: None,
             field_codes: FieldCodeView::default(),
             math_face: math_face_of(faces),
+            view_geometry: None,
+            outline_indents: None,
         })
     }
 
@@ -409,8 +426,12 @@ impl NativeDocument {
     /// Exports at a chosen raster density or with scalable vector text.
     pub fn export_pdf_with_options(
         &self,
-        pdf_options: PdfExportOptions,
+        mut pdf_options: PdfExportOptions,
     ) -> Result<Vec<u8>, String> {
+        if pdf_options.tagged {
+            // Marks survive only in vector drawing.
+            pdf_options.rendering = PdfRenderingMode::Vector;
+        }
         if !pdf_options.scale.is_finite() || !(0.5..=4.0).contains(&pdf_options.scale) {
             return Err("PDF scale must be finite and between 0.5 and 4".to_string());
         }
@@ -431,8 +452,17 @@ impl NativeDocument {
         renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
+        options.set_formatting_mark_kinds(Default::default());
         options.show_crop_marks = false;
+        if let Some(markup) = pdf_options.markup {
+            options.render_changes = markup;
+            options.render_comments = markup;
+            if !markup {
+                options.render_original = false;
+            }
+        }
         renderer.set_spelling_export_mode(true);
+        renderer.set_structure_tagging(pdf_options.tagged);
         renderer.mark_full_repaint();
         renderer
             .render_with_numbering(
@@ -478,8 +508,22 @@ impl NativeDocument {
                 })
             })
             .collect::<Vec<_>>();
-        let output = SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links);
+        let output = if pdf_options.tagged {
+            let entries = renderer.take_structure_entries();
+            let tagging = crate::tagging::tagging(&self.word_document, &entries);
+            SkiaPainter::encode_tagged_pdf(&pages.borrow()[..count.get()], &links, &tagging)
+        } else {
+            SkiaPainter::encode_pdf_with_links(&pages.borrow()[..count.get()], &links)
+        };
         output
+    }
+
+    /// Each page's section (from 0) and the number its `PAGE` field shows:
+    /// what a print range such as `p1s2-p3s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        let mut labels = self.renderer.page_labels();
+        labels.truncate(self.page_count());
+        labels
     }
 
     pub fn can_undo(&self) -> bool {
@@ -488,6 +532,37 @@ impl NativeDocument {
 
     pub fn can_redo(&self) -> bool {
         !self.redo_history.is_empty() || self.executor.can_redo()
+    }
+
+    /// How many undoable steps there are: a mark for [`Self::merge_history_since`].
+    pub fn history_len(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Makes every command step taken since `mark` one step, so a single
+    /// undo takes them all back — what formatting several ranges at once,
+    /// or a drag-and-drop made of several edits, needs. Steps of another
+    /// kind (a header edit) are left as they are.
+    pub fn merge_history_since(&mut self, mark: usize) {
+        if mark >= self.history.len() {
+            return;
+        }
+        let tail = &self.history[mark..];
+        if !tail
+            .iter()
+            .all(|step| matches!(step, HistoryStep::Command { .. }))
+        {
+            return;
+        }
+        let executor_steps = tail
+            .iter()
+            .map(|step| match step {
+                HistoryStep::Command { executor_steps } => *executor_steps,
+                HistoryStep::HeaderFooter => 0,
+            })
+            .sum();
+        self.history.truncate(mark);
+        self.history.push(HistoryStep::Command { executor_steps });
     }
 
     /// Undoes the last edit and repaints, reporting the selection it restored.
@@ -651,6 +726,8 @@ impl NativeDocument {
         register_math_face(&mut renderer, self.math_face.as_slice());
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
+        renderer.set_view_geometry(self.view_geometry);
+        renderer.set_outline_indents(self.outline_indents.clone());
         renderer.set_selection_range(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
         if self.field_codes != FieldCodeView::default() {
@@ -1223,15 +1300,166 @@ impl NativeDocument {
         self.apply_and_repaint(0, command, pages).map(|_| ())
     }
 
+    /// 変更内容の表示 and 変更履歴とコメントの表示: whether tracked changes
+    /// are marked up (`markup`), the original shown instead of the final text
+    /// (`original`), and the view's change bars, reviewer colours and
+    /// filters. Changes only what the pages show; repaints when it changed.
+    pub fn set_revision_display(
+        &mut self,
+        markup: bool,
+        original: bool,
+        view: jade_docx_editor::revision_view::RevisionView,
+    ) -> Result<bool, String> {
+        let original = original && !markup;
+        if self.options.render_changes == markup
+            && self.options.render_original == original
+            && *self.options.revision_view() == view
+        {
+            return Ok(false);
+        }
+        self.options.render_changes = markup;
+        self.options.render_original = original;
+        self.options.set_revision_view(view);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Whether tracked changes are marked up, and whether the original is
+    /// shown in place of the final text.
+    pub fn revision_display(&self) -> (bool, bool) {
+        (self.options.render_changes, self.options.render_original)
+    }
+
+    /// 入力時にスペルチェックを行う: marks misspellings and grammar on the
+    /// pages, or takes the marks off. Each change starts afresh.
+    pub fn set_proofing(&mut self, on: bool) -> Result<(), String> {
+        let (_, generation) = self.renderer.spelling_state();
+        self.renderer
+            .configure_spelling(on, generation.wrapping_add(1));
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Opened 読み取り専用 (the file recommends it, or it is marked final):
+    /// no edit runs until this is turned off.
+    pub fn set_opened_read_only(&mut self, read_only: bool) {
+        self.word_document.set_opened_read_only(read_only);
+    }
+
+    /// Whether the pages are marked for spelling and grammar.
+    pub fn proofing(&self) -> bool {
+        self.renderer.spelling_state().0
+    }
+
+    /// Asks `check` about every span drawn since the last call — its text,
+    /// the span's byte range in it, and its `w:lang` — and draws what it
+    /// finds. Returns whether the pages changed.
+    #[allow(clippy::type_complexity)]
+    pub fn proof_pending(
+        &mut self,
+        check: &mut dyn FnMut(
+            &str,
+            usize,
+            usize,
+            Option<&str>,
+        ) -> Vec<jade_docx_editor::plugins::spelling::ProofingIssue>,
+    ) -> Result<bool, String> {
+        let (on, generation) = self.renderer.spelling_state();
+        if !on {
+            return Ok(false);
+        }
+        let mut changed = false;
+        for request in self.renderer.take_pending_spelling() {
+            let issues = check(
+                &request.text,
+                request.start,
+                request.end,
+                request.language.as_deref(),
+            );
+            changed |= self
+                .renderer
+                .apply_proofing_issues(generation, &request.key, &issues);
+        }
+        if changed {
+            self.repaint_all()?;
+        }
+        Ok(changed)
+    }
+
     /// Shows or hides Word's formatting marks.
     pub fn set_formatting_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_formatting_marks = show;
         self.repaint_all().map(|_| ())
     }
 
+    /// Shows the document with its tracked changes and comments, or as it
+    /// reads with every change accepted (Word's 変更履歴なし), and repaints.
+    pub fn set_markup_visible(&mut self, visible: bool) -> Result<(), String> {
+        self.options.render_changes = visible;
+        self.options.render_comments = visible;
+        if !visible {
+            self.options.render_original = false;
+        }
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Lays the document out in a view's page box — Web レイアウト's strips
+    /// the width of the window, 閲覧モード's screen-sized columns — or, with
+    /// `None`, in its sections' pages again. Everything is laid out anew.
+    pub fn set_view_geometry(
+        &mut self,
+        geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
+    ) -> Result<bool, String> {
+        if self.view_geometry == geometry {
+            return Ok(false);
+        }
+        self.view_geometry = geometry;
+        self.renderer.set_view_geometry(geometry);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// アウトライン: each paragraph set in by its outline level (CSS pixels
+    /// from the margin), or `None` for its own indents.
+    pub fn set_outline_indents(
+        &mut self,
+        indents: Option<std::collections::HashMap<usize, f64>>,
+    ) -> Result<bool, String> {
+        let indents = indents.map(Rc::new);
+        if self.outline_indents == indents {
+            return Ok(false);
+        }
+        self.outline_indents = indents.clone();
+        self.renderer.set_outline_indents(indents);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// The view's page box, while one is set.
+    pub fn view_geometry(&self) -> Option<jade_docx_editor::canvas_renderer::ViewGeometry> {
+        self.view_geometry
+    }
+
     /// Whether formatting marks are being drawn.
     pub fn formatting_marks(&self) -> bool {
         self.options.show_formatting_marks
+    }
+
+    /// Shows the formatting marks of some kinds whatever the ¶ toggle says
+    /// (Word のオプション → 表示 → 常に画面に表示する編集記号).
+    pub fn set_formatting_mark_kinds(
+        &mut self,
+        kinds: jade_docx_editor::FormattingMarkKinds,
+    ) -> Result<(), String> {
+        if self.options.formatting_mark_kinds() == kinds {
+            return Ok(());
+        }
+        self.options.set_formatting_mark_kinds(kinds);
+        self.repaint_all().map(|_| ())
+    }
+
+    /// The kinds shown beside the ¶ toggle.
+    pub fn formatting_mark_kinds(&self) -> jade_docx_editor::FormattingMarkKinds {
+        self.options.formatting_mark_kinds()
     }
 
     /// Sets the clock DATE and TIME fields show from the next repaint on.
@@ -1984,6 +2212,25 @@ impl NativeDocument {
             width: metrics.width.max(1.0),
             height: metrics.height,
         })
+    }
+
+    /// Where a caret at `(paragraph, offset)` would be, without moving the
+    /// caret or the selection there — for an overlay that marks a place,
+    /// such as the box around a master document's subdocument.
+    pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        let selection = self.selection;
+        self.renderer
+            .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
+                paragraph, offset,
+            ))));
+        let rect = self.renderer.caret_metrics().map(|metrics| CaretRect {
+            x: metrics.x,
+            document_y: metrics.absolute_top,
+            width: metrics.width.max(1.0),
+            height: metrics.height,
+        });
+        self.renderer.set_selection_range(selection);
+        rect
     }
 
     /// The text position under a point, in the renderer's document coordinate

@@ -32,6 +32,7 @@
 
 pub mod document;
 pub mod system_fonts;
+mod tagging;
 pub use document::{
     CaretAffinity, CaretRect, CharacterFormat, FaceSpec, FontFace, NativeDocument, ObjectHit,
     PdfExportOptions, PdfRenderingMode, SearchHit, TableCell,
@@ -372,6 +373,10 @@ impl CanvasRenderHost for SkiaRenderHost {
 
     fn set_font(&self, font_descriptor: &str) {
         self.painter().set_font(font_descriptor);
+    }
+
+    fn supports_deferred_painting(&self) -> bool {
+        true
     }
 
     fn draw_image_data_uri(

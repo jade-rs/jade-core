@@ -434,6 +434,15 @@ impl DocumentParser {
                             parsing_paragraph_props = true;
                         }
                         b"w:pPrChange" => {
+                            let author = e
+                                .attributes()
+                                .flatten()
+                                .find(|attr| attr.key.as_ref() == b"w:author")
+                                .map(|attr| String::from_utf8_lossy(&attr.value).into_owned());
+                            let props = current_paragraph_props
+                                .get_or_insert_with(ParagraphProperties::default);
+                            props.has_format_change = true;
+                            props.format_change_author = author.map(Into::into);
                             if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
                                 if let Some(numbering) = Self::parse_numbering_from_ppr_change(&raw)
                                 {
@@ -447,6 +456,16 @@ impl DocumentParser {
                                             ..ParagraphProperties::default()
                                         });
                                     }
+                                }
+                            }
+                        }
+                        // A tracked change to a run's formatting: what the
+                        // run's formatting was before it, for review.
+                        b"w:rPrChange" if parsing_run_props && !parsing_paragraph_run_props => {
+                            if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
+                                if let Some(props) = current_run_props.as_mut() {
+                                    props.change =
+                                        self.parse_run_properties_change(&raw).map(Box::new);
                                 }
                             }
                         }
@@ -1823,18 +1842,24 @@ impl DocumentParser {
                                         .unwrap_or(false)
                             });
                         }
-                        b"w:drawing"
-                            if current_run_image.as_ref().is_some_and(|image| {
-                                image.format().ink_relationship_id.is_some()
-                            }) =>
-                        {
-                            // Ink's fallback picture: the choice is read.
-                            Self::consume_element(reader, b"w:drawing")?;
-                        }
                         b"w:drawing" => {
                             if let Some(drawing) = self.parse_drawing(reader)? {
                                 match drawing {
-                                    DrawingObject::Image(image) => {
+                                    DrawingObject::Image(mut image) => {
+                                        // Word ink's choice and its picture
+                                        // fallback are one drawing: the
+                                        // strokes, with the picture for
+                                        // consumers without ink.
+                                        if let Some(previous) = current_run_image.take() {
+                                            if image.ink.is_none() && previous.ink.is_some() {
+                                                image.ink = previous.ink;
+                                            } else if image.ink.is_some() && previous.ink.is_none()
+                                            {
+                                                let ink = image.ink.take();
+                                                image = previous;
+                                                image.ink = ink;
+                                            }
+                                        }
                                         current_run_image = Some(image);
                                     }
                                     DrawingObject::TextBox(text_box) => {
@@ -4273,6 +4298,59 @@ impl DocumentParser {
         Ok(String::from_utf8(bytes)?)
     }
 
+    /// A captured `<w:rPrChange>`: its id, author and date, and the
+    /// formatting inside it, read by parsing that `w:rPr` as a run's own.
+    fn parse_run_properties_change(
+        &self,
+        xml: &str,
+    ) -> Option<crate::document::RunPropertiesChange> {
+        let mut reader = Reader::from_str(xml);
+        let mut buf = Vec::new();
+        let (mut id, mut author, mut date) = (None, None, None);
+        if let Ok(Event::Start(start)) = reader.read_event_into(&mut buf) {
+            for attr in start.attributes().flatten() {
+                let value = attr
+                    .unescape_value()
+                    .map(|value| value.into_owned())
+                    .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).into_owned());
+                match attr.key.as_ref() {
+                    b"w:id" => id = Some(value),
+                    b"w:author" => author = Some(value),
+                    b"w:date" => date = Some(value),
+                    _ => {}
+                }
+            }
+        }
+        let inner_start = xml.find('>')? + 1;
+        let inner_end = xml.rfind("</")?.max(inner_start);
+        let inner = &xml[inner_start..inner_end];
+        let wrapper = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r>{inner}<w:t>x</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let previous = self
+            .parse_document_xml(&wrapper)
+            .ok()
+            .and_then(|document| {
+                let body = document.body?;
+                let paragraph = body
+                    .elements
+                    .into_iter()
+                    .find_map(|element| match element {
+                        crate::document::BodyElement::Paragraph(paragraph) => Some(paragraph),
+                        _ => None,
+                    })?;
+                paragraph.runs.into_iter().next()
+            })
+            .and_then(|run| run.properties)
+            .unwrap_or_default();
+        Some(crate::document::RunPropertiesChange {
+            id,
+            author,
+            date,
+            previous,
+        })
+    }
+
     fn parse_numbering_from_ppr_change(xml: &str) -> Option<crate::document::Numbering> {
         // Word stores paragraph property revisions (including numbering) inside
         // `<w:pPrChange>` containers. These revisions only apply when tracked
@@ -5058,6 +5136,8 @@ impl DocumentParser {
         let mut has_wordprocessing_shape = false;
         let mut text_box_shape = TextBoxShape::Rectangle;
         let mut text_box_preset: Option<String> = None;
+        let mut text_box_adjustments: Vec<(String, i64)> = Vec::new();
+        let mut in_preset_geometry = false;
         let mut line_head_arrow = None;
         let mut line_tail_arrow = None;
         // DrawingML anchor can contain either a modern `a:ln` definition or a legacy VML
@@ -5201,6 +5281,11 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                            in_preset_geometry = true;
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -5520,6 +5605,10 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -5728,6 +5817,7 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) => {
                     extras.end(e.name().as_ref());
                     match e.name().as_ref() {
+                        b"a:prstGeom" => in_preset_geometry = false,
                         b"wp:positionH" => {
                             in_position_h = false;
                             pending_offset = None;
@@ -5849,6 +5939,15 @@ impl DocumentParser {
             buf.clear();
         }
 
+        // A preset outside the hand-traced set, or one whose adjust handles
+        // moved, is drawn from its shape-guide definition.
+        if let Some(name) = text_box_preset.as_deref() {
+            if !text_box_shape.is_line() {
+                text_box_shape =
+                    TextBoxShape::from_preset(name, std::mem::take(&mut text_box_adjustments));
+            }
+        }
+
         if matches!(
             text_box_preset.as_deref(),
             Some("line" | "straightConnector1")
@@ -5874,8 +5973,7 @@ impl DocumentParser {
             image.placeholder_label = Some("SmartArt".to_string());
         }
 
-        let has_ink = extras.ink_relationship_id.is_some();
-        if has_embed || has_chart || has_group || has_smartart || has_ink {
+        if has_embed || has_chart || has_group || has_smartart {
             let mut format = PictureFormat::default();
             if has_embed && !has_chart && !has_group && !has_smartart {
                 // A picture's own outline, effects and shape.
@@ -5949,8 +6047,23 @@ impl DocumentParser {
     fn parse_text_box_shape(element: &BytesStart<'_>) -> TextBoxShape {
         Self::parse_text_box_preset(element)
             .as_deref()
-            .and_then(TextBoxShape::from_preset_name)
+            .map(|name| TextBoxShape::from_preset(name, Vec::new()))
             .unwrap_or_default()
+    }
+
+    /// One `a:avLst/a:gd` adjust value, `(name, value)`.
+    fn preset_adjustment(element: &BytesStart<'_>) -> Option<(String, i64)> {
+        let mut name = None;
+        let mut formula = None;
+        for attribute in element.attributes().flatten() {
+            let value = attribute.unescape_value().ok()?.into_owned();
+            match attribute.key.as_ref() {
+                b"name" => name = Some(value),
+                b"fmla" => formula = Some(value),
+                _ => {}
+            }
+        }
+        Some((name?, crate::document::parse_adjust_formula(&formula?)?))
     }
 
     fn parse_text_box_preset(element: &BytesStart<'_>) -> Option<String> {
@@ -6093,6 +6206,9 @@ impl DocumentParser {
         let mut current_shape: Option<RunGroupShape> = None;
         let mut in_group_properties = false;
         let mut in_shape_properties = false;
+        // The open `a:prstGeom`'s name and its `a:avLst/a:gd` values.
+        let mut shape_preset: Option<String> = None;
+        let mut shape_adjustments: Vec<(String, i64)> = Vec::new();
         let mut in_transform = false;
         let mut in_line = false;
         let mut in_shape_fill = false;
@@ -6188,6 +6304,11 @@ impl DocumentParser {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
+                            shape_preset = Self::parse_text_box_preset(element);
+                            shape_adjustments.clear();
+                        }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
                         }
                         b"a:ln" if in_shape_properties => {
                             in_line = true;
@@ -6523,6 +6644,9 @@ impl DocumentParser {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
                         }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
+                        }
                         b"a:ln" if in_shape_properties => {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.border = Some(group_shape_border(element));
@@ -6793,6 +6917,18 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:prstGeom" => {
+                            if let (Some(name), Some(shape)) =
+                                (shape_preset.take(), current_shape.as_mut())
+                            {
+                                if !shape.shape.is_line() && !shape_adjustments.is_empty() {
+                                    shape.shape = TextBoxShape::from_preset(
+                                        &name,
+                                        std::mem::take(&mut shape_adjustments),
+                                    );
+                                }
+                            }
+                        }
                         b"wpg:grpSpPr" => in_group_properties = false,
                         b"wps:wsp" | b"pic:pic" => {
                             if let Some(shape) = current_shape.take() {
@@ -7710,6 +7846,26 @@ impl DocumentParser {
     }
 
     fn apply_vml_imagedata_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
+        if element.name().as_ref() == b"o:signatureline" {
+            let mut line = SignatureLine::default();
+            for attr in element.attributes().flatten() {
+                let value = attr
+                    .unescape_value()
+                    .map(|value| value.into_owned())
+                    .unwrap_or_default();
+                let value = (!value.is_empty()).then_some(value);
+                match attr.key.as_ref() {
+                    b"id" => line.id = value,
+                    b"o:suggestedsigner" => line.signer = value,
+                    b"o:suggestedsigner2" => line.title = value,
+                    b"o:suggestedsigneremail" => line.email = value,
+                    b"o:signinginstructions" => line.instructions = value,
+                    _ => {}
+                }
+            }
+            image.signature_line = Some(Box::new(line));
+            return;
+        }
         if element.name().as_ref() != b"v:imagedata" {
             return;
         }
@@ -7888,6 +8044,26 @@ impl DocumentParser {
         has_embed: &mut bool,
     ) {
         match element.name().as_ref() {
+            // Word ink: the drawing's graphic is an InkML part.
+            b"w14:contentPart" | b"wp14:contentPart" => {
+                let relationship_id = element.attributes().flatten().find_map(|attribute| {
+                    (attribute.key.as_ref() == b"r:id")
+                        .then(|| {
+                            attribute
+                                .unescape_value()
+                                .ok()
+                                .map(|value| value.to_string())
+                        })
+                        .flatten()
+                });
+                if let Some(relationship_id) = relationship_id {
+                    image.ink = Some(Box::new(crate::inkml::InkContent {
+                        relationship_id: Some(relationship_id),
+                        traces: Vec::new(),
+                    }));
+                    *has_embed = true;
+                }
+            }
             b"wp:extent" | b"a:ext" => {
                 let is_outer_extent = element.name().as_ref() == b"wp:extent";
                 for attr in element.attributes().flatten() {
@@ -8011,6 +8187,14 @@ impl DocumentParser {
                 if let Some(title) = ink_name.or(explicit_title) {
                     image.title = Some(title);
                 }
+            }
+            // `<adec:decorative val="1"/>`, under `wp:docPr`'s extensions.
+            name if name.rsplit(|byte| *byte == b':').next() == Some(b"decorative".as_slice()) => {
+                image.decorative = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"val")
+                    .is_none_or(|attr| matches!(attr.value.as_ref(), b"1" | b"true"));
             }
             _ => {}
         }
@@ -15479,6 +15663,76 @@ mod tests {
         assert_eq!(shape.height_px, Some(96.0));
         assert!(shape.blocks.is_empty());
         assert_eq!(shape.fill_color.as_deref(), Some("#4472C4"));
+    }
+
+    fn shape_with_geometry(geometry: &str) -> TextBoxShape {
+        let body = format!(
+            r#"
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                     xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                     xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+            <wp:extent cx="1828800" cy="914400"/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                <wps:wsp>
+                  <wps:spPr>{geometry}</wps:spPr>
+                  <wps:bodyPr/>
+                </wps:wsp>
+              </a:graphicData>
+            </a:graphic>
+          </wp:anchor>
+        </w:drawing>
+      </w:r>
+    </w:p>
+"#
+        );
+        let document = parse_document_from_body(&body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        paragraph.runs[0].text_box.as_ref().expect("shape").shape
+    }
+
+    #[test]
+    fn presets_beyond_the_traced_set_and_moved_handles_keep_their_geometry() {
+        let TextBoxShape::Preset(gear) =
+            shape_with_geometry(r#"<a:prstGeom prst="gear6"><a:avLst/></a:prstGeom>"#)
+        else {
+            panic!("gear6 must not be flattened to a rectangle");
+        };
+        assert_eq!(gear.name(), "gear6");
+        assert!(gear.geometry().adjustments.is_empty());
+
+        let TextBoxShape::Preset(rounded) = shape_with_geometry(
+            r#"<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 40000"/></a:avLst></a:prstGeom>"#,
+        ) else {
+            panic!("a moved corner handle must be kept");
+        };
+        assert_eq!(rounded.geometry().adjustments, vec![("adj".into(), 40_000)]);
+        assert_eq!(
+            TextBoxShape::Preset(rounded).hand_traced(),
+            TextBoxShape::RoundedRectangle
+        );
+
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>"#),
+            TextBoxShape::RoundedRectangle
+        );
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="rect"/>"#),
+            TextBoxShape::Rectangle
+        );
+        // Connectors keep their hand-traced line kinds, handles or not.
+        assert_eq!(
+            shape_with_geometry(
+                r#"<a:prstGeom prst="bentConnector3"><a:avLst><a:gd name="adj1" fmla="val 30000"/></a:avLst></a:prstGeom>"#
+            ),
+            TextBoxShape::LineBent
+        );
     }
 
     #[test]

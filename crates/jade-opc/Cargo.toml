@@ -8,5 +8,19 @@ license = "MIT"
 quick-xml = "0.39"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
-sha2 = "0.10"
+sha2 = { version = "0.10", features = ["oid"] }
+# 署名: XML-DSig over the package (RSA PKCS #1 v1.5, X.509 certificates).
+sha1 = { version = "0.10", features = ["oid"] }
+rsa = { version = "0.9", default-features = false }
+x509-cert = { version = "0.2", default-features = false }
+der = "0.7"
+# 読み取りパスワード: ECMA-376 Agile Encryption in an OLE compound file.
+aes = "0.8"
+base64 = "0.22"
+cfb = "0.7"
 zip = { version = "8.0", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+rand = "0.8"
+rsa = { version = "0.9", features = ["sha2"] }
+x509-cert = { version = "0.2", features = ["builder"] }

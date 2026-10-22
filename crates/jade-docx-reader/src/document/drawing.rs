@@ -339,27 +339,6 @@ pub struct TextBoxLink {
     pub sequence: u32,
 }
 
-/// One pen stroke of ink: its points (in the units of the ink part, or
-/// page px while being drawn), colour, width and whether it is a
-/// highlighter's.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct InkStroke {
-    pub points: Vec<(f64, f64)>,
-    pub color: String,
-    pub width: f64,
-    #[serde(default)]
-    pub highlighter: bool,
-}
-
-/// Word ink (`w14:contentPart` → an InkML part): the strokes, in
-/// centimetres.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct InkDrawing {
-    pub strokes: Vec<InkStroke>,
-}
-
 /// A picture's 図の書式: outline, effects, shape, colour adjustments.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -392,11 +371,6 @@ pub struct PictureFormat {
     /// blip itself is the PNG fallback.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub svg_relationship_id: Option<String>,
-    /// Ink: the InkML part a `w14:contentPart` relates, and its strokes.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ink_relationship_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ink: Option<InkDrawing>,
 }
 
 impl PictureFormat {
