@@ -955,6 +955,7 @@ impl DocumentSettings {
             no_line_break_after_replaces_default: self.no_line_break_after_replaces_default,
             strict_first_and_last_chars: self.strict_first_and_last_chars,
             compatibility_mode: self.compatibility_mode,
+            space_for_underline: self.compat.space_for_underline(),
         }
     }
 }

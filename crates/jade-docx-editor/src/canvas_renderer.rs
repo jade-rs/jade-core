@@ -3656,6 +3656,10 @@ where
     document_expands_shift_return: bool,
     /// `ulTrailSpace`: spaces at a line's end are underlined.
     document_underlines_trailing_spaces: bool,
+    /// Auto paragraph spacing follows HTML's margins (no
+    /// `doNotUseHTMLParagraphAutoSpacing`, see
+    /// [`html_auto_spacing_suppression`]).
+    document_html_auto_spacing: bool,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -4061,7 +4065,12 @@ where
             return self.contextual_suppress_before.contains(&index);
         }
         index.checked_sub(1).is_some_and(|upper| {
-            contextual_spacing_suppression_at(self.spacing_scan_body_elements(), upper).0
+            contextual_spacing_suppression_at(
+                self.spacing_scan_body_elements(),
+                upper,
+                self.document_html_auto_spacing,
+            )
+            .0
         })
     }
 
@@ -4071,7 +4080,12 @@ where
         if self.spacing_scan_from_story {
             return self.contextual_suppress_after.contains(&index);
         }
-        contextual_spacing_suppression_at(self.spacing_scan_body_elements(), index).1
+        contextual_spacing_suppression_at(
+            self.spacing_scan_body_elements(),
+            index,
+            self.document_html_auto_spacing,
+        )
+        .1
     }
 
     /// Whether the paragraph at `index` shares a border box with the next one.
@@ -8171,6 +8185,7 @@ where
             document_hyphenation: jade_docx_reader::HyphenationSettings::default(),
             document_expands_shift_return: false,
             document_underlines_trailing_spaces: false,
+            document_html_auto_spacing: true,
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -13272,6 +13287,7 @@ where
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
         self.document_expands_shift_return = !document.compat.do_not_expand_shift_return();
         self.document_underlines_trailing_spaces = document.compat.underline_trailing_spaces();
+        self.document_html_auto_spacing = !document.compat.do_not_use_html_paragraph_auto_spacing();
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
         if self.document_hyphenation != document.hyphenation {
             // Every paragraph's lines may end elsewhere.
@@ -13280,8 +13296,21 @@ where
             self.clear_paragraph_layout_cache();
             self.clear_paragraph_render_cache();
         }
-        let new_east_asian_rules =
+        if jade_docx_layout::font_resolver::set_document_opentype_features_enabled(
+            jade_docx_layout::font_resolver::word_opentype_features_apply(
+                document.east_asian_line_breaking.compatibility_mode,
+            ),
+        ) {
+            // The same run properties now resolve to other descriptors.
+            self.applied_run_style_cache.borrow_mut().clear();
+            self.applied_run_style_identity_cache.borrow_mut().clear();
+            self.clear_paragraph_wrap_cache();
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+        }
+        let mut new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
+        new_east_asian_rules.space_for_underline |= document.compat.space_for_underline();
         if self.document_east_asian_rules != new_east_asian_rules {
             self.paragraph_wrap_cache.borrow_mut().clear();
         }
@@ -19579,26 +19608,40 @@ where
         let mut runs = Vec::with_capacity(paragraph.runs.len());
         // Consecutive runs usually share their direct formatting, and with it
         // the faces they resolve to: resolve each distinct formatting once.
-        let mut previous: Option<(Option<&RunProperties>, Rc<AppliedRunStyle>, f32)> = None;
+        let space_for_underline = self.document_east_asian_rules.space_for_underline;
+        let mut previous: Option<(Option<&RunProperties>, Rc<AppliedRunStyle>, f32, f32)> = None;
         for run in &paragraph.runs {
             if (run.text.is_empty() && run.note_separator.is_none())
                 || run.suppresses_line_height_contribution()
             {
                 continue;
             }
-            let (style, border_extent) = match previous.as_ref() {
-                Some((properties, style, border_extent))
+            let (style, border_extent, underline_depth) = match previous.as_ref() {
+                Some((properties, style, border_extent, underline_depth))
                     if *properties == run.properties.as_ref() =>
                 {
-                    (Rc::clone(style), *border_extent)
+                    (Rc::clone(style), *border_extent, *underline_depth)
                 }
                 _ => {
                     let effective =
                         self.effective_run_properties_rc(paragraph, run.properties.as_ref());
                     let style = self.resolve_applied_run_style_cached(effective.as_deref());
                     let border_extent = word_run_border_extent_pt(effective.as_deref());
-                    previous = Some((run.properties.as_ref(), Rc::clone(&style), border_extent));
-                    (style, border_extent)
+                    let underline_depth = if space_for_underline {
+                        jade_docx_layout::line_metrics::word_space_for_underline_depth_pt(
+                            effective.as_deref(),
+                            &style.resolved.font_descriptor_east_asia,
+                        )
+                    } else {
+                        0.0
+                    };
+                    previous = Some((
+                        run.properties.as_ref(),
+                        Rc::clone(&style),
+                        border_extent,
+                        underline_depth,
+                    ));
+                    (style, border_extent, underline_depth)
                 }
             };
             let faces = self.word_run_faces(&style.resolved, east_asian_faces_size_lines);
@@ -19609,7 +19652,11 @@ where
                         Some(east_asian_line.map_or(height, |current| current.max(height)));
                 }
             }
-            runs.push(faces.run_vertical_extent_pt(slots, border_extent));
+            runs.push(faces.run_vertical_extent_with_underline_pt(
+                slots,
+                border_extent,
+                underline_depth,
+            ));
         }
         Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
     }
@@ -34494,7 +34541,7 @@ where
         (
             self.contextual_suppress_before,
             self.contextual_suppress_after,
-        ) = compute_contextual_spacing_suppression(&body.elements);
+        ) = compute_contextual_spacing_suppression(&body.elements, self.document_html_auto_spacing);
         self.paragraph_border_box_continues =
             compute_paragraph_border_box_continuations(&body.elements);
         self.spacing_scan_from_story = true;
@@ -36405,15 +36452,25 @@ fn paragraph_border_box_continues_at(elements: &[BodyElement], upper_index: usiz
 
 /// `(lower drops its space before, upper drops its space after)` for the
 /// adjacent paragraphs at `upper_index` and the element after it: one pair of
-/// [`compute_contextual_spacing_suppression`].
-fn contextual_spacing_suppression_at(elements: &[BodyElement], upper_index: usize) -> (bool, bool) {
+/// [`compute_contextual_spacing_suppression`]. `html_auto_spacing` adds
+/// [`html_auto_spacing_suppression`] to `w:contextualSpacing`.
+fn contextual_spacing_suppression_at(
+    elements: &[BodyElement],
+    upper_index: usize,
+    html_auto_spacing: bool,
+) -> (bool, bool) {
     let Some((upper, lower)) = adjacent_paragraphs(elements, upper_index) else {
         return (false, false);
+    };
+    let (html_before, html_after) = if html_auto_spacing {
+        html_auto_spacing_suppression(upper, lower)
+    } else {
+        (false, false)
     };
     let upper_style = upper.properties.as_ref().and_then(|p| p.style.as_deref());
     let lower_style = lower.properties.as_ref().and_then(|p| p.style.as_deref());
     if upper_style != lower_style {
-        return (false, false);
+        return (html_before, html_after);
     }
     let contextual = |paragraph: &Paragraph| {
         paragraph
@@ -36422,21 +36479,85 @@ fn contextual_spacing_suppression_at(elements: &[BodyElement], upper_index: usiz
             .and_then(|p| p.contextual_spacing)
             .unwrap_or(false)
     };
-    (contextual(lower), contextual(upper))
+    (
+        contextual(lower) || html_before,
+        contextual(upper) || html_after,
+    )
+}
+
+/// The paragraph's spacing, when it has any.
+fn paragraph_spacing(paragraph: &Paragraph) -> Option<&jade_docx_reader::Spacing> {
+    paragraph
+        .properties
+        .as_ref()
+        .and_then(|properties| properties.spacing.as_ref())
+}
+
+/// Whether `paragraph` is an item of a list (a `w:numPr` that is not `0`).
+fn paragraph_is_list_item(paragraph: &Paragraph) -> bool {
+    paragraph
+        .properties
+        .as_ref()
+        .and_then(|properties| properties.numbering.as_ref())
+        .is_some_and(|numbering| numbering.list_id().is_some())
+}
+
+/// Word's HTML paragraph auto spacing between two adjacent paragraphs
+/// (ECMA-376 Part 1 §17.15.3.32 `doNotUseHTMLParagraphAutoSpacing`, which
+/// turns it off): `w:beforeAutospacing`/`w:afterAutospacing` stand for HTML
+/// margins, and HTML list items have none between them, so where two list
+/// items meet the lower one's auto space before and the upper one's auto
+/// space after are dropped; the list keeps its auto space above its first
+/// item and below its last. Returns `(lower drops before, upper drops after)`.
+fn html_auto_spacing_suppression(upper: &Paragraph, lower: &Paragraph) -> (bool, bool) {
+    if !paragraph_is_list_item(upper) || !paragraph_is_list_item(lower) {
+        return (false, false);
+    }
+    (
+        paragraph_spacing(lower).is_some_and(|spacing| spacing.before_auto),
+        paragraph_spacing(upper).is_some_and(|spacing| spacing.after_auto),
+    )
 }
 
 fn compute_contextual_spacing_suppression(
     elements: &[BodyElement],
+    html_auto_spacing: bool,
 ) -> (ElementIndexSet, ElementIndexSet) {
     let mut suppress_before = ElementIndexSet::default();
     let mut suppress_after = ElementIndexSet::default();
     for index in 1..elements.len() {
-        let (before, after) = contextual_spacing_suppression_at(elements, index - 1);
+        let (before, after) =
+            contextual_spacing_suppression_at(elements, index - 1, html_auto_spacing);
         if before {
             suppress_before.insert(index);
         }
         if after {
             suppress_after.insert(index - 1);
+        }
+    }
+    (suppress_before, suppress_after)
+}
+
+/// [`compute_contextual_spacing_suppression`] for the blocks of a table cell.
+/// With HTML auto spacing a cell is like an HTML `<td>`, whose first
+/// paragraph's top margin and last paragraph's bottom margin collapse into
+/// it: their auto space before and after are dropped too.
+fn compute_cell_spacing_suppression(
+    blocks: &[BodyElement],
+    html_auto_spacing: bool,
+) -> (ElementIndexSet, ElementIndexSet) {
+    let (mut suppress_before, mut suppress_after) =
+        compute_contextual_spacing_suppression(blocks, html_auto_spacing);
+    if html_auto_spacing {
+        if let Some(BodyElement::Paragraph(first)) = blocks.first() {
+            if paragraph_spacing(first).is_some_and(|spacing| spacing.before_auto) {
+                suppress_before.insert(0);
+            }
+        }
+        if let Some(BodyElement::Paragraph(last)) = blocks.last() {
+            if paragraph_spacing(last).is_some_and(|spacing| spacing.after_auto) {
+                suppress_after.insert(blocks.len() - 1);
+            }
         }
     }
     (suppress_before, suppress_after)
@@ -54677,7 +54798,7 @@ mod tests {
 
         let (mut renderer, _) = recording_renderer();
         for elements in bodies {
-            let (before, after) = compute_contextual_spacing_suppression(&elements);
+            let (before, after) = compute_contextual_spacing_suppression(&elements, true);
             let continues = compute_paragraph_border_box_continuations(&elements);
             renderer.last_document = Some(Rc::new(Document {
                 body: Some(Body {
@@ -54708,7 +54829,7 @@ mod tests {
         // A header/footer story answers from its own scan, not the body's.
         // palette[4]: no style, contextual spacing, no borders.
         let story = vec![palette[4].clone(), palette[4].clone()];
-        let (before, after) = compute_contextual_spacing_suppression(&story);
+        let (before, after) = compute_contextual_spacing_suppression(&story, true);
         assert!(before.contains(&1) && after.contains(&0));
         renderer.contextual_suppress_before = before;
         renderer.contextual_suppress_after = after;
@@ -54747,7 +54868,7 @@ mod tests {
             list_paragraph(Some("ListParagraph"), Some(true)),
             list_paragraph(Some("ListParagraph"), Some(true)),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&elements);
+        let (before, after) = compute_contextual_spacing_suppression(&elements, true);
         // Middle and last items drop space-before; first and middle drop space-after.
         assert!(before.contains(&1));
         assert!(before.contains(&2));
@@ -54778,7 +54899,7 @@ mod tests {
             para(Some("Heading1"), Some(true)),
             para(Some("ListParagraph"), Some(true)),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&mixed);
+        let (before, after) = compute_contextual_spacing_suppression(&mixed, true);
         assert!(before.is_empty());
         assert!(after.is_empty());
 
@@ -54787,7 +54908,7 @@ mod tests {
             para(Some("ListParagraph"), None),
             para(Some("ListParagraph"), None),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&plain);
+        let (before, after) = compute_contextual_spacing_suppression(&plain, true);
         assert!(before.is_empty());
         assert!(after.is_empty());
     }
@@ -55548,6 +55669,7 @@ mod tests {
             no_line_break_after_replaces_default: true,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
         let overrides = EastAsianLineBreakingSettings {
             use_east_asian_layout: true,
@@ -55565,6 +55687,7 @@ mod tests {
             no_line_break_after_replaces_default: false,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
 
         let merged = merge_east_asian_rules(&base, Some(&overrides));
@@ -55605,6 +55728,7 @@ mod tests {
             no_line_break_after_replaces_default: false,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
         let merged = merge_east_asian_rules(&base, None);
         assert!(merged.use_east_asian_layout);

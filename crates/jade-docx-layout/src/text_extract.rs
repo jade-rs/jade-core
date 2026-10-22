@@ -4,9 +4,8 @@ use crate::line_metrics::{
     resolve_line_height_points_with_default_multiplier, resolve_widow_orphan_decision,
     text_font_slots, word_east_asian_fe_font_size_floor, word_east_asian_font_line_box_applies,
     word_east_asian_font_line_height_pt, word_grid_line_centres_text, word_run_border_extent_pt,
-    word_run_vertical_extent_pt, word_sizes_east_asian_lines_from_faces,
-    word_tallest_single_line_height_pt, WidowOrphanDecision,
-    WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
+    word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
+    WidowOrphanDecision, WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
 };
 use crate::line_wrap::{
     apply_paragraph_indent_with_char_unit, layout_text_vertically, merge_east_asian_rules,
@@ -499,6 +498,9 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
     document.compat = settings.compat.clone();
+    crate::font_resolver::set_document_opentype_features_enabled(
+        crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+    );
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
     document.hyphenation = settings.hyphenation;
@@ -657,6 +659,7 @@ fn paragraph_line_height_points<C: LineWrapContext>(
         word_sizes_east_asian_lines_from_faces(
             document.east_asian_line_breaking.use_east_asian_layout,
         ),
+        document.compat.space_for_underline(),
     )?;
     let implicit_line_box_pt = if word_grid_line_centres_text(snap_to_grid, doc_grid) {
         single_line_pt.or(implicit_line_box_pt)
@@ -719,6 +722,7 @@ fn paragraph_word_font_lines_pt<C: LineWrapContext>(
     text: &str,
     run_styles: &[RunStyle],
     east_asian_faces_size_lines: bool,
+    space_for_underline: bool,
 ) -> Result<(Option<f32>, Option<f32>), C::Error> {
     let mut east_asian_line: Option<f32> = None;
     let mut runs = Vec::with_capacity(run_styles.len());
@@ -739,13 +743,26 @@ fn paragraph_word_font_lines_pt<C: LineWrapContext>(
                     Some(east_asian_line.map_or(height, |current| current.max(height)));
             }
         }
-        runs.push(word_run_vertical_extent_pt(
-            slots,
-            &resolved.font_descriptor_latin_ascii,
-            &resolved.font_descriptor_east_asia,
-            east_asian_faces_size_lines,
-            word_run_border_extent_pt(run_style.properties.as_deref()),
-        ));
+        let underline_depth_pt = if space_for_underline {
+            crate::line_metrics::word_space_for_underline_depth_pt(
+                run_style.properties.as_deref(),
+                &resolved.font_descriptor_east_asia,
+            )
+        } else {
+            0.0
+        };
+        runs.push(
+            crate::line_metrics::WordRunFaces::new(
+                &resolved.font_descriptor_latin_ascii,
+                &resolved.font_descriptor_east_asia,
+                east_asian_faces_size_lines,
+            )
+            .run_vertical_extent_with_underline_pt(
+                slots,
+                word_run_border_extent_pt(run_style.properties.as_deref()),
+                underline_depth_pt,
+            ),
+        );
     }
     Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
 }
@@ -2498,6 +2515,8 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         .parse_document_xml(&xml)
         .map_err(LineLayoutError::DocumentParse)?;
     let needs_style_defaults = document_has_visible_paragraph_without_east_asian_fonting(&document);
+    // A document without settings asks for no compatibility mode.
+    crate::font_resolver::set_document_opentype_features_enabled(true);
     if let Some(settings_xml) = package.get("word/settings.xml") {
         let settings = DocumentSettings::from_xml(&String::from_utf8_lossy(settings_xml))
             .map_err(LineLayoutError::DocumentParse)?;
@@ -2505,11 +2524,12 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
         document.compat = settings.compat.clone();
+        crate::font_resolver::set_document_opentype_features_enabled(
+            crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+        );
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
         document.hyphenation = settings.hyphenation;
-        document.book_fold_printing = settings.book_fold_printing;
-        document.print_two_on_one = settings.print_two_on_one;
         document.book_fold_printing = settings.book_fold_printing;
         document.print_two_on_one = settings.print_two_on_one;
         if needs_style_defaults {
