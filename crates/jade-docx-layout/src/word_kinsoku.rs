@@ -24,15 +24,45 @@ pub const STRICT_NO_LINE_START: &str = "!%),.:;?]}¢°’”‰′″℃、。�
 /// 行末禁則文字, both levels.
 pub const NO_LINE_END: &str = "$([\\{£¥‘“〈《「『【〔＄（［｛｢￡￥";
 
+/// The characters of `set`, sorted, built once: line wrapping asks for
+/// every character of every line, and scanning the list as a string each
+/// time showed up as a sixth of a keystroke.
+fn sorted(set: &'static str, cell: &'static std::sync::OnceLock<Vec<char>>) -> &'static [char] {
+    cell.get_or_init(|| {
+        let mut chars: Vec<char> = set.chars().collect();
+        chars.sort_unstable();
+        chars.dedup();
+        chars
+    })
+}
+
+/// Letters, digits and ideographs are in none of the sets: the common case,
+/// answered before any lookup.
+fn never_listed(c: char) -> bool {
+    c.is_ascii_alphanumeric() || ('\u{4E00}'..='\u{9FFF}').contains(&c)
+}
+
 /// Whether `c` may not start a line at the 標準 (`strict == false`) or
 /// 高レベル level.
 pub fn forbids_line_start(c: char, strict: bool) -> bool {
-    STANDARD_NO_LINE_START.contains(c) || strict && STRICT_ADDED_NO_LINE_START.contains(c)
+    static STANDARD: std::sync::OnceLock<Vec<char>> = std::sync::OnceLock::new();
+    static STRICT_ADDED: std::sync::OnceLock<Vec<char>> = std::sync::OnceLock::new();
+    if never_listed(c) {
+        return false;
+    }
+    sorted(STANDARD_NO_LINE_START, &STANDARD)
+        .binary_search(&c)
+        .is_ok()
+        || strict
+            && sorted(STRICT_ADDED_NO_LINE_START, &STRICT_ADDED)
+                .binary_search(&c)
+                .is_ok()
 }
 
 /// Whether `c` may not end a line.
 pub fn forbids_line_end(c: char) -> bool {
-    NO_LINE_END.contains(c)
+    static SET: std::sync::OnceLock<Vec<char>> = std::sync::OnceLock::new();
+    !never_listed(c) && sorted(NO_LINE_END, &SET).binary_search(&c).is_ok()
 }
 
 /// JIS X 4051's inseparable characters (分離禁止文字, cl-08): dashes,
