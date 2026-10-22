@@ -567,6 +567,56 @@ impl OffscreenDocumentView {
             .map_err(|error| JsValue::from_str(&error))
     }
 
+    /// The caret section's header or footer story as a `.docx` of its own —
+    /// its blocks, pictures and tables, with this document's styles — for a
+    /// second editor to open: ヘッダーの編集 with everything Word allows in it.
+    #[wasm_bindgen(js_name = headerFooterStoryDocx)]
+    pub fn header_footer_story_docx(
+        &self,
+        role: String,
+        variant: String,
+    ) -> Result<Vec<u8>, JsValue> {
+        let section = self.ribbon_target_section().unwrap_or(0);
+        let mut state = self.state.borrow_mut();
+        let document = state
+            .word_doc
+            .as_mut()
+            .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+        // A document opened lazily has no round-trip XML until it is first
+        // exported; the story is cut from the export.
+        document
+            .ensure_roundtrip_xml()
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        document
+            .story_docx(section, &role, &variant, 1)
+            .map_err(|error| JsValue::from_str(&error))
+    }
+
+    /// Writes a story edited as `headerFooterStoryDocx`'s document back into
+    /// the caret section's header or footer, as one undo step.
+    #[wasm_bindgen(js_name = replaceHeaderFooterStory)]
+    pub fn replace_header_footer_story(
+        &self,
+        role: String,
+        variant: String,
+        bytes: Vec<u8>,
+    ) -> Result<JsValue, JsValue> {
+        let section = self.ribbon_target_section().unwrap_or(0);
+        self.apply_document_command(move |_| {
+            Box::new(crate::commands::snapshot_edit::SnapshotEditCommand::new(
+                "word_replace_header_footer_story",
+                move |document| {
+                    document
+                        .ensure_roundtrip_xml()
+                        .map_err(|error| error.to_string())?;
+                    document
+                        .replace_story_from_docx(section, &role, &variant, &bytes)
+                        .map(|_| ())
+                },
+            ))
+        })
+    }
+
     /// 表のプロパティ ▸ オプション ▸ セルの間隔 in points; `null` removes it.
     #[wasm_bindgen(js_name = setTableCellSpacing)]
     pub fn set_table_cell_spacing(&self, spacing: Option<f32>) -> Result<JsValue, JsValue> {
