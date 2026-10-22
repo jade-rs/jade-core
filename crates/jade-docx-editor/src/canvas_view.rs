@@ -846,6 +846,8 @@ impl<T: PartialEq> UniformField<T> {
 
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
+#[path = "canvas_view/word_review.rs"]
+mod word_review;
 
 mod ordered_size {
     /// f32 font sizes wrapped for equality comparison in [`super::UniformField`].
