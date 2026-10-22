@@ -143,6 +143,41 @@ impl OffscreenDocumentView {
         })))
     }
 
+    /// 表示 ▸ 表示: `print` (印刷レイアウト, the sections' pages), `web` (Web
+    /// レイアウト, the text wrapped to a window `width`×`height` CSS pixels
+    /// at `zoom`, no page chrome) or `outline` (アウトライン, the headings
+    /// and body text set in by level). The document is laid out again; the
+    /// result carries the new pages.
+    #[wasm_bindgen(js_name = setViewMode)]
+    pub fn set_view_mode(
+        &self,
+        mode: String,
+        width: f32,
+        height: f32,
+        zoom: f32,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::view::{outline_geometry, view_geometry, ViewKind};
+        let (geometry, indents) = {
+            let state = self.state.borrow();
+            let document = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+            match mode.as_str() {
+                "print" => (None, None),
+                "web" => (view_geometry(ViewKind::Web, (width, height), zoom), None),
+                "outline" => (
+                    outline_geometry(&document.section_layout(Some(0))),
+                    Some(std::rc::Rc::new(crate::word::outline::indents(document))),
+                ),
+                other => return Err(JsValue::from_str(&format!("unknown view {other}"))),
+            }
+        };
+        self.rerender_after_display_change(move |renderer| {
+            renderer.set_view_layout(geometry, indents);
+        })
+    }
+
     /// 文書パーツ オーガナイザー's 削除.
     #[wasm_bindgen(js_name = deleteQuickPart)]
     pub fn delete_quick_part(&self, index: usize) -> Result<JsValue, JsValue> {
