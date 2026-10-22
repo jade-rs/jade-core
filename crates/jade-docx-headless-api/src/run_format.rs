@@ -180,6 +180,16 @@ pub struct HeadlessRunFormat {
     /// 組み文字, 割注 and 縦中横; an empty layout takes them off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub east_asian_layout: Option<HeadlessEastAsianLayout>,
+    /// 校正言語 for Latin text (`w:lang/@w:val`, a BCP 47 tag such as
+    /// `en-US`); empty takes it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    /// 校正言語 for East Asian text (`w:lang/@w:eastAsia`, `ja-JP`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub east_asia_language: Option<String>,
+    /// スペル チェックと文章校正を行わない (`w:noProof`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_proof: Option<bool>,
 }
 
 impl HeadlessRunFormat {
