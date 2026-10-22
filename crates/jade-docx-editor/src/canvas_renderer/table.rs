@@ -258,6 +258,9 @@ struct LineLayout {
     /// picture stands on the baseline and the text's descent hangs below it.
     /// Zero for a line of text only.
     min_advance: f64,
+    /// Automatic hyphenation ended the line with a hyphen this wide, already
+    /// part of its last glyph's advance (as in body paragraphs).
+    hyphen: Option<f64>,
 }
 
 impl LineLayout {
@@ -1123,6 +1126,8 @@ struct LayoutConfig {
     /// Auto paragraph spacing collapses like HTML margins (no
     /// `doNotUseHTMLParagraphAutoSpacing`).
     html_auto_spacing: bool,
+    /// The document's automatic hyphenation, which cell text takes too.
+    hyphenation: jade_docx_reader::HyphenationSettings,
 }
 
 /// Rendered reference marks ("1", "ⅰ", …) keyed by note id, one map per note
@@ -1202,6 +1207,14 @@ impl LayoutConfig {
         {
             style.alignment = alignment.to_string();
         }
+        style.hyphenation = jade_docx_layout::line_wrap::ParagraphHyphenation::for_paragraph(
+            &self.hyphenation,
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|props| props.suppress_auto_hyphens)
+                .unwrap_or(false),
+        );
         if let Some(rules) = self
             .paragraph_east_asian_rules
             .get(&(paragraph as *const Paragraph as usize))
@@ -1989,6 +2002,7 @@ where
                 self.document_east_asian_rules.compatibility_mode,
             ),
             html_auto_spacing: self.document_html_auto_spacing,
+            hyphenation: self.document_hyphenation,
         };
 
         let column_count = compute_column_count(table);
@@ -5145,6 +5159,42 @@ where
                 decorations,
             )?;
         }
+        self.draw_line_hyphen(context, paragraph, line, start_x, text_y, default_color)?;
+        Ok(())
+    }
+
+    /// The hyphen automatic hyphenation ended `line` with, after its last
+    /// glyph in that glyph's run's font and colour, as body lines draw it.
+    fn draw_line_hyphen<P: Painter<Error: PainterError>>(
+        &self,
+        context: &P,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        start_x: f64,
+        text_y: f64,
+        default_color: &str,
+    ) -> Result<(), JsValue> {
+        let (Some(hyphen), Some(last)) = (line.hyphen, line.glyphs.last()) else {
+            return Ok(());
+        };
+        let run_props = paragraph
+            .styled_runs
+            .iter()
+            .find(|run| run.start <= last.start && last.start < run.end)
+            .and_then(|run| run.properties.as_ref());
+        let font = table_font_descriptor_for_text(run_props, "-");
+        context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
+        let requested = run_props
+            .and_then(|props| props.color.as_deref())
+            .unwrap_or(default_color);
+        let color = self.resolve_text_fill_color(requested);
+        context.set_fill_style_str(color.as_ref());
+        let x = start_x + last.x + (last.width - hyphen).max(0.0);
+        let y = text_y + self.table_run_baseline_shift(line, run_props);
+        context
+            .fill_text("-", x, y)
+            .map_err(PainterError::into_js_value)?;
+        self.reset_font_state();
         Ok(())
     }
 
@@ -5486,6 +5536,7 @@ where
         let draw_enabled = self.should_draw_current_page_for_render();
         let lines = if paragraph.lines.is_empty() {
             vec![LineLayout {
+                hyphen: None,
                 min_advance: 0.0,
                 left_inset: 0.0,
                 right_inset: 0.0,
@@ -12164,6 +12215,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
     };
 
     LineLayout {
+        hyphen: line.hyphen.map(|hyphen| hyphen.width),
         left_inset: 0.0,
         right_inset: 0.0,
         text,
@@ -12593,6 +12645,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
 
     if lines.is_empty() {
         lines.push(LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: paragraph_style.line_indent(0),
             right_inset: paragraph_style.right_indent,
@@ -12662,6 +12715,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
         spacing_after: 0.0,
         align: None,
         lines: Rc::new(vec![LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -13391,6 +13445,7 @@ mod tests {
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
                 html_auto_spacing: true,
+                hyphenation: Default::default(),
                 styles_part: None,
             };
             let marks = if footnote {
@@ -13499,6 +13554,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let context = FixedWidthWrapContext::new();
@@ -14841,6 +14897,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let paragraph = |text: &str| -> Paragraph {
@@ -15252,6 +15309,7 @@ mod tests {
     #[test]
     fn line_range_width_handles_partial_overlap() {
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -15290,6 +15348,7 @@ mod tests {
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
         };
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             text: "AB ".into(),
             visual_width: 23.0,
@@ -15343,6 +15402,7 @@ mod tests {
     #[test]
     fn line_layout_visual_end_x_uses_visual_width() {
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -15935,6 +15995,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         for exact_middle in [false, true] {
@@ -17450,6 +17511,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let row = TableRow {
@@ -18369,6 +18431,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         for bidi in [false, true] {
@@ -18487,6 +18550,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let table = Table {
@@ -19480,6 +19544,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            hyphenation: Default::default(),
             available_width: 120.0,
             render_changes: false,
             render_original: false,
