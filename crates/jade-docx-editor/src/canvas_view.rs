@@ -856,6 +856,8 @@ mod word_ink;
 mod word_mailings;
 #[path = "canvas_view/word_models.rs"]
 mod word_models;
+#[path = "canvas_view/word_objects.rs"]
+mod word_objects;
 #[path = "canvas_view/word_parity.rs"]
 mod word_parity;
 #[path = "canvas_view/word_references.rs"]
@@ -864,6 +866,8 @@ mod word_references;
 mod word_review;
 #[path = "canvas_view/word_session.rs"]
 mod word_session;
+#[path = "canvas_view/word_tools.rs"]
+mod word_tools;
 
 mod ordered_size {
     /// f32 font sizes wrapped for equality comparison in [`super::UniformField`].
