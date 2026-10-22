@@ -235,3 +235,28 @@ pub fn compress_pictures(
     set("bytesAfter", JsValue::from(summary.bytes_after as u32))?;
     Ok(result.into())
 }
+
+/// ルーラー: the ticks from `from` to `to` points (the left margin is 0) in
+/// `unit` (`char`, `mm`, `cm`, `in`, `pt`), `char_width` points being one
+/// 字. Each is `{at, label, half}`.
+#[wasm_bindgen(js_name = rulerTicks)]
+pub fn ruler_ticks(unit: &str, char_width: f32, from: f32, to: f32) -> Result<JsValue, JsValue> {
+    use crate::word::ruler::{ticks, RulerUnit};
+    let unit = RulerUnit::from_key(unit)
+        .ok_or_else(|| JsValue::from_str(&format!("unknown ruler unit {unit}")))?;
+    let out = js_sys::Array::new();
+    for tick in ticks(unit, char_width, from, to) {
+        let entry = js_sys::Object::new();
+        let _ = js_sys::Reflect::set(&entry, &"at".into(), &JsValue::from_f64(f64::from(tick.at)));
+        let _ = js_sys::Reflect::set(
+            &entry,
+            &"label".into(),
+            &tick
+                .label
+                .map_or(JsValue::NULL, |label| JsValue::from_str(&label)),
+        );
+        let _ = js_sys::Reflect::set(&entry, &"half".into(), &JsValue::from_bool(tick.half));
+        out.push(&entry);
+    }
+    Ok(out.into())
+}
