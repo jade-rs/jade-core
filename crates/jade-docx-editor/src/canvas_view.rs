@@ -16910,7 +16910,9 @@ impl OffscreenDocumentView {
             let _ = Reflect::set(
                 &result,
                 &JsValue::from_str("rulerIndent"),
-                &to_value(&values).unwrap_or(JsValue::NULL),
+                &values
+                    .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+                    .unwrap_or(JsValue::NULL),
             );
         }
         let _ = Reflect::set(&result, &JsValue::from_str("run"), &run_js);
