@@ -40634,6 +40634,11 @@ mod tests {
                 ..Default::default()
             });
         }
+        table.cell_margins = Some(jade_docx_reader::document::TableCellMargins {
+            left: Some(15.0),
+            right: Some(21.0),
+            ..Default::default()
+        });
         table.rows[0].cells[0].blocks = body.elements;
         renderer
             .render(&document, &Options::default())
@@ -40647,6 +40652,11 @@ mod tests {
                 })
                 .unwrap_or_else(|| panic!("missing glyph {label}: {ops:?}"))
         };
+        let cell = &renderer.cell_layouts_debug_ref()[0];
+        let (left, right) = cell.text_bounds.expect("horizontal padded bounds");
+        assert!((left - origin("B")).abs() < 0.001);
+        assert!((left - cell.left - 20.0).abs() < 0.001);
+        assert!((cell.right - right - 28.0).abs() < 0.001);
         for (label, inset) in [("L", 16.0), ("F", 24.0), ("H", 8.0)] {
             assert!(
                 (origin(label) - origin("B") - inset).abs() < 0.001,
@@ -40742,6 +40752,20 @@ mod tests {
                     line.paragraph,
                     line.page
                 );
+                let (left, right) = renderer
+                    .selection_manager()
+                    .cell_text_bounds_for_paragraph(line.paragraph, y)
+                    .expect("ruler bounds for this page fragment");
+                // Selection lines span the outer cell rectangle. Painted
+                // fragments use the padded content origin, without the debug
+                // API's oracle-only reporting offset.
+                assert!(left < right);
+                if let Some(fragment) = line.fragments.first() {
+                    let painted_x = fragment.x - line.report_x_offset;
+                    assert!(painted_x >= left - 0.001 && painted_x < right,
+                        "nested={nested}, long_paragraph={long_paragraph}, page={}, x={painted_x}, bounds={left}..{right}",
+                        line.page);
+                }
                 if let Some(id) = renderer.cell_selection_target_at_point(x, y) {
                     assert!(renderer
                         .cell_layout(id)
@@ -42411,6 +42435,7 @@ mod tests {
         }
         for (column, paragraph) in [0, 2].into_iter().enumerate() {
             renderer.selection.record_table_cell(CellLayout {
+                text_bounds: None,
                 paragraphs: vec![paragraph],
                 left: column as f64 * 100.0,
                 right: column as f64 * 100.0 + 100.0,
@@ -53085,6 +53110,7 @@ mod tests {
                         SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 4));
                     renderer.selection.set_selection(Some(range));
                     renderer.selection.record_table_cell(CellLayout {
+                        text_bounds: None,
                         paragraphs: vec![0],
                         left: 0.0,
                         right: 100.0,
