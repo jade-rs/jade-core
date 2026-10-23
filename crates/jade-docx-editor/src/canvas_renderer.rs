@@ -2456,6 +2456,31 @@ fn document_has_horizontal_float_wrap(document: &Document) -> bool {
     })
 }
 
+/// Cache both answers for an immutable snapshot without retaining it. Release
+/// the weak key before editing so `Rc::make_mut` can preserve its allocation.
+#[derive(Default)]
+struct HorizontalFloatWrapCache {
+    document: std::rc::Weak<Document>,
+    value: bool,
+    #[cfg(test)]
+    scans: usize,
+}
+
+impl HorizontalFloatWrapCache {
+    fn get(&mut self, document: &Rc<Document>) -> bool {
+        let identity = Rc::downgrade(document);
+        if !self.document.ptr_eq(&identity) {
+            self.value = document_has_horizontal_float_wrap(document);
+            self.document = identity;
+            #[cfg(test)]
+            {
+                self.scans += 1;
+            }
+        }
+        self.value
+    }
+}
+
 fn page_border_rect(
     offset_from: PageBorderOffsetFrom,
     page_width: f64,
@@ -3141,6 +3166,7 @@ where
     HostPainter::Error: PainterError,
 {
     host: RenderHostSlot<HostPainter>,
+    horizontal_float_wrap_cache: HorizontalFloatWrapCache,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
     /// Set while a keepNext group measurement lays out a group member after
@@ -7976,6 +8002,7 @@ where
         let margin = points_to_px(DEFAULT_MARGIN_PT);
         Self {
             host: RenderHostSlot::new(host),
+            horizontal_float_wrap_cache: HorizontalFloatWrapCache::default(),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -12071,6 +12098,7 @@ where
     /// the cache with the updated document.
     pub fn drop_document_cache(&mut self) {
         self.invalidate_page_layers_document();
+        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
         // Joins stay: the edit that follows maps its paragraph to the first
@@ -13370,7 +13398,7 @@ where
             .and_then(|props| props.text_direction);
 
         let explicit_disable = self.disable_seek_replay_once;
-        let horizontal_float_wrap = document_has_horizontal_float_wrap(document);
+        let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
         // Lazy-edit fast path: instead of re-rendering from the document start
         // (O(scroll depth) per keystroke), seek to the top of the first visible
         // page using a recorded page-start snapshot. Because the target is always
@@ -37601,6 +37629,92 @@ mod tests {
         assert!(paragraph_has_floating_or_math(&band_test_paragraph(vec![
             math_run
         ])));
+    }
+
+    fn horizontal_wrap_textbox_document(wrap: WrapMode) -> Document {
+        let mut run = band_plain_run();
+        run.text_box = Some(RunTextBox {
+            layout: RunImageLayout {
+                kind: RunImageKind::Floating,
+                wrap,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(band_test_paragraph(vec![run]))],
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_scans_positive_and_negative_snapshots_once() {
+        let mut cache = HorizontalFloatWrapCache::default();
+        let plain = Rc::new(doc_with_paragraph_texts(&vec!["plain"; 3_000]));
+        let floating = Rc::new(horizontal_wrap_textbox_document(WrapMode::Square));
+        for (document, expected) in [(&plain, false), (&floating, true)] {
+            let before = cache.scans;
+            for _ in 0..100 {
+                assert_eq!(cache.get(document), expected);
+            }
+            assert_eq!(cache.scans - before, 1);
+            assert_eq!(Rc::strong_count(document), 1);
+        }
+        assert!(
+            !cache.get(&plain),
+            "a replacement must not reuse the last answer"
+        );
+        assert_eq!(cache.scans, 3);
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_follows_edits_and_undo() {
+        let mut document = Rc::new(horizontal_wrap_textbox_document(WrapMode::None));
+        let mut cache = HorizontalFloatWrapCache::default();
+        assert!(!cache.get(&document));
+        let paragraph = Rc::make_mut(&mut document).body.as_mut().unwrap().elements[0]
+            .as_paragraph_mut()
+            .unwrap();
+        paragraph.runs[0].text_box.as_mut().unwrap().layout.wrap = WrapMode::Through;
+        assert!(cache.get(&document));
+        let undo = Rc::clone(&document);
+        Rc::make_mut(&mut document).body = None;
+        assert!(!cache.get(&document));
+        assert!(cache.get(&undo));
+        assert_eq!(cache.scans, 4);
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_is_shared_by_layout_and_paint_and_released_before_edit() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = Rc::new(doc_with_paragraph_texts(&["plain"]));
+        let options = Options::default();
+        for _ in 0..3 {
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        }
+        assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
+        let pointer = Rc::as_ptr(&document);
+        renderer.drop_document_cache();
+        assert_eq!(Rc::strong_count(&document), 1);
+        assert_eq!(Rc::weak_count(&document), 0);
+        *Rc::make_mut(&mut document) = horizontal_wrap_textbox_document(WrapMode::Tight);
+        assert_eq!(Rc::as_ptr(&document), pointer);
+        assert!(renderer.horizontal_float_wrap_cache.get(&document));
+        assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
     }
 
     #[test]
