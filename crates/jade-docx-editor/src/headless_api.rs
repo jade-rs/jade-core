@@ -13230,6 +13230,66 @@ mod tests {
     }
 
     #[test]
+    fn a_tracked_deletion_kept_from_a_joined_paragraph_takes_its_style() {
+        // review-kinds.docx's second paragraph opens with tracked moved-from
+        // text, which a replacement across it keeps. Joined to the first
+        // paragraph (style "2", 10pt), that run and the replacement typed
+        // after it kept the second paragraph's 12pt on screen; a reload sized
+        // them by the joined paragraph.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/review-kinds.docx"),
+        )
+        .expect("read fixture");
+        for replacement in ["、", ""] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let replace = HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 22,
+                end_paragraph: 2,
+                end_offset: 1,
+                text: replacement.to_string(),
+            };
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::SetParagraphStyle {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            style_id: Some("2".to_string()),
+                        },
+                        replace,
+                    ],
+                },
+            )
+            .expect("edits apply");
+            let sizes = |word_doc: &WordDocument| {
+                word_doc
+                    .paragraph(0)
+                    .expect("paragraph")
+                    .runs
+                    .iter()
+                    .filter(|run| !run.text.is_empty())
+                    .map(|run| {
+                        (
+                            run.text.clone(),
+                            run.properties.as_ref().and_then(|props| props.font_size),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(sizes(&word_doc), sizes(&reloaded), "{replacement:?}");
+        }
+    }
+
+    #[test]
     fn enter_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box reads
         // "Textbox channel: " and a DOCVARIABLE field. Enter in that paragraph

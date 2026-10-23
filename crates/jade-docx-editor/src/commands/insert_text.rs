@@ -751,7 +751,27 @@ impl InsertTextCommand {
                     &folded.zero_width,
                 );
                 paragraph.runs.retain(|run| !folded.drops(run));
+            }
+            let retained_first = ctx
+                .document
+                .paragraph(start.paragraph)
+                .map_or(0, |paragraph| paragraph.runs.len());
+            if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
                 paragraph.runs.extend(retained);
+            }
+            // Before the replacement goes in after them and takes their
+            // formatting.
+            FoldedSelection::restyle_retained(
+                &folded.retained_styles,
+                ctx,
+                start.paragraph,
+                retained_first,
+            );
+            {
+                let paragraph = ctx
+                    .document
+                    .paragraph_mut(start.paragraph)
+                    .ok_or(CommandError::ParagraphUnavailable)?;
                 apply_text_edit(
                     &mut paragraph.runs,
                     insert_offset,
