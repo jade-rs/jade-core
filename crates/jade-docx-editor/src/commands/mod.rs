@@ -323,6 +323,8 @@ pub struct CommandExecutor {
     /// Counts history entries ever recorded. Unlike the stack depth it moves
     /// even once the history is full and the oldest entry falls off.
     recorded: u64,
+    /// A synchronous provisional edit must not evict existing undo/redo entries.
+    provisional_recording: bool,
 }
 
 impl CommandExecutor {
@@ -381,11 +383,20 @@ impl CommandExecutor {
     fn record(&mut self, command: Box<dyn Command>) {
         self.recorded += 1;
         self.undo_stack.push(command);
-        if self.undo_stack.len() > MAX_UNDO_HISTORY {
-            let overflow = self.undo_stack.len() - MAX_UNDO_HISTORY;
-            self.undo_stack.drain(0..overflow);
+        if !self.provisional_recording {
+            if self.undo_stack.len() > MAX_UNDO_HISTORY {
+                let overflow = self.undo_stack.len() - MAX_UNDO_HISTORY;
+                self.undo_stack.drain(0..overflow);
+            }
+            self.redo_stack.clear();
         }
-        self.redo_stack.clear();
+    }
+
+    /// Brackets a synchronous edit which will be retracted. Its undo entry may
+    /// temporarily exceed the history limit, and existing redo entries survive.
+    /// A subsequent ordinary edit commits the usual limit/redo invalidation.
+    pub fn set_provisional_recording(&mut self, provisional: bool) {
+        self.provisional_recording = provisional;
     }
 
     /// Starts collecting the commands executed from here on into one undo
@@ -679,6 +690,87 @@ mod tests {
             .map(|run| run.text.as_str())
             .collect::<String>();
         assert_eq!(text_after_redo, "Hello world");
+    }
+
+    #[test]
+    fn provisional_history_keeps_redo_and_the_oldest_undo_at_capacity() {
+        let mut document = sample_document("Hello");
+        let mut selection = None;
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        let mut executor = CommandExecutor::new();
+        let insert = || {
+            Box::new(InsertTextCommand::new(
+                SelectionRange::collapsed(TextPosition {
+                    paragraph: 0,
+                    offset: 5,
+                }),
+                "!".into(),
+                None,
+            )) as Box<dyn Command>
+        };
+        for _ in 0..MAX_UNDO_HISTORY {
+            executor.execute(insert(), &mut ctx).unwrap();
+        }
+        executor.undo(&mut ctx).unwrap();
+        assert!(executor.can_redo());
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        executor.undo(&mut ctx).unwrap();
+        executor.discard_newest_redo();
+        assert!(executor.can_redo());
+        executor.redo(&mut ctx).unwrap();
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
+        // With a full history, even one provisional edit must not drop its oldest entry.
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        executor.undo(&mut ctx).unwrap();
+        executor.discard_newest_redo();
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
+        assert!(!executor.can_redo());
+        for _ in 0..MAX_UNDO_HISTORY {
+            assert!(executor.undo(&mut ctx).unwrap());
+        }
+        assert!(!executor.can_undo());
+        let text: String = ctx
+            .document
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "Hello");
+    }
+
+    #[test]
+    fn ordinary_edit_after_provisional_recording_invalidates_redo_and_bounds_history() {
+        let mut document = sample_document("Hello");
+        let mut selection = None;
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        let mut executor = CommandExecutor::new();
+        let insert = || {
+            Box::new(InsertTextCommand::new(
+                SelectionRange::collapsed(TextPosition {
+                    paragraph: 0,
+                    offset: 5,
+                }),
+                "!".into(),
+                None,
+            )) as Box<dyn Command>
+        };
+        for _ in 0..MAX_UNDO_HISTORY {
+            executor.execute(insert(), &mut ctx).unwrap();
+        }
+        executor.undo(&mut ctx).unwrap();
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        assert!(executor.can_redo());
+        executor.execute(insert(), &mut ctx).unwrap();
+        assert!(!executor.can_redo());
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
     }
 
     #[test]
