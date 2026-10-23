@@ -22,6 +22,37 @@
 
 use super::*;
 use jade_painter::capture::{self, CaptureSink, PaintOp, RoutedPainter};
+use std::rc::Weak;
+
+/// A weak key does not keep an old document alive or add a strong owner that
+/// would force a deep clone on the next edit. `Rc::make_mut` changes this
+/// identity when only weak references remain, so an edited document cannot
+/// reuse the old answer.
+#[derive(Default)]
+struct BehindTextObjectsCache {
+    document: Weak<Document>,
+    value: bool,
+    #[cfg(test)]
+    scans: usize,
+}
+
+impl BehindTextObjectsCache {
+    fn get(&mut self, document: &Rc<Document>) -> bool {
+        let identity = Rc::downgrade(document);
+        if !self.document.ptr_eq(&identity) {
+            self.value = document
+                .body
+                .as_ref()
+                .is_some_and(|body| elements_have_behind_text_objects(&body.elements));
+            self.document = identity;
+            #[cfg(test)]
+            {
+                self.scans += 1;
+            }
+        }
+        self.value
+    }
+}
 
 /// A host image draw made while capturing, painted again at replay.
 struct HeldHostImage {
@@ -56,6 +87,7 @@ pub(super) struct PageLayers {
     next_sequence: Cell<usize>,
     /// Whether the document has an object behind text in its body.
     holds_body: Cell<bool>,
+    behind_text_cache: BehindTextObjectsCache,
 }
 
 impl PageLayers {
@@ -185,6 +217,123 @@ fn elements_have_behind_text_objects(elements: &[BodyElement]) -> bool {
     })
 }
 
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+
+    fn document(behind: bool) -> Rc<Document> {
+        let mut run: Run = serde_json::from_value(serde_json::json!({ "text": "text" })).unwrap();
+        run.image = Some(RunImage {
+            layout: RunImageLayout {
+                kind: RunImageKind::Floating,
+                behind_doc: behind,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        Rc::new(Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![run],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn page_layer_detection_scans_each_immutable_document_only_once() {
+        let mut cache = BehindTextObjectsCache::default();
+        for behind in [false, true] {
+            let document = document(behind);
+            let before = cache.scans;
+            for _ in 0..100 {
+                assert_eq!(cache.get(&document), behind);
+            }
+            assert_eq!(cache.scans - before, 1);
+            assert_eq!(
+                Rc::strong_count(&document),
+                1,
+                "cache must not force a document clone"
+            );
+        }
+    }
+
+    #[test]
+    fn page_layer_detection_follows_in_place_edits_and_undo_snapshots() {
+        let mut document = document(false);
+        let mut cache = BehindTextObjectsCache::default();
+        assert!(!cache.get(&document));
+        // With only a weak cache key, make_mut moves rather than cloning the
+        // document, but it still invalidates the cache's identity.
+        let body = Rc::make_mut(&mut document).body.as_mut().unwrap();
+        let BodyElement::Paragraph(paragraph) = &mut body.elements[0] else {
+            unreachable!()
+        };
+        paragraph.runs[0].image.as_mut().unwrap().layout.behind_doc = true;
+        assert!(cache.get(&document));
+        let undo = Rc::clone(&document);
+        Rc::make_mut(&mut document)
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .clear();
+        assert!(!cache.get(&document));
+        assert!(cache.get(&undo));
+        assert_eq!(cache.scans, 4);
+    }
+
+    #[test]
+    fn page_layer_detection_keeps_nested_table_objects() {
+        let source = document(true);
+        let paragraph = source.body.as_ref().unwrap().elements[0].clone();
+        let mut nested = paragraph;
+        for _ in 0..3 {
+            nested = BodyElement::Table(Box::new(Table {
+                rows: vec![TableRow {
+                    cells: vec![TableCell {
+                        blocks: vec![nested],
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }));
+        }
+        let nested = Rc::new(Document {
+            body: Some(Body {
+                elements: vec![nested],
+            }),
+            ..Default::default()
+        });
+        let mut cache = BehindTextObjectsCache::default();
+        assert!(cache.get(&nested));
+        assert!(!cache.get(&Rc::new(Document::default())));
+        assert!(cache.get(&nested));
+    }
+
+    #[test]
+    fn clearing_page_layer_cache_preserves_the_next_edit_allocation() {
+        let mut document = document(false);
+        let mut cache = BehindTextObjectsCache::default();
+        assert!(!cache.get(&document));
+        let pointer = Rc::as_ptr(&document);
+        // Mirrors drop_document_cache before document_mut. Without releasing
+        // the weak key, make_mut moves the document and invalidates unrelated
+        // pointer-keyed renderer caches on every keystroke.
+        cache = BehindTextObjectsCache::default();
+        assert_eq!(Rc::weak_count(&document), 0);
+        Rc::make_mut(&mut document).body = None;
+        assert_eq!(Rc::as_ptr(&document), pointer);
+        assert!(!cache.get(&document));
+    }
+}
+
 impl<HostPainter> CanvasRenderer<HostPainter>
 where
     HostPainter: Painter,
@@ -192,14 +341,21 @@ where
 {
     /// Starts a render pass: nothing is held, and the body is held on pages
     /// of `document` only when it has objects behind text.
-    pub(super) fn reset_page_layers(&mut self, document: &Document) {
+    pub(super) fn reset_page_layers(&mut self, document: &Rc<Document>) {
         self.host.layers.reset();
-        self.host.layers.holds_body.set(
-            document
-                .body
-                .as_ref()
-                .is_some_and(|body| elements_have_behind_text_objects(&body.elements)),
-        );
+        // Layout-only passes and hosts without page captures never consume the
+        // answer. Bitmap refreshes of the same immutable document share it.
+        let holds_body = !self.render_skip_draw
+            && !self.pageless_mode
+            && self.host.supports_deferred_painting()
+            && self.host.layers.behind_text_cache.get(document);
+        self.host.layers.holds_body.set(holds_body);
+    }
+
+    pub(super) fn invalidate_page_layers_document(&mut self) {
+        // Release the weak key before an edit as well: make_mut can then keep
+        // the same allocation, preserving other document-identity caches.
+        self.host.layers.behind_text_cache = BehindTextObjectsCache::default();
     }
 
     /// Whether drawing on the current page may be held back.

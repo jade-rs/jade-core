@@ -12070,6 +12070,7 @@ where
     /// need to clone. After mutation, call `render_with_numbering_rc` to re-establish
     /// the cache with the updated document.
     pub fn drop_document_cache(&mut self) {
+        self.invalidate_page_layers_document();
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
         // Joins stay: the edit that follows maps its paragraph to the first
