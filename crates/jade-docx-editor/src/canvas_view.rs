@@ -1350,6 +1350,16 @@ impl RowResizeState {
     }
 }
 
+fn resolved_ruler_indent(properties: &ParagraphProperties, unit_pt: f64) -> JsValue {
+    let indent = properties.indent.as_ref();
+    let bidi = properties.bidi.unwrap_or(false);
+    serde_json::json!({
+        "left": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_left_pt(i, bidi, unit_pt)).unwrap_or(0.0),
+        "right": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_right_pt(i, bidi, unit_pt)).unwrap_or(0.0),
+        "first": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_first_line_pt(i, unit_pt, true)).unwrap_or(0.0),
+    }).serialize(&serde_wasm_bindgen::Serializer::json_compatible()).unwrap_or(JsValue::NULL)
+}
+
 #[derive(Clone, Copy)]
 struct FormatPreviewState {
     revision: u64,
@@ -16027,28 +16037,45 @@ impl OffscreenDocumentView {
             .selection
             .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::new(0, 0)));
         let renderer = self.renderer.borrow();
-        let focus_geometry = renderer
-            .caret_page_index()
-            .zip(renderer.caret_metrics())
-            .map(|(page, metrics)| (page, metrics.x))
-            .or_else(|| {
-                let rects = renderer.get_selection_rects();
-                let backwards = (selection.anchor.paragraph, selection.anchor.offset)
-                    > (selection.focus.paragraph, selection.focus.offset);
-                let rect = if backwards {
-                    rects.first()
-                } else {
-                    rects.last()
-                }?;
-                Some((
-                    rect.page,
-                    if backwards {
-                        rect.x
+        let hf_paragraph = state.hf_edit_cursor.and_then(|cursor| {
+            let (role, variant) = Self::hf_role_variant(state.editing_mode, state.hf_variant)?;
+            word_doc.hf_ruler_paragraph(role, variant, cursor.line_index)
+        });
+        let hf_geometry = if state.editing_mode != EditingMode::Body {
+            state.hf_edit_cursor.and_then(|cursor| {
+                self.compute_hf_caret_rect(&renderer, &cursor)
+                    .map(|(x, _, _)| (cursor.page_index, x))
+            })
+        } else {
+            None
+        };
+        if state.editing_mode != EditingMode::Body && hf_geometry.is_none() {
+            return JsValue::NULL;
+        }
+        let focus_geometry = hf_geometry.or_else(|| {
+            renderer
+                .caret_page_index()
+                .zip(renderer.caret_metrics())
+                .map(|(page, metrics)| (page, metrics.x))
+                .or_else(|| {
+                    let rects = renderer.get_selection_rects();
+                    let backwards = (selection.anchor.paragraph, selection.anchor.offset)
+                        > (selection.focus.paragraph, selection.focus.offset);
+                    let rect = if backwards {
+                        rects.first()
                     } else {
-                        rect.x + rect.width
-                    },
-                ))
-            });
+                        rects.last()
+                    }?;
+                    Some((
+                        rect.page,
+                        if backwards {
+                            rect.x
+                        } else {
+                            rect.x + rect.width
+                        },
+                    ))
+                })
+        });
         let focus_geometry = focus_geometry.or_else(|| {
             renderer
                 .paragraph_layout_origin(selection.focus.paragraph)
@@ -16057,8 +16084,12 @@ impl OffscreenDocumentView {
         let Some((page_index, caret_x)) = focus_geometry else {
             return JsValue::NULL;
         };
-        let section = word_doc
-            .section_index_for_paragraph(selection.focus.paragraph)
+        let section_index = if state.editing_mode == EditingMode::Body {
+            word_doc.section_index_for_paragraph(selection.focus.paragraph)
+        } else {
+            Some(renderer.section_index_for_zero_based_page(page_index))
+        };
+        let section = section_index
             .and_then(|index| document.sections.get(index))
             .and_then(|section| section.properties.as_ref());
         let mut geometry = jade_docx_layout::text_extract::ruler_geometry(
@@ -16067,16 +16098,28 @@ impl OffscreenDocumentView {
             page_index + 1,
             caret_x,
         );
-        let in_cell = renderer
-            .cell_id_for_paragraph(selection.focus.paragraph)
-            .is_some();
-        let cell_bounds = renderer
-            .caret_metrics_at(selection.focus)
-            .and_then(|caret| {
+        // Header/footer stories span the page content width, even in a
+        // section whose body flows through multiple columns.
+        if state.editing_mode != EditingMode::Body {
+            geometry.text_left = geometry.content_left;
+            geometry.text_right = geometry.content_right;
+        }
+        let in_cell = state.editing_mode == EditingMode::Body
+            && renderer
+                .cell_id_for_paragraph(selection.focus.paragraph)
+                .is_some();
+        let cell_bounds = (state.editing_mode == EditingMode::Body)
+            .then(|| {
                 renderer
-                    .selection_manager()
-                    .cell_text_bounds_for_paragraph(selection.focus.paragraph, caret.absolute_top)
-            });
+                    .caret_metrics_at(selection.focus)
+                    .and_then(|caret| {
+                        renderer.selection_manager().cell_text_bounds_for_paragraph(
+                            selection.focus.paragraph,
+                            caret.absolute_top,
+                        )
+                    })
+            })
+            .flatten();
         if let Some((left, right)) = cell_bounds {
             geometry.text_left = left;
             geometry.text_right = right;
@@ -16085,11 +16128,18 @@ impl OffscreenDocumentView {
         let _ = Reflect::set(
             &value,
             &JsValue::from_str("paragraphEditable"),
-            &JsValue::from_bool(
-                state.editing_mode == EditingMode::Body && (!in_cell || cell_bounds.is_some()),
-            ),
+            &JsValue::from_bool(if state.editing_mode == EditingMode::Body {
+                !in_cell || cell_bounds.is_some()
+            } else {
+                hf_paragraph.is_some()
+            }),
         );
-        if let Some(paragraph) = word_doc.paragraph(selection.focus.paragraph) {
+        let paragraph = if state.editing_mode == EditingMode::Body {
+            word_doc.paragraph(selection.focus.paragraph)
+        } else {
+            hf_paragraph.as_ref()
+        };
+        if let Some(paragraph) = paragraph {
             let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
                 document,
                 section,
@@ -16761,6 +16811,40 @@ impl OffscreenDocumentView {
                 merge_paragraph_properties_override(&mut paragraph, direct);
             }
             paragraph.alignment.get_or_insert_with(|| Rc::from("left"));
+            let character_unit =
+                view.word_doc
+                    .as_ref()
+                    .zip(view.hf_edit_cursor)
+                    .and_then(|(doc, cursor)| {
+                        let (role, variant) =
+                            Self::hf_role_variant(view.editing_mode, view.hf_variant)?;
+                        let story_paragraph =
+                            doc.hf_ruler_paragraph(role, variant, cursor.line_index)?;
+                        let document = doc.document.as_ref()?;
+                        let section_index = self
+                            .renderer
+                            .borrow()
+                            .section_index_for_zero_based_page(cursor.page_index);
+                        let section = document
+                            .sections
+                            .get(section_index)
+                            .and_then(|section| section.properties.as_ref());
+                        Some(
+                            jade_docx_layout::text_extract::ruler_character_unit_px(
+                                document,
+                                section,
+                                &story_paragraph,
+                                doc.styles_part.as_ref(),
+                            ) * 0.75,
+                        )
+                    });
+            if let Some(unit) = character_unit {
+                let _ = Reflect::set(
+                    &result,
+                    &JsValue::from_str("rulerIndent"),
+                    &resolved_ruler_indent(&paragraph, unit),
+                );
+            }
             let paragraph = to_value(&paragraph).unwrap_or(JsValue::NULL);
             let _ = Reflect::set(&result, &JsValue::from_str("paragraph"), &paragraph);
             drop(view);
@@ -16971,19 +17055,10 @@ impl OffscreenDocumentView {
                 paragraph,
                 word_doc.styles_part.as_ref(),
             ) * 0.75;
-            let indent = effective_para.indent.as_ref();
-            let bidi = effective_para.bidi.unwrap_or(false);
-            let values = serde_json::json!({
-                "left": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_left_pt(i, bidi, unit)).unwrap_or(0.0),
-                "right": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_right_pt(i, bidi, unit)).unwrap_or(0.0),
-                "first": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_first_line_pt(i, unit, true)).unwrap_or(0.0),
-            });
             let _ = Reflect::set(
                 &result,
                 &JsValue::from_str("rulerIndent"),
-                &values
-                    .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                    .unwrap_or(JsValue::NULL),
+                &resolved_ruler_indent(&effective_para, unit),
             );
         }
         let _ = Reflect::set(&result, &JsValue::from_str("run"), &run_js);
@@ -18424,7 +18499,7 @@ impl OffscreenDocumentView {
         })
     }
 
-    /// Replaces explicit tab stops on the selected body paragraphs.
+    /// Replaces explicit tab stops on the selected body or active story paragraph.
     #[wasm_bindgen(js_name = "setParagraphTabs")]
     pub fn set_paragraph_tabs(&self, tabs: JsValue) -> Result<JsValue, JsValue> {
         let tabs: Vec<jade_docx_headless_api::HeadlessDirectTabStop> =

@@ -333,38 +333,47 @@ pub(crate) fn sync_paragraph_tabs_xml(
 ) {
     let tabs = tabs.to_vec();
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        remove_paragraph_property_child(paragraph_properties, "w:tabs");
-        let children: Vec<XmlNode> = tabs
-            .iter()
-            .filter_map(|tab| {
-                let position = tab.position?;
-                let mut attributes = vec![XmlAttribute {
-                    name: "w:val".to_string(),
-                    value: tab.kind.clone().unwrap_or_else(|| "left".to_string()),
-                }];
-                if let Some(leader) = tab.leader.as_deref().filter(|leader| *leader != "none") {
-                    attributes.push(XmlAttribute {
-                        name: "w:leader".to_string(),
-                        value: leader.to_string(),
-                    });
-                }
-                attributes.push(XmlAttribute {
-                    name: "w:pos".to_string(),
-                    value: ((position * 20.0).round() as i32).to_string(),
-                });
-                Some(XmlNode::Element(raw.create_element(
-                    "w:tab",
-                    attributes,
-                    Vec::new(),
-                )))
-            })
-            .collect();
-        if children.is_empty() {
-            return;
-        }
-        let child = raw.create_element_preserving_child_ids("w:tabs", Vec::new(), children);
-        insert_paragraph_property_child(paragraph_properties, child);
+        set_paragraph_tabs_xml(raw, paragraph_properties, &tabs);
     });
+}
+
+/// Writes tab stops into either a body or header/footer paragraph's properties.
+pub(crate) fn set_paragraph_tabs_xml(
+    raw: &mut DocxXmlDocument,
+    paragraph_properties: &mut XmlElement,
+    tabs: &[TabStop],
+) {
+    remove_paragraph_property_child(paragraph_properties, "w:tabs");
+    let children: Vec<XmlNode> = tabs
+        .iter()
+        .filter_map(|tab| {
+            let position = tab.position?;
+            let mut attributes = vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: tab.kind.clone().unwrap_or_else(|| "left".to_string()),
+            }];
+            if let Some(leader) = tab.leader.as_deref().filter(|leader| *leader != "none") {
+                attributes.push(XmlAttribute {
+                    name: "w:leader".to_string(),
+                    value: leader.to_string(),
+                });
+            }
+            attributes.push(XmlAttribute {
+                name: "w:pos".to_string(),
+                value: ((position * 20.0).round() as i32).to_string(),
+            });
+            Some(XmlNode::Element(raw.create_element(
+                "w:tab",
+                attributes,
+                Vec::new(),
+            )))
+        })
+        .collect();
+    if children.is_empty() {
+        return;
+    }
+    let child = raw.create_element_preserving_child_ids("w:tabs", Vec::new(), children);
+    insert_paragraph_property_child(paragraph_properties, child);
 }
 
 /// The paragraph's `<w:pPr>`, so an undo can put it back exactly. It is read
