@@ -235,35 +235,43 @@ pub(crate) fn sync_paragraph_shading_xml(
 ) {
     let shading = shading.cloned();
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        remove_paragraph_property_child(paragraph_properties, "w:shd");
-        let Some(shading) = shading.as_ref() else {
-            return;
-        };
-        let mut attributes = Vec::new();
-        if let Some(value) = shading.val.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:val".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(color) = shading.color.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:color".to_string(),
-                value: color.trim_start_matches('#').to_string(),
-            });
-        }
-        if let Some(fill) = shading.fill.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:fill".to_string(),
-                value: fill.trim_start_matches('#').to_string(),
-            });
-        }
-        if attributes.is_empty() {
-            return;
-        }
-        let child = raw.create_element("w:shd", attributes, Vec::new());
-        insert_paragraph_property_child(paragraph_properties, child);
+        set_paragraph_shading_xml(raw, paragraph_properties, shading.as_ref());
     });
+}
+
+pub(crate) fn set_paragraph_shading_xml(
+    raw: &mut DocxXmlDocument,
+    paragraph_properties: &mut XmlElement,
+    shading: Option<&Shading>,
+) {
+    remove_paragraph_property_child(paragraph_properties, "w:shd");
+    let Some(shading) = shading else {
+        return;
+    };
+    let mut attributes = Vec::new();
+    if let Some(value) = shading.val.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:val".to_string(),
+            value: value.to_string(),
+        });
+    }
+    if let Some(color) = shading.color.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:color".to_string(),
+            value: color.trim_start_matches('#').to_string(),
+        });
+    }
+    if let Some(fill) = shading.fill.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:fill".to_string(),
+            value: fill.trim_start_matches('#').to_string(),
+        });
+    }
+    if attributes.is_empty() {
+        return;
+    }
+    let child = raw.create_element("w:shd", attributes, Vec::new());
+    insert_paragraph_property_child(paragraph_properties, child);
 }
 
 pub(crate) fn sync_paragraph_borders_xml(
