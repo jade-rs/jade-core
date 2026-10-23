@@ -12481,6 +12481,11 @@ where
         Some((min_y, max_y, rect))
     }
 
+    pub(crate) fn caret_page_index(&self) -> Option<usize> {
+        self.caret_metrics()
+            .map(|metrics| self.page_for_y(metrics.absolute_top))
+    }
+
     /// Determines which page a Y coordinate falls on.
     fn page_for_y(&self, y: f64) -> usize {
         if self.pageless_mode {

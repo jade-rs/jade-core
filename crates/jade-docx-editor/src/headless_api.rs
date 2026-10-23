@@ -2527,6 +2527,25 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetParagraphTabs {
+                start_paragraph,
+                end_paragraph,
+                tabs,
+            } => {
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            crate::commands::set_paragraph_tabs::SetParagraphTabsCommand::new(
+                                *start_paragraph,
+                                *end_paragraph,
+                                tabs.clone(),
+                            ),
+                        ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetParagraphIndent {
                 start_paragraph,
                 end_paragraph,

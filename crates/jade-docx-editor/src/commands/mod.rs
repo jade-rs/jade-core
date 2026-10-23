@@ -90,6 +90,7 @@ pub mod set_paragraph_metrics;
 pub mod set_paragraph_options;
 pub mod set_paragraph_pagination;
 pub mod set_paragraph_style;
+pub mod set_paragraph_tabs;
 pub mod set_paragraph_visuals;
 pub mod set_ruby;
 pub mod set_run_format;
