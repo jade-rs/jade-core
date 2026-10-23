@@ -9,6 +9,7 @@ use super::paragraph_property_sync::{
     restore_paragraph_properties_xml, snapshot_paragraph_properties_xml,
     sync_reset_paragraph_formatting_xml,
 };
+use super::set_numbering::tracked_change_supplies_numbering;
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::ParagraphProperties;
 use crate::word_document::WordDocument;
@@ -115,16 +116,29 @@ impl Command for ResetParagraphFormattingCommand {
                 .document
                 .inherited_paragraph_properties(paragraph_index, style.as_deref())
                 .unwrap_or_default();
-            // Without a `w:ind` of its own, a list paragraph takes its left
+            // Without a `w:ind` of its own, a paragraph its own `w:pPr` puts
+            // in a list (directly, or through a pending change) takes its left
             // and hanging indent from the list level, not its style, as a
             // load resolves it. Reset gave it the style's: List Paragraph's
-            // 36pt on screen, the level's indent once reopened.
-            let numbered = self
-                .previous_properties
-                .last()
-                .and_then(|(_, props)| props.as_ref())
-                .and_then(|props| props.numbering.as_ref())
-                .is_some_and(|numbering| numbering.list_id().is_some());
+            // 36pt on screen, the level's indent once reopened. A style that
+            // numbers its paragraphs keeps its own indent.
+            let listed_by_paragraph = ctx
+                .document
+                .paragraph_declared_property_tags(paragraph_index)
+                .iter()
+                .any(|tag| tag == "w:numPr")
+                || tracked_change_supplies_numbering(
+                    self.previous_raw_properties
+                        .last()
+                        .and_then(|(_, raw)| raw.as_ref()),
+                );
+            let numbered = listed_by_paragraph
+                && self
+                    .previous_properties
+                    .last()
+                    .and_then(|(_, props)| props.as_ref())
+                    .and_then(|props| props.numbering.as_ref())
+                    .is_some_and(|numbering| numbering.list_id().is_some());
             if numbered {
                 inherited.indent = inherited
                     .indent
@@ -245,6 +259,35 @@ mod tests {
         assert_eq!(indent(&document), indent(&reloaded));
     }
 
+    /// A style that numbers its paragraphs keeps its own indent: Heading 3
+    /// in numbering-by-style.docx is numbered by the style and indented
+    /// 26.25pt by it, which a load keeps. Reset took that indent away.
+    #[test]
+    fn a_paragraph_its_style_numbers_keeps_the_styles_indent() {
+        let data = std::fs::read(fixture_path("numbering-by-style.docx")).expect("read fixture");
+        let mut document = load_fixture("numbering-by-style.docx");
+        let loaded =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        let indent = |document: &WordDocument| {
+            document
+                .paragraph(1)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.indent.clone())
+        };
+        reset(&mut document, 1, 1);
+        assert_eq!(
+            indent(&document),
+            indent(&loaded),
+            "nothing direct to reset"
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &document.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(indent(&document), indent(&reloaded));
+    }
+
     #[test]
     fn strips_direct_formatting_but_keeps_style_and_numbering() {
         let mut document = load_fixture("hello.docx");
@@ -282,14 +325,9 @@ mod tests {
             .inherited_paragraph_properties(0, style_before.as_deref())
             .expect("styles");
         assert_eq!(props.alignment, inherited.alignment);
-        // A list paragraph's left and hanging indent come from its level.
-        assert_eq!(
-            props.indent,
-            inherited
-                .indent
-                .as_ref()
-                .map(WordDocument::right_indent_only)
-        );
+        // The numbering is the model's alone, with no `w:numPr` in the file
+        // to put the paragraph in a list on load: its indent is the style's.
+        assert_eq!(props.indent, inherited.indent);
         assert_eq!(props.spacing, inherited.spacing);
         assert_ne!(props.alignment.as_deref(), Some("center"));
         assert_eq!(
