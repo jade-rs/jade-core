@@ -34,6 +34,16 @@ impl OffscreenDocumentView {
     fn set_ink(&self, specs: Vec<InkDrawingSpec>) -> Result<JsValue, JsValue> {
         self.apply_document_command(move |_| Box::new(SetInkDrawingsCommand::new(specs)))
     }
+
+    fn append_ink(&self, traces: Vec<InkTrace>) -> Result<JsValue, JsValue> {
+        let (start, _) = self.current_selection().normalized();
+        let mut specs = Self::keep_ink(&self.ink_drawing_list(), None);
+        specs.push(InkDrawingSpec::New {
+            paragraph_index: start.paragraph,
+            traces,
+        });
+        self.set_ink(specs)
+    }
 }
 
 #[wasm_bindgen]
@@ -57,13 +67,37 @@ impl OffscreenDocumentView {
         if traces.iter().all(|trace| trace.points.is_empty()) {
             return Err(JsValue::from_str("ink needs at least one stroke"));
         }
-        let (start, _) = self.current_selection().normalized();
-        let mut specs = Self::keep_ink(&self.ink_drawing_list(), None);
-        specs.push(InkDrawingSpec::New {
-            paragraph_index: start.paragraph,
-            traces,
-        });
-        self.set_ink(specs)
+        self.append_ink(traces)
+    }
+
+    /// Draws a page-local stroke, recognising shapes before committing ink.
+    /// A recognised shape or the original brush/trace is one undo step.
+    #[wasm_bindgen(js_name = drawInkStroke)]
+    pub fn draw_ink_stroke(&self, page: usize, trace: JsValue) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::{recognize_shape, InkTool, Pen, WordInkTools};
+        let trace: InkTrace = serde_wasm_bindgen::from_value(trace)
+            .map_err(|error| JsValue::from_str(&format!("invalid ink: {error}")))?;
+        if trace.points.is_empty()
+            || trace
+                .points
+                .iter()
+                .any(|&(x, y)| !x.is_finite() || !y.is_finite())
+        {
+            return Err(JsValue::from_str("ink needs finite stroke points"));
+        }
+        if trace.brush.tool != InkTool::Highlighter {
+            if let Some(shape) = recognize_shape(&trace.points) {
+                let pen = Pen::new(
+                    trace.brush.tool,
+                    &trace.brush.color,
+                    trace.brush.width_px * 25.4 / 96.0,
+                );
+                return self.run_word_session("word_draw_ink_shape", move |session| {
+                    session.insert_ink_shape(page, shape, &pen)
+                });
+            }
+        }
+        self.append_ink(vec![trace])
     }
 
     /// Erases ink drawing `index` (as `inkDrawings` lists them).
