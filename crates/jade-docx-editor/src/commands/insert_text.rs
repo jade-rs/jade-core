@@ -495,8 +495,14 @@ impl InsertTextCommand {
             // pushed some together, re-syncing the restored runs cannot tell
             // which side of a marker the text goes back on, and the comment
             // lost or gained text after an undo; journal this paragraph's XML.
+            // A replaced selection is journaled too: it can empty a simple
+            // field or a link down to one run, and re-syncing the restored runs
+            // into it left the replacement in the field and wrote the old text
+            // again after it. Typing at a caret keeps the cheaper re-sync.
             // (Note paragraphs keep their XML in their own part.)
-            let anchored = if commented_body_paragraph(ctx, start.paragraph) {
+            let replaces_selection = start_offset < end_offset
+                && !ctx.document.is_note_paragraph_surface(start.paragraph);
+            let anchored = if replaces_selection || commented_body_paragraph(ctx, start.paragraph) {
                 Some(ParagraphRangeUndo::begin(
                     ctx,
                     Some((start.paragraph, start.paragraph)),
