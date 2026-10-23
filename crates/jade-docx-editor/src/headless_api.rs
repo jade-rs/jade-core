@@ -13543,6 +13543,70 @@ mod tests {
     }
 
     #[test]
+    fn a_run_given_a_latin_font_takes_its_new_paragraphs_east_asian_font() {
+        // numbering-by-style.docx: Arial set on three paragraphs names the
+        // runs' Latin fonts only. Replacing a range across them joins the
+        // last paragraph's tail to the first, whose style gives another East
+        // Asian font; the joined runs kept their old paragraph's ＭＳ 明朝,
+        // and a reload gave them ＭＳ ゴシック.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/numbering-by-style.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 2,
+                        end_offset: 90,
+                        font_family: "Arial".to_string(),
+                    },
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph: 0,
+                        start_offset: 9,
+                        end_paragraph: 2,
+                        end_offset: 18,
+                        text: "あ".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let fonts = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    let fonts = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.fonts.as_ref());
+                    (
+                        run.text.clone(),
+                        fonts.and_then(|fonts| fonts.ascii.as_deref().map(str::to_string)),
+                        fonts.and_then(|fonts| fonts.east_asia.as_deref().map(str::to_string)),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(fonts(&word_doc), fonts(&reloaded));
+    }
+
+    #[test]
     fn a_font_the_run_names_wins_over_its_styles_theme_font() {
         // numbering-restart.docx sets "AAAAA" in ＭＳ 明朝 under Heading 2,
         // whose w:asciiTheme is the theme's major font. Filling the run's
