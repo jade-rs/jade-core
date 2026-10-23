@@ -1350,6 +1350,12 @@ impl RowResizeState {
     }
 }
 
+#[derive(Clone, Copy)]
+struct FormatPreviewState {
+    revision: u64,
+    selection: Option<SelectionRange>,
+}
+
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct OffscreenDocumentView {
@@ -1360,8 +1366,8 @@ pub struct OffscreenDocumentView {
     /// a live preview (its history entry is retracted before the next one).
     table_resize_preview: Rc<Cell<bool>>,
     /// The live preview of a gallery choice under the pointer: the history
-    /// revision its provisional edit left, taken back when the pointer goes.
-    style_preview: Rc<Cell<Option<u64>>>,
+    /// revision its provisional edit left and any selection to restore.
+    style_preview: Rc<Cell<Option<FormatPreviewState>>>,
     resize_debug: Rc<RefCell<Option<String>>>,
     pending_image_wait: Rc<RefCell<Option<Promise>>>,
 }
@@ -7295,6 +7301,15 @@ impl OffscreenDocumentView {
         &self,
         action: HistoryAction,
     ) -> Result<JsValue, JsValue> {
+        self.perform_history_action_with_selection_async(action, None)
+            .await
+    }
+
+    async fn perform_history_action_with_selection_async(
+        &self,
+        action: HistoryAction,
+        restore_selection: Option<SelectionRange>,
+    ) -> Result<JsValue, JsValue> {
         if let Some(result) = self.perform_hf_history_action_async(action).await? {
             return Ok(result);
         }
@@ -7374,6 +7389,9 @@ impl OffscreenDocumentView {
                     None
                 }
                 Some(footprint) => {
+                    if let Some(selection) = restore_selection {
+                        state_mut.selection = Some(selection);
+                    }
                     state_mut.paged_images.clear();
                     let options = state_mut.options.clone();
                     let numbering_part = word_doc.numbering_part.clone();
@@ -8721,7 +8739,10 @@ impl OffscreenDocumentView {
             match payload {
                 Ok(payload) => {
                     if revision != before {
-                        view.style_preview.set(Some(revision));
+                        view.style_preview.set(Some(FormatPreviewState {
+                            revision,
+                            selection: None,
+                        }));
                     }
                     Ok(payload)
                 }
@@ -8738,14 +8759,18 @@ impl OffscreenDocumentView {
     pub fn end_style_preview(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
-            let Some(revision) = view.style_preview.replace(None) else {
+            let Some(FormatPreviewState {
+                revision,
+                selection,
+            }) = view.style_preview.replace(None)
+            else {
                 return Ok(JsValue::NULL);
             };
             if view.state.borrow().command_executor.history_revision() != revision {
                 return Ok(JsValue::NULL);
             }
             let payload = view
-                .perform_history_action_async(HistoryAction::Undo)
+                .perform_history_action_with_selection_async(HistoryAction::Undo, selection)
                 .await?;
             view.state
                 .borrow_mut()
