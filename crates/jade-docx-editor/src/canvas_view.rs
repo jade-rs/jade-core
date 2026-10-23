@@ -8664,9 +8664,12 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen]
     pub fn undo(&self) -> js_sys::Promise {
-        self.style_preview.set(None);
         let view = self.clone();
         future_to_promise(async move {
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            if !view.history_flags().0 && ended.is_object() {
+                return Ok(ended);
+            }
             let protection_history = {
                 let state = view.state.borrow();
                 state.command_executor.next_undo_name() == Some("set_document_protection")
@@ -8701,14 +8704,25 @@ impl OffscreenDocumentView {
                 return Ok(JsValue::NULL);
             }
             let ended = JsFuture::from(view.end_style_preview()).await?;
+            let before = {
+                let mut state = view.state.borrow_mut();
+                state.command_executor.set_provisional_recording(true);
+                state.command_executor.history_revision()
+            };
             let payload = view.run_word_session("word_style_preview", move |session| {
                 use crate::word::styles::WordStyles;
                 session.apply_style(&id)
             });
+            let revision = {
+                let mut state = view.state.borrow_mut();
+                state.command_executor.set_provisional_recording(false);
+                state.command_executor.history_revision()
+            };
             match payload {
                 Ok(payload) => {
-                    let revision = view.state.borrow().command_executor.history_revision();
-                    view.style_preview.set(Some(revision));
+                    if revision != before {
+                        view.style_preview.set(Some(revision));
+                    }
                     Ok(payload)
                 }
                 // A style that cannot go on the selection previews nothing.
@@ -8737,6 +8751,7 @@ impl OffscreenDocumentView {
                 .borrow_mut()
                 .command_executor
                 .discard_newest_redo();
+            Self::write_history_flags(payload.unchecked_ref(), view.history_flags())?;
             Ok(payload)
         })
     }
@@ -8745,6 +8760,10 @@ impl OffscreenDocumentView {
     pub fn redo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            if !view.history_flags().1 && ended.is_object() {
+                return Ok(ended);
+            }
             let protection_history = {
                 let state = view.state.borrow();
                 state.command_executor.next_redo_name() == Some("set_document_protection")
