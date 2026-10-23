@@ -1589,6 +1589,30 @@ mod tests {
     }
 
     #[test]
+    fn native_brush_bounds_preserve_exact_translation() {
+        let stroke = PageStroke {
+            page: 0,
+            trace: InkTrace {
+                points: vec![(10.0, 10.0), (20.0, 20.0)],
+                brush: InkBrush {
+                    width_px: 2.0,
+                    height_px: 12.0,
+                    ..InkBrush::default()
+                },
+            },
+            source: None,
+        };
+        let from = stroke.bounds();
+        assert!(from.0 < 10.0 && from.1 < 10.0 && from.2 > 20.0 && from.3 > 20.0);
+        let moved = transform_stroke(
+            &stroke,
+            from,
+            (from.0 + 1.0, from.1 + 10.0, from.2 + 1.0, from.3 + 10.0),
+        );
+        assert_eq!(moved.trace.points, vec![(11.0, 20.0), (21.0, 30.0)]);
+    }
+
+    #[test]
     fn lasso_and_transform_math() {
         let square = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)];
         assert!(point_in_polygon((5.0, 5.0), &square));
