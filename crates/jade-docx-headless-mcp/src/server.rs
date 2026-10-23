@@ -1355,6 +1355,8 @@ enum ArgType {
     SectionLayoutPatch,
     /// `[{ "position": pt, "alignment"?, "leader"? }, …]`
     TabStopList,
+    /// Explicit tab stops, including clears of inherited style stops.
+    DirectTabStopList,
     /// `{ top?, bottom?, left?, right?, between? }`, each
     /// `{ style, width, color?, space? }`.
     ParagraphBorderBox,
@@ -1475,6 +1477,19 @@ impl ArgType {
                         "leader": { "type": "string", "description": "none, dot, hyphen, underscore, middleDot or heavy." }
                     },
                     "required": ["position"]
+                }
+            }),
+            ArgType::DirectTabStopList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "position": { "type": "number", "minimum": 0, "description": "From the text margin, in points." },
+                        "kind": { "type": "string", "enum": ["left", "center", "right", "decimal", "bar", "clear"], "description": "Tab alignment, bar, or clear to suppress an inherited stop." },
+                        "leader": { "type": ["string", "null"], "enum": ["none", "dot", "hyphen", "underscore", "heavy", "middleDot", null], "description": "Optional leader pattern; null removes the explicit leader." }
+                    },
+                    "required": ["position", "kind"],
+                    "additionalProperties": false
                 }
             }),
             ArgType::ParagraphBorderBox => json!({ "type": "object" }),
@@ -2188,6 +2203,11 @@ const COMMANDS: &[Variant] = &[
                 "Word's 特殊インデント「なし」: remove any first-line or hanging indent (character twins included) while keeping the left/right edges.",
             ),
         ],
+    ),
+    paragraphs(
+        "set_paragraph_tabs",
+        "Replace explicit tab stops on a paragraph range. Include clear stops at inherited tab positions that must stay removed. An empty array removes direct stops but leaves inherited style stops effective.",
+        &[req("tabs", ArgType::DirectTabStopList, "Explicit tab stops in points, including inherited-stop clears.")],
     ),
     paragraphs(
         "adjust_paragraph_indent",
@@ -5910,6 +5930,9 @@ mod tests {
             }),
             ArgType::TabStopList => {
                 json!([{ "position": 36.0, "alignment": "left", "leader": "dot" }])
+            }
+            ArgType::DirectTabStopList => {
+                json!([{ "position": 36.0, "kind": "left", "leader": "dot" }])
             }
             ArgType::ParagraphBorderBox => json!({ "top": { "style": "single", "width": 0.5 } }),
             ArgType::NullableParagraphShading => json!({ "fill": "#FFFF00" }),
