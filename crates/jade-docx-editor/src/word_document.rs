@@ -18691,12 +18691,44 @@ impl WordDocument {
             .ok_or_else(|| format!("missing {part_path}"))?;
         let xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
         let (_, run_ids) = Self::hf_paragraph_run_ids(&xml_doc, paragraph_index)?;
-        Ok(Self::hf_run_state_of(&xml_doc, &run_ids))
+        Ok(Self::hf_run_state_of(
+            &xml_doc,
+            &run_ids,
+            self.hf_mapped_paragraph(role, variant, paragraph_index, &xml_doc)
+                .as_ref(),
+            self.styles_part.as_ref(),
+        ))
+    }
+
+    fn hf_mapped_paragraph(
+        &self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+        xml: &DocxXmlDocument,
+    ) -> Option<Paragraph> {
+        let reference = self.active_hf_reference(role, variant)?;
+        let mut body = self.header_footer_body_for_reference(&reference)?;
+        if body
+            .elements
+            .iter()
+            .take(paragraph_index + 1)
+            .any(|block| block.as_paragraph().is_none())
+        {
+            return None;
+        }
+        attach_block_xml_ids(&mut body.elements, xml.root(), xml);
+        body.elements.get(paragraph_index)?.as_paragraph().cloned()
     }
 
     /// Character formatting of the text runs among `run_ids`: what they all
     /// share, and the first run's font.
-    fn hf_run_state_of(xml_doc: &DocxXmlDocument, run_ids: &[XmlNodeId]) -> HfRunState {
+    fn hf_run_state_of(
+        xml_doc: &DocxXmlDocument,
+        run_ids: &[XmlNodeId],
+        paragraph: Option<&Paragraph>,
+        styles: Option<&StylesPart>,
+    ) -> HfRunState {
         let mut runs: Vec<&XmlElement> = run_ids
             .iter()
             .filter_map(|id| xml_doc.element(*id))
@@ -18726,49 +18758,95 @@ impl WordDocument {
             ..HfRunState::default()
         };
         for (index, run) in runs.iter().enumerate() {
-            let properties = Self::run_properties_element(run);
-            state.all_bold &= Self::run_property_child_enabled(properties, "w:b");
-            state.all_italic &= Self::run_property_child_enabled(properties, "w:i");
-            // Unlike the on/off properties, w:u defaults to none without w:val.
-            let underline_kind = Self::run_property_child_value(properties, "w:u")
-                .filter(|_| Self::run_property_child_enabled(properties, "w:u"));
+            let direct = Self::run_properties_element(run);
+            let effective = paragraph
+                .and_then(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .find(|model| model.node_id == Some(run.id))
+                })
+                .and_then(|model| model.properties.as_ref());
+            let resolved = paragraph.zip(styles).and_then(|(paragraph, styles)| {
+                styles.resolve_effective_run_properties(
+                    paragraph
+                        .properties
+                        .as_ref()
+                        .and_then(|p| p.style.as_deref()),
+                    effective,
+                )
+            });
+            let effective = resolved.as_ref().or(effective);
+            let enabled = |tag: &str, value: Option<bool>| {
+                value.unwrap_or_else(|| Self::run_property_child_enabled(direct, tag))
+            };
+            state.all_bold &= enabled("w:b", effective.and_then(|p| p.bold));
+            state.all_italic &= enabled("w:i", effective.and_then(|p| p.italic));
+            let underline_kind = match effective.and_then(|p| p.underline) {
+                Some(true) => Some(
+                    effective
+                        .and_then(|p| p.underline_kind.as_deref())
+                        .unwrap_or("single")
+                        .to_string(),
+                ),
+                Some(false) => None,
+                None => Self::run_property_child_value(direct, "w:u")
+                    .filter(|_| Self::run_property_child_enabled(direct, "w:u")),
+            };
             state.all_underline &= underline_kind.is_some();
             if index == 0 {
                 state.underline_kind = underline_kind;
             } else if state.underline_kind != underline_kind {
                 state.underline_kind = None;
             }
-            let double_strike = Self::run_property_child_enabled(properties, "w:dstrike");
+            let double_strike = enabled("w:dstrike", effective.and_then(|p| p.double_strike));
             state.all_strike &=
-                Self::run_property_child_enabled(properties, "w:strike") || double_strike;
+                enabled("w:strike", effective.and_then(|p| p.strike)) || double_strike;
             state.all_double_strike &= double_strike;
-            let baseline = Self::run_property_child_value(properties, "w:vertAlign");
+            let baseline = effective
+                .and_then(|p| p.baseline.as_deref())
+                .map(str::to_string)
+                .or_else(|| Self::run_property_child_value(direct, "w:vertAlign"));
             state.all_superscript &= baseline.as_deref() == Some("superscript");
             state.all_subscript &= baseline.as_deref() == Some("subscript");
             if state.font_size.is_none() {
-                state.font_size = Self::run_property_child_value(properties, "w:sz")
-                    .and_then(|value| value.parse::<f32>().ok())
-                    .map(|half_points| half_points / 2.0);
-            }
-            if state.font_family.is_none() {
-                state.font_family = properties.and_then(|properties| {
-                    properties.children.iter().find_map(|child| match child {
-                        XmlNode::Element(element) if element.name == "w:rFonts" => element
-                            .attributes
-                            .iter()
-                            .find(|attribute| {
-                                attribute.name == "w:ascii" || attribute.name == "w:eastAsia"
-                            })
-                            .map(|attribute| attribute.value.clone()),
-                        _ => None,
-                    })
+                state.font_size = effective.and_then(|p| p.font_size).or_else(|| {
+                    Self::run_property_child_value(direct, "w:sz")
+                        .and_then(|value| value.parse::<f32>().ok())
+                        .map(|size| size / 2.0)
                 });
             }
+            if state.font_family.is_none() {
+                state.font_family = effective
+                    .and_then(|p| p.font_family.as_deref())
+                    .map(str::to_string)
+                    .or_else(|| {
+                        direct.and_then(|properties| {
+                            properties.children.iter().find_map(|child| match child {
+                                XmlNode::Element(element) if element.name == "w:rFonts" => element
+                                    .attributes
+                                    .iter()
+                                    .find(|attribute| {
+                                        attribute.name == "w:ascii"
+                                            || attribute.name == "w:eastAsia"
+                                    })
+                                    .map(|attribute| attribute.value.clone()),
+                                _ => None,
+                            })
+                        })
+                    });
+            }
             if state.highlight.is_none() {
-                state.highlight = Self::run_property_child_value(properties, "w:highlight");
+                state.highlight = effective
+                    .and_then(|p| p.highlight.as_deref())
+                    .map(str::to_string)
+                    .or_else(|| Self::run_property_child_value(direct, "w:highlight"));
             }
             if state.color.is_none() {
-                state.color = Self::run_property_child_value(properties, "w:color")
+                state.color = effective
+                    .and_then(|p| p.color.as_deref())
+                    .map(str::to_string)
+                    .or_else(|| Self::run_property_child_value(direct, "w:color"))
                     .map(|value| format!("#{}", value.trim_start_matches('#')));
             }
         }
@@ -18800,7 +18878,13 @@ impl WordDocument {
             .filter(|run| run.start < end && run.end > start)
             .map(|run| run.id)
             .collect();
-        Ok(Some(Self::hf_run_state_of(&xml_doc, &ids)))
+        Ok(Some(Self::hf_run_state_of(
+            &xml_doc,
+            &ids,
+            self.hf_mapped_paragraph(role, variant, paragraph_index, &xml_doc)
+                .as_ref(),
+            self.styles_part.as_ref(),
+        )))
     }
 
     /// Applies `format` to every run of header/footer line `paragraph_index`
@@ -19111,6 +19195,82 @@ impl WordDocument {
                 .clone()
                 .unwrap_or_default(),
         )
+    }
+
+    /// Reuse the body style cascade against the story's own lossless tree.
+    /// Only style definitions and this story are committed back to the document.
+    pub(crate) fn set_hf_paragraph_style(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+        style_id: Option<String>,
+    ) -> Result<bool, String> {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        if self
+            .hf_ruler_paragraph(role, variant, paragraph_index)
+            .is_none()
+        {
+            return Ok(false);
+        }
+        self.ensure_hf_part_for_edit(role, variant)?;
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| format!("missing {path}"))?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
+            .map_err(|error| error.to_string())?;
+        let raw = raw.map_err(|error| error.to_string())?;
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles);
+            Self::apply_style_numbering_to_document(&mut parsed, styles);
+            Self::apply_run_font_defaults_to_document(&mut parsed, styles);
+        }
+        let mut scratch = self.clone();
+        scratch.document = Some(Rc::new(parsed));
+        scratch.raw_document = Some(raw);
+        scratch.rebuild_paragraph_surfaces();
+        crate::headless_api::apply_headless_commands_to_document(
+            &mut scratch,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: paragraph_index,
+                    end_paragraph: paragraph_index,
+                    style_id,
+                }],
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        let updated = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        let before = DocxXmlDocument::parse(&existing)
+            .map_err(|error| error.to_string())?
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        let styles_path = scratch.styles_part_path();
+        let styles_changed = styles_path.as_ref().is_some_and(|path| {
+            scratch.read_xml_part_content(path) != self.read_xml_part_content(path)
+        });
+        if before == updated && !styles_changed {
+            return Ok(false);
+        }
+        if let Some(styles_path) = styles_path {
+            if let Some(part) = scratch.parts.get(&styles_path) {
+                self.parts.insert(styles_path, part.clone());
+            }
+        }
+        self.styles_part = scratch.styles_part;
+        self.upsert_xml_part_content(&path, updated);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
     }
 
     /// Apply the ordinary paragraph commands to the story's direct properties,
@@ -43971,10 +44131,10 @@ mod tests {
         )
         .unwrap();
         let (_, runs) = WordDocument::hf_paragraph_run_ids(&xml, 0).unwrap();
-        let default = WordDocument::hf_run_state_of(&xml, &runs[..1]);
+        let default = WordDocument::hf_run_state_of(&xml, &runs[..1], None, None);
         assert!(!default.all_underline);
         assert!(default.underline_kind.is_none());
-        let mixed = WordDocument::hf_run_state_of(&xml, &runs[1..]);
+        let mixed = WordDocument::hf_run_state_of(&xml, &runs[1..], None, None);
         assert!(mixed.all_underline);
         assert!(mixed.underline_kind.is_none());
     }
@@ -44207,6 +44367,117 @@ mod tests {
                     .read_xml_part_content(&path)
                     .unwrap()
                     .contains("w:instr=\"PAGE\""));
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_styles_reuse_cascade_preserve_fields_and_roundtrip() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                let styles_path = doc.styles_part_path().unwrap();
+                let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:sz w:val="22"/><w:b w:val="0"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="AuthoredHeading"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:jc w:val="center"/></w:pPr><w:rPr><w:sz w:val="36"/><w:b/></w:rPr></w:style></w:styles>"#;
+                doc.upsert_xml_part_content(&styles_path, styles.to_string());
+                doc.styles_part = Some(StylesPart::from_xml(styles).unwrap());
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr w:custom="keep"><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:sz w:val="52"/><w:b w:val="0"/><w:i/></w:rPr><w:t>Styled</w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                assert!(doc
+                    .set_hf_paragraph_style(role, variant, 0, Some("Heading1".into()))
+                    .unwrap());
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains("w:val=\"AuthoredHeading\""));
+                assert!(!xml.contains("w:val=\"52\""));
+                for preserved in [
+                    "w:custom=\"keep\"",
+                    "w:after=\"120\"",
+                    "<w:i/>",
+                    "w:instr=\"PAGE\"",
+                    ">Tail<",
+                ] {
+                    assert!(xml.contains(preserved), "{preserved}: {xml}");
+                }
+                let run = doc.hf_paragraph_run_state(role, variant, 0).unwrap();
+                assert_eq!(run.font_size, Some(18.0));
+                assert!(
+                    run.all_bold,
+                    "{role:?} {variant:?}: {run:?} {:?}: {xml}",
+                    doc.hf_ruler_paragraph(role, variant, 0)
+                );
+                assert!(!doc
+                    .set_hf_paragraph_style(role, variant, 0, Some("Heading1".into()))
+                    .unwrap());
+                let exported = doc.export_docx().unwrap();
+                let mut reopened =
+                    futures::executor::block_on(WordDocument::load(&exported, &Options::default()))
+                        .unwrap();
+                assert_eq!(
+                    reopened
+                        .hf_paragraph_run_state(role, variant, 0)
+                        .unwrap()
+                        .font_size,
+                    Some(18.0)
+                );
+                assert!(reopened
+                    .set_hf_paragraph_style(role, variant, 0, None)
+                    .unwrap());
+                let normal = reopened.hf_paragraph_run_state(role, variant, 0).unwrap();
+                assert_eq!(normal.font_size, Some(11.0));
+                assert!(!normal.all_bold);
+                // The story can already reference a built-in whose definition
+                // is missing. Creating only that definition is still an edit.
+                let missing = reopened.read_xml_part_content(&path).unwrap().replacen(
+                    "<w:pPr w:custom=\"keep\">",
+                    "<w:pPr w:custom=\"keep\"><w:pStyle w:val=\"Title\"/>",
+                    1,
+                );
+                assert!(missing.contains("w:val=\"Title\""));
+                reopened.upsert_xml_part_content(&path, missing.clone());
+                reopened
+                    .refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                assert!(reopened
+                    .set_hf_paragraph_style(role, variant, 0, Some("Title".into()))
+                    .unwrap());
+                assert_eq!(reopened.read_xml_part_content(&path).unwrap(), missing);
+                assert!(reopened
+                    .styles_part
+                    .as_ref()
+                    .unwrap()
+                    .resolve_paragraph_style_id("Title")
+                    .is_some());
+                let exported = reopened.export_docx().unwrap();
+                let restored =
+                    futures::executor::block_on(WordDocument::load(&exported, &Options::default()))
+                        .unwrap();
+                assert!(restored
+                    .styles_part
+                    .as_ref()
+                    .unwrap()
+                    .resolve_paragraph_style_id("Title")
+                    .is_some());
+                assert_eq!(
+                    restored.read_xml_part_content("word/document.xml").unwrap(),
+                    body
+                );
             }
         }
     }
