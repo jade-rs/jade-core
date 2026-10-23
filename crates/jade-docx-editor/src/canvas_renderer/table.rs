@@ -3096,6 +3096,12 @@ where
             );
             if !paragraph_indices.is_empty() {
                 let layout = CellLayout {
+                    text_bounds: cell_ink_projection_is_horizontal(cell.text_direction).then_some(
+                        (
+                            cell_rect.x + cell.padding.left,
+                            cell_rect.x + cell_rect.width - cell.padding.right,
+                        ),
+                    ),
                     paragraphs: paragraph_indices,
                     left: cell_rect.x,
                     right: cell_rect.x + cell_rect.width,
@@ -5954,6 +5960,11 @@ where
                 }
                 if !paragraph_indices.is_empty() {
                     self.selection.record_table_cell_fragment(CellLayout {
+                        text_bounds: cell_ink_projection_is_horizontal(cell.text_direction)
+                            .then_some((
+                                cell_rect.x + cell.padding.left,
+                                cell_rect.x + cell_rect.width - cell.padding.right,
+                            )),
                         paragraphs: paragraph_indices,
                         left: cell_rect.x,
                         right: cell_rect.x + cell_rect.width,

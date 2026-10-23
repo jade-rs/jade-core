@@ -16050,9 +16050,8 @@ impl OffscreenDocumentView {
                 ))
             });
         let focus_geometry = focus_geometry.or_else(|| {
-            let surface = word_doc.surface_index_for_body(selection.focus.paragraph)?;
             renderer
-                .paragraph_layout_origin(surface)
+                .paragraph_layout_origin(selection.focus.paragraph)
                 .map(|(page, x, _)| (page, x))
         });
         let Some((page_index, caret_x)) = focus_geometry else {
@@ -16062,17 +16061,35 @@ impl OffscreenDocumentView {
             .section_index_for_paragraph(selection.focus.paragraph)
             .and_then(|index| document.sections.get(index))
             .and_then(|section| section.properties.as_ref());
-        let geometry = jade_docx_layout::text_extract::ruler_geometry(
+        let mut geometry = jade_docx_layout::text_extract::ruler_geometry(
             document,
             section,
             page_index + 1,
             caret_x,
         );
+        let in_cell = renderer
+            .cell_id_for_paragraph(selection.focus.paragraph)
+            .is_some();
+        let cell_bounds = renderer
+            .caret_metrics_at(selection.focus)
+            .and_then(|caret| {
+                renderer
+                    .selection_manager()
+                    .cell_text_bounds_for_paragraph(selection.focus.paragraph, caret.absolute_top)
+            });
+        if let Some((left, right)) = cell_bounds {
+            geometry.text_left = left;
+            geometry.text_right = right;
+        }
         let value = to_value(&geometry).unwrap_or(JsValue::NULL);
-        if let Some(paragraph) = word_doc
-            .surface_index_for_body(selection.focus.paragraph)
-            .and_then(|index| word_doc.paragraph(index))
-        {
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("paragraphEditable"),
+            &JsValue::from_bool(
+                state.editing_mode == EditingMode::Body && (!in_cell || cell_bounds.is_some()),
+            ),
+        );
+        if let Some(paragraph) = word_doc.paragraph(selection.focus.paragraph) {
             let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
                 document,
                 section,
