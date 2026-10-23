@@ -238,10 +238,13 @@ impl OffscreenDocumentView {
                     ..Default::default()
                 }
             }
-            FormatPreviewJs::Color { color, .. } if !color.trim().is_empty() => HfRunFormat {
-                color: Some(color.clone()),
-                ..Default::default()
-            },
+            FormatPreviewJs::Color { color, theme_color } if !color.trim().is_empty() => {
+                HfRunFormat {
+                    color: Some(color.clone()),
+                    theme_color: theme_color.clone(),
+                    ..Default::default()
+                }
+            }
             FormatPreviewJs::Highlight { color } if !color.trim().is_empty() => HfRunFormat {
                 highlight: Some(color.clone()),
                 ..Default::default()
@@ -499,8 +502,30 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = setRunFormat)]
     pub fn set_run_format(&self, format: JsValue) -> Result<JsValue, JsValue> {
         let format: HeadlessRunFormat = from_js_strict(format, "run format")?;
-        if format == HeadlessRunFormat::default() {
+        if self.state.borrow().preview_mode || format == HeadlessRunFormat::default() {
             return Ok(JsValue::NULL);
+        }
+        if !self.body_commands_allowed() {
+            // Theme swatches use setRunFormat, while ordinary story colour
+            // controls already use the story's lossless XML writer.
+            let supported = HeadlessRunFormat {
+                color: format.color.clone(),
+                theme_color: format.theme_color.clone(),
+                ..Default::default()
+            };
+            if format != supported
+                || format
+                    .color
+                    .as_deref()
+                    .is_none_or(|color| color.trim().is_empty())
+            {
+                return Ok(JsValue::NULL);
+            }
+            return self.apply_hf_run_format(HfRunFormat {
+                color: format.color,
+                theme_color: format.theme_color,
+                ..Default::default()
+            });
         }
         let Some(span) = self.character_span() else {
             return Ok(JsValue::NULL);
