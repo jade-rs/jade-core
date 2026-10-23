@@ -19069,6 +19069,27 @@ impl WordDocument {
             .map(|alignment| alignment.to_string())
     }
 
+    /// Ordinary story paragraphs have the same index as the editable line.
+    /// Flattened table lines do not; leave their ruler disabled.
+    pub(crate) fn hf_ruler_paragraph(
+        &self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+    ) -> Option<Paragraph> {
+        let reference = self.active_hf_reference(role, variant)?;
+        let body = self.header_footer_body_for_reference(&reference)?;
+        if body
+            .elements
+            .iter()
+            .take(paragraph_index + 1)
+            .any(|element| element.as_paragraph().is_none())
+        {
+            return None;
+        }
+        body.elements.get(paragraph_index)?.as_paragraph().cloned()
+    }
+
     pub(crate) fn hf_paragraph_properties(
         &self,
         role: HeaderFooterRole,
@@ -19108,6 +19129,7 @@ impl WordDocument {
         let mut before_spacing = false;
         let mut after_spacing = false;
         let mut reset = false;
+        let mut tabs = false;
         for command in commands {
             match command {
                 HeadlessCommand::SetParagraphIndent {
@@ -19161,11 +19183,12 @@ impl WordDocument {
                     before_spacing |= before.is_some();
                     after_spacing |= after.is_some();
                 }
+                HeadlessCommand::SetParagraphTabs { .. } => tabs = true,
                 HeadlessCommand::ResetParagraphFormatting { .. } => reset = true,
                 _ => return Ok(false),
             }
         }
-        if !(indent || line || before_spacing || after_spacing || reset) {
+        if !(indent || line || before_spacing || after_spacing || reset || tabs) {
             return Ok(false);
         }
         self.ensure_hf_part_for_edit(role, variant)?;
@@ -19227,6 +19250,15 @@ impl WordDocument {
                 updated.and_then(|properties| properties.indent.as_ref()),
                 false,
                 false,
+            );
+        }
+        if tabs {
+            crate::commands::paragraph_property_sync::set_paragraph_tabs_xml(
+                &mut raw,
+                &mut properties,
+                updated
+                    .map(|properties| properties.tabs.as_slice())
+                    .unwrap_or_default(),
             );
         }
         if line || before_spacing || after_spacing {
@@ -44162,6 +44194,90 @@ mod tests {
                     .read_xml_part_content(&path)
                     .unwrap()
                     .contains("w:instr=\"PAGE\""));
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_ruler_tabs_preserve_story_and_body_xml() {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessDirectTabStop};
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr w:custom="keep"><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Ruler</w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>Tail</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                assert!(doc.hf_ruler_paragraph(role, variant, 0).is_some());
+                assert!(doc.hf_ruler_paragraph(role, variant, 1).is_none());
+                assert!(doc.hf_ruler_paragraph(role, variant, 2).is_none());
+                let body_before = doc.read_xml_part_content("word/document.xml").unwrap();
+                let before = DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap();
+                let tail = before.split_once("</w:pPr>").unwrap().1;
+                for stops in [
+                    vec![HeadlessDirectTabStop {
+                        position: 36.0,
+                        kind: "right".into(),
+                        leader: Some("dot".into()),
+                    }],
+                    vec![],
+                ] {
+                    assert!(doc
+                        .apply_hf_paragraph_commands(
+                            role,
+                            variant,
+                            0,
+                            &[HeadlessCommand::SetParagraphTabs {
+                                start_paragraph: 0,
+                                end_paragraph: 0,
+                                tabs: stops.clone()
+                            }]
+                        )
+                        .unwrap());
+                    let xml = doc.read_xml_part_content(&path).unwrap();
+                    assert!(xml.ends_with(tail));
+                    assert!(xml.contains("w:custom=\"keep\""));
+                    assert!(xml.contains("w:after=\"120\""));
+                    assert_eq!(xml.contains("<w:tabs>"), !stops.is_empty());
+                    if !stops.is_empty() {
+                        assert!(xml.contains("w:pos=\"720\""));
+                        assert!(xml.contains("w:leader=\"dot\""));
+                    }
+                    assert_eq!(
+                        doc.read_xml_part_content("word/document.xml").unwrap(),
+                        body_before
+                    );
+                    assert!(!doc
+                        .apply_hf_paragraph_commands(
+                            role,
+                            variant,
+                            0,
+                            &[HeadlessCommand::SetParagraphTabs {
+                                start_paragraph: 0,
+                                end_paragraph: 0,
+                                tabs: stops
+                            }]
+                        )
+                        .unwrap());
+                }
             }
         }
     }
