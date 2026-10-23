@@ -2739,6 +2739,10 @@ impl WordDocument {
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
+            // Before the styles fill paragraphs in: the paragraph a textless
+            // shape is given takes the defaults a `w:p` in its text box would
+            // be read with, which it is saved as once edited.
+            Self::give_textless_shapes_an_inner_paragraph(&mut parsed_doc);
             if let Some(styles_part) = document.styles_part.as_ref() {
                 parsed_doc.default_font_size = styles_part.doc_default_font_size();
                 Self::apply_style_paragraph_defaults_to_document(&mut parsed_doc, styles_part);
@@ -2768,7 +2772,6 @@ impl WordDocument {
             );
 
             Self::resolve_numbered_ref_fields(&mut parsed_doc, document.numbering_part.as_ref());
-            Self::give_textless_shapes_an_inner_paragraph(&mut parsed_doc);
             document.document = Some(Rc::new(parsed_doc));
             document.header_lines = header_lines;
             document.footer_lines = footer_lines;
@@ -5256,6 +5259,79 @@ impl WordDocument {
         }
     }
 
+    /// Gives the DrawingML shape in the host run `host_run_id` a `wps:txbx`
+    /// holding one empty paragraph when it has none. A shape without text is
+    /// still a text box to the editor, which lists an empty paragraph in it
+    /// to type into; with nothing in the package behind that paragraph, what
+    /// was typed or formatted there was lost on save. Returns whether one was
+    /// added.
+    pub(crate) fn ensure_shape_text_box(raw: &mut DocxXmlDocument, host_run_id: XmlNodeId) -> bool {
+        fn find_shape(element: &XmlElement) -> Option<&XmlElement> {
+            if element.name == "wps:wsp" {
+                return Some(element);
+            }
+            element.children.iter().find_map(|child| match child {
+                XmlNode::Element(child) => find_shape(child),
+                _ => None,
+            })
+        }
+        let Some(run) = raw.element(host_run_id) else {
+            return false;
+        };
+        let mut content = Vec::new();
+        Self::collect_text_box_content_ids(run, &mut content);
+        if !content.is_empty() {
+            return false;
+        }
+        let Some((shape_id, at)) = find_shape(run).map(|shape| {
+            // CT_WordprocessingShape puts the text box right before
+            // `wps:bodyPr`.
+            let at = shape
+                .children
+                .iter()
+                .position(|child| matches!(child, XmlNode::Element(element) if element.name == "wps:bodyPr"))
+                .unwrap_or(shape.children.len());
+            (shape.id, at)
+        }) else {
+            return false;
+        };
+        let paragraph = raw.create_element("w:p", Vec::new(), Vec::new());
+        let content = raw.create_element(
+            "w:txbxContent",
+            Vec::new(),
+            vec![XmlNode::Element(paragraph)],
+        );
+        let text_box = raw.create_element("wps:txbx", Vec::new(), vec![XmlNode::Element(content)]);
+        raw.insert_node(shape_id, at, XmlNode::Element(text_box))
+            .is_ok()
+    }
+
+    /// [`Self::ensure_shape_text_box`] for the text box paragraph at surface
+    /// `index`.
+    pub(crate) fn ensure_text_box_paragraph_xml(&mut self, index: usize) {
+        let Some(ParagraphSurface::TextBox {
+            host_path,
+            run_index,
+            ..
+        }) = self.paragraph_surfaces.get(index)
+        else {
+            return;
+        };
+        let Some(run_id) = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| Self::locate_paragraph(&body.elements, host_path))
+            .and_then(|paragraph| paragraph.runs.get(*run_index))
+            .and_then(|run| run.node_id)
+        else {
+            return;
+        };
+        if let Some(raw) = self.raw_document.as_mut() {
+            Self::ensure_shape_text_box(raw, run_id);
+        }
+    }
+
     fn sync_text_box_paragraph_xml(
         raw: &mut DocxXmlDocument,
         run: &mut Run,
@@ -5265,6 +5341,7 @@ impl WordDocument {
         let Some(run_id) = run.node_id else {
             return;
         };
+        Self::ensure_shape_text_box(raw, run_id);
 
         let mut content_ids = Vec::new();
         if let Some(run_element) = raw.element(run_id) {
@@ -29997,6 +30074,7 @@ impl WordDocument {
                 let mut tail_run_copies = SplitTailCopies::default();
                 let mut tail_copy_id = None;
                 if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
+                    Self::ensure_shape_text_box(raw, run_id);
                     let mut content_ids = Vec::new();
                     if let Some(run_element) = raw.element(run_id) {
                         Self::collect_text_box_content_ids(run_element, &mut content_ids);

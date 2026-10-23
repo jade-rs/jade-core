@@ -12820,6 +12820,76 @@ mod tests {
     }
 
     #[test]
+    fn text_typed_into_a_shape_without_text_is_saved() {
+        // shape-preset-geometries.docx's first shape has no `wps:txbx`. The
+        // editor lists an empty paragraph in it to type into, with nothing in
+        // the package behind it: what was typed, and the paragraph's style,
+        // were lost on save.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/shape-preset-geometries.docx"),
+        )
+        .expect("read fixture");
+        let text_boxes = |bytes: &[u8]| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            xml.matches("<wps:txbx>").count()
+        };
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let untouched = text_boxes(&word_doc.export_docx().expect("export"));
+        assert_eq!(
+            untouched,
+            text_boxes(&bytes),
+            "nothing is added until edited"
+        );
+        assert!(!word_doc.is_body_paragraph_surface(2));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 2,
+                        offset: 0,
+                        text: "図形".to_string(),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 2,
+                        end_paragraph: 2,
+                        style_id: Some("Heading2".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let paragraph = |word_doc: &WordDocument| {
+            let paragraph = word_doc.paragraph(2).expect("shape paragraph");
+            (
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.style.as_deref().map(str::to_string)),
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect::<String>(),
+            )
+        };
+        let exported = word_doc.export_docx().expect("export succeeds");
+        assert_eq!(text_boxes(&exported), untouched + 1);
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(paragraph(&reloaded), paragraph(&word_doc));
+        assert_eq!(paragraph(&word_doc).1, "図形");
+    }
+
+    #[test]
     fn a_footnote_stays_after_the_half_that_references_it() {
         // A footnote is listed right after the paragraph that references it.
         // Enter after the reference kept the footnote where it was, after the
