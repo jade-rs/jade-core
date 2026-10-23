@@ -2509,6 +2509,7 @@ mod tests {
         bottom: f64,
     ) -> CellLayout {
         CellLayout {
+            text_bounds: None,
             paragraphs: vec![row * 10 + column],
             left,
             right,
