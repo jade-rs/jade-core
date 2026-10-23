@@ -8,6 +8,15 @@ mod typography;
 pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
 pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography, HeadlessRuby};
 
+/// Explicit paragraph tab stop in points, relative to the text margin.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HeadlessDirectTabStop {
+    pub position: f32,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leader: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
     #[serde(default)]
@@ -1290,6 +1299,11 @@ pub enum HeadlessCommand {
         #[serde(default)]
         style_id: Option<String>,
     },
+    SetParagraphTabs {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        tabs: Vec<HeadlessDirectTabStop>,
+    },
     SetParagraphIndent {
         start_paragraph: usize,
         end_paragraph: usize,
@@ -2337,6 +2351,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphBorders { .. } => "set_paragraph_borders",
             HeadlessCommand::SetDropCap { .. } => "set_drop_cap",
             HeadlessCommand::SetParagraphOptions { .. } => "set_paragraph_options",
+            HeadlessCommand::SetParagraphTabs { .. } => "set_paragraph_tabs",
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",

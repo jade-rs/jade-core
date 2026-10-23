@@ -15959,6 +15959,86 @@ impl OffscreenDocumentView {
         }
     }
 
+    /// Geometry for UI rulers, resolved by the shared layout engine.
+    #[wasm_bindgen(js_name = rulerGeometry)]
+    pub fn ruler_geometry(&self) -> JsValue {
+        let state = self.state.borrow();
+        let Some(word_doc) = state.word_doc.as_ref() else {
+            return JsValue::NULL;
+        };
+        let Some(document) = word_doc.document.as_ref() else {
+            return JsValue::NULL;
+        };
+        let selection = state
+            .selection
+            .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let renderer = self.renderer.borrow();
+        let focus_geometry = renderer
+            .caret_page_index()
+            .zip(renderer.caret_metrics())
+            .map(|(page, metrics)| (page, metrics.x))
+            .or_else(|| {
+                let rects = renderer.get_selection_rects();
+                let backwards = (selection.anchor.paragraph, selection.anchor.offset)
+                    > (selection.focus.paragraph, selection.focus.offset);
+                let rect = if backwards {
+                    rects.first()
+                } else {
+                    rects.last()
+                }?;
+                Some((
+                    rect.page,
+                    if backwards {
+                        rect.x
+                    } else {
+                        rect.x + rect.width
+                    },
+                ))
+            });
+        let focus_geometry = focus_geometry.or_else(|| {
+            let surface = word_doc.surface_index_for_body(selection.focus.paragraph)?;
+            renderer
+                .paragraph_layout_origin(surface)
+                .map(|(page, x, _)| (page, x))
+        });
+        let Some((page_index, caret_x)) = focus_geometry else {
+            return JsValue::NULL;
+        };
+        let section = word_doc
+            .section_index_for_paragraph(selection.focus.paragraph)
+            .and_then(|index| document.sections.get(index))
+            .and_then(|section| section.properties.as_ref());
+        let geometry = jade_docx_layout::text_extract::ruler_geometry(
+            document,
+            section,
+            page_index + 1,
+            caret_x,
+        );
+        let value = to_value(&geometry).unwrap_or(JsValue::NULL);
+        if let Some(paragraph) = word_doc
+            .surface_index_for_body(selection.focus.paragraph)
+            .and_then(|index| word_doc.paragraph(index))
+        {
+            let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
+                document,
+                section,
+                paragraph,
+                word_doc.styles_part.as_ref(),
+            );
+            let _ = Reflect::set(
+                &value,
+                &JsValue::from_str("characterWidth"),
+                &JsValue::from_f64(unit),
+            );
+        }
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("pageIndex"),
+            &JsValue::from_f64(page_index as f64),
+        );
+        value
+    }
+
     /// Returns a paragraph's first line origin in page-local CSS pixels.
     #[wasm_bindgen(js_name = paragraphLayoutOrigin)]
     pub fn paragraph_layout_origin(&self, index: usize) -> JsValue {
@@ -16751,6 +16831,10 @@ impl OffscreenDocumentView {
             merge_paragraph_properties_override(&mut effective_para, direct);
         }
 
+        // Style resolution merges formatting fields, not the authored pStyle
+        // identity. Keep it for galleries and selection controls.
+        effective_para.style = paragraph.properties.as_ref().and_then(|p| p.style.clone());
+
         // ── Resolve numbering format ────────────────────────────────────
         let numbering_format: Option<String> =
             effective_para.numbering.as_ref().and_then(|numbering| {
@@ -16803,6 +16887,32 @@ impl OffscreenDocumentView {
         let result = Object::new();
         let run_js = to_value(&effective_run).unwrap_or(JsValue::NULL);
         let para_js = to_value(&effective_para).unwrap_or(JsValue::NULL);
+        // Ruler edits use physical point values even when OOXML authored the
+        // indent in character units. Resolve through the layout precedence.
+        if let Some(document) = word_doc.document.as_ref() {
+            let section = word_doc
+                .section_index_for_paragraph(selection.focus.paragraph)
+                .and_then(|index| document.sections.get(index))
+                .and_then(|section| section.properties.as_ref());
+            let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
+                document,
+                section,
+                paragraph,
+                word_doc.styles_part.as_ref(),
+            ) * 0.75;
+            let indent = effective_para.indent.as_ref();
+            let bidi = effective_para.bidi.unwrap_or(false);
+            let values = serde_json::json!({
+                "left": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_left_pt(i, bidi, unit)).unwrap_or(0.0),
+                "right": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_right_pt(i, bidi, unit)).unwrap_or(0.0),
+                "first": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_first_line_pt(i, unit, true)).unwrap_or(0.0),
+            });
+            let _ = Reflect::set(
+                &result,
+                &JsValue::from_str("rulerIndent"),
+                &to_value(&values).unwrap_or(JsValue::NULL),
+            );
+        }
         let _ = Reflect::set(&result, &JsValue::from_str("run"), &run_js);
         let _ = Reflect::set(&result, &JsValue::from_str("paragraph"), &para_js);
         if let Some(summary) = selection_summary.as_ref() {
@@ -18241,12 +18351,32 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// Replaces explicit tab stops on the selected body paragraphs.
+    #[wasm_bindgen(js_name = "setParagraphTabs")]
+    pub fn set_paragraph_tabs(&self, tabs: JsValue) -> Result<JsValue, JsValue> {
+        let tabs: Vec<jade_docx_headless_api::HeadlessDirectTabStop> =
+            serde_wasm_bindgen::from_value(tabs)
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        self.apply_paragraph_style_headless(move |start, end| HeadlessCommand::SetParagraphTabs {
+            start_paragraph: start,
+            end_paragraph: end,
+            tabs,
+        })
+    }
+
     /// Sets the selected paragraphs' left and right indentation in points.
     /// Point-based values intentionally replace `w:leftChars` / `w:rightChars`
     /// so a precise Layout-ribbon value is not shadowed by an earlier 1字 step.
     #[wasm_bindgen(js_name = "setParagraphIndent")]
-    pub fn set_paragraph_indent(&self, left: f32, right: f32) -> Result<JsValue, JsValue> {
-        if !valid_paragraph_indents(left, right) {
+    pub fn set_paragraph_indent(
+        &self,
+        left: f32,
+        right: f32,
+        first_line: Option<f32>,
+    ) -> Result<JsValue, JsValue> {
+        if !valid_paragraph_indents(left, right)
+            || first_line.is_some_and(|value| !value.is_finite())
+        {
             return Err(JsValue::from_str(
                 "paragraph indents must be finite point values",
             ));
@@ -18256,13 +18386,13 @@ impl OffscreenDocumentView {
             end_paragraph: end,
             left: Some(left),
             right: Some(right),
-            first_line: None,
-            hanging: None,
+            first_line: first_line.filter(|value| *value >= 0.0),
+            hanging: first_line.filter(|value| *value < 0.0).map(f32::abs),
             left_chars: None,
             right_chars: None,
             first_line_chars: None,
             hanging_chars: None,
-            clear_special: false,
+            clear_special: first_line == Some(0.0),
         })
     }
 
