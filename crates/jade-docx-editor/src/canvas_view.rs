@@ -11638,6 +11638,7 @@ impl OffscreenDocumentView {
             cant_split,
             cell_shading,
             cell_vertical_alignment,
+            cell_text_direction,
             table_borders,
             cell_borders,
             table_cell_margins,
@@ -11734,6 +11735,7 @@ impl OffscreenDocumentView {
                 caret_cell
                     .and_then(|cell| cell.vertical_align.clone())
                     .unwrap_or_else(|| "top".to_string()),
+                caret_cell.and_then(|cell| cell.text_direction),
                 table.borders.clone(),
                 word_doc
                     .cell_borders_from_style(cell.table_order_index, cell.row, cell.column)
@@ -11830,6 +11832,14 @@ impl OffscreenDocumentView {
             &result,
             &JsValue::from_str("cellVerticalAlignment"),
             &JsValue::from_str(&cell_vertical_alignment),
+        )?;
+        Reflect::set(
+            &result,
+            &JsValue::from_str("cellTextDirection"),
+            &cell_text_direction
+                .map(|direction| to_value(&direction))
+                .transpose()?
+                .unwrap_or(JsValue::NULL),
         )?;
         Reflect::set(
             &result,
