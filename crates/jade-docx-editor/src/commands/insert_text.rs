@@ -735,6 +735,7 @@ impl InsertTextCommand {
                 (end.paragraph, end_offset),
                 recording,
             )?;
+            folded.forget_transferred_references(&tail_comment_references);
             let retained_len = folded.retained_len();
             let retained = std::mem::take(&mut folded.retained);
             insert_offset = start_offset + retained_len;
