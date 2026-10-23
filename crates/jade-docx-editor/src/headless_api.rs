@@ -12890,6 +12890,59 @@ mod tests {
     }
 
     #[test]
+    fn undoing_a_replacement_that_emptied_a_field_restores_its_xml() {
+        // hyperlink-field-edge-cases.docx's third paragraph is text followed
+        // by a HYPERLINK simple field. Replacing all but the field's last
+        // three letters left one run, inside the field. Undo re-synced the
+        // restored runs into that: the field kept the replacement and the
+        // old text was written again after it, so the file read
+        // "ab llyInternal field: Jump locally".
+        use crate::commands::{CommandContext, CommandExecutor};
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let original = word_doc.export_docx().expect("export");
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: 2,
+                    start_offset: 0,
+                    end_paragraph: 2,
+                    end_offset: 25,
+                    text: "ab ".to_string(),
+                }],
+            },
+        )
+        .expect("replacement applies");
+        let mut selection = None;
+        assert!(command_executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+            .expect("undo"));
+        let document_xml = |bytes: &[u8]| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            xml
+        };
+        assert_eq!(
+            document_xml(&word_doc.export_docx().expect("export")),
+            document_xml(&original)
+        );
+    }
+
+    #[test]
     fn a_footnote_stays_after_the_half_that_references_it() {
         // A footnote is listed right after the paragraph that references it.
         // Enter after the reference kept the footnote where it was, after the
