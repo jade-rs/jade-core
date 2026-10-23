@@ -946,7 +946,7 @@ impl DeleteTextCommand {
                 }
             }
         }
-        let folded = FoldedSelection::new(
+        let mut folded = FoldedSelection::new(
             ctx,
             (start.paragraph, start_offset),
             (end.paragraph, end_offset),
@@ -1001,8 +1001,20 @@ impl DeleteTextCommand {
         }
         append_inline_xml(ctx, start.paragraph, tail_inline_xml)?;
 
+        let retained_first = ctx
+            .document
+            .paragraph(start.paragraph)
+            .map_or(0, |paragraph| paragraph.runs.len());
         if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
-            paragraph.runs.extend(folded.retained);
+            paragraph.runs.extend(std::mem::take(&mut folded.retained));
+        }
+        FoldedSelection::restyle_retained(
+            &folded.retained_styles,
+            ctx,
+            start.paragraph,
+            retained_first,
+        );
+        if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
             paragraph.runs.extend(transferred_comment_reference_runs);
             // The suffix raw nodes were moved into this paragraph as well, so
             // unsplit runs may keep their IDs and retain anchor ordering.
@@ -1285,6 +1297,8 @@ pub(super) struct FoldedSelection {
     /// What stays at the cut, in document order: tracked deletions, written
     /// anew from the model, and field code, bound to its XML.
     pub(super) retained: Vec<Run>,
+    /// The paragraph style each of `retained` was in.
+    pub(super) retained_styles: Vec<Option<String>>,
     /// The field code in `retained` from a paragraph the fold removes.
     moved_code: HashSet<XmlNodeId>,
 }
@@ -1343,8 +1357,10 @@ impl FoldedSelection {
         // so that each zero-width run is in exactly one of the head, the
         // selection and the suffix.
         let mut retained = Vec::new();
+        let mut retained_styles = Vec::new();
         let mut moved_code = HashSet::new();
         for (index, paragraph) in (start_paragraph..).zip(&paragraphs) {
+            let paragraph_style = style_of(paragraph).map(str::to_string);
             let mut selected = paragraph.runs.clone();
             if index == start_paragraph {
                 selected =
@@ -1361,6 +1377,7 @@ impl FoldedSelection {
                         moved_code.insert(id);
                     }
                     retained.push(run);
+                    retained_styles.push(paragraph_style.clone());
                 } else if run.revision.as_ref().is_some_and(|mark| {
                     matches!(
                         mark.kind,
@@ -1372,6 +1389,7 @@ impl FoldedSelection {
                     run.text_node_id = None;
                     run.revision_node_id = None;
                     retained.push(run);
+                    retained_styles.push(paragraph_style.clone());
                 }
             }
         }
@@ -1382,8 +1400,37 @@ impl FoldedSelection {
             zero_width,
             dropped,
             retained,
+            retained_styles,
             moved_code,
         })
+    }
+
+    /// Gives the retained runs, appended to `paragraph_index` from its run
+    /// `first` on, what that paragraph's style gives them in place of their
+    /// old paragraphs' (see `WordDocument::restyle_runs_from`). A tracked
+    /// deletion kept from a paragraph in the middle of the selection kept
+    /// that paragraph's size on screen, and the replacement text typed after
+    /// it took it too, while a reload sized both by the joined paragraph.
+    pub(super) fn restyle_retained(
+        styles: &[Option<String>],
+        ctx: &mut CommandContext<'_>,
+        paragraph_index: usize,
+        first: usize,
+    ) {
+        let mut start = 0;
+        while start < styles.len() {
+            let style = &styles[start];
+            let end = styles[start..]
+                .iter()
+                .position(|other| other != style)
+                .map_or(styles.len(), |offset| start + offset);
+            ctx.document.restyle_runs_from(
+                paragraph_index,
+                first + start..first + end,
+                style.as_deref(),
+            );
+            start = end;
+        }
     }
 
     pub(super) fn retained_len(&self) -> usize {
