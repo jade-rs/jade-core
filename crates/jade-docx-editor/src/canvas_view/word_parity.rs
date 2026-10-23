@@ -222,6 +222,91 @@ fn whole_document() -> HeadlessApplyOverrides {
 }
 
 impl OffscreenDocumentView {
+    fn apply_hf_format_preview(
+        &self,
+        spec: FormatPreviewJs,
+        ended: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, cursor, variant, document, anchor, revision, body_revision) = {
+            let state = self.state.borrow();
+            let (Some(cursor), Some(document)) = (state.hf_edit_cursor, state.word_doc.as_ref())
+            else {
+                return Ok(ended);
+            };
+            (
+                state.editing_mode,
+                cursor,
+                state.hf_variant,
+                document.clone(),
+                state.hf_selection_anchor,
+                state.hf_history_revision,
+                state.command_executor.history_revision(),
+            )
+        };
+        let format = match &spec {
+            FormatPreviewJs::Font { family } if !family.trim().is_empty() => HfRunFormat {
+                font_family: Some(family.trim().to_string()),
+                ..Default::default()
+            },
+            FormatPreviewJs::Size { points } if points.is_finite() && *points > 0.0 => {
+                HfRunFormat {
+                    font_size: Some(*points),
+                    ..Default::default()
+                }
+            }
+            FormatPreviewJs::Color { color, .. } if !color.trim().is_empty() => HfRunFormat {
+                color: Some(color.clone()),
+                ..Default::default()
+            },
+            FormatPreviewJs::Highlight { color } if !color.trim().is_empty() => HfRunFormat {
+                highlight: Some(color.clone()),
+                ..Default::default()
+            },
+            FormatPreviewJs::Shading { .. } => HfRunFormat::default(),
+            _ => return Ok(ended),
+        };
+        self.state.borrow_mut().hf_provisional_recording = true;
+        let payload = match spec {
+            FormatPreviewJs::Shading { color } => {
+                self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphShading {
+                    start_paragraph: 0,
+                    end_paragraph: 0,
+                    color,
+                }])
+            }
+            _ => self.apply_hf_run_format(format),
+        };
+        self.state.borrow_mut().hf_provisional_recording = false;
+        let preview = HfFormatPreviewState {
+            document,
+            cursor,
+            anchor,
+            mode,
+            variant,
+            revision,
+            body_revision,
+        };
+        match payload {
+            Ok(payload) if payload.is_object() => {
+                *self.hf_format_preview.borrow_mut() = Some(preview);
+                Ok(payload)
+            }
+            result => {
+                let mut state = self.state.borrow_mut();
+                state.word_doc = Some(preview.document);
+                state.hf_edit_cursor = Some(cursor);
+                state.hf_selection_anchor = anchor;
+                drop(state);
+                self.prepare_hf_edit_rerender(mode, cursor.page_index);
+                if result.is_err() {
+                    self.finish_hf_edit_result_sync(mode)
+                } else {
+                    Ok(ended)
+                }
+            }
+        }
+    }
+
     pub(super) fn current_selection(&self) -> SelectionRange {
         let state = self.state.borrow();
         state.selection.unwrap_or_else(|| {
@@ -316,10 +401,13 @@ impl OffscreenDocumentView {
         let view = self.clone();
         future_to_promise(async move {
             let spec: FormatPreviewJs = from_js_strict(spec, "format preview")?;
-            if view.state.borrow().preview_mode || !view.body_commands_allowed() {
+            if view.state.borrow().preview_mode {
                 return Ok(JsValue::NULL);
             }
             let ended = JsFuture::from(view.end_style_preview()).await?;
+            if !view.body_commands_allowed() {
+                return view.apply_hf_format_preview(spec, ended);
+            }
             let span = view.character_span();
             let commands = match spec {
                 FormatPreviewJs::Shading { color } => {

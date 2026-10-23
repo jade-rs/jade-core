@@ -215,6 +215,8 @@ struct CanvasDocumentState {
     hf_selection_anchor: Option<HfEditCursor>,
     hf_undo_stack: Vec<HfHistoryEntry>,
     hf_redo_stack: Vec<HfHistoryEntry>,
+    hf_history_revision: u64,
+    hf_provisional_recording: bool,
 }
 
 /// Updates the user's live formatting-mark preference. While a clean page
@@ -1366,6 +1368,17 @@ struct FormatPreviewState {
     selection: Option<SelectionRange>,
 }
 
+/// Story previews never enter the bounded undo stack or clear existing redo.
+struct HfFormatPreviewState {
+    document: WordDocument,
+    cursor: HfEditCursor,
+    anchor: Option<HfEditCursor>,
+    mode: EditingMode,
+    variant: HfVariant,
+    revision: u64,
+    body_revision: u64,
+}
+
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct OffscreenDocumentView {
@@ -1378,6 +1391,7 @@ pub struct OffscreenDocumentView {
     /// The live preview of a gallery choice under the pointer: the history
     /// revision its provisional edit left and any selection to restore.
     style_preview: Rc<Cell<Option<FormatPreviewState>>>,
+    hf_format_preview: Rc<RefCell<Option<HfFormatPreviewState>>>,
     resize_debug: Rc<RefCell<Option<String>>>,
     pending_image_wait: Rc<RefCell<Option<Promise>>>,
 }
@@ -3312,6 +3326,10 @@ impl OffscreenDocumentView {
 
     fn push_hf_history_entry(&self, entry: HfHistoryEntry) {
         let mut state = self.state.borrow_mut();
+        if state.hf_provisional_recording {
+            return;
+        }
+        state.hf_history_revision = state.hf_history_revision.wrapping_add(1);
         state.hf_undo_stack.push(entry);
         // Each entry retains TWO full `WordDocument` clones (before + after), so
         // an unbounded stack grows memory steeply over a long header/footer
@@ -4360,7 +4378,10 @@ impl OffscreenDocumentView {
         let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
             return Ok(JsValue::NULL);
         };
-        let before_doc = self.state.borrow().word_doc.clone();
+        let (before_doc, selection_anchor) = {
+            let state = self.state.borrow();
+            (state.word_doc.clone(), state.hf_selection_anchor)
+        };
         let selection_range = self.hf_selection_paragraph_range(mode);
         let after_doc = {
             let mut state_mut = self.state.borrow_mut();
@@ -4390,14 +4411,16 @@ impl OffscreenDocumentView {
             state_mut.word_doc.clone()
         };
         if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
-            self.push_hf_history(
+            self.push_hf_history_entry(HfHistoryEntry {
                 before_doc,
                 after_doc,
-                Some(cursor),
-                Some(cursor),
+                before_cursor: Some(cursor),
+                after_cursor: Some(cursor),
+                before_selection_anchor: selection_anchor,
+                after_selection_anchor: selection_anchor,
                 mode,
                 variant,
-            );
+            });
         }
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         self.finish_hf_edit_result_sync(mode)
@@ -8628,6 +8651,8 @@ impl OffscreenDocumentView {
             hf_selection_anchor: None,
             hf_undo_stack: Vec::new(),
             hf_redo_stack: Vec::new(),
+            hf_history_revision: 0,
+            hf_provisional_recording: false,
         }));
 
         Ok(OffscreenDocumentView {
@@ -8636,6 +8661,7 @@ impl OffscreenDocumentView {
             drag_state: Rc::new(RefCell::new(PointerDragState::None)),
             table_resize_preview: Rc::new(Cell::new(false)),
             style_preview: Rc::new(Cell::new(None)),
+            hf_format_preview: Rc::new(RefCell::new(None)),
             resize_debug: Rc::new(RefCell::new(None)),
             pending_image_wait: Rc::new(RefCell::new(None)),
         })
@@ -8769,6 +8795,24 @@ impl OffscreenDocumentView {
     pub fn end_style_preview(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            let story_preview = view.hf_format_preview.borrow_mut().take();
+            if let Some(preview) = story_preview {
+                {
+                    let mut state = view.state.borrow_mut();
+                    if state.hf_history_revision != preview.revision
+                        || state.command_executor.history_revision() != preview.body_revision
+                    {
+                        return Ok(JsValue::NULL);
+                    }
+                    state.word_doc = Some(preview.document);
+                    state.hf_edit_cursor = Some(preview.cursor);
+                    state.hf_selection_anchor = preview.anchor;
+                    state.editing_mode = preview.mode;
+                    state.hf_variant = preview.variant;
+                }
+                view.prepare_hf_edit_rerender(preview.mode, preview.cursor.page_index);
+                return view.finish_hf_edit_result_sync(preview.mode);
+            }
             let Some(FormatPreviewState {
                 revision,
                 selection,
@@ -16782,6 +16826,9 @@ impl OffscreenDocumentView {
             if let Some(color) = state.color.as_deref() {
                 set("color", JsValue::from_str(color));
             }
+            if let Some(highlight) = state.highlight.as_deref() {
+                set("highlight", JsValue::from_str(highlight));
+            }
             let result = Object::new();
             let _ = Reflect::set(&result, &JsValue::from_str("run"), &run);
             let view = self.state.borrow();
@@ -18689,6 +18736,13 @@ impl OffscreenDocumentView {
         let color = color
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        if !self.body_commands_allowed() {
+            return self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphShading {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                color,
+            }]);
+        }
         self.apply_paragraph_style_headless(move |start, end| {
             HeadlessCommand::SetParagraphShading {
                 start_paragraph: start,

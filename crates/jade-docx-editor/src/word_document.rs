@@ -638,6 +638,7 @@ pub struct HfRunState {
     pub font_size: Option<f32>,
     pub font_family: Option<String>,
     pub color: Option<String>,
+    pub highlight: Option<String>,
 }
 
 /// One `w:r` of a header/footer paragraph as the range editor sees it.
@@ -18763,6 +18764,9 @@ impl WordDocument {
                     })
                 });
             }
+            if state.highlight.is_none() {
+                state.highlight = Self::run_property_child_value(properties, "w:highlight");
+            }
             if state.color.is_none() {
                 state.color = Self::run_property_child_value(properties, "w:color")
                     .map(|value| format!("#{}", value.trim_start_matches('#')));
@@ -19130,6 +19134,7 @@ impl WordDocument {
         let mut after_spacing = false;
         let mut reset = false;
         let mut tabs = false;
+        let mut shading = false;
         for command in commands {
             match command {
                 HeadlessCommand::SetParagraphIndent {
@@ -19184,11 +19189,12 @@ impl WordDocument {
                     after_spacing |= after.is_some();
                 }
                 HeadlessCommand::SetParagraphTabs { .. } => tabs = true,
+                HeadlessCommand::SetParagraphShading { .. } => shading = true,
                 HeadlessCommand::ResetParagraphFormatting { .. } => reset = true,
                 _ => return Ok(false),
             }
         }
-        if !(indent || line || before_spacing || after_spacing || reset || tabs) {
+        if !(indent || line || before_spacing || after_spacing || reset || tabs || shading) {
             return Ok(false);
         }
         self.ensure_hf_part_for_edit(role, variant)?;
@@ -19259,6 +19265,13 @@ impl WordDocument {
                 updated
                     .map(|properties| properties.tabs.as_slice())
                     .unwrap_or_default(),
+            );
+        }
+        if shading {
+            crate::commands::paragraph_property_sync::set_paragraph_shading_xml(
+                &mut raw,
+                &mut properties,
+                updated.and_then(|properties| properties.shading.as_ref()),
             );
         }
         if line || before_spacing || after_spacing {
@@ -44194,6 +44207,75 @@ mod tests {
                     .read_xml_part_content(&path)
                     .unwrap()
                     .contains("w:instr=\"PAGE\""));
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_shading_preserves_fields_body_and_unrelated_properties() {
+        use jade_docx_headless_api::HeadlessCommand;
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr w:custom="keep"><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Shading</w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.read_xml_part_content("word/document.xml").unwrap();
+                let original = DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap();
+                let tail = original.split_once("</w:pPr>").unwrap().1;
+                for color in [Some("#fff2cc".to_string()), None] {
+                    let command = HeadlessCommand::SetParagraphShading {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        color: color.clone(),
+                    };
+                    assert!(doc
+                        .apply_hf_paragraph_commands(
+                            role,
+                            variant,
+                            0,
+                            std::slice::from_ref(&command)
+                        )
+                        .unwrap());
+                    let xml = doc.read_xml_part_content(&path).unwrap();
+                    assert!(xml.ends_with(tail));
+                    assert!(xml.contains("w:custom=\"keep\""));
+                    assert!(xml.contains("w:after=\"120\""));
+                    assert_eq!(xml.contains("w:fill=\"FFF2CC\""), color.is_some());
+                    assert_eq!(
+                        doc.hf_paragraph_properties(role, variant, 0)
+                            .unwrap()
+                            .shading
+                            .is_some(),
+                        color.is_some()
+                    );
+                    assert!(!doc
+                        .apply_hf_paragraph_commands(role, variant, 0, &[command])
+                        .unwrap());
+                    assert_eq!(
+                        doc.read_xml_part_content("word/document.xml").unwrap(),
+                        body
+                    );
+                }
             }
         }
     }
