@@ -516,6 +516,29 @@ fn release_inherited_fonts(run: &mut RunProperties, declared: impl Fn(&str) -> b
             ..RunFonts::default()
         });
         run.font_family = None;
+    } else if let (Some(direct_fonts), Some(fonts)) = (direct.fonts.as_ref(), run.fonts.as_mut()) {
+        // A `w:rFonts` names some slots: the rest are inherited, slot by
+        // slot, as a load fills them. Kept whole, a run given a Latin font
+        // kept its old paragraph's East Asian font once joined to another.
+        macro_rules! release_slot {
+            ($($name:ident / $theme:ident),* $(,)?) => {
+                $(
+                    if direct_fonts.$name.is_none() && direct_fonts.$theme.is_none() {
+                        fonts.$name = None;
+                        fonts.$theme = None;
+                    }
+                )*
+            };
+        }
+        release_slot!(
+            ascii / ascii_theme,
+            h_ansi / h_ansi_theme,
+            east_asia / east_asia_theme,
+            complex / complex_theme,
+        );
+        if direct_fonts.ascii.is_none() && direct_fonts.ascii_theme.is_none() {
+            run.font_family = None;
+        }
     }
     if direct.font_size.is_none() {
         run.font_size = None;
