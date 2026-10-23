@@ -12967,6 +12967,81 @@ mod tests {
     }
 
     #[test]
+    fn a_replacement_across_a_comment_reference_keeps_the_link_text_once() {
+        // A comment ending inside the HYPERLINK field's result of
+        // hyperlink-field-edge-cases.docx's third paragraph, then a
+        // replacement from the first paragraph into that result: the
+        // comment's reference run went over twice, kept with the field's
+        // code and transferred as a comment reference. The second copy split
+        // the link around it, and "ple link" was saved twice.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 2,
+                        offset: 1,
+                        text: "漢字".to_string(),
+                    },
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 0,
+                        start_offset: Some(21),
+                        end_paragraph: 2,
+                        end_offset: Some(24),
+                        text: "note".to_string(),
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                    },
+                    HeadlessCommand::ClearFormatting {
+                        start_paragraph: 2,
+                        start_offset: 25,
+                        end_paragraph: 2,
+                        end_offset: 26,
+                    },
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph: 0,
+                        start_offset: 4,
+                        end_paragraph: 2,
+                        end_offset: 26,
+                        text: "、".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>()
+        };
+        assert_eq!(text(&word_doc), "HYPE、ple link");
+        let exported = word_doc.export_docx().expect("export succeeds");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(text(&reloaded), text(&word_doc));
+        let references = word_doc
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter(|run| !run.comment_reference_ids.is_empty())
+            .count();
+        assert_eq!(references, 1);
+    }
+
+    #[test]
     fn a_comment_ending_inside_a_field_or_link_keeps_its_text_once() {
         // A comment boundary inside a `w:fldSimple` or `w:hyperlink` put its
         // markers beside the container while the model put the reference run
