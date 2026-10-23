@@ -59,6 +59,9 @@ use std::rc::Rc;
 mod section_layout {
     include!("word_document_section_layout.rs");
 }
+mod header_footer_run_format {
+    include!("word_document_header_footer_run_format.rs");
+}
 mod header_footer_story {
     include!("word_document_header_footer_story.rs");
 }
@@ -606,6 +609,8 @@ pub struct PageSetupBackup {
 /// that aspect as it is.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HfRunFormat {
+    /// Full Font dialog patch, normalized by the body command implementation.
+    pub patch: Option<jade_docx_headless_api::HeadlessRunFormat>,
     pub clear_visual: bool,
     pub bold: Option<bool>,
     pub italic: Option<bool>,
@@ -18912,7 +18917,12 @@ impl WordDocument {
             )?);
         }
         for run_id in run_ids {
-            Self::format_hf_run(&mut xml_doc, run_id, format)?;
+            Self::format_hf_run(
+                &mut xml_doc,
+                run_id,
+                format,
+                paragraph_index as i64 * 65_536 + 1,
+            )?;
         }
         xml_doc.rebuild_index_for_subtree(paragraph_id);
         let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
@@ -18955,7 +18965,12 @@ impl WordDocument {
             .map(|run| run.id)
             .collect();
         for run_id in targets {
-            Self::format_hf_run(&mut xml_doc, run_id, format)?;
+            Self::format_hf_run(
+                &mut xml_doc,
+                run_id,
+                format,
+                paragraph_index as i64 * 65_536 + start as i64 + 1,
+            )?;
         }
         xml_doc.rebuild_index_for_subtree(paragraph_id);
         let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
@@ -19052,6 +19067,7 @@ impl WordDocument {
                     font_size: Some(size),
                     ..HfRunFormat::default()
                 },
+                0,
             )?;
         }
         raw.rebuild_index_for_subtree(paragraph_id);
@@ -19556,7 +19572,11 @@ impl WordDocument {
         xml_doc: &mut DocxXmlDocument,
         run_id: XmlNodeId,
         format: &HfRunFormat,
+        layout_id: i64,
     ) -> Result<(), String> {
+        if let Some(patch) = &format.patch {
+            return Self::patch_hf_run_properties(xml_doc, run_id, patch, layout_id);
+        }
         if format.clear_visual {
             let run = xml_doc
                 .element_mut(run_id)
@@ -45277,6 +45297,253 @@ mod tests {
                 .expect("text range");
             assert!(!state.all_underline && !state.all_strike && !state.all_double_strike);
             assert!(!state.all_superscript && !state.all_subscript);
+        }
+    }
+
+    #[test]
+    fn header_footer_font_dialog_patches_only_selected_properties() {
+        use jade_docx_headless_api::{HeadlessEastAsianLayout, HeadlessRunFormat};
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:custom="paragraph"><w:r><w:rPr w:custom="properties"><w:rStyle w:val="Authored"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="MS Mincho" w:cs="Tahoma" w:eastAsiaTheme="minorEastAsia" w:hint="eastAsia" w:custom="fonts"/><w:sz w:val="32"/><w:szCs w:val="44"/><w:i/><w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/><w:custom w:val="extension"/></w:rPr><w:t xml:space="preserve">前 beta 後 </w:t></w:r></w:p><w:p><w:r><w:t>Page </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p/></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                let patch = HfRunFormat {
+                    patch: Some(HeadlessRunFormat {
+                        latin_font: Some("Calibri".into()),
+                        complex_font_size: Some(30.0),
+                        bold: Some(true),
+                        complex_bold: Some(true),
+                        complex_italic: Some(true),
+                        underline: Some("double".into()),
+                        underline_color: Some("ABCDEF".into()),
+                        double_strike: Some(true),
+                        vertical_align: Some("superscript".into()),
+                        small_caps: Some(true),
+                        emphasis: Some("underDot".into()),
+                        shading: Some("112233".into()),
+                        border: Some(true),
+                        scale: Some(125.0),
+                        spacing: Some(1.5),
+                        position: Some(2.0),
+                        kerning: Some(8.0),
+                        outline: Some(true),
+                        shadow: Some(true),
+                        emboss: Some(true),
+                        ligatures: Some("standard".into()),
+                        number_spacing: Some("tabular".into()),
+                        number_form: Some("oldStyle".into()),
+                        stylistic_set: Some(3),
+                        contextual_alternates: Some(true),
+                        glow_color: Some("FF0000".into()),
+                        glow_radius: Some(6.0),
+                        text_outline_color: Some("00FF00".into()),
+                        text_outline_width: Some(1.5),
+                        east_asian_layout: Some(HeadlessEastAsianLayout {
+                            combine: true,
+                            combine_brackets: Some("round".into()),
+                            ..Default::default()
+                        }),
+                        language: Some("fr-FR".into()),
+                        no_proof: Some(true),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                };
+                assert!(doc
+                    .apply_hf_range_run_format(role, variant, 0, 4, 8, &patch)
+                    .unwrap());
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                let selected = xml
+                    .split("</w:r>")
+                    .find(|run| run.contains(">beta<"))
+                    .unwrap();
+                for token in [
+                    "w:ascii=\"Calibri\"",
+                    "w:eastAsia=\"MS Mincho\"",
+                    "w:cs=\"Tahoma\"",
+                    "w:eastAsiaTheme=\"minorEastAsia\"",
+                    "w:hint=\"eastAsia\"",
+                    "w:custom=\"fonts\"",
+                    "w:val=\"32\"",
+                    "w:val=\"60\"",
+                    "w:val=\"Authored\"",
+                    "<w:i/>",
+                    "<w:b/>",
+                    "<w:bCs/>",
+                    "<w:iCs/>",
+                    "w:val=\"double\"",
+                    "w:color=\"ABCDEF\"",
+                    "<w:dstrike/>",
+                    "w:val=\"underDot\"",
+                    "w:fill=\"112233\"",
+                    "<w:bdr",
+                    "w:val=\"125\"",
+                    "w:val=\"30\"",
+                    "w:val=\"4\"",
+                    "w:val=\"16\"",
+                    "<w:outline/>",
+                    "<w:shadow/>",
+                    "<w:emboss/>",
+                    "<w14:ligatures",
+                    "<w14:numSpacing",
+                    "<w14:numForm",
+                    "w14:id=\"3\"",
+                    "<w14:cntxtAlts",
+                    "w14:rad=\"76200\"",
+                    "w14:w=\"19050\"",
+                    "<w:eastAsianLayout",
+                    "w:val=\"fr-FR\"",
+                    "w:eastAsia=\"ja-JP\"",
+                    "w:bidi=\"ar-SA\"",
+                    "<w:noProof",
+                    "w:val=\"extension\"",
+                ] {
+                    assert!(selected.contains(token), "missing {token}: {selected}");
+                }
+                assert!(xml.contains("xmlns:w14="), "{xml}");
+                assert_eq!(xml.matches("w:ascii=\"Calibri\"").count(), 1, "{xml}");
+                let state = doc.hf_run_format_at(role, variant, 0, 4);
+                assert_eq!(state.latin_font.as_deref(), Some("Calibri"));
+                assert_eq!(state.complex_font_size, Some(30.0));
+                assert_eq!(state.spacing, Some(1.5));
+                assert_eq!(state.glow_radius, Some(6.0));
+                assert_eq!(state.language.as_deref(), Some("fr-FR"));
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 0, 0)
+                        .latin_font
+                        .as_deref(),
+                    Some("Arial")
+                );
+                // Reset paths must remove old XML, and a radius-only patch keeps its colour.
+                doc.apply_hf_range_run_format(
+                    role,
+                    variant,
+                    0,
+                    4,
+                    8,
+                    &HfRunFormat {
+                        patch: Some(HeadlessRunFormat {
+                            bold: Some(false),
+                            underline: Some("none".into()),
+                            double_strike: Some(false),
+                            vertical_align: Some("baseline".into()),
+                            small_caps: Some(false),
+                            emphasis: Some("none".into()),
+                            shading: Some("none".into()),
+                            border: Some(false),
+                            spacing: Some(0.0),
+                            position: Some(0.0),
+                            outline: Some(false),
+                            shadow: Some(false),
+                            emboss: Some(false),
+                            ligatures: Some("none".into()),
+                            number_spacing: Some("default".into()),
+                            number_form: Some("default".into()),
+                            stylistic_set: Some(0),
+                            contextual_alternates: Some(false),
+                            glow_radius: Some(7.0),
+                            text_outline_color: Some("none".into()),
+                            east_asian_layout: Some(Default::default()),
+                            no_proof: Some(false),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                let selected = xml
+                    .split("</w:r>")
+                    .find(|run| run.contains(">beta<"))
+                    .unwrap();
+                for tag in [
+                    "w:dstrike",
+                    "w:vertAlign",
+                    "w:smallCaps",
+                    "w:em",
+                    "w:shd",
+                    "w:bdr",
+                    "w:spacing",
+                    "w:position",
+                    "w:outline",
+                    "w:shadow",
+                    "w:emboss",
+                    "w14:ligatures",
+                    "w14:numSpacing",
+                    "w14:numForm",
+                    "w14:stylisticSets",
+                    "w14:cntxtAlts",
+                    "w14:textOutline",
+                    "w:eastAsianLayout",
+                ] {
+                    assert!(
+                        !selected.contains(&format!("<{tag}")),
+                        "stale {tag}: {selected}"
+                    );
+                }
+                assert!(selected.contains("<w:b w:val=\"0\""), "{selected}");
+                assert!(selected.contains("w:val=\"none\""), "{selected}");
+                assert!(selected.contains("w14:rad=\"88900\""), "{selected}");
+                assert!(selected.contains("w14:val=\"FF0000\""), "{selected}");
+                assert!(selected.contains("<w:noProof w:val=\"0\""), "{selected}");
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 0, 4).no_proof,
+                    Some(false)
+                );
+                assert!(!doc
+                    .apply_hf_range_run_format(role, variant, 1, 0, 1, &patch)
+                    .unwrap());
+                doc.apply_hf_paragraph_run_format(role, variant, 1, &patch)
+                    .unwrap();
+                doc.apply_hf_paragraph_run_format(role, variant, 2, &patch)
+                    .unwrap();
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains(">Page </w:t>"), "{xml}");
+                assert!(xml.contains("w:instr=\"PAGE\""), "{xml}");
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 2, 0)
+                        .latin_font
+                        .as_deref(),
+                    Some("Calibri")
+                );
+                assert_eq!(
+                    doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                    body
+                );
+                let bytes = doc.export_docx().unwrap();
+                let reopened =
+                    futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .unwrap();
+                assert_eq!(
+                    reopened.hf_run_format_at(role, variant, 0, 4).glow_radius,
+                    Some(7.0)
+                );
+                assert_eq!(
+                    reopened
+                        .hf_run_format_at(role, variant, 2, 0)
+                        .complex_font_size,
+                    Some(30.0)
+                );
+            }
         }
     }
 
