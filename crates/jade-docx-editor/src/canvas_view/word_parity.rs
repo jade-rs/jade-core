@@ -15,6 +15,30 @@ use jade_docx_headless_api::{
     HeadlessSectionLayoutPatch, HeadlessSectionScope, HeadlessTabStop, HeadlessTableSortKey,
 };
 
+/// A ribbon hover changes the document provisionally, sharing the style
+/// gallery's rollback/history slot. This never arms pending typing formats.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+enum FormatPreviewJs {
+    Font {
+        family: String,
+    },
+    Size {
+        points: f32,
+    },
+    Color {
+        color: String,
+        #[serde(default, rename = "themeColor")]
+        theme_color: Option<jade_docx_headless_api::HeadlessThemeColor>,
+    },
+    Highlight {
+        color: String,
+    },
+    Shading {
+        color: Option<String>,
+    },
+}
+
 /// The 段落 dialog's タブとリーダー, 罫線と網かけ and options. A field left
 /// out stays as it is; `clearShading` takes the shading off.
 #[derive(serde::Deserialize, Default)]
@@ -231,6 +255,45 @@ impl OffscreenDocumentView {
         })
     }
 
+    fn apply_format_preview(
+        &self,
+        commands: Vec<HeadlessCommand>,
+        ended: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let selection = self.current_selection();
+        let before = {
+            let mut state = self.state.borrow_mut();
+            state.command_executor.set_provisional_recording(true);
+            state.command_executor.history_revision()
+        };
+        // Headless character commands select their normalized target range.
+        // Hover must retain both a backward selection and a bare word caret.
+        let payload = self.apply_body_headless(
+            commands,
+            HeadlessApplyOverrides {
+                selection_after: Some(Box::new(move |_| Some(selection))),
+                ..Default::default()
+            },
+        );
+        let revision = {
+            let mut state = self.state.borrow_mut();
+            state.command_executor.set_provisional_recording(false);
+            state.command_executor.history_revision()
+        };
+        match payload {
+            Ok(payload) => {
+                if revision != before {
+                    self.style_preview.set(Some(FormatPreviewState {
+                        revision,
+                        selection: Some(selection),
+                    }));
+                }
+                Ok(payload)
+            }
+            Err(_) => Ok(ended),
+        }
+    }
+
     fn apply_body_headless(
         &self,
         commands: Vec<HeadlessCommand>,
@@ -245,6 +308,95 @@ impl OffscreenDocumentView {
 
 #[wasm_bindgen]
 impl OffscreenDocumentView {
+    /// Temporarily previews a ribbon font, size, colour, highlight or shading.
+    /// Character previews use the selection or the word at a bare caret.
+    /// The next preview, explicit end, Undo or Redo restores the original.
+    #[wasm_bindgen(js_name = previewFormat)]
+    pub fn preview_format(&self, spec: JsValue) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            let spec: FormatPreviewJs = from_js_strict(spec, "format preview")?;
+            if view.state.borrow().preview_mode || !view.body_commands_allowed() {
+                return Ok(JsValue::NULL);
+            }
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            let span = view.character_span();
+            let commands = match spec {
+                FormatPreviewJs::Shading { color } => {
+                    let selection = view.current_selection();
+                    let (start, end) = selection.normalized();
+                    vec![HeadlessCommand::SetParagraphShading {
+                        start_paragraph: start.paragraph,
+                        end_paragraph: end.paragraph,
+                        color,
+                    }]
+                }
+                spec => {
+                    let Some(span) = span else {
+                        return Ok(ended);
+                    };
+                    let format = match spec {
+                        FormatPreviewJs::Font { family } => {
+                            let family = family.trim().to_string();
+                            if family.is_empty() {
+                                return Ok(ended);
+                            }
+                            HeadlessRunFormat {
+                                latin_font: Some(family.clone()),
+                                east_asia_font: Some(family.clone()),
+                                complex_font: Some(family),
+                                ..Default::default()
+                            }
+                        }
+                        FormatPreviewJs::Size { points } => {
+                            if !points.is_finite() || points <= 0.0 {
+                                return Ok(ended);
+                            }
+                            HeadlessRunFormat {
+                                font_size: Some(points),
+                                ..Default::default()
+                            }
+                        }
+                        FormatPreviewJs::Color { color, theme_color } => {
+                            if color.trim().is_empty() {
+                                return Ok(ended);
+                            }
+                            HeadlessRunFormat {
+                                color: Some(color),
+                                theme_color,
+                                ..Default::default()
+                            }
+                        }
+                        FormatPreviewJs::Highlight { color } => {
+                            if color.trim().is_empty() {
+                                return Ok(ended);
+                            }
+                            return view.apply_format_preview(
+                                vec![HeadlessCommand::SetHighlightColor {
+                                    start_paragraph: span.anchor.paragraph,
+                                    start_offset: span.anchor.offset,
+                                    end_paragraph: span.focus.paragraph,
+                                    end_offset: span.focus.offset,
+                                    color,
+                                }],
+                                ended,
+                            );
+                        }
+                        FormatPreviewJs::Shading { .. } => unreachable!(),
+                    };
+                    vec![HeadlessCommand::SetRunFormat {
+                        start_paragraph: span.anchor.paragraph,
+                        start_offset: span.anchor.offset,
+                        end_paragraph: span.focus.paragraph,
+                        end_offset: span.focus.offset,
+                        format: Box::new(format),
+                    }]
+                }
+            };
+            view.apply_format_preview(commands, ended)
+        })
+    }
+
     /// Word's フォント dialog: applies every field `format` sets to the
     /// selection, or to the word at a bare caret, as one step. Fields left
     /// out stay as they are.
