@@ -11,6 +11,7 @@ use super::paragraph_property_sync::{
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::ParagraphProperties;
+use crate::word_document::WordDocument;
 use jade_docx_layout::selection::SelectionRange;
 use jade_docx_reader::docx_xml::XmlElement;
 
@@ -110,10 +111,26 @@ impl Command for ResetParagraphFormattingCommand {
                 .and_then(|(_, props)| props.as_ref())
                 .and_then(|props| props.style.as_deref())
                 .map(str::to_string);
-            let inherited = ctx
+            let mut inherited = ctx
                 .document
                 .inherited_paragraph_properties(paragraph_index, style.as_deref())
                 .unwrap_or_default();
+            // Without a `w:ind` of its own, a list paragraph takes its left
+            // and hanging indent from the list level, not its style, as a
+            // load resolves it. Reset gave it the style's: List Paragraph's
+            // 36pt on screen, the level's indent once reopened.
+            let numbered = self
+                .previous_properties
+                .last()
+                .and_then(|(_, props)| props.as_ref())
+                .and_then(|props| props.numbering.as_ref())
+                .is_some_and(|numbering| numbering.list_id().is_some());
+            if numbered {
+                inherited.indent = inherited
+                    .indent
+                    .as_ref()
+                    .map(WordDocument::right_indent_only);
+            }
             let paragraph_changed = {
                 let paragraph = ctx
                     .document
@@ -198,6 +215,36 @@ mod tests {
         executor
     }
 
+    /// A list paragraph without a `w:ind` of its own is indented by its list
+    /// level, not its style. numbering-del.docx's items are List Paragraph
+    /// (36pt left) numbered at level 0; Reset gave them the style's 36pt,
+    /// which a reload, taking the level's indent, does not.
+    #[test]
+    fn a_list_paragraph_keeps_its_levels_indent() {
+        let data = std::fs::read(fixture_path("numbering-del.docx")).expect("read fixture");
+        let mut document = load_fixture("numbering-del.docx");
+        let loaded =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        let indent = |document: &WordDocument| {
+            document
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.indent.clone())
+        };
+        reset(&mut document, 0, 1);
+        assert_eq!(
+            indent(&document),
+            indent(&loaded),
+            "nothing direct to reset"
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &document.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(indent(&document), indent(&reloaded));
+    }
+
     #[test]
     fn strips_direct_formatting_but_keeps_style_and_numbering() {
         let mut document = load_fixture("hello.docx");
@@ -235,7 +282,14 @@ mod tests {
             .inherited_paragraph_properties(0, style_before.as_deref())
             .expect("styles");
         assert_eq!(props.alignment, inherited.alignment);
-        assert_eq!(props.indent, inherited.indent);
+        // A list paragraph's left and hanging indent come from its level.
+        assert_eq!(
+            props.indent,
+            inherited
+                .indent
+                .as_ref()
+                .map(WordDocument::right_indent_only)
+        );
         assert_eq!(props.spacing, inherited.spacing);
         assert_ne!(props.alignment.as_deref(), Some("center"));
         assert_eq!(

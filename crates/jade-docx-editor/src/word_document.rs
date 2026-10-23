@@ -4448,7 +4448,7 @@ impl WordDocument {
     /// left/start) spelling.
     /// The style-inherited part of an indent that a numbered paragraph keeps:
     /// the right edge. Left and first-line/hanging come from the level.
-    fn right_indent_only(indent: &Indent) -> Indent {
+    pub(crate) fn right_indent_only(indent: &Indent) -> Indent {
         Indent {
             right: indent.right,
             end: indent.end,
