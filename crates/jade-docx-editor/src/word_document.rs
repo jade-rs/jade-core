@@ -31488,6 +31488,77 @@ impl WordDocument {
         }
     }
 
+    /// Gives the runs at `changes` of `paragraph_index`, each with the
+    /// character style it had before (`previous`), the font properties their
+    /// new character style gives them, as [`Self::restyle_runs_from`] does for
+    /// a change of paragraph style. Without it a run taken out of a 9pt
+    /// character style kept 9pt on screen and showed its paragraph's size
+    /// once reopened.
+    pub(crate) fn restyle_runs_character_style(
+        &mut self,
+        paragraph_index: usize,
+        changes: &[(usize, Option<Rc<str>>)],
+    ) {
+        if changes.is_empty() {
+            return;
+        }
+        let theme = self.loaded_theme_part();
+        let Some(styles) = self.styles_part.as_ref() else {
+            return;
+        };
+        let Some(paragraph) = self.paragraph(paragraph_index) else {
+            return;
+        };
+        let paragraph_style = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.style.as_deref());
+        let raw = self.raw_document.as_ref();
+        let mut restyled = Vec::new();
+        for (index, previous) in changes {
+            let Some(run) = paragraph.runs.get(*index) else {
+                continue;
+            };
+            let Some(props) = run.properties.as_ref() else {
+                continue;
+            };
+            let character = |style: Option<Rc<str>>| RunProperties {
+                style,
+                ..Default::default()
+            };
+            let mut old = styles
+                .resolve_effective_run_properties(
+                    paragraph_style,
+                    Some(&character(previous.clone())),
+                )
+                .unwrap_or_default();
+            let mut new = styles
+                .resolve_effective_run_properties(
+                    paragraph_style,
+                    Some(&character(props.style.clone())),
+                )
+                .unwrap_or_default();
+            if let Some(theme) = theme.as_ref() {
+                Self::apply_theme_fonts_to_run_props(&mut old, theme);
+                Self::apply_theme_fonts_to_run_props(&mut new, theme);
+            }
+            let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
+            let mut props = props.clone();
+            rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
+            release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
+            restyled.push((*index, props));
+        }
+        if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
+            for (index, props) in restyled {
+                paragraph.runs[index].properties = Some(props);
+            }
+        }
+        self.apply_run_font_defaults_at(paragraph_index);
+        if let Some(theme) = theme.as_ref() {
+            self.apply_theme_fonts_at(paragraph_index, theme);
+        }
+    }
+
     /// What `paragraph_index` takes from its styles alone: the paragraph style
     /// `style_id` (or the default paragraph style), the style of the table it
     /// sits in, then the document defaults — the cascade loading resolves into

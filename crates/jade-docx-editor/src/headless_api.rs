@@ -13486,6 +13486,85 @@ mod tests {
     }
 
     #[test]
+    fn clearing_a_character_style_gives_the_run_its_paragraphs_size() {
+        // Text typed at the start of comment.docx's second paragraph joins
+        // the comment reference run's character style "aa" (9pt). Clearing
+        // the character style left the 9pt it had given the run, while a
+        // reload sized the text by its paragraph (10.5pt).
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/comment.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 9,
+                        text: "漢字".to_string(),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: 16,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 1,
+                        offset: 3,
+                        count: 1,
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 16,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 1,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 1,
+                        offset: 0,
+                        text: "ab ".to_string(),
+                    },
+                    HeadlessCommand::SetCharacterStyle {
+                        start_paragraph: 1,
+                        start_offset: 0,
+                        end_paragraph: 1,
+                        end_offset: 2,
+                        style_id: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(1)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    let props = run.properties.as_ref();
+                    (
+                        run.text.clone(),
+                        props.and_then(|props| props.style.as_deref().map(str::to_string)),
+                        props.and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export succeeds"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(sizes(&word_doc), sizes(&reloaded));
+    }
+
+    #[test]
     fn a_style_applied_again_leaves_a_character_styles_size() {
         // comment.docx's comment references are in the character style "aa"
         // (9pt). Applying Heading 1 merged the heading's 16pt over every
