@@ -127,17 +127,30 @@ impl OffscreenDocumentView {
             .iter()
             .enumerate()
             .map(|(index, stroke)| {
-                serde_json::json!({
+                Ok(serde_json::json!({
                     "index": index,
                     "page": stroke.page,
                     "points": stroke.trace.points,
                     "color": stroke.trace.brush.color,
                     "width": stroke.trace.brush.width_px,
                     "bounds": stroke.bounds(),
-                })
+                    "brush": stroke.trace.brush,
+                    "preview": crate::canvas_renderer::ink_preview::ink_trace_preview(&stroke.trace)?,
+                }))
             })
-            .collect();
+            .collect::<Result<_, String>>()
+            .map_err(|error| JsValue::from_str(&error))?;
         Ok(super::word_models::to_js(&value))
+    }
+
+    /// Read-only preview from the document ink painter, for replaceable UI.
+    #[wasm_bindgen(js_name = previewInkTrace)]
+    pub fn preview_ink_trace(&self, trace: JsValue) -> Result<JsValue, JsValue> {
+        let trace: InkTrace = serde_wasm_bindgen::from_value(trace)
+            .map_err(|error| JsValue::from_str(&format!("invalid ink: {error}")))?;
+        let paths = crate::canvas_renderer::ink_preview::ink_trace_preview(&trace)
+            .map_err(|error| JsValue::from_str(&error))?;
+        Ok(to_js(&paths))
     }
 
     /// なげなわ選択: the strokes on `page` mostly inside `polygon`

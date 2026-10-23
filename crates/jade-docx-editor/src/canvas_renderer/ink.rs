@@ -55,7 +55,7 @@ where
         Ok(())
     }
 
-    fn draw_ink_trace<P: Painter>(
+    pub(crate) fn draw_ink_trace<P: Painter>(
         painter: &P,
         trace: &InkTrace,
         place: &Place<'_>,
@@ -81,16 +81,29 @@ where
         painter.save();
         painter.set_global_alpha(opacity);
         let round = brush.tool != InkTool::Highlighter;
+        let paint = |points: &[(f64, f64)], color: &str, width: f64, round: bool| {
+            if brush.tool == InkTool::Highlighter {
+                Self::ink_chisel(
+                    painter,
+                    points,
+                    color,
+                    (brush.width_px * scale).max(0.5),
+                    (brush.height_px * scale).max(0.5),
+                )
+            } else {
+                Self::ink_polyline(painter, points, color, width, round)
+            }
+        };
         match brush.effect.as_deref().and_then(effect_colors) {
             Some(colors) => {
                 // Colour changes along the stroke, a band at a time.
                 let band = (points.len() / (colors.len() * 2)).max(1);
                 for (index, pair) in points.windows(2).enumerate() {
                     let color = colors[(index / band) % colors.len()];
-                    Self::ink_polyline(painter, pair, color, width, round && opacity >= 1.0)?;
+                    paint(pair, color, width, round && opacity >= 1.0)?;
                 }
                 if points.len() == 1 {
-                    Self::ink_polyline(painter, &points, colors[0], width, round)?;
+                    paint(&points, colors[0], width, round)?;
                 }
                 // Metallics and galaxy catch the light down the middle.
                 if brush.effect.as_deref().is_some_and(|effect| {
@@ -101,13 +114,7 @@ where
                 }
             }
             None => {
-                Self::ink_polyline(
-                    painter,
-                    &points,
-                    &brush.color,
-                    width,
-                    round && opacity >= 1.0,
-                )?;
+                paint(&points, &brush.color, width, round && opacity >= 1.0)?;
                 if brush.tool == InkTool::Pencil && width > 1.5 {
                     // Graphite grain: a lighter core.
                     painter.set_global_alpha(opacity * 0.35);
@@ -116,6 +123,68 @@ where
             }
         }
         painter.restore();
+        Ok(())
+    }
+
+    /// Sweep an axis-aligned rectangular nib. All segment hulls have the same
+    /// winding and share one fill, so translucent joins do not darken.
+    fn ink_chisel<P: Painter>(
+        painter: &P,
+        points: &[(f64, f64)],
+        color: &str,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        painter.set_fill_style_str(color);
+        painter.begin_path();
+        let pairs: Vec<_> = if points.len() == 1 {
+            vec![(&points[0], &points[0])]
+        } else {
+            points.windows(2).map(|p| (&p[0], &p[1])).collect()
+        };
+        for (a, b) in pairs {
+            let mut corners = Vec::with_capacity(8);
+            for &(x, y) in [a, b] {
+                for (dx, dy) in [
+                    (-width / 2.0, -height / 2.0),
+                    (width / 2.0, -height / 2.0),
+                    (width / 2.0, height / 2.0),
+                    (-width / 2.0, height / 2.0),
+                ] {
+                    corners.push((x + dx, y + dy));
+                }
+            }
+            corners.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
+            corners.dedup();
+            let cross = |o: (f64, f64), a: (f64, f64), b: (f64, f64)| {
+                (a.0 - o.0) * (b.1 - o.1) - (a.1 - o.1) * (b.0 - o.0)
+            };
+            let mut hull = Vec::new();
+            for &point in &corners {
+                while hull.len() >= 2
+                    && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0
+                {
+                    hull.pop();
+                }
+                hull.push(point);
+            }
+            let lower = hull.len();
+            for &point in corners.iter().rev().skip(1) {
+                while hull.len() > lower
+                    && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0
+                {
+                    hull.pop();
+                }
+                hull.push(point);
+            }
+            hull.pop();
+            painter.move_to(hull[0].0, hull[0].1);
+            for &(x, y) in &hull[1..] {
+                painter.line_to(x, y);
+            }
+            painter.close_path();
+        }
+        painter.fill();
         Ok(())
     }
 
