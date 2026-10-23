@@ -178,6 +178,47 @@ struct SectionLayoutGeometry {
     text_direction: Option<TextDirection>,
 }
 
+/// Page and active text-column bounds used by editor rulers, in CSS pixels.
+/// Resolved through the same section geometry as text layout.
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RulerGeometry {
+    pub page_width: f64,
+    pub page_height: f64,
+    pub content_left: f64,
+    pub content_right: f64,
+    pub content_top: f64,
+    pub content_bottom: f64,
+    pub text_left: f64,
+    pub text_right: f64,
+}
+
+pub fn ruler_geometry(
+    document: &Document,
+    section: Option<&SectionProperties>,
+    page_number: usize,
+    caret_x: f64,
+) -> RulerGeometry {
+    let geometry = SectionLayoutGeometry::resolve(document, section, page_number);
+    let (text_left, text_right) = geometry
+        .column_layout
+        .columns
+        .iter()
+        .copied()
+        .find(|(left, right)| caret_x >= *left && caret_x <= *right)
+        .unwrap_or((geometry.content_left_x, geometry.content_right_x));
+    RulerGeometry {
+        page_width: geometry.page_width,
+        page_height: geometry.page_height,
+        content_left: geometry.content_left_x,
+        content_right: geometry.content_right_x,
+        content_top: geometry.content_top_y,
+        content_bottom: geometry.content_bottom_y,
+        text_left,
+        text_right,
+    }
+}
+
 impl SectionLayoutGeometry {
     fn resolve(
         document: &Document,
@@ -401,6 +442,27 @@ pub fn paragraph_indent_char_unit_pt_with_grid(
         }
     }
     base
+}
+
+/// Character ruler spacing uses the same font/style/grid unit as paragraph indents.
+pub fn ruler_character_unit_px(
+    document: &Document,
+    section: Option<&SectionProperties>,
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+) -> f64 {
+    let grid = section
+        .and_then(|section| section.doc_grid.as_ref())
+        .or_else(|| paragraph_doc_grid(document));
+    let snap = resolve_effective_snap_to_grid(
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.snap_to_grid),
+        document.snap_to_grid_default,
+        grid,
+    );
+    points_to_px(paragraph_indent_char_unit_pt_with_grid(paragraph, styles, grid, snap) as f32)
 }
 
 fn estimate_paragraph_font_size_with_styles(
@@ -2849,6 +2911,41 @@ fn effective_run_properties(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ruler_character_unit_matches_indent_font_and_section_grid() {
+        let document = Document::default();
+        let mut run = plain_run("文字");
+        run.properties = Some(RunProperties {
+            font_size: Some(12.0),
+            ..RunProperties::default()
+        });
+        let mut paragraph = paragraph_with_runs(vec![run]);
+        assert_eq!(
+            ruler_character_unit_px(&document, None, &paragraph, None),
+            16.0
+        );
+        let section = SectionProperties {
+            doc_grid: Some(jade_docx_reader::DocGrid {
+                grid_type: Some("linesAndChars".into()),
+                char_space: Some(3.0),
+                ..jade_docx_reader::DocGrid::default()
+            }),
+            ..SectionProperties::default()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            snap_to_grid: Some(true),
+            ..ParagraphProperties::default()
+        });
+        assert_eq!(
+            ruler_character_unit_px(&document, Some(&section), &paragraph, None),
+            20.0
+        );
+        paragraph.properties.as_mut().unwrap().snap_to_grid = Some(false);
+        assert_eq!(
+            ruler_character_unit_px(&document, Some(&section), &paragraph, None),
+            16.0
+        );
+    }
     use crate::font_resolver::ResolvedRunStyle;
     use futures::executor::block_on;
     use jade_docx_reader::{
@@ -2861,6 +2958,43 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
     use unicode_segmentation::UnicodeSegmentation;
+
+    #[test]
+    fn ruler_uses_section_columns_and_mirrored_gutter_geometry() {
+        let document = Document {
+            mirror_margins: true,
+            ..Document::default()
+        };
+        let section = SectionProperties {
+            page_settings: Some(PageSettings {
+                width: Some(600.0),
+                height: Some(800.0),
+                margin_left: Some(60.0),
+                margin_right: Some(40.0),
+                gutter: Some(10.0),
+                ..PageSettings::default()
+            }),
+            columns: Some(SectionColumns {
+                count: Some(2),
+                space: Some(20.0),
+                ..SectionColumns::default()
+            }),
+            ..SectionProperties::default()
+        };
+        for page in [1, 2] {
+            let layout = SectionLayoutGeometry::resolve(&document, Some(&section), page);
+            let column = layout.column_layout.columns[1];
+            let ruler = ruler_geometry(&document, Some(&section), page, column.0 + 1.0);
+            assert_eq!(ruler.page_width, layout.page_width);
+            assert_eq!(ruler.content_left, layout.content_left_x);
+            assert_eq!(ruler.content_right, layout.content_right_x);
+            assert_eq!((ruler.text_left, ruler.text_right), column);
+        }
+        assert_ne!(
+            ruler_geometry(&document, Some(&section), 1, 0.0).content_left,
+            ruler_geometry(&document, Some(&section), 2, 0.0).content_left
+        );
+    }
 
     struct FixedWidthContext {
         width_per_grapheme: f64,
