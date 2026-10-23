@@ -174,6 +174,18 @@ fn font_properties(format: &HeadlessRunFormat) -> Option<RunProperties> {
     (!props.is_empty()).then_some(props)
 }
 
+/// The same normalization for story XML patches as for body commands.
+pub(crate) fn apply_to_properties(
+    properties: &mut RunProperties,
+    format: &HeadlessRunFormat,
+    layout_id: i64,
+) {
+    if let Some(fonts) = font_properties(format) {
+        super::text_edit::merge_run_properties(properties, &fonts);
+    }
+    apply_patch(properties, format, layout_id);
+}
+
 /// A preserved `w:rPr` child built from scratch; the writer gives it a real
 /// id when it emits it.
 fn element(name: &str, attributes: &[(&str, String)], children: Vec<XmlNode>) -> XmlNode {
@@ -767,12 +779,15 @@ pub fn run_format_of(props: &RunProperties) -> HeadlessRunFormat {
         hidden: props.vanish,
         language: text(&props.language),
         east_asia_language: text(&props.east_asia_language),
-        no_proof: props
-            .preserved_rpr
-            .0
-            .iter()
-            .any(|child| matches!(child, XmlNode::Element(element) if element.name == "w:noProof"))
-            .then_some(true),
+        no_proof: props.preserved_rpr.0.iter().find_map(|child| match child {
+            XmlNode::Element(element) if element.name == "w:noProof" => {
+                Some(!element.attributes.iter().any(|attribute| {
+                    attribute.name == "w:val"
+                        && matches!(attribute.value.as_str(), "0" | "false" | "off")
+                }))
+            }
+            _ => None,
+        }),
         emphasis: props.emphasis.as_deref().map(|mark| match mark {
             "underdot" => "underDot".to_string(),
             other => other.to_string(),

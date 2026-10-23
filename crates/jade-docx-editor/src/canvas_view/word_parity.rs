@@ -506,24 +506,8 @@ impl OffscreenDocumentView {
             return Ok(JsValue::NULL);
         }
         if !self.body_commands_allowed() {
-            // Theme swatches use setRunFormat, while ordinary story colour
-            // controls already use the story's lossless XML writer.
-            let supported = HeadlessRunFormat {
-                color: format.color.clone(),
-                theme_color: format.theme_color.clone(),
-                ..Default::default()
-            };
-            if format != supported
-                || format
-                    .color
-                    .as_deref()
-                    .is_none_or(|color| color.trim().is_empty())
-            {
-                return Ok(JsValue::NULL);
-            }
             return self.apply_hf_run_format(HfRunFormat {
-                color: format.color,
-                theme_color: format.theme_color,
+                patch: Some(format),
                 ..Default::default()
             });
         }
@@ -546,6 +530,47 @@ impl OffscreenDocumentView {
     /// at the start of the selection.
     #[wasm_bindgen(js_name = runFormatAtSelection)]
     pub fn run_format_at_selection(&self) -> JsValue {
+        let selection_start = self.hf_selection().map(|(start, _)| start);
+        let state = self.state.borrow();
+        if let Some((role, variant)) = Self::hf_role_variant(state.editing_mode, state.hf_variant) {
+            let Some(cursor) = selection_start.or(state.hf_edit_cursor) else {
+                return JsValue::NULL;
+            };
+            return state.word_doc.as_ref().map_or(JsValue::NULL, |document| {
+                let prefix = Self::variant_lines(document, state.editing_mode, state.hf_variant)
+                    .and_then(|lines| lines.get(cursor.line_index).cloned())
+                    .map_or(0, |line| {
+                        if Self::hf_plain_line_segment(
+                            document,
+                            state.editing_mode,
+                            state.hf_variant,
+                            cursor.line_index,
+                            &line,
+                        )
+                        .is_some()
+                        {
+                            return 0;
+                        }
+                        match cursor.segment {
+                            HfSegment::Left => 0,
+                            HfSegment::Center => line.left.as_deref().unwrap_or("").len() + 1,
+                            HfSegment::Right => {
+                                line.left.as_deref().unwrap_or("").len()
+                                    + 1
+                                    + line.center.as_deref().unwrap_or("").len()
+                                    + 1
+                            }
+                        }
+                    });
+                to_js(&document.hf_run_format_at(
+                    role,
+                    variant,
+                    cursor.line_index,
+                    prefix + cursor.offset,
+                ))
+            });
+        }
+        drop(state);
         let (start, _) = self.current_selection().normalized();
         let state = self.state.borrow();
         state.word_doc.as_ref().map_or(JsValue::NULL, |document| {

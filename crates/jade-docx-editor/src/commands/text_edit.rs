@@ -1112,7 +1112,7 @@ fn record_format_change(before: &RunProperties, after: &mut RunProperties) {
     });
 }
 
-fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
+pub(crate) fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
     target.mark_font_properties_direct_from(source);
     if let Some(value) = source.bold {
         target.bold = Some(value);
