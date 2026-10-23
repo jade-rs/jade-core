@@ -3139,6 +3139,14 @@ where
         bottom_band: f64,
     ) -> Result<f64, JsValue> {
         let tagged = self.begin_structure_cell(cell.column_index);
+        // Authored cell shading stays in the document colour in dark mode.
+        // Its text (including an unfilled nested table) must do the same.
+        let previous_suppression = self.dark_mode_text_suppressed;
+        self.dark_mode_text_suppressed = previous_suppression
+            || cell
+                .background
+                .as_deref()
+                .is_some_and(fill_hides_page_background);
         let result = self.render_cell_blocks_untagged(
             cell,
             x_start,
@@ -3151,6 +3159,7 @@ where
             ancestor_clip,
             bottom_band,
         );
+        self.dark_mode_text_suppressed = previous_suppression;
         self.end_structure(tagged);
         result
     }
@@ -4177,6 +4186,36 @@ where
     /// prepared layout, without recording another editable copy of the text.
     #[allow(clippy::too_many_arguments)]
     fn draw_cell_text_visual_only(
+        &mut self,
+        cell: &PreparedCell,
+        x_start: f64,
+        y_top: f64,
+        cell_width: f64,
+        row_height: f64,
+        line_height: f64,
+        bottom_band: f64,
+    ) -> Result<(), JsValue> {
+        let previous_suppression = self.dark_mode_text_suppressed;
+        self.dark_mode_text_suppressed = previous_suppression
+            || cell
+                .background
+                .as_deref()
+                .is_some_and(fill_hides_page_background);
+        let result = self.draw_cell_text_visual_only_inner(
+            cell,
+            x_start,
+            y_top,
+            cell_width,
+            row_height,
+            line_height,
+            bottom_band,
+        );
+        self.dark_mode_text_suppressed = previous_suppression;
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_cell_text_visual_only_inner(
         &mut self,
         cell: &PreparedCell,
         x_start: f64,
@@ -18539,6 +18578,134 @@ mod tests {
             let spaced = prepare(&config, &row);
             assert_eq!(inset(&spaced[1], false), 0.0);
             assert!((nested(&spaced[1]).0 - (40.0 - 3.0 * points_to_px(1.0))).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn shaded_cells_keep_document_text_color_in_dark_mode() {
+        use jade_painter::recording::Op;
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let config = LayoutConfig {
+            padding_x: 7.2,
+            padding_y: 0.0,
+            line_height: 20.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            available_width: 200.0,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            doc_grid: None,
+            document_snap_to_grid_default: false,
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
+            styles_part: None,
+        };
+        let paragraph = |text: &str| {
+            BodyElement::from_paragraph(
+                serde_json::from_value(serde_json::json!({"runs": [{"text": text}]})).unwrap(),
+            )
+        };
+        let nested = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell {
+                    blocks: vec![paragraph("Nested")],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for background in [None, Some("#D9E2F3"), Some("transparent")] {
+            let mut shaded = TableCell {
+                blocks: vec![paragraph("Shaded"), BodyElement::from_table(nested.clone())],
+                ..Default::default()
+            };
+            if let Some(background) = background {
+                shaded
+                    .style
+                    .insert("background-color".into(), background.into());
+            }
+            let table = Table {
+                rows: vec![TableRow {
+                    cells: vec![
+                        shaded,
+                        TableCell {
+                            blocks: vec![paragraph("Bare")],
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+            for repeated in [false, true] {
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+                renderer.dark_mode_text = true;
+                if repeated {
+                    renderer
+                        .draw_repeated_header_rows(
+                            &[layout.rows[0].cells.clone()],
+                            &[layout.rows[0].height],
+                            &table,
+                            TableVisualGrid {
+                                table_x: 100.0,
+                                column_positions: &layout.column_positions,
+                                column_widths: &layout.column_widths,
+                                bidi_visual: false,
+                            },
+                            20.0,
+                        )
+                        .unwrap();
+                } else {
+                    renderer
+                        .render_nested_table(
+                            &mut layout.clone(),
+                            None,
+                            &mut NumberingCounter::default(),
+                            100.0,
+                            40.0,
+                            200.0,
+                            None,
+                        )
+                        .unwrap();
+                }
+                let mut color = String::new();
+                let mut text_colors: Vec<(String, String)> = Vec::new();
+                for op in painter.ops() {
+                    match op {
+                        Op::SetFillStyle(value) => color = value,
+                        Op::FillText(text, ..) => match text_colors.last_mut() {
+                            Some((previous, previous_color)) if previous_color == &color => {
+                                previous.push_str(&text)
+                            }
+                            _ => text_colors.push((text, color.clone())),
+                        },
+                        _ => {}
+                    }
+                }
+                let expected = if background == Some("#D9E2F3") {
+                    DEFAULT_TEXT_COLOR
+                } else {
+                    super::super::DARK_MODE_TEXT_COLOR
+                };
+                for text in ["Shaded", "Nested"] {
+                    assert!(
+                        text_colors
+                            .iter()
+                            .any(|(t, c)| t.contains(text) && c == expected),
+                        "{text} on {background:?}, repeated={repeated}: {text_colors:?}"
+                    );
+                }
+                assert!(text_colors.iter().any(|(t,c)| t.contains("Bare") && c == super::super::DARK_MODE_TEXT_COLOR),
+                    "the next cell still uses dark-mode contrast: {text_colors:?}");
+                assert!(!renderer.dark_mode_text_suppressed);
+            }
         }
     }
 
