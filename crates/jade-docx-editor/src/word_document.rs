@@ -618,6 +618,7 @@ pub struct HfRunFormat {
     pub font_size: Option<f32>,
     pub font_family: Option<String>,
     pub color: Option<String>,
+    pub theme_color: Option<jade_docx_headless_api::HeadlessThemeColor>,
     /// `w:highlight` name (`yellow`, … or `none` to remove it).
     pub highlight: Option<String>,
 }
@@ -19584,6 +19585,10 @@ impl WordDocument {
                 crate::commands::set_font_family::ribbon_run_fonts(&Rc::<str>::from(family))
             }),
             color: format.color.as_deref().map(Rc::<str>::from),
+            theme_color: format
+                .theme_color
+                .as_ref()
+                .map(|theme| Box::new(crate::commands::set_run_format::theme_color(theme))),
             highlight: format.highlight.as_deref().map(Rc::<str>::from),
             ..RunProperties::default()
         };
@@ -19619,24 +19624,31 @@ impl WordDocument {
                 _ => None,
             })
         };
-        // `sync_run_properties_node` writes `w:sz` only for a size and
-        // removes it otherwise; keep an existing size when none is set.
-        let keep_size = format.font_size.is_none();
-        let existing_size = existing_properties
+        // The shared writer rebuilds font metrics and the character style.
+        // Story controls are patches: keep each authored property they omit,
+        // including a distinct complex-script size and per-script fonts.
+        let preserved: Vec<XmlNode> = existing_properties
             .as_ref()
-            .and_then(|properties| Self::run_property_child_value(Some(properties), "w:sz"));
+            .into_iter()
+            .flat_map(|properties| properties.children.iter())
+            .filter(|node| match node {
+                XmlNode::Element(child) => match child.name.as_str() {
+                    "w:sz" | "w:szCs" => format.font_size.is_none(),
+                    "w:rFonts" => format.font_family.is_none(),
+                    "w:rStyle" | "w:kern" | "w:w" => true,
+                    _ => false,
+                },
+                _ => false,
+            })
+            .cloned()
+            .collect();
         let mut synced = Self::sync_run_properties_node(xml_doc, &template, existing_properties)
             .unwrap_or_else(|| xml_doc.create_element("w:rPr", Vec::new(), Vec::new()));
-        if keep_size {
-            if let Some(size) = existing_size {
-                Self::upsert_run_property_child_with_str_value(xml_doc, &mut synced, "w:sz", &size);
-                Self::upsert_run_property_child_with_str_value(
-                    xml_doc,
-                    &mut synced,
-                    "w:szCs",
-                    &size,
-                );
+        for node in preserved {
+            if let XmlNode::Element(child) = &node {
+                Self::remove_run_property_child(&mut synced, &child.name);
             }
+            synced.children.push(node);
         }
         if let Some(run) = xml_doc.element_mut(run_id) {
             run.children.insert(0, XmlNode::Element(synced));
@@ -45265,6 +45277,124 @@ mod tests {
                 .expect("text range");
             assert!(!state.all_underline && !state.all_strike && !state.all_double_strike);
             assert!(!state.all_superscript && !state.all_subscript);
+        }
+    }
+
+    #[test]
+    fn header_footer_theme_patches_preserve_ranges_fields_and_empty_lines() {
+        use jade_docx_headless_api::HeadlessThemeColor;
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:custom="keep"><w:r><w:rPr><w:i/><w:rStyle w:val="Authored"/><w:sz w:val="32"/><w:szCs w:val="44"/><w:rFonts w:ascii="Arial" w:eastAsia="MS Mincho"/><w:kern w:val="18"/><w:w w:val="95"/><w:custom w:val="keep"/><w:color w:val="112233"/></w:rPr><w:t>前 beta 後</w:t></w:r></w:p><w:p><w:r><w:t>Page </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:pPr><w:rPr><w:sz w:val="28"/></w:rPr></w:pPr></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                let theme = HfRunFormat {
+                    color: Some("AABBCC".into()),
+                    theme_color: Some(HeadlessThemeColor {
+                        name: "accent2".into(),
+                        tint: Some("99".into()),
+                        shade: Some("80".into()),
+                    }),
+                    ..Default::default()
+                };
+                assert!(doc
+                    .apply_hf_range_run_format(role, variant, 0, 4, 8, &theme)
+                    .unwrap());
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains("w:custom=\"keep\""), "{xml}");
+                assert_eq!(xml.matches("w:themeColor=\"accent2\"").count(), 1, "{xml}");
+                assert!(xml.contains("w:themeTint=\"99\""), "{xml}");
+                assert!(xml.contains("w:themeShade=\"80\""), "{xml}");
+                assert!(xml.contains(">beta<"), "{xml}");
+                assert!(xml.contains("w:val=\"112233\""), "{xml}");
+                assert!(!doc
+                    .apply_hf_range_run_format(role, variant, 1, 0, 1, &theme)
+                    .unwrap());
+                doc.apply_hf_paragraph_run_format(role, variant, 1, &theme)
+                    .unwrap();
+                doc.apply_hf_paragraph_run_format(role, variant, 2, &theme)
+                    .unwrap();
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains("w:instr=\"PAGE\""), "{xml}");
+                assert!(xml.contains(">Page "), "{xml}");
+                // A plain colour clears every theme attribute only in the selected run.
+                let plain = HfRunFormat {
+                    color: Some("123456".into()),
+                    bold: Some(true),
+                    ..Default::default()
+                };
+                assert!(doc
+                    .apply_hf_range_run_format(role, variant, 0, 4, 8, &plain)
+                    .unwrap());
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                let first = xml.split("</w:p>").next().unwrap();
+                assert!(!first.contains("w:theme"), "{first}");
+                assert!(first.contains("w:val=\"123456\""), "{first}");
+                let selected = first
+                    .split("</w:r>")
+                    .find(|run| run.contains(">beta<"))
+                    .unwrap();
+                assert!(selected.contains("<w:b/>"), "{selected}");
+                assert!(selected.contains("<w:i/>"), "{selected}");
+                assert!(selected.contains("w:val=\"32\""), "{selected}");
+                for preserved in [
+                    "w:val=\"44\"",
+                    "w:ascii=\"Arial\"",
+                    "w:eastAsia=\"MS Mincho\"",
+                    "w:val=\"Authored\"",
+                    "w:val=\"18\"",
+                    "w:val=\"95\"",
+                    "w:val=\"keep\"",
+                ] {
+                    assert!(selected.contains(preserved), "{preserved}: {selected}");
+                }
+                doc.replace_hf_paragraph_text(role, variant, 2, "New text")
+                    .unwrap();
+                let xml = doc.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains(">New text<"), "{xml}");
+                assert!(
+                    xml.matches("w:themeColor=\"accent2\"").count() >= 3,
+                    "{xml}"
+                );
+                assert_eq!(
+                    doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                    body
+                );
+                let bytes = doc.export_docx().unwrap();
+                let mut reopened =
+                    futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .unwrap();
+                let xml = reopened.read_xml_part_content(&path).unwrap();
+                assert!(xml.contains("w:themeColor=\"accent2\""), "{xml}");
+                assert!(xml.contains("w:instr=\"PAGE\""), "{xml}");
+                assert_eq!(
+                    reopened
+                        .hf_range_run_state(role, variant, 0, 4, 8)
+                        .unwrap()
+                        .unwrap()
+                        .color
+                        .as_deref(),
+                    Some("#123456")
+                );
+            }
         }
     }
 
