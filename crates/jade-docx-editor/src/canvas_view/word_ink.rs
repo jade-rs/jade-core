@@ -117,6 +117,46 @@ impl OffscreenDocumentView {
         Ok(caught.into_iter().map(|index| index as u32).collect())
     }
 
+    /// Erases along a page-local path, splitting strokes for a point eraser.
+    #[wasm_bindgen(js_name = eraseInkAlong)]
+    pub fn erase_ink_along(
+        &self,
+        page: usize,
+        path: JsValue,
+        radius: f64,
+        point_eraser: bool,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let path: Vec<(f64, f64)> = serde_wasm_bindgen::from_value(path)
+            .map_err(|error| JsValue::from_str(&format!("invalid eraser path: {error}")))?;
+        if !radius.is_finite()
+            || radius <= 0.0
+            || radius > 256.0
+            || path.iter().any(|&(x, y)| !x.is_finite() || !y.is_finite())
+        {
+            return Err(JsValue::from_str(
+                "eraser needs finite points and a radius in (0, 256]",
+            ));
+        }
+        // An empty snapshot command would consume undo even when the path misses.
+        let touched = self.read_word_session(|session| {
+            session
+                .ink_strokes()
+                .iter()
+                .any(|stroke| stroke.page == page && stroke.touches_path(&path, radius))
+        })?;
+        if !touched {
+            return Ok(to_js(&json!({ "result": false })));
+        }
+        self.run_word_session("word_erase_ink", move |session| {
+            if point_eraser {
+                session.erase_points_along(page, &path, radius)
+            } else {
+                session.erase_strokes_along(page, &path, radius)
+            }
+        })
+    }
+
     /// The selected strokes moved and resized onto `[left, top, right,
     /// bottom]` (page px), one undo step.
     #[wasm_bindgen(js_name = transformInkStrokes)]
