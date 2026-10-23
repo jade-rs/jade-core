@@ -4872,6 +4872,20 @@ pub fn wrapped_line_grid_baseline_offset(
 /// line. Wrapping remains defined in logical order; only clusters and their
 /// matching style segments are reordered after line boundaries are final.
 #[inline]
+/// Whether `character` can be right-to-left, an Arabic number or an explicit
+/// directional control: none below the Hebrew block, nor in the left-to-right
+/// and neutral blocks up to the Hebrew presentation forms apart from RLM and
+/// the embedding and isolate controls. Looking up the class of every
+/// character of every line was a visible share of wrapping Japanese text.
+fn may_reorder(character: char) -> bool {
+    let code = character as u32;
+    !(code < 0x0590
+        || (0x0900..0x200F).contains(&code)
+        || (0x2010..0x202A).contains(&code)
+        || (0x202F..0x2066).contains(&code)
+        || (0x206A..0xFB1D).contains(&code))
+}
+
 fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
     if base_rtl {
         return true;
@@ -4882,21 +4896,22 @@ fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
     // directional controls still require the full UAX #9 resolution below.
     line.clusters.iter().any(|cluster| {
         cluster.text.chars().any(|character| {
-            matches!(
-                bidi_class(character),
-                BidiClass::R
-                    | BidiClass::AL
-                    | BidiClass::AN
-                    | BidiClass::RLE
-                    | BidiClass::RLO
-                    | BidiClass::RLI
-                    | BidiClass::LRE
-                    | BidiClass::LRO
-                    | BidiClass::LRI
-                    | BidiClass::FSI
-                    | BidiClass::PDF
-                    | BidiClass::PDI
-            )
+            may_reorder(character)
+                && matches!(
+                    bidi_class(character),
+                    BidiClass::R
+                        | BidiClass::AL
+                        | BidiClass::AN
+                        | BidiClass::RLE
+                        | BidiClass::RLO
+                        | BidiClass::RLI
+                        | BidiClass::LRE
+                        | BidiClass::LRO
+                        | BidiClass::LRI
+                        | BidiClass::FSI
+                        | BidiClass::PDF
+                        | BidiClass::PDI
+                )
         })
     })
 }
@@ -9416,6 +9431,42 @@ mod float_exclusion_tests {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn characters_skipped_before_the_bidi_lookup_never_reorder() {
+        for code in 0..=0xFFFFu32 {
+            let Some(character) = char::from_u32(code) else {
+                continue;
+            };
+            if may_reorder(character) {
+                continue;
+            }
+            assert!(
+                !matches!(
+                    bidi_class(character),
+                    BidiClass::R
+                        | BidiClass::AL
+                        | BidiClass::AN
+                        | BidiClass::RLE
+                        | BidiClass::RLO
+                        | BidiClass::RLI
+                        | BidiClass::LRE
+                        | BidiClass::LRO
+                        | BidiClass::LRI
+                        | BidiClass::FSI
+                        | BidiClass::PDF
+                        | BidiClass::PDI
+                ),
+                "U+{code:04X}"
+            );
+        }
+        for code in [
+            0x05D0, 0x0627, 0x0661, 0x200F, 0x202B, 0x2067, 0xFB1D, 0xFE70,
+        ] {
+            assert!(may_reorder(char::from_u32(code).unwrap()), "U+{code:04X}");
+        }
+    }
+
     use super::*;
 
     /// ECMA-376 §17.15.1.58-59: a Japanese custom set replaces the default
