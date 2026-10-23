@@ -952,7 +952,6 @@ impl DeleteTextCommand {
             (end.paragraph, end_offset),
             recording,
         )?;
-        let retained_len = folded.retained_len();
 
         let tail_paragraph = ctx
             .document
@@ -961,6 +960,8 @@ impl DeleteTextCommand {
             .ok_or(CommandError::ParagraphUnavailable)?;
         let (mut tail_inline_xml, transferred_comment_reference_runs) =
             range_tail_inline_xml(ctx, start.paragraph, end.paragraph, end_offset);
+        folded.forget_transferred_references(&transferred_comment_reference_runs);
+        let retained_len = folded.retained_len();
         folded.prepend_moved_code(ctx, &mut tail_inline_xml);
 
         {
@@ -1431,6 +1432,45 @@ impl FoldedSelection {
             );
             start = end;
         }
+    }
+
+    /// Leaves out of `retained` the comment references the join transfers
+    /// (see `range_tail_inline_xml`): kept both ways, a reference written
+    /// inside a field result split the hyperlink around it, and the text
+    /// after it was saved twice.
+    pub(super) fn forget_transferred_references(&mut self, transferred: &[Run]) {
+        let ids: HashSet<&str> = transferred
+            .iter()
+            .flat_map(|run| run.comment_reference_ids.iter().map(String::as_str))
+            .collect();
+        if ids.is_empty() {
+            return;
+        }
+        let transferred_only = |run: &Run| {
+            run.text.is_empty()
+                && !run.comment_reference_ids.is_empty()
+                && run
+                    .comment_reference_ids
+                    .iter()
+                    .all(|id| ids.contains(id.as_str()))
+        };
+        let mut kept = Vec::with_capacity(self.retained.len());
+        let mut kept_styles = Vec::with_capacity(self.retained.len());
+        for (run, style) in std::mem::take(&mut self.retained)
+            .into_iter()
+            .zip(std::mem::take(&mut self.retained_styles))
+        {
+            if transferred_only(&run) {
+                if let Some(id) = run.node_id {
+                    self.moved_code.remove(&id);
+                }
+                continue;
+            }
+            kept.push(run);
+            kept_styles.push(style);
+        }
+        self.retained = kept;
+        self.retained_styles = kept_styles;
     }
 
     pub(super) fn retained_len(&self) -> usize {
