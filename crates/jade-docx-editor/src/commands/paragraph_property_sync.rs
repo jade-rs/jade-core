@@ -537,7 +537,10 @@ fn sync_paragraph_properties_xml<F>(
     // VML fallback) are reached through the host run instead.
     let targets = match paragraph_id {
         Some(paragraph_id) => vec![paragraph_id],
-        None => word_doc.text_box_paragraph_element_ids(paragraph_index),
+        None => {
+            word_doc.ensure_text_box_paragraph_xml(paragraph_index);
+            word_doc.text_box_paragraph_element_ids(paragraph_index)
+        }
     };
     let Some(raw) = word_doc.raw_document.as_mut() else {
         return;
