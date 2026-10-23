@@ -511,7 +511,7 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
     apply_text_effects(props, format);
 }
 
-fn theme_color(theme: &HeadlessThemeColor) -> RunThemeColor {
+pub(crate) fn theme_color(theme: &HeadlessThemeColor) -> RunThemeColor {
     let byte = |value: &Option<String>| {
         value
             .as_deref()
