@@ -4575,10 +4575,15 @@ impl OffscreenDocumentView {
             let Some(doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            if !doc
-                .apply_hf_paragraph_commands(role, hf_variant, cursor.line_index, &commands)
-                .map_err(|error| JsValue::from_str(&error))?
-            {
+            let changed = match commands.as_slice() {
+                [HeadlessCommand::SetParagraphStyle { style_id, .. }] => doc
+                    .set_hf_paragraph_style(role, hf_variant, cursor.line_index, style_id.clone()),
+                _ => {
+                    doc.apply_hf_paragraph_commands(role, hf_variant, cursor.line_index, &commands)
+                }
+            }
+            .map_err(|error| JsValue::from_str(&error))?;
+            if !changed {
                 return Ok(JsValue::NULL);
             }
             let alignment = doc
@@ -8758,6 +8763,9 @@ impl OffscreenDocumentView {
                 return Ok(JsValue::NULL);
             }
             let ended = JsFuture::from(view.end_style_preview()).await?;
+            if view.state.borrow().editing_mode != EditingMode::Body {
+                return view.apply_hf_story_preview(ended, || view.set_paragraph_style(Some(id)));
+            }
             let before = {
                 let mut state = view.state.borrow_mut();
                 state.command_executor.set_provisional_recording(true);
@@ -13001,6 +13009,16 @@ impl OffscreenDocumentView {
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        if self.state.borrow().preview_mode {
+            return Ok(JsValue::NULL);
+        }
+        if self.state.borrow().editing_mode != EditingMode::Body {
+            return self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphStyle {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                style_id: normalized,
+            }]);
+        }
         self.apply_paragraph_style_headless(|start, end| HeadlessCommand::SetParagraphStyle {
             start_paragraph: start,
             end_paragraph: end,
@@ -16857,6 +16875,10 @@ impl OffscreenDocumentView {
             if let Some(direct) = direct.as_ref() {
                 merge_paragraph_properties_override(&mut paragraph, direct);
             }
+            // The cascade merges formatting, not the authored style identity.
+            paragraph.style = direct
+                .as_ref()
+                .and_then(|properties| properties.style.clone());
             paragraph.alignment.get_or_insert_with(|| Rc::from("left"));
             let character_unit =
                 view.word_doc

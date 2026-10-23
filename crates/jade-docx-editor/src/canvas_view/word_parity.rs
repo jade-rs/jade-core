@@ -227,22 +227,6 @@ impl OffscreenDocumentView {
         spec: FormatPreviewJs,
         ended: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let (mode, cursor, variant, document, anchor, revision, body_revision) = {
-            let state = self.state.borrow();
-            let (Some(cursor), Some(document)) = (state.hf_edit_cursor, state.word_doc.as_ref())
-            else {
-                return Ok(ended);
-            };
-            (
-                state.editing_mode,
-                cursor,
-                state.hf_variant,
-                document.clone(),
-                state.hf_selection_anchor,
-                state.hf_history_revision,
-                state.command_executor.history_revision(),
-            )
-        };
         let format = match &spec {
             FormatPreviewJs::Font { family } if !family.trim().is_empty() => HfRunFormat {
                 font_family: Some(family.trim().to_string()),
@@ -265,8 +249,7 @@ impl OffscreenDocumentView {
             FormatPreviewJs::Shading { .. } => HfRunFormat::default(),
             _ => return Ok(ended),
         };
-        self.state.borrow_mut().hf_provisional_recording = true;
-        let payload = match spec {
+        self.apply_hf_story_preview(ended, || match spec {
             FormatPreviewJs::Shading { color } => {
                 self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphShading {
                     start_paragraph: 0,
@@ -275,7 +258,32 @@ impl OffscreenDocumentView {
                 }])
             }
             _ => self.apply_hf_run_format(format),
+        })
+    }
+
+    pub(super) fn apply_hf_story_preview(
+        &self,
+        ended: JsValue,
+        apply: impl FnOnce() -> Result<JsValue, JsValue>,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, cursor, variant, document, anchor, revision, body_revision) = {
+            let state = self.state.borrow();
+            let (Some(cursor), Some(document)) = (state.hf_edit_cursor, state.word_doc.as_ref())
+            else {
+                return Ok(ended);
+            };
+            (
+                state.editing_mode,
+                cursor,
+                state.hf_variant,
+                document.clone(),
+                state.hf_selection_anchor,
+                state.hf_history_revision,
+                state.command_executor.history_revision(),
+            )
         };
+        self.state.borrow_mut().hf_provisional_recording = true;
+        let payload = apply();
         self.state.borrow_mut().hf_provisional_recording = false;
         let preview = HfFormatPreviewState {
             document,
