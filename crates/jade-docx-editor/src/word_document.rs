@@ -29995,6 +29995,7 @@ impl WordDocument {
                 // before the split, as a body paragraph's does.
                 let zero_width = self.zero_width_runs(index);
                 let mut tail_run_copies = SplitTailCopies::default();
+                let mut tail_copy_id = None;
                 if let (Some(raw), Some(run_id)) = (self.raw_document.as_mut(), host_run_id) {
                     let mut content_ids = Vec::new();
                     if let Some(run_element) = raw.element(run_id) {
@@ -30014,7 +30015,8 @@ impl WordDocument {
                         // The model binds to the first box; syncing gives the
                         // fallback the same runs by position.
                         if content_index == 0 {
-                            if let Some((_, copies)) = split {
+                            if let Some((copy_id, copies)) = split {
+                                tail_copy_id = Some(copy_id);
                                 tail_run_copies = copies;
                             }
                         }
@@ -30057,6 +30059,12 @@ impl WordDocument {
                         if let Some(surface) = self.paragraph_story_surface(&half) {
                             if paragraph == first_paragraph + 1 {
                                 if let Some(paragraph) = self.paragraph_mut(surface) {
+                                    // Bound to its `w:p` in the first box, as
+                                    // a load binds a text box paragraph.
+                                    // Left unbound, a later join found no XML
+                                    // to carry over and rebuilt its field's
+                                    // result as plain text.
+                                    paragraph.node_id = tail_copy_id;
                                     Self::bind_split_tail_runs(
                                         &mut paragraph.runs,
                                         &tail_run_copies,

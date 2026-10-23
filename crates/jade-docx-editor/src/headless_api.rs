@@ -13309,6 +13309,68 @@ mod tests {
     }
 
     #[test]
+    fn a_text_box_paragraph_split_off_by_enter_joins_with_its_field() {
+        // Enter in document-variable-fields.docx's text box left the new
+        // paragraph without its `w:p`'s id. Replacing a range from the first
+        // half into it then had no XML to carry over, and the DOCVARIABLE
+        // field it holds was saved as its stale result in plain text.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 5,
+                    offset: 6,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("break applies");
+        assert!(!word_doc.is_body_paragraph_surface(6));
+        assert!(word_doc.paragraph(6).and_then(|p| p.node_id).is_some());
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: 5,
+                    start_offset: 2,
+                    end_paragraph: 6,
+                    end_offset: 9,
+                    text: "あ".to_string(),
+                }],
+            },
+        )
+        .expect("replace applies");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(5)
+                .expect("text box paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>()
+        };
+        let exported = word_doc.export_docx().expect("export succeeds");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(text(&reloaded), text(&word_doc));
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("package");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read part");
+        assert!(xml.contains(r#"IABLE "Release Channel" "#), "{xml}");
+    }
+
+    #[test]
     fn enter_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box reads
         // "Textbox channel: " and a DOCVARIABLE field. Enter in that paragraph
