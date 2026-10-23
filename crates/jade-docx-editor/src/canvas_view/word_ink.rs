@@ -84,7 +84,7 @@ impl OffscreenDocumentView {
 
     /// The document's ink as strokes on pages (0-based, page px), in the
     /// order the ink tools number them: `{index, page, points, color,
-    /// width}`.
+    /// width, bounds}`; bounds includes the native brush footprint.
     #[wasm_bindgen(js_name = inkStrokes)]
     pub fn ink_strokes_js(&self) -> Result<JsValue, JsValue> {
         use crate::word::ink_tools::WordInkTools;
@@ -99,6 +99,7 @@ impl OffscreenDocumentView {
                     "points": stroke.trace.points,
                     "color": stroke.trace.brush.color,
                     "width": stroke.trace.brush.width_px,
+                    "bounds": stroke.bounds(),
                 })
             })
             .collect();
