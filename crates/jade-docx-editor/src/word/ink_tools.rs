@@ -265,6 +265,23 @@ impl PageStroke {
             .windows(2)
             .any(|pair| segment_distance(point, pair[0], pair[1]) <= reach)
     }
+
+    /// Tests the whole eraser path, including crossings between sparse samples.
+    pub fn touches_path(&self, path: &[(f64, f64)], radius: f64) -> bool {
+        if path.len() == 1 {
+            return self.touches(path[0], radius);
+        }
+        let reach = radius + self.trace.brush.width_px.max(self.trace.brush.height_px) / 2.0;
+        path.windows(2).any(|eraser| {
+            self.trace
+                .points
+                .iter()
+                .any(|&point| segment_distance(point, eraser[0], eraser[1]) <= reach)
+                || self.trace.points.windows(2).any(|stroke| {
+                    segments_distance(stroke[0], stroke[1], eraser[0], eraser[1]) <= reach
+                })
+        })
+    }
 }
 
 /// Strokes rewritten together: their page and the drawing they came from.
@@ -288,6 +305,25 @@ fn segment_distance(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     distance(p, (a.0 + t * dx, a.1 + t * dy))
 }
 
+fn segments_distance(a: (f64, f64), b: (f64, f64), c: (f64, f64), d: (f64, f64)) -> f64 {
+    let cross = |u: (f64, f64), v: (f64, f64)| u.0 * v.1 - u.1 * v.0;
+    let ab = (b.0 - a.0, b.1 - a.1);
+    let cd = (d.0 - c.0, d.1 - c.1);
+    let ac = (c.0 - a.0, c.1 - a.1);
+    let denominator = cross(ab, cd);
+    if denominator != 0.0 {
+        let t = cross(ac, cd) / denominator;
+        let u = cross(ac, ab) / denominator;
+        if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) {
+            return 0.0;
+        }
+    }
+    segment_distance(a, c, d)
+        .min(segment_distance(b, c, d))
+        .min(segment_distance(c, a, b))
+        .min(segment_distance(d, a, b))
+}
+
 /// Whether `point` is inside the closed polygon `polygon` (even-odd).
 pub fn point_in_polygon(point: (f64, f64), polygon: &[(f64, f64)]) -> bool {
     let mut inside = false;
@@ -307,7 +343,13 @@ pub fn point_in_polygon(point: (f64, f64), polygon: &[(f64, f64)]) -> bool {
 /// Erases what a point eraser passing along `path` covers from `stroke`:
 /// the pieces of it left, each a stroke of its own (none if it is all gone).
 pub fn erase_points(stroke: &PageStroke, path: &[(f64, f64)], radius: f64) -> Vec<PageStroke> {
-    let reach = radius + stroke.trace.brush.width_px / 2.0;
+    let reach = radius
+        + stroke
+            .trace
+            .brush
+            .width_px
+            .max(stroke.trace.brush.height_px)
+            / 2.0;
     let erased = |point: (f64, f64)| {
         if path.len() == 1 {
             return distance(path[0], point) <= reach;
@@ -779,10 +821,20 @@ pub trait WordInkTools: WordSession {
         point: (f64, f64),
         radius: f64,
     ) -> Result<bool, String> {
+        self.erase_strokes_along(page, &[point], radius)
+    }
+
+    /// Erases each stroke touched by a continuous path, in one undo step.
+    fn erase_strokes_along(
+        &mut self,
+        page: usize,
+        path: &[(f64, f64)],
+        radius: f64,
+    ) -> Result<bool, String> {
         let strokes = self.ink_strokes();
         let left: Vec<PageStroke> = strokes
             .iter()
-            .filter(|stroke| !(stroke.page == page && stroke.touches(point, radius)))
+            .filter(|stroke| !(stroke.page == page && stroke.touches_path(path, radius)))
             .cloned()
             .collect();
         if left.len() == strokes.len() {
@@ -804,7 +856,7 @@ pub trait WordInkTools: WordSession {
         let mut changed = false;
         let mut left = Vec::new();
         for stroke in &strokes {
-            if stroke.page != page || !path.iter().any(|&point| stroke.touches(point, radius)) {
+            if stroke.page != page || !stroke.touches_path(path, radius) {
                 left.push(stroke.clone());
                 continue;
             }
@@ -1239,24 +1291,13 @@ impl DrawController {
                 session.draw_stroke(page, points, &pen, self.state.ink_to_shape)?;
                 Ok(DrawRelease::Edited)
             }
-            DrawTool::Eraser(EraserKind::Stroke) => {
-                let strokes = session.ink_strokes();
-                let left: Vec<PageStroke> = strokes
-                    .iter()
-                    .filter(|stroke| {
-                        !(stroke.page == page
-                            && points
-                                .iter()
-                                .any(|&point| stroke.touches(point, ERASER_RADIUS)))
-                    })
-                    .cloned()
-                    .collect();
-                if left.len() == strokes.len() {
-                    return Ok(DrawRelease::Nothing);
-                }
-                session.commit_ink(&left)?;
-                Ok(DrawRelease::Edited)
-            }
+            DrawTool::Eraser(EraserKind::Stroke) => Ok(
+                if session.erase_strokes_along(page, &points, ERASER_RADIUS)? {
+                    DrawRelease::Edited
+                } else {
+                    DrawRelease::Nothing
+                },
+            ),
             DrawTool::Eraser(EraserKind::Point) => Ok(
                 if session.erase_points_along(page, &points, ERASER_RADIUS)? {
                     DrawRelease::Edited
@@ -1586,6 +1627,39 @@ mod tests {
         assert!(pieces[1].trace.points.iter().all(|point| point.0 > 54.0));
         assert!(pieces.iter().all(|piece| piece.source.is_none()));
         assert!(erase_points(&stroke, &[(-10.0, 0.0), (110.0, 0.0)], 4.0).is_empty());
+    }
+
+    #[test]
+    fn eraser_paths_cross_sparse_strokes_and_respect_brush_height() {
+        let stroke = PageStroke {
+            page: 0,
+            trace: InkTrace {
+                points: vec![(0.0, 0.0), (100.0, 0.0)],
+                brush: InkBrush {
+                    width_px: 2.0,
+                    height_px: 12.0,
+                    ..InkBrush::default()
+                },
+            },
+            source: Some((0, 1)),
+        };
+        assert!(stroke.touches_path(&[(50.0, -40.0), (50.0, 40.0)], 2.0));
+        assert!(stroke.touches_path(&[(20.0, 7.0), (80.0, 7.0)], 2.0));
+        assert!(!stroke.touches_path(&[(20.0, 9.0), (80.0, 9.0)], 2.0));
+        assert!(!stroke.touches_path(&[], 2.0));
+        assert_eq!(
+            erase_points(&stroke, &[(20.0, 7.0), (80.0, 7.0)], 2.0).len(),
+            2
+        );
+        let dot = PageStroke {
+            trace: InkTrace {
+                points: vec![(50.0, 0.0)],
+                ..stroke.trace.clone()
+            },
+            ..stroke
+        };
+        assert!(dot.touches_path(&[(0.0, 0.0), (100.0, 0.0)], 2.0));
+        assert!(!dot.touches_path(&[(0.0, 9.0), (100.0, 9.0)], 2.0));
     }
 
     #[test]
