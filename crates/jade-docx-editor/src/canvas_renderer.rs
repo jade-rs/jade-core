@@ -253,6 +253,7 @@ mod font_state_tests;
 #[cfg(test)]
 mod hyphenation_tests;
 mod ink;
+pub(crate) mod ink_preview;
 #[cfg(test)]
 mod ink_tests;
 mod keep_next;
