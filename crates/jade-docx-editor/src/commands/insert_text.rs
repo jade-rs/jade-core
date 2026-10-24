@@ -120,7 +120,10 @@ impl InsertTextCommand {
             // A note keeps its paragraphs' XML in its own part, which the
             // journal does not cover.
             let (mut tracked_range, snapshot) =
-                if ctx.document.is_note_paragraph_surface(start.paragraph) {
+                if ctx.document.is_note_paragraph_surface(start.paragraph)
+                    || (start.paragraph..end.paragraph)
+                        .any(|index| ctx.document.is_own_inserted_paragraph_break(index))
+                {
                     let snapshot = ctx
                         .document
                         .snapshot_including_package()
@@ -131,6 +134,7 @@ impl InsertTextCommand {
                     (Some(ParagraphRangeUndo::begin(ctx, range)?), None)
                 };
             let result = (|| -> Result<usize, String> {
+                let mut insert_offset = start_len;
                 for index in start.paragraph..=end.paragraph {
                     let (from, to) = if index == start.paragraph {
                         (start_offset, start_len)
@@ -161,14 +165,20 @@ impl InsertTextCommand {
                             return Err("failed to mark selected text as deleted".into());
                         }
                     }
+                    if index == start.paragraph {
+                        insert_offset = ctx
+                            .document
+                            .paragraph(index)
+                            .map(paragraph_len)
+                            .ok_or("first selected paragraph is unavailable")?;
+                    }
                     if !spans.is_empty() {
                         ctx.document.sync_paragraph_text_preserving_drawings(index);
                     }
                 }
-                for index in start.paragraph..end.paragraph {
+                for index in (start.paragraph..end.paragraph).rev() {
                     ctx.document.mark_deleted_paragraph_break(index)?;
                 }
-                let insert_offset = start_len;
                 if !self.text.is_empty() {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     let paragraph = ctx
@@ -395,7 +405,12 @@ impl InsertTextCommand {
                     }
                     if index == start.paragraph {
                         insert_offset = if recording {
-                            to
+                            let current_len = ctx
+                                .document
+                                .paragraph(index)
+                                .map(paragraph_len)
+                                .ok_or(CommandError::ParagraphUnavailable)?;
+                            to.saturating_sub(len.saturating_sub(current_len))
                         } else {
                             to - spans.iter().map(|(a, b)| b - a).sum::<usize>()
                         };
@@ -563,11 +578,21 @@ impl InsertTextCommand {
                     .map(|paragraph| paragraph.runs.clone())
                     .ok_or(CommandError::ParagraphUnavailable)?;
                 if ctx.document.revision_session().is_some() {
+                    let previous_len = previous_runs
+                        .iter()
+                        .map(|run| run.text.len())
+                        .sum::<usize>();
                     for (from, to) in unprotected_spans.iter().rev() {
                         ctx.document
                             .apply_deletion_revision(start.paragraph, *from, to - from);
                     }
-                    insert_offset = end_offset;
+                    let current_len = ctx
+                        .document
+                        .paragraph(start.paragraph)
+                        .map(paragraph_len)
+                        .ok_or(CommandError::ParagraphUnavailable)?;
+                    insert_offset =
+                        end_offset.saturating_sub(previous_len.saturating_sub(current_len));
                 } else {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     for (from, to) in unprotected_spans.iter().rev() {
@@ -612,22 +637,31 @@ impl InsertTextCommand {
                     start_offset,
                     end_offset - start_offset,
                 );
-                // The struck-out text stays in the paragraph, so the insertion
-                // goes after it rather than where the range began.
+                let previous_len = previous_runs
+                    .iter()
+                    .map(|run| run.text.len())
+                    .sum::<usize>();
+                let current_len = ctx
+                    .document
+                    .paragraph(start.paragraph)
+                    .map(paragraph_len)
+                    .ok_or(CommandError::ParagraphUnavailable)?;
+                insert_offset = end_offset.saturating_sub(previous_len.saturating_sub(current_len));
+                // Insert after retained deletions, accounting for canceled insertions.
                 if !self.text.is_empty() {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
                         apply_text_edit(
                             &mut paragraph.runs,
-                            end_offset,
-                            end_offset,
+                            insert_offset,
+                            insert_offset,
                             &self.text,
                             &zero_width,
                         );
                         rebase_comment_anchors_for_edit(
                             paragraph,
-                            end_offset,
-                            end_offset,
+                            insert_offset,
+                            insert_offset,
                             self.text.len(),
                         );
                     }
