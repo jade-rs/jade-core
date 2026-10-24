@@ -8637,7 +8637,7 @@ fn prepend_cluster_to_line_preserving_rules(
             && first.revision == segment.revision
             && first.hyperlink == segment.hyperlink
         {
-            first.text = format!("{}{}", segment.text, first.text);
+            first.text.insert_str(0, &segment.text);
             first.start = segment.start;
             return;
         }
@@ -21845,6 +21845,110 @@ mod tests {
             lines.last().map(|line| line.break_kind),
             Some(LineBreakKind::ParagraphEnd)
         );
+    }
+
+    fn prefix_buffer_test_line(prefix_bytes: usize, capacity: usize) -> WrappedLine {
+        let mut text = String::with_capacity(capacity);
+        text.push_str("END");
+        WrappedLine {
+            segments: vec![TextSegment {
+                text,
+                start: prefix_bytes,
+                end: prefix_bytes + 3,
+                properties: Some(Rc::new(RunProperties {
+                    bold: Some(true),
+                    ..RunProperties::default()
+                })),
+                revision: None,
+                hyperlink: None,
+                leading_width: 0.0,
+            }],
+            break_kind: LineBreakKind::ParagraphEnd,
+            break_range: Some((prefix_bytes + 3, prefix_bytes + 3)),
+            break_properties: None,
+            leaders: Vec::new(),
+            tab_stops: Vec::new(),
+            clusters: ["E", "N", "D"]
+                .into_iter()
+                .enumerate()
+                .map(|(index, text)| {
+                    InlineCluster::grapheme(
+                        prefix_bytes + index,
+                        prefix_bytes + index + 1,
+                        1.0,
+                        text,
+                        false,
+                        false,
+                        false,
+                    )
+                })
+                .collect(),
+            hyphen: None,
+        }
+    }
+
+    #[test]
+    fn prepending_wrap_cluster_reuses_reserved_text_buffer() {
+        let mut line = prefix_buffer_test_line(3, 4096);
+        let original_buffer = line.segments[0].text.as_ptr();
+        let properties = line.segments[0].properties.clone();
+        prepend_cluster_to_line_preserving_rules(
+            &mut line,
+            InlineCluster::grapheme(0, 3, 1.0, "前", false, false, false),
+            TextSegment {
+                text: "前".into(),
+                start: 0,
+                end: 3,
+                properties,
+                revision: None,
+                hyperlink: None,
+                leading_width: 0.0,
+            },
+        );
+        assert_eq!(line.segments[0].text, "前END");
+        assert_eq!(
+            line.segments[0].text.as_ptr(),
+            original_buffer,
+            "moving a matching cluster must reuse available text capacity"
+        );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+
+        #[test]
+        fn prepending_wrap_clusters_preserves_unicode_ranges_and_formatting(
+            chars in prop::collection::vec(any::<char>(), 1..40),
+        ) {
+            let prefix = chars.iter().collect::<String>();
+            let mut line = prefix_buffer_test_line(prefix.len(), prefix.len() + 3);
+            let mut cursor = prefix.len();
+            for ch in chars.into_iter().rev() {
+                let text = ch.to_string();
+                let start = cursor - text.len();
+                let properties = line.segments[0].properties.clone();
+                prepend_cluster_to_line_preserving_rules(
+                    &mut line,
+                    InlineCluster::grapheme(start, cursor, 1.0, &text, ch.is_whitespace(), false, false),
+                    TextSegment {
+                        text, start, end: cursor, properties,
+                        revision: None, hyperlink: None, leading_width: 0.0,
+                    },
+                );
+                cursor = start;
+            }
+            prop_assert_eq!(line.segments.len(), 1);
+            prop_assert_eq!(&line.segments[0].text, &format!("{prefix}END"));
+            prop_assert_eq!((line.segments[0].start, line.segments[0].end), (0, prefix.len() + 3));
+            prop_assert_eq!(line.segments[0].properties.as_ref().and_then(|p| p.bold), Some(true));
+            prop_assert_eq!(line.break_kind, LineBreakKind::ParagraphEnd);
+            prop_assert_eq!(line.break_range, Some((prefix.len() + 3, prefix.len() + 3)));
+            let cluster_text = line.clusters.iter().map(|c| c.text.as_str()).collect::<String>();
+            prop_assert_eq!(cluster_text, format!("{prefix}END"));
+            for pair in line.clusters.windows(2) {
+                prop_assert_eq!(pair[0].end, pair[1].start);
+            }
+        }
     }
 
     fn bidi_test_line(text: &str) -> WrappedLine {
