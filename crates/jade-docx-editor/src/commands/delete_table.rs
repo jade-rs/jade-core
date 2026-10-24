@@ -183,11 +183,6 @@ impl Command for DeleteTableCommand {
             .snapshot_including_package()
             .ok_or(CommandError::DocumentUnavailable)?;
         let previous_selection = *ctx.selection;
-        let mark = rows.iter().any(Option::is_none).then(|| {
-            ctx.document
-                .new_row_revision(jade_docx_reader::RevisionKind::Deleted)
-                .expect("revision session is open")
-        });
         let result = (|| {
             for (row, existing) in rows.into_iter().enumerate().rev() {
                 match existing {
@@ -205,10 +200,14 @@ impl Command for DeleteTableCommand {
                                 .map_err(CommandError::Custom)?;
                         }
                     }
-                    None => ctx
-                        .document
-                        .set_table_row_revision(self.table_order_index, row, mark.clone())
-                        .map_err(CommandError::Custom)?,
+                    None => {
+                        let mark = ctx
+                            .document
+                            .new_row_revision(jade_docx_reader::RevisionKind::Deleted);
+                        ctx.document
+                            .set_table_row_revision(self.table_order_index, row, mark)
+                            .map_err(CommandError::Custom)?;
+                    }
                 }
             }
             Ok(())
