@@ -11557,8 +11557,18 @@ impl WordDocument {
         self.append_paragraph_mark_revisions_raw(paragraph_index, &[mark])
     }
 
-    /// Record a boundary deletion without folding the two source paragraphs.
-    /// The review decision folds them on acceptance and keeps them on rejection.
+    pub(crate) fn is_own_inserted_paragraph_break(&self, paragraph_index: usize) -> bool {
+        self.revision_session.as_ref().is_some_and(|session| {
+            self.paragraph(paragraph_index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.mark_revision.as_ref())
+                .is_some_and(|mark| {
+                    mark.kind == RevisionKind::Inserted && mark.author == session.author
+                })
+        })
+    }
+
+    /// Record a boundary deletion, or cancel the current author's insertion.
     pub(crate) fn mark_deleted_paragraph_break(
         &mut self,
         paragraph_index: usize,
@@ -11571,6 +11581,24 @@ impl WordDocument {
             || !self.paragraphs_share_a_container(paragraph_index, paragraph_index + 1)
         {
             return Err("paragraph break does not join sibling paragraphs".into());
+        }
+        if self.is_own_inserted_paragraph_break(paragraph_index) {
+            let id = self
+                .paragraph(paragraph_index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.mark_revision.as_ref())
+                .and_then(|mark| mark.id.clone());
+            let mut targets = RevisionTargets::default();
+            targets.add_paragraph_mark(paragraph_index, id);
+            self.decide_revisions_unguarded(
+                false,
+                Some(RevisionKind::Inserted),
+                Some(paragraph_index),
+                Some(paragraph_index),
+                None,
+                Some(&targets),
+            )?;
+            return Ok(());
         }
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -28936,8 +28964,8 @@ impl WordDocument {
     }
 
     /// Annotates the provided span as a deletion revision when track changes is
-    /// active. The removed runs are preserved with `<w:del>` / `<w:delText>`
-    /// nodes so that exported DOCX files retain the tracked deletion.
+    /// active. Own insertions are canceled; other text is preserved with
+    /// `<w:del>` / `<w:delText>` nodes for review.
     pub fn apply_deletion_revision(
         &mut self,
         paragraph_index: usize,
@@ -28976,6 +29004,37 @@ impl WordDocument {
                 }
                 return false;
             }
+        }
+
+        // Authorship, not the session's timestamp, determines whether an
+        // insertion is still ours after saving and reopening the document.
+        let mut offset = start;
+        let mut removed = Vec::new();
+        middle.retain(|run| {
+            let end = offset + run.text.len();
+            let cancel = !zero_width.keeps(run)
+                && run.revision.as_ref().is_some_and(|mark| {
+                    mark.kind == RevisionKind::Inserted && mark.author == session.author
+                });
+            if cancel {
+                removed.push((offset, end));
+            }
+            offset = end;
+            !cancel
+        });
+        if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
+            for &(from, to) in removed.iter().rev() {
+                rebase_comment_anchors_for_edit(paragraph, from, to, 0);
+            }
+        }
+        if middle.iter().all(|run| zero_width.keeps(run)) {
+            left.extend(middle);
+            left.extend(tail);
+            normalize_break_runs(&mut left);
+            if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
+                paragraph.runs = left;
+            }
+            return !removed.is_empty();
         }
 
         let matches_session = |mark: &RevisionMark| {
@@ -38852,6 +38911,251 @@ mod tests {
         assert_join_keeps_paragraph_xml(&format!(
             r#"{PAGE_FIELD_RUNS}<w:r><w:t>D</w:t></w:r>{NESTED_IF_FIELD_RUNS}<w:r><w:t>E</w:t></w:r>{MERGE_FIELD_RUNS}<w:r><w:t>F</w:t></w:r>"#
         ));
+    }
+
+    #[test]
+    fn own_tracked_insertion_deletion_cancels_only_selected_text() {
+        for (start, end, expected) in [(1, 2, "AC"), (0, 3, "")] {
+            let mut doc = load_body_paragraphs(
+                r#"<w:p><w:ins w:id="7" w:author="Alice" w:date="2020-01-01T00:00:00Z"><w:r><w:rPr><w:b/></w:rPr><w:t>ABC</w:t></w:r></w:ins></w:p>"#,
+            );
+            doc.set_revision_session(Some(RevisionSession {
+                author: Some("Alice".into()),
+                date: Some("2026-10-24T00:00:00Z".into()),
+                ..RevisionSession::default()
+            }));
+            delete_text_range(&mut doc, (0, start), (0, end));
+            let body = exported_body_xml(&doc);
+            assert!(!body.contains("<w:del"), "{body}");
+            let reloaded = reload_exported(&doc);
+            assert_eq!(
+                reloaded
+                    .paragraph(0)
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .map(|r| r.text.as_str())
+                    .collect::<String>(),
+                expected
+            );
+            for run in &reloaded.paragraph(0).unwrap().runs {
+                if !run.text.is_empty() {
+                    assert_eq!(
+                        run.revision.as_ref().unwrap().author.as_deref(),
+                        Some("Alice")
+                    );
+                    assert_eq!(run.revision.as_ref().unwrap().kind, RevisionKind::Inserted);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn own_tracked_insertion_mixed_deletion_preserves_other_authors() {
+        let mut doc = load_body_paragraphs(
+            r#"<w:p><w:r><w:t>A</w:t></w:r><w:ins w:id="7" w:author="Alice"><w:r><w:t>B</w:t></w:r></w:ins><w:ins w:id="8" w:author="Bob"><w:r><w:t>C</w:t></w:r></w:ins><w:r><w:t>D</w:t></w:r></w:p>"#,
+        );
+        doc.set_revision_session(Some(RevisionSession {
+            author: Some("Alice".into()),
+            ..RevisionSession::default()
+        }));
+        delete_text_range(&mut doc, (0, 0), (0, 3));
+        let body = exported_body_xml(&doc);
+        assert!(!body.contains(">B<"), "{body}");
+        assert!(body.contains("<w:delText>A</w:delText>"), "{body}");
+        assert!(body.contains("w:author=\"Bob\""), "{body}");
+        assert!(body.contains("<w:delText>C</w:delText>"), "{body}");
+        assert_eq!(
+            reload_exported(&doc)
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "ACD"
+        );
+    }
+
+    #[test]
+    fn own_tracked_insertion_replacement_keeps_position_and_undo() {
+        use crate::commands::insert_text::InsertTextCommand;
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+        for prefix in [
+            "",
+            r#"<w:del w:id="3" w:author="Bob"><w:r><w:delText>X</w:delText></w:r></w:del>"#,
+        ] {
+            let mut doc = load_body_paragraphs(&format!(
+                r#"<w:p>{prefix}<w:ins w:id="7" w:author="Alice"><w:r><w:t>ABC</w:t></w:r></w:ins><w:r><w:t>D</w:t></w:r></w:p>"#
+            ));
+            doc.set_revision_session(Some(RevisionSession {
+                author: Some("Alice".into()),
+                ..RevisionSession::default()
+            }));
+            let before = exported_body_xml(&doc);
+            let mut selection = None;
+            let mut executor = CommandExecutor::new();
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            executor
+                .execute(
+                    Box::new(InsertTextCommand::new(
+                        SelectionRange::new(
+                            TextPosition::new(0, 0),
+                            TextPosition::new(0, if prefix.is_empty() { 2 } else { 3 }),
+                        ),
+                        "Z".into(),
+                        None,
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+            let after = exported_body_xml(ctx.document);
+            let describe = |doc: &WordDocument| {
+                doc.paragraph(0)
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        (
+                            run.text.clone(),
+                            run.properties.clone(),
+                            run.revision.as_ref().map(|mark| {
+                                (
+                                    mark.kind.clone(),
+                                    mark.author.clone(),
+                                    mark.insertion
+                                        .as_ref()
+                                        .map(|insertion| insertion.author.clone()),
+                                )
+                            }),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let after_runs = describe(ctx.document);
+            assert!(!after.contains(">AB<"), "{after}");
+            let text = ctx
+                .document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .filter(|r| {
+                    r.revision
+                        .as_ref()
+                        .is_none_or(|mark| mark.kind != RevisionKind::Deleted)
+                })
+                .map(|r| r.text.as_str())
+                .collect::<String>();
+            assert_eq!(text, "ZCD");
+            assert!(executor.undo(&mut ctx).unwrap());
+            assert_eq!(exported_body_xml(ctx.document), before);
+            assert!(executor.redo(&mut ctx).unwrap());
+            // Single-paragraph redo may allocate a fresh revision id.
+            assert_eq!(describe(ctx.document), after_runs);
+        }
+    }
+
+    #[test]
+    fn own_tracked_paragraph_break_deletion_and_replacement_undo() {
+        use crate::commands::{
+            delete_text::{DeleteDirection, DeleteTextCommand},
+            insert_text::InsertTextCommand,
+        };
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+        for replacement in [None, Some("Z")] {
+            let mut doc = load_body_paragraphs(
+                r#"<w:p><w:pPr><w:rPr><w:ins w:id="7" w:author="Alice"/></w:rPr></w:pPr><w:r><w:t>AB</w:t></w:r></w:p><w:p><w:r><w:t>CD</w:t></w:r></w:p>"#,
+            );
+            doc.set_revision_session(Some(RevisionSession {
+                author: Some("Alice".into()),
+                ..RevisionSession::default()
+            }));
+            let before = exported_body_xml(&doc);
+            let mut selection = None;
+            let mut executor = CommandExecutor::new();
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            let range = SelectionRange::new(TextPosition::new(0, 1), TextPosition::new(1, 1));
+            let command: Box<dyn crate::commands::Command> = match replacement {
+                Some(text) => Box::new(InsertTextCommand::new(range, text.into(), None)),
+                None => Box::new(DeleteTextCommand::new(range, DeleteDirection::Backward)),
+            };
+            executor.execute(command, &mut ctx).unwrap();
+            assert_eq!(ctx.document.paragraph_count(), 1);
+            let after = exported_body_xml(ctx.document);
+            assert!(!after.contains("<w:rPr><w:ins"), "{after}");
+            let text = ctx
+                .document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .filter(|r| {
+                    r.revision
+                        .as_ref()
+                        .is_none_or(|mark| mark.kind != RevisionKind::Deleted)
+                })
+                .map(|r| r.text.as_str())
+                .collect::<String>();
+            assert_eq!(text, if replacement.is_some() { "AZD" } else { "AD" });
+            assert!(executor.undo(&mut ctx).unwrap());
+            assert_eq!(exported_body_xml(ctx.document), before);
+            assert!(executor.redo(&mut ctx).unwrap());
+            assert_eq!(exported_body_xml(ctx.document), after);
+        }
+    }
+
+    #[test]
+    fn own_tracked_paragraph_break_backspace_and_delete_undo() {
+        use crate::commands::{
+            delete_text::{DeleteDirection, DeleteTextCommand},
+            Command, HistoryRenderFootprint,
+        };
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+        for (position, direction) in [
+            (TextPosition::new(1, 0), DeleteDirection::Backward),
+            (TextPosition::new(0, 2), DeleteDirection::Forward),
+        ] {
+            let mut doc = load_body_paragraphs(
+                r#"<w:p><w:pPr><w:rPr><w:ins w:id="7" w:author="Alice" w:date="2020-01-01T00:00:00Z"/></w:rPr></w:pPr><w:r><w:t>AB</w:t></w:r></w:p><w:p><w:r><w:t>CD</w:t></w:r></w:p>"#,
+            );
+            doc.set_revision_session(Some(RevisionSession {
+                author: Some("Alice".into()),
+                ..RevisionSession::default()
+            }));
+            let before = exported_body_xml(&doc);
+            let mut selection = None;
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            let mut command =
+                DeleteTextCommand::new(SelectionRange::collapsed(position), direction);
+            command.apply(&mut ctx).unwrap();
+            assert_eq!(
+                command.history_render_footprint(),
+                HistoryRenderFootprint::Structural
+            );
+            assert_eq!(ctx.document.paragraph_count(), 1);
+            assert_eq!(
+                ctx.document
+                    .paragraph(0)
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .map(|r| r.text.as_str())
+                    .collect::<String>(),
+                "ABCD"
+            );
+            assert_eq!(
+                *ctx.selection,
+                Some(SelectionRange::collapsed(TextPosition::new(0, 2)))
+            );
+            let after = exported_body_xml(ctx.document);
+            assert!(!after.contains("<w:ins"));
+            assert!(!after.contains("<w:del"));
+            command.undo(&mut ctx).unwrap();
+            assert_eq!(exported_body_xml(ctx.document), before);
+            command.apply(&mut ctx).unwrap();
+            assert_eq!(exported_body_xml(ctx.document), after);
+        }
     }
 
     #[test]
