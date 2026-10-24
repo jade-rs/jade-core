@@ -51,7 +51,10 @@ fn final_text(bytes: &[u8]) -> String {
     document
         .descendants()
         .filter(|n| {
-            n.has_tag_name((NS, "t")) && !n.ancestors().any(|a| a.has_tag_name((NS, "del")))
+            n.has_tag_name((NS, "t"))
+                && !n
+                    .ancestors()
+                    .any(|a| a.has_tag_name((NS, "del")) || a.has_tag_name((NS, "moveFrom")))
         })
         .filter_map(|n| n.text())
         .collect()
@@ -139,7 +142,7 @@ fn replacement_at_run_boundary_uses_replaced_run_format() {
     let document = roxmltree::Document::parse(&xml).unwrap();
     let replacement = document
         .descendants()
-        .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("60")))
+        .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("6")))
         .unwrap()
         .parent()
         .unwrap();
@@ -252,7 +255,7 @@ fn staging_contract_workflows_preserve_styles_and_foreign_parts() {
         let document = roxmltree::Document::parse(&xml).unwrap();
         let replacement = document
             .descendants()
-            .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("60日以内")))
+            .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("6")))
             .unwrap()
             .parent()
             .unwrap();
@@ -622,4 +625,211 @@ proptest! {
             prop_assert!(lg_ids(&bytes).is_empty(), "each decision removes only our revisions");
         }
     }
+}
+
+fn comment(query: &str, occurrence: usize) -> HeadlessCommand {
+    HeadlessCommand::AddCommentByText {
+        query: query.into(),
+        occurrence: Some(occurrence),
+        text: "確認".into(),
+        author: Some("LAWGUE".into()),
+        initials: Some("LG".into()),
+        date: Some("2026-10-24T00:00:00Z".into()),
+    }
+}
+
+fn comment_anchors(bytes: &[u8]) -> Vec<String> {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let mut anchors = std::collections::BTreeMap::<u64, String>::new();
+    let mut active = std::collections::BTreeSet::new();
+    for node in document.descendants() {
+        if node.has_tag_name((NS, "commentRangeStart")) {
+            let id = node.attribute((NS, "id")).unwrap().parse::<u64>().unwrap();
+            anchors.entry(id).or_default();
+            active.insert(id);
+        } else if node.has_tag_name((NS, "commentRangeEnd")) {
+            active.remove(&node.attribute((NS, "id")).unwrap().parse::<u64>().unwrap());
+        } else if node.has_tag_name((NS, "t"))
+            && !node
+                .ancestors()
+                .any(|a| a.has_tag_name((NS, "del")) || a.has_tag_name((NS, "moveFrom")))
+        {
+            for id in &active {
+                anchors
+                    .get_mut(id)
+                    .unwrap()
+                    .push_str(node.text().unwrap_or(""));
+            }
+        }
+    }
+    anchors.into_values().collect()
+}
+
+#[test]
+fn comments_search_final_text_and_preserve_foreign_revisions() {
+    let input = fixture(
+        r#"<w:del w:id="40" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:delText>対象</w:delText></w:r></w:del><w:r><w:t>前</w:t></w:r><w:del w:id="42" w:author="Reviewer"><w:r><w:delText>旧</w:delText></w:r></w:del><w:r><w:t>後😀対象</w:t></w:r><w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins>"#,
+    );
+    let output = edit(
+        &input,
+        vec![comment("対象", 0), comment("前後😀", 0), comment("R", 0)],
+    );
+    assert_eq!(comment_anchors(&output), vec!["対象", "前後😀", "R"]);
+    assert_eq!(final_text(&output), "前後😀対象R");
+    assert_other_author(&output);
+    let xml = part(&output, "word/document.xml");
+    assert!(xml.contains("旧"));
+    assert!(apply_headless_commands(
+        &output,
+        &HeadlessEditRequest {
+            commands: vec![comment("旧", 0)]
+        }
+    )
+    .is_err());
+    assert!(apply_headless_commands(
+        &output,
+        &HeadlessEditRequest {
+            commands: vec![comment("対象", 1)]
+        }
+    )
+    .is_err());
+}
+
+#[test]
+fn full_paragraph_replacement_tracks_only_changed_middle() {
+    let input = fixture(
+        r#"<w:r><w:rPr><w:b/></w:rPr><w:t>契約😀</w:t></w:r><w:r><w:rPr><w:u w:val="double"/></w:rPr><w:t>30</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>日é</w:t></w:r>"#,
+    );
+    let output = edit(
+        &input,
+        vec![
+            tracking(),
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: "契約😀30日é".len(),
+                text: "契約😀60日é".into(),
+            },
+        ],
+    );
+    let xml = part(&output, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let changed: Vec<_> = document
+        .descendants()
+        .filter(|n| n.has_tag_name((NS, "t")) || n.has_tag_name((NS, "delText")))
+        .filter(|n| {
+            n.ancestors()
+                .any(|a| a.attribute((NS, "author")) == Some("LAWGUE"))
+        })
+        .filter_map(|n| n.text())
+        .collect();
+    assert_eq!(changed, vec!["3", "6"]);
+    assert_eq!(final_text(&output), "契約😀60日é");
+    assert!(xml.contains("w:b"));
+    assert!(xml.contains("w:i"));
+    assert!(xml.contains("double"));
+    assert_eq!(
+        final_text(&edit(&output, vec![decide(false, lg_ids(&output))])),
+        "契約😀30日é"
+    );
+    assert_eq!(
+        final_text(&edit(&output, vec![decide(true, lg_ids(&output))])),
+        "契約😀60日é"
+    );
+    let noop = edit(
+        &input,
+        vec![
+            tracking(),
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: "契約😀30日é".len(),
+                text: "契約😀30日é".into(),
+            },
+        ],
+    );
+    assert!(lg_ids(&noop).is_empty());
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_comments_and_tracked_edits_match_model(actions in prop::collection::vec((0u8..5, any::<bool>(), "[a-z😀é]{0,3}"), 1..25)) {
+        let mut bytes = fixture(r#"<w:del w:id="40" w:author="Reviewer"><w:r><w:delText>対象</w:delText></w:r></w:del><w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins><w:r><w:t>対象😀</w:t></w:r>"#);
+        let mut model = "R対象😀".to_string();
+        let mut expected_anchors = Vec::<String>::new();
+        for (step, (action, accept, text)) in actions.into_iter().enumerate() {
+            match action {
+                0 | 1 => {
+                    let query = if action == 0 { "対象" } else { "R" };
+                    bytes = edit(&bytes, vec![comment(query, 0)]);
+                    expected_anchors.push(query.into());
+                }
+                2 => {
+                    let before = model.clone();
+                    // The independent string model supplies the changed suffix; the
+                    // public request deliberately replaces the complete paragraph.
+                    let after = format!("{model}{text}");
+                    let original_len = {
+                        let xml = part(&bytes, "word/document.xml");
+                        let doc = roxmltree::Document::parse(&xml).unwrap();
+                        doc.descendants().filter(|n| n.has_tag_name((NS,"t")) || n.has_tag_name((NS,"delText"))).filter_map(|n|n.text()).map(str::len).sum()
+                    };
+                    // Preserve the pre-existing deletion outside the requested range.
+                    bytes = edit(&bytes, vec![tracking(), HeadlessCommand::ReplaceRange {start_paragraph:0, start_offset:"対象".len(), end_paragraph:0, end_offset:original_len, text:after.clone()}]);
+                    prop_assert_eq!(final_text(&bytes), after.clone(), "step {} before decision", step);
+                    bytes = edit(&bytes, vec![decide(accept, lg_ids(&bytes))]);
+                    model = if accept { after } else { before };
+                }
+                3 => {
+                    let result = apply_headless_commands(&bytes, &HeadlessEditRequest {commands:vec![comment("存在しない",0)]});
+                    prop_assert!(result.is_err(), "step {} absent text must fail", step);
+                }
+                _ => {
+                    let result = apply_headless_commands(&bytes, &HeadlessEditRequest {commands:vec![comment("対象",1)]});
+                    prop_assert!(result.is_err(), "step {} deleted occurrence must not count", step);
+                }
+            }
+            prop_assert_eq!(final_text(&bytes), model.clone(), "persisted text step {}", step);
+            prop_assert_eq!(comment_anchors(&bytes), expected_anchors.clone(), "persisted anchors step {}", step);
+            assert_other_author(&bytes);
+        }
+    }
+}
+
+#[test]
+fn comments_skip_moved_text_and_nested_deleted_rows() {
+    let input = fixture(
+        r#"<w:moveFrom w:id="44" w:author="Reviewer"><w:r><w:t>対象</w:t></w:r></w:moveFrom></w:p>
+        <w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid>
+        <w:tr><w:trPr><w:del w:id="45" w:author="Reviewer"/></w:trPr><w:tc>
+        <w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>対象</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/>
+        </w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>対象</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p>"#,
+    );
+    let output = edit(&input, vec![comment("対象", 0)]);
+    assert_eq!(comment_anchors(&output), vec!["対象"]);
+    let xml = part(&output, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let anchor = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "commentRangeStart")))
+        .unwrap();
+    let row = anchor
+        .ancestors()
+        .find(|n| n.has_tag_name((NS, "tr")))
+        .unwrap();
+    assert!(
+        !row.descendants().any(|n| n.has_tag_name((NS, "del"))),
+        "anchor must be in the visible row: {xml}"
+    );
+    assert!(apply_headless_commands(
+        &output,
+        &HeadlessEditRequest {
+            commands: vec![comment("対象", 1)]
+        }
+    )
+    .is_err());
 }
