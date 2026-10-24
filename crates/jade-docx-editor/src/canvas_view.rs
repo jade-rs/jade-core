@@ -18367,6 +18367,8 @@ impl OffscreenDocumentView {
                     | "runFormat"
                     | "paragraphFormat"
                     | "formatted"
+                    | "insertedRow"
+                    | "deletedRow"
             )
         }) {
             return Err(JsValue::from_str(&format!(

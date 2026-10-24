@@ -378,3 +378,77 @@ fn table_edges_keep_the_logical_names_a_table_uses() {
         }
     }
 }
+
+#[test]
+fn paragraph_format_revisions_exclude_and_preserve_paragraph_mark_and_section_properties() {
+    use jade_docx_reader::{XmlElement, XmlNode};
+    fn child<'a>(element: &'a XmlElement, name: &str) -> &'a XmlElement {
+        element
+            .children
+            .iter()
+            .find_map(|node| match node {
+                XmlNode::Element(element) if element.name == name => Some(element),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("missing {name}"))
+    }
+    let mut document = load("math.docx");
+    let paragraph = body(&document)[0];
+    let id = document.paragraph(paragraph).unwrap().node_id.unwrap();
+    // Paragraph mark properties are authored by this fixture. Include section
+    // properties too: neither is part of CT_PPrGeneral inside pPrChange.
+    let raw = document.raw_document.as_mut().unwrap();
+    let section = raw.create_element("w:sectPr", vec![], vec![]);
+    let parent = raw.element_mut(id).unwrap();
+    let props = parent
+        .children
+        .iter_mut()
+        .find_map(|node| match node {
+            XmlNode::Element(element) if element.name == "w:pPr" => Some(element),
+            _ => None,
+        })
+        .unwrap();
+    props.children.push(XmlNode::Element(section));
+    raw.rebuild_index();
+    let original = child(raw.element(id).unwrap(), "w:pPr").clone();
+    let mark = child(&original, "w:rPr").clone();
+    let section = child(&original, "w:sectPr").clone();
+    apply(
+        &mut document,
+        json!([
+            { "type": "start_change_tracking", "author": "Reviewer" },
+            { "type": "set_paragraph_indent", "start_paragraph": paragraph,
+              "end_paragraph": paragraph, "left": 24.0 }
+        ]),
+    );
+    let props = child(
+        document.raw_document.as_ref().unwrap().element(id).unwrap(),
+        "w:pPr",
+    );
+    let previous = child(child(props, "w:pPrChange"), "w:pPr");
+    assert!(!previous.children.iter().any(|node| matches!(node,
+        XmlNode::Element(element) if matches!(element.name.as_str(), "w:rPr" | "w:sectPr"))));
+    assert_eq!(format!("{:?}", child(props, "w:rPr")), format!("{mark:?}"));
+    assert_eq!(
+        format!("{:?}", child(props, "w:sectPr")),
+        format!("{section:?}")
+    );
+    apply(&mut document, json!([{ "type": "reject_revisions" }]));
+    let restored = child(
+        document.raw_document.as_ref().unwrap().element(id).unwrap(),
+        "w:pPr",
+    );
+    assert_eq!(
+        format!("{:?}", child(restored, "w:rPr")),
+        format!("{mark:?}")
+    );
+    assert_eq!(
+        format!("{:?}", child(restored, "w:sectPr")),
+        format!("{section:?}")
+    );
+    assert!(!part(&document, "word/document.xml").contains("w:pPrChange"));
+    assert_eq!(
+        format!("{:?}", child(restored, "w:jc").attributes),
+        format!("{:?}", child(&original, "w:jc").attributes)
+    );
+}
