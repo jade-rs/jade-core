@@ -5394,7 +5394,7 @@ mod tests {
             let mut entry = archive.by_index(index).expect("read package entry");
             let mut contents = Vec::new();
             entry.read_to_end(&mut contents).expect("read part");
-            files.insert(entry.name().to_string(), contents);
+            files.insert(entry.name().unwrap().into_owned(), contents);
         }
         let mut xml = String::from_utf8(
             files

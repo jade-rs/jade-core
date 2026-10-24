@@ -382,7 +382,10 @@ fn unzip(bytes: &[u8]) -> Result<HashMap<String, Vec<u8>>, String> {
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)
             .map_err(|error| error.to_string())?;
-        files.insert(file.name().to_string(), contents);
+        files.insert(
+            file.name().map_err(|err| err.to_string())?.into_owned(),
+            contents,
+        );
     }
     Ok(files)
 }

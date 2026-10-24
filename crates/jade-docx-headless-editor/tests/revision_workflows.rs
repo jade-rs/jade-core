@@ -23,14 +23,17 @@ fn fixture(runs: &str) -> Vec<u8> {
         let mut entry = source.by_index(i).unwrap();
         let mut bytes = Vec::new();
         entry.read_to_end(&mut bytes).unwrap();
-        if entry.name() == "word/document.xml" {
+        if entry.name().unwrap() == "word/document.xml" {
             bytes = format!(r#"<w:document xmlns:w="{NS}"><w:body><w:p>{runs}</w:p><w:sectPr/></w:body></w:document>"#).into_bytes();
         }
-        if entry.name() == "word/styles.xml" {
+        if entry.name().unwrap() == "word/styles.xml" {
             bytes = format!(r#"<w:styles xmlns:w="{NS}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Cambria"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="MS Mincho" w:eastAsia="MS Mincho"/><w:sz w:val="21"/></w:rPr></w:style></w:styles>"#).into_bytes();
         }
         target
-            .start_file(entry.name(), zip::write::SimpleFileOptions::default())
+            .start_file(
+                entry.name().unwrap(),
+                zip::write::SimpleFileOptions::default(),
+            )
             .unwrap();
         target.write_all(&bytes).unwrap();
     }

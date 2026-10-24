@@ -501,7 +501,10 @@ impl DocumentSettings {
         let mut name = None;
         let mut value = None;
         for attr in attrs {
-            let decoded = attr.unescape_value().ok()?.into_owned();
+            let decoded = attr
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .ok()?
+                .into_owned();
             match local_name(attr.key.as_ref()) {
                 b"name" => name = Some(decoded),
                 b"val" => value = Some(decoded),
