@@ -3,6 +3,24 @@ use jade_xlsx_reader::{
     read_xlsx, ShapeKind,
 };
 #[test]
+fn strict_percentage_gap_and_overlap_have_the_same_geometry_as_transitional_numbers() {
+    for (namespace, gap, overlap) in [
+        ("http://purl.oclc.org/ooxml/drawingml/chart", "75%", "-25%"),
+        (
+            "http://schemas.openxmlformats.org/drawingml/2006/chart",
+            "75",
+            "-25",
+        ),
+    ] {
+        let xml = format!(
+            r#"<c:chartSpace xmlns:c="{namespace}"><c:chart><c:plotArea><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:gapWidth val="{gap}"/><c:overlap val="{overlap}"/></c:barChart></c:plotArea></c:chart></c:chartSpace>"#
+        );
+        let chart = parse_chart(&xml).unwrap();
+        assert_eq!(chart.gap_width, 75);
+        assert_eq!(chart.overlap, -25);
+    }
+}
+#[test]
 fn reads_chart_relationships_sparse_indexed_caches_formulas_axes_and_theme() {
     let book = read_xlsx(include_bytes!(
         "../../../public/fixtures/charts-workbook.xlsx"

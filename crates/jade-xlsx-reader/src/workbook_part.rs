@@ -28,6 +28,8 @@ pub struct WorkbookPart {
     pub full_calculation_on_load: bool,
     pub calculation_mode: CalculationMode,
     pub calculate_on_save: Option<bool>,
+    /// `workbookProtection/@lockStructure`; password metadata alone does not lock it.
+    pub structure_protected: bool,
 }
 
 /// Reads `xl/workbook.xml`.
@@ -69,7 +71,44 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                 };
             }
         }
+        let owned_direct = event_depth == 1
+            && match &event {
+                Event::Start(element) | Event::Empty(element) => {
+                    root_namespace.as_ref().is_some_and(|root| {
+                        match reader.resolver().resolve_element(element.name()).0 {
+                            ResolveResult::Unbound => root.is_empty(),
+                            ResolveResult::Bound(namespace) => {
+                                namespace.as_ref() == root.as_slice()
+                            }
+                            _ => false,
+                        }
+                    })
+                }
+                _ => false,
+            };
         match event {
+            Event::Start(ref element) | Event::Empty(ref element)
+                if owned_direct && local_name(element.name().as_ref()) == b"workbookProtection" =>
+            {
+                for attribute in element.attributes() {
+                    let attribute = attribute?;
+                    if attribute.key.as_ref() == b"lockStructure" {
+                        let value = attribute.unescape_value()?;
+                        // XML Schema boolean whitespace is collapsed. Do not silently
+                        // interpret malformed protection flags as an unlocked workbook.
+                        part.structure_protected |=
+                            match value.trim_matches([' ', '\t', '\r', '\n']) {
+                                "1" | "true" => true,
+                                "0" | "false" => false,
+                                _ => {
+                                    return Err(crate::XlsxError::BadWorkbookProtection(
+                                        value.into_owned(),
+                                    ))
+                                }
+                            };
+                    }
+                }
+            }
             Event::Start(ref element) | Event::Empty(ref element)
                 if local_name(element.name().as_ref()) == b"workbookPr" =>
             {
@@ -97,17 +136,7 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                 workbook_view_seen = true;
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if event_depth == 1
-                    && local_name(element.name().as_ref()) == b"calcPr"
-                    && root_namespace.as_ref().is_some_and(|root| {
-                        match reader.resolver().resolve_element(element.name()).0 {
-                            ResolveResult::Unbound => root.is_empty(),
-                            ResolveResult::Bound(namespace) => {
-                                namespace.as_ref() == root.as_slice()
-                            }
-                            _ => false,
-                        }
-                    }) =>
+                if owned_direct && local_name(element.name().as_ref()) == b"calcPr" =>
             {
                 for attribute in element.attributes() {
                     let attribute = attribute?;
@@ -138,7 +167,9 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                 for attribute in element.attributes() {
                     let attribute = attribute?;
                     match local_name(attribute.key.as_ref()) {
-                        b"name" => name = attribute.unescape_value()?.into_owned(),
+                        b"name" => {
+                            name = crate::xstring::decode_xstring(&attribute.unescape_value()?)
+                        }
                         b"id" => relationship_id = Some(attribute.unescape_value()?.into_owned()),
                         b"state" => {
                             visibility = match attribute.unescape_value()?.as_ref() {
@@ -170,7 +201,7 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                     let attribute = attribute?;
                     let value = attribute.unescape_value()?;
                     match local_name(attribute.key.as_ref()) {
-                        b"name" => parsed.name = value.into_owned(),
+                        b"name" => parsed.name = crate::xstring::decode_xstring(&value),
                         b"localSheetId" => parsed.local_sheet_index = value.parse().ok(),
                         b"hidden" => parsed.hidden = value != "0" && value != "false",
                         _ => {}

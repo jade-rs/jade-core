@@ -192,7 +192,7 @@ impl HeadlessWorkbook {
     /// object's id.
     pub fn insert_chart(&mut self, sheet: &str, range: &str, kind: ChartKind) -> Result<u32> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, WHAT, |p| p.objects)?;
+        self.guard_objects(index, WHAT)?;
         let range = parse_range(range)?;
         let series = series_from_range(self, index, range, kind)?;
         let (title, legend) = match series.as_slice() {
@@ -229,7 +229,7 @@ impl HeadlessWorkbook {
     /// keeps the type, title and legend.
     pub fn set_chart(&mut self, sheet: &str, id: u32, change: &ChartChange) -> Result<()> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, WHAT, |p| p.objects)?;
+        let (drawing, _, source) = self.guarded_drawing(index, id, false, WHAT)?;
         let missing = || HeadlessError::NoSuchShape(id.to_string());
         let chart = self.workbook.sheets[index]
             .shapes
@@ -238,6 +238,18 @@ impl HeadlessWorkbook {
             .and_then(|shape| shape.chart.clone())
             .ok_or_else(missing)?;
         let part = chart.part_name.clone().ok_or_else(missing)?;
+        let package = jade_opc::OpcPackage::open(&self.source)?;
+        let rels = package.required_part_str(&jade_opc::rels_part_name(&drawing))?;
+        let rels = jade_xlsx_reader::object_protection::owned_relationships(&rels)?;
+        let relationship = source
+            .chart_relationship
+            .as_deref()
+            .and_then(|id| rels.relationship(id))
+            .filter(|r| Self::owned_relationship(r, "chart"))
+            .ok_or_else(missing)?;
+        if jade_opc::resolve_target(&drawing, &relationship.target) != part {
+            return Err(missing());
+        }
         let plot = if change.kind.is_some() || change.data.is_some() {
             let kind = match change.kind.or_else(|| chart_kind(&chart)) {
                 Some(kind) => kind,

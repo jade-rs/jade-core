@@ -602,6 +602,12 @@ pub struct DataValidationView {
     pub show_input_message: bool,
     pub show_error_message: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_style: Option<String>,
+    #[serde(default)]
+    pub suppress_dropdown: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ime_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
@@ -613,6 +619,8 @@ pub struct DataValidationView {
     pub formula1: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formula2: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub literal_list: Option<String>,
 }
 
 /// How one edge of a cell is drawn, by its OOXML name (`thin`, `mediumDashed`,

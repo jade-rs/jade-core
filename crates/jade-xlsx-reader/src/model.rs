@@ -273,11 +273,15 @@ pub struct Sheet {
 }
 
 /// What a protected sheet still allows, as its `sheetProtection` says. Each
-/// flag is `true` when the operation is allowed; Excel's defaults allow
-/// none of them. Cells are locked unless their format unlocks them
+/// flag is `true` when the operation is allowed. New protection permits
+/// selecting cells and disallows the other operations. Cells are locked unless their format unlocks them
 /// ([`CellFormat::unlocked`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SheetProtection {
+    #[serde(default = "protection_select_default")]
+    pub select_locked_cells: bool,
+    #[serde(default = "protection_select_default")]
+    pub select_unlocked_cells: bool,
     pub format_cells: bool,
     pub format_columns: bool,
     pub format_rows: bool,
@@ -288,8 +292,37 @@ pub struct SheetProtection {
     pub delete_rows: bool,
     pub sort: bool,
     pub auto_filter: bool,
+    #[serde(default)]
+    pub pivot_tables: bool,
+    #[serde(default)]
+    pub scenarios: bool,
     /// Notes, shapes and charts (`objects`).
     pub objects: bool,
+}
+
+fn protection_select_default() -> bool {
+    true
+}
+impl Default for SheetProtection {
+    fn default() -> Self {
+        Self {
+            select_locked_cells: true,
+            select_unlocked_cells: true,
+            format_cells: false,
+            format_columns: false,
+            format_rows: false,
+            insert_columns: false,
+            insert_rows: false,
+            insert_hyperlinks: false,
+            delete_columns: false,
+            delete_rows: false,
+            sort: false,
+            auto_filter: false,
+            pivot_tables: false,
+            scenarios: false,
+            objects: false,
+        }
+    }
 }
 
 /// An array formula: its anchor holds the formula, and the rest of `range`
@@ -335,6 +368,9 @@ pub struct Table {
     pub totals_row_count: u32,
     /// Column names, left to right — the same text the header cells hold.
     pub columns: Vec<String>,
+    /// Per-column formulas and total settings in the same order as `columns`.
+    #[serde(default)]
+    pub column_properties: Vec<TableColumn>,
     /// `tableStyleInfo/@name`, e.g. `TableStyleMedium2`.
     pub style_name: Option<String>,
     /// `tableStyleInfo/@showFirstColumn`: the first column is emphasised.
@@ -351,6 +387,17 @@ pub struct Table {
     pub show_column_stripes: bool,
     /// Whether the table carries an `<autoFilter>` (the header dropdowns).
     pub auto_filter: bool,
+}
+
+/// Formula and total metadata of a SpreadsheetML table column. Unknown XML
+/// attributes/elements are kept by the writer rather than reconstructed here.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct TableColumn {
+    pub id: u32,
+    pub calculated_formula: Option<String>,
+    pub totals_function: Option<String>,
+    pub totals_label: Option<String>,
+    pub totals_formula: Option<String>,
 }
 
 impl Table {
@@ -685,7 +732,7 @@ pub struct CellComment {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct DataValidation {
     pub ranges: Vec<CellRange>,
     pub validation_type: Option<String>,
@@ -693,12 +740,25 @@ pub struct DataValidation {
     pub allow_blank: bool,
     pub show_input_message: bool,
     pub show_error_message: bool,
+    /// `errorStyle`: omitted means Stop; Warning and Information allow an
+    /// invalid value only after the user explicitly accepts the alert.
+    #[serde(default)]
+    pub error_style: Option<String>,
+    /// Excel interprets `showDropDown="1"` as suppressing the list arrow.
+    #[serde(default)]
+    pub suppress_dropdown: bool,
+    #[serde(default)]
+    pub ime_mode: Option<String>,
     pub prompt_title: Option<String>,
     pub prompt: Option<String>,
     pub error_title: Option<String>,
     pub error: Option<String>,
     pub formula1: Option<String>,
     pub formula2: Option<String>,
+    /// Decoded x12ac:list CSV text. This is a literal candidate source, never
+    /// a formula. Some(empty) and malformed lists remain distinguishable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub literal_list: Option<String>,
 }
 
 impl Sheet {
@@ -828,7 +888,7 @@ impl Sheet {
             .find(|comment| comment.reference == cell)
     }
 
-    /// The first standard input rule applying to `cell`, if any.
+    /// The first standard or x14 input rule applying to `cell`, if any.
     pub fn data_validation_at(&self, cell: CellRef) -> Option<&DataValidation> {
         self.data_validations
             .iter()
@@ -980,6 +1040,8 @@ pub struct Alignment {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct CellFormat {
     pub font_index: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub apply_font: Option<bool>,
     pub fill_index: Option<u32>,
     pub border_index: Option<u32>,
     pub number_format_id: Option<u32>,
@@ -988,6 +1050,9 @@ pub struct CellFormat {
     /// sheet. Cells are locked by default.
     #[serde(default)]
     pub unlocked: bool,
+    /// Contents are hidden in the formula bar while the sheet is protected.
+    #[serde(default)]
+    pub formula_hidden: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -1014,6 +1079,8 @@ pub struct StyleTable {
     /// Custom table styles (`<tableStyles>`); built-in ones are not stored.
     #[serde(default)]
     pub table_styles: Vec<TableStyleDefinition>,
+    #[serde(default)]
+    pub default_pivot_style: Option<String>,
 }
 
 /// A custom table style: which differential format each part of a table
@@ -1021,6 +1088,11 @@ pub struct StyleTable {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct TableStyleDefinition {
     pub name: String,
+    /// Gallery availability flags. An explicit style reference still applies.
+    #[serde(default)]
+    pub table: Option<bool>,
+    #[serde(default)]
+    pub pivot: Option<bool>,
     pub elements: Vec<TableStyleElement>,
 }
 
@@ -1128,8 +1200,14 @@ pub enum DateSystem {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Workbook {
+    /// Declared pivot definitions and shared typed caches, resolved by part identity.
+    #[serde(default, skip_serializing_if = "crate::pivot::PivotCatalog::is_empty")]
+    pub pivots: crate::pivot::PivotCatalog,
     pub sheets: Vec<Sheet>,
     pub styles: StyleTable,
+    /// Workbook structure protection, independent of worksheet cell protection.
+    #[serde(default)]
+    pub structure_protected: bool,
     /// Workbook- and sheet-scoped names from `workbook.xml`.
     #[serde(default)]
     pub defined_names: Vec<DefinedName>,
@@ -1154,8 +1232,10 @@ fn default_calculate_on_save() -> bool {
 impl Default for Workbook {
     fn default() -> Self {
         Self {
+            pivots: Default::default(),
             sheets: Vec::new(),
             styles: StyleTable::default(),
+            structure_protected: false,
             defined_names: Vec::new(),
             date_system: DateSystem::default(),
             active_sheet_index: None,

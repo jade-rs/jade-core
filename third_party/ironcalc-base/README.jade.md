@@ -12,6 +12,16 @@ against the official 0.8.3 `.crate` archive (SHA-256
 the local differences against that source. When upgrading, review this patch,
 refresh the provenance files and run upstream and Jade compatibility tests.
 
+The 2026-10-23 XLSX parity changes extend defined names from references and
+LAMBDAs to constants and expressions. Local formulas parse in their sheet's
+context; recursive names terminate with a circular-reference error. Name
+registration also exposes `supported_function_names()` for reproducible
+registration audits. `anchored_formula_value()` exposes a typed result through
+`AnchoredValue` for validation predicates and dynamic list sources without
+writing a temporary formula into the source workbook. Integration tests are in
+`crates/jade-xlsx-headless-editor/tests/defined_names.rs` and
+`tests/manages_sheets.rs` (a deleted reference propagates through a name).
+
 Changes add `date_system::with_date_system` and shared date base/bounds used by
 conversion, date functions, financial functions and both clock backends. The
 thread-local setting is synchronous and scoped, restoring the previous value
@@ -53,8 +63,8 @@ schema gates for engine integration in Rust, browser WASM and public React APIs.
 Excel reference captures remain necessary for complete formula parity,
 especially boundary dates and locale-sensitive date text.
 
-Excel parity changes (appended to `jade.patch` as a second set of hunks, to be
-applied after the first), each pinned by a case in
+Excel parity changes included in the canonical `jade.patch` (apply it once
+to the original 0.8.3 archive), each pinned by a case in
 `crates/jade-xlsx-headless-editor/tests/excel_conformance.rs`:
 
 - ROUND, ROUNDUP and ROUNDDOWN scale at 15 significant digits as Excel does,
@@ -76,34 +86,102 @@ applied after the first), each pinned by a case in
   `ggg`, era year `e`/`ee` (`formatter/japanese.rs`), weekday `aaa`/`aaaa` —
   and a bare locale tag such as `[$-411]`, which it used to reject as
   `#VALUE!`; and fractions (`# ?/?`, `?/??`, `# ?/8`, `formatter/fraction.rs`),
-  which the token parser does not model. Appended to `jade.patch` as a third
-  set of hunks.
-- Japanese Excel (`functions/japanese.rs`; fourth set of hunks in
-  `jade.patch`): ASC converts katakana and JIS (new) converts back; the *B
-  text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too, fifth set of hunks); DATESTRING
+  which the token parser does not model.
+- Japanese Excel (`functions/japanese.rs`): ASC converts katakana and JIS (new) converts back; the *B
+  text functions count Shift_JIS bytes as a Japanese Excel does (REPLACEB too); DATESTRING
   and NUMBERSTRING (new) write eras and kanji numerals. The new names answer
   through `jade_lookup`.
-- Tables (sixth set of hunks in `jade.patch`): `Model::add_table` registers
+- Tables: `Model::add_table` registers
   an Excel table and `Parser::set_tables` hands the parser the new list, so
   structured references (`Table1[Amount]`, `Table1[[#Totals],[Qty]]`) parse
   in formulas set afterwards. The parser used to keep the table list it was
   built with, so a table added later never resolved and the formula read
   `#ERROR!`. Pinned by `structured_references_to_a_table_recalculate` in
   `crates/jade-xlsx-calc/tests/recalculates.rs`.
-- DBCS, ENCODEURL and HYPERLINK (`functions/links.rs`; seventh set of hunks in
-  `jade.patch`): DBCS is Japanese Excel's name for JIS; ENCODEURL writes every
+- DBCS, ENCODEURL and HYPERLINK (`functions/links.rs`): DBCS is Japanese Excel's name for JIS; ENCODEURL writes every
   byte outside the unreserved characters as `%XX` (UTF-8) and is stored as
   `_xlfn.ENCODEURL`; HYPERLINK shows its friendly name, or the link when there
   is none. The names answer through `jade_lookup`. Pinned by cases in
   `crates/jade-xlsx-headless-editor/tests/excel_conformance.rs`.
-- PHONETIC (`phonetic.rs`, `functions/japanese.rs`; eighth set of hunks in
-  `jade.patch`): the furigana Excel saved with text cells reaches the engine
+- PHONETIC (`phonetic.rs`, `functions/japanese.rs`): the furigana Excel saved with text cells reaches the engine
   through `phonetic::with_readings` for one calculation, as row visibility
   does; PHONETIC joins the referenced cells' readings, or their text where
   they have none. Pinned by `crates/jade-xlsx-calc/tests/phonetic.rs` and
   conformance cases.
-- BAHTTEXT (`functions/thai.rs`; ninth set of hunks in `jade.patch`): the
+- BAHTTEXT (`functions/thai.rs`): the
   amount rounded to the satang in Thai words, บาท then ถ้วน or the satang and
   สตางค์, ลบ before a negative; ten is สิบ, twenty ยี่สิบ, and a final one
   reads เอ็ด after any higher digit, the millions included. The name answers
   through `jade_lookup`. Pinned by conformance cases.
+
+
+The compatibility-call milestone registers `ECMA.CEILING`, `SINGLE` and
+`ANCHORARRAY` in lookup, function metadata and the English inventory (506
+names). ECMA.CEILING shares CEILING's two-argument arithmetic and keeps its
+bare saved spelling. Valid SINGLE/ANCHORARRAY calls lower to the existing
+intersection/spill AST operators, case-insensitively; invalid arities use the
+normal argument-count error. Their saved names receive `_xlfn.`. Names bound
+with `_xlpm.` do not enter this operator-name special case.
+
+Implicit intersection now scalarizes arrays to their top-left item, retains
+scalar/error types, and intersects a range using the caller's row/column on
+the referenced worksheet. Value/reference entry points use the same scalar
+result. This fixes a larger-array scalar-context assertion and cross-sheet
+range rejection. The FORMULATEXT signature now retains reference operands;
+ordinary multi-cell references use the top-left formula, invalid scalar inputs
+return VALUE, and formulas longer than 8192 UTF-16 units return NA. Formula text
+still uses the engine's normalized English spelling; protected/hidden formula
+handling and further Office oracle cases remain open. The upstream tests that
+expected unimplemented range behavior now assert actual top-left formulas;
+explicit @/scalar operands assert VALUE. See `docs/xlsx/compatibility-functions.md`
+in jade-office for runtime evidence and the remaining ibisOffice function gaps.
+
+
+CEILING and ECMA.CEILING share numeric coercion and broadcast scalar/row/column
+operands over arrays, preserving per-element errors and the existing million-
+cell output-matrix limit. The compatibility suite covers both spellings,
+negative/zero significance, precision, lambda shadowing, spill growth/history,
+cycles and saved prefixes. Regenerate and replay the canonical patch with
+`python3 scripts/xlsx/replay_engine_patch.py --archive /path/to/ironcalc_base-0.8.3.crate --update`
+from the jade-office root; omit `--update` for verification only. The original
+archive and provenance inventory remain hash-pinned.
+
+
+Spill references evaluate the anchor before reading its extent, reject ordinary
+scalar-formula cells and non-reference/multi-cell operands with REF, and
+propagate anchor/operand errors (including cycles and blocked spills). A
+one-cell dynamic array still has a valid array extent. ANCHORARRAY and the
+spill operator share this path; classic CSE/other boundary behavior still
+needs application captures.
+
+GETPIVOTDATA uses a model-owned `Vec<Arc<pivot::Region>>` populated by the XLSX
+host, so independent models have independent pivot identities and visible
+axis descriptors. It reads saved visible summary cells, including their normal
+formula dependencies, without aggregating source/cache records or claiming a
+pivot refresh. Row/column repeated prefixes, separate cache/field item indices,
+report filter selection, display/root captions, typed/date criteria and array
+broadcasts are projected by the adapter. Missing or ambiguous layout metadata
+produces a calculation artifact that lets Jade preserve imported formula
+caches; genuinely invalid visible queries return REF. Reference-only evaluation
+now preserves single-cell/range defined names, with the existing name recursion
+guards. The registry contains 507 names. Integration tests are in
+`crates/jade-xlsx-calc/tests/pivot_calculation.rs`; model independence, coordinate
+overflow and cycles are covered in `src/pivot.rs`. Legacy descriptors, OLAP and
+application oracle coverage remain incomplete. See jade-office's
+`docs/xlsx/getpivotdata.md` for exact scope and regression evidence.
+
+
+Optional `dependencies::ReadDependencies` traces cell/range references inside
+one model. `trace_value_reads(limit)` enables it before evaluation and
+`take_value_reads()` consumes it. Ordinary calculations allocate no trace.
+Direct/dynamic/named references, actual value reads and spill-anchor edges are
+recorded; contained cell reads compact into existing rectangles. Formatting
+formulas are excluded. Restarted spill evaluation resets the trace. A caller
+must refuse an incomplete trace when its edge budget was reached. Reference
+operands can conservatively overapproximate value dependencies; this is not an
+Excel dependency-chain serialization API or a static all-branches oracle.
+The XLSX adapter uses the same evaluated values and observed references to
+order pivot cache refresh, rechecking changing footprints/dependencies and
+refusing cycles within an atomic batch. Tests cover model isolation, optional
+tracing, edge budgets, range compaction and lazy branches; broader scheduling
+and application oracles remain incomplete.

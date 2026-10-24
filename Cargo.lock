@@ -1800,6 +1800,7 @@ dependencies = [
  "base64",
  "cfb",
  "der",
+ "encoding_rs",
  "quick-xml 0.41.0",
  "rand 0.8.8",
  "ring",

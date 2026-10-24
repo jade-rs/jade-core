@@ -39,6 +39,10 @@ pub struct TablePart {
     pub text_color: Option<Color>,
     pub bold: Option<bool>,
     pub italic: Option<bool>,
+    #[serde(default)]
+    pub underline: Option<bool>,
+    #[serde(default)]
+    pub strike: Option<bool>,
     pub left: Option<Option<BorderEdge>>,
     pub right: Option<Option<BorderEdge>>,
     pub top: Option<Option<BorderEdge>>,
@@ -68,6 +72,8 @@ pub struct TableCellStyle {
     pub text_color: Option<Color>,
     pub bold: bool,
     pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
     pub left: Option<BorderEdge>,
     pub right: Option<BorderEdge>,
     pub top: Option<BorderEdge>,
@@ -217,77 +223,104 @@ impl StyledTable {
         if !self.range.contains(cell) {
             return None;
         }
-        let mut style = TableCellStyle::default();
-        let mut fill = None;
-        let mut text_color = None;
-        let (mut left, mut right, mut top, mut bottom) = (None, None, None, None);
-        for (kind, part, size) in &self.parts {
+        let regions = self.parts.iter().filter_map(|(kind, part, size)| {
             let first_size = if kind.starts_with("secondRow") {
                 self.size_of("firstRowStripe")
             } else {
                 self.size_of("firstColumnStripe")
             };
-            let Some(region) = self.region(kind, *size, cell, first_size) else {
-                continue;
-            };
-            if part.fill.is_some() {
-                fill = part.fill;
-            }
-            if part.text_color.is_some() {
-                text_color = part.text_color;
-            }
-            if let Some(bold) = part.bold {
-                style.bold = bold;
-            }
-            if let Some(italic) = part.italic {
-                style.italic = italic;
-            }
-            let pick = |outer: &Option<Option<BorderEdge>>,
-                        inner: &Option<Option<BorderEdge>>,
-                        at_edge: bool| {
-                if at_edge {
-                    outer.clone()
-                } else {
-                    inner.clone()
-                }
-            };
-            if let Some(edge) = pick(
-                &part.left,
-                &part.inside_vertical,
-                cell.column == region.left,
-            ) {
-                left = Some(edge);
-            }
-            if let Some(edge) = pick(
-                &part.right,
-                &part.inside_vertical,
-                cell.column == region.right,
-            ) {
-                right = Some(edge);
-            }
-            if let Some(edge) = pick(&part.top, &part.inside_horizontal, cell.row == region.top) {
-                top = Some(edge);
-            }
-            if let Some(edge) = pick(
-                &part.bottom,
-                &part.inside_horizontal,
-                cell.row == region.bottom,
-            ) {
-                bottom = Some(edge);
-            }
-        }
-        style.fill = fill.map(|color| ResolvedFill {
-            pattern: "solid".into(),
-            foreground: Some(color),
-            background: None,
+            self.region(kind, *size, cell, first_size).map(|r| {
+                (
+                    part,
+                    CellRange {
+                        start: CellRef::new(r.left, r.top),
+                        end: CellRef::new(r.right, r.bottom),
+                    },
+                )
+            })
         });
-        style.text_color = text_color;
-        style.left = left.flatten();
-        style.right = right.flatten();
-        style.top = top.flatten();
-        style.bottom = bottom.flatten();
-        Some(style)
+        Some(style_from_regions(cell, regions))
     }
+}
+
+pub(crate) fn style_from_regions<'a>(
+    cell: CellRef,
+    regions: impl Iterator<Item = (&'a TablePart, CellRange)>,
+) -> TableCellStyle {
+    let mut style = TableCellStyle::default();
+    let mut fill = None;
+    let mut text_color = None;
+    let (mut left, mut right, mut top, mut bottom) = (None, None, None, None);
+    for (part, area) in regions {
+        let region = Region {
+            top: area.start.row,
+            bottom: area.end.row,
+            left: area.start.column,
+            right: area.end.column,
+        };
+        if part.fill.is_some() {
+            fill = part.fill;
+        }
+        if part.text_color.is_some() {
+            text_color = part.text_color;
+        }
+        if let Some(bold) = part.bold {
+            style.bold = bold;
+        }
+        if let Some(italic) = part.italic {
+            style.italic = italic;
+        }
+        if let Some(underline) = part.underline {
+            style.underline = underline;
+        }
+        if let Some(strike) = part.strike {
+            style.strike = strike;
+        }
+        let pick = |outer: &Option<Option<BorderEdge>>,
+                    inner: &Option<Option<BorderEdge>>,
+                    at_edge: bool| {
+            if at_edge {
+                outer.clone()
+            } else {
+                inner.clone()
+            }
+        };
+        if let Some(edge) = pick(
+            &part.left,
+            &part.inside_vertical,
+            cell.column == region.left,
+        ) {
+            left = Some(edge);
+        }
+        if let Some(edge) = pick(
+            &part.right,
+            &part.inside_vertical,
+            cell.column == region.right,
+        ) {
+            right = Some(edge);
+        }
+        if let Some(edge) = pick(&part.top, &part.inside_horizontal, cell.row == region.top) {
+            top = Some(edge);
+        }
+        if let Some(edge) = pick(
+            &part.bottom,
+            &part.inside_horizontal,
+            cell.row == region.bottom,
+        ) {
+            bottom = Some(edge);
+        }
+    }
+    style.fill = fill.map(|color| ResolvedFill {
+        pattern: "solid".into(),
+        foreground: Some(color),
+        background: None,
+    });
+    style.text_color = text_color;
+    style.left = left.flatten();
+    style.right = right.flatten();
+    style.top = top.flatten();
+    style.bottom = bottom.flatten();
+    style
 }
 
 /// The sheet's tables that carry a style, resolved against the workbook's
@@ -340,7 +373,7 @@ fn custom_parts(name: &str, styles: &StyleTable) -> Option<Vec<(String, TablePar
     )
 }
 
-fn from_differential(style: &DifferentialStyle) -> TablePart {
+pub(crate) fn from_differential(style: &DifferentialStyle) -> TablePart {
     let edge = |edge: &Option<DifferentialBorder>| {
         edge.as_ref().map(|edge| match edge {
             DifferentialBorder::Clear => None,
@@ -356,6 +389,8 @@ fn from_differential(style: &DifferentialStyle) -> TablePart {
         text_color: style.text_color,
         bold: style.bold,
         italic: style.italic,
+        underline: style.underline,
+        strike: style.strike,
         left: edge(&style.left),
         right: edge(&style.right),
         top: edge(&style.top),
@@ -380,7 +415,7 @@ const OFFICE: [[u8; 3]; 10] = [
 ];
 
 /// A theme colour, `tint` lighter (positive) or darker (negative).
-fn theme(styles: &StyleTable, index: u32, tint: f32) -> Color {
+pub(crate) fn theme(styles: &StyleTable, index: u32, tint: f32) -> Color {
     let resolved = styles
         .theme_colors
         .get(index as usize)

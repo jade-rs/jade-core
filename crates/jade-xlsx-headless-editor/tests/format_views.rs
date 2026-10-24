@@ -12,6 +12,8 @@ fn source_format_query_resolves_axis_defaults_and_history_without_writing() {
     assert_eq!(book.bytes(), before);
     assert!(!book.can_undo());
     let change = FormatChange {
+        locked: Some(false),
+        formula_hidden: Some(true),
         bold: Some(true),
         italic: Some(true),
         underline: Some(true),

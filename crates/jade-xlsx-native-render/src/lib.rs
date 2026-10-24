@@ -127,6 +127,7 @@ impl NativeWorkbook {
                 shapes: Vec::new(),
                 notes: Vec::new(),
                 tables: Vec::new(),
+                pivots: Vec::new(),
                 sparklines: Vec::new(),
                 show_grid_lines: true,
                 content_width: 0.0,

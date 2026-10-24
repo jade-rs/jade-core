@@ -35,27 +35,47 @@
 
 pub mod auto_filter;
 mod calc;
+pub mod cell_shift;
+mod cell_shift_extensions;
 pub mod chart_cache;
 pub mod charts;
 pub mod clipboard;
 pub mod conditional_formats;
+pub mod data_validations;
+pub mod defined_names;
 pub mod dimensions;
 pub mod drawing;
 mod filter;
 pub mod filter_state;
 pub mod format_axes;
 pub mod header_footer;
+pub mod hyperlinks;
 pub mod merges;
 pub mod notes;
 pub mod objects;
+pub mod page_setup;
 mod patch;
+pub(crate) mod pivot_chart;
+pub mod pivot_refresh;
+mod pivots;
+pub mod protected_ranges;
+pub mod protection;
 mod refresh;
+pub mod sheet_protection;
 pub mod sheets;
 pub mod shift;
 pub mod sort;
 pub mod spills;
 pub mod styles;
 pub mod table;
+mod table_calculation;
+mod table_formulas;
+pub mod tables;
+mod validation_sources;
+mod validation_structure;
+mod worksheet_formulas;
+mod xml_edit;
+mod xml_edit_ns;
 
 pub use calc::{request_full_recalculation, withdraw_full_recalculation};
 pub use charts::{ChartKind, LegendPosition, SeriesReferences};
@@ -70,6 +90,7 @@ pub use merges::set_merges;
 pub use notes::{delete_note, set_note};
 pub use objects::{delete_shape, set_shape_anchor, ShapeAnchor};
 pub use patch::patch_sheet;
+pub use pivots::guard_values as guard_pivot_values;
 pub use refresh::{refresh_sheet, CachedValue, CachedValueEdit, SheetCachedValues};
 pub use shift::{restructure, shift_defined_names, shift_sheet};
 pub use styles::{add_cell_format, BorderLine, BorderStyle, FormatChange};
@@ -85,6 +106,32 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WriteError {
+    #[error("pivot table: {0}")]
+    Pivot(String),
+    #[error("editable range: {0}")]
+    ProtectedRange(String),
+    #[error("sheet protection: {0}")]
+    SheetProtection(String),
+    #[error("workbook protection: {0}")]
+    WorkbookProtection(String),
+    #[error("protection password is incorrect")]
+    IncorrectPassword,
+    #[error(transparent)]
+    ProtectionPassword(#[from] jade_opc::protection::PasswordError),
+    #[error("workbook structure is protected")]
+    WorkbookStructureProtected,
+    #[error("cell shift: {0}")]
+    CellShift(String),
+    #[error("table: {0}")]
+    Table(String),
+    #[error("hyperlink: {0}")]
+    Hyperlink(String),
+    #[error("data validation: {0}")]
+    DataValidation(String),
+    #[error("page setup: {0}")]
+    PageSetup(String),
+    #[error("defined name: {0}")]
+    DefinedName(String),
     #[error("sort: {0}")]
     Sort(String),
     #[error("filter: {0}")]
@@ -158,7 +205,7 @@ pub enum WriteError {
     #[error("the workbook already has a sheet called `{0}`")]
     DuplicateSheetName(String),
     /// A workbook has to keep at least one visible sheet.
-    #[error("`{0}` is the last visible sheet and cannot be deleted")]
+    #[error("`{0}` is the last visible sheet and cannot be hidden or deleted")]
     LastVisibleSheet(String),
     /// A sheet position past the end of the tab list.
     #[error("sheet position {index} is outside the {count} sheets")]

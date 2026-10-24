@@ -14,6 +14,7 @@ use thiserror::Error;
 pub mod compound_file;
 pub mod encryption;
 pub mod package_limits;
+pub mod protection;
 pub mod signature;
 mod snapshot;
 pub use package_limits::{PackageLimitError, PackageLoadLimits};

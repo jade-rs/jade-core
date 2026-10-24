@@ -15,14 +15,28 @@
 //! read sees exactly what will be exported.
 
 mod auto_filter;
+mod cell_shift;
 mod charts;
 mod conditional_formats;
 mod current_region;
+mod data_validations;
+mod defined_names;
+mod editable_ranges;
 pub mod fill;
+mod hyperlinks;
 mod merge;
 mod objects;
+mod page_setup;
+mod pivots;
+mod protection;
+mod range_authentication;
+pub use range_authentication::{
+    RangeAuthContext, RangeAuthentication, RangeEditRequirement, RangeUnlockCandidate,
+    RangeUnlockStatus,
+};
 mod sheets;
 mod sort;
+mod tables;
 
 /// A spilled value as a cell holds it.
 fn spilled_value(value: &CellValue) -> NewValue {
@@ -60,19 +74,31 @@ use jade_xlsx_headless_api::{
     WorkbookSummary,
 };
 use jade_xlsx_layout::{column_label, number_format};
+pub use jade_xlsx_reader::SheetProtection;
 use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
 };
+pub use jade_xlsx_writer::pivot_refresh::{
+    pivot_configuration, PivotCreate, PivotDestination, PivotFieldOptions, PivotFilterSelection,
+    PivotLayout, PivotMeasure, PivotMemberFilter, PivotPage, PivotReportLayout, PivotSource,
+    PivotStyle, PivotUpdate,
+};
+pub use jade_xlsx_writer::protection::WorkbookProtectionInfo;
+pub use jade_xlsx_writer::sheet_protection::SheetProtectionInfo;
 pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
 };
 pub use objects::ShapeAnchor;
+pub use pivots::{PivotCreationSummary, PivotDeletionSummary, PivotRefreshSummary};
+pub use tables::{TableOptions, TableResult, TableStyle, TableTotal, TableUpdate, TotalFunction};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum HeadlessError {
+    #[error("editable range: {0}")]
+    EditableRange(String),
     #[error("cannot read the workbook: {0}")]
     Read(#[from] jade_xlsx_reader::XlsxError),
     #[error("no sheet called `{0}`")]
@@ -132,13 +158,20 @@ impl HeadlessError {
         matches!(
             self,
             HeadlessError::NoSuchSheet(_)
+                | HeadlessError::EditableRange(_)
                 | HeadlessError::AutoFilter(_)
                 | HeadlessError::BadReference(_)
                 | HeadlessError::DuplicateReference(_)
                 | HeadlessError::FillShape { .. }
                 | HeadlessError::EmptyFormatChange
                 | HeadlessError::Write(
-                    jade_xlsx_writer::WriteError::Sort(_)
+                    jade_xlsx_writer::WriteError::ProtectedRange(_)
+                        | jade_xlsx_writer::WriteError::DefinedName(_)
+                        | jade_xlsx_writer::WriteError::DataValidation(_)
+                        | jade_xlsx_writer::WriteError::Hyperlink(_)
+                        | jade_xlsx_writer::WriteError::Table(_)
+                        | jade_xlsx_writer::WriteError::PageSetup(_)
+                        | jade_xlsx_writer::WriteError::Sort(_)
                         | jade_xlsx_writer::WriteError::BadColor { .. }
                         | jade_xlsx_writer::WriteError::BadFontSize
                         | jade_xlsx_writer::WriteError::NoSuchStyle { .. }
@@ -182,7 +215,10 @@ pub const RANGE_CELL_LIMIT: u64 = 1_000_000;
 /// regeneration: that is what lets a save leave every part it did not touch
 /// exactly as it was.
 pub struct HeadlessWorkbook {
+    sheet_states: BTreeMap<String, editable_ranges::SheetState>,
+    range_grants: Vec<editable_ranges::RangeGrant>,
     clipboard_origin: usize,
+    range_auth_generation: u64,
     workbook: Workbook,
     source: Vec<u8>,
     automatic_height_base: Option<Vec<u8>>,
@@ -191,9 +227,9 @@ pub struct HeadlessWorkbook {
     /// The bytes before each write, newest last. A write is a patch of the
     /// whole package, so the package itself is the cheapest faithful undo
     /// record: restoring it brings back every cell, cache and flag exactly.
-    history: Vec<HistorySnapshot>,
+    history: Vec<std::sync::Arc<HistorySnapshot>>,
     /// Writes undone and not yet redone, newest last.
-    future: Vec<HistorySnapshot>,
+    future: Vec<std::sync::Arc<HistorySnapshot>>,
     filter_row_state: BTreeMap<String, auto_filter::FilterRowState>,
 }
 
@@ -203,11 +239,47 @@ struct HistorySnapshot {
     filter_row_state: BTreeMap<String, auto_filter::FilterRowState>,
 }
 
+/// A complete in-memory editing state for rolling back a compound command.
+/// Immutable history payloads are shared; current source/model state is copied
+/// once. A checkpoint can only be restored into the workbook that created it.
+#[must_use]
+pub struct EditCheckpoint {
+    state: Box<HeadlessWorkbook>,
+}
+
 /// How many writes can be undone. Each step holds a whole package, so this
 /// bounds memory at roughly a hundred copies of the file.
 pub const UNDO_LIMIT: usize = 100;
 
 impl HeadlessWorkbook {
+    pub fn edit_checkpoint(&self) -> EditCheckpoint {
+        EditCheckpoint {
+            state: Box::new(Self {
+                sheet_states: self.sheet_states.clone(),
+                range_grants: self.range_grants.clone(),
+                clipboard_origin: self.clipboard_origin,
+                range_auth_generation: self.range_auth_generation,
+                workbook: self.workbook.clone(),
+                source: self.source.clone(),
+                automatic_height_base: self.automatic_height_base.clone(),
+                calculation_time_zone: self.calculation_time_zone.clone(),
+                source_time_zone: self.source_time_zone.clone(),
+                history: self.history.clone(),
+                future: self.future.clone(),
+                filter_row_state: self.filter_row_state.clone(),
+            }),
+        }
+    }
+    /// Restores source/model, permissions, grants, row metrics and both history
+    /// branches without re-opening the package or re-running calculation.
+    pub fn restore_edit_checkpoint(&mut self, checkpoint: EditCheckpoint) -> bool {
+        if self.clipboard_origin != checkpoint.state.clipboard_origin {
+            return false;
+        }
+        *self = *checkpoint.state;
+        true
+    }
+
     /// Uses the caller's shared text measurer to fold height-cache updates into
     /// the pending edit. History restoration never schedules a re-measurement.
     pub fn refresh_automatic_row_heights(
@@ -281,6 +353,7 @@ impl HeadlessWorkbook {
         if changed {
             let workbook = jade_xlsx_reader::read_xlsx(&bytes)?;
             self.source = bytes;
+            self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
             self.workbook = workbook;
         }
         self.automatic_height_base = None;
@@ -603,7 +676,10 @@ impl HeadlessWorkbook {
         jade_xlsx_calc::validate_time_zone(time_zone)?;
         static ORIGINS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
         let mut opened = Self {
+            sheet_states: BTreeMap::new(),
+            range_grants: Vec::new(),
             clipboard_origin: ORIGINS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            range_auth_generation: 0,
             workbook: jade_xlsx_reader::read_xlsx(bytes)?,
             source: bytes.to_vec(),
             automatic_height_base: None,
@@ -614,6 +690,7 @@ impl HeadlessWorkbook {
             filter_row_state: BTreeMap::new(),
         };
         opened.initialize_filter_row_state();
+        opened.refresh_sheet_states();
         Ok(opened)
     }
 
@@ -625,6 +702,9 @@ impl HeadlessWorkbook {
     /// Recalculate explicitly to refresh caches before the next edit.
     pub fn set_calculation_time_zone(&mut self, time_zone: &str) -> Result<()> {
         jade_xlsx_calc::validate_time_zone(time_zone)?;
+        if self.calculation_time_zone != time_zone {
+            self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
+        }
         self.calculation_time_zone = time_zone.to_string();
         Ok(())
     }
@@ -644,6 +724,7 @@ impl HeadlessWorkbook {
             jade_xlsx_writer::set_calculation_properties(&self.source, mode, calculate_on_save)?;
         let model = jade_xlsx_reader::read_xlsx(&written)?;
         self.source = written;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         self.workbook = model;
         self.recalculate_after_edit();
         Ok(())
@@ -712,9 +793,12 @@ impl HeadlessWorkbook {
                 restored.filter_row_state,
             ),
         };
-        self.future.push(current);
+        self.future.push(std::sync::Arc::new(current));
         self.workbook = restored.workbook;
+        self.sheet_states = restored.sheet_states;
+        self.prune_range_grants();
         self.automatic_height_base = restored.automatic_height_base;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         Ok(true)
     }
 
@@ -733,23 +817,28 @@ impl HeadlessWorkbook {
                 restored.filter_row_state,
             ),
         };
-        self.history.push(current);
+        self.history.push(std::sync::Arc::new(current));
         self.workbook = restored.workbook;
+        self.sheet_states = restored.sheet_states;
+        self.prune_range_grants();
         self.automatic_height_base = restored.automatic_height_base;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         Ok(true)
     }
 
     /// Records the bytes a write is about to replace. A new write forks
     /// history, so the redo branch is dropped.
     fn remember(&mut self, before: Vec<u8>) {
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
+        self.refresh_sheet_states();
         if self.automatic_height_base.is_none() {
             self.automatic_height_base = Some(before.clone());
         }
-        self.history.push(HistorySnapshot {
+        self.history.push(std::sync::Arc::new(HistorySnapshot {
             bytes: before,
             time_zone: self.source_time_zone.clone(),
             filter_row_state: self.filter_row_state.clone(),
-        });
+        }));
         self.future.clear();
         if self.history.len() > UNDO_LIMIT {
             self.history.remove(0);
@@ -893,7 +982,9 @@ impl HeadlessWorkbook {
         let formats = &self.workbook.styles.cell_formats;
         for at in cells {
             let style = effective_style(sheet, at) as usize;
-            if !formats.get(style).is_some_and(|format| format.unlocked) {
+            if !formats.get(style).is_some_and(|format| format.unlocked)
+                && !self.cell_in_editable_range(index, at)
+            {
                 return Err(HeadlessError::Protected {
                     sheet: sheet.name.clone(),
                     what: "the cell is locked",
@@ -934,15 +1025,21 @@ impl HeadlessWorkbook {
     ) {
         use jade_xlsx_writer::spills::{ArrayRange, SheetSpills};
         let mut blocked: BTreeMap<usize, SheetSpills> = BTreeMap::new();
-        let written: HashSet<(usize, CellRef)> = edits
+        let value_writes: HashSet<(usize, CellRef)> = edits
             .iter()
+            .filter(|(_, edit)| !matches!(edit.value, NewValue::Unchanged))
             .map(|(index, edit)| (*index, edit.reference))
+            .collect();
+        let edit_positions: std::collections::HashMap<_, _> = edits
+            .iter()
+            .enumerate()
+            .map(|(position, (index, edit))| ((*index, edit.reference), position))
             .collect();
         let mut blanks = Vec::new();
         for (index, sheet) in self.workbook.sheets.iter().enumerate() {
             for array in &sheet.array_formulas {
-                let rewrites_anchor = written.contains(&(index, array.anchor));
-                let into_spill = written
+                let rewrites_anchor = value_writes.contains(&(index, array.anchor));
+                let into_spill = value_writes
                     .iter()
                     .any(|(at, cell)| *at == index && array.outputs_to(*cell));
                 if !rewrites_anchor && !into_spill {
@@ -952,17 +1049,25 @@ impl HeadlessWorkbook {
                     for column in array.range.start.column..=array.range.end.column {
                         let cell = CellRef::new(column, row);
                         if array.outputs_to(cell)
-                            && !written.contains(&(index, cell))
+                            && !value_writes.contains(&(index, cell))
                             && self.cached_value(index, cell) != CellValue::Empty
                         {
-                            blanks.push((
-                                index,
-                                CellEdit {
-                                    reference: cell,
-                                    value: NewValue::Blank,
-                                    style_index: None,
-                                },
-                            ));
+                            if let Some(position) = edit_positions.get(&(index, cell)) {
+                                let edit = &mut edits[*position].1;
+                                // A formatting-only edit at this output must also
+                                // clear its stale value when another cell blocks
+                                // the spill; keep its requested style intact.
+                                edit.value = NewValue::Blank;
+                            } else {
+                                blanks.push((
+                                    index,
+                                    CellEdit {
+                                        reference: cell,
+                                        value: NewValue::Blank,
+                                        style_index: None,
+                                    },
+                                ));
+                            }
                         }
                     }
                 }
@@ -1000,7 +1105,31 @@ impl HeadlessWorkbook {
         styles: Option<(String, String)>,
         extra_parts: Vec<(String, String)>,
     ) -> Result<()> {
+        self.write_edits_with_base(edits, styles, extra_parts, None)
+    }
+
+    /// Use a prepared package for edits that also introduce relationships.
+    /// History still records this editor's original package exactly once.
+    fn write_edits_with_base(
+        &mut self,
+        edits: Vec<(usize, CellEdit)>,
+        styles: Option<(String, String)>,
+        extra_parts: Vec<(String, String)>,
+        base: Option<&[u8]>,
+    ) -> Result<()> {
         let (edits, blocked) = self.block_spills(edits);
+        for (index, edit) in &edits {
+            if !matches!(edit.value, NewValue::Unchanged) {
+                jade_xlsx_writer::guard_pivot_values(
+                    &self.workbook,
+                    &self.workbook.sheets[*index].part_name,
+                    CellRange {
+                        start: edit.reference,
+                        end: edit.reference,
+                    },
+                )?;
+            }
+        }
         let mut references = HashSet::with_capacity(edits.len());
         for (index, edit) in &edits {
             if !references.insert((*index, edit.reference)) {
@@ -1026,13 +1155,15 @@ impl HeadlessWorkbook {
             })
             .collect::<Vec<_>>();
         let mut parts = extra_parts;
-        parts.extend(jade_xlsx_writer::table::follow_table_headers(
-            &self.source,
+        let header_parts = jade_xlsx_writer::table::follow_table_headers(
+            base.unwrap_or(&self.source),
             &self.workbook,
             &mut sheets,
-        )?);
+        )?;
+        let headers_changed = !header_parts.is_empty();
+        parts.extend(header_parts);
         let mut written = jade_xlsx_writer::write_xlsx_with_parts(
-            &self.source,
+            base.unwrap_or(&self.source),
             styles
                 .as_ref()
                 .map(|(name, xml)| (name.as_str(), xml.as_str())),
@@ -1042,6 +1173,14 @@ impl HeadlessWorkbook {
         if !blocked.is_empty() {
             written = jade_xlsx_writer::spills::write_spills(&written, &blocked, false)?;
         }
+        if headers_changed {
+            written = jade_xlsx_writer::tables::follow_column_names(
+                base.unwrap_or(&self.source),
+                &written,
+            )?;
+        }
+        written = jade_xlsx_writer::tables::after_cell_entries(&self.workbook, &written, &sheets)?;
+        written = jade_xlsx_writer::tables::follow_total_cells(&self.workbook, &written, &sheets)?;
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);
         // One undo step per write; the recalculation below folds into it.
@@ -1130,9 +1269,9 @@ impl HeadlessWorkbook {
         author: &str,
     ) -> Result<CommentView> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, "editing notes is not allowed", |p| p.objects)?;
         let at = CellRef::parse(reference)
             .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
+        self.guard_note(index, at, true)?;
         let part_name = self.workbook.sheets[index].part_name.clone();
         let mut package = jade_opc::OpcPackage::open(&self.source)?;
         jade_xlsx_writer::set_note(&mut package, &part_name, at, author, text)?;
@@ -1150,9 +1289,9 @@ impl HeadlessWorkbook {
     /// has none.
     pub fn delete_note(&mut self, sheet: &str, reference: &str) -> Result<bool> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, "editing notes is not allowed", |p| p.objects)?;
         let at = CellRef::parse(reference)
             .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
+        self.guard_note(index, at, false)?;
         let part_name = self.workbook.sheets[index].part_name.clone();
         let mut package = jade_opc::OpcPackage::open(&self.source)?;
         if !jade_xlsx_writer::delete_note(&mut package, &part_name, at)? {
@@ -1177,7 +1316,6 @@ impl HeadlessWorkbook {
     /// One undo step.
     pub fn set_shape_text(&mut self, sheet: &str, shape: &str, text: &str) -> Result<ShapeView> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, "editing shapes is not allowed", |p| p.objects)?;
         let sheet_model = &self.workbook.sheets[index];
         let found = sheet_model
             .shape_named(shape)
@@ -1186,20 +1324,8 @@ impl HeadlessWorkbook {
             return Err(HeadlessError::ShapeHasNoText(shape.to_string()));
         }
         let id = found.id;
-        let package = jade_opc::OpcPackage::open(&self.source)?;
-        let rels_name = jade_opc::rels_part_name(&sheet_model.part_name);
-        let drawing_part = package
-            .part_str(&rels_name)?
-            .map(|xml| jade_opc::parse_relationships(&xml))
-            .transpose()?
-            .and_then(|rels| {
-                rels.target_by_type_suffix("/drawing")
-                    .map(|target| jade_opc::resolve_target(&sheet_model.part_name, target))
-            })
-            .ok_or_else(|| HeadlessError::NoSuchShape(shape.to_string()))?;
-        let xml = package
-            .part_str(&drawing_part)?
-            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(drawing_part.clone()))?;
+        let (drawing_part, xml, _) =
+            self.guarded_drawing(index, id, true, "editing shapes is not allowed")?;
         let patched = jade_xlsx_writer::set_shape_text(&xml, id, text)?
             .ok_or_else(|| HeadlessError::ShapeHasNoText(shape.to_string()))?;
         self.replace_parts(vec![(drawing_part, patched)])?;
@@ -1338,6 +1464,8 @@ impl HeadlessWorkbook {
             _ => None,
         };
         Ok(FormatChange {
+            locked: Some(!format.is_some_and(|f| f.unlocked)),
+            formula_hidden: Some(format.is_some_and(|f| f.formula_hidden)),
             bold: Some(font.is_some_and(|font| font.bold)),
             italic: Some(font.is_some_and(|font| font.italic)),
             underline: Some(font.is_some_and(|font| font.underline)),
@@ -1588,6 +1716,16 @@ impl HeadlessWorkbook {
     /// `fullCalcOnLoad` request is withdrawn — every cache is now current —
     /// and `formula_state` reads `cached` again.
     pub fn recalculate(&mut self) -> Result<RecalculationSummary> {
+        self.recalculate_with_dependencies(false)
+            .map(|(summary, _)| summary)
+    }
+    fn recalculate_with_dependencies(
+        &mut self,
+        trace: bool,
+    ) -> Result<(
+        RecalculationSummary,
+        Option<jade_xlsx_calc::ValueDependencies>,
+    )> {
         let manual = self
             .filter_row_state
             .iter()
@@ -1598,11 +1736,19 @@ impl HeadlessWorkbook {
                 )
             })
             .collect();
-        let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
-            &self.workbook,
-            &self.calculation_time_zone,
-            &manual,
-        )?;
+        let outcome = if trace {
+            jade_xlsx_calc::evaluate_with_value_dependencies(
+                &self.workbook,
+                &self.calculation_time_zone,
+                &manual,
+            )?
+        } else {
+            jade_xlsx_calc::evaluate_with_manual_filter_rows(
+                &self.workbook,
+                &self.calculation_time_zone,
+                &manual,
+            )?
+        };
 
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut verified = jade_xlsx_writer::VerifiedChartCells::new();
@@ -1665,24 +1811,28 @@ impl HeadlessWorkbook {
             }
             self.workbook = workbook;
             self.source = written;
+            self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         }
 
         self.write_spills(&outcome.spills, complete)?;
 
         self.source_time_zone = self.calculation_time_zone.clone();
-        Ok(RecalculationSummary {
-            refreshed,
-            unchanged,
-            skipped: outcome
-                .skipped
-                .into_iter()
-                .map(|cell| SkippedFormula {
-                    sheet: self.workbook.sheets[cell.sheet].name.clone(),
-                    reference: format_reference(cell.reference),
-                    reason: cell.reason,
-                })
-                .collect(),
-        })
+        Ok((
+            RecalculationSummary {
+                refreshed,
+                unchanged,
+                skipped: outcome
+                    .skipped
+                    .into_iter()
+                    .map(|cell| SkippedFormula {
+                        sheet: self.workbook.sheets[cell.sheet].name.clone(),
+                        reference: format_reference(cell.reference),
+                        reason: cell.reason,
+                    })
+                    .collect(),
+            },
+            outcome.dependencies,
+        ))
     }
 
     /// Writes what each array formula spilled — the values beside its
@@ -1790,6 +1940,7 @@ impl HeadlessWorkbook {
             self.automatic_height_base = Some(self.source.clone());
         }
         self.source = written;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         Ok(())
     }
 
@@ -2322,12 +2473,16 @@ impl HeadlessWorkbook {
                     allow_blank: validation.allow_blank,
                     show_input_message: validation.show_input_message,
                     show_error_message: validation.show_error_message,
+                    error_style: validation.error_style.clone(),
+                    suppress_dropdown: validation.suppress_dropdown,
+                    ime_mode: validation.ime_mode.clone(),
                     prompt_title: validation.prompt_title.clone(),
                     prompt: validation.prompt.clone(),
                     error_title: validation.error_title.clone(),
                     error: validation.error.clone(),
                     formula1: validation.formula1.clone(),
                     formula2: validation.formula2.clone(),
+                    literal_list: validation.literal_list.clone(),
                 }
             }),
             table: sheet.table_at(reference).map(|table| TableCellView {
@@ -2388,19 +2543,34 @@ impl HeadlessWorkbook {
 #[derive(Clone)]
 pub struct ClipboardSnapshot {
     origin: usize,
-    bytes: Vec<u8>,
+    bytes: std::sync::Arc<[u8]>,
     sheet: String,
     range: CellRange,
     cut: bool,
 }
 
+impl ClipboardSnapshot {
+    pub fn source_sheet(&self) -> &str {
+        &self.sheet
+    }
+    pub fn source_range(&self) -> CellRange {
+        self.range
+    }
+    pub fn is_cut(&self) -> bool {
+        self.cut
+    }
+}
 impl HeadlessWorkbook {
+    pub fn clipboard_is_current(&self, snapshot: &ClipboardSnapshot) -> bool {
+        snapshot.origin == self.clipboard_origin
+            && (!snapshot.cut || snapshot.bytes.as_ref() == self.source.as_slice())
+    }
     pub fn copy_snapshot(&self, sheet: &str, range: &str, cut: bool) -> Result<ClipboardSnapshot> {
         let index = self.sheet_index(sheet)?;
         let range = parse_format_range(range)?;
         Ok(ClipboardSnapshot {
             origin: self.clipboard_origin,
-            bytes: self.source.clone(),
+            bytes: std::sync::Arc::from(self.source.as_slice()),
             sheet: self.workbook.sheets[index].name.clone(),
             range,
             cut,
@@ -2426,12 +2596,25 @@ impl HeadlessWorkbook {
             clipboard.range.end.column - clipboard.range.start.column,
             clipboard.range.end.row - clipboard.range.start.row,
         );
-        self.guard_cells(
-            index,
-            (at.row..=at.row + rows).flat_map(|row| {
-                (at.column..=at.column + columns).map(move |column| CellRef::new(column, row))
-            }),
-        )?;
+        if columns + 1 != jade_xlsx_reader::model::MAX_COLUMN_COUNT
+            && rows + 1 != jade_xlsx_reader::model::MAX_ROW_COUNT
+        {
+            ensure_dense_result_fits(columns + 1, rows + 1)?;
+        }
+        let end = CellRef::new(at.column + columns, at.row + rows);
+        if end.column >= jade_xlsx_reader::model::MAX_COLUMN_COUNT
+            || end.row >= jade_xlsx_reader::model::MAX_ROW_COUNT
+        {
+            return Err(jade_xlsx_writer::WriteError::CellOutOfBounds {
+                column: end.column,
+                row: end.row,
+            }
+            .into());
+        }
+        if clipboard.cut {
+            self.guard_cell_range(self.sheet_index(&clipboard.sheet)?, clipboard.range)?;
+        }
+        self.guard_cell_range(index, CellRange { start: at, end })?;
         let request = jade_xlsx_writer::clipboard::PasteRequest {
             source_sheet: &clipboard.sheet,
             source: clipboard.range,

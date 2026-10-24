@@ -26,12 +26,14 @@ fn multi_sheet_ref() {
 #[test]
 fn implicit_intersection() {
     let mut model = new_empty_model();
+    model._set("C1", "=1+2");
+    model._set("D1", "=3+4");
     model._set("A1", "=FORMULATEXT(C1:C2)");
     model._set("A2", "=FORMULATEXT(D1:E1)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"=1+2");
+    assert_eq!(model._get_text("A2"), *"=3+4");
 }
 
 #[test]
@@ -41,7 +43,8 @@ fn implicit_intersection_operator() {
     model._set("B1", "=FORMULATEXT(@A:A)");
     model.evaluate();
 
-    assert_eq!(model._get_text("B1"), *"#N/IMPL!");
+    // Explicit @ produces the cell's value, which is not a reference.
+    assert_eq!(model._get_text("B1"), *"#VALUE!");
 }
 
 #[test]
@@ -50,7 +53,7 @@ fn non_reference() {
     model._set("A1", "=FORMULATEXT(42)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
 }
 
 #[test]

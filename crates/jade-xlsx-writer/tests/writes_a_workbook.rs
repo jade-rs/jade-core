@@ -400,7 +400,7 @@ fn adding_a_cell_expands_the_worksheet_dimension() {
 
 #[test]
 fn generated_worksheet_elements_keep_the_namespace_prefix() {
-    let xml = r#"<x:worksheet xmlns:x="urn:sheet"><x:dimension ref="A1"/><x:sheetData>
+    let xml = r#"<x:worksheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:dimension ref="A1"/><x:sheetData>
       <x:row r="1"><x:c r="A1"><x:v>1</x:v></x:c></x:row>
     </x:sheetData></x:worksheet>"#;
     let patched = jade_xlsx_writer::patch_sheet(

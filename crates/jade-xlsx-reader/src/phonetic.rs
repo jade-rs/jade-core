@@ -108,7 +108,11 @@ enum Text {
     Index,
 }
 fn scan(xml: &str, select: Select<'_>) -> Result<Scanned> {
-    let mut reader = NsReader::from_str(xml);
+    let content = match &select {
+        Select::Shared(_) => crate::cell_content::shared_strings(xml)?,
+        Select::Inline(_, _) => crate::cell_content::worksheet(xml)?,
+    };
+    let mut reader = NsReader::from_str(&content);
     let mut stack = Vec::<(String, bool)>::new();
     let mut root_ns = None;
     let mut next_row = 0;

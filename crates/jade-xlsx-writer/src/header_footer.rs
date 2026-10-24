@@ -111,6 +111,25 @@ pub(crate) fn set_child(
                 let qualified = element.name().as_ref().to_vec();
                 if depth == 0 {
                     prefix = crate::patch::namespace_prefix(&qualified);
+                    if empty {
+                        let text = text(&prefix);
+                        if text.is_empty() {
+                            return Ok(xml.to_string());
+                        }
+                        let head = &xml[start..reader.buffer_position() as usize];
+                        let head = head.trim_end_matches("/>");
+                        return Ok(apply(
+                            xml,
+                            vec![Splice {
+                                start,
+                                end: reader.buffer_position() as usize,
+                                text: format!(
+                                    "{head}>{text}</{}>",
+                                    String::from_utf8_lossy(&qualified)
+                                ),
+                            }],
+                        ));
+                    }
                 }
                 if depth == 1 {
                     let local_name = local(&qualified);

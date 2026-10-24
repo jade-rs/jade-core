@@ -138,6 +138,12 @@ pub(crate) fn install_styles_relationship(
 pub struct FormatChange {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bold: Option<bool>,
+    /// Whether content edits require an unprotected sheet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
+    /// Suppress contents in the formula bar while the sheet is protected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formula_hidden: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub italic: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -400,6 +406,54 @@ pub fn add_cell_format(
             }
         }
         set_attribute(&mut xf_attributes, "applyAlignment", "1");
+    }
+
+    if change.locked.is_some() || change.formula_hidden.is_some() {
+        let parsed = jade_xlsx_reader::styles::parse_styles(styles_xml)?;
+        let current = parsed
+            .cell_formats
+            .get(base_index)
+            .copied()
+            .unwrap_or_default();
+        let containers = crate::xml_edit_ns::children(styles_xml, b"cellXfs")?;
+        let context = containers.first().ok_or(WriteError::NoStyleTables)?;
+        let formats = crate::xml_edit_ns::children(&context.2.text, b"xf")?;
+        let context = &formats
+            .get(base_index)
+            .ok_or(WriteError::NoSuchStyle {
+                index: base_index as u32,
+            })?
+            .2;
+        let updates = [
+            (
+                "locked",
+                Some(
+                    if change.locked.unwrap_or(!current.unlocked) {
+                        "1"
+                    } else {
+                        "0"
+                    }
+                    .into(),
+                ),
+            ),
+            (
+                "hidden",
+                Some(
+                    if change.formula_hidden.unwrap_or(current.formula_hidden) {
+                        "1"
+                    } else {
+                        "0"
+                    }
+                    .into(),
+                ),
+            ),
+        ];
+        let updated =
+            crate::xml_edit_ns::edit_child(&context.text, b"protection", &[b"extLst"], |child| {
+                crate::xml_edit::root_attributes(child, &updates)
+            })?;
+        other_children = children_except(&context.finish(&updated)?, &["alignment"])?;
+        set_attribute(&mut xf_attributes, "applyProtection", "1");
     }
 
     // ── the xf itself ───────────────────────────────────────────────

@@ -65,3 +65,25 @@ fn epochs_phantom_day_and_calendar_limits_are_shared() {
         assert!(!is_calendar_date_valid(year, month, day, Nineteen00));
     }
 }
+
+#[test]
+fn calendar_serial_round_trips_both_epochs_and_the_1900_boundary() {
+    use jade_xlsx_layout::number_format::calendar_serial;
+    for (epoch, serial) in [
+        (Nineteen00, 0.),
+        (Nineteen00, 1.),
+        (Nineteen00, 59.),
+        (Nineteen00, 60.),
+        (Nineteen00, 61.),
+        (Nineteen00, 2_958_465.),
+        (Nineteen04, 0.),
+        (Nineteen04, 59.),
+        (Nineteen04, 2_957_003.),
+    ] {
+        let [y, m, d, ..] = calendar_fields(serial, epoch).unwrap();
+        assert_eq!(calendar_serial(y, m, d, epoch), Some(serial));
+    }
+    assert_eq!(calendar_serial(1900, 2, 29, Nineteen04), None);
+    assert_eq!(calendar_serial(2023, 2, 29, Nineteen00), None);
+    assert_eq!(calendar_serial(1903, 12, 31, Nineteen04), None);
+}

@@ -17,6 +17,7 @@ der = "0.7"
 # 読み取りパスワード: ECMA-376 Agile Encryption in an OLE compound file.
 aes = "0.8"
 base64 = "0.22"
+encoding_rs = "0.8"
 cfb = "0.7"
 zip = { version = "9.0", default-features = false, features = ["deflate"] }
 

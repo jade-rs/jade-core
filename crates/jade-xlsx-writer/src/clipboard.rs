@@ -75,6 +75,10 @@ pub fn paste_snapshot(
         start: request.target,
         end,
     };
+    crate::pivots::guard_values(&target_book, &target.part_name, destination)?;
+    if request.cut {
+        crate::pivots::guard_cut_source(&OpcPackage::open(snapshot)?, &source_book, source, range)?;
+    }
     let rows = width == MAX_COLUMN_COUNT;
     let columns = height == MAX_ROW_COUNT;
     let whole_sheet = rows && columns;
@@ -494,6 +498,7 @@ pub fn paste_snapshot(
         )));
     }
     let parts = crate::table::follow_table_headers(original, &target_book, &mut sheets)?;
+    let headers_changed = !parts.is_empty();
     let mut package = crate::prepare_xlsx_with_parts(
         original,
         Some((&styles_part, &styles)),
@@ -556,7 +561,29 @@ pub fn paste_snapshot(
     let workbook_part = crate::workbook_part_name(&package)?;
     crate::shift::drop_calc_chain(&mut package, &workbook_part)?;
     crate::chart_cache::refresh_package(&mut package, &crate::VerifiedChartCells::new())?;
-    Ok((package.write()?, destination))
+    let mut written = package.write()?;
+    if headers_changed {
+        written = crate::tables::follow_column_names(original, &written)?;
+    }
+    // A cut also rewrites formulas elsewhere. Only entries actually pasted
+    // into the destination may expand a table or establish a calculated
+    // column; dependent formula rewrites are not user cell entries.
+    let entries = sheets
+        .iter()
+        .filter(|edits| edits.part_name == target.part_name)
+        .map(|edits| SheetEdits {
+            part_name: edits.part_name.clone(),
+            cells: edits
+                .cells
+                .iter()
+                .filter(|edit| destination.contains(edit.reference))
+                .cloned()
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    written = crate::tables::after_cell_entries(&target_book, &written, &entries)?;
+    written = crate::tables::follow_total_cells(&target_book, &written, &sheets)?;
+    Ok((written, destination))
 }
 
 fn copied_value(cell: &Cell, to: CellRef, request: &PasteRequest<'_>) -> NewValue {

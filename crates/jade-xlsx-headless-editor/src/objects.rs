@@ -15,13 +15,21 @@ impl HeadlessWorkbook {
         let sheet = &self.workbook.sheets[index];
         let package = jade_opc::OpcPackage::open(&self.source)?;
         let rels_name = jade_opc::rels_part_name(&sheet.part_name);
+        let Some(id) = jade_xlsx_reader::object_protection::worksheet_drawing_relationship(
+            &package.required_part_str(&sheet.part_name)?,
+            false,
+        )?
+        else {
+            return Ok(None);
+        };
         let Some(name) = package
             .part_str(&rels_name)?
-            .map(|xml| jade_opc::parse_relationships(&xml))
+            .map(|xml| jade_xlsx_reader::object_protection::owned_relationships(&xml))
             .transpose()?
             .and_then(|rels| {
-                rels.target_by_type_suffix("/drawing")
-                    .map(|target| jade_opc::resolve_target(&sheet.part_name, target))
+                rels.relationship(&id)
+                    .filter(|r| Self::owned_relationship(r, "drawing"))
+                    .map(|r| jade_opc::resolve_target(&sheet.part_name, &r.target))
             })
         else {
             return Ok(None);
@@ -36,9 +44,8 @@ impl HeadlessWorkbook {
     /// is kept, resized when not. One undo step.
     pub fn place_shape(&mut self, sheet: &str, id: u32, anchor: &ShapeAnchor) -> Result<()> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, WHAT, |p| p.objects)?;
+        let (name, xml, _) = self.guarded_drawing(index, id, false, WHAT)?;
         let missing = || HeadlessError::NoSuchShape(id.to_string());
-        let (name, xml) = self.drawing_part(index)?.ok_or_else(missing)?;
         let patched = jade_xlsx_writer::set_shape_anchor(&xml, id, anchor)?.ok_or_else(missing)?;
         self.replace_parts(vec![(name, patched)])
     }
@@ -46,9 +53,8 @@ impl HeadlessWorkbook {
     /// Deletes the object whose id is `id`. One undo step.
     pub fn delete_shape(&mut self, sheet: &str, id: u32) -> Result<()> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, WHAT, |p| p.objects)?;
+        let (name, xml, _) = self.guarded_drawing(index, id, false, WHAT)?;
         let missing = || HeadlessError::NoSuchShape(id.to_string());
-        let (name, xml) = self.drawing_part(index)?.ok_or_else(missing)?;
         let patched = jade_xlsx_writer::delete_shape(&xml, id)?.ok_or_else(missing)?;
         self.replace_parts(vec![(name, patched)])
     }
