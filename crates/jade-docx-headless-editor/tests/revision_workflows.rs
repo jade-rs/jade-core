@@ -1076,3 +1076,50 @@ fn comments_skip_moved_text_and_nested_deleted_rows() {
     )
     .is_err());
 }
+
+#[test]
+fn whole_table_revision_ids_remain_stable_after_reload() {
+    let base = fixture("<w:r><w:t>契約</w:t></w:r>");
+    let inserted = edit(
+        &base,
+        vec![
+            tracking(),
+            HeadlessCommand::InsertTable {
+                after_paragraph: 0,
+                rows: 3,
+                columns: 2,
+                column_widths: vec![],
+                caret_offset: None,
+            },
+        ],
+    );
+    let accepted = edit(&inserted, vec![decide(true, lg_ids(&inserted))]);
+    let deleted = edit(
+        &accepted,
+        vec![
+            tracking(),
+            HeadlessCommand::DeleteTable {
+                table_order_index: 0,
+            },
+        ],
+    );
+    for bytes in [&inserted, &deleted] {
+        let ids = lg_ids(bytes);
+        assert_eq!(ids.len(), 3);
+        assert_eq!(
+            ids.iter().collect::<std::collections::HashSet<_>>().len(),
+            3,
+            "each row revision needs its own ID"
+        );
+        assert_eq!(
+            lg_ids(&edit(bytes, vec![HeadlessCommand::StopChangeTracking])),
+            ids,
+            "reopening must not renumber IDs"
+        );
+        // A saved revision ID must still target exactly that row after reopening.
+        let decided = edit(bytes, vec![decide(false, vec![ids[1].clone()])]);
+        let remaining = lg_ids(&decided);
+        assert_eq!(remaining.len(), 2);
+        assert!(!remaining.contains(&ids[1]));
+    }
+}

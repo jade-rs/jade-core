@@ -130,13 +130,13 @@ impl Command for InsertTableCommand {
                     &self.column_widths,
                 )?,
             };
-            if let Some(mark) = ctx
-                .document
-                .new_row_revision(jade_docx_reader::RevisionKind::Inserted)
-            {
-                for row in 0..self.rows {
+            for row in 0..self.rows {
+                if let Some(mark) = ctx
+                    .document
+                    .new_row_revision(jade_docx_reader::RevisionKind::Inserted)
+                {
                     ctx.document
-                        .set_table_row_revision(table_order, row, Some(mark.clone()))?;
+                        .set_table_row_revision(table_order, row, Some(mark))?;
                 }
             }
             if let Some(style) = self.style.as_deref() {
