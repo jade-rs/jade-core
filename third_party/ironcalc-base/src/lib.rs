@@ -34,6 +34,7 @@ pub mod cf_types;
 pub mod clock;
 pub mod colors;
 pub mod date_system;
+pub mod dependencies;
 pub mod expressions;
 pub mod formatter;
 pub mod language;
@@ -41,6 +42,7 @@ pub mod locale;
 pub mod new_empty;
 pub mod number_format;
 pub mod phonetic;
+pub mod pivot;
 pub mod row_visibility;
 pub mod themes;
 pub mod types;
@@ -72,8 +74,18 @@ mod test;
 pub mod mock_time;
 
 mod anchored_formula;
-pub use anchored_formula::AnchoredFormula;
+pub use anchored_formula::{AnchoredFormula, AnchoredValue};
 pub use functions::xlsx_function_prefix;
+
+/// The English names registered by this engine, for compatibility audits.
+pub fn supported_function_names() -> Vec<String> {
+    let mut names: Vec<_> = functions::Function::into_iter()
+        .map(|f| f.to_localized_name(language::get_default_language()))
+        .collect();
+    names.sort();
+    names.dedup();
+    names
+}
 pub use locale::get_supported_locales;
 pub use model::get_milliseconds_since_epoch;
 pub use model::FmtSettings;

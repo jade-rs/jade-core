@@ -650,7 +650,7 @@ pub fn delete_conditional_format(sheet: &str, index: usize) -> Result<String> {
 }
 
 /// What is left of `range` once `cut` is taken out: up to four ranges.
-fn subtract(range: CellRange, cut: CellRange) -> Vec<CellRange> {
+pub(crate) fn subtract(range: CellRange, cut: CellRange) -> Vec<CellRange> {
     let overlaps = range.start.column <= cut.end.column
         && cut.start.column <= range.end.column
         && range.start.row <= cut.end.row

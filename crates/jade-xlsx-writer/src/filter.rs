@@ -3,11 +3,9 @@
 use jade_xlsx_reader::{Axis, CellRange, StructureChange};
 use quick_xml::{
     events::{BytesStart, Event},
-    name::QName,
     Reader,
 };
 
-use crate::patch::{apply, escape, local, Splice};
 use crate::shift::range_text;
 use crate::Result;
 
@@ -16,143 +14,76 @@ pub(crate) fn shift_auto_filter(
     change: &StructureChange,
     mapped: CellRange,
 ) -> Result<String> {
-    let mut reader = Reader::from_str(xml);
-    let mut splices = Vec::new();
-    let mut depth = 0usize;
-    let mut original = None;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event()?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let name = element.name().as_ref().to_vec();
-                let head_end = reader.buffer_position() as usize;
-                if depth == 0 {
-                    original = attribute(element, b"ref")?
-                        .and_then(|reference| CellRange::parse(&reference).ok());
-                    splices.push(Splice {
-                        start,
-                        end: head_end,
-                        text: rewrite_attribute(element, "ref", &range_text(mapped), empty)?,
-                    });
-                } else if depth == 1 && local(&name) == b"filterColumn" {
-                    if let (Some(original), Some(id)) = (
-                        original,
-                        attribute(element, b"colId")?.and_then(|id| id.parse::<u32>().ok()),
-                    ) {
-                        // colId is relative to the filter range, not the worksheet.
-                        let column = original.start.column.checked_add(id);
-                        let column = column.filter(|column| *column <= original.end.column);
-                        let moved = column.and_then(|column| match change.axis {
-                            Axis::Columns => change.map_index(column),
-                            Axis::Rows => Some(column),
-                        });
-                        let moved = moved.filter(|column| {
-                            *column >= mapped.start.column && *column <= mapped.end.column
-                        });
-                        match moved {
-                            Some(column) => splices.push(Splice {
-                                start,
-                                end: head_end,
-                                text: rewrite_attribute(
-                                    element,
-                                    "colId",
-                                    &(column - mapped.start.column).to_string(),
-                                    empty,
-                                )?,
-                            }),
-                            None => {
-                                if !empty {
-                                    reader.read_to_end(QName(&name))?;
-                                }
-                                splices.push(Splice {
-                                    start,
-                                    end: reader.buffer_position() as usize,
-                                    text: String::new(),
-                                });
-                                continue;
-                            }
-                        }
-                    }
-                } else if depth == 1 && local(&name) == b"sortState" {
-                    if !empty {
-                        reader.read_to_end(QName(&name))?;
-                    }
-                    let end = reader.buffer_position() as usize;
-                    splices.push(Splice {
-                        start,
-                        end,
-                        text: shift_sort_state(&xml[start..end], change)?.unwrap_or_default(),
-                    });
-                    continue;
-                }
-                depth += usize::from(!empty);
-            }
-            Event::End(_) => depth = depth.saturating_sub(1),
-            Event::Eof => break,
-            _ => {}
+    let original = root_range(xml)?;
+    let moved = crate::xml_edit::root_attributes(xml, &[("ref", Some(range_text(mapped)))])?;
+    let moved = crate::cell_shift::children_map(&moved, b"filterColumn", |column| {
+        if original.is_none() {
+            return Ok(column.into());
         }
-    }
-    Ok(apply(xml, splices))
+        let Some(id) = root_attribute(column, b"colId")?.and_then(|s| s.parse::<u32>().ok()) else {
+            return Ok(column.into());
+        };
+        let old = original.and_then(|r| {
+            r.start
+                .column
+                .checked_add(id)
+                .filter(|c| *c <= r.end.column)
+        });
+        let next = old
+            .and_then(|c| match change.axis {
+                Axis::Columns => change.map_index(c),
+                Axis::Rows => Some(c),
+            })
+            .filter(|c| *c >= mapped.start.column && *c <= mapped.end.column);
+        match next {
+            Some(c) => crate::xml_edit::root_attributes(
+                column,
+                &[("colId", Some((c - mapped.start.column).to_string()))],
+            ),
+            None => Ok(String::new()),
+        }
+    })?;
+    crate::cell_shift::children_map(&moved, b"sortState", |s| {
+        Ok(shift_sort_state(s, change)?.unwrap_or_default())
+    })
 }
-
 pub(crate) fn shift_sort_state(xml: &str, change: &StructureChange) -> Result<Option<String>> {
-    let mut reader = Reader::from_str(xml);
-    let mut splices = Vec::new();
-    let mut depth = 0usize;
-    let mut conditions = 0usize;
-    let mut kept = 0usize;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event()?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let name = element.name().as_ref().to_vec();
-                let head_end = reader.buffer_position() as usize;
-                if depth == 0 || (depth == 1 && local(&name) == b"sortCondition") {
-                    let condition = depth == 1;
-                    conditions += usize::from(condition);
-                    if let Some(range) = attribute(element, b"ref")?
-                        .and_then(|reference| CellRange::parse(&reference).ok())
-                    {
-                        match change.map_range(range) {
-                            Some(mapped) => splices.push(Splice {
-                                start,
-                                end: head_end,
-                                text: rewrite_attribute(
-                                    element,
-                                    "ref",
-                                    &range_text(mapped),
-                                    empty,
-                                )?,
-                            }),
-                            None if !condition => return Ok(None),
-                            None => {
-                                if !empty {
-                                    reader.read_to_end(QName(&name))?;
-                                }
-                                splices.push(Splice {
-                                    start,
-                                    end: reader.buffer_position() as usize,
-                                    text: String::new(),
-                                });
-                                continue;
-                            }
-                        }
-                    }
-                    kept += usize::from(condition);
-                }
-                depth += usize::from(!empty);
+    let mut moved = xml.to_owned();
+    if let Some(old) = root_range(xml)? {
+        let Some(mapped) = change.map_range(old) else {
+            return Ok(None);
+        };
+        moved = crate::xml_edit::root_attributes(&moved, &[("ref", Some(range_text(mapped)))])?;
+    }
+    let had = !crate::xml_edit_ns::children(&moved, b"sortCondition")?.is_empty();
+    moved = crate::cell_shift::children_map(&moved, b"sortCondition", |condition| {
+        let Some(old) = root_range(condition)? else {
+            return Ok(condition.into());
+        };
+        match change.map_range(old) {
+            Some(mapped) => {
+                crate::xml_edit::root_attributes(condition, &[("ref", Some(range_text(mapped)))])
             }
-            Event::End(_) => depth = depth.saturating_sub(1),
-            Event::Eof => break,
+            None => Ok(String::new()),
+        }
+    })?;
+    Ok(
+        (!had || !crate::xml_edit_ns::children(&moved, b"sortCondition")?.is_empty())
+            .then_some(moved),
+    )
+}
+fn root_range(xml: &str) -> Result<Option<CellRange>> {
+    Ok(root_attribute(xml, b"ref")?.and_then(|s| CellRange::parse(&s).ok()))
+}
+fn root_attribute(xml: &str, key: &[u8]) -> Result<Option<String>> {
+    let mut reader = Reader::from_str(xml);
+    loop {
+        match reader.read_event()? {
+            Event::Start(e) | Event::Empty(e) => return attribute(&e, key),
+            Event::Eof => return Ok(None),
             _ => {}
         }
     }
-    // A sort with no surviving keys must not claim that a new column was sorted.
-    Ok((conditions == 0 || kept > 0).then(|| apply(xml, splices)))
 }
 
 // SpreadsheetML's reference/index attributes are unqualified. Extension
@@ -165,30 +96,4 @@ pub(crate) fn attribute(element: &BytesStart<'_>, key: &[u8]) -> Result<Option<S
         }
     }
     Ok(None)
-}
-
-fn rewrite_attribute(
-    element: &BytesStart<'_>,
-    key: &str,
-    value: &str,
-    empty: bool,
-) -> Result<String> {
-    let mut head = format!("<{}", String::from_utf8_lossy(element.name().as_ref()));
-    let mut seen = false;
-    for attribute in element.attributes() {
-        let attribute = attribute?;
-        let changed = attribute.key.as_ref() == key.as_bytes();
-        seen |= changed;
-        let original = attribute.unescape_value()?;
-        head.push_str(&format!(
-            " {}=\"{}\"",
-            String::from_utf8_lossy(attribute.key.as_ref()),
-            escape(if changed { value } else { &original })
-        ));
-    }
-    if !seen {
-        head.push_str(&format!(" {key}=\"{}\"", escape(value)));
-    }
-    head.push_str(if empty { "/>" } else { ">" });
-    Ok(head)
 }

@@ -10,7 +10,6 @@
 //! form control might share.
 
 use quick_xml::events::Event;
-use quick_xml::name::QName;
 use quick_xml::Reader;
 
 use jade_opc::OpcPackage;
@@ -29,6 +28,41 @@ const COMMENTS_CONTENT_TYPE: &str =
     "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml";
 const VML_CONTENT_TYPE: &str = "application/vnd.openxmlformats-officedocument.vmlDrawing";
 
+fn owned_comment_target(rels: &jade_opc::Relationships) -> Result<Option<&str>> {
+    let items: Vec<_> = rels
+        .by_type_suffix("/comments")
+        .into_iter()
+        .filter(|r| jade_xlsx_reader::object_protection::office_relationship(r, "comments"))
+        .collect();
+    if items.len() > 1 {
+        return Err(jade_xlsx_reader::XlsxError::BadDrawingProtection(
+            "multiple owned comments relationships".into(),
+        )
+        .into());
+    }
+    Ok(items.first().map(|r| r.target.as_str()))
+}
+fn selected_vml_target<'a>(
+    package: &OpcPackage,
+    sheet: &str,
+    rels: &'a jade_opc::Relationships,
+) -> Result<Option<&'a str>> {
+    let xml = package.required_part_str(sheet)?;
+    let Some(id) = jade_xlsx_reader::object_protection::worksheet_drawing_relationship(&xml, true)?
+    else {
+        return Ok(None);
+    };
+    let r = rels
+        .relationship(&id)
+        .filter(|r| jade_xlsx_reader::object_protection::office_relationship(r, "vmlDrawing"))
+        .ok_or_else(|| {
+            jade_xlsx_reader::XlsxError::BadDrawingProtection(
+                "invalid selected VML relationship".into(),
+            )
+        })?;
+    Ok(Some(r.target.as_str()))
+}
+
 /// Puts a note on `at` — replacing the one it has — in the sheet at
 /// `sheet_part`, creating the comments and VML parts when the sheet has
 /// none.
@@ -42,12 +76,12 @@ pub fn set_note(
     let rels_name = jade_opc::rels_part_name(sheet_part);
     let mut rels_xml = package.part_str(&rels_name)?;
     let relationships = match &rels_xml {
-        Some(xml) => jade_opc::parse_relationships(xml)?,
+        Some(xml) => jade_xlsx_reader::object_protection::owned_relationships(xml)?,
         None => Default::default(),
     };
 
     // The comments part.
-    match relationships.target_by_type_suffix("/comments") {
+    match owned_comment_target(&relationships)? {
         Some(target) => {
             let part = jade_opc::resolve_target(sheet_part, target);
             let xml = package
@@ -71,7 +105,7 @@ pub fn set_note(
     }
 
     // The VML part that places it.
-    match relationships.target_by_type_suffix("/vmlDrawing") {
+    match selected_vml_target(package, sheet_part, &relationships)? {
         Some(target) => {
             let part = jade_opc::resolve_target(sheet_part, target);
             let xml = package
@@ -96,7 +130,9 @@ pub fn set_note(
             let sheet_xml = set_child(
                 &sheet_xml,
                 b"legacyDrawing",
-                |prefix| format!("<{prefix}legacyDrawing r:id=\"{id}\"/>"),
+                |prefix| {
+                    format!("<{prefix}legacyDrawing xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:id=\"{id}\"/>")
+                },
                 &[
                     b"legacyDrawingHF",
                     b"drawingHF",
@@ -124,33 +160,43 @@ pub fn delete_note(package: &mut OpcPackage, sheet_part: &str, at: CellRef) -> R
     let Some(rels_xml) = package.part_str(&rels_name)? else {
         return Ok(false);
     };
-    let relationships = jade_opc::parse_relationships(&rels_xml)?;
+    let relationships = jade_xlsx_reader::object_protection::owned_relationships(&rels_xml)?;
+    let vml = selected_vml_target(package, sheet_part, &relationships)?.map(str::to_string);
+    let registry_plain =
+        jade_xlsx_reader::object_protection::plain_package_registry(&rels_xml, false)?
+            && package.part_str("[Content_Types].xml")?.is_some_and(|xml| {
+                jade_xlsx_reader::object_protection::plain_package_registry(&xml, true)
+                    .unwrap_or(false)
+            });
     let mut removed = false;
-    for relationship in relationships.by_type_suffix("/comments") {
+    for relationship in relationships
+        .by_type_suffix("/comments")
+        .into_iter()
+        .filter(|r| jade_xlsx_reader::object_protection::office_relationship(r, "comments"))
+    {
         let part = jade_opc::resolve_target(sheet_part, &relationship.target);
         let Some(xml) = package.part_str(&part)? else {
             continue;
         };
-        let (patched, found, remaining) = remove_comment(&xml, at)?;
+        let (patched, found, discard_empty) = remove_comment(&xml, at)?;
         if !found {
             continue;
         }
         removed = true;
-        if remaining == 0 {
+        if discard_empty && registry_plain {
             drop_part(package, &part, &rels_name, &relationship.id)?;
         } else {
             package.replace(&part, patched.into_bytes());
         }
     }
     if removed {
-        for relationship in relationships.by_type_suffix("/vmlDrawing") {
-            let part = jade_opc::resolve_target(sheet_part, &relationship.target);
-            let Some(xml) = package.part_str(&part)? else {
-                continue;
-            };
-            let patched = remove_vml_note(&xml, at).unwrap_or_else(|_| xml.clone());
-            if patched != xml {
-                package.replace(&part, patched.into_bytes());
+        if let Some(target) = vml {
+            let part = jade_opc::resolve_target(sheet_part, &target);
+            if let Some(xml) = package.part_str(&part)? {
+                let patched = remove_vml_note(&xml, at)?;
+                if patched != xml {
+                    package.replace(&part, patched.into_bytes());
+                }
             }
         }
     }
@@ -168,162 +214,192 @@ fn comment_xml(at: CellRef, author_id: usize, text: &str, prefix: &str) -> Strin
 fn new_comments_part(at: CellRef, author: &str, text: &str) -> String {
     format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<comments xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><authors><author>{}</author></authors><commentList>{}</commentList></comments>",
-        escape(author),
+        escape(&jade_xlsx_reader::xstring::encode_xstring(author)),
         comment_xml(at, 0, text, "")
     )
 }
 
 /// The comments part with the note on `at` set to `text` by `author`.
-pub fn upsert_comment(xml: &str, at: CellRef, author: &str, text: &str) -> Result<String> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut prefix = String::new();
-    let mut authors: Vec<String> = Vec::new();
-    let mut author_text: Option<String> = None;
-    let mut authors_end: Option<usize> = None;
-    let mut existing: Option<(usize, usize)> = None;
-    // The first comment that sorts after `at`, to keep the list in order.
-    let mut insert_before: Option<usize> = None;
-    let mut list_end: Option<usize> = None;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let name = element.name().as_ref().to_vec();
-                match local(&name) {
-                    b"comments" => prefix = crate::patch::namespace_prefix(&name),
-                    b"author" if !empty => author_text = Some(String::new()),
-                    b"author" => authors.push(String::new()),
-                    b"comment" => {
-                        let this = attribute(element, b"ref")?
-                            .and_then(|value| CellRef::parse(&value).ok());
-                        if !empty {
-                            reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        if this == Some(at) {
-                            existing = Some((start, end));
-                        } else if insert_before.is_none()
-                            && this
-                                .is_some_and(|this| (this.row, this.column) > (at.row, at.column))
-                        {
-                            insert_before = Some(start);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Event::Text(ref text) => {
-                if let Some(author) = author_text.as_mut() {
-                    author.push_str(&text.decode()?);
-                }
-            }
-            Event::GeneralRef(ref reference) => {
-                if let Some(author) = author_text.as_mut() {
-                    if let Ok(name) = reference.decode() {
-                        if let Ok(decoded) = quick_xml::escape::unescape(&format!("&{name};")) {
-                            author.push_str(&decoded);
-                        }
-                    }
-                }
-            }
-            Event::End(ref element) => match local(element.name().as_ref()) {
-                b"author" => {
-                    if let Some(author) = author_text.take() {
-                        authors.push(author);
-                    }
-                }
-                b"authors" => authors_end = Some(start),
-                b"commentList" => list_end = Some(start),
-                _ => {}
-            },
-            Event::Eof => break,
-            _ => {}
+fn element_insert(
+    xml: &str,
+    e: &jade_xlsx_reader::object_protection::ElementSource,
+    entry: &str,
+) -> Splice {
+    if e.empty {
+        Splice {
+            start: e.span.start,
+            end: e.span.end,
+            text: format!(
+                "{}>{entry}</{}>",
+                &xml[e.span.start..e.span.end - 2],
+                e.qualified
+            ),
         }
-        buf.clear();
+    } else {
+        Splice {
+            start: e.end_start,
+            end: e.end_start,
+            text: entry.into(),
+        }
     }
-    let Some(list_end) = list_end else {
-        return Err(WriteError::NoCommentList);
+}
+fn element_contents(
+    xml: &str,
+    e: &jade_xlsx_reader::object_protection::ElementSource,
+    entry: &str,
+) -> String {
+    if e.empty {
+        format!(
+            "{}>{entry}</{}>",
+            &xml[e.span.start..e.span.end - 2],
+            e.qualified
+        )
+    } else {
+        format!(
+            "{}{entry}{}",
+            &xml[e.span.start..e.head_end],
+            &xml[e.end_start..e.span.end]
+        )
+    }
+}
+pub fn upsert_comment(xml: &str, at: CellRef, author: &str, text: &str) -> Result<String> {
+    let source = jade_xlsx_reader::object_protection::comments_source(xml)?;
+    let mut name = "jadeComment".to_string();
+    while xml.contains(&name) {
+        name.push('_');
+    }
+    let prefix = if source.namespace.is_empty() {
+        String::new()
+    } else {
+        format!("{name}:")
+    };
+    let declaration = if source.namespace.is_empty() {
+        String::new()
+    } else {
+        format!(" xmlns:{name}=\"{}\"", escape(&source.namespace))
     };
     let mut splices = Vec::new();
-    let author_id = match authors.iter().position(|name| name == author) {
-        Some(index) => index,
-        None => {
-            if let Some(authors_end) = authors_end {
-                splices.push(Splice {
-                    start: authors_end,
-                    end: authors_end,
-                    text: format!("<{prefix}author>{}</{prefix}author>", escape(author)),
-                });
-            }
-            authors.len()
-        }
-    };
-    let comment = comment_xml(at, author_id, text, &prefix);
-    match existing {
-        Some((start, end)) => splices.push(Splice {
-            start,
-            end,
-            text: comment,
-        }),
-        None => {
-            let at = insert_before.unwrap_or(list_end);
+    let author_id = if let Some(index) = source.authors.iter().position(|a| a == author) {
+        index
+    } else {
+        let entry = format!(
+            "<{prefix}author{declaration}>{}</{prefix}author>",
+            escape(&jade_xlsx_reader::xstring::encode_xstring(author))
+        );
+        if let Some(authors) = &source.authors_element {
+            splices.push(element_insert(xml, authors, &entry));
+        } else {
             splices.push(Splice {
-                start: at,
-                end: at,
-                text: comment,
+                start: source.list.span.start,
+                end: source.list.span.start,
+                text: format!("<{prefix}authors{declaration}>{entry}</{prefix}authors>"),
             });
         }
-    }
+        source.authors.len()
+    };
+    let value = format!(
+        "<{prefix}t{declaration} xml:space=\"preserve\">{}</{prefix}t>",
+        escape(&jade_xlsx_reader::xstring::encode_xstring(text))
+    );
+    let replacement = if let Some(existing) = source.comments.iter().find(|c| c.at == Some(at)) {
+        let body = |properties: &str, declarations: &str| {
+            let properties = if properties.is_empty() {
+                format!("<{prefix}rPr><{prefix}sz val=\"9\"/><{prefix}color indexed=\"81\"/><{prefix}rFont val=\"Tahoma\"/><{prefix}family val=\"2\"/></{prefix}rPr>")
+            } else {
+                properties.to_string()
+            };
+            format!("<{prefix}r{declaration}{declarations}>{properties}{value}</{prefix}r>")
+        };
+        let mut raw = xml[existing.element.span.clone()].to_string();
+        if !existing.alternatives.is_empty() {
+            let mut variants: Vec<_> = existing.alternatives.iter().collect();
+            variants.sort_by_key(|v| v.element.span.start);
+            for variant in variants.into_iter().rev() {
+                let text = element_contents(
+                    xml,
+                    &variant.element,
+                    &body(&variant.run_properties, &variant.declarations),
+                );
+                raw.replace_range(
+                    variant.element.span.start - existing.element.span.start
+                        ..variant.element.span.end - existing.element.span.start,
+                    &text,
+                );
+            }
+        } else {
+            let entry = format!("<{prefix}text{declaration}>{}</{prefix}text>", body("", ""));
+            let insertion = element_insert(xml, &existing.element, &entry);
+            raw = apply(
+                &raw,
+                vec![Splice {
+                    start: insertion.start - existing.element.span.start,
+                    end: insertion.end - existing.element.span.start,
+                    text: insertion.text,
+                }],
+            );
+        }
+        let raw =
+            crate::xml_edit::root_attributes(&raw, &[("authorId", Some(author_id.to_string()))])?;
+        Splice {
+            start: existing.element.span.start,
+            end: existing.element.span.end,
+            text: raw,
+        }
+    } else {
+        let mut entry = comment_xml(at, author_id, text, &prefix);
+        if !declaration.is_empty() {
+            entry = entry.replacen(
+                &format!("<{prefix}comment "),
+                &format!("<{prefix}comment{declaration} "),
+                1,
+            );
+        }
+        if source.list.empty {
+            element_insert(xml, &source.list, &entry)
+        } else {
+            let pos = source
+                .comments
+                .iter()
+                .find(|c| {
+                    c.at.is_some_and(|v| (v.row, v.column) > (at.row, at.column))
+                })
+                .map_or(source.list.end_start, |c| c.element.span.start);
+            Splice {
+                start: pos,
+                end: pos,
+                text: entry,
+            }
+        }
+    };
+    splices.push(replacement);
     Ok(apply(xml, splices))
 }
-
-/// The comments part without the note on `at`: the text, whether there was
-/// one, and how many notes remain.
-fn remove_comment(xml: &str, at: CellRef) -> Result<(String, bool, usize)> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut splices = Vec::new();
+/// Remove only the owned note. Opaque root/list metadata prevents dropping the part.
+fn remove_comment(xml: &str, at: CellRef) -> Result<(String, bool, bool)> {
+    let source = jade_xlsx_reader::object_protection::comments_source(xml)?;
     let mut found = false;
-    let mut remaining = 0usize;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"comment" =>
-            {
-                let empty = matches!(event, Event::Empty(_));
-                let name = element.name().as_ref().to_vec();
-                let this =
-                    attribute(element, b"ref")?.and_then(|value| CellRef::parse(&value).ok());
-                if !empty {
-                    reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                }
-                if this == Some(at) {
-                    found = true;
-                    splices.push(Splice {
-                        start,
-                        end: reader.buffer_position() as usize,
-                        text: String::new(),
-                    });
-                } else {
-                    remaining += 1;
-                }
-            }
-            Event::Eof => break,
-            _ => {}
+    let mut remaining = 0;
+    let mut splices = Vec::new();
+    for c in source.comments {
+        if c.at == Some(at) {
+            found = true;
+            splices.push(Splice {
+                start: c.element.span.start,
+                end: c.element.span.end,
+                text: String::new(),
+            });
+        } else {
+            remaining += 1;
         }
-        buf.clear();
     }
-    Ok((apply(xml, splices), found, remaining))
+    Ok((
+        apply(xml, splices),
+        found,
+        remaining == 0 && source.can_drop_empty,
+    ))
 }
 
-const VML_SHAPETYPE: &str = r#"<v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe"><v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>"#;
+const VML_SHAPETYPE: &str = r#"<v:shapetype xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe"><v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>"#;
 
 /// The box a note is shown in: Excel's default size, placed to the right
 /// of the cell and hidden until the cell is pointed at.
@@ -332,7 +408,7 @@ fn vml_note_shape(at: CellRef, shape_number: u32) -> String {
     let left = (at.column + 1) as f64 * 48.0;
     let top = top_row as f64 * 15.0;
     format!(
-        "<v:shape id=\"_x0000_s{shape_number}\" type=\"#_x0000_t202\" style=\"position:absolute;margin-left:{left}pt;margin-top:{top}pt;width:108pt;height:59.25pt;z-index:{};visibility:hidden\" fillcolor=\"#ffffe1\" o:insetmode=\"auto\"><v:fill color2=\"#ffffe1\"/><v:shadow on=\"t\" color=\"black\" obscured=\"t\"/><v:path o:connecttype=\"none\"/><v:textbox style=\"mso-direction-alt:auto\"><div style=\"text-align:left\"></div></v:textbox><x:ClientData ObjectType=\"Note\"><x:MoveWithCells/><x:SizeWithCells/><x:Anchor>{}, 15, {top_row}, 2, {}, 15, {}, 2</x:Anchor><x:AutoFill>False</x:AutoFill><x:Row>{}</x:Row><x:Column>{}</x:Column></x:ClientData></v:shape>",
+        "<v:shape xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" id=\"_x0000_s{shape_number}\" type=\"#_x0000_t202\" style=\"position:absolute;margin-left:{left}pt;margin-top:{top}pt;width:108pt;height:59.25pt;z-index:{};visibility:hidden\" fillcolor=\"#ffffe1\" o:insetmode=\"auto\"><v:fill color2=\"#ffffe1\"/><v:shadow on=\"t\" color=\"black\" obscured=\"t\"/><v:path o:connecttype=\"none\"/><v:textbox style=\"mso-direction-alt:auto\"><div style=\"text-align:left\"></div></v:textbox><x:ClientData ObjectType=\"Note\"><x:MoveWithCells/><x:SizeWithCells/><x:Anchor>{}, 15, {top_row}, 2, {}, 15, {}, 2</x:Anchor><x:AutoFill>False</x:AutoFill><x:Row>{}</x:Row><x:Column>{}</x:Column></x:ClientData></v:shape>",
         shape_number - 1024,
         at.column + 1,
         at.column + 3,
@@ -349,153 +425,79 @@ fn new_vml_part(at: CellRef) -> String {
     )
 }
 
-/// What the VML holds: each note shape's span and cell, the highest shape
-/// number, whether the note shape type is declared, and where the document
-/// ends.
-struct VmlShapes {
-    notes: Vec<((usize, usize), CellRef)>,
-    max_shape_number: u32,
-    has_note_type: bool,
-    first_shape: Option<usize>,
-    root_end: Option<usize>,
-}
-
-fn read_vml(xml: &str) -> Result<VmlShapes> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    reader.config_mut().check_end_names = false;
-    let mut buf = Vec::new();
-    let mut shapes = VmlShapes {
-        notes: Vec::new(),
-        max_shape_number: 1024,
-        has_note_type: false,
-        first_shape: None,
-        root_end: None,
-    };
-    let mut shape: Option<(usize, bool, Option<u32>, Option<u32>)> = None;
-    let mut content: Option<(usize, &[u8])> = None;
-    let mut depth = 0usize;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let head_end = reader.buffer_position() as usize;
-                match local(element.name().as_ref()) {
-                    b"shapetype" => {
-                        if attribute(element, b"id")?.as_deref() == Some("_x0000_t202") {
-                            shapes.has_note_type = true;
-                        }
-                    }
-                    b"shape" if !empty => {
-                        shapes.first_shape.get_or_insert(start);
-                        if let Some(number) = attribute(element, b"id")?
-                            .and_then(|id| id.strip_prefix("_x0000_s").map(str::to_string))
-                            .and_then(|number| number.parse::<u32>().ok())
-                        {
-                            shapes.max_shape_number = shapes.max_shape_number.max(number);
-                        }
-                        shape = Some((start, false, None, None));
-                    }
-                    b"ClientData" if shape.is_some() => {
-                        if attribute(element, b"ObjectType")?.as_deref() == Some("Note") {
-                            if let Some(shape) = shape.as_mut() {
-                                shape.1 = true;
-                            }
-                        }
-                    }
-                    b"Row" if shape.is_some() && !empty => content = Some((head_end, b"Row")),
-                    b"Column" if shape.is_some() && !empty => content = Some((head_end, b"Column")),
-                    _ => {}
-                }
-                if !empty {
-                    depth += 1;
-                }
-            }
-            Event::End(ref element) => {
-                depth = depth.saturating_sub(1);
-                match local(element.name().as_ref()) {
-                    b"Row" | b"Column" => {
-                        if let (Some((content_start, kind)), Some(shape)) =
-                            (content.take(), shape.as_mut())
-                        {
-                            let value = xml[content_start..start].trim().parse::<u32>().ok();
-                            if kind == b"Row" {
-                                shape.2 = value;
-                            } else {
-                                shape.3 = value;
-                            }
-                        }
-                    }
-                    b"shape" => {
-                        if let Some((shape_start, note, row, column)) = shape.take() {
-                            let end = reader.buffer_position() as usize;
-                            if let (true, Some(row), Some(column)) = (note, row, column) {
-                                shapes
-                                    .notes
-                                    .push(((shape_start, end), CellRef::new(column, row)));
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                if depth == 0 {
-                    shapes.root_end = Some(start);
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-    Ok(shapes)
-}
-
-/// The VML with a note box for `at`, replacing the one it has.
+/// Existing note geometry, locking and extensions are unchanged by a text update.
 pub fn upsert_vml_note(xml: &str, at: CellRef) -> Result<String> {
-    let shapes = read_vml(xml)?;
-    let Some(root_end) = shapes.root_end else {
-        return Ok(xml.to_string());
-    };
-    let mut splices = Vec::new();
-    if !shapes.has_note_type {
-        let at = shapes.first_shape.unwrap_or(root_end);
-        splices.push(Splice {
-            start: at,
-            end: at,
-            text: VML_SHAPETYPE.to_string(),
-        });
+    let source = jade_xlsx_reader::object_protection::vml_sources(xml)?;
+    let existing: Vec<_> = source.notes.iter().filter(|n| n.at == at).collect();
+    if existing.iter().any(|n| n.locks.ambiguous) {
+        return Err(jade_xlsx_reader::XlsxError::BadDrawingProtection(
+            "ambiguous note identity or locks".into(),
+        )
+        .into());
     }
-    let shape = vml_note_shape(at, shapes.max_shape_number + 1);
-    match shapes.notes.iter().find(|(_, cell)| *cell == at) {
-        Some(((start, end), _)) => splices.push(Splice {
-            start: *start,
-            end: *end,
-            text: shape,
-        }),
-        None => splices.push(Splice {
-            start: root_end,
-            end: root_end,
-            text: shape,
-        }),
+    if !existing.is_empty() {
+        return Ok(xml.to_string());
+    }
+    let shape = vml_note_shape(
+        at,
+        source.max_shape_number.checked_add(1).ok_or_else(|| {
+            jade_xlsx_reader::XlsxError::BadDrawingProtection("VML shape id overflow".into())
+        })?,
+    );
+    let shape_type = if source.has_note_type {
+        ""
+    } else {
+        VML_SHAPETYPE
+    };
+    if source.root_empty {
+        let head = &xml[source.root_span.start..source.root_span.end - 2];
+        return Ok(apply(
+            xml,
+            vec![Splice {
+                start: source.root_span.start,
+                end: source.root_span.end,
+                text: format!("{head}>{shape_type}{shape}</{}>", source.root_qualified),
+            }],
+        ));
+    }
+    let mut splices = vec![Splice {
+        start: source.root_end,
+        end: source.root_end,
+        text: shape,
+    }];
+    if !shape_type.is_empty() {
+        let at = source.first_shape.unwrap_or(source.root_end);
+        splices.insert(
+            0,
+            Splice {
+                start: at,
+                end: at,
+                text: shape_type.into(),
+            },
+        );
     }
     Ok(apply(xml, splices))
 }
-
 fn remove_vml_note(xml: &str, at: CellRef) -> Result<String> {
-    let shapes = read_vml(xml)?;
-    let splices = shapes
-        .notes
-        .iter()
-        .filter(|(_, cell)| *cell == at)
-        .map(|((start, end), _)| Splice {
-            start: *start,
-            end: *end,
-            text: String::new(),
-        })
-        .collect();
-    Ok(apply(xml, splices))
+    let notes = jade_xlsx_reader::object_protection::note_sources(xml)?;
+    if notes.iter().any(|n| n.at == at && n.locks.ambiguous) {
+        return Err(jade_xlsx_reader::XlsxError::BadDrawingProtection(
+            "ambiguous note identity or locks".into(),
+        )
+        .into());
+    }
+    Ok(apply(
+        xml,
+        notes
+            .into_iter()
+            .filter(|n| n.at == at)
+            .map(|n| Splice {
+                start: n.span.start,
+                end: n.span.end,
+                text: String::new(),
+            })
+            .collect(),
+    ))
 }
 
 /// `prefix{n}{suffix}` for the smallest `n` the package does not have.

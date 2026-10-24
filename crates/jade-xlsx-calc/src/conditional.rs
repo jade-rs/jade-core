@@ -168,7 +168,12 @@ pub fn conditional_formula_matches(
     let mut results = Vec::new();
     for (format_index, rule_index, anchor, formula) in wanted {
         let Some(parsed) = model.parse_anchored_formula(
-            &jade_xlsx_reader::collapse_ref_errors(&formula),
+            &jade_xlsx_reader::collapse_ref_errors(&crate::table_formula(
+                workbook,
+                sheet,
+                Some(anchor),
+                &formula,
+            )),
             engine_sheet,
             anchor.row as i32 + 1,
             anchor.column as i32 + 1,
@@ -228,7 +233,7 @@ pub fn conditional_formula_matches(
 
 /// The workbook as the engine holds it with every cell a literal: its
 /// sheets, tables and names, and each cell's current value.
-fn project_values<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Model<'a>> {
+pub(crate) fn project_values<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Model<'a>> {
     use ironcalc_base::date_system::{with_date_system, DateSystem as EngineDateSystem};
     let system = match workbook.date_system {
         DateSystem::Nineteen00 => EngineDateSystem::Excel1900,

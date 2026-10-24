@@ -993,6 +993,15 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 // Sets signature::Error to all arguments if the number of arguments is incorrect.
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
+        Function::Single | Function::Anchorarray => args_signature_one_vector(arg_count),
+        Function::EcmaCeiling => args_signature_scalars(arg_count, 2, 0),
+        Function::Getpivotdata => {
+            if (2..=254).contains(&arg_count) {
+                vec![Signature::Vector; arg_count]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::And => vec![Signature::Vector; arg_count],
         Function::False => args_signature_no_args(arg_count),
         Function::If => args_signature_scalars(arg_count, 2, 1),
@@ -1282,7 +1291,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Numberstring => args_signature_scalars(arg_count, 2, 0),
         Function::Rand => args_signature_no_args(arg_count),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
-        Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
+        Function::Formulatext => args_signature_one_vector(arg_count),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Unichar => args_signature_scalars(arg_count, 1, 0),
         Function::Char => args_signature_scalars(arg_count, 1, 0),
@@ -1652,6 +1661,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
 // Returns the type of the result (Scalar, Array or Range) depending on the arguments
 fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     match kind {
+        Function::Single => StaticResult::Scalar,
+        Function::Anchorarray => StaticResult::Unknown,
+        Function::EcmaCeiling => scalar_arguments(args),
+        Function::Getpivotdata => StaticResult::Unknown,
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
         Function::If => scalar_arguments(args),

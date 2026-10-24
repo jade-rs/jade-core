@@ -9,6 +9,7 @@ use crate::{
 
 mod aggregate;
 pub(crate) mod binary_search;
+mod compatibility;
 mod database;
 pub(crate) mod date_and_time;
 mod engineering;
@@ -31,6 +32,11 @@ mod xlookup;
 /// List of all implemented functions
 #[derive(PartialEq, Clone, Debug)]
 pub enum Function {
+    // Compatibility spellings for saved dynamic-array operators and ceiling.
+    Single,
+    Anchorarray,
+    EcmaCeiling,
+    Getpivotdata,
     // Logical
     And,
     False,
@@ -580,6 +586,10 @@ pub enum Function {
 /// every language.
 fn jade_lookup(key: &str) -> Option<Function> {
     match key {
+        "SINGLE" => Some(Function::Single),
+        "ANCHORARRAY" => Some(Function::Anchorarray),
+        "ECMA.CEILING" => Some(Function::EcmaCeiling),
+        "GETPIVOTDATA" => Some(Function::Getpivotdata),
         "AGGREGATE" => Some(Function::Aggregate),
         "JIS" => Some(Function::Jis),
         "DATESTRING" => Some(Function::Datestring),
@@ -1145,6 +1155,10 @@ impl Function {
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
         match self {
+            Function::Single => "SINGLE".into(),
+            Function::Anchorarray => "ANCHORARRAY".into(),
+            Function::EcmaCeiling => "ECMA.CEILING".into(),
+            Function::Getpivotdata => "GETPIVOTDATA".into(),
             Function::And => functions.and.clone(),
             Function::False => functions.r#false.clone(),
             Function::If => functions.r#if.clone(),
@@ -1651,8 +1665,12 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 503> {
+    pub fn into_iter() -> IntoIter<Function, 507> {
         [
+            Function::Single,
+            Function::Anchorarray,
+            Function::EcmaCeiling,
+            Function::Getpivotdata,
             Function::And,
             Function::False,
             Function::If,
@@ -2190,6 +2208,8 @@ impl Function {
     /// See <https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/3d025add-118d-4413-9856-ab65712ec1b0>
     pub fn to_xlsx_string(&self) -> String {
         match self {
+            Function::Single => "_xlfn.SINGLE".into(),
+            Function::Anchorarray => "_xlfn.ANCHORARRAY".into(),
             Function::Concat => "_xlfn.CONCAT".to_string(),
             Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
             Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
@@ -2388,6 +2408,10 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match kind {
+            Function::Single => self.fn_compat_operator(args, cell, false),
+            Function::Anchorarray => self.fn_compat_operator(args, cell, true),
+            Function::EcmaCeiling => self.fn_ceiling(args, cell),
+            Function::Getpivotdata => self.fn_getpivotdata(args, cell),
             Function::And => self.fn_and(args, cell),
             Function::False => self.fn_false(args, cell),
             Function::If => self.fn_if(args, cell),

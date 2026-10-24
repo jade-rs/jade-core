@@ -11,7 +11,7 @@
 //! or sheet-scoped defined names, sheet visibility, saved active tab,
 //! recalculation-on-load state, frozen-pane metadata, and
 //! external or workbook-internal cell hyperlinks, legacy cell comments, and
-//! standard data-validation rules.
+//! standard and x14 data-validation rules.
 //!
 //! Also read: Excel tables (range, header and totals rows, column names),
 //! the page header and footer, page breaks, and the sheet's drawing — the
@@ -21,11 +21,16 @@
 //! retained for shared layout and compatibility reporting.
 //!
 //! Classic chart series, caches and references are retained for shared layout.
-//! What is not read yet: extended charts, extension-based data validation, pivot tables, and
+//! Declared pivot tables and their shared typed caches/records are also read,
+//! with independent diagnostics for unsupported or malformed pivot metadata.
+//! Pivot refresh, query/OLAP interpretation and authoring remain separate.
+//! What is not read yet: extended charts, and
 //! any recalculation of formulas —
 //! rendering uses the cached values the file carries.
 
 pub mod auto_filter;
+pub mod cell_content;
+mod cell_shift;
 pub mod chart;
 pub mod comments;
 pub mod conditional_format;
@@ -34,22 +39,30 @@ pub mod drawing;
 pub mod error;
 pub mod filter_state;
 pub mod formula;
+mod hyperlinks;
 pub mod model;
+pub mod object_protection;
 pub mod phonetic;
+pub mod pivot;
+pub mod protected_ranges;
 pub mod rich_text;
 pub mod shared_strings;
 pub mod sheet;
+pub mod sheet_protection;
 pub mod sparkline;
 pub mod styles;
 pub mod table;
+pub mod table_reference;
 mod theme;
 pub mod workbook_part;
 pub mod xstring;
 
+pub use cell_shift::CellShift;
 pub use error::{Result, XlsxError};
 pub use formula::{
     collapse_ref_errors, delete_sheet_in_formula, move_formula, quote_sheet_name,
-    rename_sheet_in_formula, shift_formula, Axis, StructureChange,
+    rename_sheet_in_formula, rewrite_table_references, shift_cells_formula, shift_formula, Axis,
+    StructureChange,
 };
 pub use jade_opc::OpcPackage;
 pub use model::{
@@ -58,7 +71,7 @@ pub use model::{
     DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, HeaderFooter,
     HorizontalAlignment, Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape,
     ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
-    TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
+    TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -67,8 +80,6 @@ pub use workbook_part::{SheetEntry, WorkbookPart};
 /// that is stable between the strict and transitional conventions.
 const OFFICE_DOCUMENT: &str = "/officeDocument";
 const COMMENTS: &str = "/comments";
-const DRAWING: &str = "/drawing";
-const TABLE: &str = "/table";
 const SHARED_STRINGS: &str = "/sharedStrings";
 const STYLES: &str = "/styles";
 const THEME: &str = "/theme";
@@ -289,9 +300,12 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
             }
         }
     }
+    let pivots = pivot::read_catalog(package, &workbook_part, &workbook_xml, &sheets);
     Ok(Workbook {
+        pivots,
         sheets,
         styles,
+        structure_protected: part.structure_protected,
         defined_names: part.defined_names,
         date_system: part.date_system,
         active_sheet_index: part.active_sheet_index,
@@ -350,27 +364,54 @@ fn read_sheet_parts(
     sheet: &mut Sheet,
     media_cache: &mut std::collections::HashMap<String, model::MediaPart>,
 ) -> Result<()> {
+    let owned_relationships = package
+        .part_str(&jade_opc::rels_part_name(sheet_part))?
+        .map(|xml| object_protection::owned_relationships(&xml))
+        .transpose()?;
+    let relationships = owned_relationships.as_ref().unwrap_or(relationships);
     sheet.data_validations = data_validations::parse_data_validations(sheet_xml)?;
-    if let Some(comments_target) = relationships.target_by_type_suffix(COMMENTS) {
+    let comment_relations: Vec<_> = relationships
+        .by_type_suffix(COMMENTS)
+        .into_iter()
+        .filter(|r| object_protection::office_relationship(r, "comments"))
+        .collect();
+    if comment_relations.len() > 1 {
+        return Err(XlsxError::BadDrawingProtection(
+            "multiple owned comments relationships".into(),
+        ));
+    }
+    if let Some(comments_target) = comment_relations.first().map(|r| r.target.as_str()) {
         let comments_part = jade_opc::resolve_target(sheet_part, comments_target);
         if let Some(xml) = package.part_str(&comments_part)? {
             sheet.comments = comments::parse_comments(&xml)?;
         }
     }
-    for relationship in relationships.by_type_suffix(TABLE) {
-        let table_part = jade_opc::resolve_target(sheet_part, &relationship.target);
+    for table_part in table::referenced_table_parts(sheet_xml, relationships, sheet_part)? {
         if let Some(xml) = package.part_str(&table_part)? {
             if let Some(table) = table::parse_table(&table_part, &xml)? {
                 sheet.tables.push(table);
             }
         }
     }
-    if let Some(drawing_target) = relationships.target_by_type_suffix(DRAWING) {
+    let drawing_id = object_protection::worksheet_drawing_relationship(sheet_xml, false)?;
+    if let Some(drawing_target) = drawing_id
+        .as_deref()
+        .and_then(|id| relationships.relationship(id))
+        .filter(|r| {
+            !r.external
+                && matches!(
+                    r.relationship_type.as_str(),
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
+                        | "http://purl.oclc.org/ooxml/officeDocument/relationships/drawing"
+                )
+        })
+        .map(|r| r.target.as_str())
+    {
         let drawing_part = jade_opc::resolve_target(sheet_part, drawing_target);
         if let Some(xml) = package.part_str(&drawing_part)? {
             sheet.shapes = drawing::parse_drawing(&xml)?;
             let drawing_rels = match package.part_str(&jade_opc::rels_part_name(&drawing_part))? {
-                Some(xml) => jade_opc::parse_relationships(&xml)?,
+                Some(xml) => object_protection::owned_relationships(&xml)?,
                 None => Default::default(),
             };
             for picture in sheet

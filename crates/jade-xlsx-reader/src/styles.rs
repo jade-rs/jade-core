@@ -1,6 +1,8 @@
 //! `xl/styles.xml` — the font/fill/border tables and the `cellXfs` entries a
 //! cell's `s` attribute indexes into.
 
+mod collections;
+
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::{name::ResolveResult, NsReader};
 
@@ -139,6 +141,13 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                             let value = attribute.unescape_value()?;
                             match attribute.key.as_ref() {
                                 b"fontId" => entry.font_index = value.parse().ok(),
+                                b"applyFont" => {
+                                    entry.apply_font = match value.as_ref() {
+                                        "1" | "true" => Some(true),
+                                        "0" | "false" => Some(false),
+                                        _ => None,
+                                    }
+                                }
                                 b"fillId" => entry.fill_index = value.parse().ok(),
                                 b"borderId" => entry.border_index = value.parse().ok(),
                                 b"numFmtId" => entry.number_format_id = value.parse().ok(),
@@ -290,76 +299,12 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
         }
         buf.clear();
     }
-    table.differential_styles = crate::conditional_format::parse_differential_styles(xml)?;
-    table.table_styles = parse_table_styles(xml)?;
+    crate::sheet_protection::style_flags(xml, &mut table)?;
+    let collections = collections::parse(xml)?;
+    table.differential_styles = collections.differential;
+    table.table_styles = collections.tables;
+    table.default_pivot_style = collections.default_pivot;
     Ok(table)
-}
-
-/// `<tableStyles>`: custom table styles and the dxfs their parts use.
-fn parse_table_styles(xml: &str) -> Result<Vec<crate::model::TableStyleDefinition>> {
-    use crate::model::{TableStyleDefinition, TableStyleElement};
-    if !xml.contains("tableStyle") {
-        return Ok(Vec::new());
-    }
-    let mut reader = NsReader::from_str(xml);
-    let mut styles = Vec::new();
-    let mut current: Option<TableStyleDefinition> = None;
-    let mut buf = Vec::new();
-    loop {
-        let (_, event) = reader.read_resolved_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let value = |key: &[u8]| -> Result<Option<String>> {
-                    for attribute in element.attributes() {
-                        let attribute = attribute?;
-                        if attribute.key.as_ref() == key {
-                            return Ok(Some(attribute.unescape_value()?.into_owned()));
-                        }
-                    }
-                    Ok(None)
-                };
-                match local_name(element.name().as_ref()) {
-                    b"tableStyle" => {
-                        let style = TableStyleDefinition {
-                            name: value(b"name")?.unwrap_or_default(),
-                            elements: Vec::new(),
-                        };
-                        if empty {
-                            styles.push(style);
-                        } else {
-                            current = Some(style);
-                        }
-                    }
-                    b"tableStyleElement" => {
-                        if let Some(style) = current.as_mut() {
-                            style.elements.push(TableStyleElement {
-                                kind: value(b"type")?.unwrap_or_default(),
-                                differential_style_index: value(b"dxfId")?
-                                    .and_then(|v| v.parse().ok()),
-                                size: value(b"size")?
-                                    .and_then(|v| v.parse().ok())
-                                    .unwrap_or(1)
-                                    .max(1),
-                            });
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Event::End(ref element) => {
-                if local_name(element.name().as_ref()) == b"tableStyle" {
-                    if let Some(style) = current.take() {
-                        styles.push(style);
-                    }
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-    Ok(styles)
 }
 
 fn set_border_edge(border: &mut Option<Border>, side: &str, edge: BorderEdge) {

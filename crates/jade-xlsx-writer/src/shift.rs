@@ -59,6 +59,7 @@ pub fn restructure(
     }
 
     let mut package = OpcPackage::open(original)?;
+    crate::pivots::after_structure(&mut package, workbook, change)?;
     if change.inserted {
         let sheet = workbook
             .sheets
@@ -108,6 +109,7 @@ pub fn restructure(
     package.replace(&workbook_part, patched.into_bytes());
 
     drop_calc_chain(&mut package, &workbook_part)?;
+    crate::table_calculation::after_structure(&mut package, workbook, change)?;
     crate::chart_cache::refresh_package(&mut package, &crate::VerifiedChartCells::new())?;
     Ok(package.write()?)
 }
@@ -125,6 +127,14 @@ pub fn shift_sheet(
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
     let mut splices: Vec<Splice> = Vec::new();
+    let mut validations =
+        crate::validation_structure::containers(xml, &sheet.name, changed, change)?;
+    let mut protected_ranges =
+        crate::protected_ranges::structure_containers(xml, changed, &|range| {
+            crate::validation_structure::map_range(range, change)
+                .into_iter()
+                .collect()
+        })?;
 
     // Where we are.
     let mut in_sheet_data = false;
@@ -165,6 +175,26 @@ pub fn shift_sheet(
                     }
                     Ok(reader.buffer_position() as usize)
                 };
+                if matches!(local(&name), b"protectedRanges" | b"protectedRange") {
+                    let end = whole_end(&mut reader)?;
+                    if let Some(text) = protected_ranges.remove(&start) {
+                        if text != xml[start..end] {
+                            splices.push(Splice { start, end, text });
+                        }
+                    }
+                    continue;
+                }
+                if matches!(local(&name), b"dataValidations" | b"dataValidation") {
+                    let end = whole_end(&mut reader)?;
+                    if let Some(text) = validations.remove(&start) {
+                        if text != xml[start..end] {
+                            splices.push(Splice { start, end, text });
+                        }
+                    }
+                    // Preserve unrecognized containers/records whole. Their
+                    // descendants must not enter the generic formula pass.
+                    continue;
+                }
                 match local(&name) {
                     b"sheetData" => in_sheet_data = !empty,
                     b"dimension" if changed => {
@@ -349,36 +379,6 @@ pub fn shift_sheet(
                         };
                         breaks = Some((axis, start, head_end, 0, 0));
                     }
-                    b"protectedRange" if changed => {
-                        if let Some(sqref) = attribute(element, b"sqref")? {
-                            let kept = sqref
-                                .split_whitespace()
-                                .filter_map(|text| CellRange::parse(text).ok())
-                                .filter_map(|range| change.map_range(range))
-                                .map(range_text)
-                                .collect::<Vec<_>>();
-                            if kept.is_empty() {
-                                let end = whole_end(&mut reader)?;
-                                splices.push(Splice {
-                                    start,
-                                    end,
-                                    text: String::new(),
-                                });
-                                continue;
-                            }
-                            splices.push(Splice {
-                                start,
-                                end: head_end,
-                                text: rewrite(element, &[("sqref", Some(kept.join(" ")))], empty)?,
-                            });
-                            if let Some(list) = list.as_mut() {
-                                list.2 += 1;
-                            }
-                        }
-                    }
-                    b"protectedRanges" if changed && !empty => {
-                        list = Some((start, head_end, 0, name.clone()));
-                    }
                     b"sparkline" if changed && !empty => {
                         ext_containers.push((start, local(&name).to_vec(), false));
                     }
@@ -494,11 +494,15 @@ pub fn shift_sheet(
                                 Some(mapped) => splices.push(Splice {
                                     start,
                                     end,
-                                    text: crate::filter::shift_auto_filter(
-                                        &xml[start..end],
-                                        change,
-                                        mapped,
-                                    )?,
+                                    text: {
+                                        let context =
+                                            crate::xml_edit_ns::fragment(xml, start..end)?;
+                                        context.finish(&crate::filter::shift_auto_filter(
+                                            &context.text,
+                                            change,
+                                            mapped,
+                                        )?)?
+                                    },
                                 }),
                                 None => splices.push(Splice {
                                     start,
@@ -513,11 +517,16 @@ pub fn shift_sheet(
                         splices.push(Splice {
                             start,
                             end,
-                            text: crate::filter::shift_sort_state(&xml[start..end], change)?
-                                .unwrap_or_default(),
+                            text: {
+                                let context = crate::xml_edit_ns::fragment(xml, start..end)?;
+                                match crate::filter::shift_sort_state(&context.text, change)? {
+                                    Some(moved) => context.finish(&moved)?,
+                                    None => String::new(),
+                                }
+                            },
                         });
                     }
-                    b"dataValidation" | b"conditionalFormatting" if changed => {
+                    b"conditionalFormatting" if changed => {
                         if attribute(element, b"sqref")?.is_none() && !empty {
                             // The x14 form: its ranges come as an `xm:sqref`
                             // child, mapped when it is reached.
@@ -549,7 +558,7 @@ pub fn shift_sheet(
                             }
                         }
                     }
-                    b"mergeCells" | b"hyperlinks" | b"dataValidations" if changed && !empty => {
+                    b"mergeCells" | b"hyperlinks" if changed && !empty => {
                         list = Some((start, head_end, 0, name.clone()));
                     }
                     b"formula" | b"formula1" | b"formula2" => {
@@ -649,7 +658,7 @@ pub fn shift_sheet(
                         }
                     }
                 }
-                b"conditionalFormatting" | b"dataValidation" | b"sparkline" => {
+                b"conditionalFormatting" | b"sparkline" => {
                     let is_top = ext_containers.last().is_some_and(|(_, name, _)| {
                         name.as_slice() == local(element.name().as_ref())
                     });
@@ -701,7 +710,7 @@ pub fn shift_sheet(
                         }
                     }
                 }
-                b"mergeCells" | b"hyperlinks" | b"dataValidations" | b"protectedRanges" => {
+                b"mergeCells" | b"hyperlinks" => {
                     if let Some((list_start, head_end, kept, name)) = list.take() {
                         let end = reader.buffer_position() as usize;
                         if kept == 0 {
@@ -732,7 +741,12 @@ pub fn shift_sheet(
         }
         buf.clear();
     }
-    Ok(apply(xml, splices))
+    let moved = apply(xml, splices);
+    if changed {
+        crate::protected_ranges::cleanup(&moved)
+    } else {
+        Ok(moved)
+    }
 }
 
 /// The parts hung off the changed sheet — tables, the drawing, comments and
@@ -753,8 +767,22 @@ fn follow_sheet_parts(
 
     let mut header_cells = Vec::new();
     let mut removed_table_ids = Vec::new();
+    let mut shifted_tables = std::collections::BTreeSet::new();
+    let mut removed_tables = std::collections::BTreeSet::new();
     for relationship in relationships.by_type_suffix("/table") {
         let part = jade_opc::resolve_target(&sheet.part_name, &relationship.target);
+        if relationship.external || !sheet.tables.iter().any(|t| t.part_name == part) {
+            continue;
+        }
+        if removed_tables.contains(&part) {
+            drop_part(package, &part, &rels_name, &relationship.id)?;
+            removed_table_ids.push(relationship.id.clone());
+            continue;
+        }
+        if !shifted_tables.insert(part.clone()) {
+            continue;
+        }
+
         let Some(xml) = package.part_str(&part)? else {
             continue;
         };
@@ -767,6 +795,7 @@ fn follow_sheet_parts(
                 }
             }
             None => {
+                removed_tables.insert(part.clone());
                 drop_part(package, &part, &rels_name, &relationship.id)?;
                 removed_table_ids.push(relationship.id.clone());
             }

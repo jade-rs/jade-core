@@ -1,6 +1,8 @@
 //! Classic DrawingML charts. Sparse caches retain their point indices and
 //! formulas so layout can prefer current workbook cells over saved values.
+mod pivot;
 use crate::error::Result;
+pub use pivot::{PivotSource, PivotSourceName};
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -142,6 +144,8 @@ pub struct ChartPlot {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chart {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pivot_source: Option<PivotSource>,
     pub relationship_id: Option<String>,
     pub part_name: Option<String>,
     pub kind: String,
@@ -186,6 +190,7 @@ pub struct Chart {
 impl Default for Chart {
     fn default() -> Self {
         Self {
+            pivot_source: None,
             relationship_id: None,
             part_name: None,
             kind: String::new(),
@@ -613,12 +618,12 @@ fn parse_plot(kind: &Node, issues: &mut Vec<String>) -> ChartPlot {
             .unwrap_or(matches!(name.as_str(), "pieChart" | "doughnutChart")),
         gap_width: kind
             .val("gapWidth")
-            .and_then(|v| v.parse().ok())
+            .and_then(|v| v.trim().strip_suffix('%').unwrap_or(v.trim()).parse().ok())
             .unwrap_or(150)
             .min(500),
         overlap: kind
             .val("overlap")
-            .and_then(|v| v.parse().ok())
+            .and_then(|v| v.trim().strip_suffix('%').unwrap_or(v.trim()).parse().ok())
             .unwrap_or(if grouping.ends_with("Stacked") || grouping == "stacked" {
                 100
             } else {
@@ -647,6 +652,13 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         });
     };
     let mut chart = Chart::default();
+    chart.pivot_source = pivot::parse(space.unwrap(), &mut chart.unsupported_properties);
+    if space.unwrap().child("externalData").is_some() {
+        chart
+            .unsupported_properties
+            .push("external chart data".into());
+    }
+
     let plot = root.child("plotArea");
     let plots: Vec<&Node> = plot
         .into_iter()
@@ -826,7 +838,7 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
     chart.unsupported_properties.extend(issues);
     for (name, label) in [
         ("manualLayout", "manual chart layout"),
-        ("pivotSource", "pivot chart"),
+        ("pivotSource", "misplaced pivot chart source"),
         ("extLst", "chart extensions"),
         ("explosion", "exploded pie"),
         ("noFill", "chart no-fill styling"),

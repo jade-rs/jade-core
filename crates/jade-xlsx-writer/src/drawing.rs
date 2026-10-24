@@ -397,145 +397,52 @@ pub fn shift_chart(xml: &str, change: &StructureChange) -> Result<String> {
 /// new text wears the font the old one did. `None` when the drawing has no
 /// such shape, or the shape has no text body to write into.
 pub fn set_shape_text(xml: &str, id: u32, text: &str) -> Result<Option<String>> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-
-    // Depth of drawing objects inside the current anchor; the target is at
-    // depth 1.
-    let mut depth = 0usize;
-    let mut in_target = false;
-    let mut in_text_body = false;
-    // The paragraphs of the target's text body: where the first starts,
-    // where the last ends, and what to keep from them.
-    let mut first_paragraph: Option<usize> = None;
-    let mut last_paragraph_end: usize = 0;
-    let mut paragraph_prefix = String::new();
-    let mut paragraph_properties: Option<String> = None;
-    let mut run_properties: Option<String> = None;
-    let mut paragraph_depth = 0usize;
-    let mut found = false;
-
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let qualified = element.name().as_ref().to_vec();
-                match local(&qualified) {
-                    b"sp" | b"pic" | b"graphicFrame" | b"grpSp" | b"cxnSp" => {
-                        depth += 1;
-                        if empty {
-                            depth -= 1;
-                        }
-                    }
-                    b"cNvPr" if depth == 1 && !in_target && !found => {
-                        let this =
-                            attribute(element, b"id")?.and_then(|value| value.parse::<u32>().ok());
-                        if this == Some(id) {
-                            in_target = true;
-                        }
-                    }
-                    b"txBody" if in_target && depth == 1 && !empty => {
-                        in_text_body = true;
-                    }
-                    b"p" if in_text_body && paragraph_depth == 0 => {
-                        if first_paragraph.is_none() {
-                            first_paragraph = Some(start);
-                            paragraph_prefix = crate::patch::namespace_prefix(&qualified);
-                        }
-                        if !empty {
-                            paragraph_depth = 1;
-                        } else {
-                            last_paragraph_end = reader.buffer_position() as usize;
-                        }
-                    }
-                    b"pPr" if paragraph_depth == 1 && paragraph_properties.is_none() => {
-                        if !empty {
-                            reader.read_to_end_into(QName(&qualified), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        paragraph_properties = Some(xml[start..end].to_string());
-                    }
-                    b"rPr" if paragraph_depth == 1 && run_properties.is_none() => {
-                        if !empty {
-                            reader.read_to_end_into(QName(&qualified), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        run_properties = Some(xml[start..end].to_string());
-                    }
-                    // A paragraph that only ends carries the font in
-                    // endParaRPr; use it when no run had one.
-                    b"endParaRPr" if paragraph_depth == 1 && run_properties.is_none() => {
-                        if !empty {
-                            reader.read_to_end_into(QName(&qualified), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        let raw = &xml[start..end];
-                        run_properties = Some(raw.replacen("endParaRPr", "rPr", 2));
-                    }
-                    _ => {}
-                }
-            }
-            Event::End(ref element) => match local(element.name().as_ref()) {
-                b"p" if paragraph_depth == 1 => {
-                    paragraph_depth = 0;
-                    last_paragraph_end = reader.buffer_position() as usize;
-                }
-                b"txBody" if in_text_body => {
-                    in_text_body = false;
-                    in_target = false;
-                    found = true;
-                    if first_paragraph.is_none() {
-                        // No paragraph to replace: put the text before the
-                        // closing tag.
-                        first_paragraph = Some(start);
-                        last_paragraph_end = start;
-                        paragraph_prefix = "a:".to_string();
-                    }
-                }
-                b"sp" | b"pic" | b"graphicFrame" | b"grpSp" | b"cxnSp" => {
-                    depth = depth.saturating_sub(1);
-                    if depth == 0 {
-                        in_target = false;
-                    }
-                }
-                _ => {}
-            },
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    let (Some(paragraphs_start), true) = (first_paragraph, found) else {
+    let Some(source) = jade_xlsx_reader::object_protection::drawing_source(xml, id)? else {
         return Ok(None);
     };
-    let prefix = paragraph_prefix;
-    let paragraph_properties = paragraph_properties.unwrap_or_default();
-    let run_properties = run_properties.unwrap_or_default();
-    let end_properties = run_properties.replacen("rPr", "endParaRPr", 2);
+    let Some(body) = source.text else {
+        return Ok(None);
+    };
+    let mut prefix = "jadeText".to_string();
+    while xml.contains(&prefix) {
+        prefix.push('_');
+    }
     let mut replacement = String::new();
-    let lines: Vec<&str> = text.split('\n').collect();
-    for line in lines {
-        replacement.push_str(&format!("<{prefix}p>{paragraph_properties}"));
+    for line in text.split('\n') {
+        replacement.push_str(&format!(
+            "<{prefix}:p xmlns:{prefix}=\"{}\"{}>{}",
+            escape(&body.namespace),
+            body.declarations,
+            body.paragraph_properties
+        ));
         if line.is_empty() {
-            replacement.push_str(&end_properties);
+            replacement.push_str(&body.end_properties);
         } else {
             replacement.push_str(&format!(
-                "<{prefix}r>{run_properties}<{prefix}t>{}</{prefix}t></{prefix}r>",
+                "<{prefix}:r>{}<{prefix}:t xml:space=\"preserve\">{}</{prefix}:t></{prefix}:r>",
+                body.run_properties,
                 escape(line)
             ));
         }
-        replacement.push_str(&format!("</{prefix}p>"));
+        replacement.push_str(&format!("</{prefix}:p>"));
     }
-    Ok(Some(apply(
-        xml,
-        vec![Splice {
-            start: paragraphs_start,
-            end: last_paragraph_end,
+    let mut splices: Vec<_> = body
+        .paragraphs
+        .into_iter()
+        .map(|r| Splice {
+            start: r.start,
+            end: r.end,
+            text: String::new(),
+        })
+        .collect();
+    if let Some(first) = splices.first_mut() {
+        first.text = replacement;
+    } else {
+        splices.push(Splice {
+            start: body.insertion,
+            end: body.insertion,
             text: replacement,
-        }],
-    )))
+        });
+    }
+    Ok(Some(apply(xml, splices)))
 }

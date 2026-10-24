@@ -13,6 +13,25 @@ use jade_xlsx_reader::{
 use proptest::prelude::*;
 
 #[test]
+fn quoted_source_names_decode_without_accepting_unbalanced_apostrophes() {
+    use jade_xlsx_reader::formula::unquote_sheet_name;
+    for invalid in ["'", "'missing", "'O'B'", "last'"] {
+        assert!(unquote_sheet_name(invalid).is_none(), "{invalid}");
+    }
+    assert_eq!(
+        unquote_sheet_name("'O''Brien & _x0041_'"),
+        Some("O'Brien & _x0041_".into())
+    );
+}
+
+proptest! {
+    #[test]
+    fn quoted_sheet_names_recover_the_complete_unicode_and_apostrophe_identity(name in "\\PC{0,31}") {
+        prop_assert_eq!(jade_xlsx_reader::formula::unquote_sheet_name(&quote_sheet_name(&name)),Some(name));
+    }
+}
+
+#[test]
 fn a_renamed_sheet_is_renamed_wherever_a_formula_names_it() {
     let rename = |formula: &str| rename_sheet_in_formula(formula, "Sheet1", "Totals");
     assert_eq!(rename("Sheet1!A1+1"), "Totals!A1+1");
