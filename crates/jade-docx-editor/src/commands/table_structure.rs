@@ -54,6 +54,7 @@ pub struct TableStructureCommand {
     table_order_index: usize,
     op: TableStructureOp,
     backup: Option<TableStructureBackup>,
+    whole_table_backup: Option<crate::word_document::WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
 
@@ -69,6 +70,7 @@ impl TableStructureCommand {
             table_order_index,
             op,
             backup: None,
+            whole_table_backup: None,
             previous_selection: None,
         }
     }
@@ -120,10 +122,89 @@ impl Command for TableStructureCommand {
                 template_row,
             } => ctx
                 .document
-                .insert_table_row(self.table_order_index, row_index, template_row),
-            TableStructureOp::DeleteRow { row_index } => ctx
-                .document
-                .delete_table_row(self.table_order_index, row_index),
+                .insert_table_row(self.table_order_index, row_index, template_row)
+                .and_then(|()| {
+                    // With changes tracked the new row is an insertion.
+                    match ctx
+                        .document
+                        .new_row_revision(jade_docx_reader::RevisionKind::Inserted)
+                    {
+                        Some(mark) => ctx.document.set_table_row_revision(
+                            self.table_order_index,
+                            row_index,
+                            Some(mark),
+                        ),
+                        None => Ok(()),
+                    }
+                }),
+            TableStructureOp::DeleteRow { row_index } => {
+                // A row can carry only one structural revision. Do not replace
+                // another author's mark or physically remove their insertion.
+                if let (Some(session), Some(mark)) = (
+                    ctx.document.revision_session(),
+                    ctx.document
+                        .table_by_order(self.table_order_index)
+                        .and_then(|table| table.rows.get(row_index))
+                        .and_then(|row| row.revision.as_deref()),
+                ) {
+                    if mark.author != session.author {
+                        return Err(CommandError::Custom(
+                            "decide the existing row revision before deleting this row".into(),
+                        ));
+                    }
+                    if mark.is_deletion() {
+                        return Ok(());
+                    }
+                    if ctx.document.row_has_foreign_revisions(
+                        self.table_order_index,
+                        row_index,
+                        session.author.as_deref(),
+                    ) {
+                        return Err(CommandError::Custom(
+                            "decide the other author's revisions before cancelling this inserted row".into(),
+                        ));
+                    }
+                }
+                // With changes tracked the row stays, marked deleted — unless
+                // it is our own tracked insertion, which simply goes.
+                let inserted = ctx
+                    .document
+                    .table_by_order(self.table_order_index)
+                    .and_then(|table| table.rows.get(row_index))
+                    .and_then(|row| row.revision.as_deref())
+                    .is_some_and(|mark| !mark.is_deletion());
+                if inserted
+                    && ctx.document.revision_session().is_some()
+                    && ctx
+                        .document
+                        .table_by_order(self.table_order_index)
+                        .is_some_and(|table| table.rows.len() == 1)
+                {
+                    let snapshot = ctx
+                        .document
+                        .snapshot_including_package()
+                        .ok_or(CommandError::DocumentUnavailable)?;
+                    super::delete_table::DeleteTableCommand::new(self.table_order_index)
+                        .apply(ctx)?;
+                    self.whole_table_backup = Some(snapshot);
+                    self.previous_selection = previous_selection;
+                    return Ok(());
+                }
+                match ctx
+                    .document
+                    .new_row_revision(jade_docx_reader::RevisionKind::Deleted)
+                    .filter(|_| !inserted)
+                {
+                    Some(mark) => ctx.document.set_table_row_revision(
+                        self.table_order_index,
+                        row_index,
+                        Some(mark),
+                    ),
+                    None => ctx
+                        .document
+                        .delete_table_row(self.table_order_index, row_index),
+                }
+            }
             TableStructureOp::InsertColumn {
                 column_index,
                 width,
@@ -160,6 +241,11 @@ impl Command for TableStructureCommand {
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        if let Some(snapshot) = self.whole_table_backup.take() {
+            ctx.document.restore_snapshot(snapshot);
+            *ctx.selection = self.previous_selection;
+            return Ok(());
+        }
         let snapshot = self
             .backup
             .take()
@@ -265,6 +351,7 @@ mod tests {
 
     fn make_row(texts: &[&str]) -> TableRow {
         TableRow {
+            revision: None,
             cells: texts.iter().map(|text| make_cell(text)).collect(),
             style: StyleMap::default(),
             class_name: None,

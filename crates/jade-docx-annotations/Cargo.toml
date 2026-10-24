@@ -12,4 +12,4 @@ jade-docx-writer = { path = "../jade-docx-writer" }
 [dev-dependencies]
 futures = "0.3"
 proptest = "1.6"
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }

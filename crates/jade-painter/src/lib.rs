@@ -19,6 +19,8 @@
 //! the renderer paints from `&self` methods throughout. Backends that need
 //! mutable state use interior mutability.
 
+pub mod capture;
+pub mod font_features;
 pub mod paper;
 pub mod recording;
 
@@ -272,6 +274,29 @@ pub trait Painter {
         Ok(false)
     }
 
+    /// Draws `text` shaped as one run with the OpenType features the current
+    /// font descriptor carries (see [`font_features`]): ligatures, contextual
+    /// alternates, old-style figures and the like, drawn as the glyphs the
+    /// font substitutes rather than a character at a time.
+    ///
+    /// `clusters` places the text: each entry is a byte offset into `text`
+    /// where a character (grapheme) starts, with the x layout gave it. A glyph
+    /// is drawn at its cluster's x plus its offset within the cluster, so
+    /// layout's justification and spacing survive, and a ligature spanning
+    /// several characters is drawn at the first one's x.
+    ///
+    /// `Ok(false)` when the backend cannot shape this run (no features, no
+    /// shaper, a character its face lacks); the caller then draws it a
+    /// character at a time.
+    fn try_fill_shaped_text(
+        &self,
+        _text: &str,
+        _clusters: &[(usize, f64)],
+        _y: f64,
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
+
     /// Multi-font variant: `font_indexes[i]` selects `fonts[font_indexes[i]]`
     /// for the i-th glyph. Same `Ok(false)` fallback contract.
     ///
@@ -287,4 +312,10 @@ pub trait Painter {
     ) -> Result<bool, Self::Error> {
         Ok(false)
     }
+
+    /// Says which node of a tagged PDF's structure tree what is drawn next
+    /// belongs to: a paragraph, a table cell, a figure. `0` is none — page
+    /// furniture such as headers and footers. Only a backend that writes
+    /// tagged PDF does anything with it.
+    fn set_structure_node(&self, _node: i32) {}
 }

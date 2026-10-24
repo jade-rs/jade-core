@@ -23,6 +23,6 @@ regex = "1.11"
 
 [dev-dependencies]
 # Test-only: crack open exported .docx bytes to assert field-code preservation.
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
 # Test-only: property-test find/replace against a plain-string model.
 proptest = "1.6"

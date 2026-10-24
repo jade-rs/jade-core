@@ -52,6 +52,9 @@ impl crate::render_host::CanvasRenderHost for RecordingHost {
     fn page_count(&self) -> usize {
         1
     }
+    fn supports_deferred_painting(&self) -> bool {
+        true
+    }
     fn page_dimensions(&self, _page_index: usize) -> Option<(f64, f64)> {
         Some((816.0, 1056.0))
     }
@@ -75,6 +78,20 @@ impl crate::render_host::CanvasRenderHost for RecordingHost {
     }
     fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
         Ok(text.chars().count() as f64 * 10.0)
+    }
+    /// Pictures are drawn by the host, as the native and browser hosts draw
+    /// them: recorded as the rectangle they fill.
+    fn draw_image_data_uri(
+        &self,
+        _data_uri: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        _crop: Option<ImageCropMapping>,
+    ) -> bool {
+        self.painter.fill_rect(x, y, width, height);
+        true
     }
     fn measure_text_metrics(&self, text: &str) -> Result<jade_painter::TextMetrics, JsValue> {
         let width = text.chars().count() as f64 * 10.0;

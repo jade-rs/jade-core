@@ -288,6 +288,23 @@ impl DeleteTextCommand {
         ctx: &mut CommandContext<'_>,
         paragraph_index: usize,
     ) -> CommandResult<()> {
+        if ctx
+            .document
+            .is_own_inserted_paragraph_break(paragraph_index)
+        {
+            let snapshot = if ctx.document.is_note_paragraph_surface(paragraph_index) {
+                ctx.document.snapshot_including_package()
+            } else {
+                ctx.document.snapshot()
+            }
+            .ok_or(CommandError::DocumentUnavailable)?;
+            if let Err(error) = ctx.document.mark_deleted_paragraph_break(paragraph_index) {
+                ctx.document.restore_snapshot(snapshot);
+                return Err(CommandError::Custom(error));
+            }
+            self.previous_snapshot = Some(snapshot);
+            return Ok(());
+        }
         let revision_id = ctx.document.revision_id_counter();
         self.raw_xml_undo.begin(ctx);
         if let Err(error) = ctx.document.mark_deleted_paragraph_break(paragraph_index) {
@@ -830,13 +847,16 @@ impl DeleteTextCommand {
         }
 
         if ctx.document.revision_session().is_some() {
-            // Marking the selection deleted removes no paragraph, so the
-            // paragraphs, a journal of the XML and the revision id counter
-            // undo it; a note keeps its XML in its own part.
+            // Canceling an own inserted boundary changes paragraph surfaces;
+            // use a snapshot for those joins and for note-part XML. Other
+            // tracked deletions need only the paragraph/XML journal.
             self.previous_paragraphs = None;
             self.raw_xml_undo.discard(ctx);
             let (mut in_place, snapshot) =
-                if ctx.document.is_note_paragraph_surface(start.paragraph) {
+                if ctx.document.is_note_paragraph_surface(start.paragraph)
+                    || (start.paragraph..end.paragraph)
+                        .any(|index| ctx.document.is_own_inserted_paragraph_break(index))
+                {
                     let snapshot = ctx
                         .document
                         .snapshot_including_package()
@@ -881,7 +901,7 @@ impl DeleteTextCommand {
                         ctx.document.sync_paragraph_text_preserving_drawings(index);
                     }
                 }
-                for index in start.paragraph..end.paragraph {
+                for index in (start.paragraph..end.paragraph).rev() {
                     ctx.document.mark_deleted_paragraph_break(index)?;
                 }
                 Ok(())
@@ -946,13 +966,12 @@ impl DeleteTextCommand {
                 }
             }
         }
-        let folded = FoldedSelection::new(
+        let mut folded = FoldedSelection::new(
             ctx,
             (start.paragraph, start_offset),
             (end.paragraph, end_offset),
             recording,
         )?;
-        let retained_len = folded.retained_len();
 
         let tail_paragraph = ctx
             .document
@@ -961,6 +980,8 @@ impl DeleteTextCommand {
             .ok_or(CommandError::ParagraphUnavailable)?;
         let (mut tail_inline_xml, transferred_comment_reference_runs) =
             range_tail_inline_xml(ctx, start.paragraph, end.paragraph, end_offset);
+        folded.forget_transferred_references(&transferred_comment_reference_runs);
+        let retained_len = folded.retained_len();
         folded.prepend_moved_code(ctx, &mut tail_inline_xml);
 
         {
@@ -1001,8 +1022,20 @@ impl DeleteTextCommand {
         }
         append_inline_xml(ctx, start.paragraph, tail_inline_xml)?;
 
+        let retained_first = ctx
+            .document
+            .paragraph(start.paragraph)
+            .map_or(0, |paragraph| paragraph.runs.len());
         if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
-            paragraph.runs.extend(folded.retained);
+            paragraph.runs.extend(std::mem::take(&mut folded.retained));
+        }
+        FoldedSelection::restyle_retained(
+            &folded.retained_styles,
+            ctx,
+            start.paragraph,
+            retained_first,
+        );
+        if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
             paragraph.runs.extend(transferred_comment_reference_runs);
             // The suffix raw nodes were moved into this paragraph as well, so
             // unsplit runs may keep their IDs and retain anchor ordering.
@@ -1285,6 +1318,8 @@ pub(super) struct FoldedSelection {
     /// What stays at the cut, in document order: tracked deletions, written
     /// anew from the model, and field code, bound to its XML.
     pub(super) retained: Vec<Run>,
+    /// The paragraph style each of `retained` was in.
+    pub(super) retained_styles: Vec<Option<String>>,
     /// The field code in `retained` from a paragraph the fold removes.
     moved_code: HashSet<XmlNodeId>,
 }
@@ -1343,8 +1378,10 @@ impl FoldedSelection {
         // so that each zero-width run is in exactly one of the head, the
         // selection and the suffix.
         let mut retained = Vec::new();
+        let mut retained_styles = Vec::new();
         let mut moved_code = HashSet::new();
         for (index, paragraph) in (start_paragraph..).zip(&paragraphs) {
+            let paragraph_style = style_of(paragraph).map(str::to_string);
             let mut selected = paragraph.runs.clone();
             if index == start_paragraph {
                 selected =
@@ -1361,6 +1398,7 @@ impl FoldedSelection {
                         moved_code.insert(id);
                     }
                     retained.push(run);
+                    retained_styles.push(paragraph_style.clone());
                 } else if run.revision.as_ref().is_some_and(|mark| {
                     matches!(
                         mark.kind,
@@ -1372,6 +1410,7 @@ impl FoldedSelection {
                     run.text_node_id = None;
                     run.revision_node_id = None;
                     retained.push(run);
+                    retained_styles.push(paragraph_style.clone());
                 }
             }
         }
@@ -1382,8 +1421,76 @@ impl FoldedSelection {
             zero_width,
             dropped,
             retained,
+            retained_styles,
             moved_code,
         })
+    }
+
+    /// Gives the retained runs, appended to `paragraph_index` from its run
+    /// `first` on, what that paragraph's style gives them in place of their
+    /// old paragraphs' (see `WordDocument::restyle_runs_from`). A tracked
+    /// deletion kept from a paragraph in the middle of the selection kept
+    /// that paragraph's size on screen, and the replacement text typed after
+    /// it took it too, while a reload sized both by the joined paragraph.
+    pub(super) fn restyle_retained(
+        styles: &[Option<String>],
+        ctx: &mut CommandContext<'_>,
+        paragraph_index: usize,
+        first: usize,
+    ) {
+        let mut start = 0;
+        while start < styles.len() {
+            let style = &styles[start];
+            let end = styles[start..]
+                .iter()
+                .position(|other| other != style)
+                .map_or(styles.len(), |offset| start + offset);
+            ctx.document.restyle_runs_from(
+                paragraph_index,
+                first + start..first + end,
+                style.as_deref(),
+            );
+            start = end;
+        }
+    }
+
+    /// Leaves out of `retained` the comment references the join transfers
+    /// (see `range_tail_inline_xml`): kept both ways, a reference written
+    /// inside a field result split the hyperlink around it, and the text
+    /// after it was saved twice.
+    pub(super) fn forget_transferred_references(&mut self, transferred: &[Run]) {
+        let ids: HashSet<&str> = transferred
+            .iter()
+            .flat_map(|run| run.comment_reference_ids.iter().map(String::as_str))
+            .collect();
+        if ids.is_empty() {
+            return;
+        }
+        let transferred_only = |run: &Run| {
+            run.text.is_empty()
+                && !run.comment_reference_ids.is_empty()
+                && run
+                    .comment_reference_ids
+                    .iter()
+                    .all(|id| ids.contains(id.as_str()))
+        };
+        let mut kept = Vec::with_capacity(self.retained.len());
+        let mut kept_styles = Vec::with_capacity(self.retained.len());
+        for (run, style) in std::mem::take(&mut self.retained)
+            .into_iter()
+            .zip(std::mem::take(&mut self.retained_styles))
+        {
+            if transferred_only(&run) {
+                if let Some(id) = run.node_id {
+                    self.moved_code.remove(&id);
+                }
+                continue;
+            }
+            kept.push(run);
+            kept_styles.push(style);
+        }
+        self.retained = kept;
+        self.retained_styles = kept_styles;
     }
 
     pub(super) fn retained_len(&self) -> usize {
@@ -5307,7 +5414,7 @@ mod tests {
             let mut entry = archive.by_index(index).expect("read package entry");
             let mut contents = Vec::new();
             entry.read_to_end(&mut contents).expect("read part");
-            files.insert(entry.name().to_string(), contents);
+            files.insert(entry.name().unwrap().into_owned(), contents);
         }
         let mut xml = String::from_utf8(
             files

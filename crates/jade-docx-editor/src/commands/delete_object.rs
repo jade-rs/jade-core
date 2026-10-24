@@ -135,6 +135,8 @@ mod tests {
             text: String::new(),
             properties: None,
             image: Some(RunImage {
+                signature_line: None,
+                decorative: false,
                 relationship_id: Some("rIdImage".to_string()),
                 ole_relationship_id: None,
                 ole_program_id: None,
@@ -152,6 +154,7 @@ mod tests {
                     kind: RunImageKind::Floating,
                     ..RunImageLayout::default()
                 },
+                ..Default::default()
             }),
             text_box: None,
             math: None,
@@ -217,6 +220,7 @@ mod tests {
                 insets: Default::default(),
                 vertical_alignment: Default::default(),
                 shape: Default::default(),
+                ..Default::default()
             }),
             math: None,
             field: None,

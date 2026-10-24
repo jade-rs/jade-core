@@ -33,9 +33,9 @@
 
 use crate::compact_string::CompactString;
 use crate::constants::{
-    self, BALANCED_SBCS_EXTRA_RATIO, DEFAULT_NO_LINE_BREAK_AFTER, DEFAULT_NO_LINE_BREAK_BEFORE,
-    DEFAULT_TAB_WIDTH_PT, IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_DEFAULT,
-    IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_EXPLICIT, IMPLICIT_NUMERIC_GAP_SIDE_RATIO_DEFAULT_ENABLED,
+    self, BALANCED_SBCS_EXTRA_RATIO, DEFAULT_TAB_WIDTH_PT,
+    IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_DEFAULT, IMPLICIT_NUMERIC_GAP_SIDE_MIN_PX_EXPLICIT,
+    IMPLICIT_NUMERIC_GAP_SIDE_RATIO_DEFAULT_ENABLED,
     IMPLICIT_NUMERIC_GAP_SIDE_RATIO_EXPLICIT_AUTO_DN, WRAP_SAFETY_PX,
 };
 use crate::font_resolver::{ResolvedFontSlot, ResolvedRunStyle};
@@ -222,6 +222,9 @@ pub struct ParagraphStyle {
     /// Whether a negative first-line indent contributes the implicit custom
     /// tab stop required by OOXML `w:ind/@w:hanging`.
     pub use_hanging_indent_tab_stop: bool,
+    /// A justified line that ends in a manual line break is spread like any
+    /// other: Word does so unless the document sets `doNotExpandShiftReturn`.
+    pub expand_lines_ending_in_breaks: bool,
     pub east_asian_rules: EastAsianLineBreakingRules,
     pub enable_line_break_rules: bool,
     pub doc_grid_snap_to_chars: bool,
@@ -249,6 +252,41 @@ pub struct ParagraphStyle {
     /// renderer consumes the same plan after wrapping so glyphs, selection,
     /// and caret hit-testing stay in one coordinate system.
     pub float_line_segments: Vec<FloatLineSegment>,
+    /// Automatic hyphenation, when the document turns it on and the paragraph
+    /// does not suppress it (`w:suppressAutoHyphens`).
+    pub hyphenation: Option<ParagraphHyphenation>,
+    /// `ADVANCE` fields' horizontal moves, by layout-text offset, in order.
+    pub advances: Vec<crate::advance_field::ParagraphAdvance>,
+}
+
+/// Word's automatic hyphenation as one paragraph applies it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParagraphHyphenation {
+    /// Hyphenation zone in px: a line leaving at least this much room at its
+    /// end has the word after it hyphenated.
+    pub zone_px: f64,
+    /// At most this many consecutive lines end in a hyphen.
+    pub consecutive_limit: Option<usize>,
+    /// Whether words in capitals are hyphenated too.
+    pub hyphenate_caps: bool,
+}
+
+impl ParagraphHyphenation {
+    /// The paragraph's hyphenation under the document's settings: `None`
+    /// when hyphenation is off or the paragraph suppresses it.
+    pub fn for_paragraph(
+        settings: &jade_docx_reader::HyphenationSettings,
+        suppress_auto_hyphens: bool,
+    ) -> Option<Self> {
+        (settings.auto && !suppress_auto_hyphens).then(|| Self {
+            zone_px: points_to_px(settings.zone_pt()),
+            consecutive_limit: settings
+                .consecutive_limit
+                .filter(|limit| *limit > 0)
+                .map(|limit| limit as usize),
+            hyphenate_caps: !settings.do_not_hyphenate_caps,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -274,6 +312,7 @@ impl Default for ParagraphStyle {
             default_tab_width: points_to_px(DEFAULT_TAB_WIDTH_PT),
             tab_origin_offset: 0.0,
             use_hanging_indent_tab_stop: true,
+            expand_lines_ending_in_breaks: false,
             east_asian_rules: EastAsianLineBreakingRules::default(),
             enable_line_break_rules: false,
             doc_grid_snap_to_chars: false,
@@ -287,6 +326,8 @@ impl Default for ParagraphStyle {
             word_proportional_line_sizing: None,
             drop_cap: None,
             float_line_segments: Vec::new(),
+            hyphenation: None,
+            advances: Vec::new(),
         }
     }
 }
@@ -328,6 +369,99 @@ impl ParagraphStyle {
             .is_some_and(|kind| kind.eq_ignore_ascii_case("snapToChars"));
         self.doc_grid_char_space_px = grid.char_space.map(points_to_px);
     }
+}
+
+/// The move `ADVANCE` fields at `offset` give the character there: `\r`
+/// and `\l` by their points, `\x` to its distance from the column edge
+/// (`line_indent` is how far the line starts inside the paragraph's text edge,
+/// see [`crate::advance_field::ParagraphAdvance::x_px`]).
+fn advance_field_shift(
+    paragraph_style: &ParagraphStyle,
+    offset: usize,
+    current_width: f64,
+    line_indent: f64,
+) -> f64 {
+    paragraph_style
+        .advances
+        .iter()
+        .filter(|advance| advance.offset == offset)
+        .fold(0.0, |shift, advance| match advance.x_px {
+            Some(x) => x - line_indent - current_width,
+            None => shift + advance.dx_px,
+        })
+        .max(-current_width)
+}
+
+/// `run_styles` with the rise of each `ADVANCE` `\u`/`\d` (already in the
+/// runs after the field, see [`crate::advance_field::ParagraphAdvance::raise_pt`])
+/// taken back off the text past the end of the line holding the field.
+/// `None` when nothing changes.
+fn advance_raises_limited_to_their_lines(
+    run_styles: &[RunStyle],
+    paragraph_style: &ParagraphStyle,
+    lines: &[WrappedLine],
+    base_offset: usize,
+) -> Option<Vec<RunStyle>> {
+    // (end of the field's line, rise to take off after it), text-relative.
+    let mut ends: Vec<(usize, f32)> = Vec::new();
+    for advance in &paragraph_style.advances {
+        if advance.raise_pt.abs() <= f32::EPSILON {
+            continue;
+        }
+        let at = advance.offset + base_offset;
+        let Some(line_end) = lines
+            .iter()
+            .map(|line| {
+                line.clusters
+                    .iter()
+                    .map(|cluster| cluster.end)
+                    .chain(line.segments.iter().map(|segment| segment.end))
+                    .max()
+                    .unwrap_or(0)
+            })
+            .find(|&end| at < end)
+        else {
+            continue;
+        };
+        let end = line_end.saturating_sub(base_offset);
+        if run_styles.iter().any(|run| run.end > end) {
+            ends.push((end, advance.raise_pt));
+        }
+    }
+    if ends.is_empty() {
+        return None;
+    }
+    let mut cuts: Vec<usize> = ends.iter().map(|(end, _)| *end).collect();
+    cuts.sort_unstable();
+    cuts.dedup();
+    let mut out = Vec::with_capacity(run_styles.len() + cuts.len());
+    for run in run_styles {
+        let mut start = run.start;
+        let pieces = cuts
+            .iter()
+            .copied()
+            .filter(|&cut| cut > run.start && cut < run.end)
+            .chain(std::iter::once(run.end));
+        for piece_end in pieces {
+            let lowered: f32 = ends
+                .iter()
+                .filter(|(end, _)| *end <= start)
+                .map(|(_, raise)| raise)
+                .sum();
+            let mut piece = run.clone();
+            piece.start = start;
+            piece.end = piece_end;
+            if lowered.abs() > f32::EPSILON {
+                let mut properties = piece.properties.as_deref().cloned().unwrap_or_default();
+                let position = properties.text_position.unwrap_or(0.0) - lowered;
+                properties.text_position = (position.abs() > f32::EPSILON).then_some(position);
+                piece.properties = Some(Rc::new(properties));
+            }
+            out.push(piece);
+            start = piece_end;
+        }
+    }
+    Some(out)
 }
 
 /// Returns the single `char` of `text` when it is exactly one code point.
@@ -606,9 +740,10 @@ impl ParagraphStyle {
         }
         !self.east_asian_rules.no_line_break_before_replaces_default
             && single_char(text).is_some_and(|c| {
-                DEFAULT_NO_LINE_BREAK_BEFORE.contains(&c)
-                    && (self.east_asian_rules.strict_first_and_last_chars
-                        || !STRICT_ONLY_NO_LINE_BREAK_BEFORE.contains(&c))
+                crate::word_kinsoku::forbids_line_start(
+                    c,
+                    self.east_asian_rules.strict_first_and_last_chars,
+                )
             })
     }
 
@@ -621,17 +756,18 @@ impl ParagraphStyle {
             return true;
         }
         !self.east_asian_rules.no_line_break_after_replaces_default
-            && single_char(text).is_some_and(|c| DEFAULT_NO_LINE_BREAK_AFTER.contains(&c))
+            && single_char(text).is_some_and(crate::word_kinsoku::forbids_line_end)
+    }
+
+    /// 分割禁止: Word does not break between the two halves of `――` or `……`.
+    pub fn forbids_break_between(&self, text: &str, next: Option<&str>) -> bool {
+        self.kinsoku_enabled()
+            && single_char(text).is_some_and(crate::word_kinsoku::is_inseparable)
+            && next
+                .and_then(single_char)
+                .is_some_and(crate::word_kinsoku::is_inseparable)
     }
 }
-
-/// Members of the default line-start table that Word forbids only under
-/// `w:strictFirstAndLastChars`: its standard set (標準) lets the small kana and
-/// `ー` start a line (trust-beneficiary-sale-keep-next page 12, `ーシング`).
-const STRICT_ONLY_NO_LINE_BREAK_BEFORE: &[char] = &[
-    'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ', 'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ッ',
-    'ャ', 'ュ', 'ョ', 'ヮ', 'ヵ', 'ヶ', 'ー',
-];
 
 /// Splits the first printable grapheme into a synthetic enlarged run and
 /// returns the exact geometry consumed by [`wrap_text_into_lines`]. Both the
@@ -735,11 +871,14 @@ pub struct EastAsianLineBreakingRules {
     /// them (a Japanese `w:noLineBreaksBefore`/`After`, ECMA-376 §17.15.1.58-59).
     pub no_line_break_before_replaces_default: bool,
     pub no_line_break_after_replaces_default: bool,
-    /// `w:strictFirstAndLastChars` (see [`STRICT_ONLY_NO_LINE_BREAK_BEFORE`]).
+    /// `w:strictFirstAndLastChars`: 高レベル (see [`crate::word_kinsoku`]).
     pub strict_first_and_last_chars: bool,
     /// The document's `compatibilityMode` (see
     /// [`Self::paragraph_end_punctuation_can_hang`]).
     pub compatibility_mode: Option<u32>,
+    /// `w:compat/w:spaceForUL`: underlined East Asian text deepens its line
+    /// to hold the underline ([`crate::line_metrics::word_space_for_underline_depth_pt`]).
+    pub space_for_underline: bool,
 }
 
 impl EastAsianLineBreakingRules {
@@ -774,6 +913,7 @@ impl EastAsianLineBreakingRules {
             no_line_break_after_replaces_default: settings.no_line_break_after_replaces_default,
             strict_first_and_last_chars: settings.strict_first_and_last_chars,
             compatibility_mode: settings.compatibility_mode,
+            space_for_underline: settings.space_for_underline,
         }
     }
 }
@@ -827,6 +967,7 @@ pub fn merge_east_asian_rules(
     if settings.compatibility_mode.is_some() {
         merged.compatibility_mode = settings.compatibility_mode;
     }
+    merged.space_for_underline |= settings.space_for_underline;
     merged
 }
 
@@ -1596,6 +1737,22 @@ fn is_ascii_digit_grapheme(grapheme: &str) -> bool {
             .is_some_and(|value| value.is_ascii_digit())
 }
 
+/// Whether `w:characterSpacingControl` compresses punctuation: both
+/// `compressPunctuation` and `compressPunctuationAndJapaneseKana` do.
+pub fn compresses_punctuation(control: Option<&str>) -> bool {
+    matches!(
+        control,
+        Some("compressPunctuation" | "compressPunctuationAndJapaneseKana")
+    )
+}
+
+/// Hiragana and katakana, which `compressPunctuationAndJapaneseKana` sets
+/// narrower than their full-width cells.
+fn is_compressible_kana(grapheme: &str) -> bool {
+    single_char(grapheme)
+        .is_some_and(|c| matches!(c, '\u{3041}'..='\u{3096}' | '\u{30A1}'..='\u{30FA}'))
+}
+
 fn is_compressible_east_asian_punctuation(grapheme: &str) -> bool {
     matches!(
         grapheme,
@@ -1612,27 +1769,51 @@ pub fn punctuation_compression_adjustment(
     if !paragraph_style.enable_line_break_rules {
         return 0.0;
     }
-    if paragraph_style
+    let control = paragraph_style
         .east_asian_rules
         .character_spacing_control
-        .as_deref()
-        != Some("compressPunctuation")
+        .as_deref();
+    if !compresses_punctuation(control)
         || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
     {
         return 0.0;
     }
-    if script != ScriptCategory::EastAsia || !is_compressible_east_asian_punctuation(grapheme) {
+    if script != ScriptCategory::EastAsia {
         return 0.0;
     }
-
-    // Keep compression conservative so punctuation rhythm remains stable.
-    glyph_width * -0.18
+    if is_compressible_east_asian_punctuation(grapheme) {
+        // Keep compression conservative so punctuation rhythm remains stable.
+        return glyph_width * -0.18;
+    }
+    // 句読点とかなを詰める: kana take the narrower, proportional advances of
+    // the face; a tenth of the cell stands in for them.
+    if control == Some("compressPunctuationAndJapaneseKana") && is_compressible_kana(grapheme) {
+        return glyph_width * -0.1;
+    }
+    0.0
 }
 
+/// 行頭の記号を 1/2 の幅にする (`w:topLinePunct`) sets a full-width bracket
+/// or mark that starts a line in half its cell. With kinsoku on only opening
+/// brackets can start a line, so they are what Word narrows; closing marks
+/// reach a line start only with kinsoku off.
 fn is_top_line_half_width_target(grapheme: &str) -> bool {
     matches!(
         grapheme,
-        "、" | "。"
+        "「" | "『"
+            | "（"
+            | "［"
+            | "｛"
+            | "〈"
+            | "《"
+            | "【"
+            | "〔"
+            | "〖"
+            | "〘"
+            | "‘"
+            | "“"
+            | "、"
+            | "。"
             | "，"
             | "．"
             | "・"
@@ -1929,7 +2110,11 @@ pub struct RunStyle {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InlineObject {
     pub width: f64,
+    /// Height above the baseline.
     pub height: f64,
+    /// Depth below the baseline: an inline equation's denominator or
+    /// subscript hangs below the line's baseline.
+    pub descent: f64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -2330,7 +2515,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let kerning_adjustment = if let Some(adjustment) = punctuation_adjustment {
         adjustment * style.text_scale_x.max(0.01)
     } else if !measured_width_is_oracle
-        && style.enable_pair_kerning
+        && style.measures_letter_pairs()
         && state.prev_grapheme.is_some()
         && state.prev_font_descriptor_hash == Some(font_descriptor_hash)
         && state.prev_raw_glyph_width.is_some()
@@ -2683,6 +2868,8 @@ pub enum LineBreakKind {
     Soft,
     Hard,
     Page,
+    /// 段区切り: the next line starts the next column.
+    Column,
     ParagraphEnd,
 }
 
@@ -2731,6 +2918,18 @@ pub struct WrappedLine {
     pub leaders: Vec<TabLeaderSegment>,
     pub tab_stops: Vec<TabStopSegment>,
     pub clusters: Vec<InlineCluster>,
+    /// The hyphen automatic hyphenation ends this line with, drawn after its
+    /// last character in that character's run style. Its width is already
+    /// in the last cluster's advance, so alignment and justification count it.
+    pub hyphen: Option<LineHyphen>,
+}
+
+/// A hyphen Word's automatic hyphenation adds at a line end: not in the
+/// document's text, only drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LineHyphen {
+    /// Advance of the hyphen in px.
+    pub width: f64,
 }
 
 impl WrappedLine {
@@ -2964,7 +3163,16 @@ impl WrappedLine {
     /// edge. The trailing separator keeps its natural advance outside that
     /// edge. Consumers retain these cluster positions for painting and carets.
     pub fn justify_word_spaces_to_width(&mut self, available_width: f64) {
-        if self.break_kind != LineBreakKind::Soft || !self.tab_stops.is_empty() {
+        self.justify_word_spaces_to_width_with(available_width, false);
+    }
+
+    /// [`Self::justify_word_spaces_to_width`], spreading a line that ends in a
+    /// manual line break too when `expand_breaks` (see
+    /// [`ParagraphStyle::expand_lines_ending_in_breaks`]).
+    pub fn justify_word_spaces_to_width_with(&mut self, available_width: f64, expand_breaks: bool) {
+        let justified_break = self.break_kind == LineBreakKind::Soft
+            || expand_breaks && self.break_kind == LineBreakKind::Hard;
+        if !justified_break || !self.tab_stops.is_empty() {
             return;
         }
         let interior_end = self
@@ -3853,6 +4061,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![cluster],
+            hyphen: None,
         });
     }
 
@@ -3870,6 +4079,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: Vec::new(),
+            hyphen: None,
         });
     }
 
@@ -3932,6 +4142,60 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
+        // the run is one upright horizontal group taking one character's
+        // height in the column. Runs of the same group (one `w:id`) join it.
+        let tate_chu_yoko = run_style
+            .properties
+            .as_deref()
+            .and_then(|props| props.east_asian_layout.as_deref())
+            .filter(|layout| layout.vert);
+        if let Some(layout) = tate_chu_yoko {
+            let group_start = base_offset + start_aligned;
+            let group_end = base_offset + end;
+            let joins = lines.last().is_some_and(|line: &WrappedLine| {
+                line.break_kind == LineBreakKind::Soft
+                    && line.segments.last().is_some_and(|segment| {
+                        segment.end == group_start
+                            && segment
+                                .properties
+                                .as_deref()
+                                .and_then(|props| props.east_asian_layout.as_deref())
+                                .is_some_and(|previous| previous.vert && previous.id == layout.id)
+                    })
+            }) && pending_ascii.is_none();
+            if joins {
+                let line = lines.last_mut().expect("checked");
+                if let Some(segment) = line.segments.last_mut() {
+                    segment.text.push_str(run_text);
+                    segment.end = group_end;
+                }
+                if let Some(cluster) = line.clusters.last_mut() {
+                    cluster.end = group_end;
+                }
+                continue;
+            }
+            flush_pending_ascii(ctx, &mut lines, &mut pending_ascii, &mut max_line_width)?;
+            let (descriptor, hash, id) =
+                style.descriptor_key_for_grapheme("国", ScriptCategory::EastAsia);
+            let em = (ctx
+                .measure_text_for_vertical_stack_with_font_key("国", descriptor, hash, id)?
+                * style.text_scale_x.max(0.01))
+            .max(1.0);
+            max_line_width = max_line_width.max(em);
+            push_vertical_line(
+                &mut lines,
+                run_text.replace(['\r', '\n'], ""),
+                group_start..group_end,
+                em,
+                SegmentMeta {
+                    properties: &run_style.properties,
+                    revision: &run_style.revision,
+                    hyperlink: &run_style.hyperlink,
+                },
+            );
+            continue;
+        }
         for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
             let grapheme_start_abs = base_offset + start_aligned + rel_offset;
             let grapheme_end_abs = grapheme_start_abs + grapheme.len();
@@ -4274,6 +4538,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
                     } else {
                         Vec::new()
                     },
+                    hyphen: None,
                 });
             }
         }
@@ -4607,6 +4872,20 @@ pub fn wrapped_line_grid_baseline_offset(
 /// line. Wrapping remains defined in logical order; only clusters and their
 /// matching style segments are reordered after line boundaries are final.
 #[inline]
+/// Whether `character` can be right-to-left, an Arabic number or an explicit
+/// directional control: none below the Hebrew block, nor in the left-to-right
+/// and neutral blocks up to the Hebrew presentation forms apart from RLM and
+/// the embedding and isolate controls. Looking up the class of every
+/// character of every line was a visible share of wrapping Japanese text.
+fn may_reorder(character: char) -> bool {
+    let code = character as u32;
+    !(code < 0x0590
+        || (0x0900..0x200F).contains(&code)
+        || (0x2010..0x202A).contains(&code)
+        || (0x202F..0x2066).contains(&code)
+        || (0x206A..0xFB1D).contains(&code))
+}
+
 fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
     if base_rtl {
         return true;
@@ -4617,21 +4896,22 @@ fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
     // directional controls still require the full UAX #9 resolution below.
     line.clusters.iter().any(|cluster| {
         cluster.text.chars().any(|character| {
-            matches!(
-                bidi_class(character),
-                BidiClass::R
-                    | BidiClass::AL
-                    | BidiClass::AN
-                    | BidiClass::RLE
-                    | BidiClass::RLO
-                    | BidiClass::RLI
-                    | BidiClass::LRE
-                    | BidiClass::LRO
-                    | BidiClass::LRI
-                    | BidiClass::FSI
-                    | BidiClass::PDF
-                    | BidiClass::PDI
-            )
+            may_reorder(character)
+                && matches!(
+                    bidi_class(character),
+                    BidiClass::R
+                        | BidiClass::AL
+                        | BidiClass::AN
+                        | BidiClass::RLE
+                        | BidiClass::RLO
+                        | BidiClass::RLI
+                        | BidiClass::LRE
+                        | BidiClass::LRO
+                        | BidiClass::LRI
+                        | BidiClass::FSI
+                        | BidiClass::PDF
+                        | BidiClass::PDI
+                )
         })
     })
 }
@@ -4796,7 +5076,7 @@ impl InlineCluster {
                     let bounds = (-layout.font_ascent?, layout.font_descent?);
                     (bounds.0.is_finite() && bounds.1.is_finite()).then_some(bounds)
                 })
-                .unwrap_or((-object.height.max(1.0), 0.0)),
+                .unwrap_or((-object.height.max(1.0), object.descent.max(0.0))),
         )
     }
 
@@ -4816,7 +5096,7 @@ impl InlineCluster {
                 adjusted_glyph_width: self.width,
                 font_descriptor_hash: 0,
                 font_ascent: Some(object.height.max(1.0) + raise),
-                font_descent: Some(-raise),
+                font_descent: Some(object.descent.max(0.0) - raise),
             });
         }
         self
@@ -5651,7 +5931,7 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
     base_offset: usize,
     column_right_edge: f64,
 ) -> Result<Vec<WrappedLine>, C::Error> {
-    wrap_text_into_lines_with_terminal_candidate(
+    let lines = wrap_text_into_lines_with_terminal_candidate(
         ctx,
         text,
         run_styles,
@@ -5660,7 +5940,22 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
         base_offset,
         column_right_edge,
         true,
-    )
+    )?;
+    // An ADVANCE \u or \d moves the rest of its own line only: lay the
+    // lines after it out again at the baseline.
+    match advance_raises_limited_to_their_lines(run_styles, paragraph_style, &lines, base_offset) {
+        Some(lowered) => wrap_text_into_lines_with_terminal_candidate(
+            ctx,
+            text,
+            &lowered,
+            base_x,
+            paragraph_style,
+            base_offset,
+            column_right_edge,
+            true,
+        ),
+        None => Ok(lines),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5679,7 +5974,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         && paragraph_style.float_line_segments.is_empty()
         && !paragraph_style.bidi
         && paragraph_style.tab_stops.is_empty()
-        && !text.contains(['\t', '\n', jade_docx_reader::PAGE_BREAK_CHAR])
+        && !text.contains([
+            '\t',
+            '\n',
+            jade_docx_reader::PAGE_BREAK_CHAR,
+            jade_docx_reader::COLUMN_BREAK_CHAR,
+        ])
         && text.chars().any(|ch| {
             matches!(
                 ch,
@@ -5786,6 +6086,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -5907,6 +6208,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -5918,7 +6220,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 continue;
             }
 
-            if grapheme == PAGE_BREAK_STR {
+            if grapheme == PAGE_BREAK_STR || grapheme == jade_docx_reader::COLUMN_BREAK_STR {
+                let page_or_column = if grapheme == PAGE_BREAK_STR {
+                    LineBreakKind::Page
+                } else {
+                    LineBreakKind::Column
+                };
                 if !buffer.is_empty() {
                     let segment_text = std::mem::take(&mut buffer);
                     push_text_segment(
@@ -5938,12 +6245,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
 
                 lines.push(WrappedLine {
                     segments: std::mem::take(&mut current_line),
-                    break_kind: LineBreakKind::Page,
+                    break_kind: page_or_column,
                     break_range: Some((grapheme_start_abs, grapheme_end_abs)),
                     break_properties: run_style.properties.clone(),
                     leaders: std::mem::take(&mut current_line_leaders),
                     tab_stops: std::mem::take(&mut current_line_tab_stops),
                     clusters: std::mem::take(&mut current_line_clusters),
+                    hyphen: None,
                 });
                 current_width = 0.0;
                 current_available = paragraph_style
@@ -6044,6 +6352,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             leaders: std::mem::take(&mut current_line_leaders),
                             tab_stops: std::mem::take(&mut current_line_tab_stops),
                             clusters: std::mem::take(&mut current_line_clusters),
+                            hyphen: None,
                         });
                         current_width = 0.0;
                         previous_width = 0.0;
@@ -6186,11 +6495,24 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         computed.advance.adjusted_glyph_width > f64::EPSILON,
                     )
                 });
+                // An `ADVANCE` field right before this character moves it,
+                // and the text after it, along the line.
+                let advance_shift = if paragraph_style.advances.is_empty() {
+                    0.0
+                } else {
+                    advance_field_shift(
+                        paragraph_style,
+                        grapheme_start_abs.saturating_sub(base_offset),
+                        current_width,
+                        current_line_indent,
+                    )
+                };
                 let candidate_width = (marker_gap
                     + computed.advance.total_advance
                     + fitted_gap
                     + ruby_leading
-                    + ruby_trailing)
+                    + ruby_trailing
+                    + advance_shift)
                     .max(0.0);
                 let trailing_overhang = if computed.monospace_cell {
                     // Fixed-pitch glyphs stay inside their cell.
@@ -6316,6 +6638,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         leaders: std::mem::take(&mut current_line_leaders),
                         tab_stops: std::mem::take(&mut current_line_tab_stops),
                         clusters: std::mem::take(&mut current_line_clusters),
+                        hyphen: None,
                     });
                     current_width = 0.0;
                     current_available = paragraph_style
@@ -6380,6 +6703,19 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     run_style.properties.as_deref(),
                 )) * 96.0
                     / 72.0;
+                // `w:spaceForUL`: underlined East Asian text keeps its
+                // underline inside the line.
+                let underline_depth_px = if paragraph_style.east_asian_rules.space_for_underline
+                    && script == ScriptCategory::EastAsia
+                {
+                    f64::from(crate::line_metrics::word_space_for_underline_depth_pt(
+                        run_style.properties.as_deref(),
+                        font_desc,
+                    )) * 96.0
+                        / 72.0
+                } else {
+                    0.0
+                };
                 auto_space = (
                     computed.advance.implicit_latin_gap + computed.advance.implicit_numeric_gap,
                     computed.advance.implicit_latin_trailing_gap,
@@ -6392,7 +6728,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         + computed.advance.implicit_numeric_gap
                         + computed.advance.kerning_adjustment
                         + computed.advance.snap_leading
-                        + ruby_leading,
+                        + ruby_leading
+                        + advance_shift,
                     glyph_box_width: computed.advance.glyph_box_width + fitted_gap + ruby_trailing,
                     measured_glyph_width: computed.measured_glyph_width,
                     adjusted_glyph_width: computed.advance.adjusted_glyph_width,
@@ -6404,7 +6741,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                             .and_then(|ruby| ruby.ascent_px)
                             .map_or(ascent, |guide| ascent.max(guide))
                     }),
-                    font_descent: font_vertical_metrics.map(|metrics| metrics.1 + border_extent_px),
+                    font_descent: font_vertical_metrics
+                        .map(|metrics| metrics.1.max(underline_depth_px) + border_extent_px),
                 };
             };
 
@@ -6445,7 +6783,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 grapheme,
                 is_whitespace,
                 paragraph_style.forbids_line_start(grapheme),
-                paragraph_style.forbids_line_end(grapheme),
+                paragraph_style.forbids_line_end(grapheme)
+                    || paragraph_style.forbids_break_between(grapheme, next_grapheme),
                 cluster_layout,
             );
             (cluster.auto_space_leading, cluster.auto_space_trailing) = auto_space;
@@ -6482,6 +6821,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         leaders: current_line_leaders,
         tab_stops: current_line_tab_stops,
         clusters: current_line_clusters,
+        hyphen: None,
     });
 
     if let Some(last) = lines.last_mut() {
@@ -6514,6 +6854,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     // does not leave its matching opening punctuation at the previous line end.
     enforce_line_start_rules(paragraph_style, &mut lines);
     drop_line_start_auto_space(&mut lines);
+    hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
     // avoid another full segment walk (and one more during justification).
@@ -6863,8 +7204,7 @@ fn mac_squeeze_enabled(style: &ParagraphStyle) -> bool {
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
     style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-        && style.east_asian_rules.character_spacing_control.as_deref()
-            == Some("compressPunctuation")
+        && compresses_punctuation(style.east_asian_rules.character_spacing_control.as_deref())
         && is_justified_alignment(&style.alignment)
         && style.oracle_advance_px_by_text_offset.is_none()
 }
@@ -7413,7 +7753,11 @@ fn measure_tab_segment<C: LineWrapContext>(
             if grapheme == "\r" {
                 continue;
             }
-            if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+            if grapheme == "\n"
+                || grapheme == PAGE_BREAK_STR
+                || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                || grapheme == "\t"
+            {
                 return Ok(width + character_border_extent_px(previous_border));
             }
             if first_grapheme_in_run {
@@ -7749,6 +8093,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     leaders: Vec::new(),
                     tab_stops: Vec::new(),
                     clusters: Vec::new(),
+                    hyphen: None,
                 });
             }
             let (head, tail) = lines.split_at_mut(line_index + 1);
@@ -8463,6 +8808,8 @@ fn is_east_asian_punctuation(ch: char) -> bool {
     )
 }
 
+mod hyphenate;
+
 #[cfg(test)]
 mod float_exclusion_tests {
     use super::*;
@@ -9084,6 +9431,42 @@ mod float_exclusion_tests {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn characters_skipped_before_the_bidi_lookup_never_reorder() {
+        for code in 0..=0xFFFFu32 {
+            let Some(character) = char::from_u32(code) else {
+                continue;
+            };
+            if may_reorder(character) {
+                continue;
+            }
+            assert!(
+                !matches!(
+                    bidi_class(character),
+                    BidiClass::R
+                        | BidiClass::AL
+                        | BidiClass::AN
+                        | BidiClass::RLE
+                        | BidiClass::RLO
+                        | BidiClass::RLI
+                        | BidiClass::LRE
+                        | BidiClass::LRO
+                        | BidiClass::LRI
+                        | BidiClass::FSI
+                        | BidiClass::PDF
+                        | BidiClass::PDI
+                ),
+                "U+{code:04X}"
+            );
+        }
+        for code in [
+            0x05D0, 0x0627, 0x0661, 0x200F, 0x202B, 0x2067, 0xFB1D, 0xFE70,
+        ] {
+            assert!(may_reorder(char::from_u32(code).unwrap()), "U+{code:04X}");
+        }
+    }
+
     use super::*;
 
     /// ECMA-376 §17.15.1.58-59: a Japanese custom set replaces the default
@@ -10949,6 +11332,7 @@ mod tests {
                 inline_object: Some(InlineObject {
                     width: 100.0,
                     height: 80.0,
+                    descent: 0.0,
                 }),
             },
             RunStyle {
@@ -11074,6 +11458,7 @@ mod tests {
                     Some(InlineObject {
                         width: 20.0,
                         height: 20.0,
+                        descent: 0.0,
                     }),
                 ),
                 run(object_end, text.len(), None),
@@ -11213,6 +11598,7 @@ mod tests {
             inline_object: Some(InlineObject {
                 width: points_to_px(124.1),
                 height: points_to_px(25.8),
+                descent: 0.0,
             }),
         };
         let lines = wrap_text_into_lines(
@@ -11361,6 +11747,7 @@ mod tests {
             InlineObject {
                 width: 100.0,
                 height: 118.8,
+                descent: 0.0,
             },
         );
         let mut line = WrappedLine {
@@ -11371,6 +11758,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![object],
+            hyphen: None,
         };
         let mark = crate::line_metrics::word_font_vertical_metrics_px("10.50pt Arial").unwrap();
         assert_eq!(
@@ -11440,6 +11828,7 @@ mod tests {
             inline_object: Some(InlineObject {
                 width: points_to_px(124.1),
                 height: points_to_px(25.8),
+                descent: 0.0,
             }),
         };
         let lines = wrap_text_into_lines(
@@ -11474,6 +11863,7 @@ mod tests {
                 InlineObject {
                     width: 20.0,
                     height: points_to_px(10.0),
+                    descent: 0.0,
                 },
             )
             .with_object_position(Some(position));
@@ -11487,6 +11877,7 @@ mod tests {
             InlineObject {
                 width: 20.0,
                 height: 30.0,
+                descent: 0.0,
             },
         )
         .with_object_position(Some(f32::NAN));
@@ -11995,6 +12386,7 @@ mod tests {
             break_properties: None,
             leaders: vec![],
             tab_stops: vec![],
+            hyphen: None,
         };
         assert_eq!(
             wrapped_line_turned_baseline_offset(&line, 24.0, true),
@@ -15969,7 +16361,11 @@ mod tests {
                 if grapheme == "\r" {
                     continue;
                 }
-                if grapheme == "\n" || grapheme == PAGE_BREAK_STR || grapheme == "\t" {
+                if grapheme == "\n"
+                    || grapheme == PAGE_BREAK_STR
+                    || grapheme == jade_docx_reader::COLUMN_BREAK_STR
+                    || grapheme == "\t"
+                {
                     return Ok(width);
                 }
                 let grapheme_start_abs = base_offset + run_start + rel_offset;
@@ -15997,7 +16393,7 @@ mod tests {
                     font_desc_hash,
                     font_desc_id,
                 )?;
-                let kerning_adjustment = if style.enable_pair_kerning
+                let kerning_adjustment = if style.measures_letter_pairs()
                     && char_index_in_run > 0
                     && prev_run_grapheme.is_some()
                     && prev_run_font_desc == Some(font_desc)
@@ -17350,6 +17746,7 @@ mod tests {
                     InlineCluster::grapheme(index, index + 1, 1.0, "a", false, false, false)
                 })
                 .collect(),
+            hyphen: None,
         };
         let second = WrappedLine {
             segments: Vec::new(),
@@ -17359,6 +17756,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: Vec::new(),
+            hyphen: None,
         };
         let mut lines = vec![first, second];
         ensure_lines_fit_available_width(
@@ -17686,6 +18084,7 @@ mod tests {
                     InlineCluster::grapheme(6, 9, 0.0, "が", false, false, false),
                     InlineCluster::grapheme(9, 10, 0.0, "3", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -17706,6 +18105,7 @@ mod tests {
                     InlineCluster::grapheme(10, 13, 0.0, "月", false, false, false),
                     InlineCluster::grapheme(13, 16, 0.0, "を", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -18124,6 +18524,7 @@ mod tests {
                 clusters: vec![InlineCluster::grapheme(
                     0, 3, 0.0, "あ", false, false, false,
                 )],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -18143,6 +18544,7 @@ mod tests {
                 clusters: vec![InlineCluster::grapheme(
                     9, 12, 0.0, "。", false, true, false,
                 )],
+                hyphen: None,
             },
         ];
         let paragraph = ParagraphStyle {
@@ -18536,6 +18938,97 @@ mod tests {
             .collect::<String>();
         assert_eq!(reconstructed, long);
         assert!(wrapped.iter().all(|line| !line.clusters.is_empty()));
+    }
+
+    fn japanese_paragraph(
+        configure: impl FnOnce(&mut EastAsianLineBreakingRules),
+    ) -> ParagraphStyle {
+        let mut rules = EastAsianLineBreakingRules {
+            use_east_asian_layout: true,
+            ..EastAsianLineBreakingRules::default()
+        };
+        configure(&mut rules);
+        ParagraphStyle {
+            enable_line_break_rules: true,
+            east_asian_rules: rules,
+            ..ParagraphStyle::default()
+        }
+    }
+
+    fn first_line(text: &str, style: &ParagraphStyle, width: f64) -> String {
+        let ctx = TestContext::new(10.0);
+        let run = make_run(text);
+        let lines = wrap_text_into_lines(&ctx, text, &[run], 0.0, style, 0, width).expect("wrap");
+        collect_line_infos(&lines)
+            .first()
+            .map(|line| line.text.clone())
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn kinsoku_uses_words_own_standard_and_strict_lists() {
+        let standard = japanese_paragraph(|_| {});
+        for c in crate::word_kinsoku::STANDARD_NO_LINE_START.chars() {
+            assert!(standard.forbids_line_start(&c.to_string()), "{c}");
+        }
+        for c in crate::word_kinsoku::NO_LINE_END.chars() {
+            assert!(standard.forbids_line_end(&c.to_string()), "{c}");
+        }
+        assert!(!standard.forbids_line_start("ｯ"));
+        assert!(!standard.forbids_line_start("〗"), "not in Word's list");
+        let strict = japanese_paragraph(|rules| rules.strict_first_and_last_chars = true);
+        for c in crate::word_kinsoku::STRICT_NO_LINE_START.chars() {
+            assert!(strict.forbids_line_start(&c.to_string()), "{c}");
+        }
+        // The ASCII members bind too: `!` does not start the next line.
+        assert_eq!(first_line("ああ!い", &standard, 29.0), "あ");
+    }
+
+    #[test]
+    fn a_two_em_dash_or_leader_is_not_split_across_lines() {
+        let style = japanese_paragraph(|_| {});
+        // Room for three cells: `ああ―` would split `――`.
+        assert_eq!(first_line("ああ――い", &style, 31.0), "ああ");
+        assert_eq!(first_line("ああ……い", &style, 31.0), "ああ");
+        let off = japanese_paragraph(|rules| rules.kinsoku = Some(false));
+        assert_eq!(first_line("ああ――い", &off, 31.0), "ああ―");
+    }
+
+    #[test]
+    fn compressing_kana_narrows_kana_and_punctuation_on_windows() {
+        crate::line_metrics::set_word_layout_platform(
+            crate::line_metrics::WordLayoutPlatform::Windows,
+        );
+        let kana = japanese_paragraph(|rules| {
+            rules.character_spacing_control = Some("compressPunctuationAndJapaneseKana".into())
+        });
+        let punctuation = japanese_paragraph(|rules| {
+            rules.character_spacing_control = Some("compressPunctuation".into())
+        });
+        let adjust = |style: &ParagraphStyle, grapheme: &str| {
+            punctuation_compression_adjustment(style, grapheme, ScriptCategory::EastAsia, 10.0)
+        };
+        assert!(adjust(&kana, "あ") < 0.0 && adjust(&kana, "カ") < 0.0);
+        assert!(adjust(&kana, "、") < 0.0);
+        assert_eq!(adjust(&kana, "漢"), 0.0);
+        assert_eq!(adjust(&punctuation, "あ"), 0.0);
+        assert!(adjust(&punctuation, "、") < 0.0);
+        assert!(compresses_punctuation(Some(
+            "compressPunctuationAndJapaneseKana"
+        )));
+        assert!(!compresses_punctuation(Some("doNotCompress")));
+    }
+
+    #[test]
+    fn top_line_punctuation_halves_an_opening_bracket_at_a_line_start() {
+        let half = japanese_paragraph(|rules| rules.top_line_punctuation = Some(true));
+        let adjust = |grapheme: &str, start: bool| {
+            top_line_punctuation_adjustment(&half, grapheme, ScriptCategory::EastAsia, 10.0, start)
+        };
+        assert_eq!(adjust("「", true), -5.0);
+        assert_eq!(adjust("（", true), -5.0);
+        assert_eq!(adjust("「", false), 0.0);
+        assert_eq!(adjust("あ", true), 0.0);
     }
 
     #[test]
@@ -20911,6 +21404,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 4, 1.0, "X", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -20932,6 +21426,7 @@ mod tests {
                     InlineCluster::grapheme(5, 6, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(6, 7, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -20975,6 +21470,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters: vec![InlineCluster::grapheme(0, 1, 1.0, "x", false, false, false)],
+            hyphen: None,
         };
         let final_text = "ab cd";
         let second = WrappedLine {
@@ -21008,6 +21504,7 @@ mod tests {
                     )
                 })
                 .collect(),
+            hyphen: None,
         };
         let mut lines = vec![first, second];
 
@@ -21065,6 +21562,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: vec![InlineCluster::grapheme(0, 1, 3.0, "a", false, false, false)],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21085,6 +21583,7 @@ mod tests {
                     InlineCluster::grapheme(1, 2, 4.0, "b", false, false, false),
                     InlineCluster::grapheme(2, 3, 4.0, "c", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21140,6 +21639,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 4, 1.0, "X", false, false, false),
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21161,6 +21661,7 @@ mod tests {
                     InlineCluster::grapheme(5, 6, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(6, 7, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21218,6 +21719,7 @@ mod tests {
                         ..InlineCluster::grapheme(3, 6, 1.0, "。", false, true, false)
                     },
                 ],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21239,6 +21741,7 @@ mod tests {
                     InlineCluster::grapheme(7, 8, 1.0, "e", false, false, false),
                     InlineCluster::grapheme(8, 9, 1.0, "f", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21288,6 +21791,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: vec![InlineCluster::grapheme(0, 1, 1.0, "a", false, false, false)],
+                hyphen: None,
             },
             WrappedLine {
                 segments: vec![TextSegment {
@@ -21309,6 +21813,7 @@ mod tests {
                     InlineCluster::grapheme(2, 3, 1.0, "c", false, false, false),
                     InlineCluster::grapheme(3, 6, 1.0, "字", false, false, false),
                 ],
+                hyphen: None,
             },
         ];
 
@@ -21385,6 +21890,7 @@ mod tests {
             leaders: Vec::new(),
             tab_stops: Vec::new(),
             clusters,
+            hyphen: None,
         }
     }
 

@@ -76,7 +76,11 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     // pointing at a group that no longer describes them. Expand only groups
     // touched by the edit, keeping each cell's cached <v> unchanged.
     let expanded = detach_edited_shared_formulas(xml, edits)?;
-    let xml = expanded.as_str();
+    // A sheet whose rows or cells are already out of order — some writers
+    // leave them so — is put in order first: Excel drops such a sheet's
+    // cells when it repairs the file, and the splices below assume order.
+    let ordered = order_sheet_data(&expanded)?;
+    let xml = ordered.as_deref().unwrap_or(expanded.as_str());
 
     // Rows and columns in order, because cells and rows have to stay sorted:
     // Excel reads a sheet whose rows are out of order as corrupt.
@@ -300,6 +304,153 @@ struct SharedFormulaTag {
     start: usize,
     end: usize,
     prefix: String,
+}
+
+/// Whether `keys` rise strictly.
+fn ascending(keys: impl Iterator<Item = Option<u32>>) -> bool {
+    let mut last = None;
+    for key in keys {
+        if last.is_some() && key <= last {
+            return false;
+        }
+        last = key;
+    }
+    true
+}
+
+/// An element of `<sheetData>` or a `<row>`: where it is in the text, and
+/// the row or column its `r` names.
+struct Span {
+    start: usize,
+    end: usize,
+    key: Option<u32>,
+}
+
+/// The sheet with `<sheetData>`'s rows sorted by row and each row's cells by
+/// column, or `None` when they already are (or cannot be sorted safely: an
+/// element without an `r`, or anything else among them).
+pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(false);
+    let mut buf = Vec::new();
+    let mut depth_in_data: Option<usize> = None;
+    let mut data_span: Option<(usize, usize)> = None;
+    let mut rows: Vec<(Span, Vec<Span>, usize, usize)> = Vec::new();
+    let mut row_inner_start = 0;
+    let mut cell_start = 0;
+    let mut cell_key = None;
+    loop {
+        let start = reader.buffer_position() as usize;
+        let event = reader.read_event_into(&mut buf)?;
+        let end = reader.buffer_position() as usize;
+        match (&event, depth_in_data) {
+            (Event::Eof, _) => break,
+            (Event::Start(element), None) if local(element.name().as_ref()) == b"sheetData" => {
+                depth_in_data = Some(0);
+                data_span = Some((end, end));
+            }
+            (Event::End(element), Some(0)) if local(element.name().as_ref()) == b"sheetData" => {
+                if let Some((inner, _)) = data_span {
+                    data_span = Some((inner, start));
+                }
+                depth_in_data = None;
+            }
+            (Event::Start(element) | Event::Empty(element), Some(0)) => {
+                if local(element.name().as_ref()) != b"row" {
+                    return Ok(None);
+                }
+                let key = attribute(element, b"r")?.and_then(|value| value.parse().ok());
+                if key.is_none() {
+                    return Ok(None);
+                }
+                let span = Span { start, end, key };
+                if matches!(event, Event::Start(_)) {
+                    depth_in_data = Some(1);
+                    row_inner_start = end;
+                }
+                rows.push((span, Vec::new(), end, end));
+            }
+            (Event::End(element), Some(1)) if local(element.name().as_ref()) == b"row" => {
+                if let Some(row) = rows.last_mut() {
+                    row.0.end = end;
+                    row.2 = row_inner_start;
+                    row.3 = start;
+                }
+                depth_in_data = Some(0);
+            }
+            (Event::Start(element) | Event::Empty(element), Some(1)) => {
+                if local(element.name().as_ref()) != b"c" {
+                    return Ok(None);
+                }
+                let key = attribute(element, b"r")?
+                    .and_then(|value| CellRange::parse(&value).ok())
+                    .map(|range| range.start.column);
+                if key.is_none() {
+                    return Ok(None);
+                }
+                if matches!(event, Event::Empty(_)) {
+                    if let Some(row) = rows.last_mut() {
+                        row.1.push(Span { start, end, key });
+                    }
+                } else {
+                    cell_start = start;
+                    cell_key = key;
+                    depth_in_data = Some(2);
+                }
+            }
+            (Event::End(element), Some(2)) if local(element.name().as_ref()) == b"c" => {
+                if let Some(row) = rows.last_mut() {
+                    row.1.push(Span {
+                        start: cell_start,
+                        end,
+                        key: cell_key,
+                    });
+                }
+                depth_in_data = Some(1);
+            }
+            (Event::Start(_), Some(depth)) if depth >= 2 => depth_in_data = Some(depth + 1),
+            (Event::End(_), Some(depth)) if depth >= 3 => depth_in_data = Some(depth - 1),
+            _ => {}
+        }
+        buf.clear();
+    }
+    let Some((inner_start, inner_end)) = data_span else {
+        return Ok(None);
+    };
+    let rows_sorted = ascending(rows.iter().map(|row| row.0.key));
+    let cells_sorted = rows
+        .iter()
+        .all(|row| ascending(row.1.iter().map(|cell| cell.key)));
+    if rows_sorted && cells_sorted {
+        return Ok(None);
+    }
+    let mut order: Vec<usize> = (0..rows.len()).collect();
+    order.sort_by_key(|&index| rows[index].0.key);
+    if order
+        .windows(2)
+        .any(|pair| rows[pair[0]].0.key == rows[pair[1]].0.key)
+    {
+        // Two rows with one number: which to keep is not this pass's call.
+        return Ok(None);
+    }
+    let mut text = String::with_capacity(xml.len());
+    text.push_str(&xml[..inner_start]);
+    for index in order {
+        let (row, cells, inner, inner_close) = &rows[index];
+        let mut cells: Vec<&Span> = cells.iter().collect();
+        if ascending(cells.iter().map(|cell| cell.key)) {
+            text.push_str(&xml[row.start..row.end]);
+            continue;
+        }
+        cells.sort_by_key(|cell| cell.key);
+        text.push_str(&xml[row.start..*inner]);
+        for cell in cells {
+            text.push_str(&xml[cell.start..cell.end]);
+        }
+        text.push_str(&xml[*inner_close..row.end]);
+    }
+    text.push_str(&xml[inner_end..]);
+    Ok(Some(text))
 }
 
 pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Result<String> {

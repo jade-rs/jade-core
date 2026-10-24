@@ -30,6 +30,67 @@ pub struct ChartSeries {
     pub point_colors: BTreeMap<usize, ChartColor>,
     pub marker: String,
     pub marker_size: u32,
+    /// `c:dLbls` on the series, over the plot's own.
+    #[serde(default)]
+    pub data_labels: Option<DataLabels>,
+    #[serde(default)]
+    pub trendlines: Vec<Trendline>,
+    #[serde(default)]
+    pub error_bars: Vec<ErrorBars>,
+    /// A bubble chart's `c:bubbleSize`.
+    #[serde(default)]
+    pub bubble_sizes: ChartData,
+    /// `c:smooth`: the line is drawn as a curve through its points.
+    #[serde(default)]
+    pub smooth: bool,
+}
+/// What a data label shows and where (`c:dLbls`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DataLabels {
+    pub show_value: bool,
+    pub show_category: bool,
+    pub show_series: bool,
+    pub show_percent: bool,
+    /// `dLblPos`: `outEnd`, `inEnd`, `ctr`, `inBase`, `t`, `b`, `l`, `r`,
+    /// `bestFit`; the chart type's default when absent.
+    pub position: Option<String>,
+    pub number_format: Option<String>,
+    pub separator: Option<String>,
+    /// Points whose label is deleted (`c:dLbl` with `c:delete`).
+    pub deleted: Vec<usize>,
+}
+impl DataLabels {
+    pub fn shows_anything(&self) -> bool {
+        self.show_value || self.show_category || self.show_series || self.show_percent
+    }
+}
+/// `c:trendline`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Trendline {
+    /// `linear`, `exp`, `log`, `poly`, `power` or `movingAvg`.
+    pub kind: String,
+    pub order: u32,
+    pub period: u32,
+    pub forward: Option<String>,
+    pub backward: Option<String>,
+    pub color: ChartColor,
+    pub display_equation: bool,
+    pub display_r_squared: bool,
+}
+/// `c:errBars`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ErrorBars {
+    /// `x` or `y`; `y` when absent.
+    pub direction: String,
+    /// `both`, `plus` or `minus`.
+    pub bar_type: String,
+    /// `fixedVal`, `percentage`, `stdDev`, `stdErr` or `cust`.
+    pub value_type: String,
+    pub value: Option<String>,
+    pub no_end_cap: bool,
+    pub plus: ChartData,
+    pub minus: ChartData,
+    pub color: ChartColor,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct ChartAxis {
@@ -41,6 +102,43 @@ pub struct ChartAxis {
     pub hidden: bool,
     pub gridlines: bool,
     pub cross_between: Option<String>,
+    /// The axis title's text.
+    #[serde(default)]
+    pub title: Option<String>,
+    /// `scaling/logBase`: a logarithmic value axis.
+    #[serde(default)]
+    pub log_base: Option<String>,
+    /// A `c:dateAx`: categories are dates placed by their value.
+    #[serde(default)]
+    pub date: bool,
+    /// `baseTimeUnit` of a date axis: `days`, `months` or `years`.
+    #[serde(default)]
+    pub base_time_unit: Option<String>,
+    /// `majorTimeUnit` of a date axis.
+    #[serde(default)]
+    pub major_time_unit: Option<String>,
+    /// `axPos`: `l`, `r`, `t` or `b`.
+    #[serde(default)]
+    pub position: Option<String>,
+    /// `crosses`: `autoZero`, `min` or `max`.
+    #[serde(default)]
+    pub crosses: Option<String>,
+}
+/// One plot of a chart, after the first: a combination chart has several,
+/// a line over columns, often on a secondary axis.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ChartPlot {
+    pub kind: String,
+    pub horizontal: bool,
+    pub vary_colors: bool,
+    pub grouping: String,
+    pub gap_width: u32,
+    pub overlap: i32,
+    pub scatter_style: String,
+    pub series: Vec<ChartSeries>,
+    pub data_labels: Option<DataLabels>,
+    /// Drawn against the secondary axes.
+    pub secondary: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chart {
@@ -65,6 +163,25 @@ pub struct Chart {
     pub scatter_style: String,
     pub palette: [[u8; 3]; 6],
     pub unsupported_properties: Vec<String>,
+    /// The first plot's `c:dLbls`.
+    #[serde(default)]
+    pub data_labels: Option<DataLabels>,
+    /// `radarStyle`: `marker`, `standard` or `filled`.
+    #[serde(default)]
+    pub radar_style: String,
+    /// `bubbleScale`, percent of the default bubble size.
+    #[serde(default)]
+    pub bubble_scale: u32,
+    /// `sizeRepresents="w"`: bubble width, not area, follows the size.
+    #[serde(default)]
+    pub bubble_size_width: bool,
+    /// The plots after the first, in the file's order.
+    #[serde(default)]
+    pub extra_plots: Vec<ChartPlot>,
+    #[serde(default)]
+    pub secondary_value_axis: Option<ChartAxis>,
+    #[serde(default)]
+    pub secondary_category_axis: Option<ChartAxis>,
 }
 impl Default for Chart {
     fn default() -> Self {
@@ -97,6 +214,13 @@ impl Default for Chart {
                 [112, 173, 71],
             ],
             unsupported_properties: Vec::new(),
+            data_labels: None,
+            radar_style: "marker".into(),
+            bubble_scale: 100,
+            bubble_size_width: false,
+            extra_plots: Vec::new(),
+            secondary_value_axis: None,
+            secondary_category_axis: None,
         }
     }
 }
@@ -305,8 +429,211 @@ fn axis(node: Option<&Node>) -> ChartAxis {
         hidden: node.enabled("delete", false),
         gridlines: node.child("majorGridlines").is_some(),
         cross_between: node.val("crossBetween").map(str::to_string),
+        title: node
+            .child("title")
+            .map(|title| {
+                let text = title.texts();
+                if text.is_empty() {
+                    // A title with no text of its own reads "Axis Title".
+                    "Axis Title".to_string()
+                } else {
+                    text
+                }
+            })
+            .filter(|_| !node.enabled("delete", false)),
+        log_base: scaling.and_then(|n| n.val("logBase")).map(str::to_string),
+        date: node.name == "dateAx",
+        base_time_unit: node.val("baseTimeUnit").map(str::to_string),
+        major_time_unit: node.val("majorTimeUnit").map(str::to_string),
+        position: node.val("axPos").map(str::to_string),
+        crosses: node.val("crosses").map(str::to_string),
     }
 }
+fn data_labels(node: Option<&Node>) -> Option<DataLabels> {
+    let node = node?;
+    if node.enabled("delete", false) {
+        return Some(DataLabels::default());
+    }
+    Some(DataLabels {
+        show_value: node.enabled("showVal", false),
+        show_category: node.enabled("showCatName", false),
+        show_series: node.enabled("showSerName", false),
+        show_percent: node.enabled("showPercent", false),
+        position: node.val("dLblPos").map(str::to_string),
+        number_format: node
+            .child("numFmt")
+            .filter(|n| n.attrs.get("sourceLinked").is_none_or(|v| v != "1"))
+            .and_then(|n| n.attrs.get("formatCode"))
+            .cloned(),
+        separator: node.child("separator").map(|n| n.text.clone()),
+        deleted: node
+            .children
+            .iter()
+            .filter(|n| n.main && n.name == "dLbl" && n.enabled("delete", false))
+            .filter_map(|n| n.val("idx")?.parse().ok())
+            .collect(),
+    })
+}
+fn trendline(node: &Node, issues: &mut Vec<String>) -> Trendline {
+    Trendline {
+        kind: node.val("trendlineType").unwrap_or("linear").to_string(),
+        order: node
+            .val("order")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(2)
+            .clamp(2, 6),
+        period: node
+            .val("period")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(2)
+            .max(2),
+        forward: node.val("forward").map(str::to_string),
+        backward: node.val("backward").map(str::to_string),
+        color: color(node.child("spPr"), issues),
+        display_equation: node.enabled("dispEq", false),
+        display_r_squared: node.enabled("dispRSqr", false),
+    }
+}
+fn error_bars(node: &Node, issues: &mut Vec<String>) -> ErrorBars {
+    ErrorBars {
+        direction: node.val("errDir").unwrap_or("y").to_string(),
+        bar_type: node.val("errBarType").unwrap_or("both").to_string(),
+        value_type: node.val("errValType").unwrap_or("fixedVal").to_string(),
+        value: node.val("val").map(str::to_string),
+        no_end_cap: node.enabled("noEndCap", false),
+        plus: data(node.child("plus"), issues),
+        minus: data(node.child("minus"), issues),
+        color: color(node.child("spPr"), issues),
+    }
+}
+const PLOT_KINDS: [&str; 8] = [
+    "barChart",
+    "lineChart",
+    "areaChart",
+    "pieChart",
+    "doughnutChart",
+    "scatterChart",
+    "radarChart",
+    "bubbleChart",
+];
+/// Plots that can share a chart with others, on value and category axes.
+const CARTESIAN_KINDS: [&str; 4] = ["barChart", "lineChart", "areaChart", "scatterChart"];
+
+fn parse_series(
+    ser: &Node,
+    kind: &str,
+    scatter_style: &str,
+    index: usize,
+    issues: &mut Vec<String>,
+) -> ChartSeries {
+    let mut series = ChartSeries {
+        order: ser
+            .val("order")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(index as u32),
+        name: data(ser.child("tx"), issues),
+        categories: data(ser.child("cat"), issues),
+        values: data(ser.child("val").or_else(|| ser.child("yVal")), issues),
+        x_values: data(ser.child("xVal"), issues),
+        color: color(ser.child("spPr"), issues),
+        point_colors: BTreeMap::new(),
+        marker: ser
+            .child("marker")
+            .and_then(|n| n.val("symbol"))
+            .unwrap_or(
+                if (kind == "scatterChart"
+                    && (scatter_style.contains("Marker") || scatter_style == "marker"))
+                    || kind == "radarChart" && scatter_style == "marker"
+                {
+                    "circle"
+                } else {
+                    "none"
+                },
+            )
+            .into(),
+        marker_size: ser
+            .child("marker")
+            .and_then(|n| n.val("size"))
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5)
+            .clamp(2, 72),
+        data_labels: data_labels(ser.child("dLbls")),
+        trendlines: Vec::new(),
+        error_bars: Vec::new(),
+        bubble_sizes: data(ser.child("bubbleSize"), issues),
+        smooth: ser
+            .child("smooth")
+            .is_some_and(|n| n.attrs.get("val").is_none_or(|v| v != "0" && v != "false")),
+    };
+    for point in ser.children.iter().filter(|n| n.main && n.name == "dPt") {
+        if let Some(index) = point.val("idx").and_then(|v| v.parse::<usize>().ok()) {
+            series
+                .point_colors
+                .insert(index, color(point.child("spPr"), issues));
+        }
+    }
+    for node in ser.children.iter().filter(|n| n.main) {
+        match node.name.as_str() {
+            "trendline" => series.trendlines.push(trendline(node, issues)),
+            "errBars" => series.error_bars.push(error_bars(node, issues)),
+            _ => {}
+        }
+    }
+    series
+}
+
+fn parse_plot(kind: &Node, issues: &mut Vec<String>) -> ChartPlot {
+    let name = kind.name.clone();
+    let grouping: String = kind
+        .val("grouping")
+        .unwrap_or(if name == "barChart" {
+            "clustered"
+        } else {
+            "standard"
+        })
+        .into();
+    let scatter_style: String = if name == "radarChart" {
+        kind.val("radarStyle").unwrap_or("marker").into()
+    } else {
+        kind.val("scatterStyle").unwrap_or("marker").into()
+    };
+    let mut series: Vec<ChartSeries> = kind
+        .children
+        .iter()
+        .filter(|n| n.main && n.name == "ser")
+        .enumerate()
+        .map(|(index, ser)| parse_series(ser, &name, &scatter_style, index, issues))
+        .collect();
+    series.sort_by_key(|s| s.order);
+    ChartPlot {
+        horizontal: kind.val("barDir") == Some("bar"),
+        vary_colors: kind
+            .val("varyColors")
+            .map(|v| v == "1" || v == "true")
+            .unwrap_or(matches!(name.as_str(), "pieChart" | "doughnutChart")),
+        gap_width: kind
+            .val("gapWidth")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(150)
+            .min(500),
+        overlap: kind
+            .val("overlap")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(if grouping.ends_with("Stacked") || grouping == "stacked" {
+                100
+            } else {
+                0
+            })
+            .clamp(-100, 100),
+        grouping,
+        scatter_style,
+        series,
+        data_labels: data_labels(kind.child("dLbls")),
+        secondary: false,
+        kind: name,
+    }
+}
+
 pub fn parse_chart(xml: &str) -> Result<Chart> {
     let tree = parse_tree(xml)?;
     let space = tree
@@ -326,7 +653,10 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         .flat_map(|n| n.children.iter())
         .filter(|n| n.main && n.name.ends_with("Chart"))
         .collect();
-    if plots.len() != 1 {
+    let combinable = plots
+        .iter()
+        .all(|n| CARTESIAN_KINDS.contains(&n.name.as_str()));
+    if plots.is_empty() || (plots.len() > 1 && !combinable) {
         chart
             .unsupported_properties
             .push("combined or missing plot".into());
@@ -335,10 +665,7 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         return Ok(chart);
     };
     chart.kind = kind.name.clone();
-    if !matches!(
-        chart.kind.as_str(),
-        "barChart" | "lineChart" | "areaChart" | "pieChart" | "doughnutChart" | "scatterChart"
-    ) {
+    if !PLOT_KINDS.contains(&chart.kind.as_str()) {
         chart
             .unsupported_properties
             .push(format!("chart kind: {}", chart.kind));
@@ -353,35 +680,19 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         .map(|n| n.val("legendPos").unwrap_or("r").to_string());
     chart.blank_mode = root.val("dispBlanksAs").unwrap_or("gap").into();
     chart.visible_only = root.enabled("plotVisOnly", true);
-    chart.horizontal = kind.val("barDir") == Some("bar");
-    chart.vary_colors = kind
-        .val("varyColors")
-        .map(|v| v == "1" || v == "true")
-        .unwrap_or(matches!(chart.kind.as_str(), "pieChart" | "doughnutChart"));
-    chart.grouping = kind
-        .val("grouping")
-        .unwrap_or(if chart.kind == "barChart" {
-            "clustered"
-        } else {
-            "standard"
-        })
-        .into();
-    chart.gap_width = kind
-        .val("gapWidth")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(150)
-        .min(500);
-    chart.overlap = kind
-        .val("overlap")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(
-            if chart.grouping.ends_with("Stacked") || chart.grouping == "stacked" {
-                100
-            } else {
-                0
-            },
-        )
-        .clamp(-100, 100);
+    let first = parse_plot(kind, &mut chart.unsupported_properties);
+    chart.horizontal = first.horizontal;
+    chart.vary_colors = first.vary_colors;
+    chart.grouping = first.grouping.clone();
+    chart.gap_width = first.gap_width;
+    chart.overlap = first.overlap;
+    chart.data_labels = first.data_labels.clone();
+    chart.series = first.series;
+    if chart.kind == "radarChart" {
+        chart.radar_style = first.scatter_style;
+    } else {
+        chart.scatter_style = first.scatter_style;
+    }
     chart.hole_size = kind
         .val("holeSize")
         .and_then(|v| v.parse().ok())
@@ -392,90 +703,102 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(0)
         % 360;
-    chart.scatter_style = kind.val("scatterStyle").unwrap_or("marker").into();
+    chart.bubble_scale = kind
+        .val("bubbleScale")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(100)
+        .min(300);
+    chart.bubble_size_width = kind.val("sizeRepresents") == Some("w");
+
     let axes: Vec<&Node> = plot
         .into_iter()
         .flat_map(|n| n.children.iter())
-        .filter(|n| n.main && matches!(n.name.as_str(), "catAx" | "valAx" | "dateAx"))
+        .filter(|n| n.main && matches!(n.name.as_str(), "catAx" | "valAx" | "dateAx" | "serAx"))
         .collect();
-    if axes.len() > 2 {
-        chart.unsupported_properties.push("secondary axes".into());
-    }
-    chart.value_axis = axis(
-        axes.iter()
-            .find(|n| n.name == "valAx" && n.val("axPos") != Some("b"))
-            .copied()
-            .or_else(|| axes.iter().find(|n| n.name == "valAx").copied()),
-    );
-    chart.category_axis = axis(
-        axes.iter()
-            .find(|n| {
-                n.name == "catAx" || (chart.kind == "scatterChart" && n.val("axPos") == Some("b"))
-            })
-            .copied(),
-    );
-    for axis in &axes {
-        if axis.name == "dateAx" {
-            chart.unsupported_properties.push("date axis".into())
+    let axis_ids = |plot: &Node| -> Vec<String> {
+        plot.children
+            .iter()
+            .filter(|n| n.main && n.name == "axId")
+            .filter_map(|n| n.attrs.get("val").cloned())
+            .collect()
+    };
+    let by_id = |id: &str| axes.iter().find(|n| n.val("axId") == Some(id)).copied();
+    let primary_ids = axis_ids(kind);
+    let scatter_like = matches!(chart.kind.as_str(), "scatterChart" | "bubbleChart");
+    // A plot's axes in its own `axId` order: category (or X) first, then value.
+    let pick = |ids: &[String], scatter: bool| -> (Option<&Node>, Option<&Node>) {
+        let found: Vec<&Node> = ids.iter().filter_map(|id| by_id(id)).collect();
+        if found.is_empty() {
+            return (None, None);
         }
-        if axis
-            .child("scaling")
-            .and_then(|n| n.child("logBase"))
-            .is_some()
-        {
-            chart.unsupported_properties.push("logarithmic axis".into())
+        if scatter {
+            let x = found
+                .iter()
+                .find(|n| matches!(n.val("axPos"), Some("b" | "t")))
+                .or(found.first())
+                .copied();
+            let y = found
+                .iter()
+                .find(|n| !x.is_some_and(|x| std::ptr::eq(**n, x)))
+                .copied();
+            (x, y)
+        } else {
+            (
+                found
+                    .iter()
+                    .find(|n| matches!(n.name.as_str(), "catAx" | "dateAx"))
+                    .copied(),
+                found.iter().find(|n| n.name == "valAx").copied(),
+            )
         }
-    }
-    for ser in kind.children.iter().filter(|n| n.main && n.name == "ser") {
-        let issues = &mut chart.unsupported_properties;
-        let mut series = ChartSeries {
-            order: ser
-                .val("order")
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(chart.series.len() as u32),
-            name: data(ser.child("tx"), issues),
-            categories: data(ser.child("cat"), issues),
-            values: data(ser.child("val").or_else(|| ser.child("yVal")), issues),
-            x_values: data(ser.child("xVal"), issues),
-            color: color(ser.child("spPr"), issues),
-            point_colors: BTreeMap::new(),
-            marker: ser
-                .child("marker")
-                .and_then(|n| n.val("symbol"))
-                .unwrap_or(
-                    if chart.kind == "scatterChart"
-                        && (chart.scatter_style.contains("Marker")
-                            || chart.scatter_style == "marker")
-                    {
-                        "circle"
-                    } else {
-                        "none"
-                    },
-                )
-                .into(),
-            marker_size: ser
-                .child("marker")
-                .and_then(|n| n.val("size"))
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(5)
-                .clamp(2, 72),
-        };
-        for point in ser.children.iter().filter(|n| n.main && n.name == "dPt") {
-            if let Some(index) = point.val("idx").and_then(|v| v.parse::<usize>().ok()) {
-                series
-                    .point_colors
-                    .insert(index, color(point.child("spPr"), issues));
+    };
+    let (category, value) = if primary_ids.is_empty() {
+        // Without axis ids, take the axes by kind as before.
+        (
+            axes.iter()
+                .find(|n| {
+                    matches!(n.name.as_str(), "catAx" | "dateAx")
+                        || (scatter_like && n.val("axPos") == Some("b"))
+                })
+                .copied(),
+            axes.iter()
+                .find(|n| n.name == "valAx" && n.val("axPos") != Some("b"))
+                .copied()
+                .or_else(|| axes.iter().find(|n| n.name == "valAx").copied()),
+        )
+    } else {
+        pick(&primary_ids, scatter_like)
+    };
+    chart.value_axis = axis(value);
+    chart.category_axis = axis(category);
+    for extra in plots.iter().skip(1) {
+        let mut parsed = parse_plot(extra, &mut chart.unsupported_properties);
+        let ids = axis_ids(extra);
+        if !ids.is_empty() && ids != primary_ids {
+            parsed.secondary = true;
+            let (category, value) = pick(&ids, extra.name == "scatterChart");
+            if chart.secondary_value_axis.is_none() {
+                chart.secondary_value_axis = value.map(|n| axis(Some(n)));
+                chart.secondary_category_axis = category.map(|n| axis(Some(n)));
             }
         }
-        chart.series.push(series);
+        chart.extra_plots.push(parsed);
     }
-    chart.series.sort_by_key(|s| s.order);
+    if axes.len() > 4 {
+        chart.unsupported_properties.push("secondary axes".into());
+    }
     if matches!(chart.kind.as_str(), "pieChart" | "doughnutChart") && chart.series.len() > 1 {
         chart
             .unsupported_properties
             .push("multiple circular series".into());
     }
-    for series in &chart.series {
+    let all_series: Vec<&ChartSeries> = chart
+        .series
+        .iter()
+        .chain(chart.extra_plots.iter().flat_map(|plot| plot.series.iter()))
+        .collect();
+    let mut issues = Vec::new();
+    for series in &all_series {
         if !matches!(
             series.marker.as_str(),
             "none"
@@ -489,15 +812,19 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
                 | "dash"
                 | "dot"
         ) {
-            chart
-                .unsupported_properties
-                .push(format!("marker: {}", series.marker));
+            issues.push(format!("marker: {}", series.marker));
+        }
+        for trendline in &series.trendlines {
+            if !matches!(
+                trendline.kind.as_str(),
+                "linear" | "exp" | "log" | "poly" | "power" | "movingAvg"
+            ) {
+                issues.push(format!("trendline: {}", trendline.kind));
+            }
         }
     }
+    chart.unsupported_properties.extend(issues);
     for (name, label) in [
-        ("dLbls", "data labels"),
-        ("trendline", "trendlines"),
-        ("errBars", "error bars"),
         ("manualLayout", "manual chart layout"),
         ("pivotSource", "pivot chart"),
         ("extLst", "chart extensions"),
@@ -509,17 +836,6 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         if !found.is_empty() {
             chart.unsupported_properties.push(label.into());
         }
-    }
-    let mut smooth = Vec::new();
-    root.descendants("smooth", &mut smooth);
-    if smooth
-        .iter()
-        .any(|n| n.attrs.get("val").is_none_or(|v| v != "0" && v != "false"))
-    {
-        chart.unsupported_properties.push("smoothed lines".into());
-    }
-    if chart.scatter_style.starts_with("smooth") {
-        chart.unsupported_properties.push("smoothed scatter".into());
     }
     chart.unsupported_properties.sort();
     chart.unsupported_properties.dedup();
@@ -546,10 +862,20 @@ pub(crate) fn apply_theme(chart: &mut Chart, theme: &crate::theme::ThemePalette)
             }
         }
     };
-    for series in &mut chart.series {
+    let extra = chart
+        .extra_plots
+        .iter_mut()
+        .flat_map(|plot| plot.series.iter_mut());
+    for series in chart.series.iter_mut().chain(extra) {
         apply(&mut series.color);
         for color in series.point_colors.values_mut() {
             apply(color)
+        }
+        for trendline in &mut series.trendlines {
+            apply(&mut trendline.color)
+        }
+        for bars in &mut series.error_bars {
+            apply(&mut bars.color)
         }
     }
 }

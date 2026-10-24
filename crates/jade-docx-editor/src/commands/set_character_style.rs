@@ -109,6 +109,24 @@ impl Command for SetCharacterStyleCommand {
                 continue;
             }
 
+            // Each piece's character style before, by where it starts.
+            let mut offset = 0;
+            let previous: Vec<(usize, usize, Option<Rc<str>>)> = paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    let start = offset;
+                    offset += run.text.len();
+                    (
+                        start,
+                        offset,
+                        run.properties
+                            .as_ref()
+                            .and_then(|props| props.style.clone()),
+                    )
+                })
+                .collect();
+
             let style = style.clone();
             let restyled = mutate_run_properties(
                 &mut paragraph.runs,
@@ -119,6 +137,29 @@ impl Command for SetCharacterStyleCommand {
                     props.style = style.clone();
                 },
             );
+            let mut offset = 0;
+            let mut changes = Vec::new();
+            for (index, run) in paragraph.runs.iter().enumerate() {
+                let start = offset;
+                offset += run.text.len();
+                if run.text.is_empty() || start < range_start || start >= range_end {
+                    continue;
+                }
+                let before = previous
+                    .iter()
+                    .find(|(from, to, _)| *from <= start && start < *to)
+                    .and_then(|(_, _, style)| style.clone());
+                if before
+                    != run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.style.clone())
+                {
+                    changes.push((index, before));
+                }
+            }
+            ctx.document
+                .restyle_runs_character_style(paragraph_index, &changes);
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
         }

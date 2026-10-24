@@ -2162,6 +2162,66 @@ pub fn word_run_border_extent_pt(properties: Option<&RunProperties>) -> f32 {
         })
 }
 
+/// How far below the baseline, in px, the underline of `kind` (`w:u@w:val`)
+/// that jade draws under `font_px` text reaches: the rule's centre sits 0.15em
+/// down and its weight is 0.05em (at least 1px, doubled for the heavy kinds);
+/// `double` adds a second rule a gap below, the wavy kinds swing by their
+/// amplitude. Mirrors the editor's `stroke_underline_with_kind`.
+pub fn underline_depth_px(font_px: f64, kind: Option<&str>) -> f64 {
+    let kind = kind.unwrap_or("single");
+    if kind == "none" || !font_px.is_finite() || font_px <= 0.0 {
+        return 0.0;
+    }
+    let base = (font_px * 0.05).max(1.0);
+    let heavy = matches!(
+        kind,
+        "thick"
+            | "dottedHeavy"
+            | "dashedHeavy"
+            | "dashLongHeavy"
+            | "dashDotHeavy"
+            | "dashDotDotHeavy"
+            | "wavyHeavy"
+    );
+    let weight = if heavy { base * 2.0 } else { base };
+    let centre = font_px * 0.15;
+    let amplitude = (font_px * 0.10).clamp(1.0, 3.0);
+    match kind {
+        "double" => centre + weight + base * 2.0 + weight / 2.0,
+        "wave" | "wavyHeavy" => centre + amplitude + weight / 2.0,
+        "wavyDouble" => centre + weight * 2.5 + amplitude + weight / 2.0,
+        _ => centre + weight / 2.0,
+    }
+}
+
+/// `w:compat/w:spaceForUL` (ECMA-376 Part 1 §17.15.3.46): how far below the
+/// baseline, in points, an underlined run's East Asian text needs its line to
+/// reach so the underline ([`underline_depth_px`]) stays inside it; 0 for a
+/// run that is not underlined. `font_descriptor` is the run's East Asian
+/// descriptor, which carries its size.
+///
+/// The underline usually fits in the descent Word already gives East Asian
+/// faces (MS Mincho's line box reaches 0.29em below the baseline, Yu
+/// Mincho's 0.39em, a single rule 0.175em), so only deep kinds such as
+/// `double` (0.33em) make the line taller — `yokohama_page1`'s single
+/// underlines keep Word's 13.5pt pitch.
+pub fn word_space_for_underline_depth_pt(
+    properties: Option<&RunProperties>,
+    font_descriptor: &str,
+) -> f32 {
+    let Some(properties) = properties else {
+        return 0.0;
+    };
+    if properties.underline != Some(true) {
+        return 0.0;
+    }
+    let Some((size_pt, _)) = split_font_descriptor(font_descriptor) else {
+        return 0.0;
+    };
+    let font_px = f64::from(size_pt) * 96.0 / 72.0;
+    (underline_depth_px(font_px, properties.underline_kind.as_deref()) * 72.0 / 96.0) as f32
+}
+
 /// How far a paragraph border edge (`w:pBdr`) pushes the text after it away,
 /// in points: its `w:space` plus its width. Word for Mac 16.113 sets a 10pt
 /// Calibri paragraph with a 1pt top border 4pt from it 5pt lower, and the one
@@ -2297,6 +2357,24 @@ impl WordRunFaces {
             include(self.east_asia)?;
         }
         Ok(extent.map(|(ascent, descent)| (ascent + border_extent_pt, descent + border_extent_pt)))
+    }
+
+    /// [`Self::run_vertical_extent_pt`] for a run whose East Asian text
+    /// reserves `underline_depth_pt` below its baseline
+    /// ([`word_space_for_underline_depth_pt`]).
+    #[allow(clippy::result_unit_err)]
+    pub fn run_vertical_extent_with_underline_pt(
+        &self,
+        slots: (bool, bool),
+        border_extent_pt: f32,
+        underline_depth_pt: f32,
+    ) -> Result<Option<(f32, f32)>, ()> {
+        let extent = self.run_vertical_extent_pt(slots, border_extent_pt)?;
+        if !slots.1 || underline_depth_pt <= 0.0 {
+            return Ok(extent);
+        }
+        Ok(extent
+            .map(|(ascent, descent)| (ascent, descent.max(underline_depth_pt + border_extent_pt))))
     }
 }
 

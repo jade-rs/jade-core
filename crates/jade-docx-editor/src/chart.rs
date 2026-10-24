@@ -201,11 +201,19 @@ fn parse_chart_xml_with(xml: &str, preview: bool) -> Result<RunChart, String> {
         series.push(ChartSeries { name, values });
     }
 
+    let legend = descendant(root, "legend").map(|legend| {
+        descendant(legend, "legendPos")
+            .and_then(|position| attr_value(position, "val"))
+            .unwrap_or("r")
+            .to_string()
+    });
     let chart = RunChart {
         kind,
         title,
         categories,
         series,
+        legend,
+        xml: Some(std::rc::Rc::from(xml)),
     };
     validate_chart(&chart)?;
     Ok(chart)
@@ -334,8 +342,23 @@ pub(crate) fn build_chart_xml(
         })
         .unwrap_or_default();
     Ok(format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><c:date1904 val=\"0\"/><c:lang val=\"ja-JP\"/><c:roundedCorners val=\"0\"/><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang=\"ja-JP\"/><a:t>{}</a:t></a:r></a:p></c:rich></c:tx><c:layout/><c:overlay val=\"0\"/></c:title><c:autoTitleDeleted val=\"0\"/><c:plotArea><c:layout/>{plot}</c:plotArea><c:plotVisOnly val=\"1\"/><c:dispBlanksAs val=\"gap\"/><c:showDLblsOverMax val=\"0\"/></c:chart>{external_data}<c:printSettings><c:headerFooter/><c:pageMargins b=\"0.75\" l=\"0.7\" r=\"0.7\" t=\"0.75\" header=\"0.3\" footer=\"0.3\"/><c:pageSetup/></c:printSettings></c:chartSpace>",
-        escape_xml(&chart.title)
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><c:date1904 val=\"0\"/><c:lang val=\"ja-JP\"/><c:roundedCorners val=\"0\"/><c:chart>{title}<c:plotArea><c:layout/>{plot}</c:plotArea>{legend}<c:plotVisOnly val=\"1\"/><c:dispBlanksAs val=\"gap\"/><c:showDLblsOverMax val=\"0\"/></c:chart>{external_data}<c:printSettings><c:headerFooter/><c:pageMargins b=\"0.75\" l=\"0.7\" r=\"0.7\" t=\"0.75\" header=\"0.3\" footer=\"0.3\"/><c:pageSetup/></c:printSettings></c:chartSpace>",
+        title = if chart.title.is_empty() {
+            "<c:autoTitleDeleted val=\"1\"/>".to_string()
+        } else {
+            format!(
+                "<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang=\"ja-JP\"/><a:t>{}</a:t></a:r></a:p></c:rich></c:tx><c:layout/><c:overlay val=\"0\"/></c:title><c:autoTitleDeleted val=\"0\"/>",
+                escape_xml(&chart.title)
+            )
+        },
+        legend = chart
+            .legend
+            .as_deref()
+            .map(|position| format!(
+                "<c:legend><c:legendPos val=\"{}\"/><c:overlay val=\"0\"/></c:legend>",
+                escape_xml(position)
+            ))
+            .unwrap_or_default(),
     ))
 }
 
@@ -680,6 +703,7 @@ mod tests {
                 name: "東 <西>".into(),
                 values: vec![Some(12.5), None],
             }],
+            ..Default::default()
         };
         let xml = build_chart_xml(&chart, Some("rId1")).expect("chart XML");
         let parsed = parse_chart_xml(&xml).expect("parse chart XML");

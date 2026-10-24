@@ -265,12 +265,8 @@ impl Command for FormatImageCommand {
                 *destination = Some(value);
             }
         }
-        // A source-bound image drawing is preserved verbatim by ordinary
-        // paragraph edits. Detach it for an explicit image mutation so sync
-        // serializes the new modeled properties.
-        run.node_id = None;
-        run.text_node_id = None;
-        run.revision_node_id = None;
+        // Synced without preserving drawings: the modeled frame and
+        // transform are patched into the picture's drawing.
 
         ctx.document
             .sync_paragraph_text(self.target.paragraph_index);

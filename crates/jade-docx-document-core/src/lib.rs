@@ -22,6 +22,23 @@ pub(crate) mod chart;
 #[path = "../../jade-docx-editor/src/commands/mod.rs"]
 pub mod commands;
 
+/// Patching a drawing object's XML in place.
+#[path = "../../jade-docx-editor/src/drawing_xml.rs"]
+pub mod drawing_xml;
+
+/// Pixel work on pictures: colour adjustments, soft edges, background
+/// removal.
+#[path = "../../jade-docx-editor/src/picture_effects.rs"]
+pub mod picture_effects;
+
+/// The art borders' names, which the document model tells borders by.
+#[path = "../../jade-docx-editor/src/art_border_names.rs"]
+pub(crate) mod art_border_names;
+
+/// SmartArt laid out from its data, and its parts written.
+#[path = "../../jade-docx-editor/src/smartart.rs"]
+pub mod smartart;
+
 /// Parsed WordprocessingML document model.
 pub mod document {
     pub use jade_docx_reader::document::*;

@@ -18,24 +18,37 @@ pub fn parse_math_elements(raw_xml: &str) -> Result<Vec<MathElement>, MathParseE
     reader.config_mut().trim_text(false);
 
     let mut buf = Vec::new();
-    let mut stack: Vec<MathElement> = Vec::new();
+    let mut stack: Vec<(MathElement, String)> = Vec::new();
     let mut roots: Vec<MathElement> = Vec::new();
+
+    // Text arrives in pieces: quick-xml reports `&amp;` and `&#x2211;` as
+    // references between text events, so an element's text is the pieces
+    // joined, decided once the element closes.
+    fn finish(mut element: MathElement, text: String) -> MathElement {
+        if !text.is_empty()
+            && (matches!(element.kind, MathElementKind::Text) || !text.trim().is_empty())
+        {
+            element.text = Some(text);
+        }
+        if element.children.is_empty() {
+            element.children.shrink_to_fit();
+        }
+        element
+    }
 
     loop {
         buf.clear();
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
                 let element = build_element(e)?;
-                stack.push(element);
+                stack.push((element, String::new()));
             }
             Ok(Event::End(_)) => {
-                let Some(mut element) = stack.pop() else {
+                let Some((element, text)) = stack.pop() else {
                     return Err(MathParseError::UnexpectedClose);
                 };
-                if element.children.is_empty() {
-                    element.children.shrink_to_fit();
-                }
-                if let Some(parent) = stack.last_mut() {
+                let element = finish(element, text);
+                if let Some((parent, _)) = stack.last_mut() {
                     parent.children.push(element);
                 } else {
                     roots.push(element);
@@ -43,34 +56,51 @@ pub fn parse_math_elements(raw_xml: &str) -> Result<Vec<MathElement>, MathParseE
             }
             Ok(Event::Empty(ref e)) => {
                 let element = build_element(e)?;
-                if let Some(parent) = stack.last_mut() {
+                if let Some((parent, _)) = stack.last_mut() {
                     parent.children.push(element);
                 } else {
                     roots.push(element);
                 }
             }
             Ok(Event::Text(e)) => {
-                if let Some(current) = stack.last_mut() {
+                if let Some((_, text)) = stack.last_mut() {
                     let decoded = e
                         .decode()
                         .map_err(|err| MathParseError::Xml(err.to_string()))?;
-                    let text = unescape(decoded.as_ref())
+                    let unescaped = unescape(decoded.as_ref())
                         .map_err(|err| MathParseError::Xml(err.to_string()))?;
-                    if !text.is_empty() {
-                        let owned = text.into_owned();
-                        if matches!(current.kind, MathElementKind::Text) || !owned.trim().is_empty()
-                        {
-                            current.text = Some(owned);
+                    text.push_str(&unescaped);
+                }
+            }
+            Ok(Event::GeneralRef(e)) => {
+                if let Some((_, text)) = stack.last_mut() {
+                    if let Some(ch) = e
+                        .resolve_char_ref()
+                        .map_err(|err| MathParseError::Xml(err.to_string()))?
+                    {
+                        text.push(ch);
+                    } else {
+                        let name = e
+                            .decode()
+                            .map_err(|err| MathParseError::Xml(err.to_string()))?;
+                        match name.as_ref() {
+                            "amp" => text.push('&'),
+                            "lt" => text.push('<'),
+                            "gt" => text.push('>'),
+                            "quot" => text.push('"'),
+                            "apos" => text.push('\''),
+                            other => {
+                                text.push('&');
+                                text.push_str(other);
+                                text.push(';');
+                            }
                         }
                     }
                 }
             }
             Ok(Event::CData(e)) => {
-                if let Some(current) = stack.last_mut() {
-                    let text = std::str::from_utf8(e.as_ref()).unwrap_or_default();
-                    if !text.is_empty() {
-                        current.text = Some(text.to_string());
-                    }
+                if let Some((_, text)) = stack.last_mut() {
+                    text.push_str(std::str::from_utf8(e.as_ref()).unwrap_or_default());
                 }
             }
             Ok(Event::Eof) => break,
@@ -106,15 +136,27 @@ fn build_element(start: &BytesStart<'_>) -> Result<MathElement, MathParseError> 
         let attr = attr.map_err(|err| MathParseError::Xml(err.to_string()))?;
         let key = extract_attribute_name(attr.key.as_ref());
         let value = attr
-            .unescape_value()
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
             .map_err(|err| MathParseError::Xml(err.to_string()))?;
         attributes.insert(key, value.into_owned());
     }
 
+    let qualified = std::str::from_utf8(name.as_ref()).unwrap_or_default();
+    let namespace = match qualified.split_once(':') {
+        Some((prefix, _)) if prefix != "m" => Some(prefix.to_string()),
+        _ => None,
+    };
     Ok(MathElement {
-        kind: map_kind(local),
+        // A Word element inside math (`w:rPr`, `w:ins`) keeps its own name
+        // and is never read as the math element of the same local name.
+        kind: if namespace.is_none() {
+            map_kind(local)
+        } else {
+            MathElementKind::Unknown
+        },
         tag: Some(local.to_string()),
         attributes,
+        namespace,
         ..MathElement::default()
     })
 }
@@ -134,34 +176,5 @@ fn extract_attribute_name(name: &[u8]) -> String {
 }
 
 fn map_kind(local: &str) -> MathElementKind {
-    match local {
-        "oMath" => MathElementKind::Math,
-        "oMathPara" => MathElementKind::MathParagraph,
-        "r" => MathElementKind::Run,
-        "t" => MathElementKind::Text,
-        "f" => MathElementKind::Fraction,
-        "num" => MathElementKind::Numerator,
-        "den" => MathElementKind::Denominator,
-        "rad" => MathElementKind::Radical,
-        "deg" => MathElementKind::Degree,
-        "e" => MathElementKind::Base,
-        "sSup" => MathElementKind::Superscript,
-        "sSub" => MathElementKind::Subscript,
-        "sPre" => MathElementKind::PreSubSuper,
-        "sup" => MathElementKind::SuperArgument,
-        "sub" => MathElementKind::SubArgument,
-        "nary" => MathElementKind::Nary,
-        "d" => MathElementKind::Delimiter,
-        "box" => MathElementKind::Box,
-        "bar" => MathElementKind::Bar,
-        "groupChr" => MathElementKind::GroupChar,
-        "eqArr" => MathElementKind::EquationArray,
-        "lim" => MathElementKind::Limit,
-        "limLow" => MathElementKind::LimitLower,
-        "m" => MathElementKind::Matrix,
-        "mr" => MathElementKind::MatrixRow,
-        "func" => MathElementKind::Function,
-        "fName" => MathElementKind::FunctionName,
-        _ => MathElementKind::Unknown,
-    }
+    MathElementKind::from_omml_tag(local)
 }

@@ -49,7 +49,7 @@ fn docx(body: &str) -> Vec<u8> {
     let mut buffer = Vec::new();
     {
         let mut zip = zip::ZipWriter::new(Cursor::new(&mut buffer));
-        let options: zip::write::FileOptions<'_, ()> =
+        let options: zip::write::SimpleFileOptions =
             zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
         zip.start_file("[Content_Types].xml", options).unwrap();
@@ -400,7 +400,7 @@ fn super_docx(document_xml: &str, numbering_xml: &str) -> Vec<u8> {
     let mut buffer = Vec::new();
     {
         let mut zip = zip::ZipWriter::new(Cursor::new(&mut buffer));
-        let options: zip::write::FileOptions<'_, ()> =
+        let options: zip::write::SimpleFileOptions =
             zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         zip.start_file("[Content_Types].xml", options).unwrap();
         zip.write_all(br#"<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>"#).unwrap();

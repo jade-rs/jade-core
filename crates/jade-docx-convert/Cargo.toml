@@ -1,0 +1,27 @@
+[package]
+name = "jade-docx-convert"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# Word's other file formats, to and from .docx: plain text in any encoding
+# (Shift_JIS among them), RTF, OpenDocument Text, HTML and — natively — PDF.
+# Every converter goes through one flow model (`flow`), the paragraphs,
+# runs, tables, pictures and sections a document is made of, so each format
+# is a reader into it and a writer out of it, and .docx is one more of each.
+
+[features]
+default = []
+# Opening a PDF as an editable document. lopdf's random numbers need a
+# JavaScript host in wasm: the browser build (jade-docx-editor) turns on
+# lopdf's `wasm_js` alongside this.
+pdf = ["dep:lopdf", "dep:flate2"]
+
+[dependencies]
+jade-opc = { path = "../jade-opc" }
+quick-xml = "0.41"
+encoding_rs = "0.8"
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
+base64 = "0.22"
+lopdf = { version = "=0.39.0", optional = true, default-features = false }
+flate2 = { version = "1", optional = true }

@@ -11,6 +11,8 @@ pub struct InsertFieldCommand {
     range: SelectionRange,
     kind: HeadlessFieldKind,
     cached_text: String,
+    format: Option<String>,
+    kind_override: Option<RunFieldKind>,
     previous_document: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
@@ -21,21 +23,49 @@ impl InsertFieldCommand {
             range,
             kind,
             cached_text,
+            format: None,
+            kind_override: None,
             previous_document: None,
             previous_selection: None,
         }
     }
 
+    /// A `DATE` or `TIME` field with a `\@` date picture, as Word's 日付と
+    /// 時刻 dialog inserts one with 自動的に更新する checked.
+    pub fn with_format(mut self, format: Option<String>) -> Self {
+        self.format = format.filter(|picture| !picture.trim().is_empty());
+        self
+    }
+
+    /// A field of any modelled kind (`EQ \o\ac` for 囲い文字), showing
+    /// `cached_text`.
+    pub fn of_kind(range: SelectionRange, kind: RunFieldKind, cached_text: String) -> Self {
+        let mut command = Self::new(range, HeadlessFieldKind::Date, cached_text);
+        command.kind_override = Some(kind);
+        command
+    }
+
     fn run_field_kind(&self) -> RunFieldKind {
+        if let Some(kind) = self.kind_override.clone() {
+            return kind;
+        }
         match self.kind {
-            HeadlessFieldKind::Date => RunFieldKind::Date { format: None },
-            HeadlessFieldKind::Time => RunFieldKind::Time { format: None },
+            HeadlessFieldKind::Date => RunFieldKind::Date {
+                format: self.format.clone(),
+            },
+            HeadlessFieldKind::Time => RunFieldKind::Time {
+                format: self.format.clone(),
+            },
             HeadlessFieldKind::Page => RunFieldKind::PageNumber,
             HeadlessFieldKind::NumPages => RunFieldKind::NumPages,
             // Jade deliberately leaves FILENAME cached: the package contains
             // no authoritative filesystem name, and the host owns that value.
             HeadlessFieldKind::FileName => RunFieldKind::Unsupported {
                 instruction: "FILENAME".to_string(),
+            },
+            HeadlessFieldKind::StyleRef => RunFieldKind::StyleRef {
+                style: "heading 1".to_string(),
+                from_bottom: false,
             },
         }
     }
@@ -199,6 +229,7 @@ mod tests {
             (HeadlessFieldKind::FileName, RunFieldKind::Unsupported { instruction }) => {
                 instruction.trim().eq_ignore_ascii_case("FILENAME")
             }
+            (HeadlessFieldKind::StyleRef, RunFieldKind::StyleRef { .. }) => true,
             _ => false,
         }
     }
@@ -210,6 +241,7 @@ mod tests {
             HeadlessFieldKind::Page => "PAGE",
             HeadlessFieldKind::NumPages => "NUMPAGES",
             HeadlessFieldKind::FileName => "FILENAME",
+            HeadlessFieldKind::StyleRef => "STYLEREF",
         }
     }
 

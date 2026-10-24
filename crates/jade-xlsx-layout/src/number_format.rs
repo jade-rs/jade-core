@@ -20,13 +20,37 @@ use jade_xlsx_reader::{CellValue, DateSystem};
 pub struct Formatted {
     pub text: String,
     pub color: Option<FormatColor>,
+    /// `*c` in the format: where in `text` the character `c` repeats to fill
+    /// the cell's width (an accounting format's gap between `$` and the
+    /// number). The text itself carries no copies of it.
+    pub fill: Option<(usize, char)>,
 }
 
 impl Formatted {
     fn plain(text: String) -> Self {
-        Self { text, color: None }
+        Self {
+            text,
+            color: None,
+            fill: None,
+        }
+    }
+
+    /// The text with the fill character repeated `count` times in its place.
+    pub fn filled(&self, count: usize) -> String {
+        match self.fill {
+            Some((at, character)) => {
+                let mut text = self.text.clone();
+                text.insert_str(at, &character.to_string().repeat(count));
+                text
+            }
+            None => self.text.clone(),
+        }
     }
 }
+
+/// Stands where a `*` repeat goes, followed by the character to repeat,
+/// until [`format_value`] lifts it out of the text.
+const FILL_MARK: char = '\u{E000}';
 
 /// The colours a number format can name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,13 +95,32 @@ impl FormatColor {
 ///
 /// `code` is the format code from the style table; `None` means General.
 pub fn format_value(value: &CellValue, code: Option<&str>, dates: DateSystem) -> Formatted {
-    match value {
+    let mut formatted = match value {
         CellValue::Empty => Formatted::plain(String::new()),
         CellValue::Bool(flag) => Formatted::plain(if *flag { "TRUE" } else { "FALSE" }.to_string()),
         CellValue::Error(message) => Formatted::plain(message.clone()),
         CellValue::Text(text) => format_text(text, code),
         CellValue::Number(number) => format_number(*number, code, dates),
+    };
+    // Only the first repeat counts; any other is dropped as Excel drops it.
+    if let Some(at) = formatted.text.find(FILL_MARK) {
+        let mut rest = formatted.text[at + FILL_MARK.len_utf8()..].chars();
+        let character = rest.next().filter(|c| *c != FILL_MARK).unwrap_or(' ');
+        let after: String = rest.collect::<String>();
+        let mut text = formatted.text[..at].to_string();
+        let mut tail = after.split(FILL_MARK);
+        text.push_str(tail.next().unwrap_or_default());
+        for piece in tail {
+            text.push_str(
+                piece
+                    .get(piece.chars().next().map_or(0, char::len_utf8)..)
+                    .unwrap_or(""),
+            );
+        }
+        formatted.text = text;
+        formatted.fill = Some((at, character));
     }
+    formatted
 }
 
 fn format_text(text: &str, code: Option<&str>) -> Formatted {
@@ -86,8 +129,13 @@ fn format_text(text: &str, code: Option<&str>) -> Formatted {
     let Some(sections) = code.map(split_sections) else {
         return Formatted::plain(text.to_string());
     };
-    let Some(section) = sections.get(3) else {
-        return Formatted::plain(text.to_string());
+    // A format of one section that places text (`@*.`) is a text format.
+    let section = match sections.as_slice() {
+        [only] if is_text_section(only) => only,
+        _ => match sections.get(3) {
+            Some(section) => section,
+            None => return Formatted::plain(text.to_string()),
+        },
     };
     let (color, pattern) = take_color(section);
     let mut out = String::new();
@@ -97,13 +145,22 @@ fn format_text(text: &str, code: Option<&str>) -> Formatted {
             '@' => out.push_str(text),
             '"' => out.extend(chars.by_ref().take_while(|c| *c != '"')),
             '\\' => out.extend(chars.next()),
-            '*' | '_' => {
+            '*' => {
+                out.push(FILL_MARK);
+                out.extend(chars.next());
+            }
+            '_' => {
                 chars.next();
+                out.push(' ');
             }
             other => out.push(other),
         }
     }
-    Formatted { text: out, color }
+    Formatted {
+        text: out,
+        color,
+        fill: None,
+    }
 }
 
 fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted {
@@ -152,18 +209,24 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         return Formatted {
             text: String::new(),
             color,
+            fill: None,
         };
     }
     if pattern.eq_ignore_ascii_case("general") {
         return Formatted {
             text: format!("{sign}{}", general(magnitude)),
             color,
+            fill: None,
         };
     }
 
     if is_date_pattern(&pattern) {
         return match format_datetime(magnitude, &pattern, dates) {
-            Some(text) => Formatted { text, color },
+            Some(text) => Formatted {
+                text,
+                color,
+                fill: None,
+            },
             None => Formatted::plain(general(value)),
         };
     }
@@ -172,6 +235,7 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         return Formatted {
             text: format!("{sign}{text}"),
             color,
+            fill: None,
         };
     }
 
@@ -179,6 +243,7 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         return Formatted {
             text: format!("{sign}{}", apply(magnitude, &format)),
             color,
+            fill: None,
         };
     }
     // A section with no placeholder at all is its literals: `0;-0;"-"` shows a
@@ -187,6 +252,7 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         return Formatted {
             text: literal,
             color,
+            fill: None,
         };
     }
     // Anything else unrecognised: the stored number is visibly unfinished
@@ -302,8 +368,13 @@ fn literal_only(pattern: &str) -> Option<String> {
                 }
             }
             '\\' => out.extend(chars.next()),
-            '_' | '*' => {
+            '*' => {
+                out.push(FILL_MARK);
+                out.extend(chars.next());
+            }
+            '_' => {
                 chars.next();
+                out.push(' ');
             }
             other => out.push(other),
         }
@@ -760,7 +831,8 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
                 literal!(" ");
             }
             '*' => {
-                chars.next();
+                let repeated = chars.next().unwrap_or(' ');
+                literal!(&format!("{FILL_MARK}{repeated}"));
             }
             '@' => return None,
             other => literal!(&other.to_string()),
@@ -1451,6 +1523,22 @@ pub fn is_calendar_date_valid(year: u32, month: u32, day: u32, dates: DateSystem
         return true;
     }
     civil_from_days(days_from_civil(i64::from(year), month, day)) == (i64::from(year), month, day)
+}
+
+/// The (year, month, day) a date serial falls on.
+pub(crate) fn serial_to_civil(serial: f64, dates: DateSystem) -> Option<(i32, u32, u32)> {
+    let [year, month, day, ..] = calendar_fields(serial, dates)?;
+    Some((year as i32, month, day))
+}
+
+/// The serial of a civil date (after February 1900).
+pub(crate) fn civil_to_serial(year: i32, month: u32, day: u32, dates: DateSystem) -> Option<f64> {
+    let epoch = match dates {
+        DateSystem::Nineteen00 => days_from_civil(1899, 12, 30),
+        DateSystem::Nineteen04 => days_from_civil(1904, 1, 1),
+    };
+    let days = days_from_civil(i64::from(year), month, day) - epoch;
+    (days >= 0).then_some(days as f64)
 }
 
 /// Days since 1970-01-01 for a civil date, and its inverse.

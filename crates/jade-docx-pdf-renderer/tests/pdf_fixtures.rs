@@ -303,7 +303,7 @@ fn inline_image_docx_with_jpeg_media() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         if name == "word/media/image1.png" {
             continue;
         }
@@ -352,7 +352,7 @@ fn mixed_page_size_docx() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -389,7 +389,7 @@ fn prepend_paragraphs_to_docx<'a>(
     let options = SimpleFileOptions::default();
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -412,7 +412,7 @@ fn run_styles_docx_with_highlight() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -440,7 +440,7 @@ fn run_styles_docx_with_char_spacing() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -468,7 +468,7 @@ fn run_styles_docx_with_text_scale(scale_percent: u32) -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -496,7 +496,7 @@ fn run_styles_docx_with_run_property(property_xml: &str) -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -1986,5 +1986,90 @@ fn render_pdf_report_no_longer_flags_italic_as_unsupported_styling() {
             .any(|warning| warning.starts_with("PDF_UNSUPPORTED_RUN_STYLING")),
         "italic is painted as a synthetic oblique now and must not warn: {:?}",
         report.warnings
+    );
+}
+
+/// Fill colours (`rg`) set before `re` rectangles, as (r, g, b) per rectangle.
+fn rectangle_fill_colors(operations: &[lopdf::content::Operation]) -> Vec<(f32, f32, f32)> {
+    let mut current = (0.0, 0.0, 0.0);
+    let mut out = Vec::new();
+    for operation in operations {
+        match operation.operator.as_str() {
+            "rg" => {
+                let value = |index: usize| operation.operands[index].as_float().unwrap_or(0.0);
+                current = (value(0), value(1), value(2));
+            }
+            "re" => out.push(current),
+            _ => {}
+        }
+    }
+    out
+}
+
+#[test]
+fn render_pdf_draws_character_borders_in_their_line_style() {
+    let red = (1.0, 0.0, 0.0);
+    let rules = |property_xml: &str| {
+        let bytes = run_styles_docx_with_run_property(property_xml);
+        let (pdf, report) =
+            render_docx_to_pdf_with_report(&bytes, &RenderOptions::default()).expect("render pdf");
+        assert!(
+            !report
+                .warnings
+                .iter()
+                .any(|warning| warning.starts_with("PDF_UNSUPPORTED_RUN_STYLING")),
+            "a character border is drawn: {:?}",
+            report.warnings
+        );
+        rectangle_fill_colors(&first_page_operations(&pdf))
+            .into_iter()
+            .filter(|color| *color == red)
+            .count()
+    };
+    let single = rules(r#"<w:bdr w:val="single" w:sz="12" w:space="0" w:color="FF0000"/>"#);
+    let double = rules(r#"<w:bdr w:val="double" w:sz="12" w:space="0" w:color="FF0000"/>"#);
+    let dotted = rules(r#"<w:bdr w:val="dotted" w:sz="12" w:space="0" w:color="FF0000"/>"#);
+    assert!(single >= 4, "four sides: {single}");
+    assert_eq!(double, single * 2, "two rules a side");
+    assert!(dotted > double, "dots along every side: {dotted}");
+}
+
+#[test]
+fn render_pdf_draws_paragraph_borders_in_their_line_style() {
+    let bytes = fs::read(fixture_path("run-styles.docx")).expect("read run-styles fixture");
+    let mut input = ZipArchive::new(Cursor::new(bytes)).expect("open fixture zip");
+    let mut output = Cursor::new(Vec::new());
+    let mut writer = ZipWriter::new(&mut output);
+    for index in 0..input.len() {
+        let mut file = input.by_index(index).expect("zip entry");
+        let name = file.name().unwrap().into_owned();
+        let mut data = Vec::new();
+        file.read_to_end(&mut data).expect("read zip entry");
+        if name == "word/document.xml" {
+            data = String::from_utf8(data)
+                .expect("document xml")
+                .replacen(
+                    r#"<w:jc w:val="left"/></w:pPr>"#,
+                    r#"<w:pBdr><w:top w:val="thinThickSmallGap" w:sz="24" w:space="1" w:color="0000FF"/><w:bottom w:val="double" w:sz="12" w:space="1" w:color="0000FF"/></w:pBdr><w:jc w:val="left"/></w:pPr>"#,
+                    1,
+                )
+                .into_bytes();
+        }
+        writer
+            .start_file(name, SimpleFileOptions::default())
+            .expect("start zip entry");
+        writer.write_all(&data).expect("write zip entry");
+    }
+    writer.finish().expect("finish zip");
+    let (pdf, _) = render_docx_to_pdf_with_report(&output.into_inner(), &RenderOptions::default())
+        .expect("render pdf");
+    let operations = first_page_operations(&pdf);
+    let blue = rectangle_fill_colors(&operations)
+        .into_iter()
+        .filter(|color| *color == (0.0, 0.0, 1.0))
+        .count();
+    assert_eq!(
+        blue, 4,
+        "a thin and a thick rule above, two equal ones below"
     );
 }

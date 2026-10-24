@@ -1381,9 +1381,27 @@ impl StylesPart {
                 }
             }
             b"w:color" => {
-                let color = attr_value(element, b"w:val").and_then(normalize_ooxml_color);
+                // A theme colour in the scheme being read (see
+                // `theme::ThemeColorScope`), else the cached value.
+                let color = attr_value(element, b"w:themeColor")
+                    .and_then(|theme| {
+                        crate::theme::text_theme_color(
+                            &theme,
+                            attr_value(element, b"w:themeTint").as_deref(),
+                            attr_value(element, b"w:themeShade").as_deref(),
+                        )
+                    })
+                    .or_else(|| attr_value(element, b"w:val").and_then(normalize_ooxml_color));
+                let theme = attr_value(element, b"w:themeColor")
+                    .filter(|name| !name.is_empty())
+                    .map(|name| crate::document::RunThemeColor {
+                        name: name.as_str().into(),
+                        tint: attr_value(element, b"w:themeTint").map(|v| v.as_str().into()),
+                        shade: attr_value(element, b"w:themeShade").map(|v| v.as_str().into()),
+                    });
                 apply_to_active_run_properties(self, current_style, state, |props| {
                     props.color = color.map(Into::into);
+                    props.theme_color = theme.clone().map(Box::new);
                 });
             }
             b"w:sz" => {
@@ -2414,6 +2432,31 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.ruby.is_some() {
         target.ruby = source.ruby.clone();
     }
+    // Word 2010 typography and text effects (`w14:ligatures`, `w14:glow`, …)
+    // inherit setting by setting, as the other run properties do.
+    if let Some(source_effects) = source.text_effects.as_deref() {
+        let effects = target.text_effects.get_or_insert_with(Default::default);
+        macro_rules! inherit {
+            ($($field:ident),*) => {
+                $(if source_effects.$field.is_some() {
+                    effects.$field = source_effects.$field.clone();
+                })*
+            };
+        }
+        inherit!(
+            ligatures,
+            number_form,
+            number_spacing,
+            stylistic_set,
+            contextual_alternates,
+            glow_color,
+            glow_radius,
+            glow_alpha,
+            outline_color,
+            outline_width,
+            enclosure
+        );
+    }
 }
 
 fn merge_indent_override(target: &mut Indent, source: &Indent) {
@@ -2458,15 +2501,19 @@ fn merge_indent_override(target: &mut Indent, source: &Indent) {
 fn merge_spacing_override(target: &mut Spacing, source: &Spacing) {
     if source.before.is_some() {
         target.before = source.before;
+        target.before_auto = source.before_auto;
     }
     if source.after.is_some() {
         target.after = source.after;
+        target.after_auto = source.after_auto;
     }
     if source.before_lines.is_some() {
         target.before_lines = source.before_lines;
+        target.before_auto = false;
     }
     if source.after_lines.is_some() {
         target.after_lines = source.after_lines;
+        target.after_auto = false;
     }
     if source.line.is_some() {
         target.line = source.line;

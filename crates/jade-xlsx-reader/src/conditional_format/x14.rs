@@ -162,6 +162,9 @@ fn visual(
     id: Option<String>,
     issues: &mut Vec<String>,
 ) -> Result<Option<ConditionalVisual>> {
+    if rule.attr("type") == Some("iconSet") && base.is_none() {
+        return Ok(icon_set(rule, issues));
+    }
     if rule.attr("type") != Some("dataBar") {
         issues.push("unsupported x14 conditional rule type".into());
         return Ok(None);
@@ -187,6 +190,7 @@ fn visual(
         thresholds.push(ConditionalThreshold {
             kind: threshold.attr("type").unwrap_or_default().into(),
             value: formulas.first().map(|formula| formula.text.clone()),
+            gte: true,
         });
     }
     let gradient = boolean(bar, "gradient", true, issues);
@@ -296,6 +300,59 @@ fn visual(
             context_right_to_left: right_to_left,
         })),
     }))
+}
+
+/// An x14 icon set: the 2010 sets (`3Stars`, `3Triangles`, `5Boxes`) and
+/// custom sets that borrow each band's icon from another set.
+fn icon_set(rule: &Node, issues: &mut Vec<String>) -> Option<ConditionalVisual> {
+    if !rule.children(Ns::Xm, b"f").is_empty() {
+        issues.push("x14 rule predicate formulas are not supported".into());
+    }
+    let sets = rule.children(Ns::X14, b"iconSet");
+    if sets.len() != 1 {
+        issues.push("x14 icon set definition is missing or duplicated".into());
+        return None;
+    }
+    let set = sets[0];
+    let mut thresholds = Vec::new();
+    for threshold in set.children(Ns::X14, b"cfvo") {
+        let formulas = threshold.children(Ns::Xm, b"f");
+        if formulas.len() > 1 {
+            issues.push("invalid or extended x14 threshold".into());
+        }
+        thresholds.push(ConditionalThreshold {
+            kind: threshold.attr("type").unwrap_or_default().into(),
+            value: formulas
+                .first()
+                .map(|formula| formula.text.clone())
+                .or_else(|| threshold.attr("val").map(str::to_string)),
+            gte: boolean(threshold, "gte", true, issues),
+        });
+    }
+    let custom = if boolean(set, "custom", false, issues) {
+        set.children(Ns::X14, b"cfIcon")
+            .into_iter()
+            .map(|icon| {
+                let name = icon.attr("iconSet").unwrap_or("NoIcons");
+                (name != "NoIcons").then(|| CustomIcon {
+                    icon_set: name.to_string(),
+                    index: icon
+                        .attr("iconId")
+                        .and_then(|id| id.parse().ok())
+                        .unwrap_or(0),
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Some(ConditionalVisual::IconSet {
+        icon_set: set.attr("iconSet").unwrap_or("3TrafficLights1").to_string(),
+        thresholds,
+        reverse: boolean(set, "reverse", false, issues),
+        show_value: boolean(set, "showValue", true, issues),
+        custom,
+    })
 }
 
 pub(super) fn reconcile(xml: &str, formats: &mut Vec<ConditionalFormatting>) -> Result<()> {
@@ -539,6 +596,7 @@ pub(super) fn reconcile(xml: &str, formats: &mut Vec<ConditionalFormatting>) -> 
                 visual,
                 issues,
                 ranking: Default::default(),
+                time_period: None,
             }],
         });
     }

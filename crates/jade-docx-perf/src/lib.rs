@@ -233,9 +233,13 @@ fn render_cold(
     model: &WordDocument,
     options: &Options,
 ) -> Result<(), String> {
-    let document = model.document.as_ref().ok_or("no main document")?;
+    // The editor renders the model's own `Rc<Document>` (see `canvas_view`).
+    // `CanvasRenderer::render` deep-clones a borrowed document instead, a
+    // cost no editor render pays, which made up about a tenth of what the
+    // layout and repaint scenarios measured.
+    let document = model.document.clone().ok_or("no main document")?;
     renderer
-        .render(document, options)
+        .render_with_numbering_rc(document, options, None, None, None, None)
         .map_err(|err| format!("render: {err:?}"))
 }
 

@@ -61,6 +61,9 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     };
     layout_sheet(

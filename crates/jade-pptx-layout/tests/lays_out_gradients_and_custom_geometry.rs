@@ -37,6 +37,7 @@ fn shape(name: &str, fill: Option<Fill>) -> Shape {
         image_part: None,
         source_rect: None,
         shadow: None,
+        effects: Default::default(),
     }
 }
 

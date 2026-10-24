@@ -167,11 +167,20 @@ struct HfEditCursor {
     offset: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HfPackageTarget {
+    part_path: String,
+    range: SelectionRange,
+}
+
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct HfClipboardSelection {
     variant: HfVariant,
     anchor: HfEditCursor,
     focus: HfEditCursor,
+    package_target: Option<HfPackageTarget>,
 }
 
 const HF_EDIT_LINE_HEIGHT: f64 = 20.0;
@@ -179,6 +188,13 @@ const HF_EDIT_CONTENT_START_RATIO: f64 = 0.5;
 
 struct CanvasDocumentState {
     options: Options,
+    /// Which fields show their codes (⌥F9 / ⇧F9).
+    field_code_view: crate::fields::FieldCodeView,
+    outline_display: crate::word::outline::OutlineDisplay,
+    /// Word's オートコレクト while typing; `None` while it is off.
+    word_autocorrect: Option<crate::word::autocorrect::AutoCorrectOptions>,
+    /// The equation being edited in place, its caret inside the structure.
+    equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
@@ -209,6 +225,8 @@ struct CanvasDocumentState {
     hf_selection_anchor: Option<HfEditCursor>,
     hf_undo_stack: Vec<HfHistoryEntry>,
     hf_redo_stack: Vec<HfHistoryEntry>,
+    hf_history_revision: u64,
+    hf_provisional_recording: bool,
 }
 
 /// Updates the user's live formatting-mark preference. While a clean page
@@ -256,7 +274,9 @@ fn command_mutates_header_footer_stories(name: &str) -> bool {
 }
 
 fn command_mutates_style_definitions(name: &str) -> bool {
-    matches!(name, "edit_document_package" | "set_document_theme")
+    // A Word model action (`word_*`, see `canvas_view/word_session.rs`) can
+    // rewrite the styles part or the package with it.
+    matches!(name, "edit_document_package" | "set_document_theme") || name.starts_with("word_")
 }
 
 fn sync_renderer_header_footer_stories(renderer: &mut CanvasRenderer, word_doc: &WordDocument) {
@@ -844,6 +864,43 @@ impl<T: PartialEq> UniformField<T> {
     }
 }
 
+#[path = "canvas_view/word_autocorrect.rs"]
+mod word_autocorrect;
+#[path = "canvas_view/word_checks.rs"]
+mod word_checks;
+#[path = "canvas_view/word_controls.rs"]
+mod word_controls;
+#[path = "canvas_view/word_equation.rs"]
+mod word_equation;
+#[path = "canvas_view/word_ink.rs"]
+mod word_ink;
+#[path = "canvas_view/word_layout_objects.rs"]
+mod word_layout_objects;
+#[path = "canvas_view/word_lists.rs"]
+mod word_lists;
+#[path = "canvas_view/word_mailings.rs"]
+mod word_mailings;
+#[path = "canvas_view/word_misc.rs"]
+mod word_misc;
+#[path = "canvas_view/word_models.rs"]
+mod word_models;
+#[path = "canvas_view/word_objects.rs"]
+mod word_objects;
+#[path = "canvas_view/word_parity.rs"]
+mod word_parity;
+#[path = "canvas_view/word_parts.rs"]
+mod word_parts;
+#[path = "canvas_view/word_ranges.rs"]
+mod word_ranges;
+#[path = "canvas_view/word_references.rs"]
+mod word_references;
+#[path = "canvas_view/word_review.rs"]
+mod word_review;
+#[path = "canvas_view/word_session.rs"]
+mod word_session;
+#[path = "canvas_view/word_tools.rs"]
+mod word_tools;
+
 mod ordered_size {
     /// f32 font sizes wrapped for equality comparison in [`super::UniformField`].
     #[derive(Debug, PartialEq)]
@@ -1305,6 +1362,33 @@ impl RowResizeState {
     }
 }
 
+fn resolved_ruler_indent(properties: &ParagraphProperties, unit_pt: f64) -> JsValue {
+    let indent = properties.indent.as_ref();
+    let bidi = properties.bidi.unwrap_or(false);
+    serde_json::json!({
+        "left": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_left_pt(i, bidi, unit_pt)).unwrap_or(0.0),
+        "right": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_right_pt(i, bidi, unit_pt)).unwrap_or(0.0),
+        "first": indent.and_then(|i| jade_docx_layout::line_wrap::resolve_indent_first_line_pt(i, unit_pt, true)).unwrap_or(0.0),
+    }).serialize(&serde_wasm_bindgen::Serializer::json_compatible()).unwrap_or(JsValue::NULL)
+}
+
+#[derive(Clone, Copy)]
+struct FormatPreviewState {
+    revision: u64,
+    selection: Option<SelectionRange>,
+}
+
+/// Story previews never enter the bounded undo stack or clear existing redo.
+struct HfFormatPreviewState {
+    document: WordDocument,
+    cursor: HfEditCursor,
+    anchor: Option<HfEditCursor>,
+    mode: EditingMode,
+    variant: HfVariant,
+    revision: u64,
+    body_revision: u64,
+}
+
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct OffscreenDocumentView {
@@ -1314,6 +1398,10 @@ pub struct OffscreenDocumentView {
     /// Whether the column/row drag in progress is applied to the document as
     /// a live preview (its history entry is retracted before the next one).
     table_resize_preview: Rc<Cell<bool>>,
+    /// The live preview of a gallery choice under the pointer: the history
+    /// revision its provisional edit left and any selection to restore.
+    style_preview: Rc<Cell<Option<FormatPreviewState>>>,
+    hf_format_preview: Rc<RefCell<Option<HfFormatPreviewState>>>,
     resize_debug: Rc<RefCell<Option<String>>>,
     pending_image_wait: Rc<RefCell<Option<Promise>>>,
 }
@@ -2852,6 +2940,61 @@ impl OffscreenDocumentView {
         .then_some((segment, text))
     }
 
+    /// Resolve only lines whose UTF-8 offsets address ordinary story paragraphs.
+    /// Table rows, fields and tab-separated segments keep the text paste path.
+    fn hf_package_target(state: &CanvasDocumentState) -> Option<HfPackageTarget> {
+        let word_doc = state.word_doc.as_ref()?;
+        let focus = state.hf_edit_cursor?;
+        let anchor = state.hf_selection_anchor.unwrap_or(focus);
+        Self::hf_package_target_for_selection(
+            word_doc,
+            state.editing_mode,
+            state.hf_variant,
+            anchor,
+            focus,
+        )
+    }
+
+    fn hf_package_target_for_selection(
+        word_doc: &WordDocument,
+        mode: EditingMode,
+        hf_variant: HfVariant,
+        anchor: HfEditCursor,
+        focus: HfEditCursor,
+    ) -> Option<HfPackageTarget> {
+        if anchor.page_index != focus.page_index {
+            return None;
+        }
+        let (role, variant) = Self::hf_role_variant(mode, hf_variant)?;
+        let reference = word_doc.active_hf_reference(role, variant)?;
+        let part_path = word_doc.hf_part_path_for_reference(&reference)?;
+        let lines = Self::variant_lines(word_doc, mode, hf_variant)?;
+        for index in
+            anchor.line_index.min(focus.line_index)..=anchor.line_index.max(focus.line_index)
+        {
+            Self::hf_plain_line_segment(word_doc, mode, hf_variant, index, lines.get(index)?)?;
+        }
+        for cursor in [anchor, focus] {
+            let (segment, text) = Self::hf_plain_line_segment(
+                word_doc,
+                mode,
+                hf_variant,
+                cursor.line_index,
+                lines.get(cursor.line_index)?,
+            )?;
+            if segment != cursor.segment || !text.is_char_boundary(cursor.offset) {
+                return None;
+            }
+        }
+        Some(HfPackageTarget {
+            part_path,
+            range: SelectionRange::new(
+                TextPosition::new(anchor.line_index, anchor.offset),
+                TextPosition::new(focus.line_index, focus.offset),
+            ),
+        })
+    }
+
     fn hf_segment_text(
         &self,
         mode: EditingMode,
@@ -3248,6 +3391,10 @@ impl OffscreenDocumentView {
 
     fn push_hf_history_entry(&self, entry: HfHistoryEntry) {
         let mut state = self.state.borrow_mut();
+        if state.hf_provisional_recording {
+            return;
+        }
+        state.hf_history_revision = state.hf_history_revision.wrapping_add(1);
         state.hf_undo_stack.push(entry);
         // Each entry retains TWO full `WordDocument` clones (before + after), so
         // an unbounded stack grows memory steeply over a long header/footer
@@ -3782,6 +3929,129 @@ impl OffscreenDocumentView {
         Ok(Some(cursor))
     }
 
+    async fn apply_hf_package_edit(
+        &self,
+        bytes: Vec<u8>,
+        expected: Vec<u8>,
+        part_path: String,
+        caret: TextPosition,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, variant, before_cursor, before_anchor, target, options) = {
+            let state = self.state.borrow();
+            let target = Self::hf_package_target(&state)
+                .filter(|target| target.part_path == part_path)
+                .ok_or_else(|| JsValue::from_str("The story paste destination is unavailable"))?;
+            if state.preview_mode || state.options.record_changes() {
+                return Err(JsValue::from_str(
+                    "Package edits require an editable untracked story",
+                ));
+            }
+            (
+                state.editing_mode,
+                state.hf_variant,
+                state.hf_edit_cursor,
+                state.hf_selection_anchor,
+                target,
+                state.options.clone(),
+            )
+        };
+        let replacement = WordDocument::load(&bytes, &options)
+            .await
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        let snapshot = replacement
+            .snapshot_for_replacement()
+            .ok_or_else(|| JsValue::from_str("Document is unavailable"))?;
+        let (before_doc, after_doc, after_cursor) = {
+            let mut state = self.state.borrow_mut();
+            // Loading images yields to other messages. Recheck both the story
+            // destination and the entire source before changing document/history.
+            if state.preview_mode
+                || state.options.record_changes()
+                || state.editing_mode != mode
+                || state.hf_variant != variant
+                || state.hf_edit_cursor != before_cursor
+                || state.hf_selection_anchor != before_anchor
+                || Self::hf_package_target(&state).as_ref() != Some(&target)
+            {
+                return Err(JsValue::from_str(
+                    "The story paste destination changed; try again",
+                ));
+            }
+            let before_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("Document is unavailable"))?;
+            if before_doc
+                .export_docx()
+                .map_err(|error| JsValue::from_str(&error.to_string()))?
+                != expected
+            {
+                return Err(JsValue::from_str(
+                    "The document changed while preparing the edit; try again",
+                ));
+            }
+            let before_doc = before_doc.clone();
+            let mut after_doc = before_doc.clone();
+            after_doc.restore_snapshot(snapshot);
+            let (role, hf_variant) = Self::hf_role_variant(mode, variant).unwrap();
+            let reference = after_doc.active_hf_reference(role, hf_variant);
+            if reference
+                .and_then(|id| after_doc.hf_part_path_for_reference(&id))
+                .as_deref()
+                != Some(part_path.as_str())
+            {
+                return Err(JsValue::from_str(
+                    "The replacement changed the story destination",
+                ));
+            }
+            after_doc
+                .hf_ruler_paragraph(role, hf_variant, caret.paragraph)
+                .ok_or_else(|| {
+                    JsValue::from_str("The pasted caret is not an ordinary story paragraph")
+                })?;
+            let lines = Self::variant_lines(&after_doc, mode, variant)
+                .ok_or_else(|| JsValue::from_str("The pasted story is unavailable"))?;
+            let (segment, text) = lines
+                .get(caret.paragraph)
+                .and_then(Self::hf_single_segment)
+                .ok_or_else(|| {
+                    JsValue::from_str("The pasted caret cannot address a story segment")
+                })?;
+            if !text.is_char_boundary(caret.offset) {
+                return Err(JsValue::from_str(
+                    "The pasted caret is outside the story text",
+                ));
+            }
+            let after_cursor = HfEditCursor {
+                line_index: caret.paragraph,
+                segment,
+                offset: caret.offset,
+                ..before_cursor.unwrap()
+            };
+            state.word_doc = Some(after_doc.clone());
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = None;
+            state.selection = None;
+            state.object_selection = None;
+            (before_doc, after_doc, after_cursor)
+        };
+        self.push_hf_history_entry(HfHistoryEntry {
+            before_doc,
+            after_doc,
+            before_cursor,
+            after_cursor: Some(after_cursor),
+            before_selection_anchor: before_anchor,
+            after_selection_anchor: None,
+            mode,
+            variant,
+        });
+        // Package imports can change shared styles and numbering used by body pages.
+        self.renderer.borrow_mut().invalidate_layout_from(0);
+        self.renderer.borrow_mut().clear_paragraph_render_cache();
+        self.prepare_hf_edit_rerender(mode, after_cursor.page_index);
+        self.finish_hf_edit_result_async(mode).await
+    }
+
     async fn insert_hf_text(&self, text: String, mode: EditingMode) -> Result<JsValue, JsValue> {
         if self
             .apply_hf_insertion(mode, || self.insert_hf_text_at_caret(&text, mode))?
@@ -4296,7 +4566,10 @@ impl OffscreenDocumentView {
         let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
             return Ok(JsValue::NULL);
         };
-        let before_doc = self.state.borrow().word_doc.clone();
+        let (before_doc, selection_anchor) = {
+            let state = self.state.borrow();
+            (state.word_doc.clone(), state.hf_selection_anchor)
+        };
         let selection_range = self.hf_selection_paragraph_range(mode);
         let after_doc = {
             let mut state_mut = self.state.borrow_mut();
@@ -4326,14 +4599,16 @@ impl OffscreenDocumentView {
             state_mut.word_doc.clone()
         };
         if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
-            self.push_hf_history(
+            self.push_hf_history_entry(HfHistoryEntry {
                 before_doc,
                 after_doc,
-                Some(cursor),
-                Some(cursor),
+                before_cursor: Some(cursor),
+                after_cursor: Some(cursor),
+                before_selection_anchor: selection_anchor,
+                after_selection_anchor: selection_anchor,
                 mode,
                 variant,
-            );
+            });
         }
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         self.finish_hf_edit_result_sync(mode)
@@ -4488,10 +4763,15 @@ impl OffscreenDocumentView {
             let Some(doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            if !doc
-                .apply_hf_paragraph_commands(role, hf_variant, cursor.line_index, &commands)
-                .map_err(|error| JsValue::from_str(&error))?
-            {
+            let changed = match commands.as_slice() {
+                [HeadlessCommand::SetParagraphStyle { style_id, .. }] => doc
+                    .set_hf_paragraph_style(role, hf_variant, cursor.line_index, style_id.clone()),
+                _ => {
+                    doc.apply_hf_paragraph_commands(role, hf_variant, cursor.line_index, &commands)
+                }
+            }
+            .map_err(|error| JsValue::from_str(&error))?;
+            if !changed {
                 return Ok(JsValue::NULL);
             }
             let alignment = doc
@@ -6564,7 +6844,7 @@ impl OffscreenDocumentView {
         // This allows Rc::make_mut to avoid cloning when ref_count becomes 1.
         let _document_cache = self.drop_renderer_document_cache();
 
-        let (options, numbering_part, header_lines, footer_lines, new_selection) = {
+        let (mut options, numbering_part, header_lines, footer_lines, new_selection) = {
             let mut state = self.state.borrow_mut();
             let mut word_doc = state
                 .word_doc
@@ -6638,6 +6918,12 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if selection_start.paragraph != selection_end.paragraph || text.contains('\n') {
+            if let Some(updated) = self.refresh_outline_after_structure()? {
+                options = updated;
+            }
+        }
+
         {
             let mut renderer = self.renderer.borrow_mut();
             // IMPORTANT (correctness):
@@ -7247,6 +7533,15 @@ impl OffscreenDocumentView {
         &self,
         action: HistoryAction,
     ) -> Result<JsValue, JsValue> {
+        self.perform_history_action_with_selection_async(action, None)
+            .await
+    }
+
+    async fn perform_history_action_with_selection_async(
+        &self,
+        action: HistoryAction,
+        restore_selection: Option<SelectionRange>,
+    ) -> Result<JsValue, JsValue> {
         if let Some(result) = self.perform_hf_history_action_async(action).await? {
             return Ok(result);
         }
@@ -7326,6 +7621,9 @@ impl OffscreenDocumentView {
                     None
                 }
                 Some(footprint) => {
+                    if let Some(selection) = restore_selection {
+                        state_mut.selection = Some(selection);
+                    }
                     state_mut.paged_images.clear();
                     let options = state_mut.options.clone();
                     let numbering_part = word_doc.numbering_part.clone();
@@ -8530,6 +8828,10 @@ impl OffscreenDocumentView {
 
         let state = Rc::new(RefCell::new(CanvasDocumentState {
             options: opts.clone(),
+            field_code_view: Default::default(),
+            outline_display: Default::default(),
+            word_autocorrect: None,
+            equation_editor: None,
             word_doc: None,
             paged_images: Vec::new(),
             lazy_mode: false,
@@ -8550,6 +8852,8 @@ impl OffscreenDocumentView {
             hf_selection_anchor: None,
             hf_undo_stack: Vec::new(),
             hf_redo_stack: Vec::new(),
+            hf_history_revision: 0,
+            hf_provisional_recording: false,
         }));
 
         Ok(OffscreenDocumentView {
@@ -8557,6 +8861,8 @@ impl OffscreenDocumentView {
             state,
             drag_state: Rc::new(RefCell::new(PointerDragState::None)),
             table_resize_preview: Rc::new(Cell::new(false)),
+            style_preview: Rc::new(Cell::new(None)),
+            hf_format_preview: Rc::new(RefCell::new(None)),
             resize_debug: Rc::new(RefCell::new(None)),
             pending_image_wait: Rc::new(RefCell::new(None)),
         })
@@ -8615,6 +8921,10 @@ impl OffscreenDocumentView {
     pub fn undo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            if !view.history_flags().0 && ended.is_object() {
+                return Ok(ended);
+            }
             let protection_history = {
                 let state = view.state.borrow();
                 state.command_executor.next_undo_name() == Some("set_document_protection")
@@ -8637,10 +8947,106 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// リアルタイムのプレビュー: style `id` on the selection while the pointer
+    /// is over it in the gallery — applied as an edit that
+    /// [`Self::end_style_preview`] takes back without a trace in the history.
+    /// A preview already showing gives way first.
+    #[wasm_bindgen(js_name = previewStyle)]
+    pub fn preview_style(&self, id: String) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            if view.state.borrow().preview_mode {
+                return Ok(JsValue::NULL);
+            }
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            if view.state.borrow().editing_mode != EditingMode::Body {
+                return view.apply_hf_story_preview(ended, || view.set_paragraph_style(Some(id)));
+            }
+            let before = {
+                let mut state = view.state.borrow_mut();
+                state.command_executor.set_provisional_recording(true);
+                state.command_executor.history_revision()
+            };
+            let payload = view.run_word_session("word_style_preview", move |session| {
+                use crate::word::styles::WordStyles;
+                session.apply_style(&id)
+            });
+            let revision = {
+                let mut state = view.state.borrow_mut();
+                state.command_executor.set_provisional_recording(false);
+                state.command_executor.history_revision()
+            };
+            match payload {
+                Ok(payload) => {
+                    if revision != before {
+                        view.style_preview.set(Some(FormatPreviewState {
+                            revision,
+                            selection: None,
+                        }));
+                    }
+                    Ok(payload)
+                }
+                // A style that cannot go on the selection previews nothing.
+                Err(_) => Ok(ended),
+            }
+        })
+    }
+
+    /// Takes the gallery preview back off the document, leaving neither an
+    /// undo nor a redo step; `null` when none is showing or anything was
+    /// edited since.
+    #[wasm_bindgen(js_name = endStylePreview)]
+    pub fn end_style_preview(&self) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            let story_preview = view.hf_format_preview.borrow_mut().take();
+            if let Some(preview) = story_preview {
+                {
+                    let mut state = view.state.borrow_mut();
+                    if state.hf_history_revision != preview.revision
+                        || state.command_executor.history_revision() != preview.body_revision
+                    {
+                        return Ok(JsValue::NULL);
+                    }
+                    state.word_doc = Some(preview.document);
+                    state.hf_edit_cursor = Some(preview.cursor);
+                    state.hf_selection_anchor = preview.anchor;
+                    state.editing_mode = preview.mode;
+                    state.hf_variant = preview.variant;
+                }
+                view.prepare_hf_edit_rerender(preview.mode, preview.cursor.page_index);
+                return view.finish_hf_edit_result_sync(preview.mode);
+            }
+            let Some(FormatPreviewState {
+                revision,
+                selection,
+            }) = view.style_preview.replace(None)
+            else {
+                return Ok(JsValue::NULL);
+            };
+            if view.state.borrow().command_executor.history_revision() != revision {
+                return Ok(JsValue::NULL);
+            }
+            let payload = view
+                .perform_history_action_with_selection_async(HistoryAction::Undo, selection)
+                .await?;
+            view.state
+                .borrow_mut()
+                .command_executor
+                .discard_newest_redo();
+            Self::write_history_flags(payload.unchecked_ref(), view.history_flags())?;
+            Ok(payload)
+        })
+    }
+
     #[wasm_bindgen]
     pub fn redo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            let ended = JsFuture::from(view.end_style_preview()).await?;
+            if !view.history_flags().1 && ended.is_object() {
+                return Ok(ended);
+            }
             let protection_history = {
                 let state = view.state.borrow();
                 state.command_executor.next_redo_name() == Some("set_document_protection")
@@ -8684,6 +9090,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = WordDocument::load(&data_vec, &options)
                     .await
@@ -8785,6 +9192,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc.clone());
                     state_mut.paged_images = paged_images.unwrap_or_default();
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -8816,6 +9224,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = WordDocument::load(&data_vec, &options)
                     .await
@@ -8921,6 +9330,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc.clone());
                     state_mut.paged_images = Vec::new(); // Don't store ImageBitmaps
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -9026,6 +9436,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = if defer_roundtrip_xml {
                     WordDocument::load_for_initial_render(&data_vec, &options).await
@@ -9143,6 +9554,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc);
                     state_mut.paged_images = Vec::new();
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -9489,7 +9901,7 @@ impl OffscreenDocumentView {
         let _document_cache = self.drop_renderer_document_cache();
 
         let (
-            options,
+            mut options,
             numbering_part,
             header_lines,
             footer_lines,
@@ -9582,6 +9994,10 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if let Some(updated) = self.refresh_outline_after_structure()? {
+            options = updated;
+        }
+
         let numbered_render_cache_invalidations = if edited_paragraph_numbered {
             let state_ref = self.state.borrow();
             if let Some(word_doc) = state_ref.word_doc.as_ref() {
@@ -10374,9 +10790,15 @@ impl OffscreenDocumentView {
             "lower" => HeadlessChangeCaseMode::Lower,
             "title" => HeadlessChangeCaseMode::Title,
             "sentence" => HeadlessChangeCaseMode::Sentence,
+            "toggle" => HeadlessChangeCaseMode::Toggle,
+            "halfWidth" => HeadlessChangeCaseMode::HalfWidth,
+            "fullWidth" => HeadlessChangeCaseMode::FullWidth,
+            "katakana" => HeadlessChangeCaseMode::Katakana,
+            "hiragana" => HeadlessChangeCaseMode::Hiragana,
             _ => {
                 return Err(JsValue::from_str(
-                    "case mode must be upper, lower, title, or sentence",
+                    "case mode must be upper, lower, title, sentence, toggle, halfWidth, \
+                     fullWidth, katakana, or hiragana",
                 ));
             }
         };
@@ -10509,6 +10931,8 @@ impl OffscreenDocumentView {
                 HeadlessCommand::SetWatermark { .. }
                     | HeadlessCommand::SetDocumentTheme { .. }
                     | HeadlessCommand::SetHeaderFooterVariants { .. }
+                    | HeadlessCommand::SetHeaderFooterLink { .. }
+                    | HeadlessCommand::SetSectionLayout { .. }
             )
         });
         let mut refresh_styles = commands
@@ -10576,12 +11000,36 @@ impl OffscreenDocumentView {
                 | HeadlessCommand::ConvertEndnoteToFootnote { .. }
                 | HeadlessCommand::InsertField { .. }
                 | HeadlessCommand::InsertEquation { .. }
+                | HeadlessCommand::ReplaceEquation { .. }
+                | HeadlessCommand::InsertDateTimeField { .. }
+                | HeadlessCommand::InsertEnclosedCharacter { .. }
+                | HeadlessCommand::InsertTableFormula { .. }
+                | HeadlessCommand::UpdateTableFormulas
                 | HeadlessCommand::InsertIndex { .. }
                 | HeadlessCommand::UpdateTableOfContents
                 | HeadlessCommand::SetParagraphStyle { .. }
                 | HeadlessCommand::SetCharacterStyle { .. }
                 | HeadlessCommand::SetDropCap { .. }
                 | HeadlessCommand::SetHeaderFooterVariants { .. }
+                | HeadlessCommand::SetHeaderFooterLink { .. }
+                // The Office-parity dialogs: each reflows past the edited
+                // paragraph (pagination, typography, grid snapping, ruby line
+                // height) or reshapes the body (sections, tables).
+                | HeadlessCommand::SetParagraphOptions { .. }
+                | HeadlessCommand::SetParagraphPagination { .. }
+                | HeadlessCommand::SetParagraphTypography { .. }
+                | HeadlessCommand::SetParagraphSnapToGrid { .. }
+                | HeadlessCommand::SetJapaneseTypography { .. }
+                | HeadlessCommand::SetRuby { .. }
+                | HeadlessCommand::SetSectionLayout { .. }
+                | HeadlessCommand::SetHyphenation { .. }
+                | HeadlessCommand::SetTableCellSpacing { .. }
+                | HeadlessCommand::SetTableCellTextDirection { .. }
+                | HeadlessCommand::SetTableIndent { .. }
+                | HeadlessCommand::SetTablePosition { .. }
+                | HeadlessCommand::ConvertTextToTable { .. }
+                | HeadlessCommand::ConvertTableToText { .. }
+                | HeadlessCommand::SortTable { .. }
                 | HeadlessCommand::InsertTableRow { .. }
                 | HeadlessCommand::DeleteTableRow { .. }
                 | HeadlessCommand::InsertTableColumn { .. }
@@ -11505,6 +11953,7 @@ impl OffscreenDocumentView {
             cant_split,
             cell_shading,
             cell_vertical_alignment,
+            cell_text_direction,
             table_borders,
             cell_borders,
             table_cell_margins,
@@ -11601,6 +12050,7 @@ impl OffscreenDocumentView {
                 caret_cell
                     .and_then(|cell| cell.vertical_align.clone())
                     .unwrap_or_else(|| "top".to_string()),
+                caret_cell.and_then(|cell| cell.text_direction),
                 table.borders.clone(),
                 word_doc
                     .cell_borders_from_style(cell.table_order_index, cell.row, cell.column)
@@ -11697,6 +12147,14 @@ impl OffscreenDocumentView {
             &result,
             &JsValue::from_str("cellVerticalAlignment"),
             &JsValue::from_str(&cell_vertical_alignment),
+        )?;
+        Reflect::set(
+            &result,
+            &JsValue::from_str("cellTextDirection"),
+            &cell_text_direction
+                .map(|direction| to_value(&direction))
+                .transpose()?
+                .unwrap_or(JsValue::NULL),
         )?;
         Reflect::set(
             &result,
@@ -11938,6 +12396,10 @@ impl OffscreenDocumentView {
             table_order_index: cell.table_order_index,
             first_row,
             banded_rows,
+            last_row: None,
+            first_column: None,
+            last_column: None,
+            banded_columns: None,
         })
     }
 
@@ -12756,6 +13218,16 @@ impl OffscreenDocumentView {
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        if self.state.borrow().preview_mode {
+            return Ok(JsValue::NULL);
+        }
+        if self.state.borrow().editing_mode != EditingMode::Body {
+            return self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphStyle {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                style_id: normalized,
+            }]);
+        }
         self.apply_paragraph_style_headless(|start, end| HeadlessCommand::SetParagraphStyle {
             start_paragraph: start,
             end_paragraph: end,
@@ -13576,7 +14048,8 @@ impl OffscreenDocumentView {
     /// Applies an optimistic, undoable replacement including source package parts.
     /// `caret_paragraph` / `caret_offset` place the caret afterwards (a paste
     /// leaves it right after the pasted content, as in Word); without them it
-    /// goes to the document start.
+    /// goes to the document start. Header/footer edits require their resolved
+    /// `part_path` and a caret in that story; body edits may omit `part_path`.
     #[wasm_bindgen(js_name = applyPackageEdit)]
     pub async fn apply_package_edit(
         &self,
@@ -13584,7 +14057,23 @@ impl OffscreenDocumentView {
         expected: Vec<u8>,
         caret_paragraph: Option<usize>,
         caret_offset: Option<usize>,
+        part_path: Option<String>,
     ) -> Result<JsValue, JsValue> {
+        if let Some(part_path) = part_path {
+            if self.state.borrow().editing_mode != EditingMode::Body {
+                let caret = caret_paragraph
+                    .map(|paragraph| TextPosition::new(paragraph, caret_offset.unwrap_or(0)))
+                    .ok_or_else(|| JsValue::from_str("A story package edit requires a caret"))?;
+                return self
+                    .apply_hf_package_edit(bytes, expected, part_path, caret)
+                    .await;
+            }
+            if part_path != "word/document.xml" {
+                return Err(JsValue::from_str(
+                    "The package destination is not the document body",
+                ));
+            }
+        }
         if self.state.borrow().preview_mode || !self.body_commands_allowed() {
             return Err(JsValue::from_str(
                 "Package edits require an editable document body",
@@ -14247,7 +14736,14 @@ impl OffscreenDocumentView {
         // Drop the renderer's document cache before mutating.
         let _document_cache = self.drop_renderer_document_cache();
 
-        let (options, numbering_part, header_lines, footer_lines, new_selection, merged_paragraphs) = {
+        let (
+            mut options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            new_selection,
+            merged_paragraphs,
+        ) = {
             let mut state = self.state.borrow_mut();
             let mut word_doc = state
                 .word_doc
@@ -14363,6 +14859,12 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if merged_paragraphs {
+            if let Some(updated) = self.refresh_outline_after_structure()? {
+                options = updated;
+            }
+        }
+
         // Text deleted inside one body paragraph, with no paragraph joined, is
         // the same edit as typing there.
         let edits_one_body_paragraph = selected_object.is_none()
@@ -15223,6 +15725,7 @@ impl OffscreenDocumentView {
             variant: state.hf_variant,
             anchor: state.hf_selection_anchor.unwrap_or(focus),
             focus,
+            package_target: Self::hf_package_target(&state),
         })
         .unwrap_or(JsValue::NULL)
     }
@@ -15820,6 +16323,173 @@ impl OffscreenDocumentView {
                 .unwrap_or(JsValue::NULL),
             None => JsValue::NULL,
         }
+    }
+
+    /// Page/content bounds in CSS pixels, without changing or consulting the caret.
+    #[wasm_bindgen(js_name = pageGeometry)]
+    pub fn page_geometry(&self, page_index: usize) -> JsValue {
+        let state = self.state.borrow();
+        let Some(document) = state
+            .word_doc
+            .as_ref()
+            .and_then(|word| word.document.as_ref())
+        else {
+            return JsValue::NULL;
+        };
+        let renderer = self.renderer.borrow();
+        if page_index >= renderer.page_count() {
+            return JsValue::NULL;
+        }
+        let section = document
+            .sections
+            .get(renderer.section_index_for_zero_based_page(page_index))
+            .and_then(|section| section.properties.as_ref());
+        let geometry =
+            jade_docx_layout::text_extract::ruler_geometry(document, section, page_index + 1, 0.0);
+        let value = to_value(&geometry).unwrap_or(JsValue::NULL);
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("pageIndex"),
+            &JsValue::from_f64(page_index as f64),
+        );
+        value
+    }
+
+    /// Geometry for UI rulers, resolved by the shared layout engine.
+    #[wasm_bindgen(js_name = rulerGeometry)]
+    pub fn ruler_geometry(&self) -> JsValue {
+        let state = self.state.borrow();
+        let Some(word_doc) = state.word_doc.as_ref() else {
+            return JsValue::NULL;
+        };
+        let Some(document) = word_doc.document.as_ref() else {
+            return JsValue::NULL;
+        };
+        let selection = state
+            .selection
+            .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let renderer = self.renderer.borrow();
+        let hf_paragraph = state.hf_edit_cursor.and_then(|cursor| {
+            let (role, variant) = Self::hf_role_variant(state.editing_mode, state.hf_variant)?;
+            word_doc.hf_ruler_paragraph(role, variant, cursor.line_index)
+        });
+        let hf_geometry = if state.editing_mode != EditingMode::Body {
+            state.hf_edit_cursor.and_then(|cursor| {
+                self.compute_hf_caret_rect(&renderer, &cursor)
+                    .map(|(x, _, _)| (cursor.page_index, x))
+            })
+        } else {
+            None
+        };
+        if state.editing_mode != EditingMode::Body && hf_geometry.is_none() {
+            return JsValue::NULL;
+        }
+        let focus_geometry = hf_geometry.or_else(|| {
+            renderer
+                .caret_page_index()
+                .zip(renderer.caret_metrics())
+                .map(|(page, metrics)| (page, metrics.x))
+                .or_else(|| {
+                    let rects = renderer.get_selection_rects();
+                    let backwards = (selection.anchor.paragraph, selection.anchor.offset)
+                        > (selection.focus.paragraph, selection.focus.offset);
+                    let rect = if backwards {
+                        rects.first()
+                    } else {
+                        rects.last()
+                    }?;
+                    Some((
+                        rect.page,
+                        if backwards {
+                            rect.x
+                        } else {
+                            rect.x + rect.width
+                        },
+                    ))
+                })
+        });
+        let focus_geometry = focus_geometry.or_else(|| {
+            renderer
+                .paragraph_layout_origin(selection.focus.paragraph)
+                .map(|(page, x, _)| (page, x))
+        });
+        let Some((page_index, caret_x)) = focus_geometry else {
+            return JsValue::NULL;
+        };
+        let section_index = if state.editing_mode == EditingMode::Body {
+            word_doc.section_index_for_paragraph(selection.focus.paragraph)
+        } else {
+            Some(renderer.section_index_for_zero_based_page(page_index))
+        };
+        let section = section_index
+            .and_then(|index| document.sections.get(index))
+            .and_then(|section| section.properties.as_ref());
+        let mut geometry = jade_docx_layout::text_extract::ruler_geometry(
+            document,
+            section,
+            page_index + 1,
+            caret_x,
+        );
+        // Header/footer stories span the page content width, even in a
+        // section whose body flows through multiple columns.
+        if state.editing_mode != EditingMode::Body {
+            geometry.text_left = geometry.content_left;
+            geometry.text_right = geometry.content_right;
+        }
+        let in_cell = state.editing_mode == EditingMode::Body
+            && renderer
+                .cell_id_for_paragraph(selection.focus.paragraph)
+                .is_some();
+        let cell_bounds = (state.editing_mode == EditingMode::Body)
+            .then(|| {
+                renderer
+                    .caret_metrics_at(selection.focus)
+                    .and_then(|caret| {
+                        renderer.selection_manager().cell_text_bounds_for_paragraph(
+                            selection.focus.paragraph,
+                            caret.absolute_top,
+                        )
+                    })
+            })
+            .flatten();
+        if let Some((left, right)) = cell_bounds {
+            geometry.text_left = left;
+            geometry.text_right = right;
+        }
+        let value = to_value(&geometry).unwrap_or(JsValue::NULL);
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("paragraphEditable"),
+            &JsValue::from_bool(if state.editing_mode == EditingMode::Body {
+                !in_cell || cell_bounds.is_some()
+            } else {
+                hf_paragraph.is_some()
+            }),
+        );
+        let paragraph = if state.editing_mode == EditingMode::Body {
+            word_doc.paragraph(selection.focus.paragraph)
+        } else {
+            hf_paragraph.as_ref()
+        };
+        if let Some(paragraph) = paragraph {
+            let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
+                document,
+                section,
+                paragraph,
+                word_doc.styles_part.as_ref(),
+            );
+            let _ = Reflect::set(
+                &value,
+                &JsValue::from_str("characterWidth"),
+                &JsValue::from_f64(unit),
+            );
+        }
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("pageIndex"),
+            &JsValue::from_f64(page_index as f64),
+        );
+        value
     }
 
     /// Returns a paragraph's first line origin in page-local CSS pixels.
@@ -16444,6 +17114,9 @@ impl OffscreenDocumentView {
             if let Some(color) = state.color.as_deref() {
                 set("color", JsValue::from_str(color));
             }
+            if let Some(highlight) = state.highlight.as_deref() {
+                set("highlight", JsValue::from_str(highlight));
+            }
             let result = Object::new();
             let _ = Reflect::set(&result, &JsValue::from_str("run"), &run);
             let view = self.state.borrow();
@@ -16472,7 +17145,45 @@ impl OffscreenDocumentView {
             if let Some(direct) = direct.as_ref() {
                 merge_paragraph_properties_override(&mut paragraph, direct);
             }
+            // The cascade merges formatting, not the authored style identity.
+            paragraph.style = direct
+                .as_ref()
+                .and_then(|properties| properties.style.clone());
             paragraph.alignment.get_or_insert_with(|| Rc::from("left"));
+            let character_unit =
+                view.word_doc
+                    .as_ref()
+                    .zip(view.hf_edit_cursor)
+                    .and_then(|(doc, cursor)| {
+                        let (role, variant) =
+                            Self::hf_role_variant(view.editing_mode, view.hf_variant)?;
+                        let story_paragraph =
+                            doc.hf_ruler_paragraph(role, variant, cursor.line_index)?;
+                        let document = doc.document.as_ref()?;
+                        let section_index = self
+                            .renderer
+                            .borrow()
+                            .section_index_for_zero_based_page(cursor.page_index);
+                        let section = document
+                            .sections
+                            .get(section_index)
+                            .and_then(|section| section.properties.as_ref());
+                        Some(
+                            jade_docx_layout::text_extract::ruler_character_unit_px(
+                                document,
+                                section,
+                                &story_paragraph,
+                                doc.styles_part.as_ref(),
+                            ) * 0.75,
+                        )
+                    });
+            if let Some(unit) = character_unit {
+                let _ = Reflect::set(
+                    &result,
+                    &JsValue::from_str("rulerIndent"),
+                    &resolved_ruler_indent(&paragraph, unit),
+                );
+            }
             let paragraph = to_value(&paragraph).unwrap_or(JsValue::NULL);
             let _ = Reflect::set(&result, &JsValue::from_str("paragraph"), &paragraph);
             drop(view);
@@ -16614,6 +17325,10 @@ impl OffscreenDocumentView {
             merge_paragraph_properties_override(&mut effective_para, direct);
         }
 
+        // Style resolution merges formatting fields, not the authored pStyle
+        // identity. Keep it for galleries and selection controls.
+        effective_para.style = paragraph.properties.as_ref().and_then(|p| p.style.clone());
+
         // ── Resolve numbering format ────────────────────────────────────
         let numbering_format: Option<String> =
             effective_para.numbering.as_ref().and_then(|numbering| {
@@ -16666,6 +17381,25 @@ impl OffscreenDocumentView {
         let result = Object::new();
         let run_js = to_value(&effective_run).unwrap_or(JsValue::NULL);
         let para_js = to_value(&effective_para).unwrap_or(JsValue::NULL);
+        // Ruler edits use physical point values even when OOXML authored the
+        // indent in character units. Resolve through the layout precedence.
+        if let Some(document) = word_doc.document.as_ref() {
+            let section = word_doc
+                .section_index_for_paragraph(selection.focus.paragraph)
+                .and_then(|index| document.sections.get(index))
+                .and_then(|section| section.properties.as_ref());
+            let unit = jade_docx_layout::text_extract::ruler_character_unit_px(
+                document,
+                section,
+                paragraph,
+                word_doc.styles_part.as_ref(),
+            ) * 0.75;
+            let _ = Reflect::set(
+                &result,
+                &JsValue::from_str("rulerIndent"),
+                &resolved_ruler_indent(&effective_para, unit),
+            );
+        }
         let _ = Reflect::set(&result, &JsValue::from_str("run"), &run_js);
         let _ = Reflect::set(&result, &JsValue::from_str("paragraph"), &para_js);
         if let Some(summary) = selection_summary.as_ref() {
@@ -18172,7 +18906,9 @@ impl OffscreenDocumentView {
                         left: format.indent_left,
                         right: format.indent_right,
                         first_line: format.first_line,
+                        first_line_chars: None,
                         hanging: format.hanging,
+                        hanging_chars: None,
                         left_chars: None,
                         right_chars: None,
                         clear_special: false,
@@ -18205,12 +18941,32 @@ impl OffscreenDocumentView {
         self.state.borrow_mut().command_executor.end_group();
     }
 
+    /// Replaces explicit tab stops on the selected body or active story paragraph.
+    #[wasm_bindgen(js_name = "setParagraphTabs")]
+    pub fn set_paragraph_tabs(&self, tabs: JsValue) -> Result<JsValue, JsValue> {
+        let tabs: Vec<jade_docx_headless_api::HeadlessDirectTabStop> =
+            serde_wasm_bindgen::from_value(tabs)
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        self.apply_paragraph_style_headless(move |start, end| HeadlessCommand::SetParagraphTabs {
+            start_paragraph: start,
+            end_paragraph: end,
+            tabs,
+        })
+    }
+
     /// Sets the selected paragraphs' left and right indentation in points.
     /// Point-based values intentionally replace `w:leftChars` / `w:rightChars`
     /// so a precise Layout-ribbon value is not shadowed by an earlier 1字 step.
     #[wasm_bindgen(js_name = "setParagraphIndent")]
-    pub fn set_paragraph_indent(&self, left: f32, right: f32) -> Result<JsValue, JsValue> {
-        if !valid_paragraph_indents(left, right) {
+    pub fn set_paragraph_indent(
+        &self,
+        left: f32,
+        right: f32,
+        first_line: Option<f32>,
+    ) -> Result<JsValue, JsValue> {
+        if !valid_paragraph_indents(left, right)
+            || first_line.is_some_and(|value| !value.is_finite())
+        {
             return Err(JsValue::from_str(
                 "paragraph indents must be finite point values",
             ));
@@ -18220,11 +18976,13 @@ impl OffscreenDocumentView {
             end_paragraph: end,
             left: Some(left),
             right: Some(right),
-            first_line: None,
-            hanging: None,
+            first_line: first_line.filter(|value| *value >= 0.0),
+            hanging: first_line.filter(|value| *value < 0.0).map(f32::abs),
             left_chars: None,
             right_chars: None,
-            clear_special: false,
+            first_line_chars: None,
+            hanging_chars: None,
+            clear_special: first_line == Some(0.0),
         })
     }
 
@@ -18269,6 +19027,8 @@ impl OffscreenDocumentView {
             hanging,
             left_chars: None,
             right_chars: None,
+            first_line_chars: None,
+            hanging_chars: None,
             clear_special,
         })
     }
@@ -18371,6 +19131,13 @@ impl OffscreenDocumentView {
         let color = color
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        if !self.body_commands_allowed() {
+            return self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphShading {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                color,
+            }]);
+        }
         self.apply_paragraph_style_headless(move |start, end| {
             HeadlessCommand::SetParagraphShading {
                 start_paragraph: start,
@@ -18443,10 +19210,25 @@ impl OffscreenDocumentView {
         state_mut.options.set_revision_author(name);
     }
 
+    /// Sets the initials written on comments (ユーザー名の頭文字); `None` or
+    /// a blank string takes them from the author name.
+    #[wasm_bindgen(js_name = "setAuthorInitials")]
+    pub fn set_author_initials(&self, initials: Option<String>) {
+        self.state
+            .borrow_mut()
+            .options
+            .set_author_initials(initials);
+    }
+
     /// Author recorded on new comments. Shares the revision identity because
     /// Word takes both from the same user name.
     fn comment_author(&self) -> String {
         self.state.borrow().options.author_name_or_default()
+    }
+
+    /// The initials recorded on new comments beside [`Self::comment_author`].
+    fn comment_initials(&self) -> String {
+        self.state.borrow().options.author_initials_or_default()
     }
 
     /// Adds a comment anchored to the current (non-collapsed, single-paragraph)
@@ -18475,6 +19257,7 @@ impl OffscreenDocumentView {
         let start_offset = start.offset;
         let end_offset = end.offset;
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // Word と同じくコメントには付けた日時を書く。書かないと、取り込む側で 1970/01/01 のコメントになる。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |start_para, _end_para| {
@@ -18485,7 +19268,7 @@ impl OffscreenDocumentView {
                 end_offset: Some(end_offset),
                 text,
                 author: Some(author),
-                initials: None,
+                initials: Some(initials),
                 date: Some(date),
             }
         })
@@ -18813,13 +19596,14 @@ impl OffscreenDocumentView {
             return Err(JsValue::from_str("返信の本文を入力してください"));
         }
         let author = self.comment_author();
+        let initials = self.comment_initials();
         // 返信もコメントと同じく付けた日時を書く（`add_comment` 参照）。
         let date = current_field_datetime().to_word_comment_date();
         self.apply_paragraph_style_headless(move |_s, _e| HeadlessCommand::ReplyToComment {
             comment_id: comment_id.clone(),
             text: text.clone(),
             author: Some(author.clone()),
-            initials: None,
+            initials: Some(initials.clone()),
             date: Some(date.clone()),
         })
     }
@@ -20332,6 +21116,103 @@ mod tests {
                 "{unit}"
             );
         }
+    }
+
+    #[test]
+    fn header_footer_package_targets_keep_story_byte_offsets_and_reject_ambiguous_lines() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "A日本Z")
+                    .unwrap();
+                doc.set_hf_paragraph_alignment(role, hf_variant, 0, "center")
+                    .unwrap();
+                let anchor = HfEditCursor {
+                    page_index: 2,
+                    line_index: 0,
+                    segment: HfSegment::Center,
+                    offset: 7,
+                };
+                let focus = HfEditCursor {
+                    offset: 1,
+                    ..anchor
+                };
+                let target = OffscreenDocumentView::hf_package_target_for_selection(
+                    &doc, mode, variant, anchor, focus,
+                )
+                .unwrap();
+                assert_eq!(target.range.anchor, TextPosition::new(0, 7));
+                assert_eq!(target.range.focus, TextPosition::new(0, 1));
+                assert_eq!(
+                    Some(target.part_path),
+                    doc.active_hf_reference(role, hf_variant)
+                        .and_then(|id| doc.hf_part_path_for_reference(&id))
+                );
+                for invalid in [
+                    HfEditCursor { offset: 2, ..focus },
+                    HfEditCursor {
+                        offset: 99,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        page_index: 1,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        segment: HfSegment::Right,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        line_index: 1,
+                        ..focus
+                    },
+                ] {
+                    assert!(OffscreenDocumentView::hf_package_target_for_selection(
+                        &doc, mode, variant, anchor, invalid
+                    )
+                    .is_none());
+                }
+                OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "A\tB").unwrap();
+                assert!(OffscreenDocumentView::hf_package_target_for_selection(
+                    &doc, mode, variant, focus, focus
+                )
+                .is_none());
+            }
+        }
+        let doc = futures::executor::block_on(WordDocument::load(
+            include_bytes!("../../../public/fixtures/header.docx"),
+            &Options::default(),
+        ))
+        .unwrap();
+        let cursor = HfEditCursor {
+            page_index: 0,
+            line_index: 0,
+            segment: HfSegment::Left,
+            offset: 0,
+        };
+        assert!(OffscreenDocumentView::hf_package_target_for_selection(
+            &doc,
+            EditingMode::Header,
+            HfVariant::Default,
+            cursor,
+            cursor
+        )
+        .is_none());
+        assert!(OffscreenDocumentView::hf_package_target_for_selection(
+            &doc,
+            EditingMode::Body,
+            HfVariant::Default,
+            cursor,
+            cursor
+        )
+        .is_none());
     }
 
     #[test]

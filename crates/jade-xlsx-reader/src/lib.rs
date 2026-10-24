@@ -36,8 +36,10 @@ pub mod filter_state;
 pub mod formula;
 pub mod model;
 pub mod phonetic;
+pub mod rich_text;
 pub mod shared_strings;
 pub mod sheet;
+pub mod sparkline;
 pub mod styles;
 pub mod table;
 mod theme;
@@ -53,9 +55,10 @@ pub use jade_opc::OpcPackage;
 pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
-    DateSystem, DefinedName, Fill, Font, FreezePane, HeaderFooter, HorizontalAlignment, Hyperlink,
-    PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape, ShapeKind, Sheet,
-    SheetProtection, SheetVisibility, StyleTable, Table, VerticalAlignment, Workbook, EMU_PER_PX,
+    DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, HeaderFooter,
+    HorizontalAlignment, Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape,
+    ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
+    TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -132,12 +135,16 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
     };
 
     let mut shared_furigana = false;
+    let mut shared_runs = Vec::new();
     let shared_strings = match workbook_rels.target_by_type_suffix(SHARED_STRINGS) {
         Some(target) => {
             let part = jade_opc::resolve_target(&workbook_part, target);
             match package.part_str(&part)? {
                 Some(xml) => {
                     shared_furigana = xml.contains("rPh");
+                    if xml.contains("<r>") || xml.contains(":r>") {
+                        shared_runs = rich_text::parse_shared_runs(&xml)?;
+                    }
                     shared_strings::parse_shared_strings(&xml)?
                 }
                 None => Vec::new(),
@@ -210,6 +217,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         if shared_furigana || xml.contains("rPh") {
             sheet.phonetic_readings = furigana(package, &target, &sheet);
         }
+        sheet.rich_text = rich_text::sheet_runs(&xml, &shared_runs)?;
         sheet.visibility = entry.visibility;
         read_print_titles(&part.defined_names, position, &mut sheet.page_setup);
         sheets.push(sheet);
@@ -250,6 +258,32 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
     if let Some(theme) = &theme {
         for sheet in &mut sheets {
             conditional_format::apply_theme(&mut sheet.conditional_formats, theme);
+            let colors = sheet
+                .rich_text
+                .values_mut()
+                .flatten()
+                .map(|run| &mut run.font.color)
+                .chain(std::iter::once(&mut sheet.tab_color))
+                .chain(sheet.sparkline_groups.iter_mut().flat_map(|group| {
+                    [
+                        &mut group.color_series,
+                        &mut group.color_negative,
+                        &mut group.color_axis,
+                        &mut group.color_markers,
+                        &mut group.color_first,
+                        &mut group.color_last,
+                        &mut group.color_high,
+                        &mut group.color_low,
+                    ]
+                }));
+            for color in colors {
+                if let Some(Color::Theme {
+                    index, resolved, ..
+                }) = color.as_mut()
+                {
+                    *resolved = theme.color(*index);
+                }
+            }
             for chart in sheet.shapes.iter_mut().filter_map(|s| s.chart.as_mut()) {
                 chart::apply_theme(chart, theme);
             }
