@@ -30,7 +30,11 @@ fn signature(element: Option<&XmlElement>) -> String {
         }
         for node in &element.children {
             match node {
-                XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange" => {}
+                XmlNode::Element(e)
+                    if e.name == "w:rPrChange"
+                        || e.name == "w:pPrChange"
+                        || element.name == "w:pPr"
+                            && matches!(e.name.as_str(), "w:rPr" | "w:sectPr") => {}
                 XmlNode::Element(e) => {
                     out.push('[');
                     visit(e, out);
