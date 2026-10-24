@@ -256,6 +256,22 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// Outline's selected body paragraphs move past the adjacent block in one undo step.
+    #[wasm_bindgen(js_name = moveOutlineParagraphs)]
+    pub fn move_outline_paragraphs(
+        &self,
+        first: usize,
+        last: usize,
+        up: bool,
+    ) -> Result<JsValue, JsValue> {
+        self.run_word_session("word_move_outline_paragraphs", move |session| {
+            let document = session.word_document();
+            let first = surface_of_body(document, first)?;
+            let last = surface_of_body(document, last)?;
+            session.move_outline_paragraphs(first, last, up).map(|_| ())
+        })
+    }
+
     /// ジャンプ: where `target` (page, section, line, bookmark, comment,
     /// footnote, endnote, field, table, graphic, equation, heading) and what
     /// was typed (a number, `+n`, `-n` or a name) take the caret.
