@@ -287,7 +287,7 @@ fn without_comments(bytes: &[u8]) -> Result<Vec<u8>, String> {
         .compression_method(zip::CompressionMethod::Deflated);
     for index in 0..archive.len() {
         let mut file = archive.by_index(index).map_err(|error| error.to_string())?;
-        let name = file.name().to_string();
+        let name = file.name().map_err(|err| err.to_string())?.into_owned();
         let mut content = Vec::new();
         file.read_to_end(&mut content)
             .map_err(|error| error.to_string())?;

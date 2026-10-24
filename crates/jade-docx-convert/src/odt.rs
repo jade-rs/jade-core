@@ -719,7 +719,11 @@ pub fn read_odt(bytes: &[u8]) -> Result<FlowDocument, String> {
         let styles = read("styles.xml");
         let meta = read("meta.xml");
         let mut pictures = HashMap::new();
-        let names: Vec<String> = archive.file_names().map(str::to_string).collect();
+        let names: Vec<String> = archive
+            .file_names()
+            .map(|name| name.map(|name| name.into_owned()))
+            .collect::<Result<_, _>>()
+            .map_err(|error| error.to_string())?;
         for name in names {
             if name.starts_with("Pictures/") || name.starts_with("media/") {
                 if let Ok(mut file) = archive.by_name(&name) {

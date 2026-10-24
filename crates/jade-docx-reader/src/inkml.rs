@@ -227,7 +227,7 @@ pub fn parse_inkml(xml: &str) -> Vec<InkTrace> {
                 let key = String::from_utf8_lossy(attribute.key.as_ref()).to_string();
                 let key = key.rsplit(':').next().unwrap_or("").to_string();
                 let value = attribute
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|value| value.to_string())
                     .unwrap_or_default();
                 (key, value)

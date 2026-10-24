@@ -5,6 +5,6 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
 thiserror = "2.0"
 memchr = "2.7"

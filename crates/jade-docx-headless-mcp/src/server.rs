@@ -5171,7 +5171,7 @@ mod tests {
                 .compression_method(zip::CompressionMethod::Deflated);
             for index in 0..archive.len() {
                 let mut entry = archive.by_index(index).unwrap();
-                let name = entry.name().to_string();
+                let name = entry.name().unwrap().into_owned();
                 let mut content = Vec::new();
                 entry.read_to_end(&mut content).unwrap();
                 if name == "word/document.xml" {
@@ -12024,7 +12024,14 @@ mod tests {
         let mut archive =
             zip::ZipArchive::new(std::io::Cursor::new(docx_bytes)).expect("read the package");
         let names: Vec<String> = (0..archive.len())
-            .map(|index| archive.by_index(index).unwrap().name().to_string())
+            .map(|index| {
+                archive
+                    .by_index(index)
+                    .unwrap()
+                    .name()
+                    .unwrap()
+                    .into_owned()
+            })
             .collect();
         for name in &names {
             if name.ends_with('/') || name == "[Content_Types].xml" {

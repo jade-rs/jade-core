@@ -183,7 +183,14 @@ mod tests {
     fn zip_paths(bytes: &[u8]) -> Vec<String> {
         let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("open zip");
         (0..archive.len())
-            .map(|index| archive.by_index(index).expect("entry").name().to_string())
+            .map(|index| {
+                archive
+                    .by_index(index)
+                    .expect("entry")
+                    .name()
+                    .unwrap()
+                    .into_owned()
+            })
             .collect()
     }
 

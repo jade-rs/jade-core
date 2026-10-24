@@ -4,7 +4,11 @@ use quick_xml::events::BytesStart;
 fn color_attribute(element: &BytesStart<'_>, name: &[u8]) -> Option<String> {
     element.attributes().flatten().find_map(|attr| {
         (attr.key.as_ref() == name)
-            .then(|| attr.unescape_value().ok().map(|value| value.into_owned()))
+            .then(|| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()
+                    .map(|value| value.into_owned())
+            })
             .flatten()
     })
 }
@@ -234,7 +238,13 @@ pub(crate) fn parse_hsl_color(element: &BytesStart<'_>) -> Option<String> {
 pub(crate) fn parse_color_transform(element: &BytesStart<'_>) -> Option<ThemeColorTransform> {
     let value = element.attributes().flatten().find_map(|attr| {
         (attr.key.as_ref() == b"val")
-            .then(|| attr.unescape_value().ok()?.trim().parse::<f64>().ok())
+            .then(|| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()?
+                    .trim()
+                    .parse::<f64>()
+                    .ok()
+            })
             .flatten()
     })? / 100_000.0;
     if !value.is_finite() {

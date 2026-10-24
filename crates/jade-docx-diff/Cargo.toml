@@ -23,4 +23,4 @@ unicode-normalization = "0.1"
 
 [dev-dependencies]
 jade-docx-extract = { path = "../jade-docx-extract" }
-zip = { version = "8", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }

@@ -848,7 +848,7 @@ mod tests {
             let mut entry = archive.by_index(index).expect("package entry");
             let mut contents = Vec::new();
             entry.read_to_end(&mut contents).expect("read part");
-            files.insert(entry.name().to_string(), contents);
+            files.insert(entry.name().unwrap().into_owned(), contents);
         }
         let document = String::from_utf8(files["word/document.xml"].clone()).expect("UTF-8");
         let body_start = document.find("<w:body>").expect("body") + "<w:body>".len();

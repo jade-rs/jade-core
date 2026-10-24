@@ -67,7 +67,10 @@ fn texts(document: &WordDocument) -> Vec<String> {
 
 fn part_names(bytes: &[u8]) -> BTreeSet<String> {
     let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
-    archive.file_names().map(str::to_string).collect()
+    archive
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect()
 }
 
 fn part(bytes: &[u8], name: &str) -> Option<Vec<u8>> {

@@ -482,7 +482,7 @@ fn read_zip_entries(bytes: &[u8]) -> Result<HashMap<String, Vec<u8>>> {
         let mut file = archive.by_index(index)?;
         let mut contents = Vec::new();
         file.read_to_end(&mut contents)?;
-        files.insert(file.name().to_string(), contents);
+        files.insert(file.name()?.into_owned(), contents);
     }
 
     Ok(files)
@@ -787,7 +787,7 @@ fn collect_attributes(
             attr.map_err(|e| CompareError::Xml(format!("failed to parse document attrs: {e}")))?;
         let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
         let value = attr
-            .decode_and_unescape_value(reader.decoder())
+            .decoded_and_normalized_value(quick_xml::XmlVersion::Implicit1_0, reader.decoder())
             .map_err(|e| CompareError::Xml(format!("failed to decode document attrs: {e}")))?
             .into_owned();
         attrs.insert(key, value);
