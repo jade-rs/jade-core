@@ -3672,6 +3672,9 @@ where
     /// アウトライン: how far each paragraph (by index) is set in for its
     /// outline level, in CSS pixels, in place of its own indents' start.
     outline_indents: Option<Rc<HashMap<usize, f64>>>,
+    outline_symbols: Option<Rc<HashMap<usize, &'static str>>>,
+    outline_symbols_hidden: bool,
+    view_zoom: f64,
     /// Set while painting the text of a shape that carries its own fill. Word
     /// keeps the document colour there, and the page-contrast remap would put
     /// white glyphs on Word's light fill.
@@ -8209,6 +8212,9 @@ where
             mark_kinds: crate::FormattingMarkKinds::default(),
             view_geometry: None,
             outline_indents: None,
+            outline_symbols: None,
+            outline_symbols_hidden: false,
+            view_zoom: 1.0,
             dark_mode_text_suppressed: false,
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
@@ -12835,6 +12841,108 @@ where
         self.clear_paragraph_render_cache();
         self.invalidate_paragraph_content_hash_cache();
         self.mark_full_repaint();
+    }
+
+    /// Outline symbols share paragraph draw commands and their cache replay.
+    pub fn set_outline_symbols(&mut self, symbols: Option<Rc<HashMap<usize, &'static str>>>) {
+        if self.outline_symbols == symbols {
+            return;
+        }
+        self.outline_symbols = symbols;
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
+    pub(crate) fn set_outline_symbols_hidden(&mut self, hidden: bool) {
+        if self.outline_symbols_hidden != hidden {
+            self.outline_symbols_hidden = hidden;
+            self.clear_paragraph_render_cache();
+            self.mark_full_repaint();
+        }
+    }
+
+    /// Presentation zoom is independent of the host's raster pixel density.
+    pub fn set_view_zoom(&mut self, zoom: f64) {
+        let zoom = if zoom.is_finite() && zoom > 0.0 {
+            zoom
+        } else {
+            1.0
+        };
+        if self.view_zoom != zoom {
+            self.view_zoom = zoom;
+            if self.outline_symbols.is_some() {
+                self.clear_paragraph_render_cache();
+                self.mark_full_repaint();
+            }
+        }
+    }
+
+    /// Heading symbols are hit against the same first-line geometry used to
+    /// paint them. Body circles and continuation lines do not fold anything.
+    pub fn outline_heading_at(&self, x: f64, y: f64) -> Option<usize> {
+        if self.outline_symbols_hidden {
+            return None;
+        }
+        let symbols = self.outline_symbols.as_ref()?;
+        let paragraph = self.hit_test_position(x, y)?.paragraph;
+        if *symbols.get(&paragraph)? == "○" {
+            return None;
+        }
+        let line = self.selection.paragraphs().get(paragraph)?.lines.first()?;
+        ((line.start_x - 18.0..=line.start_x - 18.0 + self.outline_symbol_font_size()).contains(&x)
+            && (line.absolute_top..line.absolute_top + line.height).contains(&y))
+        .then_some(paragraph)
+    }
+
+    fn outline_symbol_font_size(&self) -> f64 {
+        11.0_f64.max(8.0 / self.view_zoom)
+    }
+
+    fn draw_outline_symbol(
+        &mut self,
+        paragraph: usize,
+        line: &SelectionLineLayout,
+        commands: &mut Option<&mut Vec<DrawCommand>>,
+    ) -> Result<(), JsValue> {
+        let Some(symbol) = self
+            .outline_symbols
+            .as_ref()
+            .and_then(|symbols| symbols.get(&paragraph))
+            .copied()
+        else {
+            return Ok(());
+        };
+        if self.measuring_keep_next || self.outline_symbols_hidden {
+            return Ok(());
+        }
+        let font_size = self.outline_symbol_font_size();
+        let font: Rc<str> = Rc::from(format!("{font_size}px sans-serif"));
+        let command = DrawCommand::Text {
+            text: Rc::from(symbol),
+            x: line.start_x - 18.0,
+            y: line.top + (line.height - font_size) / 2.0 + font_size * 9.0 / 11.0,
+            style: CmdTextStyle {
+                font_size_pt: (font_size * 0.75) as f32,
+                font_descriptor_latin_ascii: Rc::clone(&font),
+                font_descriptor_latin_hansi: Rc::clone(&font),
+                font_descriptor_east_asia: Rc::clone(&font),
+                font_descriptor_complex: font,
+                fill_color: Rc::from("#6b6b70"),
+                ..CmdTextStyle::default()
+            },
+        };
+        if self.should_draw_current_page_for_render() {
+            let context = self.host.painter();
+            context.save();
+            crate::draw_command::executor::execute_command(&context, &command)
+                .map_err(PainterError::into_js_value)?;
+            context.restore();
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(commands) = commands.as_deref_mut() {
+            commands.push(command);
+        }
+        Ok(())
     }
 
     fn hides_page_chrome(&self) -> bool {
@@ -18543,6 +18651,15 @@ where
                 vertical_reversed: false,
             };
 
+            self.draw_outline_symbol(
+                paragraph_index,
+                &line_layout,
+                &mut if cache_eligible {
+                    Some(&mut cache_commands)
+                } else {
+                    None
+                },
+            )?;
             self.draw_selection_highlight(paragraph_index, &line_layout)?;
             let mut final_end_x = line_start_x;
 
@@ -21904,6 +22021,10 @@ where
             }
             self.draw_selection_highlight(paragraph_index, &line_layout)?;
             self.reset_fill_style_state();
+
+            if base_offset == 0 && line_index == 0 {
+                self.draw_outline_symbol(paragraph_index, &line_layout, &mut commands_out)?;
+            }
 
             let context = self.host.painter();
             let (mut clip_top, mut clip_height) = Self::device_aligned_line_vertical_clip_bounds(
@@ -40679,6 +40800,93 @@ mod tests {
         )
         .expect("build a renderer on the recording painter");
         (renderer, painter)
+    }
+
+    #[test]
+    fn outline_symbols_follow_first_lines_and_cached_repaint() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let document = doc_with_paragraph_texts(&["heading\ncontinuation", "body", ""]);
+        renderer.set_outline_symbols(Some(Rc::new(HashMap::from([(0, "⊕"), (1, "○"), (2, "⊖")]))));
+        let options = Options {
+            show_formatting_marks: false,
+            ..Options::default()
+        };
+        let symbols = |ops: Vec<Op>| {
+            ops.into_iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, x, y) if ["⊕", "○", "⊖"].contains(&text.as_str()) => {
+                        Some((text, x, y))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        renderer.render(&document, &options).unwrap();
+        let first = symbols(painter.ops());
+        assert_eq!(
+            first
+                .iter()
+                .map(|(text, _, _)| text.as_str())
+                .collect::<Vec<_>>(),
+            ["⊕", "○", "⊖"]
+        );
+        let line = &renderer.selection.paragraphs()[0].lines[0];
+        assert_eq!(first[0].1, line.start_x - 18.0);
+        let x = line.start_x - 12.0;
+        let y = line.absolute_top + line.height / 2.0;
+        assert_eq!(renderer.outline_heading_at(x, y), Some(0));
+        assert_eq!(renderer.outline_heading_at(line.start_x + 1.0, y), None);
+        let continuation = &renderer.selection.paragraphs()[0].lines[1];
+        assert_eq!(
+            renderer.outline_heading_at(x, continuation.absolute_top + continuation.height / 2.0),
+            None
+        );
+        let body = &renderer.selection.paragraphs()[1].lines[0];
+        assert_eq!(
+            renderer.outline_heading_at(body.start_x - 12.0, body.absolute_top + body.height / 2.0),
+            None
+        );
+        painter.clear();
+        renderer.mark_full_repaint();
+        renderer.render(&document, &options).unwrap();
+        assert_eq!(symbols(painter.ops()), first);
+        assert!(renderer.paragraph_render_cache_stats().hits > 0);
+        painter.clear();
+        renderer.set_outline_symbols_hidden(true);
+        renderer.render(&document, &options).unwrap();
+        assert!(symbols(painter.ops()).is_empty());
+        painter.clear();
+        renderer.set_outline_symbols_hidden(false);
+        renderer.render(&document, &options).unwrap();
+        assert_eq!(symbols(painter.ops()), first);
+        painter.clear();
+        renderer.set_outline_symbols(None);
+        renderer.render(&document, &options).unwrap();
+        assert!(symbols(painter.ops()).is_empty());
+        assert_eq!(renderer.outline_heading_at(x, y), None);
+    }
+
+    #[test]
+    fn outline_symbols_remain_legible_at_small_view_zoom() {
+        let (mut renderer, painter) = recording_renderer();
+        let document = doc_with_paragraph_texts(&["heading"]);
+        renderer.set_outline_symbols(Some(Rc::new(HashMap::from([(0, "⊕")]))));
+        for (zoom, expected_font) in [
+            (1.0, "11px sans-serif"),
+            (0.25, "32px sans-serif"),
+            (2.0, "11px sans-serif"),
+        ] {
+            painter.clear();
+            renderer.set_view_zoom(zoom);
+            renderer.mark_full_repaint();
+            renderer.render(&document, &Options::default()).unwrap();
+            let symbols = effective_fill_text_fonts(&painter.ops())
+                .into_iter()
+                .filter(|(text, _)| text == "⊕")
+                .collect::<Vec<_>>();
+            assert_eq!(symbols, [("⊕".to_string(), expected_font.to_string())]);
+        }
     }
 
     /// The font each `fill_text` actually drew with, replaying `save` /

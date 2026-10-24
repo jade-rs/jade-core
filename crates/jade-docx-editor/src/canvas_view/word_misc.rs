@@ -71,14 +71,22 @@ impl OffscreenDocumentView {
         update: impl FnOnce(&mut crate::word::outline::OutlineDisplay, &WordDocument),
     ) -> Result<Vec<usize>, JsValue> {
         let mut display = self.state.borrow().outline_display.clone();
-        let (display, hidden) = self.read_word_session(|session| {
+        let (display, hidden, symbols) = self.read_word_session(|session| {
             update(&mut display, session.word_document());
             let hidden = display.hidden_blocks(session);
-            (display, hidden)
+            let symbols = display.active.then(|| {
+                Rc::new(crate::word::outline::symbols(
+                    session.word_document(),
+                    &display.collapsed,
+                ))
+            });
+            (display, hidden, symbols)
         })?;
         let mut state = self.state.borrow_mut();
         state.outline_display = display;
         state.options.set_collapsed_blocks(hidden.clone());
+        drop(state);
+        self.renderer.borrow_mut().set_outline_symbols(symbols);
         Ok(hidden)
     }
 }
