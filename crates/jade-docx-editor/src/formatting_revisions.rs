@@ -17,11 +17,6 @@ fn attr(element: &XmlElement, name: &str) -> Option<String> {
 }
 fn without_changes(mut element: XmlElement) -> XmlElement {
     element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange"));
-    // pPrChange contains CT_PPrGeneral, which excludes paragraph-mark run
-    // properties and section properties. Those have their own revisions.
-    if element.name == "w:pPr" {
-        element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr"));
-    }
     element
 }
 fn signature(element: Option<&XmlElement>) -> String {
@@ -132,9 +127,17 @@ impl WordDocument {
             let change = if let Some(existing) = existing {
                 raw.create_element(change_name, existing.attributes, existing.children)
             } else {
-                let original = previous
+                let mut original = previous
                     .map(without_changes)
                     .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
+                // CT_PPrBase excludes paragraph-mark and section properties.
+                // Their current values stay outside the paragraph-format revision.
+                if property_name == "w:pPr" {
+                    original.children.retain(|node| {
+                        !matches!(node, XmlNode::Element(e)
+                        if e.name == "w:rPr" || e.name == "w:sectPr")
+                    });
+                }
                 let mut attributes = vec![XmlAttribute {
                     name: "w:id".into(),
                     value: revision_id,
@@ -301,12 +304,14 @@ impl WordDocument {
             } else {
                 props.clone()
             };
-            replacement.id = props.id;
             if decision == RevisionDecision::Reject && property == "w:pPr" {
-                replacement.children.extend(props.children.iter().filter(|node| {
+                // Reject paragraph formatting without deleting the independently
+                // tracked paragraph mark or the paragraph's section boundary.
+                replacement.children.extend(props.children.iter().filter(|node|
                     matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr")
-                }).cloned());
+                ).cloned());
             }
+            replacement.id = props.id;
             replacement
                 .children
                 .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == change));
