@@ -13,6 +13,7 @@ zip = { version = "8.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 proptest = "1.6"
+roxmltree = "0.20"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
