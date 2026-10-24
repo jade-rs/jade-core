@@ -7901,6 +7901,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
     let base_available = right_limit - base_x;
 
     let mut line_index = 0;
+    let mut detached = Vec::new();
     while line_index < lines.len() {
         let available = paragraph_style.available_width_for_line(base_available, line_index);
         let effective_available = (available - WRAP_SAFETY_PX).max(1.0);
@@ -7914,7 +7915,6 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
             character_borders,
             snap_to_chars_cell_width_cache,
         )?;
-        let mut detached = Vec::new();
         loop {
             let compressible_line = lines[line_index].break_kind == LineBreakKind::Soft
                 || (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
@@ -7998,7 +7998,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     // This path transfers directly. Commit the suffix removed
                     // earlier first so subsequent prepends preserve text order.
                     if !detached.is_empty() {
-                        prepend_detached_clusters_to_line(next, std::mem::take(&mut detached));
+                        prepend_detached_clusters_to_line(next, &mut detached);
                     }
                     if move_trailing_latin_word_and_spaces_to_next_line(current, next) {
                         if character_borders {
@@ -8117,7 +8117,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
             };
         }
         if !detached.is_empty() {
-            prepend_detached_clusters_to_line(&mut lines[line_index + 1], detached);
+            prepend_detached_clusters_to_line(&mut lines[line_index + 1], &mut detached);
         }
         line_index += 1;
     }
@@ -8658,11 +8658,19 @@ fn prepend_cluster_to_line_preserving_rules(
 /// the same growing buffers once per character.
 fn prepend_detached_clusters_to_line(
     line: &mut WrappedLine,
-    detached: Vec<(InlineCluster, TextSegment)>,
+    detached: &mut Vec<(InlineCluster, TextSegment)>,
 ) {
+    // Reuse the staging buffer across lines; a single-cluster transfer needs
+    // no additional temporary buffers.
+    if detached.len() <= 1 {
+        if let Some((cluster, segment)) = detached.pop() {
+            prepend_cluster_to_line_preserving_rules(line, cluster, segment);
+        }
+        return;
+    }
     let mut clusters = Vec::with_capacity(detached.len());
     let mut segments: Vec<TextSegment> = Vec::new();
-    for (cluster, mut segment) in detached.into_iter().rev() {
+    for (cluster, mut segment) in detached.drain(..).rev() {
         clusters.push(cluster);
         segment.leading_width = 0.0;
         if let Some(last) = segments.last_mut() {
@@ -21985,7 +21993,8 @@ mod tests {
             expected.break_range = Some((offset + if empty_tail {0} else {3}, offset + if empty_tail {0} else {3}));
             let mut actual = expected.clone();
             for (cluster, segment) in moved.clone() { prepend_cluster_to_line_preserving_rules(&mut expected, cluster, segment); }
-            prepend_detached_clusters_to_line(&mut actual, moved);
+            prepend_detached_clusters_to_line(&mut actual, &mut moved);
+            prop_assert!(moved.is_empty());
             prop_assert_eq!(actual.segments.iter().map(segment_signature).collect::<Vec<_>>(), expected.segments.iter().map(segment_signature).collect::<Vec<_>>());
             prop_assert_eq!(format!("{:?}",actual.clusters), format!("{:?}",expected.clusters));
             prop_assert_eq!(actual.break_kind, expected.break_kind);
