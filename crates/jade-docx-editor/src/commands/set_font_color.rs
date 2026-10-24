@@ -28,6 +28,9 @@ impl SetFontColorCommand {
 }
 
 impl Command for SetFontColorCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_font_color"
     }

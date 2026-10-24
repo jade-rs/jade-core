@@ -35,6 +35,9 @@ impl ApplySuperscriptCommand {
 }
 
 impl Command for ApplySuperscriptCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "apply_superscript"
     }

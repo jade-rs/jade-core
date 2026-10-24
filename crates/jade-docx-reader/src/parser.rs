@@ -443,21 +443,7 @@ impl DocumentParser {
                                 .get_or_insert_with(ParagraphProperties::default);
                             props.has_format_change = true;
                             props.format_change_author = author.map(Into::into);
-                            if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
-                                if let Some(numbering) = Self::parse_numbering_from_ppr_change(&raw)
-                                {
-                                    if let Some(ref mut props) = current_paragraph_props {
-                                        if props.numbering.is_none() {
-                                            props.numbering = Some(numbering);
-                                        }
-                                    } else {
-                                        current_paragraph_props = Some(ParagraphProperties {
-                                            numbering: Some(numbering),
-                                            ..ParagraphProperties::default()
-                                        });
-                                    }
-                                }
-                            }
+                            self.skip_element(reader, b"w:pPrChange")?;
                         }
                         // A tracked change to a run's formatting: what the
                         // run's formatting was before it, for review.
@@ -4353,105 +4339,6 @@ impl DocumentParser {
             author,
             date,
             previous,
-        })
-    }
-
-    fn parse_numbering_from_ppr_change(xml: &str) -> Option<crate::document::Numbering> {
-        // Word stores paragraph property revisions (including numbering) inside
-        // `<w:pPrChange>` containers. These revisions only apply when tracked
-        // changes are shown. We look for a nested `<w:numPr>` element and reuse
-        // its values as the effective numbering for the paragraph.
-        let mut reader = Reader::from_str(xml);
-        reader.config_mut().trim_text(false);
-
-        let mut buf = Vec::new();
-        let mut numbering: Option<crate::document::Numbering> = None;
-        let mut in_num_pr = false;
-
-        loop {
-            buf.clear();
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"w:numPr" => {
-                        in_num_pr = true;
-                        if numbering.is_none() {
-                            numbering = Some(crate::document::Numbering {
-                                id: None,
-                                level: None,
-                            });
-                        }
-                    }
-                    b"w:numId" if in_num_pr => {
-                        if let Some(num) = numbering.as_mut() {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    num.id = Some(String::from_utf8_lossy(&attr.value).to_string());
-                                }
-                            }
-                        }
-                    }
-                    b"w:ilvl" if in_num_pr => {
-                        if let Some(num) = numbering.as_mut() {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    if let Ok(level) =
-                                        String::from_utf8_lossy(&attr.value).parse::<u32>()
-                                    {
-                                        num.level = Some(level);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
-                    b"w:numId" if in_num_pr => {
-                        if let Some(num) = numbering.as_mut() {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    num.id = Some(String::from_utf8_lossy(&attr.value).to_string());
-                                }
-                            }
-                        }
-                    }
-                    b"w:ilvl" if in_num_pr => {
-                        if let Some(num) = numbering.as_mut() {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    if let Ok(level) =
-                                        String::from_utf8_lossy(&attr.value).parse::<u32>()
-                                    {
-                                        num.level = Some(level);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                Ok(Event::End(ref e)) => {
-                    if e.name().as_ref() == b"w:numPr" {
-                        in_num_pr = false;
-                    } else if e.name().as_ref() == b"w:pPrChange" {
-                        break;
-                    }
-                }
-                Ok(Event::Eof) => break,
-                Err(_) => break,
-                _ => {}
-            }
-        }
-
-        numbering.and_then(|mut num| {
-            if num.id.is_some() {
-                if num.level.is_none() {
-                    num.level = Some(0);
-                }
-                Some(num)
-            } else {
-                None
-            }
         })
     }
 

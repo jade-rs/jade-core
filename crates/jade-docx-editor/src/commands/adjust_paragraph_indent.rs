@@ -282,6 +282,9 @@ impl AdjustParagraphIndentCommand {
 }
 
 impl Command for AdjustParagraphIndentCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "adjust_paragraph_indent"
     }

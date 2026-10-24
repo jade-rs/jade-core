@@ -34,6 +34,9 @@ impl SetCharacterStyleCommand {
 }
 
 impl Command for SetCharacterStyleCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_character_style"
     }

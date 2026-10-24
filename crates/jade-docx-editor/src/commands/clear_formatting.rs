@@ -25,6 +25,9 @@ impl ClearFormattingCommand {
 }
 
 impl Command for ClearFormattingCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "clear_formatting"
     }

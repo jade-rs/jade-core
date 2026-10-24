@@ -3351,7 +3351,15 @@ pub fn apply_headless_commands_with_executor_to_document(
                     let groups = revision_groups(word_doc);
                     let mut set = RevisionTargets::default();
                     for target in targets {
-                        if target.paragraph_mark {
+                        if let Some(kind) = target.format_change.as_ref() {
+                            set.add_format(
+                                target.paragraph,
+                                target.start_offset,
+                                target.end_offset,
+                                target.id.clone(),
+                                kind.clone(),
+                            );
+                        } else if target.paragraph_mark {
                             set.add_paragraph_mark(target.paragraph, target.id.clone());
                         } else {
                             for id in revision_target_run_ids(&groups, target) {
@@ -6707,6 +6715,7 @@ fn revision_target_run_ids(
     let mut ids = vec![target.id.clone()];
     for (listed, pieces) in groups {
         if !listed.paragraph_mark
+            && !matches!(listed.kind.as_str(), "runFormat" | "paragraphFormat")
             && listed.paragraph == target.paragraph
             && target.start_offset <= listed.start_offset
             && listed.end_offset <= target.end_offset
@@ -6782,47 +6791,6 @@ fn revision_groups(
             let run_start = offset;
             let run_end = run_start.saturating_add(run.text.len());
             offset = run_end;
-            // A formatting change (`w:rPrChange`), listed apart from any
-            // insertion or deletion the same text is.
-            if let Some(change) = run
-                .properties
-                .as_ref()
-                .and_then(|properties| properties.change.as_deref())
-            {
-                let continues = revisions.last().is_some_and(|(last, _)| {
-                    last.paragraph == paragraph_index
-                        && !last.paragraph_mark
-                        && last.kind == "formatted"
-                        && last.end_offset == run_start
-                        && last.author == change.author
-                        && last.date == change.date
-                });
-                if continues {
-                    if let Some((last, ids)) = revisions.last_mut() {
-                        last.end_offset = run_end;
-                        last.text.push_str(&run.text);
-                        if !ids.contains(&change.id) {
-                            ids.push(change.id.clone());
-                        }
-                    }
-                } else {
-                    revisions.push((
-                        HeadlessRevisionSnapshot {
-                            id: change.id.clone(),
-                            kind: "formatted".to_string(),
-                            author: change.author.clone(),
-                            date: change.date.clone(),
-                            date_utc: None,
-                            paragraph: paragraph_index,
-                            start_offset: run_start,
-                            end_offset: run_end,
-                            text: run.text.clone(),
-                            paragraph_mark: false,
-                        },
-                        vec![change.id.clone()],
-                    ));
-                }
-            }
             let Some(mark) = run.revision.as_ref() else {
                 continue;
             };
@@ -6868,24 +6836,6 @@ fn revision_groups(
                 vec![mark.id.clone()],
             ));
         }
-        // A change to the paragraph's own formatting (`w:pPrChange`).
-        if let Some(change) = word_doc.paragraph_format_change(paragraph_index) {
-            revisions.push((
-                HeadlessRevisionSnapshot {
-                    id: change.id.clone(),
-                    kind: "formatted".to_string(),
-                    author: change.author,
-                    date: change.date,
-                    date_utc: None,
-                    paragraph: paragraph_index,
-                    start_offset: 0,
-                    end_offset: offset,
-                    text: paragraph.runs.iter().map(|run| run.text.as_str()).collect(),
-                    paragraph_mark: false,
-                },
-                vec![change.id],
-            ));
-        }
         if let Some(element) = word_doc
             .raw_document
             .as_ref()
@@ -6902,6 +6852,16 @@ fn revision_groups(
             );
         }
     }
+    revisions.extend(
+        word_doc
+            .formatting_revision_snapshots()
+            .into_iter()
+            .map(|snapshot| {
+                let ids = vec![snapshot.id.clone()];
+                (snapshot, ids)
+            }),
+    );
+    revisions.sort_by_key(|(snapshot, _)| (snapshot.paragraph, snapshot.start_offset));
     revisions
 }
 
@@ -6923,7 +6883,9 @@ pub struct RevisionSelector {
 /// a selection reaches it only when it runs past the end of the paragraph.
 fn revision_span(revision: &HeadlessRevisionSnapshot) -> ((usize, usize), (usize, usize)) {
     let start = (revision.paragraph, revision.start_offset);
-    let end = if revision.paragraph_mark {
+    let end = if revision.paragraph_mark
+        || revision.kind == "paragraphFormat" && revision.start_offset == revision.end_offset
+    {
         (revision.paragraph, revision.start_offset.saturating_add(1))
     } else {
         (revision.paragraph, revision.end_offset)
@@ -7018,6 +6980,8 @@ pub fn revision_targets_for(
             end_offset: revision.end_offset,
             paragraph_mark: revision.paragraph_mark,
             id: revision.id.clone(),
+            format_change: matches!(revision.kind.as_str(), "runFormat" | "paragraphFormat")
+                .then(|| revision.kind.clone()),
         })
         .collect()
 }
@@ -17730,6 +17694,7 @@ mod tests {
                         end_offset: 15,
                         paragraph_mark: false,
                         id: Some("2".to_string()),
+                        format_change: None,
                     }],
                 )],
             },
@@ -17747,6 +17712,7 @@ mod tests {
                         end_offset: 1,
                         paragraph_mark: false,
                         id: None,
+                        format_change: None,
                     }],
                 )],
             },
