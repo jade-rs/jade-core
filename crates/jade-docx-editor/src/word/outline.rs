@@ -2,9 +2,50 @@
 //! outline level (見出し 1–9, or 本文), how far the view sets each one in,
 //! which paragraphs レベルの表示 hides, and the level レベル上げ gives 本文.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
+use super::{references::navigation::WordNavigation, WordSession};
 use crate::word_document::WordDocument;
+
+/// View preferences shared by navigation and the outline ribbon. Paragraphs
+/// use native surface indices; browser entry points translate body indices.
+#[derive(Clone, Debug)]
+pub struct OutlineDisplay {
+    pub collapsed: BTreeSet<usize>,
+    pub shown: u8,
+    pub active: bool,
+}
+
+impl Default for OutlineDisplay {
+    fn default() -> Self {
+        Self {
+            collapsed: BTreeSet::new(),
+            shown: BODY_LEVEL,
+            active: false,
+        }
+    }
+}
+
+impl OutlineDisplay {
+    /// Merge both sources of hidden body elements. Removed headings cease to
+    /// be collapsed, while leaving Outline keeps navigation's folds intact.
+    pub fn hidden_blocks(&mut self, session: &(impl WordSession + ?Sized)) -> Vec<usize> {
+        let headings: BTreeSet<_> = session
+            .outline()
+            .into_iter()
+            .map(|heading| heading.paragraph)
+            .collect();
+        self.collapsed
+            .retain(|paragraph| headings.contains(paragraph));
+        let mut hidden = session.hidden_by_collapse(&self.collapsed);
+        if self.active {
+            hidden.extend(hidden_by_level(session.word_document(), self.shown));
+        }
+        hidden.sort_unstable();
+        hidden.dedup();
+        hidden
+    }
+}
 
 /// How far each outline level is set in, in CSS pixels.
 pub const LEVEL_STEP: f64 = 24.0;

@@ -190,6 +190,7 @@ struct CanvasDocumentState {
     options: Options,
     /// Which fields show their codes (⌥F9 / ⇧F9).
     field_code_view: crate::fields::FieldCodeView,
+    outline_display: crate::word::outline::OutlineDisplay,
     /// Word's オートコレクト while typing; `None` while it is off.
     word_autocorrect: Option<crate::word::autocorrect::AutoCorrectOptions>,
     /// The equation being edited in place, its caret inside the structure.
@@ -8821,6 +8822,7 @@ impl OffscreenDocumentView {
         let state = Rc::new(RefCell::new(CanvasDocumentState {
             options: opts.clone(),
             field_code_view: Default::default(),
+            outline_display: Default::default(),
             word_autocorrect: None,
             equation_editor: None,
             word_doc: None,
@@ -9081,6 +9083,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = WordDocument::load(&data_vec, &options)
                     .await
@@ -9182,6 +9185,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc.clone());
                     state_mut.paged_images = paged_images.unwrap_or_default();
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -9213,6 +9217,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = WordDocument::load(&data_vec, &options)
                     .await
@@ -9318,6 +9323,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc.clone());
                     state_mut.paged_images = Vec::new(); // Don't store ImageBitmaps
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -9423,6 +9429,7 @@ impl OffscreenDocumentView {
         future_to_promise(
             async move {
                 let mut options = { state.borrow().options.clone() };
+                options.set_collapsed_blocks(Vec::new());
 
                 let word_doc = if defer_roundtrip_xml {
                     WordDocument::load_for_initial_render(&data_vec, &options).await
@@ -9540,6 +9547,7 @@ impl OffscreenDocumentView {
                     state_mut.word_doc = Some(word_doc);
                     state_mut.paged_images = Vec::new();
                     state_mut.command_executor = CommandExecutor::new();
+                    state_mut.outline_display = Default::default();
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
