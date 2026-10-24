@@ -3998,7 +3998,7 @@ mod tests {
     fn deletion_ending_at_an_empty_cell_keeps_the_table_and_existing_revisions() {
         let table = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl>"#;
         let data = build_docx_with_body(&format!(
-            r#"<w:p><w:del w:id="1" w:author="Reviewer"><w:r><w:delText>Hello</w:delText></w:r></w:del><w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"#
+            r#"<w:p><w:del w:id="1" w:author="Reviewer"><w:r><w:delText>Hello</w:delText></w:r></w:del></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"#
         ));
         let mut document =
             executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
