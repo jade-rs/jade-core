@@ -6939,14 +6939,16 @@ pub fn select_revisions<'a>(
 /// Whether `revision` passes `selector`'s kind and reviewer filters (its
 /// range is not considered).
 fn revision_is_shown(revision: &HeadlessRevisionSnapshot, selector: &RevisionSelector) -> bool {
-    selector
-        .kinds
+    selector.kinds.as_ref().is_none_or(|kinds| {
+        kinds.iter().any(|kind| {
+            kind == &revision.kind
+                || kind == "formatted"
+                    && matches!(revision.kind.as_str(), "runFormat" | "paragraphFormat")
+        })
+    }) && selector
+        .authors
         .as_ref()
-        .is_none_or(|kinds| kinds.iter().any(|kind| kind == &revision.kind))
-        && selector
-            .authors
-            .as_ref()
-            .is_none_or(|authors| authors.contains(&revision.author))
+        .is_none_or(|authors| authors.contains(&revision.author))
 }
 
 /// The first revision at or after `position` that `selector`'s kind and

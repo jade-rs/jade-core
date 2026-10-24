@@ -737,3 +737,104 @@ fn rejecting_text_and_formatting_together_restores_original_properties() {
         .unwrap_or(false)));
     assert!(formatting_revisions(&word).is_empty());
 }
+
+#[test]
+fn tracked_paragraph_formatting_excludes_mark_properties_and_preserves_them_on_reject() {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/math.docx");
+    let bytes = std::fs::read(path).unwrap();
+    let mut word = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+    let original_properties = word.paragraph(0).unwrap().properties.clone();
+    run(
+        &mut word,
+        vec![
+            track("Reviewer"),
+            HeadlessCommand::SetParagraphAlignment {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                alignment: "left".into(),
+            },
+        ],
+    );
+    let xml = word.raw_document.as_ref().unwrap().to_string().unwrap();
+    let change = xml
+        .split("<w:pPrChange")
+        .nth(1)
+        .unwrap()
+        .split("</w:pPrChange>")
+        .next()
+        .unwrap();
+    assert!(
+        !change.contains("<w:rPr"),
+        "paragraph-mark properties are outside CT_PPrBase: {change}"
+    );
+    assert!(!change.contains("<w:sectPr"));
+    let mark_properties = |word: &WordDocument| {
+        let xml = word.raw_document.as_ref().unwrap().to_string().unwrap();
+        let props = xml
+            .split("<w:pPr>")
+            .nth(1)
+            .unwrap()
+            .split("<w:pPrChange")
+            .next()
+            .unwrap();
+        props
+            .split("<w:rPr>")
+            .nth(1)
+            .unwrap()
+            .split("</w:rPr>")
+            .next()
+            .unwrap()
+            .to_string()
+    };
+    let mark_before = mark_properties(&word);
+    let mut word = reload(&word);
+    run(&mut word, vec![decide(false, None, None)]);
+    assert_eq!(mark_properties(&word), mark_before);
+    assert_eq!(
+        word.paragraph(0)
+            .unwrap()
+            .properties
+            .as_ref()
+            .and_then(|p| p.alignment.clone()),
+        original_properties
+            .as_ref()
+            .and_then(|p| p.alignment.clone())
+    );
+    assert!(formatting_revisions(&reload(&word)).is_empty());
+}
+
+#[test]
+fn legacy_format_kind_filter_selects_both_current_format_kinds() {
+    use jade_docx_document_core::headless_api::{select_revisions, RevisionSelector};
+    let mut word = hello();
+    run(
+        &mut word,
+        vec![
+            track("Reviewer"),
+            HeadlessCommand::SetBold {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 5,
+                value: true,
+            },
+            HeadlessCommand::SetParagraphAlignment {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                alignment: "center".into(),
+            },
+        ],
+    );
+    let snapshots = formatting_revisions(&word);
+    let selected = select_revisions(
+        &snapshots,
+        &RevisionSelector {
+            kinds: Some(vec!["formatted".into()]),
+            ..Default::default()
+        },
+    );
+    assert_eq!(selected.len(), 2);
+    assert!(selected.iter().any(|r| r.kind == "runFormat"));
+    assert!(selected.iter().any(|r| r.kind == "paragraphFormat"));
+}
