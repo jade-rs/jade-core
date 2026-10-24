@@ -60,6 +60,51 @@ fn collect_row_paragraphs(
 }
 
 impl WordDocument {
+    /// Cancelling our inserted row must not discard another author's later edits.
+    pub(crate) fn row_has_foreign_revisions(
+        &self,
+        table: usize,
+        row: usize,
+        author: Option<&str>,
+    ) -> bool {
+        fn in_xml(element: &XmlElement, author: Option<&str>) -> bool {
+            element.attributes.iter().any(|attribute| {
+                local(&attribute.name) == "author" && Some(attribute.value.as_str()) != author
+            }) || element
+                .children
+                .iter()
+                .any(|node| matches!(node, XmlNode::Element(child) if in_xml(child, author)))
+        }
+        fn in_blocks(blocks: &[BodyElement], author: Option<&str>) -> bool {
+            blocks.iter().any(|block| match block {
+                BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
+                    run.revision
+                        .as_ref()
+                        .is_some_and(|mark| mark.author.as_deref() != author)
+                        || run
+                            .text_box
+                            .as_ref()
+                            .is_some_and(|text_box| in_blocks(&text_box.blocks, author))
+                }),
+                BodyElement::Table(table) => table.rows.iter().any(|row| {
+                    row.revision
+                        .as_deref()
+                        .is_some_and(|mark| mark.author.as_deref() != author)
+                        || row.cells.iter().any(|cell| in_blocks(&cell.blocks, author))
+                }),
+                BodyElement::Math(_) => false,
+            })
+        }
+        self.table_by_order(table)
+            .and_then(|table| table.rows.get(row))
+            .is_some_and(|row| {
+                row.node_id
+                    .and_then(|node| self.raw_document.as_ref()?.element(node))
+                    .is_some_and(|element| in_xml(element, author))
+                    || row.cells.iter().any(|cell| in_blocks(&cell.blocks, author))
+            })
+    }
+
     /// Every row inserted or deleted with changes tracked, in document
     /// order.
     pub fn table_row_revisions(&self) -> Vec<RowRevision> {
@@ -226,7 +271,18 @@ impl WordDocument {
         let count = rows.len();
         for (table, row, removes) in rows.into_iter().rev() {
             if removes {
-                self.delete_table_row(table, row)?;
+                if self
+                    .table_by_order(table)
+                    .is_some_and(|table| table.rows.len() == 1)
+                {
+                    let mut selection = None;
+                    let mut context = crate::commands::CommandContext::new(self, &mut selection);
+                    crate::commands::delete_table::DeleteTableCommand::new(table)
+                        .apply_untracked(&mut context)
+                        .map_err(|error| error.to_string())?;
+                } else {
+                    self.delete_table_row(table, row)?;
+                }
             } else {
                 self.set_table_row_revision(table, row, None)?;
             }
