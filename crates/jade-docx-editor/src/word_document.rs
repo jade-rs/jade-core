@@ -2125,7 +2125,7 @@ impl WordDocument {
 
     /// The package path of the header/footer part a main-document
     /// relationship id points at.
-    fn hf_part_path_for_reference(&self, relationship_id: &str) -> Option<String> {
+    pub(crate) fn hf_part_path_for_reference(&self, relationship_id: &str) -> Option<String> {
         let document_part = self.document_part.as_ref()?;
         let relationship = document_part
             .relationships
