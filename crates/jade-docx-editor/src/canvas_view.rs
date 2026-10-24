@@ -7643,11 +7643,20 @@ impl OffscreenDocumentView {
             }
         };
 
-        let Some((options, numbering_part, header_lines, footer_lines, new_selection, footprint)) =
-            maybe_context
+        let Some((
+            mut options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            new_selection,
+            footprint,
+        )) = maybe_context
         else {
             return Ok(self.history_state());
         };
+        if let Some(updated) = self.refresh_outline_after_structure()? {
+            options = updated;
+        }
 
         let lazy_mode = self.state.borrow().lazy_mode;
 
@@ -7975,7 +7984,14 @@ impl OffscreenDocumentView {
         // model, as the typing and history paths do: while the renderer holds
         // it, the first `paragraph_mut` deep-clones the whole `Document`.
         let _document_cache = self.drop_renderer_document_cache();
-        let (options, numbering_part, header_lines, footer_lines, new_selection, refresh_styles) = {
+        let (
+            mut options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            new_selection,
+            refresh_styles,
+        ) = {
             let mut state = self.state.borrow_mut();
             let mut word_doc = state
                 .word_doc
@@ -8025,6 +8041,9 @@ impl OffscreenDocumentView {
                 .unwrap_or(1)
         };
 
+        if let Some(updated) = self.refresh_outline_after_structure()? {
+            options = updated;
+        }
         let mut renderer = self.renderer.borrow_mut();
         if let Some(word_doc) = self.state.borrow().word_doc.as_ref() {
             // Package replacement can import new style IDs. Refresh the

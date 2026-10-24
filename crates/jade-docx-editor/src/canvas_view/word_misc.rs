@@ -144,6 +144,7 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = setCollapsedHeadings)]
     pub fn set_collapsed_headings(&self, headings: Vec<usize>) -> Result<JsValue, JsValue> {
         let hidden = self.refresh_outline_display(|display, document| {
+            display.collapsed_nodes.clear();
             display.collapsed = headings
                 .iter()
                 .filter_map(|body| document.surface_index_for_body(*body))
