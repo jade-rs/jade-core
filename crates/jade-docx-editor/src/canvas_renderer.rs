@@ -15716,7 +15716,11 @@ where
                     return None;
                 }
                 let mut reviewed = paragraph.clone();
-                reviewed.properties.as_mut()?.numbering = Some(previous.clone());
+                let mut numbering = previous.clone();
+                // Historical numPr may omit ilvl; Word uses the first level.
+                // Keep that default in the render projection, not current props.
+                numbering.level = Some(numbering.level.unwrap_or(0));
+                reviewed.properties.as_mut()?.numbering = Some(numbering);
                 Some(reviewed)
             })
         } else {
@@ -53255,7 +53259,7 @@ mod tests {
         let document = jade_docx_reader::DocumentParser::new().parse_document_xml(
             r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
             <w:p><w:pPr><w:jc w:val="right"/><w:pPrChange w:id="0" w:author="Alice"><w:pPr>
-            <w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr><w:jc w:val="left"/>
+            <w:numPr><w:numId w:val="1"/></w:numPr><w:jc w:val="left"/>
             </w:pPr></w:pPrChange></w:pPr><w:del w:id="1" w:author="Alice"><w:r><w:delText>World</w:delText></w:r></w:del></w:p>
             </w:body></w:document>"#,
         ).unwrap();
