@@ -167,11 +167,20 @@ struct HfEditCursor {
     offset: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HfPackageTarget {
+    part_path: String,
+    range: SelectionRange,
+}
+
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct HfClipboardSelection {
     variant: HfVariant,
     anchor: HfEditCursor,
     focus: HfEditCursor,
+    package_target: Option<HfPackageTarget>,
 }
 
 const HF_EDIT_LINE_HEIGHT: f64 = 20.0;
@@ -2930,6 +2939,61 @@ impl OffscreenDocumentView {
         .then_some((segment, text))
     }
 
+    /// Resolve only lines whose UTF-8 offsets address ordinary story paragraphs.
+    /// Table rows, fields and tab-separated segments keep the text paste path.
+    fn hf_package_target(state: &CanvasDocumentState) -> Option<HfPackageTarget> {
+        let word_doc = state.word_doc.as_ref()?;
+        let focus = state.hf_edit_cursor?;
+        let anchor = state.hf_selection_anchor.unwrap_or(focus);
+        Self::hf_package_target_for_selection(
+            word_doc,
+            state.editing_mode,
+            state.hf_variant,
+            anchor,
+            focus,
+        )
+    }
+
+    fn hf_package_target_for_selection(
+        word_doc: &WordDocument,
+        mode: EditingMode,
+        hf_variant: HfVariant,
+        anchor: HfEditCursor,
+        focus: HfEditCursor,
+    ) -> Option<HfPackageTarget> {
+        if anchor.page_index != focus.page_index {
+            return None;
+        }
+        let (role, variant) = Self::hf_role_variant(mode, hf_variant)?;
+        let reference = word_doc.active_hf_reference(role, variant)?;
+        let part_path = word_doc.hf_part_path_for_reference(&reference)?;
+        let lines = Self::variant_lines(word_doc, mode, hf_variant)?;
+        for index in
+            anchor.line_index.min(focus.line_index)..=anchor.line_index.max(focus.line_index)
+        {
+            Self::hf_plain_line_segment(word_doc, mode, hf_variant, index, lines.get(index)?)?;
+        }
+        for cursor in [anchor, focus] {
+            let (segment, text) = Self::hf_plain_line_segment(
+                word_doc,
+                mode,
+                hf_variant,
+                cursor.line_index,
+                lines.get(cursor.line_index)?,
+            )?;
+            if segment != cursor.segment || !text.is_char_boundary(cursor.offset) {
+                return None;
+            }
+        }
+        Some(HfPackageTarget {
+            part_path,
+            range: SelectionRange::new(
+                TextPosition::new(anchor.line_index, anchor.offset),
+                TextPosition::new(focus.line_index, focus.offset),
+            ),
+        })
+    }
+
     fn hf_segment_text(
         &self,
         mode: EditingMode,
@@ -3862,6 +3926,129 @@ impl OffscreenDocumentView {
         }
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         Ok(Some(cursor))
+    }
+
+    async fn apply_hf_package_edit(
+        &self,
+        bytes: Vec<u8>,
+        expected: Vec<u8>,
+        part_path: String,
+        caret: TextPosition,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, variant, before_cursor, before_anchor, target, options) = {
+            let state = self.state.borrow();
+            let target = Self::hf_package_target(&state)
+                .filter(|target| target.part_path == part_path)
+                .ok_or_else(|| JsValue::from_str("The story paste destination is unavailable"))?;
+            if state.preview_mode || state.options.record_changes() {
+                return Err(JsValue::from_str(
+                    "Package edits require an editable untracked story",
+                ));
+            }
+            (
+                state.editing_mode,
+                state.hf_variant,
+                state.hf_edit_cursor,
+                state.hf_selection_anchor,
+                target,
+                state.options.clone(),
+            )
+        };
+        let replacement = WordDocument::load(&bytes, &options)
+            .await
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        let snapshot = replacement
+            .snapshot_for_replacement()
+            .ok_or_else(|| JsValue::from_str("Document is unavailable"))?;
+        let (before_doc, after_doc, after_cursor) = {
+            let mut state = self.state.borrow_mut();
+            // Loading images yields to other messages. Recheck both the story
+            // destination and the entire source before changing document/history.
+            if state.preview_mode
+                || state.options.record_changes()
+                || state.editing_mode != mode
+                || state.hf_variant != variant
+                || state.hf_edit_cursor != before_cursor
+                || state.hf_selection_anchor != before_anchor
+                || Self::hf_package_target(&state).as_ref() != Some(&target)
+            {
+                return Err(JsValue::from_str(
+                    "The story paste destination changed; try again",
+                ));
+            }
+            let before_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("Document is unavailable"))?;
+            if before_doc
+                .export_docx()
+                .map_err(|error| JsValue::from_str(&error.to_string()))?
+                != expected
+            {
+                return Err(JsValue::from_str(
+                    "The document changed while preparing the edit; try again",
+                ));
+            }
+            let before_doc = before_doc.clone();
+            let mut after_doc = before_doc.clone();
+            after_doc.restore_snapshot(snapshot);
+            let (role, hf_variant) = Self::hf_role_variant(mode, variant).unwrap();
+            let reference = after_doc.active_hf_reference(role, hf_variant);
+            if reference
+                .and_then(|id| after_doc.hf_part_path_for_reference(&id))
+                .as_deref()
+                != Some(part_path.as_str())
+            {
+                return Err(JsValue::from_str(
+                    "The replacement changed the story destination",
+                ));
+            }
+            after_doc
+                .hf_ruler_paragraph(role, hf_variant, caret.paragraph)
+                .ok_or_else(|| {
+                    JsValue::from_str("The pasted caret is not an ordinary story paragraph")
+                })?;
+            let lines = Self::variant_lines(&after_doc, mode, variant)
+                .ok_or_else(|| JsValue::from_str("The pasted story is unavailable"))?;
+            let (segment, text) = lines
+                .get(caret.paragraph)
+                .and_then(Self::hf_single_segment)
+                .ok_or_else(|| {
+                    JsValue::from_str("The pasted caret cannot address a story segment")
+                })?;
+            if !text.is_char_boundary(caret.offset) {
+                return Err(JsValue::from_str(
+                    "The pasted caret is outside the story text",
+                ));
+            }
+            let after_cursor = HfEditCursor {
+                line_index: caret.paragraph,
+                segment,
+                offset: caret.offset,
+                ..before_cursor.unwrap()
+            };
+            state.word_doc = Some(after_doc.clone());
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = None;
+            state.selection = None;
+            state.object_selection = None;
+            (before_doc, after_doc, after_cursor)
+        };
+        self.push_hf_history_entry(HfHistoryEntry {
+            before_doc,
+            after_doc,
+            before_cursor,
+            after_cursor: Some(after_cursor),
+            before_selection_anchor: before_anchor,
+            after_selection_anchor: None,
+            mode,
+            variant,
+        });
+        // Package imports can change shared styles and numbering used by body pages.
+        self.renderer.borrow_mut().invalidate_layout_from(0);
+        self.renderer.borrow_mut().clear_paragraph_render_cache();
+        self.prepare_hf_edit_rerender(mode, after_cursor.page_index);
+        self.finish_hf_edit_result_async(mode).await
     }
 
     async fn insert_hf_text(&self, text: String, mode: EditingMode) -> Result<JsValue, JsValue> {
@@ -13839,7 +14026,8 @@ impl OffscreenDocumentView {
     /// Applies an optimistic, undoable replacement including source package parts.
     /// `caret_paragraph` / `caret_offset` place the caret afterwards (a paste
     /// leaves it right after the pasted content, as in Word); without them it
-    /// goes to the document start.
+    /// goes to the document start. Header/footer edits require their resolved
+    /// `part_path` and a caret in that story; body edits may omit `part_path`.
     #[wasm_bindgen(js_name = applyPackageEdit)]
     pub async fn apply_package_edit(
         &self,
@@ -13847,7 +14035,23 @@ impl OffscreenDocumentView {
         expected: Vec<u8>,
         caret_paragraph: Option<usize>,
         caret_offset: Option<usize>,
+        part_path: Option<String>,
     ) -> Result<JsValue, JsValue> {
+        if let Some(part_path) = part_path {
+            if self.state.borrow().editing_mode != EditingMode::Body {
+                let caret = caret_paragraph
+                    .map(|paragraph| TextPosition::new(paragraph, caret_offset.unwrap_or(0)))
+                    .ok_or_else(|| JsValue::from_str("A story package edit requires a caret"))?;
+                return self
+                    .apply_hf_package_edit(bytes, expected, part_path, caret)
+                    .await;
+            }
+            if part_path != "word/document.xml" {
+                return Err(JsValue::from_str(
+                    "The package destination is not the document body",
+                ));
+            }
+        }
         if self.state.borrow().preview_mode || !self.body_commands_allowed() {
             return Err(JsValue::from_str(
                 "Package edits require an editable document body",
@@ -15486,6 +15690,7 @@ impl OffscreenDocumentView {
             variant: state.hf_variant,
             anchor: state.hf_selection_anchor.unwrap_or(focus),
             focus,
+            package_target: Self::hf_package_target(&state),
         })
         .unwrap_or(JsValue::NULL)
     }
@@ -20743,6 +20948,103 @@ mod tests {
                 "{unit}"
             );
         }
+    }
+
+    #[test]
+    fn header_footer_package_targets_keep_story_byte_offsets_and_reject_ambiguous_lines() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "A日本Z")
+                    .unwrap();
+                doc.set_hf_paragraph_alignment(role, hf_variant, 0, "center")
+                    .unwrap();
+                let anchor = HfEditCursor {
+                    page_index: 2,
+                    line_index: 0,
+                    segment: HfSegment::Center,
+                    offset: 7,
+                };
+                let focus = HfEditCursor {
+                    offset: 1,
+                    ..anchor
+                };
+                let target = OffscreenDocumentView::hf_package_target_for_selection(
+                    &doc, mode, variant, anchor, focus,
+                )
+                .unwrap();
+                assert_eq!(target.range.anchor, TextPosition::new(0, 7));
+                assert_eq!(target.range.focus, TextPosition::new(0, 1));
+                assert_eq!(
+                    Some(target.part_path),
+                    doc.active_hf_reference(role, hf_variant)
+                        .and_then(|id| doc.hf_part_path_for_reference(&id))
+                );
+                for invalid in [
+                    HfEditCursor { offset: 2, ..focus },
+                    HfEditCursor {
+                        offset: 99,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        page_index: 1,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        segment: HfSegment::Right,
+                        ..focus
+                    },
+                    HfEditCursor {
+                        line_index: 1,
+                        ..focus
+                    },
+                ] {
+                    assert!(OffscreenDocumentView::hf_package_target_for_selection(
+                        &doc, mode, variant, anchor, invalid
+                    )
+                    .is_none());
+                }
+                OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "A\tB").unwrap();
+                assert!(OffscreenDocumentView::hf_package_target_for_selection(
+                    &doc, mode, variant, focus, focus
+                )
+                .is_none());
+            }
+        }
+        let doc = futures::executor::block_on(WordDocument::load(
+            include_bytes!("../../../public/fixtures/header.docx"),
+            &Options::default(),
+        ))
+        .unwrap();
+        let cursor = HfEditCursor {
+            page_index: 0,
+            line_index: 0,
+            segment: HfSegment::Left,
+            offset: 0,
+        };
+        assert!(OffscreenDocumentView::hf_package_target_for_selection(
+            &doc,
+            EditingMode::Header,
+            HfVariant::Default,
+            cursor,
+            cursor
+        )
+        .is_none());
+        assert!(OffscreenDocumentView::hf_package_target_for_selection(
+            &doc,
+            EditingMode::Body,
+            HfVariant::Default,
+            cursor,
+            cursor
+        )
+        .is_none());
     }
 
     #[test]
