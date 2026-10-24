@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+# Detected by removing the pending-suffix flush before justified word transfer.
+cc 1bc669b076e5e0becb74ab6d9ca21f504dff35bb3eec66a629b99cf50649bfae # shrinks to parts = ["word", "word", "word", "word", "word", "word", "word", "word", "word", "word", "word", "word", "word", "word", " "], available = 2, justified = true
