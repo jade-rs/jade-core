@@ -20,6 +20,27 @@ fn index_of(document: &WordDocument, id: XmlNodeId) -> Option<usize> {
         .find(|index| document.paragraph(*index).and_then(|p| p.node_id) == Some(id))
 }
 
+// The accepted-view coordinates used by server clients stop before trailing
+// deletions and start after leading deletions. Those invisible bytes do not
+// make a fully selected cell partial. Insertions and moved-to text still do.
+fn only_deleted_text(document: &WordDocument, paragraph: usize, from: usize, to: usize) -> bool {
+    let Some(paragraph) = document.paragraph(paragraph) else {
+        return false;
+    };
+    let mut offset = 0;
+    for run in &paragraph.runs {
+        let end = offset + run.text.len();
+        if offset < to
+            && end > from
+            && !run.revision.as_ref().is_some_and(|mark| mark.is_deletion())
+        {
+            return false;
+        }
+        offset = end;
+    }
+    to <= offset
+}
+
 pub(super) fn delete_range_with_tables(
     ctx: &mut CommandContext<'_>,
     start: TextPosition,
@@ -42,8 +63,9 @@ pub(super) fn delete_range_with_tables(
         if paragraphs.iter().all(|p| {
             *p >= start.paragraph
                 && *p <= end.paragraph
-                && (*p != start.paragraph || start.offset == 0)
-                && (*p != end.paragraph || end.offset >= len(ctx.document, *p))
+                && (*p != start.paragraph || only_deleted_text(ctx.document, *p, 0, start.offset))
+                && (*p != end.paragraph
+                    || only_deleted_text(ctx.document, *p, end.offset, len(ctx.document, *p)))
         }) {
             covered.extend(paragraphs);
             tables.push(id);
