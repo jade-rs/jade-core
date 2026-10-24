@@ -40,6 +40,32 @@ struct TableLookJs {
 }
 
 impl OffscreenDocumentView {
+    /// Refresh paragraph-indexed view snapshots inside a structural edit's
+    /// existing render. Callers must not use this for ordinary text input.
+    pub(super) fn refresh_outline_after_structure(&self) -> Result<Option<Options>, JsValue> {
+        let active = {
+            let state = self.state.borrow();
+            if !state.outline_display.active && state.outline_display.collapsed.is_empty() {
+                return Ok(None);
+            }
+            state.outline_display.active
+        };
+        let hidden = self.refresh_outline_display(|_, _| {})?;
+        let indents = if active {
+            let state = self.state.borrow();
+            state
+                .word_doc
+                .as_ref()
+                .map(|document| Rc::new(crate::word::outline::indents(document)))
+        } else {
+            None
+        };
+        let mut renderer = self.renderer.borrow_mut();
+        renderer.set_outline_indents(indents);
+        renderer.set_collapsed_blocks(hidden);
+        Ok(Some(self.state.borrow().options.clone()))
+    }
+
     pub(super) fn refresh_outline_display(
         &self,
         update: impl FnOnce(&mut crate::word::outline::OutlineDisplay, &WordDocument),
