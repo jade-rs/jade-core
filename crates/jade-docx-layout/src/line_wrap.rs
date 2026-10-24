@@ -7901,6 +7901,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
     let base_available = right_limit - base_x;
 
     let mut line_index = 0;
+    let mut detached = Vec::new();
     while line_index < lines.len() {
         let available = paragraph_style.available_width_for_line(base_available, line_index);
         let effective_available = (available - WRAP_SAFETY_PX).max(1.0);
@@ -7994,6 +7995,11 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     let (head, tail) = lines.split_at_mut(line_index + 1);
                     let current = &mut head[line_index];
                     let next = &mut tail[0];
+                    // This path transfers directly. Commit the suffix removed
+                    // earlier first so subsequent prepends preserve text order.
+                    if !detached.is_empty() {
+                        prepend_detached_clusters_to_line(next, &mut detached);
+                    }
                     if move_trailing_latin_word_and_spaces_to_next_line(current, next) {
                         if character_borders {
                             apply_character_border_inline_spacing(current);
@@ -8096,21 +8102,22 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     hyphen: None,
                 });
             }
-            let (head, tail) = lines.split_at_mut(line_index + 1);
-            let current = &mut head[line_index];
-            let next = &mut tail[0];
+            let current = &mut lines[line_index];
             let Some((cluster, segment)) = detach_trailing_cluster(current) else {
                 break;
             };
             let mut moved_width = cluster.width;
-            prepend_cluster_to_line_preserving_rules(next, cluster, segment);
-            moved_width += move_remaining_split_latin_word_to_next_line(current, next);
+            detached.push((cluster, segment));
+            moved_width += detach_remaining_split_latin_word(current, &mut detached);
             width = if character_borders {
                 apply_character_border_inline_spacing(current);
                 current.clusters.iter().map(|cluster| cluster.width).sum()
             } else {
                 (width - moved_width).max(0.0)
             };
+        }
+        if !detached.is_empty() {
+            prepend_detached_clusters_to_line(&mut lines[line_index + 1], &mut detached);
         }
         line_index += 1;
     }
@@ -8443,14 +8450,13 @@ fn has_preceding_latin_break_opportunity(line: &WrappedLine) -> bool {
 /// remainder of the word in the same repair step. Doing this before the next
 /// line is measured avoids both a browser-only `Worl`/`d` split and a later
 /// boundary-only pass that could overfill the receiving line.
-fn move_remaining_split_latin_word_to_next_line(
+fn detach_remaining_split_latin_word(
     current: &mut WrappedLine,
-    next: &mut WrappedLine,
+    detached: &mut Vec<(InlineCluster, TextSegment)>,
 ) -> f64 {
-    if !next
-        .clusters
-        .first()
-        .is_some_and(|cluster| is_latin_word_grapheme(&cluster.text))
+    if !detached
+        .last()
+        .is_some_and(|(cluster, _)| is_latin_word_grapheme(&cluster.text))
         || !has_preceding_latin_break_opportunity(current)
     {
         return 0.0;
@@ -8464,7 +8470,7 @@ fn move_remaining_split_latin_word_to_next_line(
             break;
         };
         moved_width += cluster.width;
-        prepend_cluster_to_line_preserving_rules(next, cluster, segment);
+        detached.push((cluster, segment));
     }
     while current.clusters.len() > 1
         && current
@@ -8476,7 +8482,7 @@ fn move_remaining_split_latin_word_to_next_line(
             break;
         };
         moved_width += cluster.width;
-        prepend_cluster_to_line_preserving_rules(next, cluster, segment);
+        detached.push((cluster, segment));
     }
     moved_width
 }
@@ -8644,6 +8650,61 @@ fn prepend_cluster_to_line_preserving_rules(
     }
 
     line.segments.insert(0, segment);
+}
+
+/// Prepends clusters removed from another line, supplied in reverse text order.
+/// Width repair can move a large suffix across many lines. Gather that suffix
+/// before shifting the receiving line's clusters and text, rather than shifting
+/// the same growing buffers once per character.
+fn prepend_detached_clusters_to_line(
+    line: &mut WrappedLine,
+    detached: &mut Vec<(InlineCluster, TextSegment)>,
+) {
+    // Reuse the staging buffer across lines; a single-cluster transfer needs
+    // no additional temporary buffers.
+    if detached.len() <= 1 {
+        if let Some((cluster, segment)) = detached.pop() {
+            prepend_cluster_to_line_preserving_rules(line, cluster, segment);
+        }
+        return;
+    }
+    let mut clusters = Vec::with_capacity(detached.len());
+    let mut segments: Vec<TextSegment> = Vec::new();
+    for (cluster, mut segment) in detached.drain(..).rev() {
+        clusters.push(cluster);
+        segment.leading_width = 0.0;
+        if let Some(last) = segments.last_mut() {
+            if last.properties == segment.properties
+                && last.revision == segment.revision
+                && last.hyperlink == segment.hyperlink
+            {
+                last.text.push_str(&segment.text);
+                last.end = segment.end;
+                // Single-cluster prepends retain the right-hand metadata.
+                last.properties = segment.properties;
+                last.revision = segment.revision;
+                last.hyperlink = segment.hyperlink;
+                continue;
+            }
+        }
+        segments.push(segment);
+    }
+    if let (Some(last), Some(first)) = (segments.last_mut(), line.segments.first()) {
+        if last.properties == first.properties
+            && last.revision == first.revision
+            && last.hyperlink == first.hyperlink
+        {
+            let first = line.segments.remove(0);
+            last.text.push_str(&first.text);
+            last.end = first.end;
+            last.leading_width = first.leading_width;
+            last.properties = first.properties;
+            last.revision = first.revision;
+            last.hyperlink = first.hyperlink;
+        }
+    }
+    line.clusters.splice(0..0, clusters);
+    line.segments.splice(0..0, segments);
 }
 
 /// Removes the first inline cluster and its segment from `line`.
@@ -21845,6 +21906,101 @@ mod tests {
             lines.last().map(|line| line.break_kind),
             Some(LineBreakKind::ParagraphEnd)
         );
+    }
+
+    fn segment_signature(
+        segment: &TextSegment,
+    ) -> (String, usize, usize, String, String, String, u64) {
+        (
+            segment.text.clone(),
+            segment.start,
+            segment.end,
+            format!("{:?}", segment.properties),
+            format!("{:?}", segment.revision),
+            format!("{:?}", segment.hyperlink),
+            segment.leading_width.to_bits(),
+        )
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+        #[test]
+        fn final_width_repair_preserves_text_order_and_formatting(
+            parts in prop::collection::vec(prop::sample::select(vec!["word", " ", "-", "(", ")", "日本語", "🙂", "e\u{301}"]), 1..64),
+            available in 2u8..24,
+            justified in any::<bool>(),
+        ) {
+            let text = parts.concat();
+            let first = bidi_test_line(&text);
+            let mut tail = bidi_test_line("終");
+            for segment in &mut tail.segments { segment.start += text.len(); segment.end += text.len(); }
+            for cluster in &mut tail.clusters { cluster.start += text.len(); cluster.end += text.len(); }
+            tail.break_range = Some((text.len() + "終".len(), text.len() + "終".len()));
+            let mut lines = vec![first, tail];
+            lines[0].break_kind = LineBreakKind::Soft;
+            lines[0].break_range = None;
+            let original_clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
+            let expected_bold = lines.iter().flat_map(|line| line.segments.iter().map(|segment| ((segment.start, segment.end), segment.properties.as_deref().and_then(|p| p.bold)))).collect::<FxHashMap<_, _>>();
+            let paragraph = ParagraphStyle { alignment: if justified { "both" } else { "left" }.into(), ..ParagraphStyle::default() };
+            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines, 0.0, &paragraph, f64::from(available), &mut FxHashMap::default()).unwrap();
+            let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment| segment.text.as_str())).collect::<String>();
+            prop_assert_eq!(output, format!("{text}終"));
+            let clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
+            prop_assert_eq!(clusters, original_clusters);
+            for line in &lines {
+                for segment in &line.segments {
+                    for ((start, end), bold) in &expected_bold {
+                        if *start >= segment.start && *end <= segment.end {
+                            prop_assert_eq!(segment.properties.as_deref().and_then(|p| p.bold), *bold);
+                        }
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn batch_prepend_matches_single_cluster_moves(
+            items in prop::collection::vec((any::<char>(), 0u8..8), 0..160),
+            tail_metadata in 0u8..8,
+            tail_gap in 0u8..12,
+            empty_tail in any::<bool>(),
+        ) {
+            fn apply_metadata(segment: &mut TextSegment, bits: u8) {
+                segment.properties = Some(Rc::new(RunProperties { bold: Some(bits & 1 != 0), ..RunProperties::default() }));
+                segment.revision = (bits & 2 != 0).then(|| serde_json::from_value(serde_json::json!({"kind":"inserted","id":"1"})).unwrap());
+                segment.hyperlink = (bits & 4 != 0).then(|| RunHyperlink { anchor: Some("target".into()), ..RunHyperlink::default() });
+            }
+            let mut offset = 0;
+            let mut moved = Vec::new();
+            for (ch, bits) in items {
+                let text = ch.to_string();
+                let end = offset + text.len();
+                let cluster = InlineCluster::grapheme(offset, end, 1.25, &text, ch.is_whitespace(), bits & 1 != 0, bits & 2 != 0);
+                let mut segment = TextSegment { text, start: offset, end, properties: None, revision: None, hyperlink: None, leading_width: 9.0 };
+                apply_metadata(&mut segment, bits);
+                moved.push((cluster, segment));
+                offset = end;
+            }
+            moved.reverse(); // removal order: the source line's last cluster comes first.
+            let mut expected = bidi_test_line(if empty_tail { "" } else { "尾" });
+            for segment in &mut expected.segments {
+                segment.start += offset;
+                segment.end += offset;
+                segment.leading_width = f64::from(tail_gap);
+                apply_metadata(segment, tail_metadata);
+            }
+            for cluster in &mut expected.clusters { cluster.start += offset; cluster.end += offset; }
+            expected.break_range = Some((offset + if empty_tail {0} else {3}, offset + if empty_tail {0} else {3}));
+            let mut actual = expected.clone();
+            for (cluster, segment) in moved.clone() { prepend_cluster_to_line_preserving_rules(&mut expected, cluster, segment); }
+            prepend_detached_clusters_to_line(&mut actual, &mut moved);
+            prop_assert!(moved.is_empty());
+            prop_assert_eq!(actual.segments.iter().map(segment_signature).collect::<Vec<_>>(), expected.segments.iter().map(segment_signature).collect::<Vec<_>>());
+            prop_assert_eq!(format!("{:?}",actual.clusters), format!("{:?}",expected.clusters));
+            prop_assert_eq!(actual.break_kind, expected.break_kind);
+            prop_assert_eq!(actual.break_range, expected.break_range);
+            prop_assert_eq!(actual.hyphen, expected.hyphen);
+        }
     }
 
     fn bidi_test_line(text: &str) -> WrappedLine {
