@@ -44,6 +44,9 @@ impl ApplyStrikeCommand {
 }
 
 impl Command for ApplyStrikeCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "apply_strike"
     }

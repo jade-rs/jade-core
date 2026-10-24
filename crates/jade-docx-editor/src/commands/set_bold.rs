@@ -24,6 +24,9 @@ impl SetBoldCommand {
 }
 
 impl Command for SetBoldCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_bold"
     }

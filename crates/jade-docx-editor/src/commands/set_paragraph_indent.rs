@@ -137,6 +137,9 @@ impl SetParagraphIndentCommand {
 }
 
 impl Command for SetParagraphIndentCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_indent"
     }

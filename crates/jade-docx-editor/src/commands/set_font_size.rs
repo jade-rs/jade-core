@@ -48,6 +48,9 @@ impl SetFontSizeCommand {
 }
 
 impl Command for SetFontSizeCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_font_size"
     }

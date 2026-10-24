@@ -33,6 +33,9 @@ impl ApplyItalicCommand {
 }
 
 impl Command for ApplyItalicCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "apply_italic"
     }
