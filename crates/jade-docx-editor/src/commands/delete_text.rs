@@ -288,6 +288,23 @@ impl DeleteTextCommand {
         ctx: &mut CommandContext<'_>,
         paragraph_index: usize,
     ) -> CommandResult<()> {
+        if ctx
+            .document
+            .is_own_inserted_paragraph_break(paragraph_index)
+        {
+            let snapshot = if ctx.document.is_note_paragraph_surface(paragraph_index) {
+                ctx.document.snapshot_including_package()
+            } else {
+                ctx.document.snapshot()
+            }
+            .ok_or(CommandError::DocumentUnavailable)?;
+            if let Err(error) = ctx.document.mark_deleted_paragraph_break(paragraph_index) {
+                ctx.document.restore_snapshot(snapshot);
+                return Err(CommandError::Custom(error));
+            }
+            self.previous_snapshot = Some(snapshot);
+            return Ok(());
+        }
         let revision_id = ctx.document.revision_id_counter();
         self.raw_xml_undo.begin(ctx);
         if let Err(error) = ctx.document.mark_deleted_paragraph_break(paragraph_index) {
@@ -830,13 +847,16 @@ impl DeleteTextCommand {
         }
 
         if ctx.document.revision_session().is_some() {
-            // Marking the selection deleted removes no paragraph, so the
-            // paragraphs, a journal of the XML and the revision id counter
-            // undo it; a note keeps its XML in its own part.
+            // Canceling an own inserted boundary changes paragraph surfaces;
+            // use a snapshot for those joins and for note-part XML. Other
+            // tracked deletions need only the paragraph/XML journal.
             self.previous_paragraphs = None;
             self.raw_xml_undo.discard(ctx);
             let (mut in_place, snapshot) =
-                if ctx.document.is_note_paragraph_surface(start.paragraph) {
+                if ctx.document.is_note_paragraph_surface(start.paragraph)
+                    || (start.paragraph..end.paragraph)
+                        .any(|index| ctx.document.is_own_inserted_paragraph_break(index))
+                {
                     let snapshot = ctx
                         .document
                         .snapshot_including_package()
@@ -881,7 +901,7 @@ impl DeleteTextCommand {
                         ctx.document.sync_paragraph_text_preserving_drawings(index);
                     }
                 }
-                for index in start.paragraph..end.paragraph {
+                for index in (start.paragraph..end.paragraph).rev() {
                     ctx.document.mark_deleted_paragraph_break(index)?;
                 }
                 Ok(())
