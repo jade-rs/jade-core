@@ -322,6 +322,33 @@ pub trait WordNavigation: WordSession {
         self.move_section_to(start, end, before)
     }
 
+    /// Outline moves the selected paragraphs past the adjacent body element.
+    /// A collapsed heading uses `move_heading_section` instead.
+    fn move_outline_paragraphs(
+        &mut self,
+        first: usize,
+        last: usize,
+        up: bool,
+    ) -> Result<Position, String> {
+        let document = self.word_document();
+        if !document.is_body_paragraph_surface(first) || !document.is_body_paragraph_surface(last) {
+            return Err("アウトラインの移動は本文で実行してください".to_string());
+        }
+        let start = document
+            .body_element_of(first.min(last))
+            .ok_or_else(|| "段落の範囲がありません".to_string())?;
+        let end = document
+            .body_element_of(first.max(last))
+            .ok_or_else(|| "段落の範囲がありません".to_string())?;
+        let before = if up {
+            start.checked_sub(1)
+        } else {
+            (end + 1 < document.body_element_count()).then_some(end + 2)
+        }
+        .ok_or_else(|| "これ以上移動できません".to_string())?;
+        self.move_section_to(start, end, before)
+    }
+
     /// Moves top-level body elements `start..=end` before element `before`
     /// (the pane's drag and drop), one undo step. Returns where the first
     /// one's first paragraph went.
