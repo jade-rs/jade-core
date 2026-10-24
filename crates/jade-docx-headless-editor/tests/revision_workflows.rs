@@ -52,9 +52,14 @@ fn final_text(bytes: &[u8]) -> String {
         .descendants()
         .filter(|n| {
             n.has_tag_name((NS, "t"))
-                && !n
-                    .ancestors()
-                    .any(|a| a.has_tag_name((NS, "del")) || a.has_tag_name((NS, "moveFrom")))
+                && !n.ancestors().any(|a| {
+                    a.has_tag_name((NS, "del"))
+                        || a.has_tag_name((NS, "moveFrom"))
+                        || (a.has_tag_name((NS, "tr"))
+                            && a.children()
+                                .filter(|p| p.has_tag_name((NS, "trPr")))
+                                .any(|p| p.children().any(|mark| mark.has_tag_name((NS, "del")))))
+                })
         })
         .filter_map(|n| n.text())
         .collect()
@@ -496,6 +501,244 @@ fn deleting_another_authors_tracked_row_requires_a_revision_decision() {
         .descendants()
         .any(|node| node.has_tag_name((NS, "ins"))
             && node.attribute((NS, "author")) == Some("Reviewer")));
+}
+
+fn tracked_rows(bytes: &[u8]) -> Option<Vec<u8>> {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let table = document
+        .descendants()
+        .find(|node| node.has_tag_name((NS, "tbl")))?;
+    Some(
+        table
+            .children()
+            .filter(|node| node.has_tag_name((NS, "tr")))
+            .map(|row| {
+                let properties = row.children().find(|node| node.has_tag_name((NS, "trPr")));
+                if properties
+                    .is_some_and(|p| p.children().any(|node| node.has_tag_name((NS, "ins"))))
+                {
+                    1
+                } else if properties
+                    .is_some_and(|p| p.children().any(|node| node.has_tag_name((NS, "del"))))
+                {
+                    2
+                } else {
+                    0
+                }
+            })
+            .collect(),
+    )
+}
+
+#[test]
+fn tracked_whole_tables_and_last_rows_survive_revision_decisions() {
+    let input =
+        fixture("<w:ins w:id=\"40\" w:author=\"Reviewer\"><w:r><w:t>契約</w:t></w:r></w:ins>");
+    for rows in [1, 3] {
+        let inserted = edit(
+            &input,
+            vec![
+                tracking(),
+                HeadlessCommand::InsertTable {
+                    after_paragraph: 0,
+                    rows,
+                    columns: 2,
+                    column_widths: vec![],
+                    caret_offset: None,
+                },
+            ],
+        );
+        assert_eq!(tracked_rows(&inserted), Some(vec![1; rows]));
+        let rejected = edit(&inserted, vec![decide(false, lg_ids(&inserted))]);
+        assert_eq!(table_shape(&rejected), None);
+        let accepted = edit(&inserted, vec![decide(true, lg_ids(&inserted))]);
+        assert_eq!(tracked_rows(&accepted), Some(vec![0; rows]));
+        let deleted = edit(
+            &accepted,
+            vec![
+                tracking(),
+                HeadlessCommand::DeleteTable {
+                    table_order_index: 0,
+                },
+            ],
+        );
+        assert_eq!(tracked_rows(&deleted), Some(vec![2; rows]));
+        assert_eq!(
+            table_shape(&edit(&deleted, vec![decide(true, lg_ids(&deleted))])),
+            None
+        );
+        assert_eq!(
+            tracked_rows(&edit(&deleted, vec![decide(false, lg_ids(&deleted))])),
+            Some(vec![0; rows])
+        );
+        let cancelled = edit(
+            &inserted,
+            vec![
+                tracking(),
+                HeadlessCommand::DeleteTable {
+                    table_order_index: 0,
+                },
+            ],
+        );
+        assert_eq!(table_shape(&cancelled), None);
+        assert_eq!(final_text(&cancelled), "契約");
+        let xml = part(&cancelled, "word/document.xml");
+        let document = roxmltree::Document::parse(&xml).unwrap();
+        assert!(document
+            .descendants()
+            .any(|node| node.has_tag_name((NS, "ins"))
+                && node.attribute((NS, "author")) == Some("Reviewer")
+                && node.attribute((NS, "id")) == Some("40")));
+    }
+}
+
+#[test]
+fn tracked_table_deletion_preserves_foreign_cell_history_and_nested_tables() {
+    let input = fixture(
+        r#"<w:r><w:t>before</w:t></w:r></w:p>
+        <w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid><w:tr><w:tc>
+        <w:p><w:ins w:id="40" w:author="Reviewer"><w:r><w:t>reviewed</w:t></w:r></w:ins></w:p>
+        <w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>nested</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/>
+        </w:tc></w:tr></w:tbl><w:p><w:r><w:t>after</w:t></w:r>"#,
+    );
+    let deleted = edit(
+        &input,
+        vec![
+            tracking(),
+            HeadlessCommand::DeleteTable {
+                table_order_index: 0,
+            },
+        ],
+    );
+    assert_eq!(final_text(&deleted), "beforeafter");
+    let restored = edit(&deleted, vec![decide(false, lg_ids(&deleted))]);
+    assert_eq!(final_text(&restored), "beforereviewednestedafter");
+    let xml = part(&restored, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    assert_eq!(
+        document
+            .descendants()
+            .filter(|n| n.has_tag_name((NS, "tbl")))
+            .count(),
+        2
+    );
+    assert!(document.descendants().any(|n| n.has_tag_name((NS, "ins"))
+        && n.attribute((NS, "author")) == Some("Reviewer")
+        && n.attribute((NS, "id")) == Some("40")));
+    let accepted = edit(&deleted, vec![decide(true, lg_ids(&deleted))]);
+    assert_eq!(table_shape(&accepted), None);
+    assert_eq!(final_text(&accepted), "beforeafter");
+
+    // Deciding two nested structural insertions must not leave a zero-row table.
+    let inserted = fixture(
+        r#"</w:p><w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="41" w:author="LAWGUE"/></w:trPr><w:tc>
+        <w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="42" w:author="LAWGUE"/></w:trPr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p/>
+        </w:tc></w:tr></w:tbl><w:p>"#,
+    );
+    assert_eq!(
+        table_shape(&edit(
+            &inserted,
+            vec![decide(false, vec!["41".into(), "42".into()])]
+        )),
+        None
+    );
+}
+
+#[test]
+fn cancelling_our_inserted_rows_keeps_other_authors_later_changes() {
+    for rows in [1, 2] {
+        let foreign = r#"<w:tr><w:trPr><w:ins w:id="41" w:author="LAWGUE"/></w:trPr><w:tc><w:p><w:ins w:id="42" w:author="Reviewer"><w:r><w:t>reviewed</w:t></w:r></w:ins></w:p></w:tc></w:tr>"#;
+        let input = fixture(&format!(
+            r#"</w:p><w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid>{foreign}{}</w:tbl><w:p>"#,
+            if rows == 2 {
+                "<w:tr><w:tc><w:p/></w:tc></w:tr>"
+            } else {
+                ""
+            }
+        ));
+        for command in [
+            HeadlessCommand::DeleteTable {
+                table_order_index: 0,
+            },
+            HeadlessCommand::DeleteTableRow {
+                table_order_index: 0,
+                row_index: 0,
+            },
+        ] {
+            let error = apply_headless_commands(
+                &input,
+                &HeadlessEditRequest {
+                    commands: vec![tracking(), command],
+                },
+            )
+            .unwrap_err();
+            assert!(
+                error.to_string().contains("other author's revisions"),
+                "{error}"
+            );
+        }
+        assert_eq!(final_text(&input), "reviewed");
+        assert_eq!(
+            tracked_rows(&input),
+            Some(if rows == 1 { vec![1] } else { vec![1, 0] })
+        );
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_tracked_tables_match_row_model(actions in prop::collection::vec((0u8..7, any::<u8>()), 1..25)) {
+        let mut bytes = fixture("<w:ins w:id=\"40\" w:author=\"Reviewer\"><w:r><w:t>契約</w:t></w:r></w:ins>");
+        let mut model: Option<(Vec<u8>, usize)> = None;
+        for (step, (kind, index)) in actions.into_iter().enumerate() {
+            let mut expected = model.clone();
+            let mut invalid = false;
+            let command = match (kind, expected.as_mut()) {
+                (0, None) => {
+                    let rows = 1 + index as usize % 3;
+                    let columns = 1 + index as usize % 2;
+                    expected = Some((vec![1; rows], columns));
+                    HeadlessCommand::InsertTable { after_paragraph: 0, rows, columns, column_widths: vec![], caret_offset: None }
+                },
+                (1, Some((rows, _))) => {
+                    rows.retain(|state| *state != 1);
+                    for state in rows { if *state == 0 { *state = 2; } }
+                    HeadlessCommand::DeleteTable { table_order_index: 0 }
+                },
+                (2, Some((rows, _))) => {
+                    let row = index as usize % (rows.len() + 1);
+                    rows.insert(row, 1);
+                    HeadlessCommand::InsertTableRow { table_order_index: 0, row_index: row, template_row: None }
+                },
+                (3, Some((rows, _))) => {
+                    let row = index as usize % rows.len();
+                    if rows[row] == 1 { rows.remove(row); } else { rows[row] = 2; }
+                    HeadlessCommand::DeleteTableRow { table_order_index: 0, row_index: row }
+                },
+                (4 | 5, state) => {
+                    let accept = kind == 4;
+                    if let Some((rows, _)) = state {
+                        rows.retain(|state| *state != if accept { 2 } else { 1 });
+                        rows.fill(0);
+                    }
+                    decide(accept, lg_ids(&bytes))
+                },
+                _ => { invalid = true; HeadlessCommand::DeleteTable { table_order_index: 99 } },
+            };
+            if expected.as_ref().is_some_and(|(rows, _)| rows.is_empty()) { expected = None; }
+            let output = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![tracking(), command] });
+            if invalid { prop_assert!(output.is_err(), "step {} invalid table", step); }
+            else { prop_assert!(output.is_ok(), "step {} kind {}: {:?}", step, kind, output.as_ref().err()); bytes = output.unwrap(); model = expected; }
+            prop_assert_eq!(tracked_rows(&bytes), model.as_ref().map(|(rows, _)| rows.clone()), "row states at step {} kind {}", step, kind);
+            prop_assert_eq!(table_shape(&bytes), model.as_ref().map(|(rows, columns)| (rows.len(), *columns)), "grid at step {}", step);
+            prop_assert_eq!(final_text(&bytes), "契約", "body text at step {}", step);
+            let xml = part(&bytes, "word/document.xml");
+            let document = roxmltree::Document::parse(&xml).unwrap();
+            prop_assert!(document.descendants().any(|node| node.has_tag_name((NS, "ins")) && node.attribute((NS, "author")) == Some("Reviewer") && node.attribute((NS, "id")) == Some("40")), "foreign revision at step {}", step);
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

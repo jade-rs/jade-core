@@ -54,6 +54,7 @@ pub struct TableStructureCommand {
     table_order_index: usize,
     op: TableStructureOp,
     backup: Option<TableStructureBackup>,
+    whole_table_backup: Option<crate::word_document::WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
 
@@ -69,6 +70,7 @@ impl TableStructureCommand {
             table_order_index,
             op,
             backup: None,
+            whole_table_backup: None,
             previous_selection: None,
         }
     }
@@ -153,6 +155,15 @@ impl Command for TableStructureCommand {
                     if mark.is_deletion() {
                         return Ok(());
                     }
+                    if ctx.document.row_has_foreign_revisions(
+                        self.table_order_index,
+                        row_index,
+                        session.author.as_deref(),
+                    ) {
+                        return Err(CommandError::Custom(
+                            "decide the other author's revisions before cancelling this inserted row".into(),
+                        ));
+                    }
                 }
                 // With changes tracked the row stays, marked deleted — unless
                 // it is our own tracked insertion, which simply goes.
@@ -162,6 +173,23 @@ impl Command for TableStructureCommand {
                     .and_then(|table| table.rows.get(row_index))
                     .and_then(|row| row.revision.as_deref())
                     .is_some_and(|mark| !mark.is_deletion());
+                if inserted
+                    && ctx.document.revision_session().is_some()
+                    && ctx
+                        .document
+                        .table_by_order(self.table_order_index)
+                        .is_some_and(|table| table.rows.len() == 1)
+                {
+                    let snapshot = ctx
+                        .document
+                        .snapshot_including_package()
+                        .ok_or(CommandError::DocumentUnavailable)?;
+                    super::delete_table::DeleteTableCommand::new(self.table_order_index)
+                        .apply(ctx)?;
+                    self.whole_table_backup = Some(snapshot);
+                    self.previous_selection = previous_selection;
+                    return Ok(());
+                }
                 match ctx
                     .document
                     .new_row_revision(jade_docx_reader::RevisionKind::Deleted)
@@ -213,6 +241,11 @@ impl Command for TableStructureCommand {
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        if let Some(snapshot) = self.whole_table_backup.take() {
+            ctx.document.restore_snapshot(snapshot);
+            *ctx.selection = self.previous_selection;
+            return Ok(());
+        }
         let snapshot = self
             .backup
             .take()
