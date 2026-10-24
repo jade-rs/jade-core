@@ -17745,6 +17745,35 @@ mod tests {
     }
 
     #[test]
+    fn accepting_shown_deletions_preserves_other_kinds_and_undo_restores_them() {
+        let mut word_doc = review_kinds_document();
+        let snapshots = revision_snapshots(&word_doc);
+        let selected = select_revisions(
+            &snapshots,
+            &RevisionSelector {
+                kinds: Some(vec!["deleted".into()]),
+                ..Default::default()
+            },
+        );
+        assert_eq!(selected.len(), 2);
+        let mut executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![decide_targets(true, revision_targets_for(&selected))],
+            },
+        )
+        .unwrap();
+        assert_eq!(revision_ids(&word_doc), ["1", "3", "4", "5", "7"]);
+        assert!(executor
+            .undo(&mut CommandContext::new(&mut word_doc, &mut None))
+            .unwrap());
+        assert_eq!(revision_ids(&word_doc), ["1", "2", "3", "4", "5", "6", "7"]);
+    }
+
+    #[test]
     fn accepting_a_revision_id_set_is_one_undoable_step() {
         let mut word_doc = review_kinds_document();
         let mut executor = CommandExecutor::new();

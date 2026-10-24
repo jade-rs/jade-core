@@ -17,6 +17,11 @@ fn attr(element: &XmlElement, name: &str) -> Option<String> {
 }
 fn without_changes(mut element: XmlElement) -> XmlElement {
     element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange"));
+    // pPrChange contains CT_PPrGeneral, which excludes paragraph-mark run
+    // properties and section properties. Those have their own revisions.
+    if element.name == "w:pPr" {
+        element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr"));
+    }
     element
 }
 fn signature(element: Option<&XmlElement>) -> String {
@@ -30,7 +35,11 @@ fn signature(element: Option<&XmlElement>) -> String {
         }
         for node in &element.children {
             match node {
-                XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange" => {}
+                XmlNode::Element(e)
+                    if e.name == "w:rPrChange"
+                        || e.name == "w:pPrChange"
+                        || element.name == "w:pPr"
+                            && matches!(e.name.as_str(), "w:rPr" | "w:sectPr") => {}
                 XmlNode::Element(e) => {
                     out.push('[');
                     visit(e, out);
@@ -293,6 +302,11 @@ impl WordDocument {
                 props.clone()
             };
             replacement.id = props.id;
+            if decision == RevisionDecision::Reject && property == "w:pPr" {
+                replacement.children.extend(props.children.iter().filter(|node| {
+                    matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr")
+                }).cloned());
+            }
             replacement
                 .children
                 .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == change));

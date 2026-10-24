@@ -3995,6 +3995,40 @@ mod tests {
     }
 
     #[test]
+    fn deletion_ending_at_an_empty_cell_keeps_the_table_and_existing_revisions() {
+        let table = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl>"#;
+        let data = build_docx_with_body(&format!(
+            r#"<w:p><w:del w:id="1" w:author="Reviewer"><w:r><w:delText>Hello</w:delText></w:r></w:del><w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"#
+        ));
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let before = exported_document_xml(&mut document);
+        let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 0));
+        let mut selection = Some(range);
+        let mut history = CommandExecutor::new();
+        history
+            .execute(
+                Box::new(
+                    InsertTextCommand::new(range, String::new(), None).deleting_selected_tables(),
+                ),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap();
+        assert!(document.table_by_order(0).is_some());
+        assert_eq!(document.paragraph_count(), 3);
+        let after = exported_document_xml(&mut document);
+        assert!(after.contains("<w:delText>Hello</w:delText>"), "{after}");
+        assert!(history
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
+        assert_eq!(exported_document_xml(&mut document), before);
+        assert!(history
+            .redo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
+        assert_eq!(exported_document_xml(&mut document), after);
+    }
+
+    #[test]
     fn deleting_selected_tables_rolls_back_when_a_later_table_refuses_deletion() {
         let inserted = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="1" w:author="LAWGUE"/></w:trPr><w:tc><w:p><w:ins w:id="2" w:author="Reviewer"><w:r><w:t>REVIEW</w:t></w:r></w:ins></w:p></w:tc></w:tr></w:tbl>"#;
         let plain = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>CELL</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
