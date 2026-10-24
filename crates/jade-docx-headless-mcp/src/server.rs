@@ -7874,6 +7874,19 @@ mod tests {
         }
     }
 
+    #[test]
+    fn splitting_a_replaced_commented_cell_keeps_one_reference() {
+        let mut server = test_server();
+        let session = open_session(&mut server, TABLE_DOCX);
+        // Comment the cell, replace its text, then split the replacement.
+        // Appending text to the surviving reference run used to clone its id.
+        for (step, (op, seed)) in [(16, 3), (12, 1), (3, 3)].into_iter().enumerate() {
+            assert!(run_arbitrary_edit(&mut server, &session, op, seed));
+            let bytes = export_bytes(&mut server, &session);
+            assert_docx_is_structurally_valid(&bytes, &format!("commented cell step {step}"));
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
 
