@@ -4805,6 +4805,10 @@ pub struct ParagraphProperties {
     pub spacing: Option<Spacing>,
     pub indent: Option<Indent>,
     pub numbering: Option<Numbering>,
+    /// Previous direct numbering from `w:pPrChange`, used to paint a deleted
+    /// list marker in review without applying historical paragraph properties.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub numbering_before_change: Option<Numbering>,
     pub section: Option<SectionProperties>,
     /// First-letter drop cap (`w:framePr w:dropCap="drop|margin"`).
     #[serde(skip_serializing_if = "Option::is_none")]
