@@ -631,7 +631,17 @@ pub fn apply_text_edit(
     // A replacement takes the selected text's formatting. Inserting through
     // the caret path instead joins the run on the left at a run boundary,
     // silently changing (for example) italic replacement text to bold.
-    if start < end && !insert.is_empty() {
+    let replacement_needs_own_style = start < end
+        && !insert.is_empty()
+        && match (template.as_ref(), insertion_point(runs, start)) {
+            (Some(selected), Some(InsertionPoint::Run { index, .. })) => {
+                ruby_of(selected).is_none()
+                    && (selected.properties != runs[index].properties
+                        || selected.hyperlink != runs[index].hyperlink)
+            }
+            _ => false,
+        };
+    if replacement_needs_own_style {
         let mut tail = split_runs_at_preserving_source(runs, start, zero_width);
         if start == 0 {
             let leading = tail
