@@ -6,7 +6,7 @@
 
 use std::io::{Cursor, Write};
 
-use jade_docx_diff::{load_document_bytes, ChangeKind, DiffOptions, DiffSummary, Limits};
+use jade_docx_diff::{ChangeKind, DiffOptions, DiffSummary, Limits, load_document_bytes};
 
 /// 段落 1 つぶんの XML。`para_id` を渡すと `w14:paraId` を振る。
 fn para(text: &str, para_id: Option<&str>) -> String {

@@ -148,7 +148,10 @@ fn a_command_the_shell_builds_is_one_undo_step() {
 fn footer_page_fields(docx: &[u8]) -> usize {
     use std::io::Read;
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(docx)).unwrap();
-    let names: Vec<String> = archive.file_names().map(|name| name.unwrap().into_owned()).collect();
+    let names: Vec<String> = archive
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect();
     names
         .iter()
         .filter(|name| name.starts_with("word/footer") && name.ends_with(".xml"))

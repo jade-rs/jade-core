@@ -504,35 +504,47 @@ fn verify_rsa(
     data: &[u8],
     signature: &[u8],
 ) -> Result<(), String> {
-    use der::{Decode, Encode};
-    use rsa::pkcs8::DecodePublicKey;
+    use der::{referenced::OwnedToRef, Decode};
+    use ring::signature::{
+        UnparsedPublicKey, RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+    };
     let certificate =
         x509_cert::Certificate::from_der(certificate).map_err(|error| error.to_string())?;
-    let spki = certificate
-        .tbs_certificate
-        .subject_public_key_info
-        .to_der()
+    let spki = &certificate.tbs_certificate.subject_public_key_info;
+    // 従来と同じ RSA 鍵の識別子と NULL パラメーターを検証し、別方式の鍵を受け付けない。
+    let key_algorithm = spki.algorithm.owned_to_ref();
+    key_algorithm
+        .assert_algorithm_oid(der::asn1::ObjectIdentifier::new_unwrap(
+            "1.2.840.113549.1.1.1",
+        ))
         .map_err(|error| error.to_string())?;
-    let key = rsa::RsaPublicKey::from_public_key_der(&spki).map_err(|error| error.to_string())?;
-    let result = match method {
-        RSA_SHA256 => key.verify(
-            rsa::Pkcs1v15Sign::new::<sha2::Sha256>(),
-            &sha2::Sha256::digest(data),
-            signature,
-        ),
-        "http://www.w3.org/2000/09/xmldsig#rsa-sha1" => key.verify(
-            rsa::Pkcs1v15Sign::new::<sha1::Sha1>(),
-            &sha1::Sha1::digest(data),
-            signature,
-        ),
-        "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" => key.verify(
-            rsa::Pkcs1v15Sign::new::<sha2::Sha512>(),
-            &sha2::Sha512::digest(data),
-            signature,
-        ),
+    if key_algorithm
+        .parameters_any()
+        .map_err(|error| error.to_string())?
+        != der::asn1::Null.into()
+    {
+        return Err("invalid RSA algorithm parameters".to_string());
+    }
+    let key = spki
+        .subject_public_key
+        .as_bytes()
+        .ok_or_else(|| "invalid RSA public key bit string".to_string())?;
+    // 既存の Word 文書との互換性を保つため、従来受け付けていた 1024 bit / SHA-1 も検証する。
+    let algorithm = match method {
+        RSA_SHA256 => &RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
+        "http://www.w3.org/2000/09/xmldsig#rsa-sha1" => {
+            &RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
+        }
+        "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" => {
+            &RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY
+        }
         other => return Err(format!("unsupported signature method {other}")),
     };
-    result.map_err(|_| "the signature does not verify".to_string())
+    UnparsedPublicKey::new(algorithm, key)
+        .verify(data, signature)
+        .map_err(|_| "the signature does not verify".to_string())
 }
 
 // ---- reading ------------------------------------------------------------------
@@ -1087,6 +1099,57 @@ mod tests {
                 )
                 .map_err(|error| error.to_string())
         }
+    }
+
+    #[test]
+    fn rsa_verification_preserves_supported_hashes_and_rejects_tampering() {
+        let signer = TestSigner::new("Compatibility");
+        let data = b"signed package properties";
+        let cases = [
+            (
+                RSA_SHA256,
+                rsa::Pkcs1v15Sign::new::<sha2::Sha256>(),
+                sha2::Sha256::digest(data).to_vec(),
+            ),
+            (
+                "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+                rsa::Pkcs1v15Sign::new::<sha1::Sha1>(),
+                sha1::Sha1::digest(data).to_vec(),
+            ),
+            (
+                "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512",
+                rsa::Pkcs1v15Sign::new::<sha2::Sha512>(),
+                sha2::Sha512::digest(data).to_vec(),
+            ),
+        ];
+        for (method, padding, digest) in cases {
+            let signature = signer.key.sign(padding, &digest).unwrap();
+            assert!(verify_rsa(&signer.certificate, method, data, &signature).is_ok());
+            assert!(verify_rsa(&signer.certificate, method, b"changed", &signature).is_err());
+            let mut damaged = signature;
+            damaged[0] ^= 1;
+            assert!(verify_rsa(&signer.certificate, method, data, &damaged).is_err());
+        }
+        assert!(verify_rsa(&signer.certificate, "unsupported", data, &[]).is_err());
+        assert!(verify_rsa(b"invalid certificate", RSA_SHA256, data, &[]).is_err());
+        use der::{Decode, Encode};
+        let mut certificate = x509_cert::Certificate::from_der(&signer.certificate).unwrap();
+        certificate
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm
+            .parameters = None;
+        assert!(
+            verify_rsa(&certificate.to_der().unwrap(), RSA_SHA256, data, &[])
+                .unwrap_err()
+                .contains("parameters")
+        );
+        certificate
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm
+            .oid = der::asn1::ObjectIdentifier::new_unwrap("1.2.840.10045.2.1");
+        assert!(verify_rsa(&certificate.to_der().unwrap(), RSA_SHA256, data, &[]).is_err());
     }
 
     fn package(document: &str) -> Vec<u8> {
