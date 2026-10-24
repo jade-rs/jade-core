@@ -6844,7 +6844,7 @@ impl OffscreenDocumentView {
         // This allows Rc::make_mut to avoid cloning when ref_count becomes 1.
         let _document_cache = self.drop_renderer_document_cache();
 
-        let (options, numbering_part, header_lines, footer_lines, new_selection) = {
+        let (mut options, numbering_part, header_lines, footer_lines, new_selection) = {
             let mut state = self.state.borrow_mut();
             let mut word_doc = state
                 .word_doc
@@ -6918,6 +6918,12 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if selection_start.paragraph != selection_end.paragraph || text.contains('\n') {
+            if let Some(updated) = self.refresh_outline_after_structure()? {
+                options = updated;
+            }
+        }
+
         {
             let mut renderer = self.renderer.borrow_mut();
             // IMPORTANT (correctness):
@@ -9894,7 +9900,7 @@ impl OffscreenDocumentView {
         let _document_cache = self.drop_renderer_document_cache();
 
         let (
-            options,
+            mut options,
             numbering_part,
             header_lines,
             footer_lines,
@@ -9987,6 +9993,10 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if let Some(updated) = self.refresh_outline_after_structure()? {
+            options = updated;
+        }
+
         let numbered_render_cache_invalidations = if edited_paragraph_numbered {
             let state_ref = self.state.borrow();
             if let Some(word_doc) = state_ref.word_doc.as_ref() {
@@ -14722,7 +14732,14 @@ impl OffscreenDocumentView {
         // Drop the renderer's document cache before mutating.
         let _document_cache = self.drop_renderer_document_cache();
 
-        let (options, numbering_part, header_lines, footer_lines, new_selection, merged_paragraphs) = {
+        let (
+            mut options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            new_selection,
+            merged_paragraphs,
+        ) = {
             let mut state = self.state.borrow_mut();
             let mut word_doc = state
                 .word_doc
@@ -14838,6 +14855,12 @@ impl OffscreenDocumentView {
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
         };
+        if merged_paragraphs {
+            if let Some(updated) = self.refresh_outline_after_structure()? {
+                options = updated;
+            }
+        }
+
         // Text deleted inside one body paragraph, with no paragraph joined, is
         // the same edit as typing there.
         let edits_one_body_paragraph = selected_object.is_none()
