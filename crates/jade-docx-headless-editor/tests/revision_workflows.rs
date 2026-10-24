@@ -398,6 +398,35 @@ fn range_deletion_removes_multiple_and_nested_tables_but_keeps_partial_cells() {
     assert_eq!(final_text(&partial), "HEADADTAIL");
 }
 
+#[test]
+fn range_ending_at_an_empty_cell_start_preserves_the_table() {
+    let input = fixture(
+        r#"<w:del w:id="41" w:author="Reviewer"><w:r><w:delText>Hello</w:delText></w:r></w:del></w:p><w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p><w:r><w:t>TAIL</w:t></w:r>"#,
+    );
+    for tracked in [false, true] {
+        let mut commands = vec![];
+        if tracked {
+            commands.push(tracking());
+        }
+        commands.push(range_delete(0, 0, 1, 0));
+        let output = edit(&input, commands);
+        assert_eq!(table_shape(&output), Some((1, 1)));
+        assert_eq!(final_text(&output), "TAIL");
+        assert!(part(&output, "word/document.xml").contains("<w:delText>Hello</w:delText>"));
+    }
+    // Extending the selection beyond the empty table does select its grid.
+    let output = edit(&input, vec![range_delete(0, 0, 2, 0)]);
+    assert_eq!(table_shape(&output), None);
+
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{}<w:p><w:r><w:t>TAIL</w:t></w:r>",
+        range_table("AB", "")
+    ));
+    let output = edit(&input, vec![range_delete(1, 0, 2, 0)]);
+    assert_eq!(table_shape(&output), Some((1, 2)));
+    assert_eq!(final_text(&output), "HEADTAIL");
+}
+
 // Independent model: each one-row table has a plain/inserted/deleted mark and
 // two cell strings. Every public operation exports and reloads a DOCX package.
 proptest! {
@@ -420,7 +449,10 @@ proptest! {
                     let end = expected[table].1[1].len();
                     if !tracked || expected[table].0 == 1 { expected.remove(table); }
                     else { expected[table].0 = 2; }
-                    range_delete(1 + table * 2, 0, 2 + table * 2, end)
+                    // To select a table with an empty final cell, extend past
+                    // that cell's paragraph boundary into the next paragraph.
+                    let end_paragraph = 2 + table * 2 + usize::from(end == 0);
+                    range_delete(1 + table * 2, 0, end_paragraph, end)
                 },
                 2 if !expected.is_empty() => {
                     let table = index as usize % expected.len();
