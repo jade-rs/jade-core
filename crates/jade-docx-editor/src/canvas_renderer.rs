@@ -50050,10 +50050,28 @@ mod tests {
         assert_eq!(cache.retained_bytes, 0);
     }
 
+    #[derive(Debug, Clone)]
+    enum WrapCacheCommand {
+        Insert { key: u64, bytes: usize },
+        Get(u64),
+        Clear,
+        EnsureCapacity(usize),
+    }
+
+    fn wrap_cache_command() -> impl proptest::strategy::Strategy<Value = WrapCacheCommand> {
+        use proptest::prelude::*;
+        prop_oneof![
+            6 => (0u64..12, 0usize..5000).prop_map(|(key, bytes)| WrapCacheCommand::Insert { key, bytes }),
+            2 => (0u64..12).prop_map(WrapCacheCommand::Get),
+            1 => Just(WrapCacheCommand::Clear),
+            1 => (0usize..12).prop_map(WrapCacheCommand::EnsureCapacity),
+        ]
+    }
+
     proptest::proptest! {
         #[test]
         fn paragraph_wrap_cache_matches_weighted_lru_model(
-            operations in proptest::collection::vec((0u8..10, 0u64..12, 0usize..5000), 1..120)
+            operations in proptest::collection::vec(wrap_cache_command(), 1..120)
         ) {
             use proptest::prelude::*;
             let mut cache = ParagraphWrapCache::new(4);
@@ -50061,9 +50079,9 @@ mod tests {
             let mut capacity = 4;
             // Oldest first; the model stores only fixture payload sizes.
             let mut model: Vec<(u64, usize, usize)> = Vec::new();
-            for (step, (op, key, bytes)) in operations.into_iter().enumerate() {
-                match op {
-                    0..=5 => {
+            for (step, command) in operations.into_iter().enumerate() {
+                match command {
+                    WrapCacheCommand::Insert { key, bytes } => {
                         let weight = std::mem::size_of::<WrappedLine>()
                             + std::mem::size_of::<TextSegment>() + bytes;
                         model.retain(|entry| entry.0 != key);
@@ -50076,16 +50094,15 @@ mod tests {
                         }
                         cache.insert(wrap_cache_test_key(key), wrap_cache_lines_with_text(bytes));
                     }
-                    6..=7 => {
+                    WrapCacheCommand::Get(key) => {
                         let expected = model.iter().position(|entry| entry.0 == key)
                             .map(|index| { let value = model.remove(index); model.push(value); value.2 });
                         let actual = cache.get(&wrap_cache_test_key(key))
                             .map(|lines| lines[0].segments[0].text.len());
                         prop_assert_eq!(actual, expected, "step {} get {}", step, key);
                     }
-                    8 => { model.clear(); cache.clear(); }
-                    _ => {
-                        let requested = key as usize;
+                    WrapCacheCommand::Clear => { model.clear(); cache.clear(); }
+                    WrapCacheCommand::EnsureCapacity(requested) => {
                         capacity = capacity.max(requested);
                         cache.ensure_capacity(requested);
                     }
