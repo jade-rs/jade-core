@@ -166,7 +166,7 @@ fn parse(xml: &str) -> Result<Element, String> {
         for attribute in start.attributes() {
             let attribute = attribute.map_err(|error| error.to_string())?;
             let value = attribute
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map_err(|error| error.to_string())?
                 .into_owned();
             attributes.push((

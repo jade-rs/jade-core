@@ -96,7 +96,7 @@ mod tests {
         let mut archive = ZipArchive::new(std::io::Cursor::new(bytes)).expect("open package");
         let names = (0..archive.len())
             .filter_map(|index| {
-                let name = archive.by_index(index).ok()?.name().to_string();
+                let name = archive.by_index(index).ok()?.name().ok()?.into_owned();
                 (name.starts_with("word/header") && name.ends_with(".xml")).then_some(name)
             })
             .collect::<Vec<_>>();

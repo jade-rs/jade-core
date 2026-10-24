@@ -29,7 +29,10 @@ fn part(bytes: &[u8], name: &str) -> Option<String> {
 
 fn names(bytes: &[u8]) -> Vec<String> {
     let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
-    archive.file_names().map(str::to_string).collect()
+    archive
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect()
 }
 
 fn stroke(points: &[(f64, f64)], tool: InkTool, color: &str) -> InkTrace {
@@ -194,7 +197,7 @@ fn hello_with(edit: impl Fn(&str, String) -> String, extra: &[(&str, &str)]) -> 
     let options = zip::write::SimpleFileOptions::default();
     for index in 0..archive.len() {
         let mut file = archive.by_index(index).expect("entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut content = Vec::new();
         file.read_to_end(&mut content).expect("read");
         let content = match String::from_utf8(content) {

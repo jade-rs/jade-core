@@ -516,7 +516,7 @@ impl NumberingPart {
                         for attr in e.attributes().flatten() {
                             let key = attr.key.as_ref();
                             let value = attr
-                                .unescape_value()
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|value| value.into_owned())
                                 .unwrap_or_else(|_| {
                                     String::from_utf8_lossy(&attr.value).to_string()
@@ -1551,7 +1551,7 @@ fn attr_value(e: &BytesStart, key: &[u8]) -> Option<String> {
     for attr in e.attributes().flatten() {
         if attr.key.as_ref() == key {
             return Some(
-                attr.unescape_value()
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|value| value.into_owned())
                     .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string()),
             );

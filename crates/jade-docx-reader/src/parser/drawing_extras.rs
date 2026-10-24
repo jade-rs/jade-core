@@ -57,7 +57,7 @@ fn attribute(element: &BytesStart<'_>, name: &[u8]) -> Option<String> {
         .find(|attribute| attribute.key.as_ref() == name)
         .map(|attribute| {
             attribute
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|value| value.into_owned())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attribute.value).into_owned())
         })

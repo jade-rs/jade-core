@@ -33,4 +33,4 @@ ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] 
 # Only so a failing render test can write the page out as a PNG to look at.
 image = { version = "0.25", default-features = false, features = ["png"] }
 lopdf = "=0.39.0"
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }

@@ -12,9 +12,9 @@ futures = "0.3"
 flate2 = "1"
 lopdf = "=0.39.0"
 png = "0.17"
-quick-xml = "0.39"
+quick-xml = "0.41"
 ttf-parser = "0.25"
 subsetter = "0.1"
 
 [dev-dependencies]
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }

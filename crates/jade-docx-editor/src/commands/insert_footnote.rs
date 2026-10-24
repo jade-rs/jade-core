@@ -498,7 +498,7 @@ mod tests {
         let mut parts = BTreeMap::<String, Vec<u8>>::new();
         for index in 0..archive.len() {
             let mut entry = archive.by_index(index).unwrap();
-            let name = entry.name().to_owned();
+            let name = entry.name().unwrap().into_owned();
             let mut bytes = Vec::new();
             entry.read_to_end(&mut bytes).unwrap();
             parts.insert(name, bytes);
@@ -618,7 +618,7 @@ mod tests {
             let mut entry = archive.by_index(index).unwrap();
             let mut bytes = Vec::new();
             entry.read_to_end(&mut bytes).unwrap();
-            parts.insert(entry.name().to_owned(), bytes);
+            parts.insert(entry.name().unwrap().into_owned(), bytes);
         }
         let fixture = include_bytes!("../../../../public/fixtures/textbox.docx");
         let mut archive = zip::ZipArchive::new(Cursor::new(fixture)).unwrap();

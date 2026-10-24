@@ -303,7 +303,7 @@ fn inline_image_docx_with_jpeg_media() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         if name == "word/media/image1.png" {
             continue;
         }
@@ -352,7 +352,7 @@ fn mixed_page_size_docx() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -389,7 +389,7 @@ fn prepend_paragraphs_to_docx<'a>(
     let options = SimpleFileOptions::default();
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -412,7 +412,7 @@ fn run_styles_docx_with_highlight() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -440,7 +440,7 @@ fn run_styles_docx_with_char_spacing() -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -468,7 +468,7 @@ fn run_styles_docx_with_text_scale(scale_percent: u32) -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -496,7 +496,7 @@ fn run_styles_docx_with_run_property(property_xml: &str) -> Vec<u8> {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {
@@ -2042,7 +2042,7 @@ fn render_pdf_draws_paragraph_borders_in_their_line_style() {
     let mut writer = ZipWriter::new(&mut output);
     for index in 0..input.len() {
         let mut file = input.by_index(index).expect("zip entry");
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut data = Vec::new();
         file.read_to_end(&mut data).expect("read zip entry");
         if name == "word/document.xml" {

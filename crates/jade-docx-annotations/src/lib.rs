@@ -1032,7 +1032,7 @@ mod tests {
             let mut part = archive.by_index(index).unwrap();
             let mut value = String::new();
             part.read_to_string(&mut value).unwrap();
-            result.insert(part.name().to_string(), value);
+            result.insert(part.name().unwrap().into_owned(), value);
         }
         result
     }

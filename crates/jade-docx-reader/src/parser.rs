@@ -4127,7 +4127,7 @@ impl DocumentParser {
             attrs.push_str(&String::from_utf8(attr.key.as_ref().to_vec())?);
             attrs.push('=');
             attrs.push('"');
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?;
             attrs.push_str(&value);
             attrs.push('"');
         }
@@ -4162,10 +4162,15 @@ impl DocumentParser {
             let attr = attr?;
             match attr.key.as_ref() {
                 b"w:id" => {
-                    id = attr.unescape_value()?.into_owned();
+                    id = attr
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                        .into_owned();
                 }
                 b"w:type" => {
-                    note_type = Some(attr.unescape_value()?.into_owned());
+                    note_type = Some(
+                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                            .into_owned(),
+                    );
                 }
                 _ => {}
             }
@@ -4310,7 +4315,7 @@ impl DocumentParser {
         if let Ok(Event::Start(start)) = reader.read_event_into(&mut buf) {
             for attr in start.attributes().flatten() {
                 let value = attr
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|value| value.into_owned())
                     .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).into_owned());
                 match attr.key.as_ref() {
@@ -4485,7 +4490,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4518,7 +4523,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4559,7 +4564,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             if attr.key.as_ref() == b"w:val" {
                 let value = attr
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|cow| cow.to_string())
                     .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
                 let token = value.trim().to_lowercase();
@@ -4580,7 +4585,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4861,7 +4866,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -5076,7 +5081,7 @@ impl DocumentParser {
         for attr in attrs.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -5187,7 +5192,13 @@ impl DocumentParser {
                                 e.attributes().flatten().find_map(|attribute| {
                                     (attribute.key.as_ref() == b"relativeHeight")
                                         .then(|| {
-                                            attribute.unescape_value().ok()?.parse::<u32>().ok()
+                                            attribute
+                                                .normalized_value(
+                                                    quick_xml::XmlVersion::Implicit1_0,
+                                                )
+                                                .ok()?
+                                                .parse::<u32>()
+                                                .ok()
                                         })
                                         .flatten()
                                 });
@@ -5268,7 +5279,10 @@ impl DocumentParser {
                                 .flatten()
                                 .find(|attribute| attribute.key.as_ref() == b"r:dm")
                                 .and_then(|attribute| {
-                                    attribute.unescape_value().ok().map(|v| v.into_owned())
+                                    attribute
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                        .ok()
+                                        .map(|v| v.into_owned())
                                 });
                         }
                         b"c:chart" => {
@@ -5309,7 +5323,9 @@ impl DocumentParser {
                             in_line_definition = true;
                             current_border = TextBoxBorder::default();
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value = value.trim();
                                     match attr.key.as_ref() {
                                         b"w" => {
@@ -5389,7 +5405,9 @@ impl DocumentParser {
                                     .flatten()
                                     .find(|attr| attr.key.as_ref() == b"val")
                                 {
-                                    if let Ok(value) = val_attr.unescape_value() {
+                                    if let Ok(value) = val_attr
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         current_border.style =
                                             TextBoxBorderStyle::from_preset_dash(&value);
                                     }
@@ -5592,7 +5610,10 @@ impl DocumentParser {
                                 .flatten()
                                 .find(|attribute| attribute.key.as_ref() == b"r:dm")
                                 .and_then(|attribute| {
-                                    attribute.unescape_value().ok().map(|v| v.into_owned())
+                                    attribute
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                        .ok()
+                                        .map(|v| v.into_owned())
                                 });
                         }
                         b"c:chart" => {
@@ -5631,7 +5652,9 @@ impl DocumentParser {
                             in_line_definition = false;
                             current_border = TextBoxBorder::default();
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value = value.trim();
                                     match attr.key.as_ref() {
                                         b"w" => {
@@ -5673,7 +5696,9 @@ impl DocumentParser {
                                     .flatten()
                                     .find(|attr| attr.key.as_ref() == b"val")
                                 {
-                                    if let Ok(value) = val_attr.unescape_value() {
+                                    if let Ok(value) = val_attr
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         current_border.style =
                                             TextBoxBorderStyle::from_preset_dash(&value);
                                     }
@@ -6036,7 +6061,7 @@ impl DocumentParser {
             matches!(attribute.key.as_ref(), b"r:id" | b"id")
                 .then(|| {
                     attribute
-                        .unescape_value()
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                         .ok()
                         .map(|value| value.into_owned())
                 })
@@ -6056,7 +6081,10 @@ impl DocumentParser {
         let mut name = None;
         let mut formula = None;
         for attribute in element.attributes().flatten() {
-            let value = attribute.unescape_value().ok()?.into_owned();
+            let value = attribute
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .ok()?
+                .into_owned();
             match attribute.key.as_ref() {
                 b"name" => name = Some(value),
                 b"fmla" => formula = Some(value),
@@ -6069,7 +6097,11 @@ impl DocumentParser {
     fn parse_text_box_preset(element: &BytesStart<'_>) -> Option<String> {
         element.attributes().flatten().find_map(|attr| {
             (attr.key.as_ref() == b"prst")
-                .then(|| attr.unescape_value().ok().map(|value| value.into_owned()))
+                .then(|| {
+                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()
+                        .map(|value| value.into_owned())
+                })
                 .flatten()
         })
     }
@@ -6079,7 +6111,10 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attr| attr.key.as_ref() == b"type")
-            .and_then(|attr| attr.unescape_value().ok())
+            .and_then(|attr| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()
+            })
             .and_then(|value| TextBoxLineEnd::from_drawingml(&value))
     }
 
@@ -6090,7 +6125,13 @@ impl DocumentParser {
         fn coordinate(element: &BytesStart<'_>, name: &[u8]) -> Option<f64> {
             element.attributes().flatten().find_map(|attribute| {
                 (attribute.key.as_ref() == name)
-                    .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()?
+                            .parse::<f64>()
+                            .ok()
+                    })
                     .flatten()
             })
         }
@@ -6132,7 +6173,9 @@ impl DocumentParser {
             for attribute in element.attributes().flatten() {
                 match attribute.key.as_ref() {
                     b"rot" => {
-                        if let Ok(value) = attribute.unescape_value() {
+                        if let Ok(value) =
+                            attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        {
                             if let Ok(value) = value.parse::<f64>() {
                                 *rotation_deg = value / 60_000.0;
                             }
@@ -6155,7 +6198,8 @@ impl DocumentParser {
                 ..TextBoxBorder::default()
             };
             for attribute in element.attributes().flatten() {
-                let Ok(value) = attribute.unescape_value() else {
+                let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                else {
                     continue;
                 };
                 match attribute.key.as_ref() {
@@ -6176,7 +6220,11 @@ impl DocumentParser {
         fn preset_dash(element: &BytesStart<'_>) -> Option<TextBoxBorderStyle> {
             element.attributes().flatten().find_map(|attribute| {
                 (attribute.key.as_ref() == b"val")
-                    .then(|| attribute.unescape_value().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()
+                    })
                     .flatten()
                     .map(|value| TextBoxBorderStyle::from_preset_dash(&value))
             })
@@ -6185,7 +6233,8 @@ impl DocumentParser {
         fn drawingml_hyperlink(element: &BytesStart<'_>) -> RunHyperlink {
             let mut hyperlink = RunHyperlink::default();
             for attribute in element.attributes().flatten() {
-                let Ok(value) = attribute.unescape_value() else {
+                let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                else {
                     continue;
                 };
                 let value = value.into_owned();
@@ -7046,7 +7095,11 @@ impl DocumentParser {
     fn drawingml_color_value(element: &BytesStart<'_>) -> Option<String> {
         element.attributes().flatten().find_map(|attr| {
             (attr.key.as_ref() == b"val")
-                .then(|| attr.unescape_value().ok().map(|value| value.into_owned()))
+                .then(|| {
+                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()
+                        .map(|value| value.into_owned())
+                })
                 .flatten()
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty())
@@ -7056,7 +7109,7 @@ impl DocumentParser {
     fn drawingml_outer_shadow(element: &BytesStart<'_>) -> ShapeShadow {
         let mut shadow = ShapeShadow::default();
         for attribute in element.attributes().flatten() {
-            let Ok(value) = attribute.unescape_value() else {
+            let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0) else {
                 continue;
             };
             match attribute.key.as_ref() {
@@ -7084,7 +7137,13 @@ impl DocumentParser {
     fn populate_drawingml_shadow_alpha(shadow: &mut ShapeShadow, element: &BytesStart<'_>) {
         if let Some(value) = element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"val")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
         }) {
             shadow.opacity = (value / 100_000.0).clamp(0.0, 1.0);
@@ -7095,7 +7154,13 @@ impl DocumentParser {
         let mut glow = ShapeGlow::default();
         if let Some(radius) = element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
         }) {
             glow.radius_px = Self::emu_to_px(radius).max(0.0);
@@ -7106,7 +7171,13 @@ impl DocumentParser {
     fn drawingml_soft_edge_radius(element: &BytesStart<'_>) -> Option<f64> {
         element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
                 .filter(|radius| radius.is_finite())
                 .map(|radius| Self::emu_to_px(radius).max(0.0))
@@ -7116,7 +7187,13 @@ impl DocumentParser {
     fn drawingml_blur_radius(element: &BytesStart<'_>) -> Option<f64> {
         element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
                 .filter(|radius| radius.is_finite())
                 .map(|radius| Self::emu_to_px(radius).max(0.0))
@@ -7135,7 +7212,13 @@ impl DocumentParser {
             .flatten()
             .find_map(|attribute| {
                 (attribute.key.as_ref() == b"val")
-                    .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()?
+                            .parse::<f64>()
+                            .ok()
+                    })
                     .flatten()
             })
             .filter(|value| value.is_finite())
@@ -7245,7 +7328,7 @@ impl DocumentParser {
         element: &BytesStart<'_>,
     ) {
         for attr in element.attributes().flatten() {
-            let Ok(value) = attr.unescape_value() else {
+            let Ok(value) = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0) else {
                 continue;
             };
             let value = value.trim();
@@ -7289,7 +7372,10 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attr| attr.key.as_ref() == b"inset")
-            .and_then(|attr| attr.unescape_value().ok())
+            .and_then(|attr| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()
+            })
         else {
             return;
         };
@@ -7352,27 +7438,35 @@ impl DocumentParser {
                                     style_value =
                                         Some(String::from_utf8_lossy(&attr.value).into_owned());
                                 } else if attr.key.as_ref() == b"strokeweight" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if let Some(px) = Self::points_str_to_px(value.trim()) {
                                             border.width_px = Some(px);
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"strokecolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if !value.trim().is_empty() {
                                             border.color =
                                                 Some(Self::normalize_color_string(value.trim()));
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"stroked" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             stroke_enabled = false;
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"filled" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             fill_enabled = false;
@@ -7380,7 +7474,9 @@ impl DocumentParser {
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"fillcolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let value = value.trim();
                                         if !value.is_empty() {
                                             fill_color = Some(Self::normalize_color_string(value));
@@ -7421,7 +7517,9 @@ impl DocumentParser {
                             // Legacy VML fallback (used for older Office compatibility). The
                             // attributes mirror DrawingML concepts but use different naming.
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7462,7 +7560,9 @@ impl DocumentParser {
                         }
                         b"v:fill" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7511,27 +7611,35 @@ impl DocumentParser {
                                     style_value =
                                         Some(String::from_utf8_lossy(&attr.value).into_owned());
                                 } else if attr.key.as_ref() == b"strokeweight" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if let Some(px) = Self::points_str_to_px(value.trim()) {
                                             border.width_px = Some(px);
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"strokecolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if !value.trim().is_empty() {
                                             border.color =
                                                 Some(Self::normalize_color_string(value.trim()));
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"stroked" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             stroke_enabled = false;
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"filled" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             fill_enabled = false;
@@ -7539,7 +7647,9 @@ impl DocumentParser {
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"fillcolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let value = value.trim();
                                         if !value.is_empty() {
                                             fill_color = Some(Self::normalize_color_string(value));
@@ -7578,7 +7688,9 @@ impl DocumentParser {
                         }
                         b"v:stroke" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7619,7 +7731,9 @@ impl DocumentParser {
                         }
                         b"v:fill" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7850,7 +7964,7 @@ impl DocumentParser {
             let mut line = SignatureLine::default();
             for attr in element.attributes().flatten() {
                 let value = attr
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|value| value.into_owned())
                     .unwrap_or_default();
                 let value = (!value.is_empty()).then_some(value);
@@ -7966,7 +8080,7 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attribute| attribute.key.as_ref() == b"type")?
-            .unescape_value()
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
             .ok()?;
         Some(match value.trim().to_ascii_lowercase().as_str() {
             "topandbottom" => WrapMode::TopAndBottom,
@@ -8050,7 +8164,7 @@ impl DocumentParser {
                     (attribute.key.as_ref() == b"r:id")
                         .then(|| {
                             attribute
-                                .unescape_value()
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .ok()
                                 .map(|value| value.to_string())
                         })
@@ -8150,7 +8264,7 @@ impl DocumentParser {
                     match attr.key.as_ref() {
                         b"name" => {
                             let name = attr
-                                .unescape_value()
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|value| value.into_owned())
                                 .unwrap_or_else(|_| {
                                     String::from_utf8_lossy(&attr.value).into_owned()
@@ -8165,7 +8279,7 @@ impl DocumentParser {
                         }
                         b"descr" => {
                             image.description = Some(
-                                attr.unescape_value()
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                     .map(|value| value.into_owned())
                                     .unwrap_or_else(|_| {
                                         String::from_utf8_lossy(&attr.value).into_owned()
@@ -8174,7 +8288,7 @@ impl DocumentParser {
                         }
                         b"title" => {
                             explicit_title = Some(
-                                attr.unescape_value()
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                     .map(|value| value.into_owned())
                                     .unwrap_or_else(|_| {
                                         String::from_utf8_lossy(&attr.value).into_owned()

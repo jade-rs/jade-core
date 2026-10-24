@@ -106,7 +106,7 @@ fn a_document_word_signed_verifies_until_it_changes() {
         let mut writer = zip::ZipWriter::new(&mut changed);
         for index in 0..archive.len() {
             let mut file = archive.by_index(index).unwrap();
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             let mut data = Vec::new();
             file.read_to_end(&mut data).unwrap();
             if name == "word/document.xml" {

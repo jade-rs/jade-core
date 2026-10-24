@@ -26,7 +26,14 @@ struct DiagramShapeText {
 fn emu_attribute(element: &BytesStart<'_>, name: &[u8]) -> Option<f64> {
     element.attributes().flatten().find_map(|attribute| {
         (attribute.key.as_ref() == name)
-            .then(|| attribute.unescape_value().ok()?.trim().parse::<f64>().ok())
+            .then(|| {
+                attribute
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()?
+                    .trim()
+                    .parse::<f64>()
+                    .ok()
+            })
             .flatten()
     })
 }
@@ -36,7 +43,7 @@ fn string_attribute(element: &BytesStart<'_>, name: &[u8]) -> Option<String> {
         (attribute.key.as_ref() == name)
             .then(|| {
                 attribute
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .ok()
                     .map(|value| value.into_owned())
             })
