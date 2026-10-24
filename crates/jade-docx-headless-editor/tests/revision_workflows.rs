@@ -257,6 +257,109 @@ fn range_delete(
 }
 
 #[test]
+fn whole_table_ranges_ignore_only_deleted_text_at_cell_edges() {
+    for tag in ["del", "moveFrom", "ins", "moveTo"] {
+        let hidden = matches!(tag, "del" | "moveFrom");
+        let text_tag = if tag == "del" { "delText" } else { "t" };
+        let edge = format!(
+            r#"</w:t></w:r><w:{tag} w:id="40" w:author="Reviewer"><w:r><w:{text_tag}>旧</w:{text_tag}></w:r></w:{tag}><w:r><w:t>"#
+        );
+        let table = range_table(&format!("{edge}AB"), &format!("CD{edge}"));
+        let input = fixture(&format!(
+            "<w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"
+        ));
+        for tracked in [false, true] {
+            let mut commands = vec![];
+            if tracked {
+                commands.push(tracking());
+            }
+            commands.push(range_delete(1, "旧".len(), 2, 2));
+            let output = edit(&input, commands);
+            if hidden {
+                assert_eq!(table_shape(&output), tracked.then_some((1, 2)), "{tag}");
+                assert_eq!(final_text(&output), "HEADTAIL", "{tag}");
+                if tracked {
+                    assert_eq!(tracked_rows(&output), Some(vec![2]));
+                    let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+                    assert_eq!(final_text(&rejected), final_text(&input));
+                    let accepted = edit(&output, vec![decide(true, lg_ids(&output))]);
+                    assert_eq!(table_shape(&accepted), None);
+                }
+            } else {
+                assert_eq!(table_shape(&output), Some((1, 2)), "{tag}");
+                assert!(
+                    final_text(&output).contains('旧'),
+                    "visible edge must keep grid"
+                );
+            }
+        }
+    }
+}
+
+// Independent visible-grid model with foreign deleted/moved text at the two
+// selection boundaries. Each operation exports, then the next reloads it.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_hidden_edge_table_ranges_match_model(
+        prefix in 1usize..5,
+        suffix in 1usize..5,
+        moved in any::<bool>(),
+        actions in prop::collection::vec((0u8..6, any::<bool>()), 1..25),
+    ) {
+        let prefix = "旧😀".repeat(prefix);
+        let suffix = "移動前".repeat(suffix);
+        let tag = if moved { "moveFrom" } else { "del" };
+        let text_tag = if moved { "t" } else { "delText" };
+        let edge = |id, text: &str| format!(r#"</w:t></w:r><w:{tag} w:id="{id}" w:author="Reviewer" w:date="2026-10-23T00:00:00Z"><w:r><w:{text_tag}>{text}</w:{text_tag}></w:r></w:{tag}><w:r><w:t>"#);
+        let table = range_table(&format!("{}甲AB", edge(40, &prefix)), &format!("乙CD{}", edge(41, &suffix)));
+        let mut bytes = fixture(&format!("<w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"));
+        let mut exists = true;
+        let mut deleted = false;
+        for (step, (kind, tracked)) in actions.into_iter().enumerate() {
+            let invalid = kind == 4 || (kind <= 1 && !exists);
+            let command = match kind {
+                0 | 1 if exists => range_delete(1, prefix.len(), 2, "乙CD".len()),
+                2 | 3 => decide(kind == 2, lg_ids(&bytes)),
+                5 if exists => range_delete(1, prefix.len(), 1, prefix.len()),
+                5 => range_delete(0, 0, 0, 0),
+                _ => range_delete(99, 0, 99, 0),
+            };
+            let output = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![if tracked { tracking() } else { HeadlessCommand::StopChangeTracking }, command] });
+            if invalid {
+                prop_assert!(output.is_err(), "invalid step {}", step);
+            } else {
+                prop_assert!(output.is_ok(), "step {} kind {}: {:?}", step, kind, output.as_ref().err());
+                bytes = output.unwrap();
+                match kind {
+                    0 | 1 if tracked => deleted = true,
+                    0 | 1 => { exists = false; deleted = false; },
+                    2 if deleted => { exists = false; deleted = false; },
+                    3 => deleted = false,
+                    _ => {},
+                }
+            }
+            prop_assert_eq!(table_shape(&bytes), exists.then_some((1, 2)), "grid at step {}", step);
+            prop_assert_eq!(tracked_rows(&bytes), exists.then_some(vec![if deleted { 2 } else { 0 }]), "row at step {}", step);
+            prop_assert_eq!(final_text(&bytes), if exists && !deleted { "HEAD甲AB乙CDTAIL" } else { "HEADTAIL" }, "visible model at step {}", step);
+            if exists {
+                let xml = part(&bytes, "word/document.xml");
+                let doc = roxmltree::Document::parse(&xml).unwrap();
+                for (id, text) in [("40", &prefix), ("41", &suffix)] {
+                    let mark = doc.descendants().find(|n| n.has_tag_name((NS, tag)) && n.attribute((NS, "id")) == Some(id));
+                    prop_assert!(mark.is_some(), "foreign mark {} at step {}", id, step);
+                    let mark = mark.unwrap();
+                    prop_assert_eq!(mark.attribute((NS, "author")), Some("Reviewer"));
+                    prop_assert_eq!(mark.attribute((NS, "date")), Some("2026-10-23T00:00:00Z"));
+                    let actual: String = mark.descendants().filter(|n| n.has_tag_name((NS, text_tag))).filter_map(|n| n.text()).collect();
+                    prop_assert_eq!(&actual, text, "foreign text at step {}", step);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn range_deletion_removes_multiple_and_nested_tables_but_keeps_partial_cells() {
     let one = range_table("AB", "CD");
     let nested = range_table(&format!("A</w:t></w:r></w:p>{one}<w:p><w:r><w:t>B"), "CD");
