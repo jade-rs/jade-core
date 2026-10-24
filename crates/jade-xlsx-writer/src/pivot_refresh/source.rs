@@ -163,10 +163,11 @@ pub(super) fn read(
     let mut cells = BTreeMap::new();
     let mut source_rows = BTreeMap::new();
     for row in &sheet.rows {
-        if row.index >= range.start.row && row.index <= range.end.row {
-            if source_rows.insert(row.index, row).is_some() {
-                return Err(bad("ambiguous pivot source row metadata"));
-            }
+        if row.index >= range.start.row
+            && row.index <= range.end.row
+            && source_rows.insert(row.index, row).is_some()
+        {
+            return Err(bad("ambiguous pivot source row metadata"));
         }
         for cell in row.cells.iter().filter(|c| range.contains(c.reference)) {
             if cells.insert(cell.reference, cell).is_some() {

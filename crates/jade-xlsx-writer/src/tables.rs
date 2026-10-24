@@ -207,7 +207,7 @@ pub fn validate_table_name(book: &Workbook, name: &str, own: Option<&str>) -> Re
             .sheets
             .iter()
             .flat_map(|s| &s.tables)
-            .any(|t| !own.is_some_and(|o| o == t.name) && (same(&t.name) || same(&t.display_name)))
+            .any(|t| own.is_none_or(|o| o != t.name) && (same(&t.name) || same(&t.display_name)))
     {
         return Err(bad("the table name is already in use"));
     }
@@ -244,7 +244,7 @@ fn check_area(sheet: &jade_xlsx_reader::Sheet, range: CellRange, own: Option<&st
     if sheet
         .tables
         .iter()
-        .any(|t| !own.is_some_and(|name| name == t.name) && overlaps(t.reference, range))
+        .any(|t| own.is_none_or(|name| name != t.name) && overlaps(t.reference, range))
     {
         return Err(bad("tables cannot overlap"));
     }
@@ -1020,8 +1020,8 @@ pub fn update_table(
         table.auto_filter = filter && table.header_row_count > 0;
     }
     check_area(sheet, table.reference, Some(&old.name))?;
-    if table.reference.end.row - table.reference.start.row + 1
-        <= table.header_row_count + table.totals_row_count
+    if table.reference.end.row - table.reference.start.row
+        < table.header_row_count + table.totals_row_count
     {
         return Err(bad("a table needs at least one data row"));
     }

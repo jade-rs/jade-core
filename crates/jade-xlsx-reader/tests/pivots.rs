@@ -326,7 +326,7 @@ fn malformed_counts_ranges_fields_and_references_do_not_panic_or_allocate_from_c
     );
     assert!(parse_cache_records(&records(), 2).is_err());
     assert!(parse_cache_records(&records().replace("<x v=\"2\"/>", "<x v=\"bad\"/>"), 3).is_err());
-    for xml in [table().replace("E3:F6","F6:E3"),table().replace("firstDataRow=\"1\"","firstDataRow=\"999\""),table().replace("x=\"-2\"","x=\"-3\""),table().replace("<location ","<location xmlns=\"urn:foreign\" "),table().replace("<location ",&format!(r#"<location ref="E3:F6" firstHeaderRow="0" firstDataRow="1" firstDataCol="1"/><location "#))] {assert!(parse_pivot_table("s","p",&xml).is_err());}
+    for xml in [table().replace("E3:F6","F6:E3"),table().replace("firstDataRow=\"1\"","firstDataRow=\"999\""),table().replace("x=\"-2\"","x=\"-3\""),table().replace("<location ","<location xmlns=\"urn:foreign\" "),table().replace("<location ",r#"<location ref="E3:F6" firstHeaderRow="0" firstDataRow="1" firstDataCol="1"/><location "#)] {assert!(parse_pivot_table("s","p",&xml).is_err());}
 }
 #[test]
 fn cache_record_count_and_record_relationship_ambiguity_are_diagnostics() {

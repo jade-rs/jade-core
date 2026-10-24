@@ -206,11 +206,11 @@ fn sparse_rectangle_permissions_match_individual_cell_edits_with_styles_and_rang
                 .unwrap();
         }
         let mut permitted = [[false; 6]; 6];
-        for row in 0..6 {
-            for col in 0..6 {
+        for (row, row_cells) in permitted.iter_mut().enumerate() {
+            for (col, permitted_cell) in row_cells.iter_mut().enumerate() {
                 let checkpoint = b.edit_checkpoint();
                 let cell = format!("{}{}", (b'A' + col as u8) as char, row + 1);
-                permitted[row][col] = b.set(&target, &cell, CellInput::Number(111.)).is_ok();
+                *permitted_cell = b.set(&target, &cell, CellInput::Number(111.)).is_ok();
                 assert!(b.restore_edit_checkpoint(checkpoint));
             }
         }

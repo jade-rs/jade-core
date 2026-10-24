@@ -59,9 +59,9 @@ impl HeadlessWorkbook {
                 if !xml.contains("protectedRange") {
                     return Ok((Vec::new(), String::new()));
                 }
-                let definitions = jade_xlsx_reader::protected_ranges::protected_ranges(&xml)
+                let definitions = jade_xlsx_reader::protected_ranges::protected_ranges(xml)
                     .map_err(|e| e.to_string())?;
-                let stamp = jade_xlsx_reader::protected_ranges::protection_stamp(&xml)
+                let stamp = jade_xlsx_reader::protected_ranges::protection_stamp(xml)
                     .map_err(|e| e.to_string())?;
                 Ok((definitions, stamp))
             })();

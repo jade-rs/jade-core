@@ -293,17 +293,26 @@ pub(crate) fn patch_cache_points(
     }
     Ok(())
 }
+struct ChartContext<'a> {
+    sheet: &'a Sheet,
+    book: &'a Workbook,
+    verified: &'a VerifiedChartCells,
+    snapshot: Option<bool>,
+}
 fn patch_reference(
     xml: &str,
     node: &Element,
-    sheet: &Sheet,
-    book: &Workbook,
-    verified: &VerifiedChartCells,
+    context: &ChartContext<'_>,
     splices: &mut Vec<Splice>,
     report: &mut ChartCacheRefresh,
-    snapshot: Option<bool>,
     category: bool,
 ) -> Result<()> {
+    let (sheet, book, verified, snapshot) = (
+        context.sheet,
+        context.book,
+        context.verified,
+        context.snapshot,
+    );
     let Some(formula) = node.child("f") else {
         return Ok(());
     };
@@ -441,43 +450,20 @@ fn patch_reference(
 fn patch_references(
     xml: &str,
     node: &Element,
-    sheet: &Sheet,
-    book: &Workbook,
-    verified: &VerifiedChartCells,
+    context: &ChartContext<'_>,
     splices: &mut Vec<Splice>,
     report: &mut ChartCacheRefresh,
-    snapshot: Option<bool>,
     parent: Option<&str>,
 ) -> Result<()> {
     if !node.main || matches!(node.name.as_str(), "ext" | "extLst") {
         return Ok(());
     }
     if matches!(node.name.as_str(), "numRef" | "strRef") {
-        patch_reference(
-            xml,
-            node,
-            sheet,
-            book,
-            verified,
-            splices,
-            report,
-            snapshot,
-            parent == Some("cat"),
-        )?;
+        patch_reference(xml, node, context, splices, report, parent == Some("cat"))?;
         return Ok(());
     }
     for child in &node.children {
-        patch_references(
-            xml,
-            child,
-            sheet,
-            book,
-            verified,
-            splices,
-            report,
-            snapshot,
-            Some(&node.name),
-        )?;
+        patch_references(xml, child, context, splices, report, Some(&node.name))?;
     }
     Ok(())
 }
@@ -542,12 +528,14 @@ pub(crate) fn refresh_package(
                 patch_references(
                     &xml,
                     root,
-                    sheet,
-                    &book,
-                    verified,
+                    &ChartContext {
+                        sheet,
+                        book: &book,
+                        verified,
+                        snapshot: None,
+                    },
                     &mut splices,
                     &mut report,
-                    None,
                     None,
                 )?;
             }
@@ -574,12 +562,14 @@ pub(crate) fn snapshot_chart_data(
         patch_references(
             xml,
             node,
-            sheet,
-            book,
-            &VerifiedChartCells::new(),
+            &ChartContext {
+                sheet,
+                book,
+                verified: &VerifiedChartCells::new(),
+                snapshot: Some(visible_only),
+            },
             &mut splices,
             &mut report,
-            Some(visible_only),
             None,
         )?;
     }

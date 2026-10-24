@@ -466,7 +466,7 @@ fn records_part(
     };
     let relpart = jade_opc::rels_part_name(&cache.part_name);
     let mut rels=package.part_str(&relpart)?.unwrap_or_else(||"<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"/>".into());
-    let strict = xml::strict(&definition)?;
+    let strict = xml::strict(definition)?;
     let ns = if strict {
         "http://purl.oclc.org/ooxml/officeDocument/relationships"
     } else {

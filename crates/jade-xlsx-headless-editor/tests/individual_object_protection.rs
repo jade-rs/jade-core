@@ -99,7 +99,7 @@ fn flags(locked: bool, text: bool) -> Vec<u8> {
             "fLocksText=\"0\"",
             &format!("fLocksText=\"{}\"", u8::from(text)),
         );
-    p.replace(&part, xml.into_bytes());
+    p.replace(part, xml.into_bytes());
     p.write().unwrap()
 }
 fn refused<T: std::fmt::Debug>(b: &HeadlessWorkbook, r: Result<T, HeadlessError>, before: &[u8]) {
@@ -272,7 +272,7 @@ fn malformed_or_ambiguous_individual_metadata_never_grants_an_edit() {
         .required_part_str(part)
         .unwrap()
         .replace("fLocksWithSheet=\"0\"", "fLocksWithSheet=\"bad\"");
-    p.replace(&part, xml.into_bytes());
+    p.replace(part, xml.into_bytes());
     let mut b = HeadlessWorkbook::open_for_editing(&p.write().unwrap()).unwrap();
     let before = b.export_bytes().unwrap();
     let r = b.set_shape_text("Data", "TextBox 1", "forbidden");

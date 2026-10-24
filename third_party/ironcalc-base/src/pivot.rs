@@ -231,9 +231,11 @@ impl MemberIndex {
         index
     }
 }
+type AxisKey = (Option<u32>, Vec<(usize, u32)>);
+type AxisLines<'a> = std::collections::BTreeMap<AxisKey, Vec<(usize, &'a str)>>;
 struct AxisIndex<'a> {
     role: FieldRole,
-    lines: std::collections::BTreeMap<(Option<u32>, Vec<(usize, u32)>), Vec<(usize, &'a str)>>,
+    lines: AxisLines<'a>,
 }
 impl<'a> AxisIndex<'a> {
     fn new(region: &Region, lines: &'a [Line], role: FieldRole) -> Self {
@@ -344,7 +346,7 @@ impl Model<'_> {
         if !(2..=254).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        if args.len() % 2 != 0 {
+        if !args.len().is_multiple_of(2) {
             return error(Error::REF, cell, "Expected field/item pairs");
         }
         // Keep references for the anchor, but evaluate value arguments once in

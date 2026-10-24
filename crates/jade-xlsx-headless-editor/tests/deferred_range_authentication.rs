@@ -36,7 +36,7 @@ fn verified_passwords_are_deferred_until_the_complete_batch_commits() {
     assert_eq!(b.bytes(), before);
     assert!(!b.can_undo());
     assert!(
-        matches!(b.range_unlock_requirements(&requirements,&[first.clone()]).unwrap(),RangeUnlockStatus::Prompt(ref c) if c.len()==1 && c[0].definition.name=="Second")
+        matches!(b.range_unlock_requirements(&requirements,std::slice::from_ref(&first)).unwrap(),RangeUnlockStatus::Prompt(ref c) if c.len()==1 && c[0].definition.name=="Second")
     );
     let second = b
         .authenticate_editable_range(&sheet, "Second", "password")
@@ -70,7 +70,9 @@ fn unrelated_workbooks_writes_history_and_relocking_invalidate_pending_proofs() 
         .authenticate_editable_range(&sheet, "First", "password")
         .unwrap();
     let mut other = open();
-    assert!(other.apply_range_authentications(&[token.clone()]).is_err());
+    assert!(other
+        .apply_range_authentications(std::slice::from_ref(&token))
+        .is_err());
     b.unprotect_sheet(&sheet, "").unwrap();
     b.undo().unwrap();
     assert!(b.apply_range_authentications(&[token]).is_err());
@@ -98,7 +100,8 @@ fn batch_validation_is_atomic_and_checkpoints_restore_grant_context() {
     assert!(!b.editable_range_unlocked(&sheet, "First").unwrap());
     let context = b.range_auth_context();
     let checkpoint = b.edit_checkpoint();
-    b.apply_range_authentications(&[first.clone()]).unwrap();
+    b.apply_range_authentications(std::slice::from_ref(&first))
+        .unwrap();
     b.set(&sheet, "A1", CellInput::Number(42.)).unwrap();
     assert!(b.restore_edit_checkpoint(checkpoint));
     assert_eq!(b.range_auth_context(), context);

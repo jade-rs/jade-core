@@ -406,7 +406,7 @@ impl StyledPivot {
                     && actual < self.row_dimensions
                     && l.kind != "grand"
                     && l.kind != "blank")
-                    .then(|| CellRange {
+                    .then_some(CellRange {
                         start: cell,
                         end: cell,
                     })
@@ -436,7 +436,7 @@ impl StyledPivot {
                 (wanted == (cell.row - self.header_row) as usize
                     && wanted < self.column_dimensions
                     && column.is_some_and(|l| l.kind != "grand"))
-                .then(|| CellRange {
+                .then_some(CellRange {
                     start: cell,
                     end: cell,
                 })
