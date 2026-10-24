@@ -1,4 +1,5 @@
 use crate::document::*;
+use crate::docx_xml::XmlNodeId;
 use crate::draw_command::executor::{execute_commands_with_font_state, FontStateTracker};
 use crate::draw_command::{
     DrawCommand, GlyphRunStep, TabLeaderStyle as CmdTabLeaderStyle, TextStyle as CmdTextStyle,
@@ -210,11 +211,13 @@ impl WordOracleLineXOffsets {
 mod math;
 #[cfg(feature = "opentype-math")]
 pub use math::paint_boxed_math as paint_styled_math;
+pub use math::{MathZone, OwnedMathGlyph, OwnedMathPlan, OwnedMathShape};
 struct RenderHostSlot<P: Painter>
 where
     P::Error: PainterError,
 {
     value: Option<BoxedRenderHost<P>>,
+    layers: page_layers::PageLayers,
 }
 impl<P: Painter> std::ops::Deref for RenderHostSlot<P>
 where
@@ -238,22 +241,44 @@ where
     }
 }
 
+#[cfg(test)]
+mod advance_field_tests;
+mod art_borders;
+mod border_styles;
+#[cfg(test)]
+mod compat_tests;
 mod float_lookahead;
+#[cfg(test)]
+mod font_state_tests;
+#[cfg(test)]
+mod hyphenation_tests;
+mod ink;
+pub(crate) mod ink_preview;
+#[cfg(test)]
+mod ink_tests;
 mod keep_next;
 #[cfg(test)]
 mod note_tests;
+#[cfg(test)]
+mod opentype_features_tests;
+mod page_layers;
 mod paragraph_join;
+#[cfg(test)]
+mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
 #[cfg(test)]
 mod section_tests;
+mod structure;
 mod table;
+mod text_regions;
 use self::table::{
     border_edge_to_spec, layout_paragraph as table_layout_paragraph,
     layout_vertical_paragraph_with_wrap_context as table_layout_vertical_paragraph,
     parse_border_kind, BorderKind, TextAlign as TableTextAlign,
 };
-use math::{MathParagraphAlignment, MathRenderer};
+pub use structure::{StructureEntry, StructureKind};
+pub use text_regions::TextRegion;
 
 const PAGE_GAP_PX: f64 = 16.0;
 /// Padding (CSS px) added around the edited paragraph's band rect in "band
@@ -494,6 +519,9 @@ const REVISION_DELETED_FILL: &str = "rgba(239, 154, 154, 0.35)";
 // plain edits.
 const REVISION_MOVED_COLOR: &str = "#1b5e20";
 const REVISION_MOVED_FILL: &str = "rgba(165, 214, 167, 0.40)";
+/// Word's changed-line bar: a hairline a little way into the left margin.
+const CHANGE_BAR_DISTANCE_PX: f64 = 10.0;
+const CHANGE_BAR_WIDTH_PX: f64 = 1.0;
 const DARK_MODE_TEXT_COLOR: &str = "#f5f8ff";
 // Word keeps CJK glyph boxes tight to the top of the computed line box.
 // Reserving extra leading below text avoids artificial gaps right after tables.
@@ -926,6 +954,10 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
         || group.groups.iter().any(shape_group_contains_text)
 }
 
+/// What each body run shows while field codes are on: the field (by its
+/// first run) and its `{ CODE }`.
+pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -957,121 +989,23 @@ impl FieldDateTime {
     }
 }
 
-const MONTH_NAMES: [&str; 12] = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
-
-const WEEKDAY_NAMES: [&str; 7] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-];
-
 /// Formats a [`FieldDateTime`] using a Word date/time picture string
-/// (ECMA-376 Part 1 §17.16.4.1). Supports the common tokens — `yyyy`/`yy`,
-/// `MMMM`/`MMM`/`MM`/`M`, `dddd`/`ddd`/`dd`/`d`, `HH`/`H` (24h), `hh`/`h`
-/// (12h), `mm`/`m`, `ss`/`s`, and `AM/PM` (or `am/pm`). Text inside single
-/// quotes is emitted literally; any other character passes through verbatim.
-/// Longest tokens are matched first so `MMMM` is never mistaken for `MM`+`MM`.
+/// (ECMA-376 Part 1 §17.16.4.1), Japanese era and weekday tokens included.
 fn format_word_date(picture: &str, dt: &FieldDateTime) -> String {
-    let chars: Vec<char> = picture.chars().collect();
-    let mut out = String::with_capacity(picture.len());
-    let mut i = 0;
-    let month_idx = (dt.month.clamp(1, 12) - 1) as usize;
-    let weekday_idx = (dt.weekday % 7) as usize;
-    let hour12 = {
-        let h = dt.hour % 12;
-        if h == 0 {
-            12
-        } else {
-            h
-        }
-    };
-    while i < chars.len() {
-        // Literal text within single quotes.
-        if chars[i] == '\'' {
-            i += 1;
-            while i < chars.len() && chars[i] != '\'' {
-                out.push(chars[i]);
-                i += 1;
-            }
-            if i < chars.len() {
-                i += 1; // consume closing quote
-            }
-            continue;
-        }
-
-        let rest: String = chars[i..].iter().collect();
-        let matched: Option<(usize, String)> =
-            if rest.starts_with("AM/PM") || rest.starts_with("am/pm") {
-                Some((5, if dt.hour < 12 { "AM" } else { "PM" }.to_string()))
-            } else if rest.starts_with("yyyy") || rest.starts_with("YYYY") {
-                Some((4, format!("{:04}", dt.year)))
-            } else if rest.starts_with("yy") || rest.starts_with("YY") {
-                Some((2, format!("{:02}", dt.year.rem_euclid(100))))
-            } else if rest.starts_with("MMMM") {
-                Some((4, MONTH_NAMES[month_idx].to_string()))
-            } else if rest.starts_with("MMM") {
-                Some((3, MONTH_NAMES[month_idx][..3].to_string()))
-            } else if rest.starts_with("MM") {
-                Some((2, format!("{:02}", dt.month)))
-            } else if rest.starts_with('M') {
-                Some((1, dt.month.to_string()))
-            } else if rest.starts_with("dddd") || rest.starts_with("DDDD") {
-                Some((4, WEEKDAY_NAMES[weekday_idx].to_string()))
-            } else if rest.starts_with("ddd") || rest.starts_with("DDD") {
-                Some((3, WEEKDAY_NAMES[weekday_idx][..3].to_string()))
-            } else if rest.starts_with("dd") || rest.starts_with("DD") {
-                Some((2, format!("{:02}", dt.day)))
-            } else if rest.starts_with('d') || rest.starts_with('D') {
-                Some((1, dt.day.to_string()))
-            } else if rest.starts_with("HH") {
-                Some((2, format!("{:02}", dt.hour)))
-            } else if rest.starts_with('H') {
-                Some((1, dt.hour.to_string()))
-            } else if rest.starts_with("hh") {
-                Some((2, format!("{:02}", hour12)))
-            } else if rest.starts_with('h') {
-                Some((1, hour12.to_string()))
-            } else if rest.starts_with("mm") {
-                Some((2, format!("{:02}", dt.minute)))
-            } else if rest.starts_with('m') {
-                Some((1, dt.minute.to_string()))
-            } else if rest.starts_with("ss") {
-                Some((2, format!("{:02}", dt.second)))
-            } else if rest.starts_with('s') {
-                Some((1, dt.second.to_string()))
-            } else {
-                None
-            };
-
-        match matched {
-            Some((len, text)) => {
-                out.push_str(&text);
-                i += len;
-            }
-            None => {
-                out.push(chars[i]);
-                i += 1;
-            }
-        }
-    }
-    out
+    // The reader's formatter has Word's Japanese tokens (和暦, 元年, 曜日)
+    // as well as the Gregorian ones; one implementation for both paths.
+    crate::field_datetime::format_word_date(
+        picture,
+        &crate::field_datetime::FieldDateTime {
+            year: dt.year,
+            month: dt.month,
+            day: dt.day,
+            hour: dt.hour,
+            minute: dt.minute,
+            second: dt.second,
+            weekday: dt.weekday,
+        },
+    )
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1236,6 +1170,14 @@ pub struct GroupedShapeTextDebugInfo {
     pub content_paragraph_start: usize,
     pub content_paragraph_end: usize,
     pub page: usize,
+}
+
+/// A chain of linked text boxes (`linked_story`).
+pub(crate) struct LinkedStory {
+    document: Rc<Document>,
+    blocks: Vec<BodyElement>,
+    /// Each box's sequence and content height, in order.
+    boxes: Vec<(u32, f64)>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1407,6 +1349,17 @@ struct PendingNumberingRender {
     deleted_text: Option<String>,
     suffix_space: bool,
     following_grapheme: Option<CompactString>,
+    /// A picture bullet (`w:lvlPicBulletId`), drawn instead of the text.
+    picture: Option<NumberingPicture>,
+}
+
+/// A list level's picture bullet as it is drawn: the image and its box in
+/// px, as tall as the bullet's text.
+#[derive(Clone, Debug, PartialEq)]
+struct NumberingPicture {
+    data_uri: String,
+    width: f64,
+    height: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -2153,69 +2106,30 @@ struct ResolvedBorderEdge {
     kind: BorderKind,
 }
 
-/// Splits a border's total thickness into one or more parallel sub-bands along
-/// the thickness axis, returning `(offset_from_near_edge, sub_thickness)` pairs
-/// in px. `Double` draws two equal lines separated by an equal gap (1/3 each);
-/// `Triple` draws three equal lines with equal gaps (1/5 each). Every other
-/// kind collapses to a single solid band spanning the full thickness, so the
-/// caller paints it exactly as before. Axis-agnostic: the caller decides
-/// whether the offset applies to X (vertical rule) or Y (horizontal rule).
+/// Splits a border's total thickness into its rules across the thickness
+/// axis, returning `(offset_from_outer_edge, sub_thickness)` pairs in px:
+/// [`border_styles::stripes`] in pixels. `Double` draws two equal lines
+/// separated by an equal gap (1/3 each); `Triple` three with equal gaps (1/5
+/// each).
+#[cfg(test)]
 fn border_band_offsets(kind: BorderKind, thickness: f64) -> Vec<(f64, f64)> {
     if thickness <= 0.0 {
         return Vec::new();
     }
-    match kind {
-        BorderKind::Double => {
-            let unit = thickness / 3.0;
-            vec![(0.0, unit), (2.0 * unit, unit)]
-        }
-        BorderKind::Triple => {
-            let unit = thickness / 5.0;
-            vec![(0.0, unit), (2.0 * unit, unit), (4.0 * unit, unit)]
-        }
-        _ => vec![(0.0, thickness)],
-    }
+    border_styles::stripes(kind)
+        .into_iter()
+        .map(|stripe| (stripe.start * thickness, stripe.width * thickness))
+        .collect()
 }
 
 /// Splits a border edge into "lit" run segments along its length axis,
-/// returning `(start_offset, run_length)` pairs in px. Solid kinds (Single,
-/// Thick, Double, Triple, None) return a single full-length run so the caller
-/// paints them exactly as before; dash/dot kinds emit a repeating on/off
-/// pattern scaled to the edge thickness (so thicker rules get longer dashes,
-/// matching Word's proportional dashing). Axis-agnostic: `length` is the edge's
-/// running direction (Y for vertical rules, X for horizontal rules), and
-/// `thickness` is the cross-axis weight used to scale the pattern.
+/// returning `(start_offset, run_length)` pairs in px. Solid kinds return a
+/// single full-length run; dash/dot kinds emit a repeating on/off pattern
+/// scaled to the edge thickness (so thicker rules get longer dashes, matching
+/// Word's proportional dashing).
+#[cfg(test)]
 fn border_dash_segments(kind: BorderKind, length: f64, thickness: f64) -> Vec<(f64, f64)> {
-    if length <= 0.0 {
-        return Vec::new();
-    }
-    // Pattern is a sequence of (on_units, off_units) repeated; one "unit" is the
-    // edge thickness clamped to a 1px floor so hairline rules still dash.
-    let pattern: &[(f64, f64)] = match kind {
-        BorderKind::Dashed => &[(3.0, 2.0)],
-        BorderKind::DashSmallGap => &[(3.0, 1.0)],
-        BorderKind::Dotted => &[(1.0, 1.0)],
-        BorderKind::DotDash => &[(4.0, 2.0), (1.0, 2.0)],
-        BorderKind::DotDotDash => &[(4.0, 2.0), (1.0, 2.0), (1.0, 2.0)],
-        // Canvas has no wave primitive; approximate with an even dash.
-        BorderKind::Wave => &[(2.0, 2.0)],
-        // Solid kinds span the full length in one run.
-        _ => return vec![(0.0, length)],
-    };
-    let unit = thickness.max(1.0);
-    let mut segments = Vec::new();
-    let mut pos = 0.0;
-    let mut idx = 0usize;
-    while pos < length {
-        let (on, off) = pattern[idx % pattern.len()];
-        let on_len = (on * unit).min(length - pos);
-        if on_len > 0.0 {
-            segments.push((pos, on_len));
-        }
-        pos += (on + off) * unit;
-        idx += 1;
-    }
-    segments
+    border_styles::pattern_runs(border_styles::pattern(kind), length, thickness)
 }
 
 /// Renderer-ready paragraph borders. `bar` is Word's additional vertical rule
@@ -2542,6 +2456,31 @@ fn document_has_horizontal_float_wrap(document: &Document) -> bool {
     })
 }
 
+/// Cache both answers for an immutable snapshot without retaining it. Release
+/// the weak key before editing so `Rc::make_mut` can preserve its allocation.
+#[derive(Default)]
+struct HorizontalFloatWrapCache {
+    document: std::rc::Weak<Document>,
+    value: bool,
+    #[cfg(test)]
+    scans: usize,
+}
+
+impl HorizontalFloatWrapCache {
+    fn get(&mut self, document: &Rc<Document>) -> bool {
+        let identity = Rc::downgrade(document);
+        if !self.document.ptr_eq(&identity) {
+            self.value = document_has_horizontal_float_wrap(document);
+            self.document = identity;
+            #[cfg(test)]
+            {
+                self.scans += 1;
+            }
+        }
+        self.value
+    }
+}
+
 fn page_border_rect(
     offset_from: PageBorderOffsetFrom,
     page_width: f64,
@@ -2644,6 +2583,33 @@ fn line_number_to_display(line_ordinal: u32, settings: &ResolvedLineNumbering) -
 /// the corresponding CSS hex colour.  Returns `None` for the "none" value
 /// or unrecognised names.
 fn word_highlight_to_css(name: &str) -> Option<&'static str> {
+    // `w:highlight` is an enumeration, but writers differ in case (`darkblue`).
+    if name.bytes().any(|byte| byte.is_ascii_uppercase())
+        && !matches!(
+            name,
+            "darkBlue"
+                | "darkCyan"
+                | "darkGreen"
+                | "darkMagenta"
+                | "darkRed"
+                | "darkYellow"
+                | "darkGray"
+                | "lightGray"
+        )
+    {
+        return word_highlight_to_css(&name.to_ascii_lowercase());
+    }
+    match name {
+        "darkblue" => return Some("#000080"),
+        "darkcyan" => return Some("#008080"),
+        "darkgreen" => return Some("#008000"),
+        "darkmagenta" => return Some("#800080"),
+        "darkred" => return Some("#800000"),
+        "darkyellow" => return Some("#808000"),
+        "darkgray" => return Some("#808080"),
+        "lightgray" => return Some("#c0c0c0"),
+        _ => {}
+    }
     match name {
         "yellow" => Some("#ffff00"),
         "green" => Some("#00ff00"),
@@ -2663,6 +2629,25 @@ fn word_highlight_to_css(name: &str) -> Option<&'static str> {
         "white" => Some("#ffffff"),
         "none" | "" => None,
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod highlight_tests {
+    #[test]
+    fn every_highlight_colour_is_drawn_whatever_its_case() {
+        for (name, css) in [
+            ("white", "#ffffff"),
+            ("black", "#000000"),
+            ("darkBlue", "#000080"),
+            ("DarkBlue", "#000080"),
+            ("darkblue", "#000080"),
+            ("lightGray", "#c0c0c0"),
+            ("YELLOW", "#ffff00"),
+        ] {
+            assert_eq!(super::word_highlight_to_css(name), Some(css), "{name}");
+        }
+        assert_eq!(super::word_highlight_to_css("none"), None);
     }
 }
 
@@ -3089,6 +3074,41 @@ impl ParagraphRenderCache {
     }
 }
 
+/// The instruction of an EQ field this renderer draws as math: one the
+/// reader did not already model as ruby, an enclosure or distributed text.
+/// Whether a drawing is Word ink with strokes to draw (`RunImage::ink`).
+fn has_ink_strokes(image: &RunImage) -> bool {
+    image.ink.as_ref().is_some_and(|ink| !ink.traces.is_empty())
+}
+
+fn eq_field_instruction(kind: &RunFieldKind) -> Option<&str> {
+    match kind {
+        RunFieldKind::Unsupported { instruction } => {
+            let trimmed = instruction.trim_start();
+            trimmed
+                .get(..2)
+                .is_some_and(|name| name.eq_ignore_ascii_case("EQ"))
+                .then_some(instruction.as_str())
+        }
+        RunFieldKind::Locked { kind } => eq_field_instruction(kind),
+        _ => None,
+    }
+}
+
+/// The first family of a CSS font stack, unquoted.
+fn first_family(stack: &str) -> String {
+    stack
+        .split(',')
+        .next()
+        .unwrap_or("serif")
+        .trim()
+        .trim_matches(|c| c == '\'' || c == '"')
+        .to_string()
+}
+
+/// A paragraph's inline equations by their offset in its layout text, with
+/// their run and laid-out plan.
+type InlineMaths = HashMap<usize, (usize, Rc<math::OwnedMathPlan>)>;
 type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
@@ -3146,6 +3166,7 @@ where
     HostPainter::Error: PainterError,
 {
     host: RenderHostSlot<HostPainter>,
+    horizontal_float_wrap_cache: HorizontalFloatWrapCache,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
     /// Set while a keepNext group measurement lays out a group member after
@@ -3166,6 +3187,11 @@ where
         String,
         jade_docx_layout::math_layout::styled::font::MathFontData,
     >,
+    /// Where every equation was drawn at the last render, for an equation
+    /// editor's caret.
+    math_zones: Vec<math::MathZone>,
+    /// `m:mathPr` from the settings part.
+    math_settings: jade_docx_layout::math_layout::styled::MathSettings,
     pageless_mode: bool,
     page_width: f64,
     page_height: f64,
@@ -3418,6 +3444,13 @@ where
     /// from the previous section. Empty for documents without section ranges,
     /// which keep using the document-wide fields above.
     section_page_numbering: Vec<Option<crate::document::PageNumberType>>,
+    /// Numbered headings laid out, by paragraph: the page each starts on,
+    /// its outline level (1-based) and its number — what Word's 章番号を含める
+    /// (`w:pgNumType/@w:chapStyle`) puts before a page number.
+    chapter_numbers: std::collections::BTreeMap<usize, (usize, u8, String)>,
+    /// Body paragraphs laid out, by paragraph: the page each starts on, its
+    /// paragraph style and its text — what a header's STYLEREF looks up.
+    styled_paragraphs: std::collections::BTreeMap<usize, (usize, Option<Rc<str>>, String)>,
     /// Section currently producing body/header/footer content. Physical page
     /// assignments are retained across renders so SECTIONPAGES can converge in
     /// the same way as NUMPAGES after a full layout pass.
@@ -3471,6 +3504,10 @@ where
     /// load time (wasm: `js_sys::Date`); `None` falls back to the field's
     /// cached result text so the field never renders blank.
     current_datetime: Option<FieldDateTime>,
+    /// While field codes are shown (⌥F9, ⇧F9): what a body run shows in
+    /// place of its field — `(field, code)`, the field named by its first
+    /// run. A field's runs show its code once.
+    field_code_display: Option<Rc<FieldCodeDisplay>>,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -3565,9 +3602,13 @@ where
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
+    /// The structure a tagged PDF is given, as it is drawn (`structure`).
+    structure: RefCell<structure::StructureState>,
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
     object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
+    /// Linked text box chains, by id, for the document last rendered.
+    linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
     object_transform_preview: Option<ObjectTransformPreview>,
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
@@ -3610,11 +3651,26 @@ where
     paragraph_join_surfaces: std::collections::BTreeMap<usize, usize>,
     /// Set while a join's paragraphs are laid out as one.
     joined_render: Option<paragraph_join::JoinedRender>,
+    /// The layout offsets of the changes in the paragraph about to be laid
+    /// out, handed from the run pass to its lines for change bars: a range
+    /// for a change that is drawn, an offset for one the view leaves out.
+    /// Keyed by the paragraph's index: a keep-with-next measurement draws
+    /// the same paragraph's lines more than once, and another paragraph's
+    /// lines must not take them.
+    pending_change_marks: (usize, Vec<(usize, usize)>),
     cell_highlighted: RefCell<HashSet<usize>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
     dark_mode_text: bool,
+    /// The formatting marks shown by kind in the current render.
+    mark_kinds: crate::FormattingMarkKinds,
+    /// A view's own page box in place of the sections' (Web レイアウト,
+    /// 閲覧モード, アウトライン): see [`ViewGeometry`].
+    view_geometry: Option<ViewGeometry>,
+    /// アウトライン: how far each paragraph (by index) is set in for its
+    /// outline level, in CSS pixels, in place of its own indents' start.
+    outline_indents: Option<Rc<HashMap<usize, f64>>>,
     /// Set while painting the text of a shape that carries its own fill. Word
     /// keeps the document colour there, and the page-contrast remap would put
     /// white glyphs on Word's light fill.
@@ -3622,6 +3678,17 @@ where
     document_snap_to_grid_default: bool,
     document_default_tab_width: Option<f64>,
     document_no_tab_hanging_indent: bool,
+    /// The document's automatic hyphenation (`w:autoHyphenation`, …).
+    document_hyphenation: jade_docx_reader::HyphenationSettings,
+    /// Whether justified lines ending in a manual break are spread (no
+    /// `doNotExpandShiftReturn`).
+    document_expands_shift_return: bool,
+    /// `ulTrailSpace`: spaces at a line's end are underlined.
+    document_underlines_trailing_spaces: bool,
+    /// Auto paragraph spacing follows HTML's margins (no
+    /// `doNotUseHTMLParagraphAutoSpacing`, see
+    /// [`html_auto_spacing_suppression`]).
+    document_html_auto_spacing: bool,
     /// `w:adjustLineHeightInTable`: table cells keep the section's line grid.
     document_adjust_line_height_in_table: bool,
     /// True only while a Word-oracle override is loaded (test/tooling mode via
@@ -4027,7 +4094,12 @@ where
             return self.contextual_suppress_before.contains(&index);
         }
         index.checked_sub(1).is_some_and(|upper| {
-            contextual_spacing_suppression_at(self.spacing_scan_body_elements(), upper).0
+            contextual_spacing_suppression_at(
+                self.spacing_scan_body_elements(),
+                upper,
+                self.document_html_auto_spacing,
+            )
+            .0
         })
     }
 
@@ -4037,7 +4109,12 @@ where
         if self.spacing_scan_from_story {
             return self.contextual_suppress_after.contains(&index);
         }
-        contextual_spacing_suppression_at(self.spacing_scan_body_elements(), index).1
+        contextual_spacing_suppression_at(
+            self.spacing_scan_body_elements(),
+            index,
+            self.document_html_auto_spacing,
+        )
+        .1
     }
 
     /// Whether the paragraph at `index` shares a border box with the next one.
@@ -4449,6 +4526,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             Some("vertical_text")
@@ -4792,6 +4870,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             count_miss();
@@ -5037,6 +5116,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return None;
@@ -5584,12 +5664,15 @@ where
         // render-affecting option flags are unchanged.
         last.render_changes == options.render_changes
             && last.render_original == options.render_original
+            && last.revision_view() == options.revision_view()
             && last.render_comments == options.render_comments
             && last.show_formatting_marks == options.show_formatting_marks
+            && last.formatting_mark_kinds() == options.formatting_mark_kinds()
             && last.render_footnotes == options.render_footnotes
             && last.render_endnotes == options.render_endnotes
             && last.pageless() == options.pageless()
             && last.dark_mode() == options.dark_mode()
+            && last.collapsed_blocks() == options.collapsed_blocks()
     }
 
     /// Returns true if it is safe to attempt unchecked paragraph render-cache replay.
@@ -5602,7 +5685,9 @@ where
             || (self.document_has_comments && options.render_comments)
             || options.render_changes
             || options.render_original
-            || options.show_formatting_marks
+            || options.any_formatting_marks()
+            || !options.collapsed_blocks().is_empty()
+            || !options.revision_view().is_plain()
         {
             return false;
         }
@@ -5618,6 +5703,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         )
     }
@@ -6316,8 +6402,16 @@ where
                 .flatten()
                 .filter(|height| *height > 0.0)
                 .map(|height| (available_bottom - separator_height - height).max(self.current_y));
+            // `w:pos="beneathText"`: the notes follow the page's last line
+            // rather than sitting at the bottom of the body area.
+            let beneath_text =
+                document.resolved_footnote_beneath_text(Some(self.active_section_index));
             self.current_y = fragment_top.unwrap_or_else(|| {
-                note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                if beneath_text {
+                    self.current_y
+                } else {
+                    note_area_top(available_bottom, note_block_height, self.current_y, spacing)
+                }
             });
             self.last_line_baseline = self.current_y;
             if self.current_y + note_block_height > available_bottom + 0.5 {
@@ -6328,7 +6422,28 @@ where
             // `w:separator` rule, a short line spanning roughly a third of the
             // column. An area continuing a note from the previous page uses
             // the `w:continuationSeparator` rule across the whole column.
-            if self.should_draw_current_page_for_render() && !self.render_skip_draw {
+            // A separator emptied in Word's notes pane draws no rule.
+            let wanted = if continuing {
+                "continuationSeparator"
+            } else {
+                "separator"
+            };
+            let rule_shown = document
+                .footnotes
+                .values()
+                .find(|note| {
+                    note.note_type
+                        .as_deref()
+                        .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+                })
+                .is_none_or(|note| {
+                    note.body
+                        .iter()
+                        .filter_map(BodyElement::as_paragraph)
+                        .flat_map(|paragraph| paragraph.runs.iter())
+                        .any(|run| run.note_separator.is_some())
+                });
+            if rule_shown && self.should_draw_current_page_for_render() && !self.render_skip_draw {
                 let column_width =
                     (self.page_width - self.margin_left - self.margin_right).max(0.0);
                 let separator_width = if continuing {
@@ -6865,6 +6980,7 @@ where
         run_styles: &mut [RunStyle],
         inline_images: &mut HashMap<usize, (usize, RunImage)>,
         inline_text_boxes: &mut HashMap<usize, (usize, RunTextBox)>,
+        inline_maths: &mut InlineMaths,
         neutral_ranges: &mut [(usize, usize)],
         separator_offsets: &mut [usize],
         unplaced: &mut [UnplacedFootnoteRef],
@@ -6907,6 +7023,10 @@ where
                 .map(|(at, value)| (shift(at), value))
                 .collect();
             *inline_text_boxes = std::mem::take(inline_text_boxes)
+                .into_iter()
+                .map(|(at, value)| (shift(at), value))
+                .collect();
+            *inline_maths = std::mem::take(inline_maths)
                 .into_iter()
                 .map(|(at, value)| (shift(at), value))
                 .collect();
@@ -7504,6 +7624,14 @@ where
     }
 
     fn render_pending_footnotes_for_current_page(&mut self) -> Result<(), JsValue> {
+        // Notes are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_pending_footnotes_for_current_page_untagged();
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_pending_footnotes_for_current_page_untagged(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode || self.rendering_page_footnotes {
             return Ok(());
         }
@@ -7812,6 +7940,26 @@ where
         Ok(())
     }
 
+    /// Binds a math face read from a collection on disk (Cambria Math is
+    /// face 1 of Office's `Cambria.ttc`), so equations are laid out with its
+    /// MATH table and drawn from its outlines, as Word draws them.
+    #[cfg(feature = "opentype-math")]
+    pub fn register_math_face(
+        &mut self,
+        family: String,
+        bytes: Vec<u8>,
+        face_index: u32,
+    ) -> Result<(), jade_docx_layout::math_layout::styled::font::MathFontDataError> {
+        use jade_docx_layout::math_layout::styled::font::MathFontData;
+        use jade_docx_layout::math_layout::styled::font::MathFontDataError;
+        if self.math_fonts.contains_key(family.trim()) {
+            return Err(MathFontDataError::AlreadyRegistered);
+        }
+        let font = MathFontData::from_collection(family, bytes, face_index, 4096, 8192)?;
+        self.math_fonts.insert(font.family().to_owned(), font);
+        Ok(())
+    }
+
     #[cfg(feature = "opentype-math")]
     pub fn math_font_stats(&self) -> serde_json::Value {
         let mut fonts: Vec<_> = self
@@ -7853,7 +8001,8 @@ where
         let page_height = points_to_px(DEFAULT_PAGE_HEIGHT_PT);
         let margin = points_to_px(DEFAULT_MARGIN_PT);
         Self {
-            host: RenderHostSlot { value: host },
+            host: RenderHostSlot::new(host),
+            horizontal_float_wrap_cache: HorizontalFloatWrapCache::default(),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -7863,6 +8012,8 @@ where
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
             math_fonts: std::collections::HashMap::new(),
+            math_zones: Vec::new(),
+            math_settings: Default::default(),
             pageless_mode,
             page_width,
             page_height,
@@ -7949,6 +8100,8 @@ where
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
+            chapter_numbers: std::collections::BTreeMap::new(),
+            styled_paragraphs: std::collections::BTreeMap::new(),
             active_section_index: 0,
             page_section_indices: Vec::new(),
             footnote_number_format: None,
@@ -7970,6 +8123,7 @@ where
             bookmark_paragraphs: HashMap::new(),
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
+            field_code_display: None,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -8018,9 +8172,11 @@ where
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
+            structure: RefCell::new(Default::default()),
             text_box_debug_regions: RefCell::new(Vec::new()),
             grouped_shape_text_regions: RefCell::new(Vec::new()),
             object_debug_regions: RefCell::new(Vec::new()),
+            linked_stories: RefCell::new(HashMap::new()),
             object_transform_preview: None,
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
@@ -8043,15 +8199,23 @@ where
             paragraph_join_last: None,
             paragraph_join_surfaces: std::collections::BTreeMap::new(),
             joined_render: None,
+            pending_change_marks: (usize::MAX, Vec::new()),
             cell_highlighted: RefCell::new(HashSet::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
             dark_mode_text: false,
+            mark_kinds: crate::FormattingMarkKinds::default(),
+            view_geometry: None,
+            outline_indents: None,
             dark_mode_text_suppressed: false,
             document_snap_to_grid_default: false,
             document_default_tab_width: None,
             document_no_tab_hanging_indent: false,
+            document_hyphenation: jade_docx_reader::HyphenationSettings::default(),
+            document_expands_shift_return: false,
+            document_underlines_trailing_spaces: false,
+            document_html_auto_spacing: true,
             document_adjust_line_height_in_table: false,
             word_oracle_active: Cell::new(false),
             word_oracle_advances: RefCell::new(FxHashMap::default()),
@@ -9181,6 +9345,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -9228,6 +9397,21 @@ where
         paragraph_style
             .doc_grid_char_space_px
             .map(|value| value.to_bits())
+            .hash(&mut hasher);
+        for advance in &paragraph_style.advances {
+            advance.offset.hash(&mut hasher);
+            advance.dx_px.to_bits().hash(&mut hasher);
+            advance.x_px.map(f64::to_bits).hash(&mut hasher);
+        }
+        paragraph_style
+            .hyphenation
+            .map(|hyphenation| {
+                (
+                    hyphenation.zone_px.to_bits(),
+                    hyphenation.consecutive_limit,
+                    hyphenation.hyphenate_caps,
+                )
+            })
             .hash(&mut hasher);
         for segment in &paragraph_style.float_line_segments {
             segment.start_x.to_bits().hash(&mut hasher);
@@ -9935,7 +10119,9 @@ where
             }
         }
         self.draw_watermark()?;
-        self.draw_page_borders(page);
+        if !self.hides_page_chrome() {
+            self.draw_page_borders(page);
+        }
         self.draw_column_separators();
         Ok(())
     }
@@ -10041,22 +10227,25 @@ where
         context.save();
         // Reuse the table-cell border drawing pipeline so page borders honor
         // line styles (single/double/dashed/dotted/…), not just solid.
-        let draw_edge =
-            |edge: &jade_docx_reader::document::BorderEdge, x0: f64, y0: f64, x1: f64, y1: f64| {
-                let spec = border_edge_to_spec(edge);
-                let _ = self.draw_cell_border_side(&context, x0, y0, x1, y1, &spec);
-            };
+        use border_styles::BorderSide;
+        let draw_edge = |edge: &jade_docx_reader::document::BorderEdge,
+                         side: BorderSide,
+                         (x0, y0): (f64, f64),
+                         (x1, y1): (f64, f64)| {
+            let spec = border_edge_to_spec(edge);
+            let _ = self.draw_border_side(&context, x0, y0, x1, y1, &spec, side);
+        };
         if let Some(edge) = borders.top.as_ref() {
-            draw_edge(edge, left, top, right, top);
+            draw_edge(edge, BorderSide::Top, (left, top), (right, top));
         }
         if let Some(edge) = borders.bottom.as_ref() {
-            draw_edge(edge, left, bottom, right, bottom);
+            draw_edge(edge, BorderSide::Bottom, (left, bottom), (right, bottom));
         }
         if let Some(edge) = borders.left.as_ref() {
-            draw_edge(edge, left, top, left, bottom);
+            draw_edge(edge, BorderSide::Left, (left, top), (left, bottom));
         }
         if let Some(edge) = borders.right.as_ref() {
-            draw_edge(edge, right, top, right, bottom);
+            draw_edge(edge, BorderSide::Right, (right, top), (right, bottom));
         }
         // `context.restore()` resets the line-dash / stroke state mutated by
         // `draw_cell_border_side`, keeping subsequent page chrome (crop marks)
@@ -10153,6 +10342,7 @@ where
             indent.and_then(|i| i.first_line_chars).hash(&mut hasher);
             indent.and_then(|i| i.hanging_chars).hash(&mut hasher);
             props.mirror_indents.hash(&mut hasher);
+            props.suppress_auto_hyphens.hash(&mut hasher);
             props.keep_lines.hash(&mut hasher);
             props.keep_next.hash(&mut hasher);
             props.page_break_before.hash(&mut hasher);
@@ -10334,8 +10524,10 @@ where
         self.dark_mode_text.hash(&mut hasher);
         options.render_changes.hash(&mut hasher);
         options.render_original.hash(&mut hasher);
+        options.revision_view().hash(&mut hasher);
         options.render_comments.hash(&mut hasher);
         options.show_formatting_marks.hash(&mut hasher);
+        options.formatting_mark_kinds().hash(&mut hasher);
         options.render_footnotes.hash(&mut hasher);
         options.render_endnotes.hash(&mut hasher);
         let dir_tag: u8 = match self.current_text_direction {
@@ -10346,6 +10538,7 @@ where
             Some(TextDirection::BtLrV) => 4,
             Some(TextDirection::LrTb) => 5,
             Some(TextDirection::LrTbV) => 6,
+            Some(TextDirection::TbLrV) => 7,
         };
         dir_tag.hash(&mut hasher);
         self.document_snap_to_grid_default.hash(&mut hasher);
@@ -10466,6 +10659,11 @@ where
                 props.outline.hash(&mut hasher);
                 props.emboss.hash(&mut hasher);
                 props.imprint.hash(&mut hasher);
+                props
+                    .text_effects
+                    .as_ref()
+                    .map(|effects| format!("{effects:?}"))
+                    .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
@@ -10528,6 +10726,7 @@ where
             if let Some(field) = run.field.as_ref() {
                 let field_tag: u8 = match &field.kind {
                     RunFieldKind::Locked { .. } => 255,
+                    RunFieldKind::Formatted { .. } => 254,
                     RunFieldKind::PageNumber => 1,
                     RunFieldKind::NumPages => 2,
                     RunFieldKind::NumWords => 14,
@@ -10538,6 +10737,12 @@ where
                         24
                     }
                     RunFieldKind::SectionPages => 9,
+                    RunFieldKind::StyleRef { style, from_bottom } => {
+                        style.hash(&mut hasher);
+                        from_bottom.hash(&mut hasher);
+                        self.current_page_number.hash(&mut hasher);
+                        60
+                    }
                     RunFieldKind::SectionNumber => 21,
                     RunFieldKind::DocumentProperty { name, case_format } => {
                         name.hash(&mut hasher);
@@ -10711,6 +10916,11 @@ where
                         text.hash(&mut hasher);
                         guide.hash(&mut hasher);
                         8
+                    }
+                    RunFieldKind::EqEnclosed { text, enclosure } => {
+                        text.hash(&mut hasher);
+                        enclosure.hash(&mut hasher);
+                        45
                     }
                     RunFieldKind::EqRuby {
                         text,
@@ -11522,6 +11732,25 @@ where
                 }
             }
         }
+        // Gate 4b: an object of another paragraph reaching into the band. The
+        // band is cleared and only the edited paragraph repainted, so the
+        // object would be erased there; and the page's layer order (objects
+        // behind and in front of text) can only be honoured by a page paint.
+        if self.object_debug_regions.borrow().iter().any(|object| {
+            let reach = if object.rotation_deg.abs() > f64::EPSILON {
+                object.width.max(object.height)
+            } else {
+                0.0
+            };
+            object.page == page
+                && object.paragraph_index != edited
+                && object.y - reach < paint_bottom
+                && object.y + object.height + reach > local_top
+        }) {
+            self.band_redraw_fallback_floating
+                .set(self.band_redraw_fallback_floating.get() + 1);
+            return None;
+        }
         Some(BandRedrawPlan {
             page,
             local_top,
@@ -11868,6 +12097,8 @@ where
     /// need to clone. After mutation, call `render_with_numbering_rc` to re-establish
     /// the cache with the updated document.
     pub fn drop_document_cache(&mut self) {
+        self.invalidate_page_layers_document();
+        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
         // Joins stay: the edit that follows maps its paragraph to the first
@@ -12280,6 +12511,11 @@ where
         Some((min_y, max_y, rect))
     }
 
+    pub(crate) fn caret_page_index(&self) -> Option<usize> {
+        self.caret_metrics()
+            .map(|metrics| self.page_for_y(metrics.absolute_top))
+    }
+
     /// Determines which page a Y coordinate falls on.
     fn page_for_y(&self, y: f64) -> usize {
         if self.pageless_mode {
@@ -12537,6 +12773,74 @@ where
         self.use_selection_overlay = value;
     }
 
+    /// Lays the document out in a view's page box (or the sections' again
+    /// with `None`) from the next render, which re-flows everything.
+    pub fn set_view_geometry(&mut self, geometry: Option<ViewGeometry>) {
+        if self.view_geometry == geometry {
+            return;
+        }
+        self.view_geometry = geometry;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    pub fn view_geometry(&self) -> Option<ViewGeometry> {
+        self.view_geometry
+    }
+
+    /// Switches the live view (Web レイアウト, アウトライン, back to the
+    /// pages) for [`Self::rerender_with_cached_state`] to lay out again. The
+    /// setters forget the last options so the next full render sees a change;
+    /// the cached re-render needs them, and its full repaint already
+    /// bypasses change detection.
+    pub fn set_view_layout(
+        &mut self,
+        geometry: Option<ViewGeometry>,
+        indents: Option<Rc<HashMap<usize, f64>>>,
+    ) {
+        let options = self.last_options.clone();
+        self.set_view_geometry(geometry);
+        self.set_outline_indents(indents);
+        if self.last_options.is_none() {
+            self.last_options = options;
+        }
+    }
+
+    /// 見出しの折りたたみ: the top-level body elements collapsed headings hide,
+    /// for [`Self::rerender_with_cached_state`] to lay out without them.
+    pub fn set_collapsed_blocks(&mut self, blocks: Vec<usize>) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_collapsed_blocks(blocks);
+        }
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
+    /// アウトライン: each paragraph (by index) set in by its level, from the
+    /// next render; `None` lays them out by their own indents again.
+    pub fn set_outline_indents(&mut self, indents: Option<Rc<HashMap<usize, f64>>>) {
+        if self.outline_indents == indents {
+            return;
+        }
+        self.outline_indents = indents;
+        self.last_options = None;
+        self.clear_paragraph_wrap_cache();
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.invalidate_paragraph_content_hash_cache();
+        self.mark_full_repaint();
+    }
+
+    fn hides_page_chrome(&self) -> bool {
+        self.view_geometry
+            .is_some_and(|geometry| geometry.hide_page_chrome)
+    }
+
     /// Finds the first paragraph that has changed compared to the cached version.
     /// Returns `None` if incremental layout is disabled or no changes detected.
     pub fn find_first_changed_paragraph(&self, document: &Document) -> Option<usize> {
@@ -12677,6 +12981,7 @@ where
         footer_lines: Option<&[HeaderLine]>,
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
+        self.reset_page_layers(&document_rc);
         let align_is_offset = |value| {
             matches!(
                 resolve_section_vertical_align(value),
@@ -12883,6 +13188,7 @@ where
                 .clear(self.page_width, self.pageless_mode, self.page_height)?;
         }
         self.dark_mode_text = options.dark_mode();
+        self.mark_kinds = options.shown_formatting_marks();
 
         let context = self.host.painter();
         context.set_font("12pt 'Times New Roman', serif");
@@ -13043,10 +13349,34 @@ where
         // in the runtime wrap style instead of falling back to Word's 36pt
         // built-in default for every document.
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
+        self.math_settings = math::settings_from(&document.math_properties);
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
+        self.document_expands_shift_return = !document.compat.do_not_expand_shift_return();
+        self.document_underlines_trailing_spaces = document.compat.underline_trailing_spaces();
+        self.document_html_auto_spacing = !document.compat.do_not_use_html_paragraph_auto_spacing();
         self.document_adjust_line_height_in_table = document.adjust_line_height_in_table;
-        let new_east_asian_rules =
+        if self.document_hyphenation != document.hyphenation {
+            // Every paragraph's lines may end elsewhere.
+            self.document_hyphenation = document.hyphenation;
+            self.clear_paragraph_wrap_cache();
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+        }
+        if jade_docx_layout::font_resolver::set_document_opentype_features_enabled(
+            jade_docx_layout::font_resolver::word_opentype_features_apply(
+                document.east_asian_line_breaking.compatibility_mode,
+            ),
+        ) {
+            // The same run properties now resolve to other descriptors.
+            self.applied_run_style_cache.borrow_mut().clear();
+            self.applied_run_style_identity_cache.borrow_mut().clear();
+            self.clear_paragraph_wrap_cache();
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+        }
+        let mut new_east_asian_rules =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
+        new_east_asian_rules.space_for_underline |= document.compat.space_for_underline();
         if self.document_east_asian_rules != new_east_asian_rules {
             self.paragraph_wrap_cache.borrow_mut().clear();
         }
@@ -13068,7 +13398,7 @@ where
             .and_then(|props| props.text_direction);
 
         let explicit_disable = self.disable_seek_replay_once;
-        let horizontal_float_wrap = document_has_horizontal_float_wrap(document);
+        let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
         // Lazy-edit fast path: instead of re-rendering from the document start
         // (O(scroll depth) per keystroke), seek to the top of the first visible
         // page using a recorded page-start snapshot. Because the target is always
@@ -13921,7 +14251,104 @@ where
         body_element_index: usize,
         section_index: usize,
     ) -> Result<(), JsValue> {
+        // A paragraph of the body is a node of a tagged PDF's structure.
+        let tagged = match element {
+            BodyElement::Paragraph(_)
+                if body_element_index != usize::MAX
+                    && section_index != usize::MAX
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story =>
+            {
+                self.begin_structure(StructureKind::Paragraph {
+                    paragraph_index: self.paragraph_counter,
+                    body_element_index,
+                })
+            }
+            _ => None,
+        };
+        let result = self.render_body_element_untagged(
+            element,
+            options,
+            numbering_part,
+            numbering_counter,
+            deleted_numbering_offsets,
+            body_element_index,
+            section_index,
+        );
+        self.end_structure(tagged);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_body_element_untagged(
+        &mut self,
+        element: &BodyElement,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
+        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+        body_element_index: usize,
+        section_index: usize,
+    ) -> Result<(), JsValue> {
         self.last_render_body_element_count += 1;
+        // Under a collapsed heading: laid out as if absent, its paragraphs
+        // keeping their indices but taking no room and no caret.
+        if body_element_index != usize::MAX
+            && section_index != usize::MAX
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && options
+                .collapsed_blocks()
+                .binary_search(&body_element_index)
+                .is_ok()
+        {
+            // A hidden list paragraph still counts: the items after it keep
+            // their numbers, as in Word.
+            if let (BodyElement::Paragraph(paragraph), Some(numbering_part)) =
+                (element, numbering_part)
+            {
+                let numbering = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.numbering.as_ref());
+                if let Some((num_id, level)) =
+                    numbering.and_then(|numbering| Some((numbering.id.as_ref()?, numbering.level?)))
+                {
+                    if !Self::paragraph_is_entirely_deleted(paragraph) {
+                        if let Some(abstract_num_id) = numbering_part.abstract_num_id(num_id) {
+                            numbering_counter.initialize_ancestor_levels(
+                                Some(numbering_part),
+                                num_id,
+                                level,
+                            );
+                            numbering_counter.increment_with(
+                                Some(numbering_part),
+                                num_id,
+                                abstract_num_id,
+                                level,
+                                numbering_part.start_value(num_id, level),
+                                numbering_part.has_start_override(num_id, level),
+                            );
+                        }
+                    }
+                }
+            }
+            let count =
+                Self::body_element_paragraph_surface_count(std::slice::from_ref(element)).max(1);
+            for paragraph_index in self.paragraph_counter..self.paragraph_counter + count {
+                self.selection.ensure_paragraph(paragraph_index);
+                self.selection
+                    .set_paragraph_selectable(paragraph_index, false);
+            }
+            self.paragraph_counter += count;
+            if !self.footnote_surface_extras.is_empty() {
+                let anchor_index = self.paragraph_counter.saturating_sub(1);
+                if let Some(extra) = self.footnote_surface_extras.get(&anchor_index) {
+                    self.paragraph_counter = self.paragraph_counter.saturating_add(*extra);
+                }
+            }
+            return Ok(());
+        }
         match element {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph_index = self.paragraph_counter;
@@ -14079,6 +14506,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         ) {
             return false;
@@ -14155,118 +14583,121 @@ where
             .and_then(|styles| styles.doc_default_font_size())
             .map(f64::from)
             .unwrap_or(DEFAULT_INDENT_CHAR_UNIT_PT);
-        let (column_x, column_width) = jade_docx_layout::math_layout::math_block_content_box(
+        let (_, column_width) = jade_docx_layout::math_layout::math_block_content_box(
             math.properties.as_deref(),
             self.current_column_x(),
             self.current_column_width(),
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
         );
-
-        #[cfg(feature = "opentype-math")]
-        {
-            let style = self.body_math_style(math);
-            let painter = self.host.painter();
-            let plan = self.math_fonts.get(style.family).map(|font| {
-                math::layout_boxed_math_with_font(&painter, math, style, font)
-                    .map_err(|error| match error {
-                        jade_docx_layout::math_layout::styled::font::MathFontLayoutError::Fallback(e) => e.into_js_value(),
-                        other => JsValue::from_str(&format!("MATH font preparation: {}", other.kind())),
-                    })
-            }).transpose()?;
-            if let Some(plan) = plan {
-                return self.render_font_math_block(math, style, plan, char_unit_pt);
-            }
-        }
-
-        let (layout, font_px) = {
-            let painter = self.host.painter();
-            let mut font_px = 16.0;
-            let mut renderer = self.math_renderer(&painter, font_px);
-            let mut layout = renderer.layout(math).map_err(PainterError::into_js_value)?;
-
-            if layout.metrics.width > column_width && layout.metrics.width > 0.0 {
-                let scale = (column_width / layout.metrics.width).clamp(0.5, 1.0);
-                font_px = (font_px * scale).clamp(10.0, 16.0);
-                renderer = self.math_renderer(&painter, font_px);
-                layout = renderer.layout(math).map_err(PainterError::into_js_value)?;
-            }
-
-            (layout, font_px)
+        let style = self.body_math_style(math);
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
+            display: true,
+            max_width: Some(column_width),
+            text_family: Some(self.math_text_family()),
+            settings: self.math_settings,
+            uniform: false,
+            script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
+        let plan = self.math_plan(&math.elements, style, &options)?;
+        self.render_font_math_block(math, style, plan, char_unit_pt)
+    }
 
-        let metrics = layout.metrics;
-        let (line_box, after) = self.place_math_block(
-            math,
-            jade_docx_layout::math_layout::MathMetrics {
-                width: metrics.width,
-                ascent: metrics.ascent,
-                descent: metrics.descent,
-            },
-            self.body_math_style(math).size_px,
-        )?;
-        let baseline_y = self.current_y + line_box.baseline;
-        let math_x = MathParagraphAlignment::from_math_paragraph(math).x(
-            column_x,
-            column_width,
-            metrics.width,
-        );
+    /// The face `m:nor` (normal text) runs are set in: the document's
+    /// default text face.
+    fn math_text_family(&self) -> &'static str {
+        "Cambria"
+    }
 
+    /// Lays out math in the bound face for the style's family, when one is
+    /// registered, else through the painter.
+    fn math_plan<'a>(
+        &self,
+        elements: &'a [jade_docx_reader::document::MathElement],
+        style: jade_docx_layout::math_layout::styled::MathTextStyle<'a>,
+        options: &jade_docx_layout::math_layout::styled::MathLayoutOptions<'a>,
+    ) -> Result<jade_docx_layout::math_layout::styled::StyledMathLayout<'a>, JsValue> {
         let painter = self.host.painter();
-        let renderer = self.math_renderer(&painter, font_px);
-        if self.should_draw_current_page_for_render() {
-            renderer
-                .render_layout(&layout, math_x, baseline_y)
-                .map_err(PainterError::into_js_value)?;
+        math::layout_math_elements(
+            &painter,
+            elements,
+            style,
+            options,
+            #[cfg(feature = "opentype-math")]
+            self.math_fonts.get(style.family),
+        )
+    }
+
+    /// An inline equation's plan at its run's size.
+    fn inline_math_plan(
+        &self,
+        elements: &[jade_docx_reader::document::MathElement],
+        properties: Option<&RunProperties>,
+        display: bool,
+    ) -> Result<math::OwnedMathPlan, JsValue> {
+        let mut style = self.boxed_math_style();
+        if let Some(size) = properties
+            .and_then(|p| p.font_size)
+            .filter(|size| size.is_finite() && *size > 0.0)
+        {
+            style.size_px = points_to_px(size);
         }
-        let line_height = line_box.height;
-
-        let paragraph_index = self.paragraph_counter;
-        self.paragraph_counter += 1;
-        // One invocation registers the whole math paragraph; a same-pass
-        // re-entry replaces it rather than appending a duplicate.
-        self.selection.reset_paragraph_registration(paragraph_index);
-        let math_text = math::math_text(math);
-        self.selection
-            .append_paragraph_text(paragraph_index, &math_text);
-        let fragment = SelectionFragmentLayout {
-            baseline_shift_px: 0.0,
-            start: 0,
-            end: math_text.len(),
-            x: math_x,
-            width: metrics.width,
-            glyphs: Rc::from([]),
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
+            display,
+            max_width: None,
+            text_family: Some(self.math_text_family()),
+            settings: self.math_settings,
+            uniform: false,
+            script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
-        let line_layout = SelectionLineLayout {
-            top: self.current_y,
-            absolute_top: self.page_offset_y + self.current_y,
-            height: line_height,
-            baseline: baseline_y,
-            start_x: math_x,
-            cursor_end_x: math_x + metrics.width,
-            allowed_trailing_overflow_width: 0.0,
-            content_top: self.current_y,
-            absolute_content_top: self.page_offset_y + self.current_y,
-            content_height: line_height,
-            fragments: Rc::from([fragment]),
-            break_range: None,
-            tab_leaders: Rc::from([]),
-            tab_stops: Rc::from([]),
-            column_index: self.column_index,
-            vertical: false,
-            vertical_reversed: false,
-        };
-        self.selection.record_line(paragraph_index, line_layout);
+        let plan = self.math_plan(elements, style, &options)?;
+        Ok(math::OwnedMathPlan::from_plan(&plan))
+    }
 
-        self.current_y += line_height + after;
-        self.trailing_spacing_after = Some((
-            self.current_page_number,
-            self.column_index,
-            self.current_y,
-            after,
-        ));
-        self.last_line_baseline = baseline_y;
-        Ok(())
+    /// An EQ field's plan: in its run's own face and size, upright.
+    fn eq_field_plan(
+        &self,
+        elements: &[jade_docx_reader::document::MathElement],
+        properties: Option<&RunProperties>,
+    ) -> Result<math::OwnedMathPlan, JsValue> {
+        let families = jade_docx_layout::font_resolver::resolve_font_families(properties);
+        let stack = families.latin_ascii_stack();
+        let family = first_family(stack);
+        let mut style = self.boxed_math_style();
+        style.family = &family;
+        style.variant = jade_docx_layout::math_layout::styled::MathVariant::Plain;
+        if let Some(size) = properties
+            .and_then(|p| p.font_size)
+            .filter(|size| size.is_finite() && *size > 0.0)
+        {
+            style.size_px = points_to_px(size);
+        }
+        if let Some(color) = properties
+            .and_then(|p| p.color.as_deref())
+            .filter(|c| c.len() == 6 && c.bytes().all(|b| b.is_ascii_hexdigit()))
+        {
+            style.color = color;
+        }
+        let options = jade_docx_layout::math_layout::styled::MathLayoutOptions::eq_field();
+        let plan = self.math_plan(elements, style, &options)?;
+        Ok(math::OwnedMathPlan::from_plan(&plan))
+    }
+
+    /// Records where an equation was drawn, replacing what an earlier pass
+    /// recorded for the same place.
+    fn record_math_zone(&mut self, zone: math::MathZone) {
+        if let Some(existing) = self.math_zones.iter_mut().find(|z| {
+            z.paragraph == zone.paragraph && z.offset == zone.offset && z.display == zone.display
+        }) {
+            *existing = zone;
+        } else {
+            self.math_zones.push(zone);
+        }
+    }
+
+    /// Where every equation was drawn at the last render.
+    pub fn math_zones(&self) -> &[math::MathZone] {
+        &self.math_zones
     }
 
     /// Sizes a display-math line by the paragraph's rules (line spacing and
@@ -14315,7 +14746,6 @@ where
         Ok((line_box, after))
     }
 
-    #[cfg(feature = "opentype-math")]
     fn render_font_math_block<'a>(
         &mut self,
         math: &'a MathParagraph,
@@ -14335,12 +14765,26 @@ where
         );
         let baseline_y = self.current_y + line_box.baseline;
         let math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
+        let owned = Rc::new(math::OwnedMathPlan::from_plan(&plan));
         if self.should_draw_current_page_for_render() {
-            math::paint_boxed_math(&painter, &plan, math_x, baseline_y)
+            owned
+                .paint(&painter, math_x, baseline_y)
                 .map_err(PainterError::into_js_value)?;
             self.reset_fill_style_state();
         }
+        drop(painter);
         let line_height = line_box.height;
+        self.record_math_zone(math::MathZone {
+            paragraph: self.paragraph_counter,
+            offset: 0,
+            run_index: None,
+            display: true,
+            page: self.current_page_number,
+            x: math_x,
+            baseline: baseline_y,
+            absolute_baseline: self.page_offset_y + baseline_y,
+            plan: owned,
+        });
 
         let paragraph_index = self.paragraph_counter;
         self.paragraph_counter += 1;
@@ -14588,6 +15032,14 @@ where
             }
             gutter_pt = settings.gutter.unwrap_or(0.0);
         }
+        // A sheet printed two pages up or folded into a booklet carries
+        // half-sheet pages, which is what Word lays out and shows.
+        (width_pt, height_pt) = jade_docx_layout::section_transition::folded_page_size(
+            width_pt,
+            height_pt,
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
 
         let odd_page_margins = resolve_page_margins(
             margin_left_pt,
@@ -14595,7 +15047,7 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             1,
         );
         margin_left_pt = odd_page_margins.left;
@@ -14610,17 +15062,27 @@ where
             margin_bottom_pt = pageless_margin_pt;
         }
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
         // Clear wrap cache if layout-affecting settings have changed
-        let effective_mirror_margins = document.mirror_margins && !self.pageless_mode;
+        let effective_mirror_margins = (document.mirror_margins || document.book_fold_printing)
+            && !self.pageless_mode
+            && self.view_geometry.is_none();
         let binding_layout_changed = !self.pageless_mode
             && (self.mirror_margins != effective_mirror_margins
                 || (self.odd_page_margin_left_pt - odd_page_margins.left).abs() > 0.01
@@ -14810,6 +15272,14 @@ where
             }
             gutter_pt = settings.gutter.unwrap_or(0.0);
         }
+        // A sheet printed two pages up or folded into a booklet carries
+        // half-sheet pages, which is what Word lays out and shows.
+        (width_pt, height_pt) = jade_docx_layout::section_transition::folded_page_size(
+            width_pt,
+            height_pt,
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
 
         let odd_page_margins = resolve_page_margins(
             margin_left_pt,
@@ -14817,7 +15287,7 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             1,
         );
         let current_page_margins = resolve_page_margins(
@@ -14826,19 +15296,27 @@ where
             margin_top_pt,
             gutter_pt,
             document.gutter_at_top,
-            document.mirror_margins,
+            document.mirror_margins || document.book_fold_printing,
             self.current_page_number,
         );
         margin_left_pt = current_page_margins.left;
         margin_right_pt = current_page_margins.right;
         margin_top_pt = current_page_margins.top;
 
-        let new_page_width = points_to_px(width_pt);
-        let new_page_height = points_to_px(height_pt);
-        let new_margin_left = points_to_px(margin_left_pt);
-        let new_margin_right = points_to_px(margin_right_pt);
-        let new_margin_top = points_to_px(margin_top_pt);
-        let new_margin_bottom = points_to_px(margin_bottom_pt);
+        let mut new_page_width = points_to_px(width_pt);
+        let mut new_page_height = points_to_px(height_pt);
+        let mut new_margin_left = points_to_px(margin_left_pt);
+        let mut new_margin_right = points_to_px(margin_right_pt);
+        let mut new_margin_top = points_to_px(margin_top_pt);
+        let mut new_margin_bottom = points_to_px(margin_bottom_pt);
+        if let Some(view) = self.view_geometry {
+            new_page_width = view.page_width;
+            new_page_height = view.page_height;
+            new_margin_left = view.margin_left;
+            new_margin_right = view.margin_right;
+            new_margin_top = view.margin_top;
+            new_margin_bottom = view.margin_bottom;
+        }
         let new_header_distance = points_to_px(header_distance_pt);
         let new_footer_distance = points_to_px(footer_distance_pt);
 
@@ -14891,7 +15369,7 @@ where
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
-                self.mirror_margins = document.mirror_margins;
+                self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.active_section_index = target_section_index;
                 self.record_page_section(self.current_page_number);
                 return Ok(());
@@ -14914,7 +15392,7 @@ where
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
-                self.mirror_margins = document.mirror_margins;
+                self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.record_page_section(self.current_page_number);
                 return Ok(());
             }
@@ -14944,7 +15422,7 @@ where
         self.margin_top = new_margin_top;
         self.odd_page_margin_left_pt = odd_page_margins.left;
         self.odd_page_margin_right_pt = odd_page_margins.right;
-        self.mirror_margins = document.mirror_margins;
+        self.mirror_margins = document.mirror_margins || document.book_fold_printing;
         self.margin_bottom = new_margin_bottom;
         self.header_distance = new_header_distance;
         self.footer_distance = new_footer_distance;
@@ -15346,12 +15824,12 @@ where
                     self.current_doc_grid.as_ref(),
                 ),
             );
-        if paragraph_style
-            .east_asian_rules
-            .character_spacing_control
-            .as_deref()
-            == Some("compressPunctuation")
-            && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
+        if jade_docx_layout::line_wrap::compresses_punctuation(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+        ) && !doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
             && !doc_grid_has_active_char_grid(self.current_doc_grid.as_ref())
         {
             paragraph_style.east_asian_advance_scale =
@@ -15733,7 +16211,7 @@ where
                     .as_ref()
                     .and_then(|properties| properties.numbering.as_ref())
                     .is_none())
-            && !options.show_formatting_marks
+            && !options.any_formatting_marks()
             && !matches!(
                 current_direction,
                 Some(
@@ -15741,10 +16219,21 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
+            && (options.revision_view().is_plain()
+                || !paragraph
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.has_format_change))
             && paragraph.runs.iter().all(|run| {
-                (!options.render_changes || run.revision.is_none())
+                ((!options.render_changes && options.revision_view().is_plain())
+                    || (run.revision.is_none()
+                        && run
+                            .properties
+                            .as_ref()
+                            .is_none_or(|properties| properties.change.is_none())))
                     && run.image.is_none()
                     && run.text_box.is_none()
                     && run.math.is_none()
@@ -16409,6 +16898,16 @@ where
             paragraph_style.default_tab_width = default_tab_width;
         }
         paragraph_style.use_hanging_indent_tab_stop = !self.document_no_tab_hanging_indent;
+        paragraph_style.hyphenation =
+            jade_docx_layout::line_wrap::ParagraphHyphenation::for_paragraph(
+                &self.document_hyphenation,
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.suppress_auto_hyphens)
+                    .unwrap_or(false),
+            );
+        paragraph_style.expand_lines_ending_in_breaks = self.document_expands_shift_return;
         let mut indent_char_unit_pt = jade_docx_layout::line_wrap::DEFAULT_INDENT_CHAR_UNIT_PT;
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
@@ -16468,6 +16967,18 @@ where
                         .insert(paragraph_index, offsets);
                 }
             }
+        }
+        // アウトライン: the paragraph sits at its level's indent from the
+        // margin, its own first-line indent gone.
+        if let Some(indent) = self
+            .outline_indents
+            .as_ref()
+            .and_then(|indents| indents.get(&paragraph_index).copied())
+        {
+            x = self.current_column_x() + indent;
+            paragraph_style.first_line_indent = 0.0;
+        }
+        if let Some(props) = &paragraph.properties {
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -16630,6 +17141,26 @@ where
             section_index,
             numbering_counter,
         );
+        if !self.rendering_header_footer_story && !self.rendering_note_story {
+            let style = paragraph
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.style.clone());
+            if style.is_some() {
+                let text: String = paragraph
+                    .runs
+                    .iter()
+                    .flat_map(|run| run.text.chars())
+                    .filter(|ch| !ch.is_control())
+                    .collect();
+                self.styled_paragraphs.insert(
+                    paragraph_index,
+                    (self.current_page_number.max(1), style, text),
+                );
+            } else {
+                self.styled_paragraphs.remove(&paragraph_index);
+            }
+        }
         // A paragraph-start seek must preserve the unconsumed input even
         // when before is zero: a later before-spacing edit needs this after.
         self.trailing_spacing_after = None;
@@ -16694,6 +17225,17 @@ where
                         } else {
                             None
                         };
+                        match (props.outline_level, old_number_text.as_ref()) {
+                            (Some(outline), Some(number)) if outline < 9 => {
+                                self.chapter_numbers.insert(
+                                    paragraph_index,
+                                    (self.current_page_number.max(1), outline + 1, number.clone()),
+                                );
+                            }
+                            _ => {
+                                self.chapter_numbers.remove(&paragraph_index);
+                            }
+                        }
 
                         let mut numbering_run_props = Self::merge_numbering_run_props(
                             level_info.as_ref().and_then(|info| info.run_props.clone()),
@@ -16757,6 +17299,7 @@ where
                                     deleted_text: None,
                                     suffix_space,
                                     following_grapheme: following_grapheme.map(CompactString::new),
+                                    picture: None,
                                 });
                             }
                             if render_changes {
@@ -16807,11 +17350,33 @@ where
                                 )? + 4.0;
                             }
                             let style = self.apply_run_style(numbering_run_props.as_ref())?;
-                            numbering_span_width += self.measure_numbering_text_plan(
-                                display_text.as_str(),
-                                &style,
-                                numbering_context,
-                            )?;
+                            // A picture bullet stands as tall as the bullet's
+                            // text would, in the picture's own aspect.
+                            let picture = numbering_part
+                                .level_picture_bullet(num_id, level)
+                                .and_then(|bullet| {
+                                    let data_uri = bullet.data_uri.clone()?;
+                                    let height = points_to_px(style.font_size_pt);
+                                    let aspect = match (bullet.width_pt, bullet.height_pt) {
+                                        (Some(width), Some(height)) if height > 0.0 => {
+                                            f64::from(width / height)
+                                        }
+                                        _ => 1.0,
+                                    };
+                                    Some(NumberingPicture {
+                                        data_uri,
+                                        width: height * aspect,
+                                        height,
+                                    })
+                                });
+                            numbering_span_width += match picture.as_ref() {
+                                Some(picture) => picture.width,
+                                None => self.measure_numbering_text_plan(
+                                    display_text.as_str(),
+                                    &style,
+                                    numbering_context,
+                                )?,
+                            };
 
                             numbering_first_line_offset =
                                 jade_docx_layout::line_wrap::numbering_first_line_offset(
@@ -16828,6 +17393,7 @@ where
                                 deleted_text,
                                 suffix_space,
                                 following_grapheme: following_grapheme.map(CompactString::new),
+                                picture,
                             });
                         }
                     }
@@ -16847,27 +17413,123 @@ where
         let mut floating_text_boxes: Vec<(usize, RunTextBox)> = Vec::new();
         let mut floating_images: Vec<(usize, RunImage)> = Vec::new();
         let mut inline_images: HashMap<usize, (usize, RunImage)> = HashMap::new();
+        let mut inline_maths: InlineMaths = HashMap::new();
         let mut inline_text_boxes: HashMap<usize, (usize, RunTextBox)> = HashMap::new();
         let mut segment = String::new();
         let mut note_marker_text = String::new();
         let mut pending_note_separator = None;
+        // Where the changes the layout leaves out stood, for change bars.
+        let mut dropped_change_offsets: Vec<usize> = Vec::new();
+        // Where formatting changes (`w:rPrChange`) lie, for change bars.
+        let mut format_change_ranges: Vec<(usize, usize)> = Vec::new();
+        let mut format_change_from: Option<usize> = None;
+        let revision_view = Rc::clone(options.revision_view_rc());
+        // The paragraph's own formatting changed (`w:pPrChange`): every line.
+        let paragraph_format_changed = !revision_view.hide_formatting
+            && paragraph.properties.as_ref().is_some_and(|properties| {
+                properties.has_format_change
+                    && !revision_view.hides_author(properties.format_change_author.as_deref())
+            });
         // Footnotes this paragraph references first; their marks' layout
         // offsets decide which line carries them onto a page.
         let mut fresh_footnotes: Vec<(String, usize, String)> = Vec::new();
         let track_footnote_placement = self.tracks_footnote_placement();
 
+        let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
+            if let Some(from) = format_change_from.take() {
+                format_change_ranges.push((from, current_pos));
+            }
+            if !revision_view.hide_formatting
+                && run
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.change.as_deref())
+                    .is_some_and(|change| !revision_view.hides_author(change.author.as_deref()))
+            {
+                format_change_from = Some(current_pos);
+            }
             if let Some(joined) = self.joined_render.as_mut() {
                 joined.record_run_start(run_index, layout_text.len());
+            }
+            // With field codes shown, a field's first run carries `{ CODE }`
+            // and its other runs nothing.
+            let field_code = self.field_code_for(run);
+            if let Some((field, _)) = &field_code {
+                if shown_field_codes.contains(field) {
+                    continue;
+                }
+                shown_field_codes.push(*field);
+            }
+            // An ADVANCE field moves the text after it: along the line from
+            // here, and up or down from here on.
+            if field_code.is_none() {
+                if let Some(advance) =
+                    run.field
+                        .as_ref()
+                        .and_then(|field| match field.kind.base_kind() {
+                            RunFieldKind::Unsupported { instruction } => {
+                                jade_docx_layout::advance_field::AdvanceField::parse(instruction)
+                            }
+                            _ => None,
+                        })
+                {
+                    // \x is measured from the column's left edge: from the
+                    // paragraph's text edge, the left indent less.
+                    let text_edge = x - column_x;
+                    let x_px = advance
+                        .x
+                        .map(|from_column| points_to_px(from_column).max(0.0) - text_edge);
+                    paragraph_style.advances.push(
+                        jade_docx_layout::advance_field::ParagraphAdvance {
+                            offset: current_pos,
+                            dx_px: points_to_px(advance.dx()),
+                            x_px,
+                            y_px: advance.y.map(points_to_px),
+                            raise_pt: advance.raise(),
+                        },
+                    );
+                    advance_raise_pt += advance.raise();
+                    continue;
+                }
             }
             let resolved_run_properties =
                 self.effective_run_properties_rc(paragraph, run.properties.as_ref());
             // w:vanish (hidden text, §17.3.2.45): in normal/print view Word does
             // not display such runs and they occupy no layout space, so skip the
             // run entirely. (A "show hidden text" toggle is a follow-up.)
-            if run_properties_are_hidden(resolved_run_properties.as_deref()) {
-                continue;
-            }
+            // With 隠し文字 shown, hidden text is laid out like any other,
+            // underlined with dots as Word marks it.
+            let resolved_run_properties =
+                if run_properties_are_hidden(resolved_run_properties.as_deref()) {
+                    if !self.mark_kinds.hidden_text {
+                        continue;
+                    }
+                    let mut shown = resolved_run_properties
+                        .as_deref()
+                        .cloned()
+                        .unwrap_or_default();
+                    shown.vanish = None;
+                    shown.spec_vanish = None;
+                    shown.underline = Some(true);
+                    shown.underline_kind = Some(Rc::from("dotted"));
+                    Some(Rc::new(shown))
+                } else {
+                    resolved_run_properties
+                };
+            // Text after an ADVANCE \u or \d sits that much higher or lower.
+            let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                properties.text_position =
+                    Some(properties.text_position.unwrap_or(0.0) + advance_raise_pt);
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
 
             // Final-preview state (changes not shown): tracked deletions and
             // move-source runs are removed from the layout entirely so they
@@ -16876,11 +17538,102 @@ where
             // width, so the layout failed to tighten up. Skipping here keeps
             // `layout_text` consistent with `debug_text` (which already excludes
             // these runs) for both measurement and selection.
-            if run_is_hidden_revision(run, render_changes, render_original) {
+            if run_is_hidden_revision(run, render_changes, render_original)
+                || (render_changes
+                    && run
+                        .revision
+                        .as_ref()
+                        .is_some_and(|mark| revision_view.drops(mark)))
+            {
+                if !run.text.is_empty()
+                    && run
+                        .revision
+                        .as_ref()
+                        .is_some_and(|mark| revision_view.marks_up(mark))
+                {
+                    dropped_change_offsets.push(current_pos);
+                }
                 continue;
             }
 
-            if let Some(text_box) = run.text_box.as_ref() {
+            // An EQ field is drawn as its switches lay out (`\f` a fraction,
+            // `\r` a radical …), in place of its saved result.
+            // With field codes shown it shows its code instead.
+            if let Some(elements) = run
+                .field
+                .as_ref()
+                .filter(|_| field_code.is_none())
+                .and_then(|field| eq_field_instruction(&field.kind))
+                .and_then(jade_docx_layout::math_layout::eq_field::eq_field_elements)
+            {
+                let start_pos = current_pos;
+                if debug_text.is_none() {
+                    debug_text = Some(layout_text.clone());
+                }
+                let plan = self.eq_field_plan(&elements, resolved_run_properties.as_deref())?;
+                layout_text.push('\u{fffc}');
+                current_pos = layout_text.len();
+                run_styles.push(RunStyle {
+                    start: start_pos,
+                    end: current_pos,
+                    properties: resolved_run_properties,
+                    revision: run.revision.clone(),
+                    hyperlink: run.hyperlink.clone(),
+                    inline_object: Some(InlineObject {
+                        width: plan.metrics.width.max(1.0),
+                        height: plan.metrics.ascent.max(1.0),
+                        descent: plan.metrics.descent.max(0.0),
+                    }),
+                });
+                inline_maths.insert(start_pos, (run_index, Rc::new(plan)));
+                continue;
+            }
+
+            // An inline equation is an object in the line: laid out in two
+            // dimensions, as tall and as deep as its structure.
+            if let Some(math) = run.math.as_ref().filter(|m| !m.elements.is_empty()) {
+                let start_pos = current_pos;
+                if debug_text.is_none() {
+                    debug_text = Some(layout_text.clone());
+                }
+                // An equation alone in its paragraph is in display mode, as
+                // Word shows one on its own line.
+                let alone = paragraph
+                    .runs
+                    .iter()
+                    .filter(|r| {
+                        !r.text.is_empty()
+                            || r.image.is_some()
+                            || r.text_box.is_some()
+                            || r.math.is_some()
+                            || r.field.is_some()
+                    })
+                    .count()
+                    == 1;
+                let plan = self.inline_math_plan(
+                    &math.elements,
+                    resolved_run_properties.as_deref(),
+                    alone,
+                )?;
+                layout_text.push('\u{fffc}');
+                current_pos = layout_text.len();
+                run_styles.push(RunStyle {
+                    start: start_pos,
+                    end: current_pos,
+                    properties: resolved_run_properties,
+                    revision: run.revision.clone(),
+                    hyperlink: run.hyperlink.clone(),
+                    inline_object: Some(InlineObject {
+                        width: plan.metrics.width.max(1.0),
+                        height: plan.metrics.ascent.max(1.0),
+                        descent: plan.metrics.descent.max(0.0),
+                    }),
+                });
+                inline_maths.insert(start_pos, (run_index, Rc::new(plan)));
+                continue;
+            }
+
+            if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
                     floating_text_boxes.push((run_index, text_box.clone()));
                     continue;
@@ -16905,12 +17658,16 @@ where
                     properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
-                    inline_object: Some(InlineObject { width, height }),
+                    inline_object: Some(InlineObject {
+                        width,
+                        height,
+                        descent: 0.0,
+                    }),
                 });
                 continue;
             }
 
-            if let Some(image) = run.image.as_ref() {
+            if let Some(image) = run.image.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(image.layout.kind, RunImageKind::Floating) {
                     floating_images.push((run_index, image.clone()));
                     continue;
@@ -16931,7 +17688,11 @@ where
                     properties: resolved_run_properties,
                     revision: run.revision.clone(),
                     hyperlink: run.hyperlink.clone(),
-                    inline_object: Some(InlineObject { width, height }),
+                    inline_object: Some(InlineObject {
+                        width,
+                        height,
+                        descent: 0.0,
+                    }),
                 });
                 continue;
             }
@@ -16956,7 +17717,9 @@ where
             } else {
                 resolved_run_properties
             };
-            if let Some(field) = run.field.as_ref() {
+            if let Some((_, code)) = &field_code {
+                segment.push_str(code);
+            } else if let Some(field) = run.field.as_ref() {
                 // Editable field results (including authored REF/PAGEREF)
                 // live in `run.text` so selection and command coordinates use
                 // the same visible byte space as ordinary text. A freshly
@@ -16969,20 +17732,6 @@ where
                 }
             } else if !run.text.is_empty() {
                 segment.push_str(&run.text);
-            }
-
-            if let Some(math) = run.math.as_ref() {
-                let math_preview = math::math_text(&MathParagraph {
-                    properties: None,
-                    raw_omml: math.raw_omml.clone(),
-                    elements: math.elements.clone(),
-                });
-                if !math_preview.is_empty() {
-                    if !segment.is_empty() && !segment.ends_with(' ') {
-                        segment.push(' ');
-                    }
-                    segment.push_str(&math_preview);
-                }
             }
 
             if options.render_footnotes {
@@ -17041,40 +17790,30 @@ where
                     }
                 }
                 if render_changes {
-                    if let Some(mark) = run.revision.as_ref() {
-                        match mark.kind {
-                            RevisionKind::Inserted => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.underline = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_INSERTED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::Deleted => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.strike = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_DELETED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::MovedFrom => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.strike = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_MOVED_COLOR.into());
-                                }
-                            }
-                            RevisionKind::MovedTo => {
-                                let props =
-                                    effective_props.get_or_insert_with(RunProperties::default);
-                                props.underline = Some(true);
-                                if props.color.is_none() {
-                                    props.color = Some(REVISION_MOVED_COLOR.into());
-                                }
-                            }
+                    if let Some(mark) = run
+                        .revision
+                        .as_ref()
+                        .filter(|mark| revision_view.marks_up(mark))
+                    {
+                        let props = effective_props.get_or_insert_with(RunProperties::default);
+                        let (default_color, struck) = match mark.kind {
+                            RevisionKind::Inserted => (REVISION_INSERTED_COLOR, false),
+                            RevisionKind::Deleted => (REVISION_DELETED_COLOR, true),
+                            RevisionKind::MovedFrom => (REVISION_MOVED_COLOR, true),
+                            RevisionKind::MovedTo => (REVISION_MOVED_COLOR, false),
+                        };
+                        if struck {
+                            props.strike = Some(true);
+                        } else {
+                            props.underline = Some(true);
+                        }
+                        // 作成者別: the reviewer's colour wins over the text's own,
+                        // as Word draws it.
+                        if let Some(color) = revision_view.color_for(mark) {
+                            props.color = Some(Rc::clone(color));
+                            props.theme_color = None;
+                        } else if props.color.is_none() {
+                            props.color = Some(default_color.into());
                         }
                     }
                 }
@@ -17087,6 +17826,16 @@ where
                         guide,
                         Some(&paragraph_style),
                     )?;
+                }
+                // 囲い文字: the enclosure is drawn round the character.
+                if let Some(RunFieldKind::EqEnclosed { enclosure, .. }) =
+                    run.field.as_ref().map(|field| field.kind.base_kind())
+                {
+                    effective_props
+                        .get_or_insert_with(RunProperties::default)
+                        .text_effects
+                        .get_or_insert_with(Default::default)
+                        .enclosure = Some(Rc::from(enclosure.as_str()));
                 }
                 // An `EQ` overstrike ruby lays out like `w:ruby` over its base.
                 if let Some(ruby) = run
@@ -17127,6 +17876,29 @@ where
                             start: start_pos,
                             end: current_pos,
                             properties: chunk_props.map(Rc::new),
+                            revision: run.revision.clone(),
+                            hyperlink: run.hyperlink.clone(),
+                            inline_object: None,
+                        });
+                    }
+                } else if let Some(chunks) = self.combined_character_chunks(
+                    &segment,
+                    effective_props.as_ref(),
+                    &paragraph_style,
+                )? {
+                    // 組み文字 / 割注: two half-size lines stacked in one
+                    // line's height (see `combined_character_chunks`).
+                    for (chunk_text, chunk_props) in chunks {
+                        let start_pos = current_pos;
+                        layout_text.push_str(&chunk_text);
+                        if let Some(debug_text) = debug_text.as_mut() {
+                            debug_text.push_str(&chunk_text);
+                        }
+                        current_pos = layout_text.len();
+                        run_styles.push(RunStyle {
+                            start: start_pos,
+                            end: current_pos,
+                            properties: Some(Rc::new(chunk_props)),
                             revision: run.revision.clone(),
                             hyperlink: run.hyperlink.clone(),
                             inline_object: None,
@@ -17195,6 +17967,12 @@ where
                 });
             }
         }
+        if let Some(from) = format_change_from.take() {
+            format_change_ranges.push((from, current_pos));
+        }
+        if paragraph_format_changed {
+            format_change_ranges.push((0, current_pos.max(1)));
+        }
 
         let mut drop_cap_floor = None;
         if let Some(drop_cap) = paragraph
@@ -17209,6 +17987,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 )
             })
@@ -17334,6 +18113,7 @@ where
                             | TextDirection::TbRlV
                             | TextDirection::BtLr
                             | TextDirection::BtLrV
+                            | TextDirection::TbLrV
                     )
                 })
         }) {
@@ -17401,6 +18181,20 @@ where
             .collect::<Vec<_>>();
         floating_paint_objects.sort_by_key(FloatingPaintObject::paint_order_key);
 
+        // アンカー: the paragraph a floating object is anchored to carries an
+        // anchor in the left margin, beside its first line.
+        if self.mark_kinds.anchors
+            && !floating_paint_objects.is_empty()
+            && !self.measuring_keep_next
+            && self.should_draw_current_page_for_render()
+        {
+            let style = self.apply_run_style(None)?;
+            let context = self.host.painter();
+            let baseline = self.current_y + points_to_px(style.font_size_pt).max(10.0);
+            let x = (self.margin_left - 18.0).max(2.0);
+            self.draw_control_mark(&context, "\u{2693}", x, baseline, &style)?;
+        }
+
         // `wp:anchor behindDoc="1"` participates in the same positioning and
         // hit-testing model as every other floating object, but it must be
         // painted before the paragraph glyphs. This applies to text boxes and
@@ -17409,6 +18203,7 @@ where
             .iter()
             .filter(|object| object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -17434,6 +18229,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if !layout_text.is_empty() {
@@ -17506,6 +18302,24 @@ where
                 } else {
                     (&layout_text, Cow::Borrowed(&run_styles))
                 };
+                self.pending_change_marks = (paragraph_index, Vec::new());
+                if revision_view.change_bar.is_some() {
+                    let start = if resuming { resume_from } else { 0 };
+                    self.pending_change_marks.1 = run_styles
+                        .iter()
+                        .filter(|style| {
+                            style
+                                .revision
+                                .as_ref()
+                                .is_some_and(|mark| revision_view.marks_up(mark))
+                        })
+                        .map(|style| (style.start, style.end))
+                        .chain(dropped_change_offsets.iter().map(|&at| (at, at)))
+                        .chain(format_change_ranges.iter().copied())
+                        .filter(|&(_, end)| end >= start)
+                        .map(|(from, to)| (from.saturating_sub(start), to - start))
+                        .collect();
+                }
                 self.render_text_line(
                     paragraph_index,
                     if resuming {
@@ -17522,9 +18336,10 @@ where
                     &line_height_neutral_ranges,
                     &inline_images,
                     &inline_text_boxes,
+                    &inline_maths,
                     column_right,
                     line_height,
-                    options.show_formatting_marks,
+                    options.shown_formatting_marks().paragraph_marks,
                     render_changes,
                     comment_ranges,
                     comment_markers,
@@ -17583,6 +18398,7 @@ where
                     &mut run_styles,
                     &mut inline_images,
                     &mut inline_text_boxes,
+                    &mut inline_maths,
                     &mut line_height_neutral_ranges,
                     &mut paragraph_style.inline_note_separator_offsets,
                     &mut self.unplaced_footnote_refs,
@@ -17718,7 +18534,7 @@ where
                 }
             }
 
-            if options.show_formatting_marks && !self.measuring_keep_next {
+            if options.shown_formatting_marks().paragraph_marks && !self.measuring_keep_next {
                 let default_properties: Option<RunProperties> = None;
                 let style = self.apply_run_style(default_properties.as_ref())?;
                 let context = self.host.painter();
@@ -17791,6 +18607,7 @@ where
             .into_iter()
             .filter(|object| !object.layout().behind_doc)
         {
+            let layer = self.begin_float_layer(object.layout());
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
@@ -17816,6 +18633,7 @@ where
                     )?;
                 }
             }
+            self.end_float_layer(layer);
         }
 
         if let (true, Some(render_hash)) = (cache_eligible, cache_render_hash) {
@@ -18335,6 +19153,7 @@ where
                         | TextDirection::TbRlV
                         | TextDirection::BtLr
                         | TextDirection::BtLrV
+                        | TextDirection::TbLrV
                 )
             )
         {
@@ -18860,26 +19679,40 @@ where
         let mut runs = Vec::with_capacity(paragraph.runs.len());
         // Consecutive runs usually share their direct formatting, and with it
         // the faces they resolve to: resolve each distinct formatting once.
-        let mut previous: Option<(Option<&RunProperties>, Rc<AppliedRunStyle>, f32)> = None;
+        let space_for_underline = self.document_east_asian_rules.space_for_underline;
+        let mut previous: Option<(Option<&RunProperties>, Rc<AppliedRunStyle>, f32, f32)> = None;
         for run in &paragraph.runs {
             if (run.text.is_empty() && run.note_separator.is_none())
                 || run.suppresses_line_height_contribution()
             {
                 continue;
             }
-            let (style, border_extent) = match previous.as_ref() {
-                Some((properties, style, border_extent))
+            let (style, border_extent, underline_depth) = match previous.as_ref() {
+                Some((properties, style, border_extent, underline_depth))
                     if *properties == run.properties.as_ref() =>
                 {
-                    (Rc::clone(style), *border_extent)
+                    (Rc::clone(style), *border_extent, *underline_depth)
                 }
                 _ => {
                     let effective =
                         self.effective_run_properties_rc(paragraph, run.properties.as_ref());
                     let style = self.resolve_applied_run_style_cached(effective.as_deref());
                     let border_extent = word_run_border_extent_pt(effective.as_deref());
-                    previous = Some((run.properties.as_ref(), Rc::clone(&style), border_extent));
-                    (style, border_extent)
+                    let underline_depth = if space_for_underline {
+                        jade_docx_layout::line_metrics::word_space_for_underline_depth_pt(
+                            effective.as_deref(),
+                            &style.resolved.font_descriptor_east_asia,
+                        )
+                    } else {
+                        0.0
+                    };
+                    previous = Some((
+                        run.properties.as_ref(),
+                        Rc::clone(&style),
+                        border_extent,
+                        underline_depth,
+                    ));
+                    (style, border_extent, underline_depth)
                 }
             };
             let faces = self.word_run_faces(&style.resolved, east_asian_faces_size_lines);
@@ -18890,7 +19723,11 @@ where
                         Some(east_asian_line.map_or(height, |current| current.max(height)));
                 }
             }
-            runs.push(faces.run_vertical_extent_pt(slots, border_extent));
+            runs.push(faces.run_vertical_extent_with_underline_pt(
+                slots,
+                border_extent,
+                underline_depth,
+            ));
         }
         Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
     }
@@ -19204,6 +20041,13 @@ where
         *target = merged;
     }
 
+    /// Whether the view marks `mark` up (its author and kind are shown).
+    fn revision_marked_up(&self, mark: &jade_docx_reader::document::RevisionMark) -> bool {
+        self.last_options
+            .as_ref()
+            .is_none_or(|options| options.revision_view().marks_up(mark))
+    }
+
     /// Fills a single thin border rectangle for a paragraph border edge,
     /// painting immediately (when the current page is being drawn) and pushing
     /// a `DrawCommand::FillRect` so the border survives cache replay. No-ops on
@@ -19265,89 +20109,173 @@ where
         let box_right = right_limit + right_space + right_w;
         let box_width = (box_right - box_left).max(0.0);
 
-        // Vertical rules: the thickness axis is X. The band starts at the outer
-        // edge and `border_band_offsets` distributes it across X for double/triple.
+        use border_styles::BorderSide;
+        // Vertical rules run down this line's box; their bands are given by
+        // their outer edge.
         if let Some(edge) = &borders.left {
-            for (off, sub) in border_band_offsets(edge.kind, left_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, left_w) {
-                    self.fill_border_rect(
-                        box_left + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                box_left,
+                left_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.bar {
-            for (off, sub) in border_band_offsets(edge.kind, bar_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, bar_w) {
-                    self.fill_border_rect(
-                        base_x - left_space - left_w - edge.space_px - bar_w + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Left,
+                top,
+                line_box_height,
+                base_x - left_space - left_w - edge.space_px - bar_w,
+                bar_w,
+                commands_out,
+            );
         }
         if let Some(edge) = &borders.right {
-            for (off, sub) in border_band_offsets(edge.kind, right_w) {
-                for (seg_off, seg_len) in border_dash_segments(edge.kind, line_box_height, right_w)
-                {
-                    self.fill_border_rect(
-                        right_limit + right_space + off,
-                        top + seg_off,
-                        sub,
-                        seg_len,
-                        &edge.color,
-                        commands_out,
-                    );
-                }
-            }
+            self.paint_paragraph_border_edge(
+                edge,
+                BorderSide::Right,
+                top,
+                line_box_height,
+                right_limit + right_space + right_w,
+                right_w,
+                commands_out,
+            );
         }
-        // Horizontal rules: the thickness axis is Y.
+        // Horizontal rules span the box.
         if is_first_line {
             if let Some(edge) = &borders.top {
-                let band_top = top - edge.space_px - edge.width_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
-                }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Top,
+                    box_left,
+                    box_width,
+                    top - edge.space_px - edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
             }
         }
         if is_last_line {
             if let Some(edge) = &borders.bottom {
-                let band_top = top + line_box_height + edge.space_px;
-                for (off, sub) in border_band_offsets(edge.kind, edge.width_px) {
-                    for (seg_off, seg_len) in
-                        border_dash_segments(edge.kind, box_width, edge.width_px)
-                    {
-                        self.fill_border_rect(
-                            box_left + seg_off,
-                            band_top + off,
-                            seg_len,
-                            sub,
-                            &edge.color,
-                            commands_out,
-                        );
-                    }
+                self.paint_paragraph_border_edge(
+                    edge,
+                    BorderSide::Bottom,
+                    box_left,
+                    box_width,
+                    top + line_box_height + edge.space_px + edge.width_px,
+                    edge.width_px,
+                    commands_out,
+                );
+            }
+        }
+    }
+
+    /// Paints one paragraph border rule in its line style. The rule runs
+    /// `length` from `start` along its edge (x for top and bottom, y for
+    /// left and right); its band is `thickness` across, from `outer` — the
+    /// band edge away from the text — inwards.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_paragraph_border_edge(
+        &self,
+        edge: &ResolvedBorderEdge,
+        side: border_styles::BorderSide,
+        start: f64,
+        length: f64,
+        outer: f64,
+        thickness: f64,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        use border_styles::BorderSide;
+        if length <= 0.0 || thickness <= 0.0 {
+            return;
+        }
+        // Position across the band, measured inwards from its outer edge.
+        let across = |from_outer: f64| match side {
+            BorderSide::Top | BorderSide::Left => outer + from_outer,
+            BorderSide::Bottom | BorderSide::Right => outer - from_outer,
+        };
+        let horizontal = matches!(side, BorderSide::Top | BorderSide::Bottom);
+        let pattern = border_styles::pattern(edge.kind);
+        let (line_width, polylines) = border_styles::pattern_polylines(pattern, length, thickness);
+        if !polylines.is_empty() {
+            let color = Rc::clone(&edge.color);
+            for line in polylines {
+                let points: Rc<[(f64, f64)]> = line
+                    .into_iter()
+                    .map(|(along, from_outer)| {
+                        if horizontal {
+                            (start + along, across(from_outer))
+                        } else {
+                            (across(from_outer), start + along)
+                        }
+                    })
+                    .collect();
+                self.stroke_border_polyline(points, line_width, &color, commands_out);
+            }
+            return;
+        }
+        for stripe in border_styles::stripes(edge.kind) {
+            let near = stripe.start * thickness;
+            let far = (stripe.start + stripe.width) * thickness;
+            let band_start = across(near).min(across(far));
+            let band = far - near;
+            let color: Rc<str> = match stripe.tone {
+                border_styles::Tone::Line => Rc::clone(&edge.color),
+                tone => Rc::from(border_styles::tone_color(&edge.color, tone, side)),
+            };
+            for (offset, run) in border_styles::pattern_runs(pattern, length, thickness) {
+                if horizontal {
+                    self.fill_border_rect(
+                        start + offset,
+                        band_start,
+                        run,
+                        band,
+                        &color,
+                        commands_out,
+                    );
+                } else {
+                    self.fill_border_rect(
+                        band_start,
+                        start + offset,
+                        band,
+                        run,
+                        &color,
+                        commands_out,
+                    );
                 }
             }
+        }
+    }
+
+    /// Strokes one polyline of a border rule, recording it for cache replay.
+    fn stroke_border_polyline(
+        &self,
+        points: Rc<[(f64, f64)]>,
+        line_width: f64,
+        color: &Rc<str>,
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+        let command = DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color: Rc::clone(color),
+        };
+        if self.should_draw_current_page_for_render() {
+            let _ = crate::draw_command::executor::execute_commands(
+                &self.host.painter(),
+                std::slice::from_ref(&command),
+            );
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.push(command);
         }
     }
 
@@ -19366,6 +20294,7 @@ where
         line_height_neutral_ranges: &[(usize, usize)],
         inline_images: &HashMap<usize, (usize, RunImage)>,
         inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
+        inline_maths: &InlineMaths,
         column_right_edge: f64,
         line_height: f64,
         show_formatting_marks: bool,
@@ -19386,11 +20315,29 @@ where
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
         hyperlink_regions_out: Option<&mut Vec<CachedHyperlinkRegion>>,
     ) -> Result<(), JsValue> {
+        // What the surface's font and fill are is not known here: a cached
+        // paragraph replayed just before, or anything else drawn straight to
+        // the surface, may have set its own. Trusting the trackers' last
+        // value let a plain paragraph after a replayed italic one skip its
+        // `set_font` and be drawn in italics.
+        self.invalidate_context_state_tracking();
         // Group measurement consumes line geometry, never editor-only marks.
         let show_formatting_marks = show_formatting_marks && !self.measuring_keep_next;
         let mut commands_out = commands_out;
         let mut selection_lines_out = selection_lines_out;
         let mut hyperlink_regions_out = hyperlink_regions_out;
+        let change_marks = if self.pending_change_marks.0 == paragraph_index {
+            self.pending_change_marks.1.clone()
+        } else {
+            Vec::new()
+        };
+        let change_bar = if change_marks.is_empty() || self.measuring_keep_next {
+            None
+        } else {
+            self.last_options
+                .as_ref()
+                .and_then(|options| options.revision_view().change_bar.clone())
+        };
 
         // While rendering the EDITED paragraph under a band redraw, disable the
         // band-below paint skip so none of its (possibly wrapped) lines are culled
@@ -19407,6 +20354,7 @@ where
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             ) {
                 let result = self.render_text_line_with_direction(
                     paragraph_index,
@@ -19592,7 +20540,6 @@ where
             }
         }
 
-        let draw_enabled = self.should_draw_current_page_for_render();
         let lines_len = lines.len();
 
         struct PreparedSegment<'segment, 'arena> {
@@ -19606,7 +20553,10 @@ where
         }
 
         let distribute_justification_to_whitespace =
-            |prepared_segments: &mut [PreparedSegment<'_, '_>], extra_total: f64| -> f64 {
+            |prepared_segments: &mut [PreparedSegment<'_, '_>],
+             extra_total: f64,
+             soft_break: bool|
+             -> f64 {
                 if extra_total <= 0.0 {
                     return 0.0;
                 }
@@ -19661,8 +20611,10 @@ where
                     opportunities
                         .retain(|&opportunity| first_text.is_some_and(|first| opportunity > first));
                 }
+                // A line ending in a manual break has no trailing break
+                // space: its last space is dropped only when nothing follows.
                 if matches!(opportunities.last(), Some(&(last_segment, last_glyph))
-                    if !mac || only_whitespace_from(last_segment, last_glyph + 1))
+                    if !mac && soft_break || only_whitespace_from(last_segment, last_glyph + 1))
                 {
                     opportunities.pop();
                 }
@@ -20232,6 +21184,31 @@ where
             ));
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
+            // ADVANCE \y puts the line holding it at a position down the page
+            // (Word ignores it in headers, footers and notes).
+            let advance_line_shift = if paragraph_style
+                .advances
+                .iter()
+                .any(|advance| advance.y_px.is_some())
+                && !self.rendering_header_footer_story
+                && !self.rendering_note_story
+            {
+                let line_end = wrapped_line
+                    .segments
+                    .iter()
+                    .map(|segment| segment.end)
+                    .max()
+                    .unwrap_or(line_start);
+                paragraph_style
+                    .advances
+                    .iter()
+                    .filter(|advance| (line_start..=line_end).contains(&advance.offset))
+                    .filter_map(|advance| advance.y_px)
+                    .next_back()
+                    .map_or(0.0, |y| y - top)
+            } else {
+                0.0
+            };
             // Band-mode ink coverage guard: the band rect was computed from the
             // PRE-edit layout cache via `band_local_bounds`, whose bottom split
             // assumes normal spacing. Verify against the ACTUAL measured ink of
@@ -20312,9 +21289,7 @@ where
                 // float bands, note references and line-number state. Measurement
                 // consumes only the extent and baseline after this point.
                 self.last_line_baseline = baseline;
-                if matches!(break_kind, LineBreakKind::Page) {
-                    self.force_page_break()?;
-                }
+                self.advance_after_break(break_kind)?;
                 continue;
             }
 
@@ -20326,6 +21301,36 @@ where
             let first_line_offset = paragraph_style.line_indent(line_index);
             let right_limit =
                 base_x + paragraph_style.line_base_width(default_base_width, line_index);
+
+            // 変更された行: a bar in the left margin beside a line a change is
+            // on, as Word marks changed lines.
+            if let Some(color) = change_bar.as_ref() {
+                let line_end = wrapped_line
+                    .segments
+                    .iter()
+                    .map(|segment| segment.end)
+                    .max()
+                    .unwrap_or(line_start);
+                let changed = change_marks.iter().any(|&(start, end)| {
+                    if start == end {
+                        line_start <= start && start <= line_end
+                    } else {
+                        start < line_end.max(line_start + 1) && line_start < end
+                    }
+                });
+                if changed {
+                    // On whole pixels, so the hairline is drawn in its colour
+                    // rather than smeared over two.
+                    self.fill_border_rect(
+                        (self.margin_left - CHANGE_BAR_DISTANCE_PX).round(),
+                        top,
+                        CHANGE_BAR_WIDTH_PX,
+                        line_box_height,
+                        color,
+                        &mut commands_out,
+                    );
+                }
+            }
 
             // Paint the paragraph shading band behind this line's content
             // (before highlights, selection, and glyphs). The band spans the
@@ -20376,7 +21381,9 @@ where
 
             let available_for_line = right_limit - (base_x + first_line_offset);
             let justify = is_justified_alignment(&paragraph_style.alignment)
-                && matches!(break_kind, LineBreakKind::Soft);
+                && (matches!(break_kind, LineBreakKind::Soft)
+                    || paragraph_style.expand_lines_ending_in_breaks
+                        && matches!(break_kind, LineBreakKind::Hard));
 
             let has_inline_objects = wrapped_line
                 .clusters
@@ -20631,6 +21638,8 @@ where
 
             let mut positions = Vec::with_capacity(segment_count);
             let mut inline_image_draws: Vec<(usize, RunImage, f64, f64, f64, f64)> = Vec::new();
+            let mut inline_math_draws: Vec<(usize, usize, Rc<math::OwnedMathPlan>, f64)> =
+                Vec::new();
             let mut inline_text_box_draws: Vec<(usize, RunTextBox, FloatingObjectTransform)> =
                 Vec::new();
             let mut cursor_x = line_start_x;
@@ -20645,6 +21654,14 @@ where
                         segment_positions.entry(cluster.start).or_insert(cursor_x);
                     }
                     if matches!(cluster.kind, InlineClusterKind::InlineObject) {
+                        if let Some((run_index, plan)) = inline_maths.get(&cluster.start) {
+                            inline_math_draws.push((
+                                cluster.start,
+                                *run_index,
+                                Rc::clone(plan),
+                                cursor_x,
+                            ));
+                        }
                         if let (Some((run_index, image)), Some(object)) =
                             (inline_images.get(&cluster.start), cluster.inline_object)
                         {
@@ -20794,6 +21811,7 @@ where
                     distribute_justification_to_whitespace(
                         prepared_segments.as_mut_slice(),
                         extra_total,
+                        matches!(break_kind, LineBreakKind::Soft),
                     )
                 } else {
                     0.0
@@ -20876,6 +21894,10 @@ where
                 base_x + first_line_offset,
                 right_limit + line_layout.allowed_trailing_overflow_width,
             );
+            // Asked per line, on the page the line landed on: a paragraph
+            // that starts on a page this render skips and breaks onto one it
+            // draws has its lines drawn, clip and marks with the text.
+            let draw_enabled = self.should_draw_current_page_for_render();
             if draw_enabled {
                 context.save();
                 context.begin_path();
@@ -20891,12 +21913,32 @@ where
                     height: clip_height,
                 });
             }
+            for (offset, run_index, plan, math_x) in &inline_math_draws {
+                if draw_enabled {
+                    plan.paint(&context, *math_x, baseline)
+                        .map_err(PainterError::into_js_value)?;
+                    self.reset_fill_style_state();
+                }
+                self.record_math_zone(math::MathZone {
+                    paragraph: paragraph_index,
+                    offset: *offset,
+                    run_index: Some(*run_index),
+                    display: false,
+                    page: self.current_page_number,
+                    x: *math_x,
+                    baseline,
+                    absolute_baseline: self.page_offset_y + baseline,
+                    plan: Rc::clone(plan),
+                });
+            }
             for (run_index, image, image_x, image_y, image_width, image_height) in
                 &inline_image_draws
             {
+                // A hidden object (the Selection Pane's eye) cannot be
+                // clicked on the page.
                 self.object_debug_regions
                     .borrow_mut()
-                    .push(ObjectDebugInfo {
+                    .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -20906,7 +21948,7 @@ where
                         width: *image_width,
                         height: *image_height,
                         rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
-                    });
+                    }));
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
                     y: *image_y,
@@ -20929,7 +21971,7 @@ where
                     );
                 }
                 if draw_enabled {
-                    if image.data_uri.is_some() {
+                    if image.data_uri.is_some() || has_ink_strokes(image) {
                         self.draw_image_element(image, draw_spec)?;
                     } else if let Some(group) = image.shape_group.as_ref() {
                         self.draw_shape_group(group, draw_spec)?;
@@ -20974,11 +22016,29 @@ where
                 })
                 .collect::<Vec<_>>();
             let character_borders = merge_character_border_fragments(&character_border_fragments);
+            // Where the line's trailing spaces start, as (segment, x within
+            // it): Word underlines them only under `ulTrailSpace`.
+            let trailing_spaces_from = (!self.document_underlines_trailing_spaces)
+                .then(|| {
+                    trailing_whitespace_start(prepared_segments.iter().map(|prepared| {
+                        (
+                            prepared.segment.text.as_str(),
+                            prepared.glyph_steps.as_slice(),
+                            prepared.width,
+                        )
+                    }))
+                })
+                .flatten();
             for (segment_index, (prepared, start_x)) in
                 prepared_segments.iter().zip(positions.iter()).enumerate()
             {
                 if render_changes {
-                    if let Some(revision_mark) = prepared.segment.revision.as_ref() {
+                    if let Some(revision_mark) = prepared
+                        .segment
+                        .revision
+                        .as_ref()
+                        .filter(|mark| self.revision_marked_up(mark))
+                    {
                         let fill_color = match revision_mark.kind {
                             RevisionKind::Inserted => REVISION_INSERTED_FILL,
                             RevisionKind::Deleted => REVISION_DELETED_FILL,
@@ -21026,7 +22086,7 @@ where
                     );
                 }
                 let text_style = self.cmd_text_style(prepared.segment.properties.as_deref(), style);
-                let text_y = baseline + style.baseline_shift_px;
+                let text_y = baseline + style.baseline_shift_px + advance_line_shift;
                 // Draw highlight background behind the text when present.
                 if let Some(hl_color) = text_style.highlight_color.as_deref() {
                     let (hl_top, hl_height) = Self::text_highlight_vertical_bounds(
@@ -21149,6 +22209,45 @@ where
                     &prepared.glyph_steps,
                 )
                 .map_err(PainterError::into_js_value)?;
+                // Automatic hyphenation's hyphen, after the line's last
+                // letter in its run's style: not in the text, only drawn.
+                if let (Some(hyphen), Some(last_step), true) = (
+                    wrapped_line.hyphen,
+                    prepared.glyph_steps.last(),
+                    segment_index + 1 == prepared_segments.len(),
+                ) {
+                    let letter = wrapped_line
+                        .clusters
+                        .last()
+                        .and_then(|cluster| cluster.layout.as_ref())
+                        .map_or(0.0, |layout| layout.glyph_box_width - hyphen.width);
+                    let hyphen_x = *start_x + last_step.x_offset + letter.max(0.0);
+                    let hyphen_step = [PlannedGlyphLayoutStep {
+                        text_start: 0,
+                        text_end: 1,
+                        font_slot: ResolvedFontSlot::LatinAscii,
+                        x_offset: 0.0,
+                    }];
+                    if let Some(buf) = commands_out.as_deref_mut() {
+                        self.push_text_commands_for_plan(
+                            buf,
+                            hyphen_x,
+                            text_y,
+                            &text_style,
+                            "-",
+                            &hyphen_step,
+                        );
+                    }
+                    self.draw_planned_text(
+                        &context,
+                        hyphen_x,
+                        text_y,
+                        &text_style,
+                        ("-", style.resolved.as_ref()),
+                        &hyphen_step,
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                }
                 let width = prepared.width;
                 if style.strike || style.double_strike {
                     self.draw_strike_through(
@@ -21176,12 +22275,21 @@ where
                         .underline_color
                         .clone()
                         .unwrap_or_else(|| text_style.fill_color.clone());
+                    let underline_end = match trailing_spaces_from {
+                        Some((segment, _)) if segment_index > segment => 0.0,
+                        Some((segment, x)) if segment_index == segment => x,
+                        _ => f64::INFINITY,
+                    };
                     for (offset, underline_width) in underline_spans_for_planned_glyphs(
                         style.underline_kind.as_deref(),
                         &prepared.segment.text,
                         &prepared.glyph_steps,
                         width,
                     ) {
+                        let underline_width = underline_width.min(underline_end - offset);
+                        if underline_width <= 0.0 {
+                            continue;
+                        }
                         let underline_x = *start_x + offset;
                         self.draw_underline(
                             &context,
@@ -21355,6 +22463,32 @@ where
                                     });
                                 }
                             }
+                            crate::plugins::DecorationStyle::DoubleUnderline { color } => {
+                                let deco_x = *start_x + x0;
+                                let deco_w = x1 - x0;
+                                if self.should_draw_current_page_for_render() {
+                                    crate::draw_command::executor::execute_underline(
+                                        &context,
+                                        deco_x,
+                                        text_y,
+                                        deco_w,
+                                        style.font_size_pt,
+                                        color,
+                                        Some("double"),
+                                    )
+                                    .map_err(PainterError::into_js_value)?;
+                                }
+                                if let Some(buf) = commands_out.as_deref_mut() {
+                                    buf.push(DrawCommand::Underline {
+                                        x: deco_x,
+                                        y: text_y,
+                                        width: deco_w,
+                                        font_size_pt: style.font_size_pt,
+                                        color: Rc::from(color.as_str()),
+                                        kind: Some(Rc::from("double")),
+                                    });
+                                }
+                            }
                             // Highlight is rendered in the behind-text
                             // pass above so that glyphs paint on top of
                             // the fill; nothing to do here.
@@ -21432,6 +22566,29 @@ where
                     commands_out.as_deref_mut(),
                 );
             }
+            // スペース, タブ and 任意指定のハイフン marks, over the laid-out
+            // line.
+            // Inside the line's clip, as its text is, so a line painted again
+            // takes them as its text does. Recorded even when this page is not
+            // drawn (a band redraw, a page outside the render): the recording
+            // is what the page replays later, and a line recorded without its
+            // marks would come back without them.
+            if (self.mark_kinds.spaces || self.mark_kinds.tabs || self.mark_kinds.optional_hyphens)
+                && (draw_enabled || commands_out.is_some())
+                && !self.measuring_keep_next
+            {
+                let segments: Vec<&TextSegment> = prepared_segments
+                    .iter()
+                    .map(|prepared| prepared.segment)
+                    .collect();
+                self.draw_whitespace_marks(
+                    &segments,
+                    &line_layout,
+                    baseline,
+                    commands_out.as_deref_mut(),
+                )?;
+            }
+
             if draw_enabled {
                 context.restore();
                 // The line's first run sets its font inside this save, so the
@@ -21551,9 +22708,7 @@ where
             self.last_line_baseline = baseline;
             self.last_line_box = Some((baseline, top));
 
-            if matches!(break_kind, LineBreakKind::Page) {
-                self.force_page_break()?;
-            }
+            self.advance_after_break(break_kind)?;
         }
 
         self.band_redraw_in_edited_paragraph = saved_band_in_edited;
@@ -21564,10 +22719,38 @@ where
         &mut self,
         break_kind: LineBreakKind,
     ) -> Result<(), JsValue> {
-        if matches!(break_kind, LineBreakKind::Page) {
-            self.force_page_break()?;
+        self.advance_after_break(break_kind)
+    }
+
+    /// After a line that ends in a page or a column break: the next page,
+    /// or the next column (the next page after the last column).
+    fn advance_after_break(&mut self, break_kind: LineBreakKind) -> Result<(), JsValue> {
+        match break_kind {
+            LineBreakKind::Page => self.force_page_break(),
+            LineBreakKind::Column => self.force_column_break(),
+            _ => Ok(()),
         }
-        Ok(())
+    }
+
+    /// 段区切り: the top of the next column, as Word continues a section's
+    /// text; past the last column, the next page.
+    fn force_column_break(&mut self) -> Result<(), JsValue> {
+        if self.measuring_keep_next
+            || self.rendering_header_footer_story
+            || self.paragraph_frame_column.is_some()
+        {
+            return Ok(());
+        }
+        if !self.pageless_mode
+            && self.column_layout.count() > 1
+            && self.column_index + 1 < self.column_layout.count()
+        {
+            self.column_index += 1;
+            self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+            self.last_line_baseline = self.current_y;
+            return Ok(());
+        }
+        self.force_page_break()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -21634,7 +22817,7 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
+            .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
                 kind: FloatingObjectKind::Image,
                 paragraph_index,
                 run_index,
@@ -21644,7 +22827,7 @@ where
                 width: transform.width,
                 height: transform.height,
                 rotation_deg: transform.rotation_deg,
-            });
+            }));
 
         let draw_spec = ImageDrawSpec {
             x: transform.x,
@@ -21671,7 +22854,7 @@ where
         if !self.should_draw_current_page_for_render() {
             return Ok(Some(transform.y + transform.height));
         }
-        if image.data_uri.is_some() {
+        if image.data_uri.is_some() || has_ink_strokes(image) {
             self.draw_image_element(image, draw_spec)?;
         } else if let Some(group) = image.shape_group.as_ref() {
             self.draw_shape_group(group, draw_spec)?;
@@ -22136,6 +23319,128 @@ where
         }
     }
 
+    /// A shape's outline: its freeform paths when it has them, its preset
+    /// otherwise.
+    #[allow(clippy::too_many_arguments)]
+    fn trace_text_box_geometry<P: Painter>(
+        context: &P,
+        text_box: &RunTextBox,
+        head_end: Option<TextBoxLineEnd>,
+        tail_end: Option<TextBoxLineEnd>,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        match text_box.extras().custom_geometry.as_ref() {
+            Some(geometry) => {
+                Self::trace_custom_geometry(context, geometry, x, y, width, height);
+                Ok(())
+            }
+            None => Self::trace_text_box_shape_with_line_ends(
+                context,
+                text_box.shape,
+                head_end,
+                tail_end,
+                x,
+                y,
+                width,
+                height,
+            ),
+        }
+    }
+
+    /// `a:custGeom`'s paths, scaled from each path's own space into the box.
+    fn trace_custom_geometry<P: Painter>(
+        context: &P,
+        geometry: &crate::document::CustomGeometry,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) {
+        use crate::document::PathCommand;
+        context.begin_path();
+        for path in &geometry.paths {
+            // A path without its own size is in the shape's EMU.
+            let scale_x = if path.width > 0.0 {
+                width / path.width
+            } else {
+                1.0 / 9525.0
+            };
+            let scale_y = if path.height > 0.0 {
+                height / path.height
+            } else {
+                1.0 / 9525.0
+            };
+            let at = |px: f64, py: f64| (x + px * scale_x, y + py * scale_y);
+            let mut current = (x, y);
+            for command in &path.commands {
+                match *command {
+                    PathCommand::MoveTo(px, py) => {
+                        current = at(px, py);
+                        context.move_to(current.0, current.1);
+                    }
+                    PathCommand::LineTo(px, py) => {
+                        current = at(px, py);
+                        context.line_to(current.0, current.1);
+                    }
+                    PathCommand::CubicTo(x1, y1, x2, y2, px, py) => {
+                        let (c1, c2) = (at(x1, y1), at(x2, y2));
+                        current = at(px, py);
+                        context.bezier_curve_to(c1.0, c1.1, c2.0, c2.1, current.0, current.1);
+                    }
+                    PathCommand::QuadTo(x1, y1, px, py) => {
+                        let control = at(x1, y1);
+                        current = at(px, py);
+                        context.quadratic_curve_to(control.0, control.1, current.0, current.1);
+                    }
+                    PathCommand::ArcTo {
+                        width_radius,
+                        height_radius,
+                        start_deg,
+                        sweep_deg,
+                    } => {
+                        // The arc starts at the current point, at angle
+                        // `start_deg` of an ellipse with these radii.
+                        let (rx, ry) = (width_radius * scale_x, height_radius * scale_y);
+                        let start = start_deg.to_radians();
+                        let (cx, cy) = (current.0 - rx * start.cos(), current.1 - ry * start.sin());
+                        const STEPS: usize = 24;
+                        for step in 1..=STEPS {
+                            let angle = start + sweep_deg.to_radians() * step as f64 / STEPS as f64;
+                            current = (cx + rx * angle.cos(), cy + ry * angle.sin());
+                            context.line_to(current.0, current.1);
+                        }
+                    }
+                    PathCommand::Close => context.close_path(),
+                }
+            }
+        }
+    }
+
+    /// Mirrors what is drawn next about the box's centre for a shape's
+    /// `flipH`/`flipV`; the caller restores.
+    fn apply_shape_flips<P: Painter>(
+        context: &P,
+        layout: &RunImageLayout,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), P::Error> {
+        if !layout.flip_horizontal && !layout.flip_vertical {
+            return Ok(());
+        }
+        let (center_x, center_y) = (x + width / 2.0, y + height / 2.0);
+        context.translate(center_x, center_y)?;
+        context.scale(
+            if layout.flip_horizontal { -1.0 } else { 1.0 },
+            if layout.flip_vertical { -1.0 } else { 1.0 },
+        )?;
+        context.translate(-center_x, -center_y)
+    }
+
     fn trace_text_box_shape<P: Painter>(
         context: &P,
         shape: TextBoxShape,
@@ -22144,6 +23449,13 @@ where
         width: f64,
         height: f64,
     ) -> Result<(), P::Error> {
+        if let TextBoxShape::Preset(id) = shape {
+            // The outline that is filled: a preset's stroke-only paths (a
+            // scroll's curls, a brace) are not part of its area.
+            context.begin_path();
+            Self::trace_preset_geometry(context, id, x, y, width, height, true);
+            return Ok(());
+        }
         Self::trace_text_box_shape_with_line_ends(context, shape, None, None, x, y, width, height)
     }
 
@@ -22335,6 +23647,52 @@ where
         paint_result
     }
 
+    /// Traces a preset geometry from ECMA-376's shape-guide definitions,
+    /// honouring the shape's own adjust values; a rectangle when the preset is
+    /// unknown. `filled` picks the paths the preset fills (for a fill,
+    /// shadow or glow) rather than the ones it strokes (for its outline).
+    fn trace_preset_geometry<P: Painter>(
+        context: &P,
+        id: jade_docx_reader::document::PresetGeometryId,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        filled: bool,
+    ) {
+        let geometry = id.geometry();
+        let Some((paths, _)) = jade_pptx_layout::preset_shapes::outline(
+            &geometry.name,
+            &geometry.adjustments,
+            width,
+            height,
+        ) else {
+            context.rect(x, y, width, height);
+            return;
+        };
+        for path in paths.iter().filter(|path| {
+            if filled {
+                path.fill != jade_pptx_layout::PathFill::None
+            } else {
+                path.stroked
+            }
+        }) {
+            for subpath in &path.subpaths {
+                for (index, &(px, py)) in subpath.points.iter().enumerate() {
+                    let (px, py) = (x + px * width, y + py * height);
+                    if index == 0 {
+                        context.move_to(px, py);
+                    } else {
+                        context.line_to(px, py);
+                    }
+                }
+                if subpath.closed {
+                    context.close_path();
+                }
+            }
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn trace_text_box_shape_with_line_ends<P: Painter>(
         context: &P,
@@ -22359,11 +23717,16 @@ where
             TextBoxShape::Rectangle => {
                 context.rect(x, y, width, height);
             }
+            TextBoxShape::Preset(id) => {
+                Self::trace_preset_geometry(context, id, x, y, width, height, false);
+            }
             TextBoxShape::Line | TextBoxShape::LineArrow | TextBoxShape::LineArrowDouble => {
+                // DrawingML's line runs from the frame's top left to its
+                // bottom right; `flipH`/`flipV` turn it the other ways.
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(end_x, end_y);
                 // Word keeps arrowheads legible even when a straight
@@ -22394,13 +23757,13 @@ where
             }
             TextBoxShape::LineBent => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let lower_elbow_x = x + width / 2.0;
-                let lower_elbow_y = y + height;
+                let lower_elbow_y = y;
                 let upper_elbow_x = x + width / 2.0;
-                let upper_elbow_y = y;
+                let upper_elbow_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.line_to(lower_elbow_x, lower_elbow_y);
                 context.line_to(upper_elbow_x, upper_elbow_y);
@@ -22431,13 +23794,13 @@ where
             }
             TextBoxShape::LineCurved => {
                 let start_x = x;
-                let start_y = y + height;
+                let start_y = y;
                 let first_control_x = x + width * 0.6;
-                let first_control_y = y + height;
+                let first_control_y = y;
                 let second_control_x = x + width * 0.4;
-                let second_control_y = y;
+                let second_control_y = y + height;
                 let end_x = x + width;
-                let end_y = y;
+                let end_y = y + height;
                 context.move_to(start_x, start_y);
                 context.bezier_curve_to(
                     first_control_x,
@@ -24246,7 +25609,7 @@ where
         line_height: f64,
         render_changes: bool,
     ) -> Result<Option<f64>, JsValue> {
-        if !matches!(text_box.layout.kind, RunImageKind::Floating) {
+        if !matches!(text_box.layout.kind, RunImageKind::Floating) || text_box.layout.hidden() {
             return Ok(None);
         }
 
@@ -24259,20 +25622,33 @@ where
             || text_box
                 .fill_color
                 .as_deref()
-                .is_some_and(text_box_fill_hides_page_background)
+                .is_some_and(fill_hides_page_background)
                 && text_box.fill_opacity.unwrap_or(1.0) > 0.0;
         let target = FloatingObjectTarget {
             paragraph_index,
             run_index,
             kind: FloatingObjectKind::TextBox,
         };
-        let transform = self.resolve_floating_object_transform(
-            target,
-            text_box.width_px.unwrap_or(200.0).max(1.0),
+        // A text box is at least a line tall. A line shape is its own extent:
+        // a perfectly horizontal one (`cy` of a pixel, or none) made a line
+        // tall is drawn as a slope across that height.
+        let height = if text_box.shape.is_line() {
+            text_box.height_px.unwrap_or(0.0).max(0.0)
+        } else {
             text_box
                 .height_px
                 .unwrap_or(line_height * 2.0)
-                .max(line_height),
+                .max(line_height)
+        };
+        let width = if text_box.shape.is_line() {
+            text_box.width_px.unwrap_or(0.0).max(0.0)
+        } else {
+            text_box.width_px.unwrap_or(200.0).max(1.0)
+        };
+        let transform = self.resolve_floating_object_transform(
+            target,
+            width,
+            height,
             &text_box.layout,
             paragraph_start_y,
             line_height,
@@ -24301,7 +25677,7 @@ where
             || text_box
                 .fill_color
                 .as_deref()
-                .is_some_and(text_box_fill_hides_page_background)
+                .is_some_and(fill_hides_page_background)
                 && text_box.fill_opacity.unwrap_or(1.0) > 0.0;
         let result = self.render_floating_text_box_inner(
             text_box,
@@ -24388,9 +25764,15 @@ where
                     1.0,
                     1.0,
                 );
-                Self::trace_text_box_shape(&context, text_box.shape, draw_x, draw_y, width, height)
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
                     .map_err(PainterError::into_js_value)?;
+                Self::trace_text_box_geometry(
+                    &context, text_box, None, None, draw_x, draw_y, width, height,
+                )
+                .map_err(PainterError::into_js_value)?;
                 context.fill();
+                context.restore();
                 if blur_effect {
                     context.restore();
                 }
@@ -24474,7 +25856,56 @@ where
         let mut cursor_y = content_y;
         let mut remaining_line_gaps = line_count.saturating_sub(1);
         let first_text_box_paragraph = self.paragraph_counter;
-        let rendered = if text_box.shape.is_line() {
+        // WordArt: the text is laid out as usual — the caret and hit test
+        // need its lines — but drawn by `wordart_paint`, with its effects
+        // and transform.
+        let wordart = draw_enabled
+            && !text_box.shape.is_line()
+            && (text_box.extras().wordart.is_some()
+                || text_box
+                    .extras()
+                    .text_warp
+                    .as_ref()
+                    .is_some_and(|warp| warp.preset != "textNoShape"));
+        if wordart {
+            let context = self.host.painter();
+            context.save();
+            context.set_global_alpha(0.0);
+        }
+        // A linked text box: the chain's text flows through its boxes. The
+        // first box shows what fits; each later one, the lines after those
+        // the boxes before it hold.
+        let chain = text_box
+            .extras()
+            .link
+            .and_then(|link| self.linked_story(link.id).map(|story| (link, story)))
+            .filter(|(_, story)| story.boxes.len() > 1);
+        if let Some((link, story)) = chain.as_ref() {
+            let context = self.host.painter();
+            context.save();
+            context.begin_path();
+            context.rect(
+                content_left,
+                content_top,
+                (content_right - content_left).max(1.0),
+                (box_bottom - content_top).max(1.0),
+            );
+            context.clip();
+            if link.sequence > 0 {
+                self.render_linked_continuation(
+                    story,
+                    link.sequence,
+                    content_left,
+                    content_right,
+                    content_top,
+                    box_bottom,
+                )?;
+            }
+        }
+        let rendered = if chain.as_ref().is_some_and(|(link, _)| link.sequence > 0) {
+            // Its text is the chain's, drawn above; it has none of its own.
+            true
+        } else if text_box.shape.is_line() {
             // Connectors are stroke-only WordprocessingShapes. They expose a
             // grab region but must not synthesize an editable empty paragraph.
             true
@@ -24496,6 +25927,80 @@ where
         if !rendered {
             self.render_empty_text_box_paragraph(content_left, &mut cursor_y, box_bottom)?;
         }
+        if chain.is_some() {
+            self.host.painter().restore();
+            self.invalidate_context_state_tracking();
+        }
+        if wordart {
+            let context = self.host.painter();
+            context.restore();
+            self.invalidate_context_state_tracking();
+            let first_run = text_box.blocks.iter().find_map(|block| match block {
+                BodyElement::Paragraph(paragraph) => paragraph
+                    .runs
+                    .iter()
+                    .find(|run| !run.text.is_empty())
+                    .and_then(|run| run.properties.as_ref()),
+                _ => None,
+            });
+            let resolved =
+                jade_docx_layout::font_resolver::resolve_run_style_for_wrap(first_run, None);
+            let font = if text_box.text.is_ascii() {
+                resolved.font_descriptor_latin_hansi.to_string()
+            } else {
+                resolved.font_descriptor_east_asia.to_string()
+            };
+            let size_px = parse_font_descriptor_size_pt(&font).unwrap_or(36.0) * 96.0 / 72.0;
+            let effects = text_box.extras().wordart.clone().unwrap_or_default();
+            let run_color = first_run
+                .and_then(|properties| properties.color.as_deref())
+                .filter(|color| !color.eq_ignore_ascii_case("auto"))
+                .map(|color| format!("#{}", color.trim_start_matches('#')));
+            let paint = crate::wordart_paint::WordArtPaint {
+                font,
+                size_px,
+                fill: if effects.no_fill {
+                    None
+                } else {
+                    effects
+                        .fill
+                        .as_ref()
+                        .and_then(|fill| fill.rgb.clone())
+                        .or(run_color)
+                        .or_else(|| Some("#000000".to_string()))
+                },
+                outline: effects
+                    .outline
+                    .as_ref()
+                    .and_then(|(color, width)| color.rgb.clone().map(|rgb| (rgb, *width))),
+                shadow: effects.shadow,
+                glow: effects.glow.as_ref().and_then(|(color, radius)| {
+                    color
+                        .rgb
+                        .as_deref()
+                        .map(|rgb| (Self::shape_effect_color(Some(rgb), 0.6), *radius))
+                }),
+            };
+            let preset = text_box
+                .extras()
+                .text_warp
+                .as_ref()
+                .map(|warp| warp.preset.as_str())
+                .unwrap_or("textNoShape");
+            crate::wordart_paint::paint_wordart(
+                &context,
+                &text_box.text,
+                preset,
+                (
+                    content_left,
+                    content_top,
+                    (content_right - content_left).max(1.0),
+                    (box_bottom - content_top).max(1.0),
+                ),
+                &paint,
+            );
+            self.invalidate_context_state_tracking();
+        }
 
         if self.auxiliary_story_capture_mode.enabled() {
             let lines =
@@ -24511,6 +26016,9 @@ where
         if draw_enabled {
             let context = self.host.painter();
             if border.style != TextBoxBorderStyle::None {
+                context.save();
+                Self::apply_shape_flips(&context, &text_box.layout, draw_x, draw_y, width, height)
+                    .map_err(PainterError::into_js_value)?;
                 context.set_stroke_style_str(&stroke_style);
                 let blur_effect = Self::begin_shape_blur_effects(
                     &context,
@@ -24524,9 +26032,9 @@ where
                         Self::apply_line_dash(&context, &[])
                             .map_err(PainterError::into_js_value)?;
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24565,9 +26073,9 @@ where
                                 .map_err(PainterError::into_js_value)?;
                         }
                         context.set_line_width(border_width);
-                        Self::trace_text_box_shape_with_line_ends(
+                        Self::trace_text_box_geometry(
                             &context,
-                            text_box.shape,
+                            text_box,
                             border.head_end,
                             border.tail_end,
                             draw_x,
@@ -24582,6 +26090,7 @@ where
                 if blur_effect {
                     context.restore();
                 }
+                context.restore();
             }
             context.restore();
             // The box's paragraphs set fonts inside this save.
@@ -24630,6 +26139,150 @@ where
 
         let wrap_bottom_outset = text_box_wrap_bottom_outset_px(&border);
         Ok(Some(draw_y + height + wrap_bottom_outset))
+    }
+
+    /// The chain of linked text boxes `id`: the first box's text, and each
+    /// box's sequence and content height, from the document last rendered.
+    fn linked_story(&self, id: u32) -> Option<Rc<LinkedStory>> {
+        let document = self.last_document.as_ref()?;
+        if let Some(found) = self
+            .linked_stories
+            .borrow()
+            .get(&id)
+            .filter(|story| Rc::ptr_eq(&story.document, document))
+        {
+            return Some(Rc::clone(found));
+        }
+        fn walk(elements: &[BodyElement], id: u32, story: &mut LinkedStory) {
+            for element in elements {
+                match element {
+                    BodyElement::Paragraph(paragraph) => {
+                        for run in &paragraph.runs {
+                            let Some(text_box) = run.text_box.as_ref() else {
+                                continue;
+                            };
+                            if let Some(link) = text_box.extras().link.filter(|link| link.id == id)
+                            {
+                                let height = text_box.height_px.unwrap_or(0.0)
+                                    - text_box.insets.top_px
+                                    - text_box.insets.bottom_px;
+                                story.boxes.push((link.sequence, height.max(0.0)));
+                                if link.sequence == 0 {
+                                    story.blocks = text_box.blocks.clone();
+                                }
+                            }
+                            walk(&text_box.blocks, id, story);
+                        }
+                    }
+                    BodyElement::Table(table) => {
+                        for row in &table.rows {
+                            for cell in &row.cells {
+                                walk(&cell.blocks, id, story);
+                            }
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let mut story = LinkedStory {
+            document: Rc::clone(document),
+            blocks: Vec::new(),
+            boxes: Vec::new(),
+        };
+        walk(&document.body.as_ref()?.elements, id, &mut story);
+        story.boxes.sort_by_key(|(sequence, _)| *sequence);
+        let story = Rc::new(story);
+        self.linked_stories
+            .borrow_mut()
+            .insert(id, Rc::clone(&story));
+        Some(story)
+    }
+
+    /// Draws the part of a linked chain's text that falls in box
+    /// `sequence`: the whole text laid out at this box's width, moved up by
+    /// the lines the boxes before it hold, clipped by the caller. Drawn
+    /// apart from the document's own paragraphs, which the first box holds.
+    fn render_linked_continuation(
+        &mut self,
+        story: &LinkedStory,
+        sequence: u32,
+        content_left: f64,
+        content_right: f64,
+        content_top: f64,
+        box_bottom: f64,
+    ) -> Result<(), JsValue> {
+        let TextBoxBlockLayout {
+            height,
+            line_count,
+            math_plans,
+        } = self.measure_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut NumberingCounter::new(),
+        )?;
+        let line_height = height / line_count.max(1) as f64;
+        if line_height <= 0.0 {
+            return Ok(());
+        }
+        let lines_before: f64 = story
+            .boxes
+            .iter()
+            .filter(|(other, _)| *other < sequence)
+            .map(|(_, content)| (content / line_height).floor())
+            .sum();
+        // Isolated: the story's paragraphs are the first box's surfaces.
+        let saved_counter = self.paragraph_counter;
+        let saved_selection = std::mem::take(&mut self.selection);
+        let saved_hyperlinks = self.hyperlink_regions.len();
+        let saved_comments = self.comment_annotations.len();
+        let saved_images = self.image_debug_regions.borrow().len();
+        let saved_text_boxes = self.text_box_debug_regions.borrow().len();
+        let saved_grouped = self.grouped_shape_text_regions.borrow().len();
+        let saved_objects = self.object_debug_regions.borrow().len();
+        let saved_revisions = self.revision_debug_regions.borrow().len();
+        let saved_numbering = self.numbering_debug_regions.borrow().len();
+        let saved_overflows = self.line_overflow_debug_regions.borrow().len();
+        let mut cursor_y = content_top - lines_before * line_height;
+        let bottom = box_bottom.max(cursor_y + height);
+        let mut remaining_gaps = line_count.saturating_sub(1);
+        let result = self.render_text_box_blocks(
+            &story.blocks,
+            content_left,
+            content_right,
+            &mut cursor_y,
+            bottom,
+            false,
+            &mut NumberingCounter::new(),
+            0.0,
+            &mut remaining_gaps,
+            &mut math_plans.iter(),
+        );
+        self.paragraph_counter = saved_counter;
+        self.selection = saved_selection;
+        self.hyperlink_regions.truncate(saved_hyperlinks);
+        self.comment_annotations.truncate(saved_comments);
+        self.image_debug_regions.borrow_mut().truncate(saved_images);
+        self.text_box_debug_regions
+            .borrow_mut()
+            .truncate(saved_text_boxes);
+        self.grouped_shape_text_regions
+            .borrow_mut()
+            .truncate(saved_grouped);
+        self.object_debug_regions
+            .borrow_mut()
+            .truncate(saved_objects);
+        self.revision_debug_regions
+            .borrow_mut()
+            .truncate(saved_revisions);
+        self.numbering_debug_regions
+            .borrow_mut()
+            .truncate(saved_numbering);
+        self.line_overflow_debug_regions
+            .borrow_mut()
+            .truncate(saved_overflows);
+        result.map(|_| ())
     }
 
     /// Flattens a text-box paragraph into the text the shared wrap engine sees
@@ -24966,6 +26619,7 @@ where
                     deleted_text: None,
                     suffix_space,
                     following_grapheme: following_grapheme.map(CompactString::new),
+                    picture: None,
                 });
             }
         }
@@ -25254,6 +26908,8 @@ where
         line_gap: f64,
         remaining_line_gaps: &mut usize,
     ) -> Result<f64, JsValue> {
+        // As for body lines: the surface's font is not the trackers' to assume.
+        self.invalidate_context_state_tracking();
         let paragraph_index = self.paragraph_counter;
         self.paragraph_counter += 1;
         // A text-box paragraph is registered whole by this call; a same-pass
@@ -25805,9 +27461,52 @@ where
         image: &RunImage,
         draw_spec: ImageDrawSpec,
     ) -> Result<(), JsValue> {
-        if !self.should_draw_current_page_for_render() {
+        if !self.should_draw_current_page_for_render() || image.layout.hidden() {
             return Ok(());
         }
+        if let Some(ink) = image.ink.as_ref().filter(|ink| !ink.traces.is_empty()) {
+            // Word ink: its strokes, not its fallback picture. The strokes
+            // fill the box they were laid in; a drawing resized since scales
+            // them onto its new one.
+            let natural = jade_docx_reader::inkml::InkContent::bounds(&ink.traces)
+                .map(|(_, _, right, bottom)| (right, bottom))
+                .unwrap_or((
+                    image.width_px.unwrap_or(draw_spec.width),
+                    image.height_px.unwrap_or(draw_spec.height),
+                ));
+            let painter = self.host.painter();
+            painter.save();
+            Self::apply_centered_transform(
+                &painter,
+                draw_spec.x + draw_spec.width / 2.0,
+                draw_spec.y + draw_spec.height / 2.0,
+                draw_spec.rotation_deg,
+                draw_spec.flip_horizontal,
+                draw_spec.flip_vertical,
+            )
+            .map_err(PainterError::into_js_value)?;
+            let drawn = self.draw_ink(ink, draw_spec, natural);
+            painter.restore();
+            return drawn;
+        }
+        // A picture is a figure in a tagged PDF, with its alternative text.
+        let tagged = self.begin_structure(StructureKind::Figure {
+            alt: image
+                .description
+                .clone()
+                .or_else(|| image.title.clone())
+                .filter(|alt| !alt.trim().is_empty()),
+        });
+        let result = self.draw_image_element_untagged(image, draw_spec);
+        self.end_structure(tagged);
+        result
+    }
+
+    fn draw_image_element_untagged(
+        &self,
+        image: &RunImage,
+        draw_spec: ImageDrawSpec,
+    ) -> Result<(), JsValue> {
         let data_uri = match &image.data_uri {
             Some(uri) => uri.as_str(),
             None => return Ok(()),
@@ -25841,6 +27540,42 @@ where
         // A host that can draw the image itself gets first refusal. The path
         // below needs a canvas and an event loop for the decode; a host with
         // neither would reach for a context that does not exist.
+        //
+        // The picture is drawn with its colour adjustments and soft edges
+        // applied, inside its effects: reflection, glow and shadow under
+        // it, its shape as a clip, its outline and bevel over it.
+        // A chart is drawn from its part: plot, axes, title and legend.
+        if let Some(chart) = image.chart.as_ref() {
+            let xml = chart.xml.clone().or_else(|| {
+                crate::chart::build_chart_xml(chart, None)
+                    .ok()
+                    .map(|xml| std::rc::Rc::from(xml.as_str()))
+            });
+            if let Some(xml) = xml {
+                let painter = self.host.painter();
+                painter.save();
+                let transformed = Self::apply_centered_transform(
+                    &painter,
+                    draw_spec.x + draw_spec.width / 2.0,
+                    draw_spec.y + draw_spec.height / 2.0,
+                    draw_spec.rotation_deg,
+                    draw_spec.flip_horizontal,
+                    draw_spec.flip_vertical,
+                );
+                let drawn = transformed.is_ok()
+                    && crate::chart_paint::paint_chart(
+                        &painter,
+                        &xml,
+                        (draw_spec.x, draw_spec.y, draw_spec.width, draw_spec.height),
+                    );
+                painter.restore();
+                if drawn {
+                    return Ok(());
+                }
+            }
+        }
+        let effective = crate::picture_effects::effective_data_uri(image);
+        let data_uri = effective.as_deref().unwrap_or(data_uri);
         let painter = self.host.painter();
         painter.save();
         let transform = Self::apply_centered_transform(
@@ -25851,15 +27586,35 @@ where
             draw_spec.flip_horizontal,
             draw_spec.flip_vertical,
         );
-        let handled = transform.is_ok()
-            && self.host.draw_image_data_uri(
-                data_uri,
-                draw_spec.x,
-                draw_spec.y,
-                draw_spec.width,
-                draw_spec.height,
-                image_crop_mapping(draw_spec.crop),
-            );
+        let crop = image_crop_mapping(draw_spec.crop);
+        let draw = |x: f64, y: f64| {
+            self.host
+                .draw_image_data_uri(data_uri, x, y, draw_spec.width, draw_spec.height, crop)
+        };
+        let handled = transform.is_ok() && {
+            self.paint_picture_underlay(&painter, image, draw_spec, &draw)
+                .map_err(PainterError::into_js_value)?;
+            painter.save();
+            if let Some(shape) = image.format().geometry {
+                Self::trace_text_box_shape(
+                    &painter,
+                    shape,
+                    draw_spec.x,
+                    draw_spec.y,
+                    draw_spec.width,
+                    draw_spec.height,
+                )
+                .map_err(PainterError::into_js_value)?;
+                painter.clip();
+            }
+            let drawn = draw(draw_spec.x, draw_spec.y);
+            painter.restore();
+            if drawn {
+                Self::paint_picture_overlay(&painter, image, draw_spec)
+                    .map_err(PainterError::into_js_value)?;
+            }
+            drawn
+        };
         painter.restore();
         transform.map_err(PainterError::into_js_value)?;
         if handled {
@@ -25935,6 +27690,148 @@ where
 
         self.pending_image_promises.borrow_mut().push(draw_promise);
 
+        Ok(())
+    }
+
+    /// What goes under a picture: its reflection, glow and shadow. Each
+    /// follows the picture's shape — its own pixels when it is a plain
+    /// rectangle, so a picture with a transparent background casts the
+    /// shadow of what is in it, as in Word.
+    fn paint_picture_underlay<P: Painter>(
+        &self,
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+        draw: &dyn Fn(f64, f64) -> bool,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        if let Some(reflection) = image.format().reflection.as_ref() {
+            // A copy mirrored below the picture, fading from `start_opacity`
+            // at the picture's foot to `end_opacity` at `end_position` of
+            // its height. The painters have no gradient mask, so the fade is
+            // drawn as bands of falling opacity.
+            const BANDS: usize = 16;
+            let reach = (height * reflection.end_position.clamp(0.0, 1.0)).max(1.0);
+            let top = y + height + reflection.distance_px.max(0.0);
+            for band in 0..BANDS {
+                let from = reach * band as f64 / BANDS as f64;
+                let to = reach * (band + 1) as f64 / BANDS as f64;
+                let opacity = reflection.start_opacity
+                    + (reflection.end_opacity - reflection.start_opacity) * (band as f64 + 0.5)
+                        / BANDS as f64;
+                if opacity <= 0.0 {
+                    continue;
+                }
+                painter.save();
+                painter.begin_path();
+                painter.rect(x, top + from, width, to - from + 0.5);
+                painter.clip();
+                painter.set_global_alpha(opacity.clamp(0.0, 1.0));
+                painter.translate(0.0, top * 2.0)?;
+                painter.scale(1.0, -1.0)?;
+                draw(x, top - height);
+                painter.restore();
+            }
+        }
+        let shadow_pass = |color: String, blur: f64, offset_x: f64, offset_y: f64| {
+            painter.save();
+            match image.format().geometry {
+                Some(shape) => {
+                    // The shape filled far off the page casts its shadow
+                    // back onto it, so only the shadow shows.
+                    const AWAY: f64 = 100_000.0;
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x + AWAY);
+                    painter.set_shadow_offset_y(offset_y);
+                    painter.set_fill_style_str("#000000");
+                    let traced =
+                        Self::trace_text_box_shape(painter, shape, x - AWAY, y, width, height);
+                    if traced.is_ok() {
+                        painter.fill();
+                    }
+                }
+                None => {
+                    painter.set_shadow_color(&color);
+                    painter.set_shadow_blur(blur);
+                    painter.set_shadow_offset_x(offset_x);
+                    painter.set_shadow_offset_y(offset_y);
+                    draw(x, y);
+                }
+            }
+            painter.restore();
+        };
+        if let Some(glow) = image.format().glow.as_ref() {
+            shadow_pass(Self::shape_glow_color(glow), glow.radius_px * 2.0, 0.0, 0.0);
+        }
+        if let Some(shadow) = image.format().shadow.as_ref() {
+            let direction = shadow.direction_deg.to_radians();
+            shadow_pass(
+                Self::shape_shadow_color(shadow),
+                shadow.blur_radius_px,
+                shadow.distance_px * direction.cos(),
+                shadow.distance_px * direction.sin(),
+            );
+        }
+        Ok(())
+    }
+
+    /// What goes over a picture: its inner shadow, bevel and outline.
+    fn paint_picture_overlay<P: Painter>(
+        painter: &P,
+        image: &RunImage,
+        spec: ImageDrawSpec,
+    ) -> Result<(), P::Error> {
+        let (x, y, width, height) = (spec.x, spec.y, spec.width, spec.height);
+        let shape = image.format().geometry.unwrap_or(TextBoxShape::Rectangle);
+        if let Some(shadow) = image.format().inner_shadow.as_ref() {
+            Self::paint_shape_inner_shadow(painter, shadow, shape, x, y, width, height, 1.0, 1.0)?;
+        }
+        if let Some(bevel) = image.format().bevel.as_ref() {
+            // Light falls from the top left: a bright band along the top and
+            // left edges, a dark one along the bottom and right, as wide as
+            // the bevel.
+            let band = bevel.width_px.min(width / 2.0).min(height / 2.0).max(1.0);
+            painter.save();
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.clip();
+            painter.set_line_width(band);
+            painter.set_stroke_style_str("rgba(255, 255, 255, 0.45)");
+            painter.begin_path();
+            painter.move_to(x + band / 2.0, y + height);
+            painter.line_to(x + band / 2.0, y + band / 2.0);
+            painter.line_to(x + width, y + band / 2.0);
+            painter.stroke();
+            painter.set_stroke_style_str("rgba(0, 0, 0, 0.3)");
+            painter.begin_path();
+            painter.move_to(x + band, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + height - band / 2.0);
+            painter.line_to(x + width - band / 2.0, y + band);
+            painter.stroke();
+            painter.restore();
+        }
+        if let Some(outline) = image
+            .format()
+            .outline
+            .as_ref()
+            .filter(|outline| outline.style != TextBoxBorderStyle::None)
+            .filter(|outline| outline.color.is_some() || outline.width_px.is_some())
+        {
+            let line_width = outline
+                .width_px
+                .unwrap_or(DEFAULT_TEXT_BOX_BORDER_WIDTH_PX)
+                .max(0.5);
+            painter.save();
+            painter.set_stroke_style_str(&Self::shape_border_color(outline));
+            painter.set_line_width(line_width);
+            if let Some(pattern) = Self::border_dash_pattern(outline.style.clone(), line_width) {
+                painter.set_line_dash(&pattern);
+            }
+            Self::trace_text_box_shape(painter, shape, x, y, width, height)?;
+            painter.stroke();
+            painter.set_line_dash(&[]);
+            painter.restore();
+        }
         Ok(())
     }
 
@@ -26176,6 +28073,19 @@ where
                 shape.flip_vertical,
             )
             .map_err(PainterError::into_js_value)?;
+            // A grouped picture, drawn in its box.
+            if let Some(picture) = shape.picture.as_ref() {
+                if let Some(uri) = picture.data_uri.as_deref() {
+                    self.host.draw_image_data_uri(
+                        uri,
+                        child_x,
+                        child_y,
+                        child_width,
+                        child_height,
+                        image_crop_mapping(picture.crop),
+                    );
+                }
+            }
             let fill_color =
                 Self::shape_fill_color(shape.fill_color.as_deref(), shape.fill_opacity);
             if let Some(glow) = shape.glow.as_ref() {
@@ -26421,19 +28331,6 @@ where
         }
     }
 
-    fn math_renderer<'a, P: Painter>(
-        &'a self,
-        painter: &'a P,
-        font_px: f64,
-    ) -> MathRenderer<'a, P> {
-        let renderer = MathRenderer::new(painter).with_font_size(font_px);
-        if self.dark_mode_text {
-            renderer.with_text_color(DARK_MODE_TEXT_COLOR)
-        } else {
-            renderer
-        }
-    }
-
     fn create_image_bitmap_promise(
         &self,
         data_uri: &str,
@@ -26584,7 +28481,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => table_layout_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => table_layout_vertical_paragraph(
                 self,
                 text,
                 run_styles,
@@ -26649,7 +28547,8 @@ where
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
-            | TextDirection::BtLrV => self.render_vertical_paragraph(
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV => self.render_vertical_paragraph(
                 &paragraph_layout,
                 paragraph_index,
                 direction,
@@ -26674,7 +28573,9 @@ where
     fn paragraph_table_align(style: &ParagraphStyle, direction: TextDirection) -> TableTextAlign {
         let default_align = match direction {
             TextDirection::TbRl | TextDirection::TbRlV => TableTextAlign::Right,
-            TextDirection::BtLr | TextDirection::BtLrV => TableTextAlign::Left,
+            TextDirection::BtLr | TextDirection::BtLrV | TextDirection::TbLrV => {
+                TableTextAlign::Left
+            }
             TextDirection::LrTb | TextDirection::LrTbV => TableTextAlign::Left,
         };
 
@@ -27816,6 +29717,15 @@ where
                 }
             }
 
+            // Word 2010 typography (ligatures, figure styles, stylistic
+            // sets) travels in the descriptor, as layout's does.
+            if let Some(token) =
+                jade_docx_layout::font_resolver::opentype_features_token(props, enable_pair_kerning)
+            {
+                font_style.insert_str(0, &format!("{token} "));
+                complex_font_style.insert_str(0, &format!("{token} "));
+            }
+
             if props.strike.unwrap_or(false) {
                 strike = true;
             }
@@ -28000,6 +29910,7 @@ where
             underline_kind,
             underline_color,
             border,
+            effects: text_effect_style(properties, font_size_pt),
             fill_color,
             font_style_prefix: font_style,
             families,
@@ -28034,6 +29945,11 @@ where
             props.outline.hash(&mut hasher);
             props.emboss.hash(&mut hasher);
             props.imprint.hash(&mut hasher);
+            props
+                .text_effects
+                .as_ref()
+                .map(|effects| format!("{effects:?}"))
+                .hash(&mut hasher);
             props.emphasis.hash(&mut hasher);
             if let Some(ruby) = props.ruby.as_ref() {
                 ruby.text.hash(&mut hasher);
@@ -28136,6 +30052,7 @@ where
             },
             highlight_color: highlight,
             font_hint: style.font_hint.clone(),
+            effects: style.effects.clone(),
         }
     }
 
@@ -28261,7 +30178,12 @@ where
         if !self.should_draw_current_page_for_render() || glyph_steps.is_empty() {
             return Ok(());
         }
-        if text_style.outline || text_style.shadow || text_style.emboss || text_style.imprint {
+        if text_style.outline
+            || text_style.shadow
+            || text_style.emboss
+            || text_style.imprint
+            || text_style.effects.is_some()
+        {
             // Use the same precomputed glyph positions and effect executor as
             // cache replay; a fresh/export paint must retain character effects.
             let mut commands = Vec::with_capacity(1);
@@ -28299,6 +30221,31 @@ where
                 context.restore();
             }
         } else {
+            if resolved_style.joins_characters || resolved_style.has_font_features {
+                let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> =
+                    glyph_steps
+                        .iter()
+                        .map(|step| crate::draw_command::executor::PlacedCharacter {
+                            start: step.text_start as usize,
+                            end: step.text_end as usize,
+                            font: resolved_style.descriptor_for_slot(step.font_slot).as_ref(),
+                            x_offset: step.x_offset,
+                        })
+                        .collect();
+                if crate::draw_command::executor::try_fill_featured_text(
+                    context,
+                    segment_text,
+                    x,
+                    y,
+                    &characters,
+                    &mut |context, font| {
+                        self.set_font_if_changed(context, font);
+                    },
+                )? {
+                    self.record_glyph_batch_run(glyph_steps.len() as u64);
+                    return Ok(());
+                }
+            }
             if self.try_draw_planned_text_batch(
                 context,
                 x,
@@ -28557,6 +30504,14 @@ where
             &resolved_override
         };
 
+        // A run asking for OpenType features (Word's ligatures, figure
+        // styles) is placed a character at a time as usual, then drawn
+        // shaped once its characters' x are known.
+        let shaped = draw_enabled
+            && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+            && (resolved_run_style.joins_characters || resolved_run_style.has_font_features);
+        let mut placed: Vec<(usize, usize, Rc<str>, f64)> = Vec::new();
+        let start_x = x;
         let end_state = walk_text_advance_steps(
             self,
             text,
@@ -28566,6 +30521,29 @@ where
             next_grapheme_after_segment,
             &mut snap_to_chars_cell_width_cache,
             |step| {
+                if shaped {
+                    let leading_advance = step.advance.implicit_latin_gap
+                        + step.advance.implicit_numeric_gap
+                        + step.advance.kerning_adjustment
+                        + step.advance.snap_leading;
+                    x += leading_advance;
+                    width += leading_advance;
+                    let font = match placed.last() {
+                        Some((_, _, last, _)) if last.as_ref() == step.font_descriptor => {
+                            Rc::clone(last)
+                        }
+                        _ => Rc::from(step.font_descriptor),
+                    };
+                    placed.push((
+                        step.rel_offset,
+                        step.rel_offset + step.grapheme.len(),
+                        font,
+                        x - start_x,
+                    ));
+                    x += step.advance.glyph_box_width;
+                    width += step.advance.glyph_box_width;
+                    return Ok(());
+                }
                 // Advances come from the measurer, which sets its own font, so
                 // an undrawn line (band cull, undrawn page) needs no painter font.
                 if draw_enabled {
@@ -28603,6 +30581,42 @@ where
                 Ok(())
             },
         )?;
+        if shaped && !placed.is_empty() {
+            let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> = placed
+                .iter()
+                .map(|(start, end, font, x_offset)| {
+                    crate::draw_command::executor::PlacedCharacter {
+                        start: *start,
+                        end: *end,
+                        font: font.as_ref(),
+                        x_offset: *x_offset,
+                    }
+                })
+                .collect();
+            let drawn = crate::draw_command::executor::try_fill_featured_text(
+                context,
+                text,
+                start_x,
+                y,
+                &characters,
+                &mut |context, font| {
+                    self.set_font_if_changed(context, font);
+                },
+            )
+            .map_err(PainterError::into_js_value)?;
+            if !drawn {
+                for character in &characters {
+                    self.set_font_if_changed(context, character.font);
+                    context
+                        .fill_text(
+                            &text[character.start..character.end],
+                            start_x + character.x_offset,
+                            y,
+                        )
+                        .map_err(PainterError::into_js_value)?;
+                }
+            }
+        }
 
         Ok((width, end_state))
     }
@@ -29208,6 +31222,30 @@ where
             current_x += deleted_width + DELETED_INSERT_GAP_PX;
         }
 
+        if let Some(picture) = pending.picture.as_ref() {
+            // The picture sits on the line's baseline, where the bullet's
+            // glyph would.
+            let image = RunImage {
+                data_uri: Some(picture.data_uri.clone()),
+                ..RunImage::default()
+            };
+            return self.draw_image_element(
+                &image,
+                ImageDrawSpec {
+                    x: current_x,
+                    y: baseline_y - picture.height * 0.85,
+                    width: picture.width,
+                    height: picture.height,
+                    rotation_deg: 0.0,
+                    flip_horizontal: false,
+                    flip_vertical: false,
+                    crop: None,
+                    paragraph_index: pending.paragraph_index,
+                    run_index: usize::MAX,
+                },
+            );
+        }
+
         let style = self.apply_run_style(pending.display_props.as_ref())?;
         let text_y = baseline_y + style.baseline_shift_px;
         let marker_width = self.draw_numbering_text_plan(
@@ -29659,8 +31697,10 @@ where
     /// The immediate fill is gated on the page-draw flag, while the
     /// `DrawCommand::FillRect` entries are always emitted so the cache-replay
     /// path reproduces identical geometry. Layout already includes border width
-    /// and `w:space`; painting must not expand that box again. MVP: a solid
-    /// stroke (double/dashed line styles remain follow-ups).
+    /// and `w:space`; painting must not expand that box again. A line style
+    /// other than `single` (double, thin–thick, dashed, wave, 3-D, …) draws
+    /// each side the way the same `w:pBdr` edge would
+    /// ([`Self::paint_paragraph_border_edge`]).
     fn draw_character_border<P: Painter>(
         &self,
         context: &P,
@@ -29670,6 +31710,27 @@ where
     ) {
         let (x, y, w, h) = rect;
         if w <= 0.0 || h <= 0.0 {
+            return;
+        }
+        if edge.kind != BorderKind::Single {
+            use border_styles::BorderSide;
+            let thickness = edge.width_px.max(1.0).min(w).min(h);
+            for (side, start, length, outer) in [
+                (BorderSide::Top, x, w, y),
+                (BorderSide::Bottom, x, w, y + h),
+                (BorderSide::Left, y, h, x),
+                (BorderSide::Right, y, h, x + w),
+            ] {
+                self.paint_paragraph_border_edge(
+                    edge,
+                    side,
+                    start,
+                    length,
+                    outer,
+                    thickness,
+                    &mut commands_out,
+                );
+            }
             return;
         }
         let rects = character_border_side_rects(x, y, w, h, edge.width_px);
@@ -29725,6 +31786,92 @@ where
             font_size_pt,
             color,
         )
+    }
+
+    /// Word's marks for the spaces, tabs and optional hyphens of a laid-out
+    /// line: a centred dot in a space, a square in a full-width one, an
+    /// arrow at a tab's start, ¬ for an optional hyphen.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_whitespace_marks(
+        &mut self,
+        segments: &[&TextSegment],
+        line: &SelectionLineLayout,
+        baseline: f64,
+        mut commands_out: Option<&mut Vec<DrawCommand>>,
+    ) -> Result<(), JsValue> {
+        // Each mark in the font of the run it marks, found through the
+        // segment the glyph belongs to.
+        let mut marks: Vec<(&'static str, f64, f64, Option<Rc<RunProperties>>)> = Vec::new();
+        for fragment in line.fragments.iter() {
+            for glyph in fragment.glyphs.iter() {
+                let Some(segment) = segments.iter().find(|segment| {
+                    segment.end.saturating_sub(segment.start) == segment.text.len()
+                        && glyph.start >= segment.start
+                        && glyph.start < segment.end
+                }) else {
+                    continue;
+                };
+                let ch = segment
+                    .text
+                    .get(glyph.start - segment.start..)
+                    .and_then(|rest| rest.chars().next());
+                let symbol = match ch {
+                    Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
+                    Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
+                    Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
+                    _ => continue,
+                };
+                marks.push((
+                    symbol,
+                    fragment.x + glyph.x,
+                    glyph.width,
+                    segment.properties.clone(),
+                ));
+            }
+        }
+        if self.mark_kinds.tabs {
+            let properties = segments
+                .first()
+                .and_then(|segment| segment.properties.clone());
+            for tab in line.tab_stops.iter() {
+                marks.push((
+                    "\u{2192}",
+                    tab.start_x,
+                    (tab.end_x - tab.start_x).max(0.0),
+                    properties.clone(),
+                ));
+            }
+        }
+        for (symbol, x, width, properties) in marks {
+            let style = self.apply_run_style(properties.as_deref())?;
+            let context = self.host.painter();
+            // Centred in what it marks: measured first, then drawn.
+            let mark_width = self.text_width_with_spacing(
+                symbol,
+                style.letter_spacing_px * CONTROL_MARK_FONT_SCALE,
+                &style,
+            )?;
+            let mark_x = x + ((width - mark_width) / 2.0).max(0.0);
+            let command = DrawCommand::ControlMark {
+                symbol: Rc::from(symbol),
+                x: mark_x,
+                baseline,
+                style: self.cmd_control_mark_style(properties.as_deref(), &style),
+            };
+            // Drawn as its command replays, so a painted line and a cached
+            // one show the same mark.
+            if self.should_draw_current_page_for_render() {
+                context.save();
+                crate::draw_command::executor::execute_command(&context, &command)
+                    .map_err(PainterError::into_js_value)?;
+                context.restore();
+                self.invalidate_context_state_tracking();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(command);
+            }
+        }
+        Ok(())
     }
 
     fn draw_control_mark<P>(
@@ -29844,8 +31991,12 @@ where
         &mut self,
         switch: impl FnOnce(&mut crate::render_host::BoxedRenderHost<HostPainter>) -> R,
     ) -> R {
+        // Whatever the page held back is painted before leaving it.
+        let _ = self.composite_page_layers();
         self.restore_band_clip_if_active();
-        switch(&mut self.host)
+        let result = switch(&mut self.host);
+        self.resume_structure_on_new_page();
+        result
     }
 
     fn begin_next_page_backing(&mut self, next_page: usize) -> Result<(), JsValue> {
@@ -29879,7 +32030,7 @@ where
     }
 
     fn apply_mirrored_margins_for_page(&mut self, page_number: usize) {
-        if !self.mirror_margins || self.pageless_mode {
+        if !self.mirror_margins || self.pageless_mode || self.view_geometry.is_some() {
             return;
         }
         let previous_left = self.margin_left;
@@ -30026,6 +32177,13 @@ where
 
     pub fn caret_metrics(&self) -> Option<CaretMetrics> {
         self.selection.caret_metrics()
+    }
+
+    /// Where a caret at `position` would be drawn, from the last layout,
+    /// without moving the selection: what a page number for a heading or a
+    /// bookmark's bracket is read from.
+    pub fn caret_metrics_at(&self, position: TextPosition) -> Option<CaretMetrics> {
+        self.selection.caret_metrics_at_position(position)
     }
 
     /// Which line a caret on a soft wrap is drawn on — the end of the line
@@ -30840,6 +32998,14 @@ where
     }
 
     /// Selects All Markup, No Markup, or Original without mutating revisions.
+    /// Updates how tracked changes are drawn (reviewers, kinds, change bars)
+    /// for the next cached-state re-render.
+    pub fn set_revision_view_flag(&mut self, view: crate::revision_view::RevisionView) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_revision_view(view);
+        }
+    }
+
     pub fn set_revision_display_flags(&mut self, render_changes: bool, render_original: bool) {
         if let Some(options) = self.last_options.as_mut() {
             options.render_changes = render_changes;
@@ -30889,6 +33055,48 @@ where
             self.mark_full_repaint();
         }
         Ok(previous)
+    }
+
+    /// Turns proofing marks on or off. A new `generation` forgets every
+    /// result kept so far, so the next pass asks about every paragraph again
+    /// — after a word is ignored or learnt, say.
+    pub fn configure_spelling(&mut self, enabled: bool, generation: u32) {
+        self.spelling_cache
+            .borrow_mut()
+            .configure(enabled, generation);
+        self.clear_paragraph_render_cache();
+        self.mark_full_repaint();
+    }
+
+    /// Whether proofing marks are on, and the generation results must carry.
+    pub fn spelling_state(&self) -> (bool, u32) {
+        let cache = self.spelling_cache.borrow();
+        (cache.enabled, cache.generation)
+    }
+
+    /// The spans the last passes drew without knowing whether they are
+    /// spelt right: what a checker is to be asked about.
+    pub fn take_pending_spelling(&self) -> Vec<crate::plugins::spelling::SpellingRequest> {
+        self.spelling_cache.borrow_mut().take_pending()
+    }
+
+    /// What a checker found in request `key`; `true` when that changes what
+    /// the pages show, which the next pass then draws.
+    pub fn apply_proofing_issues(
+        &mut self,
+        generation: u32,
+        key: &str,
+        issues: &[crate::plugins::spelling::ProofingIssue],
+    ) -> bool {
+        let changed = self
+            .spelling_cache
+            .borrow_mut()
+            .apply_issues(generation, key, issues)
+            .is_some();
+        if changed {
+            self.clear_paragraph_render_cache();
+        }
+        changed
     }
 
     pub fn set_spelling_export_mode(&mut self, enabled: bool) {
@@ -31694,6 +33902,29 @@ where
         Ok(())
     }
 
+    /// Installs what a render takes from a loaded document besides the body
+    /// it is handed: the style cascade and theme, the font table's substitute
+    /// names, every header/footer story, and the bookmark targets `PAGEREF`
+    /// and note references resolve to. The browser view installs these as it
+    /// loads; a host that drives the renderer itself calls this before its
+    /// first render, and on any renderer it builds for the same document.
+    ///
+    /// Without the style context a run reads only its own and its
+    /// paragraph's direct formatting: a style's character spacing, for one,
+    /// is lost, and lines break where the browser's do not. It also drops
+    /// every cached layout, so an edit that keeps the styles should resync
+    /// only what it changed.
+    pub fn sync_word_document(&mut self, document: &WordDocument) {
+        crate::canvas_view::install_document_font_substitutes(document);
+        self.set_style_context(
+            document.styles_part.clone().map(Rc::new),
+            document.loaded_theme_part().map(Rc::new),
+        );
+        self.sync_document_header_footer_stories(document);
+        self.set_bookmark_paragraphs(document.bookmark_render_map());
+        self.set_bookmark_note_targets(document.bookmark_note_targets());
+    }
+
     /// Installs every header/footer story, including section inheritance, for
     /// browser and native hosts from the same parsed document.
     pub fn sync_document_header_footer_stories(&mut self, document: &WordDocument) {
@@ -32336,6 +34567,27 @@ where
         draw: bool,
         capture_story: Option<&'static str>,
     ) -> Result<f64, JsValue> {
+        // Headers and footers are the page's furniture in a tagged PDF.
+        self.suppress_structure(true);
+        let result = self.render_header_footer_body_at_untagged(
+            body,
+            start_y,
+            paragraph_base,
+            draw,
+            capture_story,
+        );
+        self.suppress_structure(false);
+        result
+    }
+
+    fn render_header_footer_body_at_untagged(
+        &mut self,
+        body: &Body,
+        start_y: f64,
+        paragraph_base: usize,
+        draw: bool,
+        capture_story: Option<&'static str>,
+    ) -> Result<f64, JsValue> {
         let saved_current_y = self.current_y;
         let saved_note_separator_offset = self.automatic_note_separator_offset.take();
         let saved_last_line_baseline = self.last_line_baseline;
@@ -32405,7 +34657,7 @@ where
         (
             self.contextual_suppress_before,
             self.contextual_suppress_after,
-        ) = compute_contextual_spacing_suppression(&body.elements);
+        ) = compute_contextual_spacing_suppression(&body.elements, self.document_html_auto_spacing);
         self.paragraph_border_box_continues =
             compute_paragraph_border_box_continuations(&body.elements);
         self.spacing_scan_from_story = true;
@@ -32543,11 +34795,16 @@ where
     /// area carried onto the page is reserved here too (#294).
     fn render_header_simple(&mut self) -> Result<(), JsValue> {
         self.render_page_header()?;
+        self.begin_page_body_layer();
         self.reserve_carried_footnote_on_new_page()
     }
 
     fn render_page_header(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode {
+            return Ok(());
+        }
+        if self.hides_page_chrome() {
+            self.header_drawn = true;
             return Ok(());
         }
         if self.header_drawn {
@@ -32674,6 +34931,13 @@ where
     }
 
     fn render_footer_simple(&mut self) -> Result<(), JsValue> {
+        let footer = self.render_page_footer_and_notes();
+        // Footnotes and footer are on the page: paint what it held back.
+        let layers = self.composite_page_layers();
+        footer.and(layers)
+    }
+
+    fn render_page_footer_and_notes(&mut self) -> Result<(), JsValue> {
         if self.pageless_mode {
             return Ok(());
         }
@@ -32682,7 +34946,13 @@ where
         }
 
         self.render_pending_footnotes_for_current_page()?;
+        // The footer belongs under the body's floating objects.
+        self.end_page_body_layer();
 
+        if self.hides_page_chrome() {
+            self.footer_drawn = true;
+            return Ok(());
+        }
         let draw_enabled = self.should_draw_current_page_for_render();
         if !draw_enabled && !self.auxiliary_story_capture_mode.enabled() {
             self.footer_drawn = true;
@@ -32838,6 +35108,26 @@ where
                     Some(field.cached_text.clone().unwrap_or_default())
                 }
             }
+            RunFieldKind::Formatted { kind, instruction } => {
+                let number = match kind.as_ref() {
+                    RunFieldKind::PageNumber => {
+                        Some(self.page_number_value(self.current_page_number))
+                    }
+                    RunFieldKind::NumPages => Some(self.resolved_total_page_count()),
+                    RunFieldKind::SectionPages => self.current_section_page_count(),
+                    RunFieldKind::SectionNumber => Some(self.active_section_index + 1),
+                    _ => None,
+                };
+                let format = jade_docx_reader::field_format::FieldCode::parse(instruction)
+                    .map(|code| code.format)
+                    .unwrap_or_default();
+                number.map(|number| {
+                    jade_docx_reader::field_format::apply_general_format(
+                        &jade_docx_reader::field_format::FieldValue::Number(number as f64),
+                        &format,
+                    )
+                })
+            }
             RunFieldKind::PageNumber => Some(self.displayed_page_number(self.current_page_number)),
             RunFieldKind::NumPages => Some(self.resolved_total_page_count().to_string()),
             RunFieldKind::SectionPages => self
@@ -32846,6 +35136,15 @@ where
             // Section storage is zero-based internally; Word's SECTION field
             // is explicitly 1-based.
             RunFieldKind::SectionNumber => Some((self.active_section_index + 1).to_string()),
+            // A header's or footer's STYLEREF follows the page; in the body
+            // Word shows its saved result until fields are updated.
+            RunFieldKind::StyleRef { style, from_bottom } if self.rendering_header_footer_story => {
+                Some(
+                    self.style_reference_on_page(self.current_page_number, style, *from_bottom)
+                        .unwrap_or_default(),
+                )
+            }
+            RunFieldKind::StyleRef { .. } => field.cached_text.clone(),
             // Word for Mac re-evaluates these when it lays out a header or
             // footer, but prints a body, table or text box field's saved
             // result: `document-property-fields`, `document-variable-fields`
@@ -32944,9 +35243,9 @@ where
             RunFieldKind::Ref { .. } | RunFieldKind::Seq { .. } | RunFieldKind::AutoNum { .. } => {
                 field.resolved_value.clone()
             }
-            RunFieldKind::EqDistributed { text, .. } | RunFieldKind::EqRuby { text, .. } => {
-                Some(text.clone())
-            }
+            RunFieldKind::EqDistributed { text, .. }
+            | RunFieldKind::EqRuby { text, .. }
+            | RunFieldKind::EqEnclosed { text, .. } => Some(text.clone()),
             RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
@@ -32958,6 +35257,31 @@ where
             RunFieldKind::NonDisplay { .. } => return None,
         }
         .or_else(|| field.cached_text.clone())
+    }
+
+    /// A combined-characters run (`w:eastAsianLayout w:combine`, ECMA-376
+    /// Part 1 §17.3.2.10 — Word's 組み文字 and 割注) as the line lays it out:
+    /// at half size and squeezed to the width of the wider of its two lines,
+    /// so it takes the room Word gives it. The painter then draws the two
+    /// lines stacked in that room (`TextEffectStyle::combine`). The text and
+    /// its offsets are unchanged, so selection and editing see the run as it
+    /// is.
+    #[allow(clippy::type_complexity)]
+    fn combined_character_chunks(
+        &self,
+        text: &str,
+        properties: Option<&RunProperties>,
+        _paragraph_style: &ParagraphStyle,
+    ) -> Result<Option<Vec<(String, RunProperties)>>, JsValue> {
+        let Some(props) = properties else {
+            return Ok(None);
+        };
+        // One rule for layout and drawing (`jade_docx_layout::combined_characters`),
+        // so the headless line breaks are the drawn ones.
+        Ok(
+            jade_docx_layout::combined_characters::combined_run_properties(self, text, props)?
+                .map(|small| vec![(text.to_string(), small)]),
+        )
     }
 
     fn apply_eq_distributed_text_scale(
@@ -33023,6 +35347,28 @@ where
         self.current_datetime = datetime;
     }
 
+    /// Shows field codes in place of results for the body runs in
+    /// `display` (see `fields::field_code_display`), or results again with
+    /// `None`. Paint and layout caches are dropped, as the text changes.
+    pub fn set_field_code_display(&mut self, display: Option<FieldCodeDisplay>) {
+        let display = display.filter(|map| !map.is_empty());
+        if display.as_ref() == self.field_code_display.as_deref() {
+            return;
+        }
+        self.field_code_display = display.map(Rc::new);
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// The field code a body run shows instead of its content.
+    fn field_code_for(&self, run: &Run) -> Option<(XmlNodeId, Rc<str>)> {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return None;
+        }
+        let display = self.field_code_display.as_ref()?;
+        display.get(&run.node_id?).cloned()
+    }
+
     /// Best-effort total-page-count used for resolving `NUMPAGES` fields.
     ///
     /// Word recomputes `NUMPAGES` at field-update time (or at print); our
@@ -33050,20 +35396,16 @@ where
         section_page_count(&self.page_section_indices, self.current_page_number)
     }
 
-    /// Maps a 1-based physical page to the string a `PAGE` field should display,
-    /// applying the section's `w:pgNumType` start offset and numeral format.
-    /// ECMA-376 Part 1 §17.6.12.
-    fn displayed_page_number(&self, physical_page: usize) -> String {
+    /// The number a `PAGE` field shows on a 1-based physical page, the
+    /// sections' `w:pgNumType` starts applied, before its numeral format
+    /// (ECMA-376 Part 1 §17.6.12).
+    fn page_number_value(&self, physical_page: usize) -> usize {
         if self.section_page_numbering.is_empty() {
             let start = self.page_number_start.unwrap_or(1) as usize;
-            let displayed = start + physical_page.saturating_sub(1);
-            return format_page_number(displayed, self.page_number_format.as_deref());
+            return start + physical_page.saturating_sub(1);
         }
         let page = physical_page.max(1);
         let section = self.section_index_for_page(page);
-        // Walk the sections up to this one, carrying the running number: a
-        // `w:start` resets it at that section's first page, otherwise it
-        // continues from wherever the previous section ended.
         let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
         let mut first_page_of_section = 1usize;
         for index in 0..=section {
@@ -33081,14 +35423,119 @@ where
                 number_at_section_start = start as usize;
             }
         }
-        let displayed = number_at_section_start + page.saturating_sub(first_page_of_section);
-        let format = self
+        number_at_section_start + page.saturating_sub(first_page_of_section)
+    }
+
+    fn displayed_page_number(&self, physical_page: usize) -> String {
+        if self.section_page_numbering.is_empty() {
+            let start = self.page_number_start.unwrap_or(1) as usize;
+            let displayed = start + physical_page.saturating_sub(1);
+            return format_page_number(displayed, self.page_number_format.as_deref());
+        }
+        let page = physical_page.max(1);
+        let section = self.section_index_for_page(page);
+        let displayed = self.page_number_value(page);
+        self.page_number_with_format(page, section, displayed)
+    }
+
+    /// Each laid-out page's section (from 0) and the number its `PAGE`
+    /// field shows, as a number: what a print range's `p2s3` names.
+    pub fn page_labels(&self) -> Vec<(usize, usize)> {
+        (1..=self.page_count())
+            .map(|page| {
+                let section = self.section_index_for_page(page);
+                (section, self.page_number_value(page))
+            })
+            .collect()
+    }
+
+    fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
+        let numbering = self
             .section_page_numbering
             .get(section)
-            .and_then(|numbering| numbering.as_ref())
+            .and_then(|numbering| numbering.as_ref());
+        let format = numbering
             .and_then(|numbering| numbering.format.as_deref())
             .or(self.page_number_format.as_deref());
-        format_page_number(displayed, format)
+        let number = format_page_number(displayed, format);
+        match numbering.and_then(|numbering| {
+            Some((
+                numbering.chapter_style?,
+                numbering.chapter_separator.as_deref(),
+            ))
+        }) {
+            Some((level, separator)) => match self.chapter_number_on_page(page, level) {
+                Some(chapter) => format!("{chapter}{}{number}", chapter_separator(separator)),
+                None => number,
+            },
+            None => number,
+        }
+    }
+
+    /// What a header's `STYLEREF style` shows on `page`: the first paragraph
+    /// in the style on the page (the last with `\l`), else the nearest one
+    /// before the page, else the first one after it — Word's search order.
+    fn style_reference_on_page(
+        &self,
+        page: usize,
+        style: &str,
+        from_bottom: bool,
+    ) -> Option<String> {
+        let wanted = self.style_id_for_reference(style);
+        let matching = self.styled_paragraphs.values().filter(|(_, id, _)| {
+            id.as_deref()
+                .is_some_and(|id| id.eq_ignore_ascii_case(&wanted))
+        });
+        let on_page: Vec<&(usize, Option<Rc<str>>, String)> = matching
+            .clone()
+            .filter(|(start, _, _)| *start == page)
+            .collect();
+        let found = if from_bottom {
+            on_page.last().copied()
+        } else {
+            on_page.first().copied()
+        };
+        found
+            .or_else(|| matching.clone().rfind(|(start, _, _)| *start < page))
+            .or_else(|| matching.clone().find(|(start, _, _)| *start > page))
+            .map(|(_, _, text)| text.trim().to_string())
+    }
+
+    /// The style id a STYLEREF names: by its name (`heading 1`, as Word
+    /// writes built-in names whatever the language), or as an id.
+    fn style_id_for_reference(&self, style: &str) -> String {
+        if let Some(styles) = self.styles_part.as_deref() {
+            if let Some(definition) = styles.paragraph_style_definitions().find(|definition| {
+                definition
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| name.eq_ignore_ascii_case(style))
+            }) {
+                return definition.style_id.clone();
+            }
+            if let Some(id) = styles.resolve_paragraph_style_id(style) {
+                return id.to_string();
+            }
+        }
+        style.to_string()
+    }
+
+    /// The number of the last heading of `level` that starts on or before
+    /// `page`, as 章番号を含める shows it: the heading's list number without
+    /// its trailing punctuation.
+    fn chapter_number_on_page(&self, page: usize, level: u8) -> Option<String> {
+        self.chapter_numbers
+            .iter()
+            .filter(|(_, (start, heading, _))| *heading == level && *start <= page)
+            .max_by_key(|(index, (start, _, _))| (*start, **index))
+            .map(|(_, (_, _, number))| {
+                number
+                    .trim()
+                    .trim_end_matches(['.', '．', ')', '）', ':', '：'])
+                    .trim()
+                    .to_string()
+            })
+            .filter(|number| !number.is_empty())
     }
 
     /// Installs the per-section `w:pgNumType` list (see
@@ -33369,6 +35816,30 @@ fn word_only_underline_spans(glyphs: &[(f64, bool)], segment_width: f64) -> Vec<
     spans
 }
 
+/// Where a line's trailing whitespace starts: the segment holding the first
+/// trailing blank and the x within it. `None` when the line ends in ink.
+fn trailing_whitespace_start<'a>(
+    segments: impl DoubleEndedIterator<Item = (&'a str, &'a [PlannedGlyphLayoutStep], f64)>
+        + ExactSizeIterator,
+) -> Option<(usize, f64)> {
+    let mut trailing = None;
+    for (index, (text, steps, width)) in segments.enumerate().rev() {
+        let last_ink = steps
+            .iter()
+            .rposition(|step| !step.text(text).chars().all(char::is_whitespace));
+        match last_ink {
+            Some(ink) => {
+                let end = steps.get(ink + 1).map_or(width, |next| next.x_offset);
+                return (end < width - 1e-6 || trailing.is_some())
+                    .then_some((index, end.min(width)));
+            }
+            None if steps.is_empty() && width <= 0.0 => {}
+            None => trailing = Some((index, 0.0)),
+        }
+    }
+    trailing
+}
+
 fn underline_spans_for_planned_glyphs(
     kind: Option<&str>,
     segment_text: &str,
@@ -33432,6 +35903,76 @@ fn eq_distributed_text_scale_percent(
     Some(((base_percent as f64) * guide_width / display_width).clamp(1.0, 1000.0) as f32)
 }
 
+/// 割注's brackets (`w:combineBrackets`).
+fn combine_brackets(brackets: Option<&str>) -> Option<(&'static str, &'static str)> {
+    match brackets? {
+        "round" => Some(("(", ")")),
+        "square" => Some(("[", "]")),
+        "angle" => Some(("<", ">")),
+        "curly" => Some(("{", "}")),
+        _ => None,
+    }
+}
+
+/// A run's `w14:glow` and `w14:textOutline` as the painter takes them: the
+/// glow's colour with its opacity and its radius, the outline's colour and
+/// width, in CSS px.
+fn text_effect_style(
+    properties: Option<&RunProperties>,
+    font_size_pt: f32,
+) -> Option<Box<crate::draw_command::TextEffectStyle>> {
+    let no_effects = crate::document::RunTextEffects::default();
+    let effects = properties
+        .and_then(|props| props.text_effects.as_deref())
+        .unwrap_or(&no_effects);
+    let rgba = |hex: &str, alpha: f32| -> Option<Rc<str>> {
+        let hex = hex.trim().trim_start_matches('#');
+        let value = u32::from_str_radix(hex, 16)
+            .ok()
+            .filter(|_| hex.len() == 6)?;
+        Some(Rc::from(format!(
+            "rgba({}, {}, {}, {:.3})",
+            (value >> 16) & 0xFF,
+            (value >> 8) & 0xFF,
+            value & 0xFF,
+            alpha.clamp(0.0, 1.0)
+        )))
+    };
+    let px = |points: f32| points as f64 * 96.0 / 72.0;
+    let glow = effects.glow_color.as_deref().and_then(|color| {
+        let radius = effects.glow_radius.unwrap_or(5.0).max(0.5);
+        Some((rgba(color, effects.glow_alpha.unwrap_or(0.6))?, px(radius)))
+    });
+    let outline = effects.outline_color.as_deref().and_then(|color| {
+        let width = effects
+            .outline_width
+            .unwrap_or((font_size_pt * 0.04).max(0.5));
+        Some((rgba(color, 1.0)?, px(width)))
+    });
+    let combine = properties
+        .and_then(|props| props.east_asian_layout.as_deref())
+        .filter(|layout| layout.combine)
+        .map(|layout| {
+            // The run is at half size here; the lines sit in the full line.
+            let base = px(font_size_pt * 2.0);
+            crate::draw_command::CombinedCharacters {
+                raise: base * 0.42,
+                lower: base * 0.08,
+                brackets: combine_brackets(layout.combine_brackets.as_deref())
+                    .map(|(open, close)| (Rc::from(open), Rc::from(close))),
+            }
+        });
+    let enclosure = effects.enclosure.clone();
+    (glow.is_some() || outline.is_some() || combine.is_some() || enclosure.is_some()).then(|| {
+        Box::new(crate::draw_command::TextEffectStyle {
+            glow,
+            outline,
+            combine,
+            enclosure,
+        })
+    })
+}
+
 #[derive(Clone)]
 struct AppliedRunStyle {
     font_size_pt: f32,
@@ -33457,6 +35998,8 @@ struct AppliedRunStyle {
     /// Character border (`w:bdr`, §17.3.2.4): a box stroked around the run's
     /// glyph box. `None` when the run carries no visible border.
     border: Option<ResolvedBorderEdge>,
+    /// `w14:glow` and `w14:textOutline`, resolved for the painter.
+    effects: Option<Box<crate::draw_command::TextEffectStyle>>,
     /// Requested run color shared by direct drawing and cached draw commands.
     /// Keeping the allocation on the cached style avoids rebuilding an
     /// `Rc<str>` for every segment that uses this style.
@@ -33649,6 +36192,17 @@ fn section_page_count(page_section_indices: &[usize], physical_page: usize) -> O
 /// Formats a positive page number using a `w:pgNumType/@w:fmt` token. Supports
 /// the common numeral formats; unknown/`None` formats fall back to decimal.
 /// ECMA-376 Part 1 §17.6.12 / §17.18.59 (ST_NumberFormat).
+/// `w:chapSep`: what goes between the chapter number and the page number.
+fn chapter_separator(separator: Option<&str>) -> &'static str {
+    match separator {
+        Some("period") => ".",
+        Some("colon") => ":",
+        Some("emDash") => "\u{2014}",
+        Some("enDash") => "\u{2013}",
+        _ => "-",
+    }
+}
+
 fn format_page_number(n: usize, fmt: Option<&str>) -> String {
     format_number(n, fmt)
 }
@@ -33698,10 +36252,10 @@ fn horizontal_align_offset_within(
     }
 }
 
-/// Whether a shape fill covers the page behind its text. Only an explicitly
+/// Whether a shape or cell fill covers the page behind its text. Only an explicitly
 /// transparent fill lets the page colour through; every opaque fill, white
 /// included, is painted in the document colour and needs document-colour text.
-fn text_box_fill_hides_page_background(fill: &str) -> bool {
+fn fill_hides_page_background(fill: &str) -> bool {
     let normalized = fill.trim().to_ascii_lowercase();
     if matches!(normalized.as_str(), "" | "none" | "transparent") {
         return false;
@@ -33893,10 +36447,26 @@ fn empty_keep_next_required_height(line_height: f64, keep_next_enabled: bool) ->
     line_height * if keep_next_enabled { 3.0 } else { 1.0 }
 }
 
+/// The page box a view lays the document out in instead of the sections':
+/// Web レイアウト's window-wide strips, 閲覧モード's screen-sized columns.
+/// Every section takes it; with `hide_page_chrome` no header, footer or page
+/// border is drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ViewGeometry {
+    /// CSS pixels.
+    pub page_width: f64,
+    pub page_height: f64,
+    pub margin_top: f64,
+    pub margin_right: f64,
+    pub margin_bottom: f64,
+    pub margin_left: f64,
+    pub hide_page_chrome: bool,
+}
+
 fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
     match kind {
         LineBreakKind::Hard => Some("\u{2193}"),
-        LineBreakKind::Page => Some("\u{21D3}"),
+        LineBreakKind::Page | LineBreakKind::Column => Some("\u{21D3}"),
         LineBreakKind::ParagraphEnd => Some("\u{21B5}"),
         LineBreakKind::Soft => None,
     }
@@ -33998,15 +36568,25 @@ fn paragraph_border_box_continues_at(elements: &[BodyElement], upper_index: usiz
 
 /// `(lower drops its space before, upper drops its space after)` for the
 /// adjacent paragraphs at `upper_index` and the element after it: one pair of
-/// [`compute_contextual_spacing_suppression`].
-fn contextual_spacing_suppression_at(elements: &[BodyElement], upper_index: usize) -> (bool, bool) {
+/// [`compute_contextual_spacing_suppression`]. `html_auto_spacing` adds
+/// [`html_auto_spacing_suppression`] to `w:contextualSpacing`.
+fn contextual_spacing_suppression_at(
+    elements: &[BodyElement],
+    upper_index: usize,
+    html_auto_spacing: bool,
+) -> (bool, bool) {
     let Some((upper, lower)) = adjacent_paragraphs(elements, upper_index) else {
         return (false, false);
+    };
+    let (html_before, html_after) = if html_auto_spacing {
+        html_auto_spacing_suppression(upper, lower)
+    } else {
+        (false, false)
     };
     let upper_style = upper.properties.as_ref().and_then(|p| p.style.as_deref());
     let lower_style = lower.properties.as_ref().and_then(|p| p.style.as_deref());
     if upper_style != lower_style {
-        return (false, false);
+        return (html_before, html_after);
     }
     let contextual = |paragraph: &Paragraph| {
         paragraph
@@ -34015,21 +36595,85 @@ fn contextual_spacing_suppression_at(elements: &[BodyElement], upper_index: usiz
             .and_then(|p| p.contextual_spacing)
             .unwrap_or(false)
     };
-    (contextual(lower), contextual(upper))
+    (
+        contextual(lower) || html_before,
+        contextual(upper) || html_after,
+    )
+}
+
+/// The paragraph's spacing, when it has any.
+fn paragraph_spacing(paragraph: &Paragraph) -> Option<&jade_docx_reader::Spacing> {
+    paragraph
+        .properties
+        .as_ref()
+        .and_then(|properties| properties.spacing.as_ref())
+}
+
+/// Whether `paragraph` is an item of a list (a `w:numPr` that is not `0`).
+fn paragraph_is_list_item(paragraph: &Paragraph) -> bool {
+    paragraph
+        .properties
+        .as_ref()
+        .and_then(|properties| properties.numbering.as_ref())
+        .is_some_and(|numbering| numbering.list_id().is_some())
+}
+
+/// Word's HTML paragraph auto spacing between two adjacent paragraphs
+/// (ECMA-376 Part 1 §17.15.3.32 `doNotUseHTMLParagraphAutoSpacing`, which
+/// turns it off): `w:beforeAutospacing`/`w:afterAutospacing` stand for HTML
+/// margins, and HTML list items have none between them, so where two list
+/// items meet the lower one's auto space before and the upper one's auto
+/// space after are dropped; the list keeps its auto space above its first
+/// item and below its last. Returns `(lower drops before, upper drops after)`.
+fn html_auto_spacing_suppression(upper: &Paragraph, lower: &Paragraph) -> (bool, bool) {
+    if !paragraph_is_list_item(upper) || !paragraph_is_list_item(lower) {
+        return (false, false);
+    }
+    (
+        paragraph_spacing(lower).is_some_and(|spacing| spacing.before_auto),
+        paragraph_spacing(upper).is_some_and(|spacing| spacing.after_auto),
+    )
 }
 
 fn compute_contextual_spacing_suppression(
     elements: &[BodyElement],
+    html_auto_spacing: bool,
 ) -> (ElementIndexSet, ElementIndexSet) {
     let mut suppress_before = ElementIndexSet::default();
     let mut suppress_after = ElementIndexSet::default();
     for index in 1..elements.len() {
-        let (before, after) = contextual_spacing_suppression_at(elements, index - 1);
+        let (before, after) =
+            contextual_spacing_suppression_at(elements, index - 1, html_auto_spacing);
         if before {
             suppress_before.insert(index);
         }
         if after {
             suppress_after.insert(index - 1);
+        }
+    }
+    (suppress_before, suppress_after)
+}
+
+/// [`compute_contextual_spacing_suppression`] for the blocks of a table cell.
+/// With HTML auto spacing a cell is like an HTML `<td>`, whose first
+/// paragraph's top margin and last paragraph's bottom margin collapse into
+/// it: their auto space before and after are dropped too.
+fn compute_cell_spacing_suppression(
+    blocks: &[BodyElement],
+    html_auto_spacing: bool,
+) -> (ElementIndexSet, ElementIndexSet) {
+    let (mut suppress_before, mut suppress_after) =
+        compute_contextual_spacing_suppression(blocks, html_auto_spacing);
+    if html_auto_spacing {
+        if let Some(BodyElement::Paragraph(first)) = blocks.first() {
+            if paragraph_spacing(first).is_some_and(|spacing| spacing.before_auto) {
+                suppress_before.insert(0);
+            }
+        }
+        if let Some(BodyElement::Paragraph(last)) = blocks.last() {
+            if paragraph_spacing(last).is_some_and(|spacing| spacing.after_auto) {
+                suppress_after.insert(blocks.len() - 1);
+            }
         }
     }
     (suppress_before, suppress_after)
@@ -34985,6 +37629,92 @@ mod tests {
         assert!(paragraph_has_floating_or_math(&band_test_paragraph(vec![
             math_run
         ])));
+    }
+
+    fn horizontal_wrap_textbox_document(wrap: WrapMode) -> Document {
+        let mut run = band_plain_run();
+        run.text_box = Some(RunTextBox {
+            layout: RunImageLayout {
+                kind: RunImageKind::Floating,
+                wrap,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(band_test_paragraph(vec![run]))],
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_scans_positive_and_negative_snapshots_once() {
+        let mut cache = HorizontalFloatWrapCache::default();
+        let plain = Rc::new(doc_with_paragraph_texts(&vec!["plain"; 3_000]));
+        let floating = Rc::new(horizontal_wrap_textbox_document(WrapMode::Square));
+        for (document, expected) in [(&plain, false), (&floating, true)] {
+            let before = cache.scans;
+            for _ in 0..100 {
+                assert_eq!(cache.get(document), expected);
+            }
+            assert_eq!(cache.scans - before, 1);
+            assert_eq!(Rc::strong_count(document), 1);
+        }
+        assert!(
+            !cache.get(&plain),
+            "a replacement must not reuse the last answer"
+        );
+        assert_eq!(cache.scans, 3);
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_follows_edits_and_undo() {
+        let mut document = Rc::new(horizontal_wrap_textbox_document(WrapMode::None));
+        let mut cache = HorizontalFloatWrapCache::default();
+        assert!(!cache.get(&document));
+        let paragraph = Rc::make_mut(&mut document).body.as_mut().unwrap().elements[0]
+            .as_paragraph_mut()
+            .unwrap();
+        paragraph.runs[0].text_box.as_mut().unwrap().layout.wrap = WrapMode::Through;
+        assert!(cache.get(&document));
+        let undo = Rc::clone(&document);
+        Rc::make_mut(&mut document).body = None;
+        assert!(!cache.get(&document));
+        assert!(cache.get(&undo));
+        assert_eq!(cache.scans, 4);
+    }
+
+    #[test]
+    fn horizontal_float_wrap_cache_is_shared_by_layout_and_paint_and_released_before_edit() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = Rc::new(doc_with_paragraph_texts(&["plain"]));
+        let options = Options::default();
+        for _ in 0..3 {
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        }
+        assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
+        let pointer = Rc::as_ptr(&document);
+        renderer.drop_document_cache();
+        assert_eq!(Rc::strong_count(&document), 1);
+        assert_eq!(Rc::weak_count(&document), 0);
+        *Rc::make_mut(&mut document) = horizontal_wrap_textbox_document(WrapMode::Tight);
+        assert_eq!(Rc::as_ptr(&document), pointer);
+        assert!(renderer.horizontal_float_wrap_cache.get(&document));
+        assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
     }
 
     #[test]
@@ -36223,7 +38953,7 @@ mod tests {
             .filter(|&index| renderer.cached_paragraph_start_page(index) == Some(1))
             .count();
         assert!(on_first_page > 3);
-        let painter = renderer.host.painter();
+        let painter = (**renderer.host).painter();
         painter.clear();
         rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
             renderer.arm_fast_replay_for_complete_layout_edit(0, height);
@@ -36983,6 +39713,7 @@ mod tests {
             deleted_text: None,
             suffix_space: true,
             following_grapheme: Some("A".into()),
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 20.0, 16.0, None, &mut None)
@@ -37054,6 +39785,7 @@ mod tests {
                 deleted_text: None,
                 suffix_space: label.ends_with(' '),
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let style = renderer
                 .apply_run_style(pending.display_props.as_ref())
@@ -37136,6 +39868,7 @@ mod tests {
             deleted_text: None,
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         let style = renderer
             .apply_run_style(pending.display_props.as_ref())
@@ -37183,6 +39916,7 @@ mod tests {
             deleted_text: Some("第４３条".into()),
             suffix_space: false,
             following_grapheme: None,
+            picture: None,
         };
         renderer
             .draw_pending_numbering_marker(&pending, 60.0, 16.0, None, &mut None)
@@ -37414,6 +40148,7 @@ mod tests {
                 deleted_text: deleted.map(str::to_string),
                 suffix_space,
                 following_grapheme: Some("A".into()),
+                picture: None,
             };
             let mut commands = Vec::new();
             renderer
@@ -37757,10 +40492,13 @@ mod tests {
         assert_eq!(lines[0].fragments.len(), 4);
         assert!((renderer.current_y - top - 48.0).abs() < 1e-9);
         assert_eq!(renderer.last_line_baseline, lines[0].baseline);
-        assert_eq!(renderer.math_font_stats()["fonts"][0]["cached_glyphs"], 2);
+        // The integral is the math font's outline, cached; the `m:nor`
+        // runs are normal text, drawn in the run's own font as Word draws
+        // them.
+        assert_eq!(renderer.math_font_stats()["fonts"][0]["cached_glyphs"], 1);
         assert_eq!(renderer.math_font_stats()["fonts"][0]["layouts"], 1);
-        assert_eq!(painter.count(|op| matches!(op, Op::Fill)), 4);
-        assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), 0);
+        assert_eq!(painter.count(|op| matches!(op, Op::Fill)), 1);
+        assert_eq!(painter.count(|op| matches!(op, Op::FillText(..))), 3);
         assert_eq!(serde_json::to_value(math).unwrap(), before);
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
@@ -37821,7 +40559,8 @@ mod tests {
                 .ops()
                 .into_iter()
                 .find_map(|op| match op {
-                    Op::FillText(text, x, _) if text == "x" => Some(x),
+                    // Word draws a math letter from the italic alphabet.
+                    Op::FillText(text, x, _) if text == "𝑥" => Some(x),
                     _ => None,
                 })
                 .unwrap();
@@ -38010,6 +40749,11 @@ mod tests {
                 ..Default::default()
             });
         }
+        table.cell_margins = Some(jade_docx_reader::document::TableCellMargins {
+            left: Some(15.0),
+            right: Some(21.0),
+            ..Default::default()
+        });
         table.rows[0].cells[0].blocks = body.elements;
         renderer
             .render(&document, &Options::default())
@@ -38023,6 +40767,11 @@ mod tests {
                 })
                 .unwrap_or_else(|| panic!("missing glyph {label}: {ops:?}"))
         };
+        let cell = &renderer.cell_layouts_debug_ref()[0];
+        let (left, right) = cell.text_bounds.expect("horizontal padded bounds");
+        assert!((left - origin("B")).abs() < 0.001);
+        assert!((left - cell.left - 20.0).abs() < 0.001);
+        assert!((cell.right - right - 28.0).abs() < 0.001);
         for (label, inset) in [("L", 16.0), ("F", 24.0), ("H", 8.0)] {
             assert!(
                 (origin(label) - origin("B") - inset).abs() < 0.001,
@@ -38118,6 +40867,20 @@ mod tests {
                     line.paragraph,
                     line.page
                 );
+                let (left, right) = renderer
+                    .selection_manager()
+                    .cell_text_bounds_for_paragraph(line.paragraph, y)
+                    .expect("ruler bounds for this page fragment");
+                // Selection lines span the outer cell rectangle. Painted
+                // fragments use the padded content origin, without the debug
+                // API's oracle-only reporting offset.
+                assert!(left < right);
+                if let Some(fragment) = line.fragments.first() {
+                    let painted_x = fragment.x - line.report_x_offset;
+                    assert!(painted_x >= left - 0.001 && painted_x < right,
+                        "nested={nested}, long_paragraph={long_paragraph}, page={}, x={painted_x}, bounds={left}..{right}",
+                        line.page);
+                }
                 if let Some(id) = renderer.cell_selection_target_at_point(x, y) {
                     assert!(renderer
                         .cell_layout(id)
@@ -38508,13 +41271,13 @@ mod tests {
     }
 
     #[test]
-    fn text_box_fill_hides_page_background_only_for_opaque_fills() {
-        assert!(text_box_fill_hides_page_background("#D9EAF7"));
-        assert!(text_box_fill_hides_page_background("#FFFFFF"));
-        assert!(text_box_fill_hides_page_background("rgba(0, 0, 0, 0.5)"));
-        assert!(!text_box_fill_hides_page_background("transparent"));
-        assert!(!text_box_fill_hides_page_background("none"));
-        assert!(!text_box_fill_hides_page_background("rgba(0,0,0,0)"));
+    fn fill_hides_page_background_only_for_opaque_fills() {
+        assert!(fill_hides_page_background("#D9EAF7"));
+        assert!(fill_hides_page_background("#FFFFFF"));
+        assert!(fill_hides_page_background("rgba(0, 0, 0, 0.5)"));
+        assert!(!fill_hides_page_background("transparent"));
+        assert!(!fill_hides_page_background("none"));
+        assert!(!fill_hides_page_background("rgba(0,0,0,0)"));
     }
 
     /// The wrap width of a text-box line comes from the run's own font. The
@@ -39787,6 +42550,7 @@ mod tests {
         }
         for (column, paragraph) in [0, 2].into_iter().enumerate() {
             renderer.selection.record_table_cell(CellLayout {
+                text_bounds: None,
                 paragraphs: vec![paragraph],
                 left: column as f64 * 100.0,
                 right: column as f64 * 100.0 + 100.0,
@@ -39981,6 +42745,8 @@ mod tests {
 
     #[test]
     fn connector_line_ends_keep_the_authored_side_and_geometry() {
+        // DrawingML lines run from the frame's top left to its bottom right
+        // unless flipped.
         use jade_painter::recording::Op;
 
         let head_only = jade_painter::recording::RecordingPainter::new();
@@ -39997,7 +42763,7 @@ mod tests {
         .expect("infallible");
         let ops = head_only.ops();
         assert_eq!(
-            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            head_only.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "the head marker must start at the connector's authored start point: {ops:?}"
         );
@@ -40038,12 +42804,12 @@ mod tests {
         )
         .expect("infallible");
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 40.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 0.0 && *y == 0.0)),
             2,
             "a bent connector's head marker must use its start endpoint"
         );
         assert_eq!(
-            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 0.0)),
+            bent_head.count(|op| matches!(op, Op::MoveTo(x, y) if *x == 100.0 && *y == 40.0)),
             0,
             "head-only bent connectors must not gain a tail marker"
         );
@@ -40062,7 +42828,7 @@ mod tests {
         .expect("infallible");
         assert!(
             curved_tail.ops().iter().any(
-                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 0.0)
+                |op| matches!(op, Op::Ellipse(center_x, center_y, ..) if *center_x > 90.0 && *center_y == 40.0)
             ),
             "a curved connector's tail marker must follow its ending tangent"
         );
@@ -40117,6 +42883,7 @@ mod tests {
                     },
                     vertical_alignment: TextBoxVerticalAlignment::Center,
                     text_style: None,
+                    ..Default::default()
                 },
                 RunGroupShape {
                     x: 700.0,
@@ -40933,6 +43700,7 @@ mod tests {
             underline_kind: None,
             underline_color: None,
             border: None,
+            effects: None,
             fill_color: Rc::from("#000000"),
             font_style_prefix,
             families,
@@ -41054,6 +43822,46 @@ mod tests {
         let (x, width) = rects[0];
         assert!((x - 20.0).abs() < 1e-6);
         assert!((width - 30.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn page_fields_draw_their_number_switches_live() {
+        let mut renderer = test_renderer();
+        renderer.current_page_number = 4;
+        for (instruction, expected) in [
+            ("PAGE \\* ROMAN", "IV"),
+            ("PAGE \\* alphabetic", "d"),
+            ("PAGE \\# \"00\"", "04"),
+            ("PAGE \\* KANJINUM1", "四"),
+            ("SECTION \\* ArabicDash", "- 1 -"),
+        ] {
+            let kind =
+                jade_docx_reader::parser::DocumentParser::parse_field_instruction(instruction)
+                    .expect("a field");
+            assert!(
+                matches!(kind, RunFieldKind::Formatted { .. }),
+                "{instruction}"
+            );
+            let field = RunField {
+                word_mac_body_result: None,
+                kind,
+                source_field_id: None,
+                cached_text: Some("stale".to_string()),
+                resolved_value: None,
+            };
+            assert_eq!(
+                renderer.resolve_run_field(&field).as_deref(),
+                Some(expected),
+                "{instruction}"
+            );
+        }
+        // Formatting switches alone change nothing.
+        assert_eq!(
+            jade_docx_reader::parser::DocumentParser::parse_field_instruction(
+                "PAGE \\* MERGEFORMAT"
+            ),
+            Some(RunFieldKind::PageNumber)
+        );
     }
 
     #[test]
@@ -41780,6 +44588,67 @@ mod tests {
         );
     }
 
+    /// A character border in another line style draws each side as the same
+    /// `w:pBdr` edge would: a double one two rules a side, a wave a wavy
+    /// stroke a side — on screen and through the draw commands the PDF
+    /// export and cache replay repeat.
+    #[test]
+    fn character_borders_draw_every_line_style() {
+        let renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
+        let painter = jade_painter::recording::RecordingPainter::new();
+        let commands = |kind: BorderKind| {
+            let edge = ResolvedBorderEdge {
+                width_px: 3.0,
+                space_px: 0.0,
+                color: Rc::from("#808080"),
+                kind,
+            };
+            let mut commands = Vec::new();
+            renderer.draw_character_border(
+                &painter,
+                &edge,
+                (10.0, 20.0, 60.0, 20.0),
+                Some(&mut commands),
+            );
+            commands
+        };
+        let fills = |commands: &[DrawCommand]| {
+            commands
+                .iter()
+                .filter(|command| matches!(command, DrawCommand::FillRect { .. }))
+                .count()
+        };
+        let strokes = |commands: &[DrawCommand]| {
+            commands
+                .iter()
+                .filter(|command| matches!(command, DrawCommand::StrokePolyline { .. }))
+                .count()
+        };
+        assert_eq!(fills(&commands(BorderKind::Single)), 4);
+        assert_eq!(fills(&commands(BorderKind::Double)), 8);
+        assert_eq!(fills(&commands(BorderKind::Triple)), 12);
+        assert_eq!(fills(&commands(BorderKind::ThinThickThinSmallGap)), 12);
+        assert!(fills(&commands(BorderKind::Dotted)) > 8);
+        assert_eq!(strokes(&commands(BorderKind::Wave)), 4);
+        assert_eq!(strokes(&commands(BorderKind::DoubleWave)), 8);
+        assert!(strokes(&commands(BorderKind::DashDotStroked)) > 8);
+        // The 3-D styles shade each side in two tones.
+        let tones: std::collections::HashSet<String> = commands(BorderKind::ThreeDEmboss)
+            .iter()
+            .filter_map(|command| match command {
+                DrawCommand::FillRect { color, .. } => Some(color.to_string()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(tones.len(), 2, "{tones:?}");
+    }
+
     #[test]
     fn character_border_side_rects_frame_the_box() {
         let [top, bottom, left, right] = character_border_side_rects(10.0, 20.0, 40.0, 16.0, 2.0);
@@ -42277,6 +45146,188 @@ mod tests {
             insertion: None,
         });
         run
+    }
+
+    /// A paragraph of plain text and one change by `author`, drawn with
+    /// `markup` and the view; the fill colours used and the rectangles
+    /// filled in each, in order.
+    fn draw_with_revision_view(
+        kind: RevisionKind,
+        author: &str,
+        markup: bool,
+        view: crate::revision_view::RevisionView,
+    ) -> Vec<(String, (f64, f64, f64, f64))> {
+        use jade_painter::recording::Op;
+        let mut document = doc_with_paragraph_texts(&["plain words before the change "]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        let mut change = build_revision_run(kind);
+        change.text = "changed words".into();
+        if let Some(mark) = change.revision.as_mut() {
+            mark.author = Some(author.into());
+        }
+        paragraph.runs.push(change);
+        let (mut renderer, painter) = recording_renderer();
+        let mut options = Options {
+            render_changes: markup,
+            show_formatting_marks: false,
+            ..Options::default()
+        };
+        options.set_revision_view(view);
+        renderer.render(&document, &options).unwrap();
+        let mut fill = String::new();
+        let mut filled = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::SetFillStyle(color) => fill = color.clone(),
+                Op::FillRect(x, y, width, height) => {
+                    filled.push((fill.clone(), (x, y, width, height)))
+                }
+                _ => {}
+            }
+        }
+        filled
+    }
+
+    /// 変更された行: the view's bar is drawn down the left margin beside a
+    /// changed line — inserted text shown, or deleted text left out as in
+    /// シンプルな変更履歴 — and not for a reviewer the view leaves out.
+    #[test]
+    fn change_bars_mark_changed_lines_in_the_margin() {
+        use crate::revision_view::RevisionView;
+        let bar = |kind, markup, hidden: &[&str]| {
+            draw_with_revision_view(
+                kind,
+                "Ann",
+                markup,
+                RevisionView {
+                    change_bar: Some("#C00000".into()),
+                    hidden_authors: hidden.iter().map(|name| name.to_string()).collect(),
+                    ..RevisionView::default()
+                },
+            )
+            .into_iter()
+            .filter(|(color, _)| color == "#C00000")
+            .map(|(_, rect)| rect)
+            .collect::<Vec<_>>()
+        };
+        for (kind, markup) in [
+            (RevisionKind::Inserted, true),
+            (RevisionKind::Inserted, false),
+            (RevisionKind::Deleted, true),
+            (RevisionKind::Deleted, false),
+        ] {
+            let bars = bar(kind.clone(), markup, &[]);
+            assert_eq!(bars.len(), 1, "{kind:?} markup={markup}: {bars:?}");
+            let (x, _, width, height) = bars[0];
+            assert!(x < 96.0 && width < 3.0 && height > 10.0, "{bars:?}");
+            assert!(bar(kind, markup, &["Ann"]).is_empty());
+        }
+        assert!(draw_with_revision_view(
+            RevisionKind::Inserted,
+            "Ann",
+            true,
+            RevisionView::default()
+        )
+        .iter()
+        .all(|(color, _)| color != "#C00000"));
+    }
+
+    /// A formatting change gets a change bar like any other change, unless
+    /// the view leaves 書式設定 out.
+    #[test]
+    fn formatting_changes_get_change_bars() {
+        use crate::revision_view::RevisionView;
+        use jade_painter::recording::Op;
+        let draw = |hide_formatting: bool| {
+            let mut document = doc_with_paragraph_texts(&["reformatted words"]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            let run = &mut paragraph.runs[0];
+            run.properties
+                .get_or_insert_with(RunProperties::default)
+                .change = Some(Box::new(crate::document::RunPropertiesChange {
+                id: Some("3".into()),
+                author: Some("Ann".into()),
+                date: None,
+                previous: RunProperties::default(),
+            }));
+            let (mut renderer, painter) = recording_renderer();
+            let mut options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Options::default()
+            };
+            options.set_revision_view(RevisionView {
+                change_bar: Some("#C00000".into()),
+                hide_formatting,
+                ..RevisionView::default()
+            });
+            renderer.render(&document, &options).unwrap();
+            painter.ops().contains(&Op::SetFillStyle("#C00000".into()))
+        };
+        assert!(draw(false));
+        assert!(!draw(true));
+    }
+
+    /// 作成者別: a reviewer's change is drawn in their colour; unticked, it
+    /// reads as accepted — an insertion as plain text, a deletion gone.
+    #[test]
+    fn reviewers_changes_take_their_colour_or_read_as_accepted() {
+        use crate::revision_view::RevisionView;
+        use jade_painter::recording::Op;
+        let mut document = doc_with_paragraph_texts(&["kept "]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        for (kind, text) in [
+            (RevisionKind::Inserted, "added"),
+            (RevisionKind::Deleted, "gone"),
+        ] {
+            let mut run = build_revision_run(kind);
+            run.text = text.into();
+            run.revision.as_mut().unwrap().author = Some("Ann".into());
+            paragraph.runs.push(run);
+        }
+        let draw = |view: RevisionView| {
+            let (mut renderer, painter) = recording_renderer();
+            let mut options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Options::default()
+            };
+            options.set_revision_view(view);
+            renderer.render(&document, &options).unwrap();
+            let ops = painter.ops();
+            let text: String = ops
+                .iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, _) => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            let colored = ops.contains(&Op::SetFillStyle("#2E74B5".into()));
+            (text, colored)
+        };
+        let (text, colored) = draw(RevisionView {
+            author_colors: vec![("Ann".into(), Rc::from("#2E74B5"))],
+            ..RevisionView::default()
+        });
+        assert!(text.contains("added") && text.contains("gone"), "{text}");
+        assert!(colored, "Ann's colour");
+        let (text, colored) = draw(RevisionView {
+            author_colors: vec![("Ann".into(), Rc::from("#2E74B5"))],
+            hidden_authors: vec!["Ann".into()],
+            ..RevisionView::default()
+        });
+        assert!(text.contains("added") && !text.contains("gone"), "{text}");
+        assert!(!colored);
     }
 
     /// Final preview hides deletions, while Original preview hides insertions.
@@ -43332,7 +46383,11 @@ mod tests {
                 properties: None,
                 revision: None,
                 hyperlink: None,
-                inline_object: Some(InlineObject { width, height }),
+                inline_object: Some(InlineObject {
+                    width,
+                    height,
+                    descent: 0.0,
+                }),
             }];
             renderer
                 .wrap_text_into_lines_cached(text, &runs, 0.0, &style, 0, 400.0)
@@ -43380,6 +46435,7 @@ mod tests {
                 inline_object: Some(InlineObject {
                     width: 100.0,
                     height: 40.0,
+                    descent: 0.0,
                 }),
             }];
             let lines = renderer
@@ -43644,6 +46700,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -43672,6 +46729,7 @@ mod tests {
                 leaders: Vec::new(),
                 tab_stops: Vec::new(),
                 clusters: Vec::new(),
+                hyphen: None,
             }]
             .into(),
         );
@@ -43851,6 +46909,7 @@ mod tests {
                     leaders: Vec::new(),
                     tab_stops: Vec::new(),
                     clusters: Vec::new(),
+                    hyphen: None,
                 })
                 .collect()
         }
@@ -44208,6 +47267,57 @@ mod tests {
             .ops()
             .contains(&Op::SetStrokeStyle("#e53935".into())));
         assert!(painter.count(|op| matches!(op, Op::FillText(..))) > 0);
+    }
+
+    #[test]
+    fn grammar_issues_draw_a_double_underline_in_their_colour() {
+        use crate::plugins::spelling::{ProofingIssue, ProofingKind, GRAMMAR_COLOR};
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let body = Body {
+            elements: vec![BodyElement::from_paragraph(note_test_paragraph(
+                "Their is a dog",
+                None,
+            ))],
+        };
+        renderer.configure_spelling(true, 7);
+        renderer
+            .render_header_footer_body_at(&body, 20.0, 100, true, None)
+            .unwrap();
+        let request = renderer
+            .take_pending_spelling()
+            .into_iter()
+            .find(|request| request.text.contains("Their"))
+            .unwrap();
+        assert!(renderer.apply_proofing_issues(
+            7,
+            &request.key,
+            &[ProofingIssue {
+                start: 0,
+                end: 5,
+                kind: ProofingKind::Grammar,
+            }],
+        ));
+        assert!(
+            !renderer.apply_proofing_issues(6, &request.key, &[]),
+            "stale"
+        );
+        painter.clear();
+        renderer
+            .render_header_footer_body_at(&body, 20.0, 100, true, None)
+            .unwrap();
+        let ops = painter.ops();
+        let at = ops
+            .iter()
+            .position(|op| *op == Op::SetStrokeStyle(GRAMMAR_COLOR.into()))
+            .expect("drawn in the grammar colour");
+        let lines = ops[at..]
+            .iter()
+            .take_while(|op| !matches!(op, Op::Restore))
+            .filter(|op| matches!(op, Op::Stroke))
+            .count();
+        assert!(lines >= 1, "{:?}", &ops[at..]);
+        assert_eq!(renderer.spelling_state(), (true, 7));
     }
 
     #[test]
@@ -46360,6 +49470,7 @@ mod tests {
             &mut [],
             &mut HashMap::new(),
             &mut HashMap::new(),
+            &mut HashMap::new(),
             &mut [],
             &mut offsets,
             &mut [],
@@ -47548,6 +50659,179 @@ mod tests {
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
+    }
+
+    #[test]
+    fn tate_chu_yoko_paints_its_run_as_one_upright_group() {
+        use jade_painter::recording::Op;
+        // Glyphs as wide as they are measured, so a group of ten is wider
+        // than the one character it is fitted into.
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let vertical = |compress: bool| {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                    id: Some(if compress { 2 } else { 1 }),
+                    vert: true,
+                    vert_compress: compress,
+                    ..Default::default()
+                })),
+                ..Default::default()
+            })
+        };
+        let plain = || {
+            Some(RunProperties {
+                font_family: Some(Rc::from("Noto Sans JP")),
+                font_size: Some(12.0),
+                ..Default::default()
+            })
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![
+                        text_box_run("令和", plain()),
+                        text_box_run("12", vertical(false)),
+                        text_box_run("年", plain()),
+                        text_box_run("1234567890", vertical(true)),
+                    ],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            default_section: Some(SectionProperties {
+                text_direction: Some(TextDirection::TbRl),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let painted: Vec<String> = painter
+            .ops()
+            .into_iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, _, _) => Some(text),
+                _ => None,
+            })
+            .collect();
+        // Each 縦中横 run is one horizontal string, not a column of digits.
+        assert!(painted.contains(&"12".to_string()), "{painted:?}");
+        assert!(painted.contains(&"1234567890".to_string()), "{painted:?}");
+        assert!(!painted.contains(&"1".to_string()), "{painted:?}");
+        // 行の幅に合わせる squeezes the wider group into one character.
+        assert!(painter
+            .ops()
+            .iter()
+            .any(|op| matches!(op, Op::Scale(x, y) if *x < 0.99 && (*y - 1.0).abs() < 1e-9)));
+    }
+
+    #[test]
+    fn combined_characters_stack_their_halves() {
+        use jade_painter::recording::Op;
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .expect("build a renderer on the recording painter");
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "株式会社",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(12.0),
+                            east_asian_layout: Some(Box::new(crate::document::EastAsianLayout {
+                                combine: true,
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let at = |wanted: &str| {
+            painter.ops().into_iter().find_map(|op| match op {
+                Op::FillText(text, x, y) if text == wanted => Some((x, y)),
+                _ => None,
+            })
+        };
+        let (top_x, top_y) = at("株").expect("株 painted");
+        let (bottom_x, bottom_y) = at("会").expect("会 painted");
+        assert!((top_x - bottom_x).abs() < 0.01, "the lines start together");
+        assert!(top_y < bottom_y, "the first half is above the second");
+    }
+
+    #[test]
+    fn glow_and_text_outline_paint_a_halo_and_a_stroke() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let effects = crate::document::RunTextEffects {
+            glow_color: Some(Rc::from("#FF0000")),
+            glow_radius: Some(5.0),
+            glow_alpha: Some(0.4),
+            outline_color: Some(Rc::from("#0070C0")),
+            outline_width: Some(0.75),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(Paragraph {
+                    runs: vec![text_box_run(
+                        "Glow",
+                        Some(RunProperties {
+                            font_family: Some(Rc::from("Noto Sans JP")),
+                            font_size: Some(20.0),
+                            text_effects: Some(Box::new(effects)),
+                            ..Default::default()
+                        }),
+                    )],
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                })],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let ops = painter.ops();
+        assert!(
+            ops.iter().any(
+                |op| matches!(op, Op::SetShadowColor(color) if color == "rgba(255, 0, 0, 0.400)")
+            ),
+            "the glow's colour"
+        );
+        assert!(ops
+            .iter()
+            .any(|op| matches!(op, Op::SetStrokeStyle(color) if color.contains("0, 112, 192"))));
+        assert!(ops.iter().any(|op| matches!(op, Op::StrokeText(..))));
     }
 
     #[test]
@@ -49941,6 +53225,7 @@ mod tests {
                         SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 4));
                     renderer.selection.set_selection(Some(range));
                     renderer.selection.record_table_cell(CellLayout {
+                        text_bounds: None,
                         paragraphs: vec![0],
                         left: 0.0,
                         right: 100.0,
@@ -51802,7 +55087,7 @@ mod tests {
 
         let (mut renderer, _) = recording_renderer();
         for elements in bodies {
-            let (before, after) = compute_contextual_spacing_suppression(&elements);
+            let (before, after) = compute_contextual_spacing_suppression(&elements, true);
             let continues = compute_paragraph_border_box_continuations(&elements);
             renderer.last_document = Some(Rc::new(Document {
                 body: Some(Body {
@@ -51833,7 +55118,7 @@ mod tests {
         // A header/footer story answers from its own scan, not the body's.
         // palette[4]: no style, contextual spacing, no borders.
         let story = vec![palette[4].clone(), palette[4].clone()];
-        let (before, after) = compute_contextual_spacing_suppression(&story);
+        let (before, after) = compute_contextual_spacing_suppression(&story, true);
         assert!(before.contains(&1) && after.contains(&0));
         renderer.contextual_suppress_before = before;
         renderer.contextual_suppress_after = after;
@@ -51872,7 +55157,7 @@ mod tests {
             list_paragraph(Some("ListParagraph"), Some(true)),
             list_paragraph(Some("ListParagraph"), Some(true)),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&elements);
+        let (before, after) = compute_contextual_spacing_suppression(&elements, true);
         // Middle and last items drop space-before; first and middle drop space-after.
         assert!(before.contains(&1));
         assert!(before.contains(&2));
@@ -51903,7 +55188,7 @@ mod tests {
             para(Some("Heading1"), Some(true)),
             para(Some("ListParagraph"), Some(true)),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&mixed);
+        let (before, after) = compute_contextual_spacing_suppression(&mixed, true);
         assert!(before.is_empty());
         assert!(after.is_empty());
 
@@ -51912,7 +55197,7 @@ mod tests {
             para(Some("ListParagraph"), None),
             para(Some("ListParagraph"), None),
         ];
-        let (before, after) = compute_contextual_spacing_suppression(&plain);
+        let (before, after) = compute_contextual_spacing_suppression(&plain, true);
         assert!(before.is_empty());
         assert!(after.is_empty());
     }
@@ -52535,6 +55820,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "b", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -52548,6 +55834,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, ",", false, true, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];
@@ -52614,6 +55901,7 @@ mod tests {
                 InlineCluster::grapheme(0, 1, 5.0, "a", false, false, false),
                 InlineCluster::grapheme(1, 2, 5.0, "(", false, false, true),
             ],
+            hyphen: None,
         };
 
         let next_line = WrappedLine {
@@ -52627,6 +55915,7 @@ mod tests {
                 InlineCluster::grapheme(2, 3, 5.0, "b", false, false, false),
                 InlineCluster::grapheme(3, 4, 5.0, "c", false, false, false),
             ],
+            hyphen: None,
         };
 
         let mut lines = vec![prev_line, next_line];
@@ -52669,6 +55958,7 @@ mod tests {
             no_line_break_after_replaces_default: true,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
         let overrides = EastAsianLineBreakingSettings {
             use_east_asian_layout: true,
@@ -52686,6 +55976,7 @@ mod tests {
             no_line_break_after_replaces_default: false,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
 
         let merged = merge_east_asian_rules(&base, Some(&overrides));
@@ -52726,6 +56017,7 @@ mod tests {
             no_line_break_after_replaces_default: false,
             strict_first_and_last_chars: false,
             compatibility_mode: None,
+            space_for_underline: false,
         };
         let merged = merge_east_asian_rules(&base, None);
         assert!(merged.use_east_asian_layout);
@@ -55247,10 +58539,12 @@ mod tests {
             Some(crate::document::PageNumberType {
                 format: Some("lowerroman".to_string()),
                 start: None,
+                ..Default::default()
             }),
             Some(crate::document::PageNumberType {
                 format: Some("decimal".to_string()),
                 start: Some(1),
+                ..Default::default()
             }),
             None,
         ]);
@@ -55263,6 +58557,75 @@ mod tests {
             .map(|page| renderer.displayed_page_number(page))
             .collect();
         assert_eq!(displayed, ["i", "ii", "1", "2", "3", "4"]);
+    }
+
+    /// A header's STYLEREF: the first heading on the page, the last with
+    /// `\l`, or the nearest before the page when it has none.
+    #[test]
+    fn style_reference_follows_the_page() {
+        let mut renderer = test_renderer();
+        let heading: Option<Rc<str>> = Some(Rc::from("Heading1"));
+        renderer
+            .styled_paragraphs
+            .insert(0, (1, heading.clone(), "Alpha".to_string()));
+        renderer
+            .styled_paragraphs
+            .insert(1, (1, Some(Rc::from("Normal")), "text".to_string()));
+        renderer
+            .styled_paragraphs
+            .insert(4, (3, heading.clone(), "Beta".to_string()));
+        renderer
+            .styled_paragraphs
+            .insert(7, (3, heading, "Gamma".to_string()));
+        let at = |page, from_bottom| {
+            renderer
+                .style_reference_on_page(page, "Heading1", from_bottom)
+                .unwrap()
+        };
+        assert_eq!(at(1, false), "Alpha");
+        assert_eq!(
+            at(2, false),
+            "Alpha",
+            "a page without one shows the last before it"
+        );
+        assert_eq!(at(3, false), "Beta");
+        assert_eq!(at(3, true), "Gamma");
+        assert_eq!(
+            jade_docx_reader::DocumentParser::parse_field_instruction(
+                r#" STYLEREF "見出し 1" \l "#
+            ),
+            Some(RunFieldKind::StyleRef {
+                style: "見出し 1".to_string(),
+                from_bottom: true
+            })
+        );
+    }
+
+    /// 章番号を含める: the last level-1 heading's number on or before the page
+    /// leads the page number, joined by the chosen separator.
+    #[test]
+    fn displayed_page_number_includes_the_chapter_number() {
+        let mut renderer = test_renderer();
+        renderer.set_section_page_numbering(vec![Some(crate::document::PageNumberType {
+            format: Some("decimal".to_string()),
+            start: None,
+            chapter_style: Some(1),
+            chapter_separator: Some("emDash".to_string()),
+        })]);
+        renderer.page_section_indices = vec![0, 0, 0, 0];
+        renderer.current_page_number = 4;
+        renderer.chapter_numbers.insert(0, (1, 1, "1.".to_string()));
+        renderer
+            .chapter_numbers
+            .insert(5, (2, 2, "1.1".to_string()));
+        renderer.chapter_numbers.insert(9, (3, 1, "2.".to_string()));
+        let displayed: Vec<String> = (1..=4)
+            .map(|page| renderer.displayed_page_number(page))
+            .collect();
+        assert_eq!(
+            displayed,
+            ["1\u{2014}1", "1\u{2014}2", "2\u{2014}3", "2\u{2014}4"]
+        );
     }
 
     /// Without section data the document-wide `pgNumType` keeps applying.
@@ -56116,9 +59479,18 @@ mod tests {
                 paragraph_marks, 4,
                 "only the real body paints paragraph marks {middle:?}"
             );
+            // With ¶ on every space shows its dot too, as in Word.
+            let space_marks = painter
+                .ops()
+                .iter()
+                .filter(|op| {
+                    matches!(op, jade_painter::recording::Op::FillText(text, ..) if text == "\u{00B7}")
+                })
+                .count();
             let control_styles = painter.ops().iter().filter(|op| matches!(op, jade_painter::recording::Op::SetFillStyle(color) if color == CONTROL_MARK_COLOR)).count();
             assert_eq!(
-                control_styles, 4,
+                control_styles,
+                4 + space_marks,
                 "measurement does not prepare editor-only marks {middle:?}"
             );
             assert_eq!(unbalanced_saves(&painter), 0);

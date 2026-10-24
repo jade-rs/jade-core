@@ -29,9 +29,21 @@ pub fn text_box_content_bounds(
 ) -> TextBoxContentBounds {
     let width = width.max(0.0);
     let height = height.max(0.0);
-    let (left, top, right, bottom) = match shape {
+    // A preset with moved handles is measured like its hand-traced shape,
+    // with a rounded rectangle's corner taken from its own `adj`.
+    let corner = match shape {
+        TextBoxShape::Preset(id) => id
+            .geometry()
+            .adjustments
+            .iter()
+            .find(|(name, _)| name == "adj")
+            .map_or(16667.0, |(_, value)| *value as f64)
+            .clamp(0.0, 50000.0),
+        _ => 16667.0,
+    };
+    let (left, top, right, bottom) = match shape.hand_traced() {
         TextBoxShape::RoundedRectangle => {
-            let inset = width.min(height) * (16667.0 / 100000.0) * (29289.0 / 100000.0);
+            let inset = width.min(height) * (corner / 100000.0) * (29289.0 / 100000.0);
             (inset, inset, width - inset, height - inset)
         }
         TextBoxShape::Triangle => (width / 4.0, height / 2.0, width * 0.75, height),

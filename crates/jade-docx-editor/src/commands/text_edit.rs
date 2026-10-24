@@ -548,11 +548,12 @@ fn insert_into_runs(
 }
 
 /// Whether `run` holds an object that is not text: a text box, an image,
-/// an equation, a note reference or a note's own number.
+/// an equation, a comment/note reference or a note's own number.
 fn run_holds_object(run: &Run) -> bool {
     run.text_box.is_some()
         || run.image.is_some()
         || run.math.is_some()
+        || !run.comment_reference_ids.is_empty()
         || !run.footnote_reference_ids.is_empty()
         || !run.endnote_reference_ids.is_empty()
         || run.has_footnote_ref
@@ -628,6 +629,35 @@ pub fn apply_text_edit(
         && !insertion_joins_ruby_base(runs, start);
 
     let removed_at = remove_range_from_runs(runs, start, end, zero_width);
+    // A replacement takes the selected text's formatting. Inserting through
+    // the caret path instead joins the run on the left at a run boundary,
+    // silently changing (for example) italic replacement text to bold.
+    let replacement_needs_own_style = start < end
+        && !insert.is_empty()
+        && match (template.as_ref(), insertion_point(runs, start)) {
+            (Some(selected), Some(InsertionPoint::Run { index, .. })) => {
+                ruby_of(selected).is_none()
+                    && (selected.properties != runs[index].properties
+                        || selected.hyperlink != runs[index].hyperlink)
+            }
+            _ => false,
+        };
+    if replacement_needs_own_style {
+        let mut tail = split_runs_at_preserving_source(runs, start, zero_width);
+        if start == 0 {
+            let leading = tail
+                .iter()
+                .take_while(|run| run.text.is_empty() && places_a_story(run))
+                .count();
+            runs.extend(tail.drain(..leading));
+        }
+        let mut replacement = create_run_from_template(template.as_ref(), insert);
+        replacement.revision = None;
+        runs.push(replacement);
+        runs.extend(tail);
+        normalize_break_runs(runs);
+        return;
+    }
     // With no run left but the zero-width ones kept for their XML, the text
     // goes where the removed text was among them, as a run of its own.
     let only_zero_width = |runs: &[Run]| runs.iter().all(|run| zero_width.keeps(run));
@@ -1034,6 +1064,15 @@ pub fn mutate_run_properties(
         let mut props = before.clone();
         mutate(&mut props);
         if props != before {
+            // Text still a tracked insertion is new as it stands: Word
+            // records no formatting change on it.
+            let inserted = run
+                .revision
+                .as_ref()
+                .is_some_and(|mark| !mark.is_deletion());
+            if !inserted {
+                record_format_change(&before, &mut props);
+            }
             restyled.extend(run.node_id);
         }
         run.properties = Some(props);
@@ -1046,7 +1085,64 @@ pub fn mutate_run_properties(
     restyled
 }
 
-fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
+/// Who is changing formatting while changes are tracked, and the next
+/// `w:id` to give a change: set by the command executor around each command
+/// while a revision session is open.
+#[derive(Clone, Debug)]
+pub(crate) struct FormatRevisionStamp {
+    pub author: Option<String>,
+    pub date: Option<String>,
+    pub next_id: u32,
+}
+
+thread_local! {
+    static FORMAT_REVISION: std::cell::RefCell<Option<FormatRevisionStamp>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `apply` with formatting edits recorded as tracked changes under
+/// `stamp`, and returns its result and the next id left unused.
+pub(crate) fn with_format_revision<R>(
+    stamp: Option<FormatRevisionStamp>,
+    apply: impl FnOnce() -> R,
+) -> (R, Option<u32>) {
+    let previous = FORMAT_REVISION.with(|slot| slot.replace(stamp));
+    let result = apply();
+    let left = FORMAT_REVISION.with(|slot| slot.replace(previous));
+    (result, left.map(|stamp| stamp.next_id))
+}
+
+/// A formatting edit with changes tracked: the run keeps what its
+/// formatting was before the first change (`w:rPrChange`), and an edit that
+/// puts that formatting back leaves no change.
+fn record_format_change(before: &RunProperties, after: &mut RunProperties) {
+    FORMAT_REVISION.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(stamp) = slot.as_mut() else {
+            return;
+        };
+        match before.change.clone() {
+            Some(change) => {
+                let mut bare = after.clone();
+                bare.change = None;
+                after.change = (bare != change.previous).then_some(change);
+            }
+            None => {
+                let mut previous = before.clone();
+                previous.change = None;
+                after.change = Some(Box::new(crate::document::RunPropertiesChange {
+                    id: Some(stamp.next_id.to_string()),
+                    author: stamp.author.clone(),
+                    date: stamp.date.clone(),
+                    previous,
+                }));
+                stamp.next_id = stamp.next_id.saturating_add(1);
+            }
+        }
+    });
+}
+
+pub(crate) fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
     target.mark_font_properties_direct_from(source);
     if let Some(value) = source.bold {
         target.bold = Some(value);
@@ -1102,7 +1198,9 @@ fn merge_run_properties(target: &mut RunProperties, source: &RunProperties) {
 fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     // A source run keeps its raw XML identity, including whether Word encoded
     // an existing newline as w:cr or w:br. Newly authored runs are split below.
-    if (!run.text.contains('\n') && !run.text.contains(PAGE_BREAK_STR))
+    if (!run.text.contains('\n')
+        && !run.text.contains(PAGE_BREAK_STR)
+        && !run.text.contains(crate::document::COLUMN_BREAK_CHAR))
         || run.node_id.is_some()
         || run.image.is_some()
         || run.text_box.is_some()
@@ -1120,7 +1218,7 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     let mut buffer = String::new();
 
     for ch in run.text.chars() {
-        if ch == '\n' || ch == PAGE_BREAK_CHAR {
+        if ch == '\n' || ch == PAGE_BREAK_CHAR || ch == crate::document::COLUMN_BREAK_CHAR {
             if !buffer.is_empty() {
                 let mut text_run = template.clone();
                 text_run.text = std::mem::take(&mut buffer);
@@ -1150,10 +1248,11 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
 /// ランに含まれるソフト改行 (`\n`) や手動改ページ (`PAGE_BREAK_CHAR`) を専用ランへ分割する。
 #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
 pub fn normalize_break_runs(runs: &mut Vec<Run>) {
-    if runs
-        .iter()
-        .all(|run| !run.text.contains('\n') && !run.text.contains(PAGE_BREAK_STR))
-    {
+    if runs.iter().all(|run| {
+        !run.text.contains('\n')
+            && !run.text.contains(PAGE_BREAK_STR)
+            && !run.text.contains(crate::document::COLUMN_BREAK_CHAR)
+    }) {
         return;
     }
 

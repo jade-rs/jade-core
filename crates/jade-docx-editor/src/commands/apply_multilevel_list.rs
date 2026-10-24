@@ -507,6 +507,8 @@ mod tests {
                     paragraph_props: None,
                     run_props: None,
                     language: None,
+                    is_legal: false,
+                    picture_bullet: None,
                 }
             })
             .collect()

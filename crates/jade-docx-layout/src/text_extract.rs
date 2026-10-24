@@ -4,9 +4,8 @@ use crate::line_metrics::{
     resolve_line_height_points_with_default_multiplier, resolve_widow_orphan_decision,
     text_font_slots, word_east_asian_fe_font_size_floor, word_east_asian_font_line_box_applies,
     word_east_asian_font_line_height_pt, word_grid_line_centres_text, word_run_border_extent_pt,
-    word_run_vertical_extent_pt, word_sizes_east_asian_lines_from_faces,
-    word_tallest_single_line_height_pt, WidowOrphanDecision,
-    WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
+    word_sizes_east_asian_lines_from_faces, word_tallest_single_line_height_pt,
+    WidowOrphanDecision, WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER,
 };
 use crate::line_wrap::{
     apply_paragraph_indent_with_char_unit, layout_text_vertically, merge_east_asian_rules,
@@ -177,6 +176,47 @@ struct SectionLayoutGeometry {
     section_content_height_pt: f32,
     column_layout: TextColumnLayout,
     text_direction: Option<TextDirection>,
+}
+
+/// Page and active text-column bounds used by editor rulers, in CSS pixels.
+/// Resolved through the same section geometry as text layout.
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RulerGeometry {
+    pub page_width: f64,
+    pub page_height: f64,
+    pub content_left: f64,
+    pub content_right: f64,
+    pub content_top: f64,
+    pub content_bottom: f64,
+    pub text_left: f64,
+    pub text_right: f64,
+}
+
+pub fn ruler_geometry(
+    document: &Document,
+    section: Option<&SectionProperties>,
+    page_number: usize,
+    caret_x: f64,
+) -> RulerGeometry {
+    let geometry = SectionLayoutGeometry::resolve(document, section, page_number);
+    let (text_left, text_right) = geometry
+        .column_layout
+        .columns
+        .iter()
+        .copied()
+        .find(|(left, right)| caret_x >= *left && caret_x <= *right)
+        .unwrap_or((geometry.content_left_x, geometry.content_right_x));
+    RulerGeometry {
+        page_width: geometry.page_width,
+        page_height: geometry.page_height,
+        content_left: geometry.content_left_x,
+        content_right: geometry.content_right_x,
+        content_top: geometry.content_top_y,
+        content_bottom: geometry.content_bottom_y,
+        text_left,
+        text_right,
+    }
 }
 
 impl SectionLayoutGeometry {
@@ -404,6 +444,27 @@ pub fn paragraph_indent_char_unit_pt_with_grid(
     base
 }
 
+/// Character ruler spacing uses the same font/style/grid unit as paragraph indents.
+pub fn ruler_character_unit_px(
+    document: &Document,
+    section: Option<&SectionProperties>,
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+) -> f64 {
+    let grid = section
+        .and_then(|section| section.doc_grid.as_ref())
+        .or_else(|| paragraph_doc_grid(document));
+    let snap = resolve_effective_snap_to_grid(
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.snap_to_grid),
+        document.snap_to_grid_default,
+        grid,
+    );
+    points_to_px(paragraph_indent_char_unit_pt_with_grid(paragraph, styles, grid, snap) as f32)
+}
+
 fn estimate_paragraph_font_size_with_styles(
     paragraph: &jade_docx_reader::Paragraph,
     styles: Option<&StylesPart>,
@@ -498,8 +559,15 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.default_tab_stop = settings.default_tab_stop;
     document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+    document.compat = settings.compat.clone();
+    crate::font_resolver::set_document_opentype_features_enabled(
+        crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+    );
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
+    document.hyphenation = settings.hyphenation;
+    document.book_fold_printing = settings.book_fold_printing;
+    document.print_two_on_one = settings.print_two_on_one;
     if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
         document.snap_to_grid_default = settings.snap_to_grid_default;
         document.east_asian_line_breaking = settings.to_line_breaking_settings();
@@ -653,6 +721,7 @@ fn paragraph_line_height_points<C: LineWrapContext>(
         word_sizes_east_asian_lines_from_faces(
             document.east_asian_line_breaking.use_east_asian_layout,
         ),
+        document.compat.space_for_underline(),
     )?;
     let implicit_line_box_pt = if word_grid_line_centres_text(snap_to_grid, doc_grid) {
         single_line_pt.or(implicit_line_box_pt)
@@ -715,6 +784,7 @@ fn paragraph_word_font_lines_pt<C: LineWrapContext>(
     text: &str,
     run_styles: &[RunStyle],
     east_asian_faces_size_lines: bool,
+    space_for_underline: bool,
 ) -> Result<(Option<f32>, Option<f32>), C::Error> {
     let mut east_asian_line: Option<f32> = None;
     let mut runs = Vec::with_capacity(run_styles.len());
@@ -735,13 +805,26 @@ fn paragraph_word_font_lines_pt<C: LineWrapContext>(
                     Some(east_asian_line.map_or(height, |current| current.max(height)));
             }
         }
-        runs.push(word_run_vertical_extent_pt(
-            slots,
-            &resolved.font_descriptor_latin_ascii,
-            &resolved.font_descriptor_east_asia,
-            east_asian_faces_size_lines,
-            word_run_border_extent_pt(run_style.properties.as_deref()),
-        ));
+        let underline_depth_pt = if space_for_underline {
+            crate::line_metrics::word_space_for_underline_depth_pt(
+                run_style.properties.as_deref(),
+                &resolved.font_descriptor_east_asia,
+            )
+        } else {
+            0.0
+        };
+        runs.push(
+            crate::line_metrics::WordRunFaces::new(
+                &resolved.font_descriptor_latin_ascii,
+                &resolved.font_descriptor_east_asia,
+                east_asian_faces_size_lines,
+            )
+            .run_vertical_extent_with_underline_pt(
+                slots,
+                word_run_border_extent_pt(run_style.properties.as_deref()),
+                underline_depth_pt,
+            ),
+        );
     }
     Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
 }
@@ -859,6 +942,18 @@ fn build_paragraph_input<C: LineWrapContext>(
             hyperlink: run.hyperlink.clone(),
             inline_object: None,
         });
+        // 組み文字 / 割注 take the width the renderer draws them in.
+        if let Some(last) = run_styles.last_mut() {
+            if let Some(properties) = last.properties.as_deref() {
+                if let Some(combined) = crate::combined_characters::combined_run_properties(
+                    layout_context.context,
+                    &run_text,
+                    properties,
+                )? {
+                    last.properties = Some(Rc::new(combined));
+                }
+            }
+        }
     }
     if text.trim().is_empty() {
         return Ok(None);
@@ -870,6 +965,14 @@ fn build_paragraph_input<C: LineWrapContext>(
         paragraph_style.default_tab_width = points_to_px(default_tab_stop);
     }
     paragraph_style.use_hanging_indent_tab_stop = !document.no_tab_hanging_indent;
+    paragraph_style.hyphenation = crate::line_wrap::ParagraphHyphenation::for_paragraph(
+        &document.hyphenation,
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.suppress_auto_hyphens)
+            .unwrap_or(false),
+    );
     if let Some(char_advances) = layout_context
         .oracle_advances_px_by_paragraph
         .and_then(|by_paragraph| by_paragraph.get(&paragraph_index))
@@ -983,12 +1086,12 @@ fn build_paragraph_input<C: LineWrapContext>(
             merge_east_asian_rules(&defaults, props.east_asian_settings.as_ref());
         paragraph_style.enable_line_break_rules =
             paragraph_style.east_asian_rules.use_east_asian_layout;
-        if paragraph_style
-            .east_asian_rules
-            .character_spacing_control
-            .as_deref()
-            == Some("compressPunctuation")
-            && !doc_grid_has_active_line_grid(doc_grid)
+        if crate::line_wrap::compresses_punctuation(
+            paragraph_style
+                .east_asian_rules
+                .character_spacing_control
+                .as_deref(),
+        ) && !doc_grid_has_active_line_grid(doc_grid)
             && !doc_grid_has_active_char_grid(doc_grid)
         {
             paragraph_style.east_asian_advance_scale =
@@ -1051,6 +1154,7 @@ fn build_paragraph_input<C: LineWrapContext>(
                     | TextDirection::TbRlV
                     | TextDirection::BtLr
                     | TextDirection::BtLrV
+                    | TextDirection::TbLrV
             )
         });
     if let Some(drop_cap) = paragraph
@@ -1269,13 +1373,20 @@ fn should_emit_word_oracle_line(line_text: &str) -> bool {
 }
 
 fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
-    matches!(direction, TextDirection::TbRl | TextDirection::TbRlV)
+    matches!(
+        direction,
+        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::TbLrV
+    )
 }
 
 fn table_direction_emits_vertical_oracle_lines(direction: TextDirection) -> bool {
     matches!(
         direction,
-        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::BtLr | TextDirection::BtLrV
+        TextDirection::TbRl
+            | TextDirection::TbRlV
+            | TextDirection::BtLr
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV
     )
 }
 
@@ -2466,14 +2577,23 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         .parse_document_xml(&xml)
         .map_err(LineLayoutError::DocumentParse)?;
     let needs_style_defaults = document_has_visible_paragraph_without_east_asian_fonting(&document);
+    // A document without settings asks for no compatibility mode.
+    crate::font_resolver::set_document_opentype_features_enabled(true);
     if let Some(settings_xml) = package.get("word/settings.xml") {
         let settings = DocumentSettings::from_xml(&String::from_utf8_lossy(settings_xml))
             .map_err(LineLayoutError::DocumentParse)?;
         document.default_tab_stop = settings.default_tab_stop;
         document.no_tab_hanging_indent = settings.no_tab_hanging_indent;
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
+        document.compat = settings.compat.clone();
+        crate::font_resolver::set_document_opentype_features_enabled(
+            crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+        );
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;
+        document.hyphenation = settings.hyphenation;
+        document.book_fold_printing = settings.book_fold_printing;
+        document.print_two_on_one = settings.print_two_on_one;
         if needs_style_defaults {
             // Word oracle comparisons need selected document-level compatibility
             // settings. The contract trace
@@ -2791,6 +2911,41 @@ fn effective_run_properties(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ruler_character_unit_matches_indent_font_and_section_grid() {
+        let document = Document::default();
+        let mut run = plain_run("文字");
+        run.properties = Some(RunProperties {
+            font_size: Some(12.0),
+            ..RunProperties::default()
+        });
+        let mut paragraph = paragraph_with_runs(vec![run]);
+        assert_eq!(
+            ruler_character_unit_px(&document, None, &paragraph, None),
+            16.0
+        );
+        let section = SectionProperties {
+            doc_grid: Some(jade_docx_reader::DocGrid {
+                grid_type: Some("linesAndChars".into()),
+                char_space: Some(3.0),
+                ..jade_docx_reader::DocGrid::default()
+            }),
+            ..SectionProperties::default()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            snap_to_grid: Some(true),
+            ..ParagraphProperties::default()
+        });
+        assert_eq!(
+            ruler_character_unit_px(&document, Some(&section), &paragraph, None),
+            20.0
+        );
+        paragraph.properties.as_mut().unwrap().snap_to_grid = Some(false);
+        assert_eq!(
+            ruler_character_unit_px(&document, Some(&section), &paragraph, None),
+            16.0
+        );
+    }
     use crate::font_resolver::ResolvedRunStyle;
     use futures::executor::block_on;
     use jade_docx_reader::{
@@ -2803,6 +2958,43 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
     use unicode_segmentation::UnicodeSegmentation;
+
+    #[test]
+    fn ruler_uses_section_columns_and_mirrored_gutter_geometry() {
+        let document = Document {
+            mirror_margins: true,
+            ..Document::default()
+        };
+        let section = SectionProperties {
+            page_settings: Some(PageSettings {
+                width: Some(600.0),
+                height: Some(800.0),
+                margin_left: Some(60.0),
+                margin_right: Some(40.0),
+                gutter: Some(10.0),
+                ..PageSettings::default()
+            }),
+            columns: Some(SectionColumns {
+                count: Some(2),
+                space: Some(20.0),
+                ..SectionColumns::default()
+            }),
+            ..SectionProperties::default()
+        };
+        for page in [1, 2] {
+            let layout = SectionLayoutGeometry::resolve(&document, Some(&section), page);
+            let column = layout.column_layout.columns[1];
+            let ruler = ruler_geometry(&document, Some(&section), page, column.0 + 1.0);
+            assert_eq!(ruler.page_width, layout.page_width);
+            assert_eq!(ruler.content_left, layout.content_left_x);
+            assert_eq!(ruler.content_right, layout.content_right_x);
+            assert_eq!((ruler.text_left, ruler.text_right), column);
+        }
+        assert_ne!(
+            ruler_geometry(&document, Some(&section), 1, 0.0).content_left,
+            ruler_geometry(&document, Some(&section), 2, 0.0).content_left
+        );
+    }
 
     struct FixedWidthContext {
         width_per_grapheme: f64,
@@ -3440,6 +3632,104 @@ mod tests {
     }
 
     #[test]
+    fn a_tb_lr_v_cell_stacks_glyphs_down_and_columns_left_to_right() {
+        assert_eq!(
+            TextDirection::try_from_str("tbLrV"),
+            Some(TextDirection::TbLrV)
+        );
+        let cell = |direction| TableCell {
+            text_direction: Some(direction),
+            blocks: vec![BodyElement::from_paragraph(paragraph_with_runs(vec![
+                plain_run("abcdefghijklmnopqrstuvwxyz"),
+            ]))],
+            ..TableCell::default()
+        };
+        let lines_for = |direction| {
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![BodyElement::from_table(Table {
+                        columns: vec![TableColumn { width: Some(160.0) }],
+                        rows: vec![TableRow {
+                            height: Some(40.0),
+                            cells: vec![cell(direction)],
+                            ..TableRow::default()
+                        }],
+                        ..Table::default()
+                    })],
+                }),
+                page_settings: Some(PageSettings {
+                    width: Some(220.0),
+                    height: Some(160.0),
+                    margin_left: Some(20.0),
+                    margin_right: Some(20.0),
+                    margin_top: Some(20.0),
+                    margin_bottom: Some(20.0),
+                    ..PageSettings::default()
+                }),
+                ..Document::default()
+            };
+            let context = FixedWidthContext::new(5.0);
+            let layout = layout_document_lines(&document, &context).expect("layout table lines");
+            layout
+                .get_lines()
+                .map(|line| (line.text.clone(), line.x, line.y))
+                .collect::<Vec<_>>()
+        };
+        let left_to_right = lines_for(TextDirection::TbLrV);
+        let right_to_left = lines_for(TextDirection::TbRlV);
+        assert_eq!(left_to_right.len(), 26);
+        assert!(
+            left_to_right[1].2 > left_to_right[0].2,
+            "glyphs advance down"
+        );
+        let first = left_to_right.first().unwrap();
+        let last = left_to_right.last().unwrap();
+        assert!(
+            last.1 > first.1,
+            "later columns sit to the right: {left_to_right:?}"
+        );
+        assert!(
+            right_to_left.last().unwrap().1 < right_to_left.first().unwrap().1,
+            "tbRlV's later columns sit to the left"
+        );
+    }
+
+    #[test]
+    fn combined_characters_take_their_wider_half_and_brackets() {
+        let context = FixedWidthContext::new(5.0);
+        let mut properties = jade_docx_reader::RunProperties {
+            font_size: Some(10.5),
+            east_asian_layout: Some(Box::new(jade_docx_reader::document::EastAsianLayout {
+                combine: true,
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        let combined =
+            crate::combined_characters::combined_run_properties(&context, "abcd", &properties)
+                .unwrap()
+                .expect("a combined run");
+        assert_eq!(combined.font_size, Some(5.25));
+        // Two halves of 10px over 20px of characters.
+        assert_eq!(combined.text_scale, Some(50.0));
+        properties
+            .east_asian_layout
+            .as_mut()
+            .unwrap()
+            .combine_brackets = Some("round".into());
+        let bracketed =
+            crate::combined_characters::combined_run_properties(&context, "abcd", &properties)
+                .unwrap()
+                .unwrap();
+        assert_eq!(bracketed.text_scale, Some(100.0));
+        assert!(
+            crate::combined_characters::combined_run_properties(&context, "a", &properties)
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
     fn table_text_direction_fixture_keeps_bottom_to_top_ascii_glyph_lines() {
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../public/fixtures/table-with-text-direction.docx");
@@ -3472,6 +3762,7 @@ mod tests {
                             text: Some("P a≤X≤b".to_string()),
                             children: Vec::new(),
                             attributes: Default::default(),
+                            namespace: None,
                         }],
                     }),
                     BodyElement::from_paragraph(paragraph_with_runs(vec![plain_run("after")])),
@@ -3520,6 +3811,7 @@ mod tests {
                                 text: Some("P a≤X≤b".to_string()),
                                 children: Vec::new(),
                                 attributes: Default::default(),
+                                namespace: None,
                             }],
                         }),
                         field: None,
@@ -3573,6 +3865,7 @@ mod tests {
                             text: Some("P a≤X≤b".to_string()),
                             children: Vec::new(),
                             attributes: Default::default(),
+                            namespace: None,
                         }],
                     }),
                     BodyElement::from_paragraph(paragraph_with_runs(Vec::new())),

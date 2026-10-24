@@ -265,6 +265,18 @@ pub trait CanvasRenderHost {
         false
     }
 
+    /// Whether drawing may be held back and painted later in the page.
+    ///
+    /// The renderer paints a page's floating objects in Word's layer order —
+    /// objects behind text, the text, then objects in front of text — by
+    /// holding them until the page is finished. That needs every draw to go
+    /// through [`Self::painter`] or [`Self::draw_image_data_uri`]; a host that
+    /// falls back to its canvas context for images cannot hold them, and keeps
+    /// the anchor-order painting.
+    fn supports_deferred_painting(&self) -> bool {
+        false
+    }
+
     /// Alphabetic-baseline metrics under the font last given to [`Self::set_font`].
     ///
     /// Line box height and trailing overhang need the bounding boxes, not just

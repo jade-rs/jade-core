@@ -121,6 +121,9 @@ struct ResolvedStack {
     /// closest match by family/weight/style.
     fallback: usize,
     size_pt: f32,
+    /// OpenType features the descriptor carries (Word's 詳細設定 typography),
+    /// applied on top of the shaper's defaults.
+    features: Vec<Feature>,
 }
 
 /// `rustybuzz`-backed [`TextMeasurer`] that can reproduce Chromium advance widths.
@@ -318,6 +321,10 @@ impl ShapingMeasurer {
             faces,
             fallback: self.pick_index(&spec).unwrap_or(0),
             size_pt: spec.size_pt,
+            features: jade_painter::font_features::parse(descriptor)
+                .into_iter()
+                .map(|feature| Feature::new(Tag::from_bytes(&feature.tag), feature.value, ..))
+                .collect(),
         });
         self.descriptor_cache
             .borrow_mut()
@@ -439,15 +446,16 @@ fn fullwidth_trim_count(text: &str) -> usize {
 }
 
 /// Shapes one run and returns its advance in font design units.
-fn shape_run_units(face: &Face<'_>, text: &str, kern_enabled: bool) -> i32 {
+fn shape_run_units(face: &Face<'_>, text: &str, kern_enabled: bool, extra: &[Feature]) -> i32 {
     let mut buffer = UnicodeBuffer::new();
     buffer.push_str(text);
     buffer.guess_segment_properties();
-    let features = if kern_enabled {
+    let mut features = if kern_enabled {
         Vec::new()
     } else {
         vec![Feature::new(Tag::from_bytes(KERN), 0, ..)]
     };
+    features.extend_from_slice(extra);
     let shaped = rustybuzz::shape(face, &features, buffer);
     shaped
         .glyph_positions()
@@ -471,12 +479,19 @@ fn select_face(stack: &[usize], fallback: usize, covers: impl Fn(usize) -> bool)
 impl ShapingMeasurer {
     /// Advance of one run in px. Each face carries its own units-per-em, so the
     /// scale has to be applied per run rather than once per string.
-    fn run_advance_px(&self, text: &str, face_index: usize, cjk: bool, size_px: f64) -> f64 {
+    fn run_advance_px(
+        &self,
+        text: &str,
+        face_index: usize,
+        cjk: bool,
+        size_px: f64,
+        features: &[Feature],
+    ) -> f64 {
         let Some(entry) = self.faces.get(face_index) else {
             return 0.0;
         };
         let kern_enabled = !(cjk && self.options.disable_kern_for_cjk);
-        let units = shape_run_units(&entry.face, text, kern_enabled);
+        let units = shape_run_units(&entry.face, text, kern_enabled, features);
         f64::from(units) / f64::from(entry.face.units_per_em()) * size_px
     }
 }
@@ -501,8 +516,13 @@ impl TextMeasurer for ShapingMeasurer {
             match current {
                 Some(previous) if previous == key => {}
                 Some((face_index, cjk)) => {
-                    width +=
-                        self.run_advance_px(&text[run_start..offset], face_index, cjk, size_px);
+                    width += self.run_advance_px(
+                        &text[run_start..offset],
+                        face_index,
+                        cjk,
+                        size_px,
+                        &stack.features,
+                    );
                     run_start = offset;
                     current = Some(key);
                 }
@@ -510,7 +530,13 @@ impl TextMeasurer for ShapingMeasurer {
             }
         }
         if let Some((face_index, cjk)) = current {
-            width += self.run_advance_px(&text[run_start..], face_index, cjk, size_px);
+            width += self.run_advance_px(
+                &text[run_start..],
+                face_index,
+                cjk,
+                size_px,
+                &stack.features,
+            );
         }
 
         if self.options.trim_fullwidth_punctuation {

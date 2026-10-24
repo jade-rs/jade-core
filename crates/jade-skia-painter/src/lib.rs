@@ -28,6 +28,9 @@ mod pdf_text;
 pub use skia_safe::Typeface;
 
 /// A link in the painter's logical CSS-pixel page coordinate space.
+/// A font file's bytes and its face index in the file.
+type FontData = Rc<(Vec<u8>, u32)>;
+
 pub struct PdfLink {
     pub page_index: usize,
     pub rect: (f64, f64, f64, f64),
@@ -38,6 +41,39 @@ pub struct PdfLink {
 pub enum PdfLinkTarget {
     Uri(String),
     Page { page_index: usize, x: f64, y: f64 },
+}
+
+/// A node of a tagged PDF's structure tree (ISO 32000 §14.7): its standard
+/// structure type (`Document`, `P`, `H1`, `Table`, `TR`, `TD`, `Figure`),
+/// the node id the drawing was marked with ([`jade_painter::Painter::set_structure_node`]),
+/// a figure's alternative text, and the nodes inside it in reading order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTag {
+    pub kind: String,
+    pub node_id: i32,
+    pub alt: Option<String>,
+    pub children: Vec<PdfTag>,
+}
+
+/// What makes an exported PDF tagged: its structure, title and language.
+/// The headings among the structure become the PDF's bookmarks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfTagging {
+    pub root: PdfTag,
+    pub title: Option<String>,
+    pub language: Option<String>,
+}
+
+fn structure_node(tag: &PdfTag) -> skia_safe::pdf::StructureElementNode {
+    let mut node = skia_safe::pdf::StructureElementNode::new(&tag.kind);
+    node.set_node_id(tag.node_id);
+    if let Some(alt) = &tag.alt {
+        node.set_alt(alt);
+    }
+    for child in &tag.children {
+        node.append_child(structure_node(child));
+    }
+    node
 }
 
 use skia_safe::{
@@ -61,6 +97,19 @@ struct StyleState {
     dash: Vec<f32>,
     font_size_px: f32,
     font_index: usize,
+    /// The descriptor asked for italic, or bold, and the face picked for it is
+    /// not: drawn slanted, or emboldened, as browsers and Word synthesise the
+    /// style a family does not have.
+    synthetic_italic: bool,
+    synthetic_bold: bool,
+    /// The faces of the descriptor's later families, in order: where a
+    /// character the first family's face lacks is looked for next — the
+    /// East Asian face after the Latin one, as a browser walks the list.
+    font_fallbacks: Rc<[ResolvedFont]>,
+    /// The weight and style the descriptor asked for, which a face found
+    /// only by covering a character is chosen and synthesised to.
+    requested_weight: i32,
+    requested_italic: bool,
     font_descriptor: Rc<str>,
     /// Canvas's shadow, which Word's shadow, emboss and imprint character
     /// effects are drawn with. Transparent means no shadow, as on a canvas.
@@ -123,6 +172,11 @@ impl Default for StyleState {
             dash: Vec::new(),
             font_size_px: 16.0,
             font_index: 0,
+            synthetic_italic: false,
+            synthetic_bold: false,
+            font_fallbacks: Rc::from(Vec::new()),
+            requested_weight: 400,
+            requested_italic: false,
             font_descriptor: Rc::from("16px sans-serif"),
             shadow_color: Color4f::new(0.0, 0.0, 0.0, 0.0),
             shadow_blur: 0.0,
@@ -136,8 +190,12 @@ impl Default for StyleState {
 struct RegisteredTypeface {
     family: String,
     weight: u16,
+    italic: bool,
     typeface: Typeface,
 }
+
+/// How far a synthesised italic leans: Chromium's and Skia's fake-italic skew.
+const SYNTHETIC_ITALIC_SKEW: f32 = -0.25;
 
 /// Runs `f` against a process-wide `FontMgr`.
 ///
@@ -341,16 +399,45 @@ impl SkiaPainter {
 
     /// Adds link annotations without changing the recorded page drawing.
     pub fn encode_pdf_with_links(pages: &[Self], links: &[PdfLink]) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, None)
+    }
+
+    /// A tagged PDF (PDF/UA's structure): the vector pages' drawing marked
+    /// with the nodes of `tagging`'s structure tree, the headings as
+    /// bookmarks, and the document's title shown as the window's.
+    pub fn encode_tagged_pdf(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: &PdfTagging,
+    ) -> Result<Vec<u8>, String> {
+        Self::encode_pdf_with(pages, links, Some(tagging))
+    }
+
+    fn encode_pdf_with(
+        pages: &[Self],
+        links: &[PdfLink],
+        tagging: Option<&PdfTagging>,
+    ) -> Result<Vec<u8>, String> {
         if pages.is_empty() {
             return Err("no PDF pages".to_string());
         }
         let mut bytes = Vec::new();
         let mut sizes = Vec::with_capacity(pages.len());
-        let metadata = skia_safe::pdf::Metadata {
+        let mut metadata = skia_safe::pdf::Metadata {
             creator: "Jade".into(),
             raster_dpi: Some(96.0),
             ..Default::default()
         };
+        if let Some(tagging) = tagging {
+            metadata.structure_element_tree_root = Some(structure_node(&tagging.root));
+            metadata.outline = skia_safe::pdf::Outline::StructureElementHeaders;
+            if let Some(title) = &tagging.title {
+                metadata.title = title.clone();
+            }
+            if let Some(language) = &tagging.language {
+                metadata.lang = language.clone();
+            }
+        }
         let mut document = skia_safe::pdf::new_document(&mut bytes, Some(&metadata));
         for painter in pages {
             let mut surface = painter.shared.surface.borrow_mut();
@@ -495,6 +582,15 @@ impl SkiaPainter {
                 .map_err(|err| err.to_string())?
                 .push(id.into());
         }
+        if tagging.is_some_and(|tagging| tagging.title.is_some()) {
+            // A tagged document's window shows its title, not its file name.
+            if let Ok(catalog) = pdf.catalog_mut() {
+                catalog.set(
+                    "ViewerPreferences",
+                    lopdf::dictionary! { "DisplayDocTitle" => true },
+                );
+            }
+        }
         pdf.prune_objects();
         pdf.compress();
         bytes.clear();
@@ -510,12 +606,28 @@ impl SkiaPainter {
         weight: u16,
         bytes: &[u8],
     ) -> Option<()> {
-        let typeface = with_font_mgr(|mgr| mgr.new_from_data(bytes, None))?;
-        self.shared.fonts.borrow_mut().push(RegisteredTypeface {
-            family: family.into(),
-            weight,
-            typeface,
-        });
+        self.register_font_bytes_styled(family, weight, false, bytes, 0)
+    }
+
+    /// [`Self::register_font_bytes`] for an italic face, or one face of a
+    /// collection (`.ttc`), as `index`.
+    pub fn register_font_bytes_styled(
+        &self,
+        family: impl Into<String>,
+        weight: u16,
+        italic: bool,
+        bytes: &[u8],
+        index: usize,
+    ) -> Option<()> {
+        let typeface = if index == 0 {
+            with_font_mgr(|mgr| mgr.new_from_data(bytes, None))?
+        } else {
+            // CoreText's font manager reads only the first face of a
+            // collection, so the face asked for is cut out as a font of its own.
+            let single = sfnt_from_collection(bytes, index)?;
+            with_font_mgr(|mgr| mgr.new_from_data(&single, None))?
+        };
+        self.register_face_styled(family, weight, italic, typeface);
         Some(())
     }
 
@@ -535,11 +647,40 @@ impl SkiaPainter {
             .collect()
     }
 
+    /// [`Self::registered_faces`] with whether each is an italic face.
+    pub fn registered_faces_styled(&self) -> Vec<(String, u16, bool, Typeface)> {
+        self.shared
+            .fonts
+            .borrow()
+            .iter()
+            .map(|entry| {
+                (
+                    entry.family.clone(),
+                    entry.weight,
+                    entry.italic,
+                    entry.typeface.clone(),
+                )
+            })
+            .collect()
+    }
+
     /// Registers an already-parsed face, as returned by [`Self::registered_faces`].
     pub fn register_face(&self, family: impl Into<String>, weight: u16, typeface: Typeface) {
+        self.register_face_styled(family, weight, false, typeface);
+    }
+
+    /// Registers an already-parsed face, italic or not.
+    pub fn register_face_styled(
+        &self,
+        family: impl Into<String>,
+        weight: u16,
+        italic: bool,
+        typeface: Typeface,
+    ) {
         self.shared.fonts.borrow_mut().push(RegisteredTypeface {
             family: family.into(),
             weight,
+            italic,
             typeface,
         });
     }
@@ -674,6 +815,104 @@ impl SkiaPainter {
             canvas.draw_path(&path, paint);
             canvas.restore();
         });
+    }
+
+    /// The font file behind `typeface`, parsed once per face for the shaper.
+    fn shaping_data(typeface: &Typeface) -> Option<FontData> {
+        thread_local! {
+            static DATA: RefCell<HashMap<u32, Option<FontData>>> =
+                RefCell::new(HashMap::new());
+        }
+        let id = typeface.unique_id();
+        DATA.with(|data| {
+            data.borrow_mut()
+                .entry(id)
+                .or_insert_with(|| {
+                    typeface
+                        .to_font_data()
+                        .map(|(bytes, index)| Rc::new((bytes, index as u32)))
+                })
+                .clone()
+        })
+    }
+
+    /// [`Painter::try_fill_shaped_text`]: shapes `text` with the descriptor's
+    /// OpenType features and draws the glyphs the font substitutes, each at
+    /// its cluster's x.
+    fn fill_shaped(&self, text: &str, clusters: &[(usize, f64)], y: f64) -> bool {
+        let descriptor = self.shared.style.borrow().font_descriptor.clone();
+        let features = jade_painter::font_features::parse(&descriptor);
+        if features.is_empty() || text.is_empty() || clusters.is_empty() {
+            return false;
+        }
+        let font = self.font();
+        let typeface = font.typeface();
+        // One face draws the whole stretch, or the caller draws it per
+        // character with fallback.
+        if text
+            .chars()
+            .any(|ch| typeface.unichar_to_glyph(ch as i32) == 0)
+        {
+            return false;
+        }
+        let Some(data) = Self::shaping_data(&typeface) else {
+            return false;
+        };
+        let Some(face) = rustybuzz::Face::from_slice(&data.0, data.1) else {
+            return false;
+        };
+        let mut buffer = rustybuzz::UnicodeBuffer::new();
+        buffer.push_str(text);
+        buffer.guess_segment_properties();
+        let features: Vec<rustybuzz::Feature> = features
+            .iter()
+            .map(|feature| {
+                rustybuzz::Feature::new(
+                    rustybuzz::ttf_parser::Tag::from_bytes(&feature.tag),
+                    feature.value,
+                    ..,
+                )
+            })
+            .collect();
+        let shaped = rustybuzz::shape(&face, &features, buffer);
+        let scale = font.size() / f32::from(face.units_per_em() as u16);
+        let infos = shaped.glyph_infos();
+        let positions = shaped.glyph_positions();
+        let paint = self.fill_paint();
+        let baseline_y = self.baseline_y(&font, y);
+        let cluster_x = |byte: usize| -> f32 {
+            let at = clusters.partition_point(|(start, _)| *start <= byte);
+            clusters[at.saturating_sub(1)].1 as f32
+        };
+        let mut builder = skia_safe::TextBlobBuilder::new();
+        let (glyphs, points, utf8, blob_clusters) =
+            builder.alloc_run_text_pos(&font, infos.len(), text.len(), None);
+        utf8.copy_from_slice(text.as_bytes());
+        let mut pen = 0.0_f32;
+        let mut cluster_pen = 0.0_f32;
+        let mut current_cluster = None;
+        for (index, (info, position)) in infos.iter().zip(positions).enumerate() {
+            if current_cluster != Some(info.cluster) {
+                current_cluster = Some(info.cluster);
+                cluster_pen = pen;
+            }
+            glyphs[index] = info.glyph_id as u16;
+            blob_clusters[index] = info.cluster;
+            points[index] = skia_safe::Point::new(
+                cluster_x(info.cluster as usize)
+                    + (pen - cluster_pen)
+                    + position.x_offset as f32 * scale,
+                -(position.y_offset as f32) * scale,
+            );
+            pen += position.x_advance as f32 * scale;
+        }
+        let Some(blob) = builder.make() else {
+            return false;
+        };
+        self.with_canvas(|canvas| {
+            canvas.draw_text_blob(&blob, (0.0, baseline_y), &paint);
+        });
+        true
     }
 
     /// PNG bytes of everything painted so far.
@@ -1006,14 +1245,50 @@ impl SkiaPainter {
         if font.typeface().unichar_to_glyph(first as i32) != 0 {
             return font;
         }
-        let size_px = self.shared.style.borrow().font_size_px;
+        let style = self.shared.style.borrow();
         let fonts = self.shared.fonts.borrow();
-        for entry in fonts.iter() {
-            if entry.typeface.unichar_to_glyph(first as i32) != 0 {
-                return Font::from_typeface(entry.typeface.clone(), size_px);
-            }
+        let covers = |index: usize| {
+            fonts
+                .get(index)
+                .is_some_and(|entry| entry.typeface.unichar_to_glyph(first as i32) != 0)
+        };
+        // The descriptor's later families first, then whichever registered
+        // face has the character, nearest the weight and style asked for.
+        let resolved = style
+            .font_fallbacks
+            .iter()
+            .find(|resolved| covers(resolved.index))
+            .copied()
+            .or_else(|| {
+                let (index, entry) = fonts
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| covers(*index))
+                    .min_by_key(|(_, entry)| {
+                        (
+                            entry.italic != style.requested_italic,
+                            (entry.weight as i32 - style.requested_weight).abs(),
+                        )
+                    })?;
+                Some(ResolvedFont {
+                    index,
+                    size_px: style.font_size_px,
+                    synthetic_italic: style.requested_italic && !entry.italic,
+                    synthetic_bold: style.requested_weight >= 600 && entry.weight < 600,
+                })
+            });
+        let Some(resolved) = resolved else {
+            return font;
+        };
+        let mut fallback =
+            Font::from_typeface(fonts[resolved.index].typeface.clone(), style.font_size_px);
+        if resolved.synthetic_italic {
+            fallback.set_skew_x(SYNTHETIC_ITALIC_SKEW);
         }
-        font
+        if resolved.synthetic_bold {
+            fallback.set_embolden(true);
+        }
+        fallback
     }
 
     /// `text` split where the face drawing it changes: each character in
@@ -1057,10 +1332,17 @@ impl SkiaPainter {
 
     fn font(&self) -> Font {
         let style = self.shared.style.borrow();
-        match self.shared.fonts.borrow().get(style.font_index) {
+        let mut font = match self.shared.fonts.borrow().get(style.font_index) {
             Some(entry) => Font::from_typeface(entry.typeface.clone(), style.font_size_px),
-            None => Font::default(),
+            None => return Font::default(),
+        };
+        if style.synthetic_italic {
+            font.set_skew_x(SYNTHETIC_ITALIC_SKEW);
         }
+        if style.synthetic_bold {
+            font.set_embolden(true);
+        }
+        font
     }
 
     /// Resolves a CSS font shorthand to a registered face and a px size.
@@ -1069,43 +1351,148 @@ impl SkiaPainter {
     /// prefix, a `<n>pt` size, and a comma-separated family list. The first
     /// family with a registered face wins, which mirrors how the measurement
     /// backend walks the stack.
-    fn resolve_font(&self, descriptor: &str) -> (usize, f32) {
+    fn resolve_font(&self, descriptor: &str) -> FontChoice {
         let lower = descriptor.to_ascii_lowercase();
-        let weight: i32 = if lower.contains("bold") { 700 } else { 400 };
-
         let mut size_px = 16.0_f32;
         let mut families = String::new();
+        let mut weight: i32 = 400;
+        let mut italic = false;
         for (index, token) in descriptor.split_whitespace().enumerate() {
-            if let Some(value) = token.strip_suffix("pt") {
-                if let Ok(points) = value.parse::<f32>() {
-                    size_px = points * 96.0 / 72.0;
-                    families = descriptor
-                        .split_whitespace()
-                        .skip(index + 1)
-                        .collect::<Vec<_>>()
-                        .join(" ");
-                    break;
+            let size = token
+                .strip_suffix("pt")
+                .and_then(|value| value.parse::<f32>().ok())
+                .map(|points| points * 96.0 / 72.0)
+                .or_else(|| {
+                    token
+                        .strip_suffix("px")
+                        .and_then(|value| value.parse::<f32>().ok())
+                });
+            if let Some(size) = size {
+                size_px = size;
+                families = descriptor
+                    .split_whitespace()
+                    .skip(index + 1)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                break;
+            }
+            match token.to_ascii_lowercase().as_str() {
+                "bold" | "bolder" => weight = 700,
+                "italic" | "oblique" => italic = true,
+                numeric => {
+                    if let Ok(value) = numeric.parse::<i32>() {
+                        if (100..=900).contains(&value) {
+                            weight = value;
+                        }
+                    }
                 }
             }
         }
+        if families.is_empty() && lower.contains("bold") {
+            weight = 700;
+        }
 
+        let fonts = self.shared.fonts.borrow();
+        let mut chain: Vec<ResolvedFont> = Vec::new();
         for family in families.split(',') {
             let name = family.trim().trim_matches('\'').trim_matches('"');
             if name.is_empty() {
                 continue;
             }
-            let fonts = self.shared.fonts.borrow();
+            // A face of the asked style beats any weight; then the nearest
+            // weight; then the face registered last, so a family's real faces
+            // registered over a stand-in for it are the ones drawn.
             let best = fonts
                 .iter()
                 .enumerate()
+                .rev()
                 .filter(|(_, entry)| entry.family.eq_ignore_ascii_case(name))
-                .min_by_key(|(_, entry)| (entry.weight as i32 - weight).abs());
-            if let Some((index, _)) = best {
-                return (index, size_px);
+                .min_by_key(|(_, entry)| {
+                    (entry.italic != italic, (entry.weight as i32 - weight).abs())
+                });
+            if let Some((index, entry)) = best {
+                if chain.iter().all(|resolved| resolved.index != index) {
+                    chain.push(ResolvedFont {
+                        index,
+                        size_px,
+                        synthetic_italic: italic && !entry.italic,
+                        synthetic_bold: weight >= 600 && entry.weight < 600,
+                    });
+                }
             }
         }
-        (0, size_px)
+        let first = chain.first().copied().unwrap_or(ResolvedFont {
+            index: 0,
+            size_px,
+            synthetic_italic: italic,
+            synthetic_bold: false,
+        });
+        FontChoice {
+            first,
+            fallbacks: Rc::from(chain.get(1..).unwrap_or(&[]).to_vec()),
+            weight,
+            italic,
+        }
     }
+}
+
+/// Face `index` of a font collection (`.ttc`) as a font file of its own:
+/// its table directory, with each table it names copied after it.
+fn sfnt_from_collection(bytes: &[u8], index: usize) -> Option<Vec<u8>> {
+    let u32_at = |at: usize| -> Option<u32> {
+        Some(u32::from_be_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+    };
+    let u16_at = |at: usize| -> Option<u16> {
+        Some(u16::from_be_bytes(bytes.get(at..at + 2)?.try_into().ok()?))
+    };
+    if bytes.get(0..4)? != b"ttcf" {
+        return (index == 0).then(|| bytes.to_vec());
+    }
+    let count = u32_at(8)? as usize;
+    if index >= count {
+        return None;
+    }
+    let start = u32_at(12 + 4 * index)? as usize;
+    let tables = u16_at(start + 4)? as usize;
+    let directory = 12 + 16 * tables;
+    let mut out = Vec::with_capacity(directory);
+    out.extend_from_slice(bytes.get(start..start + 12)?);
+    out.resize(directory, 0);
+    for table in 0..tables {
+        let record = start + 12 + 16 * table;
+        let offset = u32_at(record + 8)? as usize;
+        let length = u32_at(record + 12)? as usize;
+        let data = bytes.get(offset..offset + length)?;
+        let at = out.len();
+        let entry = 12 + 16 * table;
+        out[entry..entry + 8].copy_from_slice(&bytes[record..record + 8]);
+        out[entry + 8..entry + 12].copy_from_slice(&(at as u32).to_be_bytes());
+        out[entry + 12..entry + 16].copy_from_slice(&(length as u32).to_be_bytes());
+        out.extend_from_slice(data);
+        while out.len() % 4 != 0 {
+            out.push(0);
+        }
+    }
+    Some(out)
+}
+
+/// A face for a CSS font shorthand: which registered face, at what px size,
+/// and the style it has to synthesise.
+#[derive(Clone, Copy)]
+struct ResolvedFont {
+    index: usize,
+    size_px: f32,
+    synthetic_italic: bool,
+    synthetic_bold: bool,
+}
+
+/// What a CSS font shorthand resolves to: the face of its first family that
+/// is registered, the faces of the later ones, and the weight and style asked.
+struct FontChoice {
+    first: ResolvedFont,
+    fallbacks: Rc<[ResolvedFont]>,
+    weight: i32,
+    italic: bool,
 }
 
 /// Parses the CSS colour strings jade emits: `#rgb`, `#rrggbb`, `#rrggbbaa`,
@@ -1186,6 +1573,22 @@ fn pdf_rect_axis_spans(start: f32, end: f32) -> Vec<(f32, f32, f32)> {
 }
 
 impl Painter for SkiaPainter {
+    fn set_structure_node(&self, node: i32) {
+        // Only a vector recording keeps the marks: a raster one draws its
+        // page as a picture.
+        let vector = matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                picture: None,
+                ..
+            }
+        );
+        if vector {
+            self.with_canvas(|canvas| skia_safe::pdf::set_node_id(canvas, node));
+        }
+    }
+
     fn draw_image(
         &self,
         image: jade_painter::ImageSource<'_>,
@@ -1306,10 +1709,15 @@ impl Painter for SkiaPainter {
     }
 
     fn set_font(&self, value: &str) {
-        let (font_index, font_size_px) = self.resolve_font(value);
+        let choice = self.resolve_font(value);
         let mut style = self.shared.style.borrow_mut();
-        style.font_index = font_index;
-        style.font_size_px = font_size_px;
+        style.font_index = choice.first.index;
+        style.font_size_px = choice.first.size_px;
+        style.synthetic_italic = choice.first.synthetic_italic;
+        style.synthetic_bold = choice.first.synthetic_bold;
+        style.font_fallbacks = choice.fallbacks;
+        style.requested_weight = choice.weight;
+        style.requested_italic = choice.italic;
         style.font_descriptor = Rc::from(value);
     }
 
@@ -1324,6 +1732,18 @@ impl Painter for SkiaPainter {
         let paint = self.fill_paint();
         self.draw_segments(text, x, y, &paint);
         Ok(())
+    }
+
+    fn try_fill_shaped_text(
+        &self,
+        text: &str,
+        clusters: &[(usize, f64)],
+        y: f64,
+    ) -> Result<bool, Self::Error> {
+        self.shared
+            .fill_text_calls
+            .set(self.shared.fill_text_calls.get() + 1);
+        Ok(self.fill_shaped(text, clusters, y))
     }
 
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {

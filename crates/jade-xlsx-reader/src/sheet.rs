@@ -96,6 +96,9 @@ pub fn parse_sheet_with_relationships(
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: crate::sparkline::parse_sparklines(xml)?,
         protection: None,
     };
 
@@ -169,6 +172,9 @@ pub fn parse_sheet_with_relationships(
                     }
                     b"sheetProtection" => {
                         sheet.protection = parse_sheet_protection(element)?;
+                    }
+                    b"tabColor" => {
+                        sheet.tab_color = crate::styles::parse_color(element)?;
                     }
                     b"sheetView" => {
                         if let Some(value) = attribute_value(element, b"showGridLines")? {

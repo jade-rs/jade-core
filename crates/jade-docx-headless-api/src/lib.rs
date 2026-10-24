@@ -1,6 +1,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod section_layout;
+pub use section_layout::*;
+mod run_format;
+mod typography;
+pub use run_format::{HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor};
+pub use typography::{HeadlessJapaneseTypography, HeadlessParagraphTypography, HeadlessRuby};
+
+/// Explicit paragraph tab stop in points, relative to the text margin.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HeadlessDirectTabStop {
+    pub position: f32,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leader: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HeadlessEditRequest {
     #[serde(default)]
@@ -140,6 +156,72 @@ pub struct HeadlessBorderEdge {
     pub color: Option<String>,
 }
 
+/// A tab stop as Word's タブとリーダー dialog and the ruler set it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessTabStop {
+    /// From the paragraph's start edge (the page margin), in points.
+    pub position: f32,
+    /// `left` (default), `center`, `right`, `decimal` or `bar`.
+    #[serde(default)]
+    pub alignment: Option<String>,
+    /// `none` (default), `dot`, `hyphen`, `underscore`, `middleDot` or
+    /// `heavy`.
+    #[serde(default)]
+    pub leader: Option<String>,
+}
+
+/// One line of a paragraph's border box, as Word's 線種とページ罫線と網かけの
+/// 設定 dialog describes it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphBorderLine {
+    /// An `ST_Border` token: `single`, `double`, `dotted`, `dashed`,
+    /// `dashSmallGap`, `dotDash`, `thick`, `thickThinSmallGap`, `wave`, …
+    pub style: String,
+    /// Thickness in points.
+    pub width: f32,
+    /// `#RRGGBB`, or `None` for Word's 自動.
+    #[serde(default)]
+    pub color: Option<String>,
+    /// Distance from the text, in points (文字列との間隔).
+    #[serde(default)]
+    pub space: Option<f32>,
+}
+
+/// A paragraph's whole border box; a side left `None` has no line.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphBorderBox {
+    #[serde(default)]
+    pub top: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub bottom: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub left: Option<HeadlessParagraphBorderLine>,
+    #[serde(default)]
+    pub right: Option<HeadlessParagraphBorderLine>,
+    /// Between paragraphs that share the box (`w:between`).
+    #[serde(default)]
+    pub between: Option<HeadlessParagraphBorderLine>,
+}
+
+/// Paragraph shading (`w:shd`): a fill under a pattern of `color`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeadlessParagraphShading {
+    /// An `ST_Shd` token: `clear` (default, the fill alone), `solid`, `pct10`,
+    /// `horzStripe`, …
+    #[serde(default)]
+    pub pattern: Option<String>,
+    /// The pattern's colour, `#RRGGBB`, or `None` for 自動.
+    #[serde(default)]
+    pub color: Option<String>,
+    /// The background colour, `#RRGGBB`, or `None` for なし.
+    #[serde(default)]
+    pub fill: Option<String>,
+}
+
 /// Editable subset of the package-wide DrawingML document theme.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -232,6 +314,30 @@ pub enum HeadlessTableCellInsertDirection {
     /// The new cell takes the target's place and the cells below it in that
     /// column move down; a row is appended to hold the last one.
     ShiftDown,
+}
+
+/// How 並べ替え compares one column: Word's 種類.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum HeadlessTableSortKind {
+    /// 文字列: Unicode order, case-insensitively.
+    #[default]
+    Text,
+    /// 数値: the first number in the cell; cells without one sort first.
+    Number,
+    /// 日付: `yyyy/mm/dd`, `yyyy-mm-dd`, `yyyy年m月d日`; cells without one
+    /// sort first.
+    Date,
+}
+
+/// One 並べ替え key: a grid column, its kind and its direction.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HeadlessTableSortKey {
+    pub column: usize,
+    #[serde(default)]
+    pub kind: HeadlessTableSortKind,
+    #[serde(default)]
+    pub descending: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -612,6 +718,8 @@ pub enum HeadlessFieldKind {
     Page,
     NumPages,
     FileName,
+    /// `STYLEREF "heading 1"`: the running Heading 1 text, for a header.
+    StyleRef,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -659,6 +767,16 @@ pub enum HeadlessChangeCaseMode {
     Lower,
     Title,
     Sentence,
+    /// 大文字と小文字を入れ替える.
+    Toggle,
+    /// 半角: full-width ASCII, katakana and spaces to their half-width forms.
+    HalfWidth,
+    /// 全角: ASCII, half-width katakana and spaces to their full-width forms.
+    FullWidth,
+    /// カタカナ: hiragana to katakana.
+    Katakana,
+    /// ひらがな: katakana to hiragana.
+    Hiragana,
 }
 
 /// DrawingML preset geometries that Jade can currently render and round-trip
@@ -865,6 +983,24 @@ pub struct HeadlessDocumentProtection {
     pub spin_count: Option<u32>,
     #[serde(default)]
     pub algorithm_sid: Option<u32>,
+}
+
+/// The ハイフネーション dialog's settings; each one left out is kept.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct HeadlessHyphenationPatch {
+    /// 文書を自動的にハイフネーションする (`w:autoHyphenation`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto: Option<bool>,
+    /// ハイフネーション ゾーン in points (`w:hyphenationZone`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone: Option<f32>,
+    /// 連続するハイフンの制限: at most this many lines in a row end in a
+    /// hyphen; 0 for no limit (`w:consecutiveHyphenLimit`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consecutive_limit: Option<u32>,
+    /// 英大文字の単語をハイフネーションする (`w:doNotHyphenateCaps` off).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyphenate_caps: Option<bool>,
 }
 
 // テストで組み立てた値と比較できるようにする（デシリアライズ結果の検証に要る）。
@@ -1132,6 +1268,30 @@ pub enum HeadlessCommand {
         #[serde(default = "default_drop_cap_lines")]
         lines: u8,
     },
+    /// Paragraph options Word sets from its タブとリーダー, 線種とページ罫線と
+    /// 網かけの設定 and 段落 dialogs. Each field left out stays as it is.
+    /// `tabs` replaces the paragraphs' effective tab stops (style tab stops
+    /// not listed are cleared); `borders` replaces the whole box; `shading`
+    /// `Some(None)` takes the shading off.
+    SetParagraphOptions {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        tabs: Option<Vec<HeadlessTabStop>>,
+        /// 同じスタイルの場合は段落間にスペースを追加しない.
+        #[serde(default)]
+        contextual_spacing: Option<bool>,
+        /// 行番号を表示しない.
+        #[serde(default)]
+        suppress_line_numbers: Option<bool>,
+        /// 段落の自動ハイフネーションを行わない.
+        #[serde(default)]
+        suppress_auto_hyphens: Option<bool>,
+        #[serde(default)]
+        borders: Option<HeadlessParagraphBorderBox>,
+        #[serde(default)]
+        shading: Option<Option<HeadlessParagraphShading>>,
+    },
     /// Applies (or with `style_id: None` removes) a character style on a range.
     /// Offsets are the same rendered byte offsets the other range commands take.
     SetCharacterStyle {
@@ -1141,6 +1301,11 @@ pub enum HeadlessCommand {
         end_offset: usize,
         #[serde(default)]
         style_id: Option<String>,
+    },
+    SetParagraphTabs {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        tabs: Vec<HeadlessDirectTabStop>,
     },
     SetParagraphIndent {
         start_paragraph: usize,
@@ -1153,6 +1318,15 @@ pub enum HeadlessCommand {
         left_chars: Option<i32>,
         #[serde(default)]
         right_chars: Option<i32>,
+        /// 特殊インデント「字下げ」 in hundredths of a character
+        /// (`w:firstLineChars`), as the paragraph dialog of a Japanese
+        /// document writes it.
+        #[serde(default)]
+        first_line_chars: Option<i32>,
+        /// 特殊インデント「ぶら下げ」 in hundredths of a character
+        /// (`w:hangingChars`).
+        #[serde(default)]
+        hanging_chars: Option<i32>,
         /// Word's paragraph dialog 特殊インデント「なし」: remove any
         /// first-line or hanging indent (character twins included) while
         /// leaving the left/right edges alone.
@@ -1172,6 +1346,27 @@ pub enum HeadlessCommand {
         /// it is and never touching list levels.
         #[serde(default)]
         target: HeadlessIndentTarget,
+    },
+    /// The paragraph dialog's 改ページと改行 options (ECMA-376 Part 1
+    /// §17.3.1.14 `w:keepNext`, §17.3.1.15 `w:keepLines`, §17.3.1.23
+    /// `w:pageBreakBefore`, §17.3.1.44 `w:widowControl`), written as direct
+    /// formatting. `None` leaves an option as it is; `false` writes it off
+    /// (`w:val="0"`), overriding a style that turns it on.
+    SetParagraphPagination {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        /// 次の段落と分離しない.
+        #[serde(default)]
+        keep_next: Option<bool>,
+        /// 段落を分割しない.
+        #[serde(default)]
+        keep_lines: Option<bool>,
+        /// 段落前で改ページする.
+        #[serde(default)]
+        page_break_before: Option<bool>,
+        /// 改ページ時 1 行残して段落を区切らない.
+        #[serde(default)]
+        widow_control: Option<bool>,
     },
     /// Word's Ctrl+0: add 12pt of space before each paragraph in the range,
     /// or remove it when every paragraph already has exactly 12pt.
@@ -1258,6 +1453,57 @@ pub enum HeadlessCommand {
         end_paragraph: usize,
         end_offset: usize,
         color: String,
+    },
+    /// Applies Word's フォント dialog to a range: every field `format` sets,
+    /// and nothing else, as one step.
+    SetRunFormat {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        format: Box<HeadlessRunFormat>,
+    },
+    /// The 段落 dialog's 体裁 tab on a paragraph range.
+    SetParagraphTypography {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        typography: HeadlessParagraphTypography,
+    },
+    /// The document's 文字体裁: kinsoku level and sets, and compression.
+    SetJapaneseTypography {
+        typography: HeadlessJapaneseTypography,
+    },
+    /// 囲い文字: the selection replaced by `text` in an enclosure (`○`,
+    /// `□`, `△` or `◇`), as Word's `EQ \o\ac` field.
+    InsertEnclosedCharacter {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        text: String,
+        enclosure: String,
+    },
+    /// ルビ: puts a ruby over `start_offset..end_offset` of a paragraph,
+    /// replacing any ruby there, or with `ruby: None` takes them off.
+    SetRuby {
+        paragraph: usize,
+        start_offset: usize,
+        end_offset: usize,
+        #[serde(default)]
+        ruby: Option<HeadlessRuby>,
+    },
+    /// 日付と時刻 with 自動的に更新する: a `DATE` (or, with `time`, `TIME`)
+    /// field with Word's `\@` date picture `format`, in place of the
+    /// selection, showing `cached_text` until it is next evaluated.
+    InsertDateTimeField {
+        start_paragraph: usize,
+        start_offset: usize,
+        end_paragraph: usize,
+        end_offset: usize,
+        #[serde(default)]
+        time: bool,
+        format: String,
+        cached_text: String,
     },
     StartChangeTracking {
         author: Option<String>,
@@ -1402,6 +1648,38 @@ pub enum HeadlessCommand {
         #[serde(default)]
         section: Option<usize>,
     },
+    /// Word's ページ設定 dialog: applies what `patch` names to the sections
+    /// `scope` reaches, leaving the rest of each as it is. One history step.
+    SetSectionLayout {
+        #[serde(default)]
+        scope: HeadlessSectionScope,
+        patch: Box<HeadlessSectionLayoutPatch>,
+    },
+    /// Word's ハイフネーション dialog: the document's automatic hyphenation,
+    /// changing only what the patch names. One history step.
+    SetHyphenation {
+        #[serde(flatten)]
+        patch: HeadlessHyphenationPatch,
+    },
+    /// The 段落 dialog's 1 ページの行数を指定時に文字を行グリッド線に合わせる
+    /// (`w:snapToGrid`): whether the paragraphs follow the section's line
+    /// grid.
+    SetParagraphSnapToGrid {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        snap: bool,
+    },
+    /// Word's 前と同じヘッダー/フッター: links a section's story to the
+    /// previous section's (dropping its own reference) or gives it a copy of
+    /// its own.
+    SetHeaderFooterLink {
+        section: usize,
+        /// `header` or `footer`.
+        role: String,
+        /// `default`, `first` or `even`.
+        variant: String,
+        linked: bool,
+    },
     InsertTable {
         after_paragraph: usize,
         rows: usize,
@@ -1453,6 +1731,16 @@ pub enum HeadlessCommand {
         offset: usize,
         omml: String,
         placement: HeadlessEquationPlacement,
+    },
+    /// Replaces an existing equation's OMML in place: a display equation
+    /// (`paragraph` is its own paragraph index, `run_index` absent; the root
+    /// is `m:oMathPara`) or an inline one (the math run `run_index` of
+    /// `paragraph`; the root is `m:oMath`).
+    ReplaceEquation {
+        paragraph: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        run_index: Option<usize>,
+        omml: String,
     },
     /// Replaces the exact current-state selection with a blank Word page.
     /// When document content follows the selection, two page breaks surround
@@ -1602,6 +1890,18 @@ pub enum HeadlessCommand {
         first_row: Option<bool>,
         #[serde(default)]
         banded_rows: Option<bool>,
+        /// 集計行: the style's last-row formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_row: Option<bool>,
+        /// 最初の列: the style's first-column formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        first_column: Option<bool>,
+        /// 最後の列: the style's last-column formatting.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_column: Option<bool>,
+        /// 縞模様 (列): the style's alternating column bands.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        banded_columns: Option<bool>,
     },
     /// Where a cell's content sits in its box (`w:vAlign`): `top`, `center` or
     /// `bottom`.
@@ -1793,6 +2093,100 @@ pub enum HeadlessCommand {
         table_order_index: usize,
         target_cells: Vec<HeadlessTableCellSelection>,
     },
+    /// Word's 表のプロパティ ▸ オプション ▸ セルの間隔 (`w:tblCellSpacing`), in
+    /// points; `None` removes the spacing.
+    SetTableCellSpacing {
+        table_order_index: usize,
+        #[serde(default)]
+        spacing: Option<f32>,
+    },
+    /// Word's 文字列の方向 for one cell (`w:textDirection`): `lrTb` (横書き),
+    /// `tbRl` (縦書き), `btLr` (下から上), `tbRlV`, `lrTbV`, `btLrV`. `None`
+    /// goes back to horizontal text.
+    SetTableCellTextDirection {
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+        #[serde(default)]
+        direction: Option<String>,
+    },
+    /// Word's 左端からのインデント (`w:tblInd`), in points.
+    SetTableIndent {
+        table_order_index: usize,
+        indent: f32,
+    },
+    /// Word's 表の位置 for a floating table (`w:tblpPr`, `w:tblOverlap`). A
+    /// table that is not floating yet becomes one. Each axis takes either an
+    /// alignment (`left`/`center`/`right`/`inside`/`outside`, or
+    /// `top`/`center`/`bottom`/`inside`/`outside`) or an offset in points;
+    /// the anchors are `margin`, `page` and `text` (the column, or the
+    /// paragraph vertically). Distances from the surrounding text are in
+    /// points.
+    SetTablePosition {
+        table_order_index: usize,
+        #[serde(default)]
+        horizontal_align: Option<String>,
+        #[serde(default)]
+        horizontal_offset: Option<f32>,
+        horizontal_anchor: String,
+        #[serde(default)]
+        vertical_align: Option<String>,
+        #[serde(default)]
+        vertical_offset: Option<f32>,
+        vertical_anchor: String,
+        #[serde(default)]
+        distance_top: f32,
+        #[serde(default)]
+        distance_bottom: f32,
+        #[serde(default)]
+        distance_left: f32,
+        #[serde(default)]
+        distance_right: f32,
+        #[serde(default = "default_true")]
+        allow_overlap: bool,
+    },
+    /// Word's 文字列を表にする: the paragraphs `start_paragraph..=end_paragraph`
+    /// become one table. `separator` splits each paragraph into cells — `tab`,
+    /// `comma`, `paragraph` (one paragraph per cell, `columns` per row) or
+    /// any other single character. `columns` defaults to the widest row.
+    ConvertTextToTable {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        separator: String,
+        #[serde(default)]
+        columns: Option<usize>,
+    },
+    /// Word's 表の解除 (表を文字列に変換): each row becomes a paragraph whose
+    /// cells are joined by `separator` (`tab`, `comma`, `paragraph` — one
+    /// paragraph per cell — or any other single character). A nested table
+    /// is converted as well.
+    ConvertTableToText {
+        table_order_index: usize,
+        separator: String,
+    },
+    /// Word's 並べ替え: the rows after the first `header_rows` are ordered by
+    /// `keys` — the first key decides, ties go to the next. A row whose cells
+    /// are merged down cannot be moved and fails the command.
+    SortTable {
+        table_order_index: usize,
+        keys: Vec<HeadlessTableSortKey>,
+        #[serde(default)]
+        header_rows: usize,
+    },
+    /// Word's 計算式: an `=` field at the caret, whose result is computed now
+    /// from the table around it — `=SUM(ABOVE)`, `=AVERAGE(LEFT)`,
+    /// `=B2*C2`, … `number_format` is the `\#` picture (`0`, `#,##0`,
+    /// `0.00`, `0%`, `¥#,##0` …).
+    InsertTableFormula {
+        paragraph: usize,
+        offset: usize,
+        formula: String,
+        #[serde(default)]
+        number_format: Option<String>,
+    },
+    /// Word's フィールド更新 for the `=` fields of every table: each result is
+    /// computed again from the cells as they are now.
+    UpdateTableFormulas,
     /// Toggles a boolean on/off element directly under `<w:settings>` in
     /// `word/settings.xml` (e.g. `w:evenAndOddHeaders`, `w:autoHyphenation`,
     /// `w:mirrorMargins`, `w:trackChanges`). `name` is the fully qualified
@@ -1959,9 +2353,12 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphShading { .. } => "set_paragraph_shading",
             HeadlessCommand::SetParagraphBorders { .. } => "set_paragraph_borders",
             HeadlessCommand::SetDropCap { .. } => "set_drop_cap",
+            HeadlessCommand::SetParagraphOptions { .. } => "set_paragraph_options",
+            HeadlessCommand::SetParagraphTabs { .. } => "set_paragraph_tabs",
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",
+            HeadlessCommand::SetParagraphPagination { .. } => "set_paragraph_pagination",
             HeadlessCommand::ResetParagraphFormatting { .. } => "reset_paragraph_formatting",
             HeadlessCommand::AdjustFontSize { .. } => "adjust_font_size",
             HeadlessCommand::SetParagraphMetrics { .. } => "set_paragraph_metrics",
@@ -1979,11 +2376,16 @@ impl HeadlessCommand {
             HeadlessCommand::SetHeaderParagraphText { .. } => "set_header_paragraph_text",
             HeadlessCommand::SetFooterParagraphText { .. } => "set_footer_paragraph_text",
             HeadlessCommand::SetHeaderFooterVariants { .. } => "set_header_footer_variants",
+            HeadlessCommand::SetSectionLayout { .. } => "set_section_layout",
+            HeadlessCommand::SetParagraphSnapToGrid { .. } => "set_paragraph_snap_to_grid",
+            HeadlessCommand::SetHyphenation { .. } => "set_hyphenation",
+            HeadlessCommand::SetHeaderFooterLink { .. } => "set_header_footer_link",
             HeadlessCommand::InsertTable { .. } => "insert_table",
             HeadlessCommand::InsertTableOfContents { .. } => "insert_table_of_contents",
             HeadlessCommand::InsertCaption { .. } => "insert_caption",
             HeadlessCommand::InsertField { .. } => "insert_field",
             HeadlessCommand::InsertEquation { .. } => "insert_equation",
+            HeadlessCommand::ReplaceEquation { .. } => "replace_equation",
             HeadlessCommand::InsertBlankPage { .. } => "insert_blank_page",
             HeadlessCommand::InsertCoverPage { .. } => "insert_cover_page",
             HeadlessCommand::InsertShape { .. } => "insert_shape",
@@ -2032,11 +2434,26 @@ impl HeadlessCommand {
             HeadlessCommand::ResizeTableRowBottomEdge { .. } => "resize_table_row_bottom_edge",
             HeadlessCommand::MergeTableCells { .. } => "merge_table_cells",
             HeadlessCommand::UnmergeTableCells { .. } => "unmerge_table_cells",
+            HeadlessCommand::SetTableCellSpacing { .. } => "set_table_cell_spacing",
+            HeadlessCommand::SetTableCellTextDirection { .. } => "set_table_cell_text_direction",
+            HeadlessCommand::SetTableIndent { .. } => "set_table_indent",
+            HeadlessCommand::SetTablePosition { .. } => "set_table_position",
+            HeadlessCommand::ConvertTextToTable { .. } => "convert_text_to_table",
+            HeadlessCommand::ConvertTableToText { .. } => "convert_table_to_text",
+            HeadlessCommand::SortTable { .. } => "sort_table",
+            HeadlessCommand::InsertTableFormula { .. } => "insert_table_formula",
+            HeadlessCommand::UpdateTableFormulas => "update_table_formulas",
             HeadlessCommand::SetNumbering { .. } => "set_numbering",
             HeadlessCommand::ApplyMultilevelList { .. } => "apply_multilevel_list",
             HeadlessCommand::ApplyCustomMultilevelList { .. } => "apply_custom_multilevel_list",
             HeadlessCommand::SetFontColor { .. } => "set_font_color",
             HeadlessCommand::SetHighlightColor { .. } => "set_highlight_color",
+            HeadlessCommand::SetRunFormat { .. } => "set_run_format",
+            HeadlessCommand::SetParagraphTypography { .. } => "set_paragraph_typography",
+            HeadlessCommand::SetJapaneseTypography { .. } => "set_japanese_typography",
+            HeadlessCommand::InsertDateTimeField { .. } => "insert_date_time_field",
+            HeadlessCommand::SetRuby { .. } => "set_ruby",
+            HeadlessCommand::InsertEnclosedCharacter { .. } => "insert_enclosed_character",
             HeadlessCommand::SetDocumentSetting { .. } => "set_document_setting",
             HeadlessCommand::SetPageOrientation { .. } => "set_page_orientation",
             HeadlessCommand::SetPageSize { .. } => "set_page_size",
@@ -2166,6 +2583,12 @@ pub enum HeadlessQuery {
     /// Page geometry of the default section: size, orientation, margins and
     /// background.
     PageSetup,
+    /// One section's layout as the ページ設定 dialog shows it; `None` is
+    /// the final section.
+    SectionLayout {
+        #[serde(default)]
+        section: Option<usize>,
+    },
     /// Text of every header and footer story in the document.
     HeaderFooterText,
     /// Package metadata (`docProps/core.xml` and friends): title, creator,
@@ -2319,6 +2742,9 @@ pub enum HeadlessQueryResult {
     },
     PageSetup {
         page_setup: HeadlessPageSetupSnapshot,
+    },
+    SectionLayout {
+        layout: Box<HeadlessSectionLayout>,
     },
     HeaderFooterText {
         stories: Vec<HeadlessHeaderFooterSnapshot>,

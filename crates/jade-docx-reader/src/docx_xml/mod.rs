@@ -1273,7 +1273,7 @@ impl XmlAttribute {
         let name = String::from_utf8(attr.key.as_ref().to_vec())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
         let value = attr
-            .unescape_value()
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
         Ok(Self {
             name,
@@ -1402,6 +1402,10 @@ fn push_escaped_attribute(buffer: &mut String, value: &str) {
         b'<' => Some("&lt;"),
         b'"' => Some("&quot;"),
         b'\'' => Some("&apos;"),
+        // XML 属性の空白正規化で値が変わらないよう、制御文字は文字参照にする。
+        b'\n' => Some("&#10;"),
+        b'\r' => Some("&#13;"),
+        b'\t' => Some("&#9;"),
         _ => None,
     });
 }
@@ -1423,6 +1427,15 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn attribute_whitespace_survives_roundtrip() {
+        let document = DocxXmlDocument::parse(r#"<root value="a&#9;b&#10;c&#13;d"/>"#).unwrap();
+        let serialized = document.to_string().unwrap();
+        let reopened = DocxXmlDocument::parse(&serialized).unwrap();
+        assert_eq!(reopened.root().attributes[0].value, "a\tb\nc\rd");
+    }
+
     use proptest::prelude::*;
 
     /// The character-at-a-time escaping the writer used before it escaped
@@ -1436,6 +1449,9 @@ pub(crate) mod tests {
                 '>' if !attribute => escaped.push_str("&gt;"),
                 '"' if attribute => escaped.push_str("&quot;"),
                 '\'' if attribute => escaped.push_str("&apos;"),
+                '\n' if attribute => escaped.push_str("&#10;"),
+                '\r' if attribute => escaped.push_str("&#13;"),
+                '\t' if attribute => escaped.push_str("&#9;"),
                 _ => escaped.push(ch),
             }
         }

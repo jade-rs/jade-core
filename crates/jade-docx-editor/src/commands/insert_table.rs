@@ -17,6 +17,9 @@ pub struct InsertTableCommand {
     rows: usize,
     columns: usize,
     column_widths: Vec<f32>,
+    /// A table style to give the new table — Word's 挿入 ▸ 表 gives
+    /// `Table Grid` — added to `styles.xml` when the package lacks it.
+    style: Option<String>,
     backup: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
 }
@@ -34,9 +37,18 @@ impl InsertTableCommand {
             rows,
             columns,
             column_widths,
+            style: None,
             backup: None,
             previous_selection: None,
         }
+    }
+
+    /// The new table takes `style` (an id or a built-in name), as Word's
+    /// own insert gives `Table Grid`. A package without a styles part keeps
+    /// the table unstyled.
+    pub fn with_style(mut self, style: impl Into<String>) -> Self {
+        self.style = Some(style.into());
+        self
     }
 
     /// Word's placement for a caret at rendered byte `offset` of `paragraph`.
@@ -67,6 +79,9 @@ impl Command for InsertTableCommand {
             .ok_or(CommandError::DocumentUnavailable)?;
         let result = (|| {
             if ctx.document.is_note_paragraph_surface(self.after_paragraph) {
+                if ctx.document.revision_session().is_some() {
+                    return Err("tracked table insertion in notes is not supported".into());
+                }
                 let model = match self.caret_offset {
                     Some(offset) => {
                         ctx.document
@@ -115,6 +130,21 @@ impl Command for InsertTableCommand {
                     &self.column_widths,
                 )?,
             };
+            for row in 0..self.rows {
+                if let Some(mark) = ctx
+                    .document
+                    .new_row_revision(jade_docx_reader::RevisionKind::Inserted)
+                {
+                    ctx.document
+                        .set_table_row_revision(table_order, row, Some(mark))?;
+                }
+            }
+            if let Some(style) = self.style.as_deref() {
+                if ctx.document.has_styles_part() {
+                    ctx.document
+                        .apply_table_named_style(table_order, Some(style))?;
+                }
+            }
             Ok::<_, String>(self.caret_offset.and_then(|_| {
                 ctx.document
                     .body_index_of_table_order(table_order)
@@ -327,6 +357,7 @@ mod tests {
     fn table_with_blocks(blocks: Vec<BodyElement>) -> BodyElement {
         BodyElement::Table(Box::new(Table {
             rows: vec![TableRow {
+                revision: None,
                 cells: vec![TableCell {
                     blocks,
                     style: StyleMap::default(),

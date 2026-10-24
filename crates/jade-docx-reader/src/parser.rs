@@ -103,6 +103,7 @@ struct PendingRuby {
 }
 
 mod diagram;
+mod drawing_extras;
 pub mod math;
 mod table;
 use math::{parse_math_elements, parse_math_paragraph};
@@ -432,7 +433,29 @@ impl DocumentParser {
                         b"w:pPr" => {
                             parsing_paragraph_props = true;
                         }
-                        b"w:pPrChange" | b"w:rPrChange" | b"w:sectPrChange" => {
+                        b"w:pPrChange" => {
+                            let author = e
+                                .attributes()
+                                .flatten()
+                                .find(|attr| attr.key.as_ref() == b"w:author")
+                                .map(|attr| String::from_utf8_lossy(&attr.value).into_owned());
+                            let props = current_paragraph_props
+                                .get_or_insert_with(ParagraphProperties::default);
+                            props.has_format_change = true;
+                            props.format_change_author = author.map(Into::into);
+                            self.skip_element(reader, b"w:pPrChange")?;
+                        }
+                        // A tracked change to a run's formatting: what the
+                        // run's formatting was before it, for review.
+                        b"w:rPrChange" if parsing_run_props && !parsing_paragraph_run_props => {
+                            if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
+                                if let Some(props) = current_run_props.as_mut() {
+                                    props.change =
+                                        self.parse_run_properties_change(&raw).map(Box::new);
+                                }
+                            }
+                        }
+                        b"w:rPrChange" | b"w:sectPrChange" => {
                             let name = e.name().as_ref().to_vec();
                             self.skip_element(reader, &name)?;
                         }
@@ -503,7 +526,13 @@ impl DocumentParser {
                             }
                         }
                         b"w:bidi" => {
-                            if parsing_paragraph_props {
+                            if parsing_section_props {
+                                // A section that reads right to left (`w:sectPr/w:bidi`), not
+                                // the paragraph whose `w:pPr` happens to carry the section.
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.bidi = Self::parse_on_off_attr(e.attributes());
+                                }
+                            } else if parsing_paragraph_props {
                                 let value = Self::parse_on_off_attr(e.attributes());
                                 current_paragraph_props
                                     .get_or_insert_with(ParagraphProperties::default)
@@ -838,15 +867,17 @@ impl DocumentParser {
                             Self::consume_element(reader, b"w:lnNumType")?;
                         }
                         b"w:footnotePr" if parsing_section_props => {
-                            let (note, _) = Self::parse_note_numbering(reader, b"w:footnotePr")?;
-                            if !note.is_empty() {
-                                if let Some(section) = current_section_props.as_mut() {
+                            let (note, _, beneath) =
+                                Self::parse_note_numbering(reader, b"w:footnotePr")?;
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.footnote_beneath_text = beneath;
+                                if !note.is_empty() {
                                     section.footnote_properties = Some(note);
                                 }
                             }
                         }
                         b"w:endnotePr" if parsing_section_props => {
-                            let (note, position) =
+                            let (note, position, _) =
                                 Self::parse_note_numbering(reader, b"w:endnotePr")?;
                             if let Some(section) = current_section_props.as_mut() {
                                 section.endnote_position = position;
@@ -894,6 +925,13 @@ impl DocumentParser {
                                             );
                                         }
                                     }
+                                }
+                            }
+                        }
+                        b"w:rtlGutter" => {
+                            if parsing_section_props {
+                                if let Some(section) = current_section_props.as_mut() {
+                                    section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
                                 }
                             }
                         }
@@ -979,6 +1017,44 @@ impl DocumentParser {
                         // above; `w:rubyPr` / `w:rt` are consumed by subtree
                         // walks so the guide text never contaminates the body
                         // text (or selection offsets).
+                        b"w14:glow" | b"w14:textOutline" | b"w14:stylisticSets"
+                            if parsing_run_props =>
+                        {
+                            let name = e.name().as_ref().to_vec();
+                            let size = e
+                                .attributes()
+                                .flatten()
+                                .find(|attr| matches!(attr.key.as_ref(), b"w14:rad" | b"w14:w"))
+                                .and_then(|attr| {
+                                    String::from_utf8_lossy(&attr.value)
+                                        .trim()
+                                        .parse::<f32>()
+                                        .ok()
+                                })
+                                .map(|emu| emu / 12_700.0);
+                            let (color, alpha, set) = Self::parse_text_effect(reader, &name)?;
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    let effects =
+                                        props.text_effects.get_or_insert_with(Default::default);
+                                    match name.as_slice() {
+                                        b"w14:glow" => {
+                                            effects.glow_color = color.as_deref().map(Rc::from);
+                                            effects.glow_radius = size;
+                                            effects.glow_alpha = alpha;
+                                        }
+                                        b"w14:textOutline" => {
+                                            effects.outline_color = color.as_deref().map(Rc::from);
+                                            effects.outline_width = size;
+                                        }
+                                        _ => effects.stylistic_set = set,
+                                    }
+                                },
+                            );
+                        }
                         b"w:ruby" => {
                             pending_ruby = Some(PendingRuby {
                                 base_run_index: current_paragraph
@@ -1407,6 +1483,33 @@ impl DocumentParser {
                                 );
                             }
                         }
+                        b"w:eastAsianLayout" => {
+                            if parsing_run_props {
+                                let layout = EastAsianLayout::from_attributes(
+                                    e.attributes().flatten().map(|attr| {
+                                        (
+                                            match attr.key.as_ref() {
+                                                b"w:id" => &b"w:id"[..],
+                                                b"w:combine" => &b"w:combine"[..],
+                                                b"w:combineBrackets" => &b"w:combineBrackets"[..],
+                                                b"w:vert" => &b"w:vert"[..],
+                                                b"w:vertCompress" => &b"w:vertCompress"[..],
+                                                _ => &b""[..],
+                                            },
+                                            String::from_utf8_lossy(&attr.value).to_string(),
+                                        )
+                                    }),
+                                );
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.east_asian_layout = Some(Box::new(layout.clone()));
+                                    },
+                                );
+                            }
+                        }
                         b"w:em" => {
                             if parsing_run_props {
                                 let value = e
@@ -1585,20 +1688,24 @@ impl DocumentParser {
                         }
                         b"w:color" => {
                             if parsing_run_props {
-                                for attr in e.attributes().flatten() {
-                                    if attr.key.as_ref() == b"w:val" {
-                                        let color_val =
-                                            String::from_utf8_lossy(&attr.value).to_string();
-                                        let formatted = format!("#{}", color_val);
-                                        Self::apply_to_active_run_props(
-                                            parsing_paragraph_run_props,
-                                            &mut current_paragraph_run_props,
-                                            &mut current_run_props,
-                                            |props| {
-                                                props.color = Some(Rc::from(formatted.as_str()));
-                                            },
-                                        );
-                                    }
+                                let theme = Self::run_theme_color(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.theme_color = theme.clone().map(Box::new);
+                                    },
+                                );
+                                if let Some(formatted) = Self::run_color(e) {
+                                    Self::apply_to_active_run_props(
+                                        parsing_paragraph_run_props,
+                                        &mut current_paragraph_run_props,
+                                        &mut current_run_props,
+                                        |props| {
+                                            props.color = Some(Rc::from(formatted.as_str()));
+                                        },
+                                    );
                                 }
                             }
                         }
@@ -1724,7 +1831,21 @@ impl DocumentParser {
                         b"w:drawing" => {
                             if let Some(drawing) = self.parse_drawing(reader)? {
                                 match drawing {
-                                    DrawingObject::Image(image) => {
+                                    DrawingObject::Image(mut image) => {
+                                        // Word ink's choice and its picture
+                                        // fallback are one drawing: the
+                                        // strokes, with the picture for
+                                        // consumers without ink.
+                                        if let Some(previous) = current_run_image.take() {
+                                            if image.ink.is_none() && previous.ink.is_some() {
+                                                image.ink = previous.ink;
+                                            } else if image.ink.is_some() && previous.ink.is_none()
+                                            {
+                                                let ink = image.ink.take();
+                                                image = previous;
+                                                image.ink = ink;
+                                            }
+                                        }
                                         current_run_image = Some(image);
                                     }
                                     DrawingObject::TextBox(text_box) => {
@@ -1971,12 +2092,14 @@ impl DocumentParser {
                                 // unhandled break type desynced `paragraph_text_len`
                                 // from the run text and shifted later offsets.
                                 match break_type.as_deref() {
-                                    // `column` has no dedicated column-advance
-                                    // yet; a page break is exactly correct for the
-                                    // common single-column case (Word moves to the
-                                    // next page when the only column ends).
-                                    Some("page") | Some("column") => {
+                                    Some("page") => {
                                         run.text.push(PAGE_BREAK_CHAR);
+                                        paragraph_text_len += 1;
+                                    }
+                                    // The next column, or the next page after
+                                    // the last one.
+                                    Some("column") => {
+                                        run.text.push(crate::document::COLUMN_BREAK_CHAR);
                                         paragraph_text_len += 1;
                                     }
                                     Some("textwrapping") | None => {
@@ -2215,6 +2338,13 @@ impl DocumentParser {
                                 if !ln_num.is_empty() {
                                     section.line_numbering = Some(ln_num);
                                 }
+                            }
+                        }
+                    }
+                    b"w:rtlGutter" => {
+                        if parsing_section_props {
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.rtl_gutter = Self::parse_on_off_attr(e.attributes());
                             }
                         }
                     }
@@ -2780,6 +2910,64 @@ impl DocumentParser {
                             );
                         }
                     }
+                    b"w14:ligatures" | b"w14:numForm" | b"w14:numSpacing" | b"w14:cntxtAlts"
+                        if parsing_run_props =>
+                    {
+                        let name = e.name().as_ref().to_vec();
+                        let value = e
+                            .attributes()
+                            .flatten()
+                            .find(|attr| attr.key.as_ref() == b"w14:val")
+                            .map(|attr| String::from_utf8_lossy(&attr.value).trim().to_string());
+                        Self::apply_to_active_run_props(
+                            parsing_paragraph_run_props,
+                            &mut current_paragraph_run_props,
+                            &mut current_run_props,
+                            |props| {
+                                let effects =
+                                    props.text_effects.get_or_insert_with(Default::default);
+                                let token = value.as_deref().map(Rc::from);
+                                match name.as_slice() {
+                                    b"w14:ligatures" => effects.ligatures = token.clone(),
+                                    b"w14:numForm" => effects.number_form = token.clone(),
+                                    b"w14:numSpacing" => effects.number_spacing = token.clone(),
+                                    _ => {
+                                        effects.contextual_alternates = Some(!matches!(
+                                            value.as_deref(),
+                                            Some("0" | "false" | "off")
+                                        ))
+                                    }
+                                }
+                            },
+                        );
+                    }
+                    b"w:eastAsianLayout" => {
+                        if parsing_run_props {
+                            let layout = EastAsianLayout::from_attributes(
+                                e.attributes().flatten().map(|attr| {
+                                    (
+                                        match attr.key.as_ref() {
+                                            b"w:id" => &b"w:id"[..],
+                                            b"w:combine" => &b"w:combine"[..],
+                                            b"w:combineBrackets" => &b"w:combineBrackets"[..],
+                                            b"w:vert" => &b"w:vert"[..],
+                                            b"w:vertCompress" => &b"w:vertCompress"[..],
+                                            _ => &b""[..],
+                                        },
+                                        String::from_utf8_lossy(&attr.value).to_string(),
+                                    )
+                                }),
+                            );
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.east_asian_layout = Some(Box::new(layout.clone()));
+                                },
+                            );
+                        }
+                    }
                     b"w:em" => {
                         if parsing_run_props {
                             let value = e
@@ -3023,20 +3211,24 @@ impl DocumentParser {
                     }
                     b"w:color" => {
                         if parsing_run_props {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    let color_val =
-                                        String::from_utf8_lossy(&attr.value).to_string();
-                                    let formatted = format!("#{}", color_val);
-                                    Self::apply_to_active_run_props(
-                                        parsing_paragraph_run_props,
-                                        &mut current_paragraph_run_props,
-                                        &mut current_run_props,
-                                        |props| {
-                                            props.color = Some(Rc::from(formatted.as_str()));
-                                        },
-                                    );
-                                }
+                            let theme = Self::run_theme_color(e.attributes());
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.theme_color = theme.clone().map(Box::new);
+                                },
+                            );
+                            if let Some(formatted) = Self::run_color(e) {
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.color = Some(Rc::from(formatted.as_str()));
+                                    },
+                                );
                             }
                         }
                     }
@@ -3049,7 +3241,13 @@ impl DocumentParser {
                         }
                     }
                     b"w:bidi" => {
-                        if parsing_paragraph_props {
+                        if parsing_section_props {
+                            // A section that reads right to left (`w:sectPr/w:bidi`), not
+                            // the paragraph whose `w:pPr` happens to carry the section.
+                            if let Some(section) = current_section_props.as_mut() {
+                                section.bidi = Self::parse_on_off_attr(e.attributes());
+                            }
+                        } else if parsing_paragraph_props {
                             let value = Self::parse_on_off_attr(e.attributes());
                             current_paragraph_props
                                 .get_or_insert_with(ParagraphProperties::default)
@@ -3915,7 +4113,7 @@ impl DocumentParser {
             attrs.push_str(&String::from_utf8(attr.key.as_ref().to_vec())?);
             attrs.push('=');
             attrs.push('"');
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?;
             attrs.push_str(&value);
             attrs.push('"');
         }
@@ -3950,10 +4148,15 @@ impl DocumentParser {
             let attr = attr?;
             match attr.key.as_ref() {
                 b"w:id" => {
-                    id = attr.unescape_value()?.into_owned();
+                    id = attr
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                        .into_owned();
                 }
                 b"w:type" => {
-                    note_type = Some(attr.unescape_value()?.into_owned());
+                    note_type = Some(
+                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                            .into_owned(),
+                    );
                 }
                 _ => {}
             }
@@ -4058,6 +4261,11 @@ impl DocumentParser {
                 Ok(Event::Text(e)) => {
                     writer.write_event(Event::Text(e.to_owned()))?;
                 }
+                // `&lt;` in an equation's `x<0` arrives as a reference of its
+                // own; dropping it loses the character.
+                Ok(Event::GeneralRef(e)) => {
+                    writer.write_event(Event::GeneralRef(e.to_owned()))?;
+                }
                 Ok(Event::CData(e)) => {
                     writer.write_event(Event::CData(e.to_owned()))?;
                 }
@@ -4079,6 +4287,59 @@ impl DocumentParser {
 
         let bytes = writer.into_inner();
         Ok(String::from_utf8(bytes)?)
+    }
+
+    /// A captured `<w:rPrChange>`: its id, author and date, and the
+    /// formatting inside it, read by parsing that `w:rPr` as a run's own.
+    fn parse_run_properties_change(
+        &self,
+        xml: &str,
+    ) -> Option<crate::document::RunPropertiesChange> {
+        let mut reader = Reader::from_str(xml);
+        let mut buf = Vec::new();
+        let (mut id, mut author, mut date) = (None, None, None);
+        if let Ok(Event::Start(start)) = reader.read_event_into(&mut buf) {
+            for attr in start.attributes().flatten() {
+                let value = attr
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .map(|value| value.into_owned())
+                    .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).into_owned());
+                match attr.key.as_ref() {
+                    b"w:id" => id = Some(value),
+                    b"w:author" => author = Some(value),
+                    b"w:date" => date = Some(value),
+                    _ => {}
+                }
+            }
+        }
+        let inner_start = xml.find('>')? + 1;
+        let inner_end = xml.rfind("</")?.max(inner_start);
+        let inner = &xml[inner_start..inner_end];
+        let wrapper = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r>{inner}<w:t>x</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let previous = self
+            .parse_document_xml(&wrapper)
+            .ok()
+            .and_then(|document| {
+                let body = document.body?;
+                let paragraph = body
+                    .elements
+                    .into_iter()
+                    .find_map(|element| match element {
+                        crate::document::BodyElement::Paragraph(paragraph) => Some(paragraph),
+                        _ => None,
+                    })?;
+                paragraph.runs.into_iter().next()
+            })
+            .and_then(|run| run.properties)
+            .unwrap_or_default();
+        Some(crate::document::RunPropertiesChange {
+            id,
+            author,
+            date,
+            previous,
+        })
     }
 
     fn parse_note_body(
@@ -4116,7 +4377,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4149,7 +4410,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4162,6 +4423,17 @@ impl DocumentParser {
                 b"w:start" => {
                     if let Ok(v) = value.trim().parse::<u32>() {
                         pg_num.start = Some(v);
+                    }
+                }
+                b"w:chapStyle" => {
+                    if let Ok(v) = value.trim().parse::<u8>() {
+                        pg_num.chapter_style = Some(v);
+                    }
+                }
+                b"w:chapSep" => {
+                    let trimmed = value.trim();
+                    if !trimmed.is_empty() {
+                        pg_num.chapter_separator = Some(trimmed.to_string());
                     }
                 }
                 _ => {}
@@ -4179,7 +4451,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             if attr.key.as_ref() == b"w:val" {
                 let value = attr
-                    .unescape_value()
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|cow| cow.to_string())
                     .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
                 let token = value.trim().to_lowercase();
@@ -4200,7 +4472,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4237,20 +4509,16 @@ impl DocumentParser {
     fn parse_note_numbering(
         reader: &mut dyn XmlEventSource,
         end_tag: &[u8],
-    ) -> Result<
-        (
-            crate::document::NoteNumbering,
-            Option<crate::document::EndnotePosition>,
-        ),
-        Box<dyn std::error::Error>,
-    > {
+    ) -> Result<NoteProperties, Box<dyn std::error::Error>> {
         use crate::document::{EndnotePosition, NoteNumbering};
         let mut note = NoteNumbering::default();
         let mut position = None;
+        let mut beneath = None;
         let mut buf = Vec::new();
 
         let assign = |note: &mut NoteNumbering,
                       position: &mut Option<EndnotePosition>,
+                      beneath: &mut Option<bool>,
                       name: &[u8],
                       attrs: Attributes<'_>| {
             let val = attrs.flatten().find_map(|attr| {
@@ -4263,6 +4531,11 @@ impl DocumentParser {
             let Some(val) = val else { return };
             match name {
                 b"w:pos" => {
+                    *beneath = match val.as_str() {
+                        "beneathText" => Some(true),
+                        "pageBottom" => Some(false),
+                        _ => None,
+                    };
                     *position = match val.as_str() {
                         "sectEnd" => Some(EndnotePosition::SectionEnd),
                         "docEnd" => Some(EndnotePosition::DocumentEnd),
@@ -4293,12 +4566,24 @@ impl DocumentParser {
                 Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
-                    assign(&mut note, &mut position, name.as_ref(), e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        name.as_ref(),
+                        e.attributes(),
+                    );
                 }
                 Ok(Event::Start(ref e)) => {
                     let owned = e.name();
                     let name = owned.as_ref().to_vec();
-                    assign(&mut note, &mut position, &name, e.attributes());
+                    assign(
+                        &mut note,
+                        &mut position,
+                        &mut beneath,
+                        &name,
+                        e.attributes(),
+                    );
                     Self::consume_element(reader, &name)?;
                 }
                 Ok(Event::Eof) => break,
@@ -4308,7 +4593,7 @@ impl DocumentParser {
             buf.clear();
         }
 
-        Ok((note, position))
+        Ok((note, position, beneath))
     }
 
     /// Consumes a `w:rubyPr` subtree (ECMA-376 Part 1 §17.3.3.26) and returns
@@ -4468,7 +4753,7 @@ impl DocumentParser {
         for attr in attributes.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4683,7 +4968,7 @@ impl DocumentParser {
         for attr in attrs.flatten() {
             let key = attr.key.as_ref();
             let value = attr
-                .unescape_value()
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .map(|cow| cow.to_string())
                 .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string());
             match key {
@@ -4743,6 +5028,8 @@ impl DocumentParser {
         let mut has_wordprocessing_shape = false;
         let mut text_box_shape = TextBoxShape::Rectangle;
         let mut text_box_preset: Option<String> = None;
+        let mut text_box_adjustments: Vec<(String, i64)> = Vec::new();
+        let mut in_preset_geometry = false;
         let mut line_head_arrow = None;
         let mut line_tail_arrow = None;
         // DrawingML anchor can contain either a modern `a:ln` definition or a legacy VML
@@ -4753,6 +5040,7 @@ impl DocumentParser {
         let mut text_box_glow: Option<ShapeGlow> = None;
         let mut text_box_blur_radius_px: Option<f64> = None;
         let mut text_box_soft_edge_radius_px: Option<f64> = None;
+        let mut text_box_effect_ref: Option<u8> = None;
         let mut in_line_definition = false;
         let mut in_line_solid_fill = false;
         let mut in_shape_solid_fill = false;
@@ -4762,10 +5050,12 @@ impl DocumentParser {
         let mut in_glow = false;
         let mut current_border = TextBoxBorder::default();
         let mut active_shape_theme_color: Option<ShapeThemeColorTarget> = None;
+        let mut extras = drawing_extras::DrawingExtras::default();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
+                    extras.start(e, false);
                     match e.name().as_ref() {
                         // Stored properties of an invisible line must not
                         // become the visible shape's fill or effects.
@@ -4789,7 +5079,13 @@ impl DocumentParser {
                                 e.attributes().flatten().find_map(|attribute| {
                                     (attribute.key.as_ref() == b"relativeHeight")
                                         .then(|| {
-                                            attribute.unescape_value().ok()?.parse::<u32>().ok()
+                                            attribute
+                                                .normalized_value(
+                                                    quick_xml::XmlVersion::Implicit1_0,
+                                                )
+                                                .ok()?
+                                                .parse::<u32>()
+                                                .ok()
                                         })
                                         .flatten()
                                 });
@@ -4850,6 +5146,7 @@ impl DocumentParser {
                                 let (blocks, plain) = self.parse_text_box_content(&inner)?;
                                 text_box_blocks = Some(blocks);
                                 text_box_text = Some(plain);
+                                extras.wordart = WordArtText::from_content(&inner);
                             }
                             continue;
                         }
@@ -4869,7 +5166,10 @@ impl DocumentParser {
                                 .flatten()
                                 .find(|attribute| attribute.key.as_ref() == b"r:dm")
                                 .and_then(|attribute| {
-                                    attribute.unescape_value().ok().map(|v| v.into_owned())
+                                    attribute
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                        .ok()
+                                        .map(|v| v.into_owned())
                                 });
                         }
                         b"c:chart" => {
@@ -4882,6 +5182,11 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                            in_preset_geometry = true;
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -4905,7 +5210,9 @@ impl DocumentParser {
                             in_line_definition = true;
                             current_border = TextBoxBorder::default();
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value = value.trim();
                                     match attr.key.as_ref() {
                                         b"w" => {
@@ -4925,6 +5232,18 @@ impl DocumentParser {
                             }
                         }
                         b"a:effectLst" => in_effect_list = true,
+                        b"a:effectRef" => {
+                            text_box_effect_ref = e
+                                .attributes()
+                                .flatten()
+                                .find(|attribute| attribute.key.as_ref() == b"idx")
+                                .and_then(|attribute| {
+                                    String::from_utf8_lossy(&attribute.value)
+                                        .trim()
+                                        .parse()
+                                        .ok()
+                                });
+                        }
                         b"a:outerShdw" if in_effect_list => {
                             in_outer_shadow = true;
                             text_box_shadow = Some(Self::drawingml_outer_shadow(e));
@@ -4973,7 +5292,9 @@ impl DocumentParser {
                                     .flatten()
                                     .find(|attr| attr.key.as_ref() == b"val")
                                 {
-                                    if let Ok(value) = val_attr.unescape_value() {
+                                    if let Ok(value) = val_attr
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         current_border.style =
                                             TextBoxBorderStyle::from_preset_dash(&value);
                                     }
@@ -5114,6 +5435,7 @@ impl DocumentParser {
                     depth = depth.saturating_add(1);
                 }
                 Ok(Event::Empty(ref e)) => {
+                    extras.start(e, true);
                     match e.name().as_ref() {
                         b"wp:inline" => {
                             image.layout.kind = RunImageKind::Inline;
@@ -5175,7 +5497,10 @@ impl DocumentParser {
                                 .flatten()
                                 .find(|attribute| attribute.key.as_ref() == b"r:dm")
                                 .and_then(|attribute| {
-                                    attribute.unescape_value().ok().map(|v| v.into_owned())
+                                    attribute
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                        .ok()
+                                        .map(|v| v.into_owned())
                                 });
                         }
                         b"c:chart" => {
@@ -5188,6 +5513,10 @@ impl DocumentParser {
                         b"a:prstGeom" => {
                             text_box_shape = Self::parse_text_box_shape(e);
                             text_box_preset = Self::parse_text_box_preset(e);
+                            text_box_adjustments.clear();
+                        }
+                        b"a:gd" if in_preset_geometry => {
+                            text_box_adjustments.extend(Self::preset_adjustment(e));
                         }
                         b"a:headEnd" => {
                             line_head_arrow = Self::drawingml_arrow_end(e);
@@ -5210,7 +5539,9 @@ impl DocumentParser {
                             in_line_definition = false;
                             current_border = TextBoxBorder::default();
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value = value.trim();
                                     match attr.key.as_ref() {
                                         b"w" => {
@@ -5252,7 +5583,9 @@ impl DocumentParser {
                                     .flatten()
                                     .find(|attr| attr.key.as_ref() == b"val")
                                 {
-                                    if let Ok(value) = val_attr.unescape_value() {
+                                    if let Ok(value) = val_attr
+                                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         current_border.style =
                                             TextBoxBorderStyle::from_preset_dash(&value);
                                     }
@@ -5394,7 +5727,9 @@ impl DocumentParser {
                     Self::extract_drawing_attributes(&mut image, e, &mut has_embed);
                 }
                 Ok(Event::End(ref e)) => {
+                    extras.end(e.name().as_ref());
                     match e.name().as_ref() {
+                        b"a:prstGeom" => in_preset_geometry = false,
                         b"wp:positionH" => {
                             in_position_h = false;
                             pending_offset = None;
@@ -5516,6 +5851,15 @@ impl DocumentParser {
             buf.clear();
         }
 
+        // A preset outside the hand-traced set, or one whose adjust handles
+        // moved, is drawn from its shape-guide definition.
+        if let Some(name) = text_box_preset.as_deref() {
+            if !text_box_shape.is_line() {
+                text_box_shape =
+                    TextBoxShape::from_preset(name, std::mem::take(&mut text_box_adjustments));
+            }
+        }
+
         if matches!(
             text_box_preset.as_deref(),
             Some("line" | "straightConnector1")
@@ -5542,6 +5886,19 @@ impl DocumentParser {
         }
 
         if has_embed || has_chart || has_group || has_smartart {
+            let mut format = PictureFormat::default();
+            if has_embed && !has_chart && !has_group && !has_smartart {
+                // A picture's own outline, effects and shape.
+                format.outline = text_box_border;
+                format.shadow = text_box_shadow;
+                format.inner_shadow = text_box_inner_shadow;
+                format.glow = text_box_glow;
+                format.soft_edge_radius_px = text_box_soft_edge_radius_px;
+                format.geometry = (text_box_shape != TextBoxShape::Rectangle
+                    && !text_box_shape.is_line())
+                .then_some(text_box_shape);
+            }
+            extras.apply_to_image(&mut image, format);
             Ok(Some(DrawingObject::Image(image)))
         } else if text_box_text.is_some() || has_wordprocessing_shape {
             let text_box = RunTextBox {
@@ -5563,7 +5920,11 @@ impl DocumentParser {
                 insets: text_box_insets,
                 vertical_alignment: text_box_vertical_alignment,
                 shape: text_box_shape,
+                effect_ref: text_box_effect_ref,
+                ..Default::default()
             };
+            let mut text_box = text_box;
+            extras.apply_to_text_box(&mut text_box);
             Ok(Some(DrawingObject::TextBox(text_box)))
         } else {
             Ok(None)
@@ -5587,7 +5948,7 @@ impl DocumentParser {
             matches!(attribute.key.as_ref(), b"r:id" | b"id")
                 .then(|| {
                     attribute
-                        .unescape_value()
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                         .ok()
                         .map(|value| value.into_owned())
                 })
@@ -5598,14 +5959,36 @@ impl DocumentParser {
     fn parse_text_box_shape(element: &BytesStart<'_>) -> TextBoxShape {
         Self::parse_text_box_preset(element)
             .as_deref()
-            .and_then(TextBoxShape::from_preset_name)
+            .map(|name| TextBoxShape::from_preset(name, Vec::new()))
             .unwrap_or_default()
+    }
+
+    /// One `a:avLst/a:gd` adjust value, `(name, value)`.
+    fn preset_adjustment(element: &BytesStart<'_>) -> Option<(String, i64)> {
+        let mut name = None;
+        let mut formula = None;
+        for attribute in element.attributes().flatten() {
+            let value = attribute
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .ok()?
+                .into_owned();
+            match attribute.key.as_ref() {
+                b"name" => name = Some(value),
+                b"fmla" => formula = Some(value),
+                _ => {}
+            }
+        }
+        Some((name?, crate::document::parse_adjust_formula(&formula?)?))
     }
 
     fn parse_text_box_preset(element: &BytesStart<'_>) -> Option<String> {
         element.attributes().flatten().find_map(|attr| {
             (attr.key.as_ref() == b"prst")
-                .then(|| attr.unescape_value().ok().map(|value| value.into_owned()))
+                .then(|| {
+                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()
+                        .map(|value| value.into_owned())
+                })
                 .flatten()
         })
     }
@@ -5615,7 +5998,10 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attr| attr.key.as_ref() == b"type")
-            .and_then(|attr| attr.unescape_value().ok())
+            .and_then(|attr| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()
+            })
             .and_then(|value| TextBoxLineEnd::from_drawingml(&value))
     }
 
@@ -5626,7 +6012,13 @@ impl DocumentParser {
         fn coordinate(element: &BytesStart<'_>, name: &[u8]) -> Option<f64> {
             element.attributes().flatten().find_map(|attribute| {
                 (attribute.key.as_ref() == name)
-                    .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()?
+                            .parse::<f64>()
+                            .ok()
+                    })
                     .flatten()
             })
         }
@@ -5668,7 +6060,9 @@ impl DocumentParser {
             for attribute in element.attributes().flatten() {
                 match attribute.key.as_ref() {
                     b"rot" => {
-                        if let Ok(value) = attribute.unescape_value() {
+                        if let Ok(value) =
+                            attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        {
                             if let Ok(value) = value.parse::<f64>() {
                                 *rotation_deg = value / 60_000.0;
                             }
@@ -5691,7 +6085,8 @@ impl DocumentParser {
                 ..TextBoxBorder::default()
             };
             for attribute in element.attributes().flatten() {
-                let Ok(value) = attribute.unescape_value() else {
+                let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                else {
                     continue;
                 };
                 match attribute.key.as_ref() {
@@ -5712,7 +6107,11 @@ impl DocumentParser {
         fn preset_dash(element: &BytesStart<'_>) -> Option<TextBoxBorderStyle> {
             element.attributes().flatten().find_map(|attribute| {
                 (attribute.key.as_ref() == b"val")
-                    .then(|| attribute.unescape_value().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()
+                    })
                     .flatten()
                     .map(|value| TextBoxBorderStyle::from_preset_dash(&value))
             })
@@ -5721,7 +6120,8 @@ impl DocumentParser {
         fn drawingml_hyperlink(element: &BytesStart<'_>) -> RunHyperlink {
             let mut hyperlink = RunHyperlink::default();
             for attribute in element.attributes().flatten() {
-                let Ok(value) = attribute.unescape_value() else {
+                let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                else {
                     continue;
                 };
                 let value = value.into_owned();
@@ -5742,6 +6142,9 @@ impl DocumentParser {
         let mut current_shape: Option<RunGroupShape> = None;
         let mut in_group_properties = false;
         let mut in_shape_properties = false;
+        // The open `a:prstGeom`'s name and its `a:avLst/a:gd` values.
+        let mut shape_preset: Option<String> = None;
+        let mut shape_adjustments: Vec<(String, i64)> = Vec::new();
         let mut in_transform = false;
         let mut in_line = false;
         let mut in_shape_fill = false;
@@ -5775,7 +6178,7 @@ impl DocumentParser {
                             continue;
                         }
                         b"wpg:grpSpPr" => in_group_properties = true,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             current_shape = Some(RunGroupShape {
                                 z_order: next_z_order,
                                 ..RunGroupShape::default()
@@ -5783,7 +6186,12 @@ impl DocumentParser {
                             next_z_order += 1;
                             active_theme_color = None;
                         }
-                        b"wps:spPr" if current_shape.is_some() => in_shape_properties = true,
+                        b"wps:spPr" | b"pic:spPr" if current_shape.is_some() => {
+                            in_shape_properties = true
+                        }
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
                         b"w:txbxContent" | b"wp:txbxContent" if current_shape.is_some() => {
                             let inner =
                                 self.extract_inner_xml(&mut reader, element.name().as_ref())?;
@@ -5832,6 +6240,11 @@ impl DocumentParser {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
+                            shape_preset = Self::parse_text_box_preset(element);
+                            shape_adjustments.clear();
+                        }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
                         }
                         b"a:ln" if in_shape_properties => {
                             in_line = true;
@@ -6114,6 +6527,24 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:blip" if current_shape.is_some() => {
+                            Self::group_picture_blip(current_shape.as_mut(), element);
+                        }
+                        b"a:srcRect"
+                            if current_shape
+                                .as_ref()
+                                .is_some_and(|shape| shape.picture.is_some()) =>
+                        {
+                            let mut image = RunImage::default();
+                            let mut embed = false;
+                            Self::extract_drawing_attributes(&mut image, element, &mut embed);
+                            if let Some(picture) = current_shape
+                                .as_mut()
+                                .and_then(|shape| shape.picture.as_mut())
+                            {
+                                picture.crop = image.crop;
+                            }
+                        }
                         b"a:chOff" if in_group_properties => {
                             group.child_offset_x = coordinate(element, b"x").unwrap_or(0.0);
                             group.child_offset_y = coordinate(element, b"y").unwrap_or(0.0);
@@ -6148,6 +6579,9 @@ impl DocumentParser {
                             if let Some(shape) = current_shape.as_mut() {
                                 shape.shape = Self::parse_text_box_shape(element);
                             }
+                        }
+                        b"a:gd" if shape_preset.is_some() => {
+                            shape_adjustments.extend(Self::preset_adjustment(element));
                         }
                         b"a:ln" if in_shape_properties => {
                             if let Some(shape) = current_shape.as_mut() {
@@ -6419,14 +6853,26 @@ impl DocumentParser {
                         continue;
                     }
                     match element.name().as_ref() {
+                        b"a:prstGeom" => {
+                            if let (Some(name), Some(shape)) =
+                                (shape_preset.take(), current_shape.as_mut())
+                            {
+                                if !shape.shape.is_line() && !shape_adjustments.is_empty() {
+                                    shape.shape = TextBoxShape::from_preset(
+                                        &name,
+                                        std::mem::take(&mut shape_adjustments),
+                                    );
+                                }
+                            }
+                        }
                         b"wpg:grpSpPr" => in_group_properties = false,
-                        b"wps:wsp" => {
+                        b"wps:wsp" | b"pic:pic" => {
                             if let Some(shape) = current_shape.take() {
                                 group.children.push(shape);
                             }
                             active_theme_color = None;
                         }
-                        b"wps:spPr" => in_shape_properties = false,
+                        b"wps:spPr" | b"pic:spPr" => in_shape_properties = false,
                         b"a:xfrm" => in_transform = false,
                         b"a:ln" => {
                             in_line = false;
@@ -6515,10 +6961,32 @@ impl DocumentParser {
         Ok(group)
     }
 
+    /// A grouped picture's `a:blip`: its media relationship.
+    fn group_picture_blip(shape: Option<&mut RunGroupShape>, element: &BytesStart<'_>) {
+        let Some(shape) = shape else {
+            return;
+        };
+        let relationship = element
+            .attributes()
+            .flatten()
+            .find(|attribute| attribute.key.as_ref() == b"r:embed")
+            .map(|attribute| String::from_utf8_lossy(&attribute.value).into_owned());
+        if let Some(relationship_id) = relationship {
+            shape.picture = Some(Box::new(GroupPicture {
+                relationship_id,
+                ..GroupPicture::default()
+            }));
+        }
+    }
+
     fn drawingml_color_value(element: &BytesStart<'_>) -> Option<String> {
         element.attributes().flatten().find_map(|attr| {
             (attr.key.as_ref() == b"val")
-                .then(|| attr.unescape_value().ok().map(|value| value.into_owned()))
+                .then(|| {
+                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()
+                        .map(|value| value.into_owned())
+                })
                 .flatten()
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty())
@@ -6528,7 +6996,7 @@ impl DocumentParser {
     fn drawingml_outer_shadow(element: &BytesStart<'_>) -> ShapeShadow {
         let mut shadow = ShapeShadow::default();
         for attribute in element.attributes().flatten() {
-            let Ok(value) = attribute.unescape_value() else {
+            let Ok(value) = attribute.normalized_value(quick_xml::XmlVersion::Implicit1_0) else {
                 continue;
             };
             match attribute.key.as_ref() {
@@ -6556,7 +7024,13 @@ impl DocumentParser {
     fn populate_drawingml_shadow_alpha(shadow: &mut ShapeShadow, element: &BytesStart<'_>) {
         if let Some(value) = element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"val")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
         }) {
             shadow.opacity = (value / 100_000.0).clamp(0.0, 1.0);
@@ -6567,7 +7041,13 @@ impl DocumentParser {
         let mut glow = ShapeGlow::default();
         if let Some(radius) = element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
         }) {
             glow.radius_px = Self::emu_to_px(radius).max(0.0);
@@ -6578,7 +7058,13 @@ impl DocumentParser {
     fn drawingml_soft_edge_radius(element: &BytesStart<'_>) -> Option<f64> {
         element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
                 .filter(|radius| radius.is_finite())
                 .map(|radius| Self::emu_to_px(radius).max(0.0))
@@ -6588,7 +7074,13 @@ impl DocumentParser {
     fn drawingml_blur_radius(element: &BytesStart<'_>) -> Option<f64> {
         element.attributes().flatten().find_map(|attribute| {
             (attribute.key.as_ref() == b"rad")
-                .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                .then(|| {
+                    attribute
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                        .ok()?
+                        .parse::<f64>()
+                        .ok()
+                })
                 .flatten()
                 .filter(|radius| radius.is_finite())
                 .map(|radius| Self::emu_to_px(radius).max(0.0))
@@ -6607,7 +7099,13 @@ impl DocumentParser {
             .flatten()
             .find_map(|attribute| {
                 (attribute.key.as_ref() == b"val")
-                    .then(|| attribute.unescape_value().ok()?.parse::<f64>().ok())
+                    .then(|| {
+                        attribute
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .ok()?
+                            .parse::<f64>()
+                            .ok()
+                    })
                     .flatten()
             })
             .filter(|value| value.is_finite())
@@ -6717,7 +7215,7 @@ impl DocumentParser {
         element: &BytesStart<'_>,
     ) {
         for attr in element.attributes().flatten() {
-            let Ok(value) = attr.unescape_value() else {
+            let Ok(value) = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0) else {
                 continue;
             };
             let value = value.trim();
@@ -6761,7 +7259,10 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attr| attr.key.as_ref() == b"inset")
-            .and_then(|attr| attr.unescape_value().ok())
+            .and_then(|attr| {
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .ok()
+            })
         else {
             return;
         };
@@ -6824,27 +7325,35 @@ impl DocumentParser {
                                     style_value =
                                         Some(String::from_utf8_lossy(&attr.value).into_owned());
                                 } else if attr.key.as_ref() == b"strokeweight" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if let Some(px) = Self::points_str_to_px(value.trim()) {
                                             border.width_px = Some(px);
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"strokecolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if !value.trim().is_empty() {
                                             border.color =
                                                 Some(Self::normalize_color_string(value.trim()));
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"stroked" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             stroke_enabled = false;
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"filled" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             fill_enabled = false;
@@ -6852,7 +7361,9 @@ impl DocumentParser {
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"fillcolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let value = value.trim();
                                         if !value.is_empty() {
                                             fill_color = Some(Self::normalize_color_string(value));
@@ -6893,7 +7404,9 @@ impl DocumentParser {
                             // Legacy VML fallback (used for older Office compatibility). The
                             // attributes mirror DrawingML concepts but use different naming.
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -6934,7 +7447,9 @@ impl DocumentParser {
                         }
                         b"v:fill" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -6983,27 +7498,35 @@ impl DocumentParser {
                                     style_value =
                                         Some(String::from_utf8_lossy(&attr.value).into_owned());
                                 } else if attr.key.as_ref() == b"strokeweight" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if let Some(px) = Self::points_str_to_px(value.trim()) {
                                             border.width_px = Some(px);
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"strokecolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         if !value.trim().is_empty() {
                                             border.color =
                                                 Some(Self::normalize_color_string(value.trim()));
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"stroked" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             stroke_enabled = false;
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"filled" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let val = value.trim().to_ascii_lowercase();
                                         if val == "f" || val == "false" || val == "0" {
                                             fill_enabled = false;
@@ -7011,7 +7534,9 @@ impl DocumentParser {
                                         }
                                     }
                                 } else if attr.key.as_ref() == b"fillcolor" {
-                                    if let Ok(value) = attr.unescape_value() {
+                                    if let Ok(value) =
+                                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    {
                                         let value = value.trim();
                                         if !value.is_empty() {
                                             fill_color = Some(Self::normalize_color_string(value));
@@ -7050,7 +7575,9 @@ impl DocumentParser {
                         }
                         b"v:stroke" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7091,7 +7618,9 @@ impl DocumentParser {
                         }
                         b"v:fill" => {
                             for attr in e.attributes().flatten() {
-                                if let Ok(value) = attr.unescape_value() {
+                                if let Ok(value) =
+                                    attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                {
                                     let value_trimmed = value.trim();
                                     match attr.key.as_ref() {
                                         b"on" => {
@@ -7200,6 +7729,7 @@ impl DocumentParser {
             insets,
             vertical_alignment,
             shape: TextBoxShape::Rectangle,
+            ..Default::default()
         })))
     }
 
@@ -7317,6 +7847,26 @@ impl DocumentParser {
     }
 
     fn apply_vml_imagedata_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
+        if element.name().as_ref() == b"o:signatureline" {
+            let mut line = SignatureLine::default();
+            for attr in element.attributes().flatten() {
+                let value = attr
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .map(|value| value.into_owned())
+                    .unwrap_or_default();
+                let value = (!value.is_empty()).then_some(value);
+                match attr.key.as_ref() {
+                    b"id" => line.id = value,
+                    b"o:suggestedsigner" => line.signer = value,
+                    b"o:suggestedsigner2" => line.title = value,
+                    b"o:suggestedsigneremail" => line.email = value,
+                    b"o:signinginstructions" => line.instructions = value,
+                    _ => {}
+                }
+            }
+            image.signature_line = Some(Box::new(line));
+            return;
+        }
         if element.name().as_ref() != b"v:imagedata" {
             return;
         }
@@ -7417,7 +7967,7 @@ impl DocumentParser {
             .attributes()
             .flatten()
             .find(|attribute| attribute.key.as_ref() == b"type")?
-            .unescape_value()
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
             .ok()?;
         Some(match value.trim().to_ascii_lowercase().as_str() {
             "topandbottom" => WrapMode::TopAndBottom,
@@ -7495,6 +8045,26 @@ impl DocumentParser {
         has_embed: &mut bool,
     ) {
         match element.name().as_ref() {
+            // Word ink: the drawing's graphic is an InkML part.
+            b"w14:contentPart" | b"wp14:contentPart" => {
+                let relationship_id = element.attributes().flatten().find_map(|attribute| {
+                    (attribute.key.as_ref() == b"r:id")
+                        .then(|| {
+                            attribute
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                .ok()
+                                .map(|value| value.to_string())
+                        })
+                        .flatten()
+                });
+                if let Some(relationship_id) = relationship_id {
+                    image.ink = Some(Box::new(crate::inkml::InkContent {
+                        relationship_id: Some(relationship_id),
+                        traces: Vec::new(),
+                    }));
+                    *has_embed = true;
+                }
+            }
             b"wp:extent" | b"a:ext" => {
                 let is_outer_extent = element.name().as_ref() == b"wp:extent";
                 for attr in element.attributes().flatten() {
@@ -7581,7 +8151,7 @@ impl DocumentParser {
                     match attr.key.as_ref() {
                         b"name" => {
                             let name = attr
-                                .unescape_value()
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|value| value.into_owned())
                                 .unwrap_or_else(|_| {
                                     String::from_utf8_lossy(&attr.value).into_owned()
@@ -7596,7 +8166,7 @@ impl DocumentParser {
                         }
                         b"descr" => {
                             image.description = Some(
-                                attr.unescape_value()
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                     .map(|value| value.into_owned())
                                     .unwrap_or_else(|_| {
                                         String::from_utf8_lossy(&attr.value).into_owned()
@@ -7605,7 +8175,7 @@ impl DocumentParser {
                         }
                         b"title" => {
                             explicit_title = Some(
-                                attr.unescape_value()
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                     .map(|value| value.into_owned())
                                     .unwrap_or_else(|_| {
                                         String::from_utf8_lossy(&attr.value).into_owned()
@@ -7618,6 +8188,14 @@ impl DocumentParser {
                 if let Some(title) = ink_name.or(explicit_title) {
                     image.title = Some(title);
                 }
+            }
+            // `<adec:decorative val="1"/>`, under `wp:docPr`'s extensions.
+            name if name.rsplit(|byte| *byte == b':').next() == Some(b"decorative".as_slice()) => {
+                image.decorative = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"val")
+                    .is_none_or(|attr| matches!(attr.value.as_ref(), b"1" | b"true"));
             }
             _ => {}
         }
@@ -8006,6 +8584,30 @@ impl DocumentParser {
             }
         }
         shading
+    }
+
+    /// A run's `w:color`, as `#RRGGBB` (or `#auto`): the theme colour it
+    /// names in the scheme being read, else its `w:val`.
+    fn run_color(e: &BytesStart) -> Option<String> {
+        let mut value = None;
+        let mut theme = None;
+        let mut tint = None;
+        let mut shade = None;
+        for attr in e.attributes().flatten() {
+            let text = String::from_utf8_lossy(&attr.value).to_string();
+            match attr.key.as_ref() {
+                b"w:val" => value = Some(text),
+                b"w:themeColor" => theme = Some(text),
+                b"w:themeTint" => tint = Some(text),
+                b"w:themeShade" => shade = Some(text),
+                _ => {}
+            }
+        }
+        theme
+            .and_then(|theme| {
+                crate::theme::text_theme_color(&theme, tint.as_deref(), shade.as_deref())
+            })
+            .or_else(|| value.map(|value| format!("#{value}")))
     }
 
     /// Normalizes an OOXML hex color (`RRGGBB` or `#RRGGBB`) to `#RRGGBB`.
@@ -8546,6 +9148,87 @@ impl DocumentParser {
         }
 
         Ok(borders)
+    }
+
+    /// Reads a `w14` text effect's subtree: its first `w14:srgbClr` (as
+    /// `#RRGGBB`), that colour's `w14:alpha` (as opacity, 0–1), and for
+    /// `w14:stylisticSets` the first set's id. `w14:noFill` leaves no colour.
+    #[allow(clippy::type_complexity)]
+    fn parse_text_effect(
+        reader: &mut dyn XmlEventSource,
+        tag: &[u8],
+    ) -> Result<(Option<String>, Option<f32>, Option<u8>), Box<dyn std::error::Error>> {
+        let (mut color, mut alpha, mut set) = (None, None, None);
+        let mut depth = 1usize;
+        let mut buf = Vec::new();
+        loop {
+            let event = reader.read_event_into(&mut buf);
+            match event {
+                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                    let is_start = matches!(event, Ok(Event::Start(_)));
+                    let value = |key: &[u8]| {
+                        e.attributes()
+                            .flatten()
+                            .find(|attr| attr.key.as_ref() == key)
+                            .map(|attr| String::from_utf8_lossy(&attr.value).trim().to_string())
+                    };
+                    match e.name().as_ref() {
+                        b"w14:srgbClr" if color.is_none() => {
+                            color = value(b"w14:val")
+                                .map(|hex| format!("#{}", hex.to_ascii_uppercase()));
+                        }
+                        b"w14:alpha" if alpha.is_none() => {
+                            alpha = value(b"w14:val")
+                                .and_then(|val| val.parse::<f32>().ok())
+                                .map(|transparency| {
+                                    (1.0 - transparency / 100_000.0).clamp(0.0, 1.0)
+                                });
+                        }
+                        b"w14:styleSet" if set.is_none() => {
+                            set = value(b"w14:id").and_then(|id| id.parse::<u8>().ok());
+                        }
+                        name if name == tag && is_start => depth += 1,
+                        _ => {}
+                    }
+                }
+                Ok(Event::End(ref e)) if e.name().as_ref() == tag => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Ok(_) => {}
+                Err(err) => return Err(Box::new(err)),
+            }
+            buf.clear();
+        }
+        Ok((color, alpha, set))
+    }
+
+    /// The theme colour a `w:color` names, if it names one.
+    pub(crate) fn run_theme_color(attributes: Attributes<'_>) -> Option<RunThemeColor> {
+        let mut theme: Option<RunThemeColor> = None;
+        let (mut tint, mut shade) = (None, None);
+        for attr in attributes.flatten() {
+            let value = String::from_utf8_lossy(&attr.value).trim().to_string();
+            match attr.key.as_ref() {
+                b"w:themeColor" if !value.is_empty() => {
+                    theme = Some(RunThemeColor {
+                        name: Rc::from(value.as_str()),
+                        ..Default::default()
+                    })
+                }
+                b"w:themeTint" if !value.is_empty() => tint = Some(Rc::from(value.as_str())),
+                b"w:themeShade" if !value.is_empty() => shade = Some(Rc::from(value.as_str())),
+                _ => {}
+            }
+        }
+        theme.map(|theme| RunThemeColor {
+            tint,
+            shade,
+            ..theme
+        })
     }
 
     /// Builds a single [`BorderEdge`] from an edge element's attributes. `w:val`
@@ -9347,6 +10030,19 @@ impl DocumentParser {
             }
             "SECTION" => Some(RunFieldKind::SectionNumber),
             "SECTIONPAGES" => Some(RunFieldKind::SectionPages),
+            "STYLEREF" => {
+                let style = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .map(|token| token.trim_matches('"'))
+                    .find(|token| !token.is_empty() && !token.starts_with('\\'))?;
+                let from_bottom = raw_tokens[name_idx + 1..]
+                    .iter()
+                    .any(|token| token.eq_ignore_ascii_case("\\l"));
+                Some(RunFieldKind::StyleRef {
+                    style: style.to_string(),
+                    from_bottom,
+                })
+            }
             "DOCPROPERTY" => {
                 let name = raw_tokens[name_idx + 1..]
                     .iter()
@@ -9586,15 +10282,56 @@ impl DocumentParser {
             "HYPERLINK" => Self::parse_hyperlink_field(&raw_tokens, name_idx),
             "MACROBUTTON" => Self::parse_macrobutton_field(&raw_tokens, name_idx),
             "GOTOBUTTON" => Self::parse_gotobutton_field(&raw_tokens, name_idx),
-            "EQ" => parse_eq_ruby_field(normalized).or_else(|| {
-                parse_eq_distributed_field(normalized)
-                    .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
-            }),
+            "EQ" => parse_eq_ruby_field(normalized)
+                .or_else(|| parse_eq_enclosed_field(normalized))
+                .or_else(|| {
+                    parse_eq_distributed_field(normalized)
+                        .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
+                }),
             "PRIVATE" | "ADDIN" | "XE" | "TA" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
             _ => None,
         })();
+        // A page-number field with a number format keeps it for live
+        // display (`PAGE \* ROMAN`, `NUMPAGES \# "00"`).
+        let parsed = parsed.map(|kind| {
+            let numbered = matches!(
+                kind,
+                RunFieldKind::PageNumber
+                    | RunFieldKind::NumPages
+                    | RunFieldKind::SectionPages
+                    | RunFieldKind::SectionNumber
+            );
+            let format = crate::field_format::FieldCode::parse(normalized)
+                .map(|code| code.format)
+                .unwrap_or_default();
+            let formats_number = format.numeric_picture.is_some()
+                || format.formats.iter().any(|name| {
+                    crate::field_format::format_number_switch(1.0, name).is_some()
+                        || !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT"
+                        )
+                })
+                // Arabic only matters where a section numbers pages otherwise.
+                && (matches!(kind, RunFieldKind::PageNumber)
+                    || format.numeric_picture.is_some()
+                    || format.formats.iter().any(|name| {
+                        !matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "MERGEFORMAT" | "CHARFORMAT" | "ARABIC"
+                        )
+                    }));
+            if numbered && formats_number {
+                RunFieldKind::Formatted {
+                    kind: Rc::new(kind),
+                    instruction: Rc::from(normalized),
+                }
+            } else {
+                kind
+            }
+        });
         // A known evaluator can decline unsafe or incomplete operands (for
         // example `TEMPLATE \p`, a mutating INFO form, or malformed PAGEREF).
         // Those are still Word fields. Keep the instruction and cached result
@@ -10312,6 +11049,37 @@ fn parse_eq_ruby_field(instr: &str) -> Option<RunFieldKind> {
     })
 }
 
+/// The enclosures Word's 囲い文字 offers.
+const EQ_ENCLOSURES: [&str; 6] = ["○", "◯", "〇", "□", "△", "◇"];
+
+/// Extracts Word's 囲い文字: `EQ \o\ac(enclosure,character)` (ECMA-376
+/// §17.16.5.22), either argument the enclosure.
+fn parse_eq_enclosed_field(instr: &str) -> Option<RunFieldKind> {
+    let trimmed = instr.trim();
+    let (name, rest) = trimmed.split_once(char::is_whitespace)?;
+    if !name.eq_ignore_ascii_case("EQ") {
+        return None;
+    }
+    let lower = rest.to_ascii_lowercase();
+    let overstrike = lower.find("\\o")?;
+    let after = &rest[overstrike + 2..];
+    let after = match after.get(..2) {
+        Some(align) if align.eq_ignore_ascii_case("\\a") => after.get(3..)?,
+        _ => after,
+    };
+    let args = after.trim_start().strip_prefix('(')?;
+    let end = find_matching_field_paren(args)?;
+    let (first, second) = split_eq_distributed_args(&args[..end])?;
+    let (enclosure, text) = if EQ_ENCLOSURES.contains(&first.as_str()) {
+        (first, second)
+    } else if EQ_ENCLOSURES.contains(&second.as_str()) {
+        (second, first)
+    } else {
+        return None;
+    };
+    Some(RunFieldKind::EqEnclosed { text, enclosure })
+}
+
 fn find_matching_field_paren(text: &str) -> Option<usize> {
     let mut in_quote = false;
     for (idx, ch) in text.char_indices() {
@@ -10567,6 +11335,14 @@ fn reference_event_to_string(event: &quick_xml::events::BytesRef<'_>) -> Option<
         .ok()
         .map(|value| value.into_owned())
 }
+
+/// A `w:footnotePr` / `w:endnotePr`: its numbering, the endnotes'
+/// position, and whether the notes sit beneath the text.
+type NoteProperties = (
+    crate::document::NoteNumbering,
+    Option<crate::document::EndnotePosition>,
+    Option<bool>,
+);
 
 #[cfg(test)]
 mod tests {
@@ -13543,8 +14319,9 @@ mod tests {
             BodyElement::Paragraph(p) => p.as_ref(),
             _ => panic!("expected paragraph"),
         };
-        // Column break → page-break char; the unknown break adds nothing.
-        assert_eq!(paragraph.runs[0].text, "A\u{000C}BC");
+        // A column break has its own character; the unknown break adds
+        // nothing.
+        assert_eq!(paragraph.runs[0].text, "A\u{000E}BC");
     }
 
     #[test]
@@ -13749,6 +14526,24 @@ mod tests {
         let props = run.properties.as_ref().expect("run properties");
 
         assert_eq!(props.underline, Some(false));
+    }
+
+    #[test]
+    fn equation_text_keeps_escaped_characters() {
+        let body = r#"<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>x&lt;0 &amp; y&gt;1</m:t></m:r></m:oMath></w:p>"#;
+        let document = parse_document_from_body(body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let math = paragraph.runs[0].math.as_ref().expect("math");
+        assert!(
+            math.raw_omml.contains("x&lt;0 &amp; y&gt;1"),
+            "{}",
+            math.raw_omml
+        );
+        let text = &math.elements[0].children[0].children[0];
+        assert_eq!(text.text.as_deref(), Some("x<0 & y>1"));
     }
 
     #[test]
@@ -14869,6 +15664,76 @@ mod tests {
         assert_eq!(shape.height_px, Some(96.0));
         assert!(shape.blocks.is_empty());
         assert_eq!(shape.fill_color.as_deref(), Some("#4472C4"));
+    }
+
+    fn shape_with_geometry(geometry: &str) -> TextBoxShape {
+        let body = format!(
+            r#"
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                     xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                     xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+            <wp:extent cx="1828800" cy="914400"/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                <wps:wsp>
+                  <wps:spPr>{geometry}</wps:spPr>
+                  <wps:bodyPr/>
+                </wps:wsp>
+              </a:graphicData>
+            </a:graphic>
+          </wp:anchor>
+        </w:drawing>
+      </w:r>
+    </w:p>
+"#
+        );
+        let document = parse_document_from_body(&body);
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        paragraph.runs[0].text_box.as_ref().expect("shape").shape
+    }
+
+    #[test]
+    fn presets_beyond_the_traced_set_and_moved_handles_keep_their_geometry() {
+        let TextBoxShape::Preset(gear) =
+            shape_with_geometry(r#"<a:prstGeom prst="gear6"><a:avLst/></a:prstGeom>"#)
+        else {
+            panic!("gear6 must not be flattened to a rectangle");
+        };
+        assert_eq!(gear.name(), "gear6");
+        assert!(gear.geometry().adjustments.is_empty());
+
+        let TextBoxShape::Preset(rounded) = shape_with_geometry(
+            r#"<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 40000"/></a:avLst></a:prstGeom>"#,
+        ) else {
+            panic!("a moved corner handle must be kept");
+        };
+        assert_eq!(rounded.geometry().adjustments, vec![("adj".into(), 40_000)]);
+        assert_eq!(
+            TextBoxShape::Preset(rounded).hand_traced(),
+            TextBoxShape::RoundedRectangle
+        );
+
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>"#),
+            TextBoxShape::RoundedRectangle
+        );
+        assert_eq!(
+            shape_with_geometry(r#"<a:prstGeom prst="rect"/>"#),
+            TextBoxShape::Rectangle
+        );
+        // Connectors keep their hand-traced line kinds, handles or not.
+        assert_eq!(
+            shape_with_geometry(
+                r#"<a:prstGeom prst="bentConnector3"><a:avLst><a:gd name="adj1" fmla="val 30000"/></a:avLst></a:prstGeom>"#
+            ),
+            TextBoxShape::LineBent
+        );
     }
 
     #[test]
@@ -20502,6 +21367,25 @@ mod tests {
         assert_eq!(ruby.text, "じゆん");
         assert_eq!(ruby.size_pt, Some(5.5));
         assert_eq!(ruby.raise_half_points, Some(22));
+    }
+
+    #[test]
+    fn eq_overstrike_of_an_enclosure_is_an_enclosed_character() {
+        assert_eq!(
+            parse_eq_enclosed_field(r"EQ \o\ac(○,秘)"),
+            Some(RunFieldKind::EqEnclosed {
+                text: "秘".into(),
+                enclosure: "○".into()
+            })
+        );
+        assert_eq!(
+            parse_eq_enclosed_field(r"eq \o(株,□)"),
+            Some(RunFieldKind::EqEnclosed {
+                text: "株".into(),
+                enclosure: "□".into()
+            })
+        );
+        assert_eq!(parse_eq_enclosed_field(r#"EQ \o\ad("契約","　　")"#), None);
     }
 
     #[test]

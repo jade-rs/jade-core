@@ -21,6 +21,9 @@ pub mod navigation;
 pub mod number_format;
 pub mod resize;
 pub mod selection;
+pub mod shape_style;
+pub mod sparkline;
+pub mod table_style;
 pub mod units;
 mod visual_format;
 
@@ -96,6 +99,9 @@ pub struct ResolvedFont {
     pub italic: bool,
     pub underline: bool,
     pub strike: bool,
+    /// `superscript` or `subscript`.
+    #[serde(default)]
+    pub vert_align: Option<String>,
 }
 
 impl Default for ResolvedFont {
@@ -107,6 +113,7 @@ impl Default for ResolvedFont {
             italic: false,
             underline: false,
             strike: false,
+            vert_align: None,
         }
     }
 }
@@ -143,6 +150,9 @@ pub struct PlacedCell {
     pub fill: Option<ResolvedFill>,
     #[serde(default)]
     pub data_bar: Option<PlacedDataBar>,
+    /// An icon-set icon drawn at the cell's left edge.
+    #[serde(default)]
+    pub icon: Option<PlacedIcon>,
     pub border: Border,
     /// Alignment with `General` already resolved against the value's type.
     pub alignment: Alignment,
@@ -150,6 +160,32 @@ pub struct PlacedCell {
     /// consume this instead of independently measuring Excel's three spaces.
     #[serde(default)]
     pub text_inset_px: f64,
+    /// Rich text: the runs of `text`, each with its own font. Empty for a
+    /// cell drawn in one font.
+    #[serde(default)]
+    pub runs: Vec<PlacedRun>,
+}
+
+/// A run of a rich text cell: a byte range of the cell's text and its font.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedRun {
+    pub start: usize,
+    pub end: usize,
+    pub font: ResolvedFont,
+    /// The run's own colour; `None` takes the cell's.
+    pub color: Option<Color>,
+}
+
+/// A conditional-format icon, placed: which icon of which set, and its box.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedIcon {
+    /// The set's name as the file spells it: `3Arrows`, `5Quarters`...
+    pub icon_set: String,
+    /// The icon's position in the set, 0 being the one for the lowest values.
+    pub index: u32,
+    pub rect: Rect,
+    /// False when the rule hides the cell's value and shows only the icon.
+    pub show_value: bool,
 }
 
 /// A conditional data bar with geometry already resolved by shared layout.
@@ -199,6 +235,10 @@ pub struct PlacedShape {
     /// that has a text body.
     pub lines: Vec<String>,
     pub font: ResolvedFont,
+    /// A shape's geometry, fill, outline and text placement; `None` for a
+    /// picture, chart or group.
+    #[serde(default)]
+    pub style: Option<shape_style::PlacedShapeStyle>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -301,6 +341,12 @@ pub struct SheetLayout {
     /// Cells carrying a note, so a painter can mark them.
     #[serde(default)]
     pub notes: Vec<PlacedNote>,
+    /// Tables with a table style, which paints their unstored cells too.
+    #[serde(default)]
+    pub tables: Vec<table_style::StyledTable>,
+    /// Sparklines, each in its cell.
+    #[serde(default)]
+    pub sparklines: Vec<sparkline::PlacedSparkline>,
     pub show_grid_lines: bool,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
@@ -351,6 +397,7 @@ impl SheetLayout {
         if self.blank_conditional_rules.is_empty()
             && self.blank_row_styles.is_empty()
             && self.blank_column_styles.is_empty()
+            && self.tables.is_empty()
         {
             return Vec::new();
         }
@@ -378,13 +425,24 @@ impl SheetLayout {
                 });
                 let style =
                     conditional_format::blank_style(&self.blank_conditional_rules, reference);
-                let fill = conditional_format::conditional_fill(&style)
-                    .unwrap_or_else(|| axis_style.and_then(|style| style.fill.clone()));
+                let table = self
+                    .tables
+                    .iter()
+                    .find_map(|table| table.style_at(reference));
+                let fill = conditional_format::conditional_fill(&style).unwrap_or_else(|| {
+                    axis_style
+                        .and_then(|style| style.fill.clone())
+                        .or_else(|| table.as_ref().and_then(|table| table.fill.clone()))
+                });
                 let mut border = axis_style
                     .map(|style| style.border.clone())
                     .unwrap_or_default();
+                if let Some(table) = &table {
+                    overlay_table_border(&mut border, table);
+                }
                 conditional_format::apply_border(&style, &mut border);
                 if axis_style.is_none()
+                    && table.is_none()
                     && style == jade_xlsx_reader::conditional_format::DifferentialStyle::default()
                 {
                     continue;
@@ -419,7 +477,9 @@ impl SheetLayout {
                     border,
                     alignment: axis_style.map(|style| style.alignment).unwrap_or_default(),
                     data_bar: None,
+                    icon: None,
                     text_inset_px: 0.0,
+                    runs: Vec::new(),
                 });
             }
         }
@@ -790,6 +850,9 @@ pub struct LayoutOptions {
     pub cell_padding_px: f64,
     /// Which epoch the workbook's date serials count from.
     pub date_system: jade_xlsx_reader::DateSystem,
+    /// The IANA time zone "today" is in for date rules (`TODAY()`, "dates
+    /// occurring"); UTC when unset.
+    pub time_zone: Option<String>,
     /// Measures text for wrapping. The default is a deterministic stand-in;
     /// a browser passes one backed by the canvas, and the native shell one
     /// backed by Skia, so line ends match what will actually be drawn.
@@ -854,6 +917,7 @@ impl Default for LayoutOptions {
             min_row_count: 0,
             cell_padding_px: 3.0,
             date_system: jade_xlsx_reader::DateSystem::default(),
+            time_zone: None,
             measure: Rc::new(HeuristicMeasure),
         }
     }
@@ -889,13 +953,21 @@ fn layout_sheet_with_workbook(
     options: &LayoutOptions,
     workbook: Option<&jade_xlsx_reader::Workbook>,
 ) -> SheetLayout {
-    let conditional = conditional_format::ConditionalStyles::new(sheet, styles);
     let filter_definitions = filter_button::definitions(sheet);
     let column_count = sheet
         .used_column_count()
         .max(options.min_column_count)
         .max(merge_extent(sheet, Axis::Column))
         .max(shape_extent(sheet, Axis::Column))
+        .max(
+            sheet
+                .sparkline_groups
+                .iter()
+                .flat_map(|group| &group.sparklines)
+                .map(|sparkline| sparkline.cell.column + 1)
+                .max()
+                .unwrap_or(0),
+        )
         .max(
             filter_definitions
                 .values()
@@ -909,6 +981,15 @@ fn layout_sheet_with_workbook(
         .max(merge_extent(sheet, Axis::Row))
         .max(shape_extent(sheet, Axis::Row))
         .max(
+            sheet
+                .sparkline_groups
+                .iter()
+                .flat_map(|group| &group.sparklines)
+                .map(|sparkline| sparkline.cell.row + 1)
+                .max()
+                .unwrap_or(0),
+        )
+        .max(
             filter_definitions
                 .values()
                 .map(|button| button.reference.row + 1)
@@ -916,6 +997,11 @@ fn layout_sheet_with_workbook(
                 .unwrap_or(0),
         );
 
+    let styled_tables = table_style::styled_tables(sheet, styles);
+    let formula_matches =
+        formula_rule_matches(sheet, styles, workbook, column_count, row_count, options);
+    let conditional =
+        conditional_format::ConditionalStyles::with_formula_matches(sheet, styles, formula_matches);
     let mut columns = column_axis(sheet, column_count, options);
     let normal_style_font = resolve_normal_font(styles, &options.default_font);
 
@@ -975,8 +1061,17 @@ fn layout_sheet_with_workbook(
                 format.and_then(|format| styles.font(format)),
                 &options.default_font,
             );
-            let (conditional_style, data_bar) =
+            let table_style = styled_tables
+                .iter()
+                .find_map(|table| table.style_at(cell.reference));
+            if let Some(table) = &table_style {
+                font.bold |= table.bold;
+                font.italic |= table.italic;
+            }
+            let (conditional_style, visuals) =
                 conditional.for_cell_with_visual(cell.reference, &cell.value);
+            let data_bar = visuals.bar;
+            let icon = visuals.icon;
             conditional_format::apply_font(&conditional_style, &mut font);
             let number_format_code = conditional_style
                 .number_format_code
@@ -989,9 +1084,14 @@ fn layout_sheet_with_workbook(
                     options.measure.measure("   ", &normal_style_font) * f64::from(alignment.indent)
                 }
                 _ => 0.0,
+            } + match (&icon, alignment.horizontal) {
+                // Left-aligned text starts after the icon, which sits there.
+                (Some(_), HorizontalAlignment::Left) => icon_size_px(&font, f64::INFINITY) + 1.0,
+                _ => 0.0,
             };
             let formatted =
                 number_format::format_value(&cell.value, number_format_code, options.date_system);
+            let fill_at = formatted.fill;
             let text = formatted.text;
             // Without wrap text Excel keeps the cell on one line and shows
             // its line breaks as nothing.
@@ -1052,6 +1152,29 @@ fn layout_sheet_with_workbook(
                 }
                 _ => shown.to_string(),
             };
+            // `*c` repeats c across whatever width the text leaves.
+            let drawing_text = match fill_at {
+                Some((at, character))
+                    if drawing_text == text
+                        && !alignment.wrap_text
+                        && alignment.text_rotation == 0 =>
+                {
+                    let width =
+                        (text_width - options.cell_padding_px * 2.0 - text_inset_px).max(0.0);
+                    let unit = options.measure.measure(&character.to_string(), &font);
+                    let count = if unit > 0.0 {
+                        ((width - options.measure.measure(&text, &font)) / unit)
+                            .floor()
+                            .clamp(0.0, 1000.0) as usize
+                    } else {
+                        0
+                    };
+                    let mut filled = text.clone();
+                    filled.insert_str(at, &character.to_string().repeat(count));
+                    filled
+                }
+                _ => drawing_text,
+            };
             let lines = if stacks_text && !text.is_empty() {
                 text.graphemes(true).map(str::to_string).collect()
             } else if alignment.wrap_text && !text.is_empty() {
@@ -1077,11 +1200,18 @@ fn layout_sheet_with_workbook(
                 *slot = slot.max(needed);
             }
 
+            let runs = rich_runs(
+                sheet.rich_text.get(&cell.reference),
+                &cell.value,
+                &text,
+                &font,
+            );
             prepared.push(PreparedCell {
                 reference: cell.reference,
                 merge,
                 text,
                 lines,
+                runs,
                 font,
                 // A colour in the number format wins over the font's own,
                 // which is how `[Red]-#,##0` turns a negative red without the
@@ -1089,29 +1219,24 @@ fn layout_sheet_with_workbook(
                 text_color: conditional_style
                     .text_color
                     .or_else(|| formatted.color.map(format_color_to_color))
-                    .or_else(|| {
-                        format
-                            .and_then(|format| styles.font(format))
-                            .and_then(|font| font.color)
-                    }),
+                    .or_else(|| cell_text_color(styles, format, table_style.as_ref())),
                 fill: conditional_format::conditional_fill(&conditional_style).unwrap_or_else(
                     || {
                         format
                             .and_then(|format| styles.fill(format))
                             .and_then(resolve_fill)
+                            .or_else(|| table_style.as_ref().and_then(|table| table.fill.clone()))
                     },
                 ),
                 border: {
-                    let mut border = format
-                        .and_then(|format| styles.border(format))
-                        .cloned()
-                        .unwrap_or_default();
+                    let mut border = cell_border(styles, format, table_style.as_ref());
                     conditional_format::apply_border(&conditional_style, &mut border);
                     border
                 },
                 alignment,
                 text_inset_px,
                 data_bar,
+                icon,
                 overflow,
             });
         }
@@ -1130,6 +1255,9 @@ fn layout_sheet_with_workbook(
         }
         let format = styles.cell_format(sheet.effective_style_index(merge.start, None));
         let conditional_style = conditional.for_cell(merge.start, &CellValue::Empty);
+        let table_style = styled_tables
+            .iter()
+            .find_map(|table| table.style_at(merge.start));
         let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
         alignment.horizontal = resolve_horizontal(alignment.horizontal, &CellValue::Empty);
         prepared.push(PreparedCell {
@@ -1137,35 +1265,37 @@ fn layout_sheet_with_workbook(
             merge: Some(*merge),
             text: String::new(),
             lines: vec![String::new()],
+            runs: Vec::new(),
             font: {
                 let mut font = resolve_font(
                     format.and_then(|format| styles.font(format)),
                     &options.default_font,
                 );
+                if let Some(table) = &table_style {
+                    font.bold |= table.bold;
+                    font.italic |= table.italic;
+                }
                 conditional_format::apply_font(&conditional_style, &mut font);
                 font
             },
-            text_color: conditional_style.text_color.or_else(|| {
-                format
-                    .and_then(|format| styles.font(format))
-                    .and_then(|font| font.color)
-            }),
+            text_color: conditional_style
+                .text_color
+                .or_else(|| cell_text_color(styles, format, table_style.as_ref())),
             fill: conditional_format::conditional_fill(&conditional_style).unwrap_or_else(|| {
                 format
                     .and_then(|format| styles.fill(format))
                     .and_then(resolve_fill)
+                    .or_else(|| table_style.as_ref().and_then(|table| table.fill.clone()))
             }),
             border: {
-                let mut border = format
-                    .and_then(|format| styles.border(format))
-                    .cloned()
-                    .unwrap_or_default();
+                let mut border = cell_border(styles, format, table_style.as_ref());
                 conditional_format::apply_border(&conditional_style, &mut border);
                 border
             },
             alignment,
             text_inset_px: 0.0,
             data_bar: None,
+            icon: None,
             overflow: None,
         });
     }
@@ -1234,7 +1364,7 @@ fn layout_sheet_with_workbook(
                 merge: cell.merge,
                 text: cell.text,
                 lines: cell.lines,
-                font: cell.font,
+                font: cell.font.clone(),
                 text_color: cell.text_color,
                 fill: cell.fill,
                 border: cell.border,
@@ -1273,8 +1403,32 @@ fn layout_sheet_with_workbook(
                         }),
                     }
                 }),
+                icon: cell.icon.map(|icon| {
+                    let size = icon_size_px(&cell.font, rect.height - 2.0);
+                    let y = match cell.alignment.vertical {
+                        jade_xlsx_reader::VerticalAlignment::Top => rect.y + 1.0,
+                        jade_xlsx_reader::VerticalAlignment::Center => {
+                            rect.y + (rect.height - size) / 2.0
+                        }
+                        jade_xlsx_reader::VerticalAlignment::Bottom => {
+                            rect.y + rect.height - size - 2.0
+                        }
+                    };
+                    PlacedIcon {
+                        icon_set: icon.icon_set,
+                        index: icon.index,
+                        rect: Rect {
+                            x: rect.x + 2.0,
+                            y: y.max(rect.y).round(),
+                            width: size,
+                            height: size,
+                        },
+                        show_value: icon.show_value,
+                    }
+                }),
                 alignment: cell.alignment,
                 text_inset_px: cell.text_inset_px,
+                runs: cell.runs,
             })
         })
         .collect();
@@ -1334,6 +1488,7 @@ fn layout_sheet_with_workbook(
             })
         })
         .collect();
+    let sparklines = sparkline::place(sheet, workbook, &columns, &rows);
     SheetLayout {
         columns,
         rows,
@@ -1344,6 +1499,8 @@ fn layout_sheet_with_workbook(
         blank_column_styles,
         shapes,
         notes,
+        tables: styled_tables,
+        sparklines,
         show_grid_lines: sheet.show_grid_lines,
         content_width,
         max_digit_width_px: options.max_digit_width_px,
@@ -1362,6 +1519,7 @@ fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {
         italic: font.italic,
         underline: font.underline,
         strike: font.strike,
+        vert_align: font.vert_align.clone(),
     })
     .unwrap_or_else(|| fallback.clone())
 }
@@ -1378,6 +1536,137 @@ fn resolve_fill(fill: &jade_xlsx_reader::Fill) -> Option<ResolvedFill> {
     })
 }
 
+/// The runs a string cell is drawn in: its rich text runs, when they still
+/// spell its text, or one run for a cell whose own font is raised or
+/// lowered.
+fn rich_runs(
+    runs: Option<&Vec<jade_xlsx_reader::rich_text::TextRun>>,
+    value: &CellValue,
+    text: &str,
+    font: &ResolvedFont,
+) -> Vec<PlacedRun> {
+    let CellValue::Text(value) = value else {
+        return Vec::new();
+    };
+    if let Some(runs) = runs {
+        let joined: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if joined == *value && joined == text {
+            let mut start = 0;
+            return runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    let end = start + run.text.len();
+                    let own = &run.font;
+                    let placed = PlacedRun {
+                        start,
+                        end,
+                        font: ResolvedFont {
+                            family: own.name.clone().unwrap_or_else(|| font.family.clone()),
+                            size_points: own.size_points.unwrap_or(font.size_points),
+                            bold: own.bold.unwrap_or(font.bold),
+                            italic: own.italic.unwrap_or(font.italic),
+                            underline: own.underline.unwrap_or(font.underline),
+                            strike: own.strike.unwrap_or(font.strike),
+                            vert_align: own.vert_align.clone().or_else(|| {
+                                own.bold
+                                    .is_none()
+                                    .then(|| font.vert_align.clone())
+                                    .flatten()
+                            }),
+                        },
+                        color: own.color,
+                    };
+                    start = end;
+                    placed
+                })
+                .collect();
+        }
+    }
+    if font.vert_align.is_some() && !text.is_empty() {
+        return vec![PlacedRun {
+            start: 0,
+            end: text.len(),
+            font: font.clone(),
+            color: None,
+        }];
+    }
+    Vec::new()
+}
+
+/// A cell's text colour: its own font's, unless that is just the workbook's
+/// default and a table style colours the text.
+fn cell_text_color(
+    styles: &StyleTable,
+    format: Option<&jade_xlsx_reader::CellFormat>,
+    table: Option<&table_style::TableCellStyle>,
+) -> Option<Color> {
+    let own = format
+        .and_then(|format| styles.font(format))
+        .and_then(|font| font.color);
+    match table.and_then(|table| table.text_color) {
+        Some(table_color) => {
+            let normal = styles.normal_font().and_then(|font| font.color);
+            if own.is_none() || own == normal || own == Some(Color::Auto) {
+                Some(table_color)
+            } else {
+                own
+            }
+        }
+        None => own,
+    }
+}
+
+/// A cell's own borders over its table style's.
+fn cell_border(
+    styles: &StyleTable,
+    format: Option<&jade_xlsx_reader::CellFormat>,
+    table: Option<&table_style::TableCellStyle>,
+) -> Border {
+    let own = format
+        .and_then(|format| styles.border(format))
+        .cloned()
+        .unwrap_or_default();
+    let Some(table) = table else {
+        return own;
+    };
+    let mut border = Border {
+        left: table.left.clone(),
+        right: table.right.clone(),
+        top: table.top.clone(),
+        bottom: table.bottom.clone(),
+        ..Border::default()
+    };
+    border.diagonal = own.diagonal.clone();
+    border.diagonal_up = own.diagonal_up;
+    border.diagonal_down = own.diagonal_down;
+    for (side, edge) in [
+        (&mut border.left, own.left),
+        (&mut border.right, own.right),
+        (&mut border.top, own.top),
+        (&mut border.bottom, own.bottom),
+    ] {
+        if edge.is_some() {
+            *side = edge;
+        }
+    }
+    border
+}
+
+/// A blank cell's table-style borders where nothing else draws one.
+fn overlay_table_border(border: &mut Border, table: &table_style::TableCellStyle) {
+    for (side, edge) in [
+        (&mut border.left, &table.left),
+        (&mut border.right, &table.right),
+        (&mut border.top, &table.top),
+        (&mut border.bottom, &table.bottom),
+    ] {
+        if side.is_none() {
+            *side = edge.clone();
+        }
+    }
+}
+
 /// A cell after its style and text are resolved, but before the row axis
 /// exists to place it on.
 struct PreparedCell {
@@ -1385,6 +1674,7 @@ struct PreparedCell {
     merge: Option<CellRange>,
     text: String,
     lines: Vec<String>,
+    runs: Vec<PlacedRun>,
     font: ResolvedFont,
     text_color: Option<Color>,
     fill: Option<ResolvedFill>,
@@ -1392,7 +1682,60 @@ struct PreparedCell {
     alignment: Alignment,
     text_inset_px: f64,
     data_bar: Option<visual_format::ResolvedDataBar>,
+    icon: Option<visual_format::ResolvedIcon>,
     overflow: Option<(f64, f64)>,
+}
+
+/// An icon set's icons are 16 px for 11 pt text and grow with the font, but
+/// never past the row.
+fn icon_size_px(font: &ResolvedFont, room: f64) -> f64 {
+    let size = (f64::from(font.size_points) * 96.0 / 72.0 * 16.0 / (11.0 * 96.0 / 72.0)).round();
+    size.max(8.0).min(room.max(4.0)).floor()
+}
+
+/// Evaluates the sheet's formula-decided conditional rules over the laid-out
+/// extent, when it has any.
+fn formula_rule_matches(
+    sheet: &Sheet,
+    styles: &StyleTable,
+    workbook: Option<&jade_xlsx_reader::Workbook>,
+    columns: u32,
+    rows: u32,
+    options: &LayoutOptions,
+) -> Option<Vec<conditional_format::FormulaRuleMatches>> {
+    let formula_rules = sheet
+        .conditional_formats
+        .iter()
+        .any(|format| format.rules.iter().any(conditional_format::is_formula_rule));
+    if !formula_rules {
+        return None;
+    }
+    let time_zone = options.time_zone.as_deref().unwrap_or("UTC");
+    let found = workbook.and_then(|workbook| {
+        let index = workbook
+            .sheets
+            .iter()
+            .position(|candidate| std::ptr::eq(candidate, sheet))?;
+        Some(jade_xlsx_calc::conditional::conditional_formula_matches(
+            workbook, index, columns, rows, time_zone,
+        ))
+    });
+    let found = match found {
+        Some(found) => found,
+        None => {
+            // On its own the sheet is a workbook of one.
+            let alone = jade_xlsx_reader::Workbook {
+                sheets: vec![sheet.clone()],
+                styles: styles.clone(),
+                date_system: options.date_system,
+                ..Default::default()
+            };
+            jade_xlsx_calc::conditional::conditional_formula_matches(
+                &alone, 0, columns, rows, time_zone,
+            )
+        }
+    };
+    found.ok()
 }
 
 fn text_overflow(
@@ -1552,10 +1895,23 @@ fn place_shapes(
                 width: (right - x).max(0.0),
                 height: (bottom - y).max(0.0),
             };
-            let font = options.default_font.clone();
+            let mut font = options.default_font.clone();
+            let style = shape.style.as_ref().map(|style| {
+                shape_style::place(
+                    style,
+                    rect.width,
+                    rect.height,
+                    styles,
+                    &mut font,
+                    shape.kind == ShapeKind::Connector,
+                )
+            });
             let lines = match &shape.text {
                 Some(text) if !text.is_empty() => {
-                    let width = (rect.width - options.cell_padding_px * 2.0).max(1.0);
+                    let inset = style
+                        .as_ref()
+                        .map_or(options.cell_padding_px, |style| style.inset_x);
+                    let width = (rect.width - inset * 2.0).max(1.0);
                     let measure = Rc::clone(&options.measure);
                     let font_for_measure = font.clone();
                     text.split('\n')
@@ -1624,6 +1980,7 @@ fn place_shapes(
                 }),
                 lines,
                 font,
+                style,
             })
         })
         .collect()

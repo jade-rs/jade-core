@@ -27,6 +27,7 @@
 //!   formula the engine fails is skipped; one that merely passes another
 //!   cell's error along takes it.
 
+pub mod conditional;
 pub mod formula_text;
 
 use ironcalc_base::cell::CellValue as EngineValue;
@@ -259,42 +260,7 @@ fn project_with_epoch<'a>(
     skipped: &HashMap<(usize, CellRef), CellValue>,
     time_zone: &'a str,
 ) -> Result<Projection<'a>> {
-    let mut model =
-        Model::new_empty("workbook", "en", time_zone, "en").map_err(CalcError::Engine)?;
-
-    for (index, sheet) in workbook.sheets.iter().enumerate() {
-        if index == 0 {
-            if sheet.name != "Sheet1" {
-                model
-                    .rename_sheet_by_index(0, &sheet.name)
-                    .map_err(CalcError::Engine)?;
-            }
-        } else {
-            model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
-        }
-    }
-
-    // Tables before formulas, so structured references (`Table1[Amount]`)
-    // parse.
-    for sheet in &workbook.sheets {
-        for table in &sheet.tables {
-            if let Some(table) = engine_table(&sheet.name, table) {
-                model.add_table(table);
-            }
-        }
-    }
-
-    // Names before formulas, so a projected formula that uses one parses.
-    // A name the engine rejects is left out; formulas using it disqualify
-    // themselves through the `#NAME?` path.
-    for name in &workbook.defined_names {
-        let scope = name
-            .local_sheet_index
-            .and_then(|index| u32::try_from(index).ok());
-        let formula = jade_xlsx_reader::collapse_ref_errors(&name.formula);
-        let _ = model.new_defined_name(&name.name, scope, &formula);
-    }
-
+    let mut model = project_structure(workbook, time_zone)?;
     let mut projected = Vec::new();
     let mut unparsed = Vec::new();
     for (index, sheet) in workbook.sheets.iter().enumerate() {
@@ -345,6 +311,47 @@ fn project_with_epoch<'a>(
     }
     model.evaluate();
     Ok((model, projected, unparsed))
+}
+
+/// An engine model with the workbook's sheets, tables and names, and no
+/// cells yet.
+fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Model<'a>> {
+    let mut model =
+        Model::new_empty("workbook", "en", time_zone, "en").map_err(CalcError::Engine)?;
+
+    for (index, sheet) in workbook.sheets.iter().enumerate() {
+        if index == 0 {
+            if sheet.name != "Sheet1" {
+                model
+                    .rename_sheet_by_index(0, &sheet.name)
+                    .map_err(CalcError::Engine)?;
+            }
+        } else {
+            model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
+        }
+    }
+
+    // Tables before formulas, so structured references (`Table1[Amount]`)
+    // parse.
+    for sheet in &workbook.sheets {
+        for table in &sheet.tables {
+            if let Some(table) = engine_table(&sheet.name, table) {
+                model.add_table(table);
+            }
+        }
+    }
+
+    // Names before formulas, so a projected formula that uses one parses.
+    // A name the engine rejects is left out; formulas using it disqualify
+    // themselves through the `#NAME?` path.
+    for name in &workbook.defined_names {
+        let scope = name
+            .local_sheet_index
+            .and_then(|index| u32::try_from(index).ok());
+        let formula = jade_xlsx_reader::collapse_ref_errors(&name.formula);
+        let _ = model.new_defined_name(&name.name, scope, &formula);
+    }
+    Ok(model)
 }
 
 /// A table as the engine holds it: its range in A1 form and its columns.

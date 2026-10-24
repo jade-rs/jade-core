@@ -318,6 +318,10 @@ impl ParagraphLayout {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct CellLayout {
+    /// Native horizontal text bounds after cell padding, in page-local pixels.
+    /// Absent for vertical text or registrations without content geometry.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_bounds: Option<(f64, f64)>,
     pub paragraphs: Vec<usize>,
     pub left: f64,
     pub right: f64,
@@ -967,6 +971,30 @@ impl SelectionManager {
 
     pub fn cell_id_for_paragraph(&self, paragraph_index: usize) -> Option<usize> {
         self.paragraph_to_cell.get(&paragraph_index).copied()
+    }
+
+    /// Resolve the actual page fragment without re-measuring table content.
+    pub fn cell_text_bounds_for_paragraph(
+        &self,
+        paragraph: usize,
+        absolute_y: f64,
+    ) -> Option<(f64, f64)> {
+        let cell = self.cells.get(self.cell_id_for_paragraph(paragraph)?)?;
+        let contains = |cell: &CellLayout| absolute_y >= cell.top && absolute_y < cell.bottom;
+        let fragment = if contains(cell) {
+            cell
+        } else {
+            self.cells.iter().find(|candidate| {
+                candidate.table_id == cell.table_id
+                    && candidate.row == cell.row
+                    && candidate.column == cell.column
+                    && candidate.column_span == cell.column_span
+                    && contains(candidate)
+            })?
+        };
+        fragment
+            .text_bounds
+            .filter(|(left, right)| left.is_finite() && right.is_finite() && right > left)
     }
 
     pub fn cell_layout(&self, cell_id: usize) -> Option<&CellLayout> {
@@ -2155,7 +2183,10 @@ impl SelectionManager {
             // Word places a click after the visible text before its page break.
             // The end offset belongs to the next page, whose placeholder line
             // can be hit independently. Do not move input to an invisible page.
-            let offset = if paragraph.text.get(start..end) == Some(PAGE_BREAK_STR) {
+            let offset = if paragraph.text.get(start..end) == Some(PAGE_BREAK_STR)
+                || paragraph.text.get(start..end)
+                    == Some(jade_docx_reader::document::COLUMN_BREAK_STR)
+            {
                 start
             } else {
                 end
@@ -5478,6 +5509,7 @@ mod tests {
                 manager.append_paragraph_text(paragraph, "x");
                 manager.record_line(paragraph, make_line("x", x, y, y));
                 manager.record_table_cell(CellLayout {
+                    text_bounds: None,
                     paragraphs: vec![paragraph],
                     left: x,
                     right: x + 100.0,
@@ -5985,6 +6017,7 @@ mod tests {
     #[test]
     fn rendered_cell_fragments_keep_one_order_when_physical_orders_advance() {
         let cell = |column, top, order| CellLayout {
+            text_bounds: None,
             paragraphs: vec![column],
             left: column as f64 * 100.0,
             right: column as f64 * 100.0 + 100.0,
@@ -6034,8 +6067,73 @@ mod tests {
     }
 
     #[test]
+    fn ruler_uses_the_caret_page_fragment_and_preserves_nested_cell_bounds() {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        let cell = |paragraph, table_id, top, left| CellLayout {
+            paragraphs: vec![paragraph],
+            table_id,
+            top,
+            bottom: top + 80.0,
+            left,
+            right: left + 100.0,
+            text_bounds: Some((left + 7.0, left + 91.0)),
+            column_span: 1,
+            ..CellLayout::default()
+        };
+        manager.record_table_cell(cell(0, 0, 0.0, 20.0));
+        manager.record_table_cell_continuation(cell(0, 0, 100.0, 40.0));
+        manager.record_table_cell(cell(1, 1, 0.0, 35.0));
+        assert_eq!(
+            manager.cell_text_bounds_for_paragraph(0, 10.0),
+            Some((27.0, 111.0))
+        );
+        assert_eq!(
+            manager.cell_text_bounds_for_paragraph(0, 110.0),
+            Some((47.0, 131.0))
+        );
+        assert_eq!(
+            manager.cell_text_bounds_for_paragraph(1, 10.0),
+            Some((42.0, 126.0))
+        );
+        assert_eq!(manager.cell_text_bounds_for_paragraph(0, 90.0), None);
+        assert_eq!(manager.cell_text_bounds_for_paragraph(2, 10.0), None);
+    }
+
+    #[test]
+    fn ruler_rejects_missing_vertical_or_invalid_cell_text_bounds() {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        for (paragraph, bounds) in [
+            None,
+            Some((10.0, 10.0)),
+            Some((20.0, 10.0)),
+            Some((f64::NAN, 100.0)),
+            Some((0.0, f64::INFINITY)),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            manager.record_table_cell(CellLayout {
+                paragraphs: vec![paragraph],
+                left: 0.0,
+                right: 100.0,
+                top: 0.0,
+                bottom: 40.0,
+                text_bounds: bounds,
+                ..CellLayout::default()
+            });
+            assert_eq!(
+                manager.cell_text_bounds_for_paragraph(paragraph, 10.0),
+                None
+            );
+        }
+    }
+
+    #[test]
     fn continued_cell_keeps_both_page_rects_and_one_navigation_order() {
         let cell = |column, top| CellLayout {
+            text_bounds: None,
             paragraphs: vec![column],
             left: column as f64 * 100.0,
             right: column as f64 * 100.0 + 100.0,
@@ -6095,6 +6193,7 @@ mod tests {
     #[test]
     fn continued_cell_unifies_paragraphs_assigned_lazily_on_different_pages() {
         let cell = |paragraph, top| CellLayout {
+            text_bounds: None,
             paragraphs: vec![paragraph],
             left: 0.0,
             right: 100.0,
@@ -6123,6 +6222,7 @@ mod tests {
     #[test]
     fn recording_the_same_cell_twice_in_one_pass_replaces_it() {
         let cell = |paragraphs: Vec<usize>, top: f64, column: usize| CellLayout {
+            text_bounds: None,
             paragraphs,
             left: column as f64 * 100.0,
             right: column as f64 * 100.0 + 100.0,
@@ -6156,6 +6256,7 @@ mod tests {
         let mut manager = SelectionManager::new();
         manager.begin_render();
         let cell = |top| CellLayout {
+            text_bounds: None,
             paragraphs: vec![0],
             left: 0.0,
             right: 100.0,
@@ -6229,6 +6330,7 @@ mod tests {
         // Setup cells
         // Cell 1: Para 0
         manager.record_table_cell(CellLayout {
+            text_bounds: None,
             paragraphs: vec![0],
             left: 0.0,
             right: 100.0,
@@ -6242,6 +6344,7 @@ mod tests {
         });
         // Cell 2: Para 1
         manager.record_table_cell(CellLayout {
+            text_bounds: None,
             paragraphs: vec![1],
             left: 100.0,
             right: 200.0,
@@ -6287,6 +6390,7 @@ mod tests {
         // Setup cells helper
         let setup_cells = |mgr: &mut SelectionManager| {
             mgr.record_table_cell(CellLayout {
+                text_bounds: None,
                 paragraphs: vec![0],
                 left: 0.0,
                 right: 100.0,
@@ -6299,6 +6403,7 @@ mod tests {
                 order: 0,
             });
             mgr.record_table_cell(CellLayout {
+                text_bounds: None,
                 paragraphs: vec![1],
                 left: 100.0,
                 right: 200.0,
@@ -6344,6 +6449,7 @@ mod tests {
         manager.begin_render();
 
         manager.record_table_cell(CellLayout {
+            text_bounds: None,
             paragraphs: vec![2, 0, 2],
             left: 150.0,
             right: 50.0,
@@ -6390,6 +6496,7 @@ mod tests {
                     make_line("x", 0.0, 0.0, (paragraph_index * 20) as f64),
                 );
                 manager.record_table_cell(CellLayout {
+                    text_bounds: None,
                     paragraphs: vec![paragraph_index],
                     left: (col * 100) as f64,
                     right: ((col + 1) * 100) as f64,
@@ -6444,6 +6551,7 @@ mod tests {
             manager.append_paragraph_text(column, "cell");
             manager.record_line(column, make_line("cell", left + 8.0, 0.0, 20.0));
             manager.record_table_cell(CellLayout {
+                text_bounds: None,
                 paragraphs: vec![column],
                 left,
                 right,
@@ -6486,6 +6594,7 @@ mod tests {
                     make_line("x", 0.0, 0.0, (paragraph_index * 20) as f64),
                 );
                 manager.record_table_cell(CellLayout {
+                    text_bounds: None,
                     paragraphs: vec![paragraph_index],
                     left: (col * 100) as f64,
                     right: ((col + 1) * 100) as f64,
@@ -6546,6 +6655,7 @@ mod tests {
                     make_line("x", 0.0, 0.0, (paragraph_index * 20) as f64),
                 );
                 manager.record_table_cell(CellLayout {
+                    text_bounds: None,
                     paragraphs: vec![paragraph_index],
                     left: (col * 100) as f64,
                     right: ((col + 1) * 100) as f64,
@@ -6607,6 +6717,7 @@ mod tests {
                         make_line("x", 0.0, 0.0, (paragraph_index * 20) as f64),
                     );
                     manager.record_table_cell(CellLayout {
+                        text_bounds: None,
                         paragraphs: vec![paragraph_index],
                         left: (col * 100) as f64,
                         right: ((col + 1) * 100) as f64,
@@ -6668,6 +6779,7 @@ mod tests {
                     make_line("x", 0.0, 0.0, (paragraph_index * 20) as f64),
                 );
                 manager.record_table_cell(CellLayout {
+                    text_bounds: None,
                     paragraphs: vec![paragraph_index],
                     left: (col * 100) as f64,
                     right: ((col + 1) * 100) as f64,
@@ -6709,6 +6821,7 @@ mod tests {
         manager.record_line(1, make_line("cell-two", 0.0, 20.0, 20.0));
 
         manager.record_table_cell(CellLayout {
+            text_bounds: None,
             paragraphs: vec![0],
             left: 0.0,
             right: 50.0,
@@ -6721,6 +6834,7 @@ mod tests {
             order: 0,
         });
         manager.record_table_cell(CellLayout {
+            text_bounds: None,
             paragraphs: vec![1],
             left: 50.0,
             right: 100.0,

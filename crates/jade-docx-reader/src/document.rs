@@ -7,10 +7,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+mod drawing;
 mod math;
+mod preset_geometry;
 mod table;
+pub use drawing::*;
 mod table_conditional;
-pub use math::{MathElement, MathElementKind, MathParagraph, MathRun};
+pub use math::{math_elements_to_omml, MathElement, MathElementKind, MathParagraph, MathRun};
+pub use preset_geometry::{parse_adjust_formula, PresetGeometry, PresetGeometryId};
 pub use table::{
     resolve_cell_margin_edge_points, StyleMap, Table, TableBorders, TableCell, TableCellMargins,
     TableColumn, TableLayoutMode, TableRow, TableRowHeightRule, TableStyleDisplay,
@@ -59,6 +63,9 @@ pub struct Document {
     pub display_content_revisions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_tab_stop: Option<f32>,
+    /// The settings part's `m:mathPr`: every equation's defaults.
+    #[serde(default)]
+    pub math_properties: crate::settings::MathProperties,
     /// `w:noTabHangInd`: disables the implicit tab stop normally created by a
     /// hanging indent.
     #[serde(default)]
@@ -67,6 +74,12 @@ pub struct Document {
     /// lines in table cells. Absent, table cells ignore the line grid.
     #[serde(default)]
     pub adjust_line_height_in_table: bool,
+    /// `w:compat`: every compatibility setting and legacy layout option.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::settings::CompatOptions::is_empty"
+    )]
+    pub compat: crate::settings::CompatOptions,
     /// Effective `w:docDefaults/w:rPrDefault/w:rPr/w:sz` font size in points.
     /// Empty paragraphs need this value even though they contain no run to
     /// carry the materialized style cascade.
@@ -82,6 +95,19 @@ pub struct Document {
     /// physical left/right margins to preserve inside/outside semantics.
     #[serde(default)]
     pub mirror_margins: bool,
+    /// Document-level `w:bookFoldPrinting` (本 (縦方向に谷折り)): each
+    /// sheet folds into two pages, so a page is half the sheet's width and
+    /// its margins face each other like mirror margins.
+    #[serde(default)]
+    pub book_fold_printing: bool,
+    /// Document-level `w:printTwoOnOne` (袋とじ / 2 pages per sheet): each
+    /// sheet carries two pages, so a page is half the sheet along its
+    /// longer side.
+    #[serde(default)]
+    pub print_two_on_one: bool,
+    /// Document-level automatic hyphenation (ハイフネーション).
+    #[serde(default)]
+    pub hyphenation: HyphenationSettings,
     /// All bookmarks (`<w:bookmarkStart>` / `<w:bookmarkEnd>` pairs) found
     /// while parsing the body, indexed in document order. Used by internal
     /// hyperlinks (`w:anchor`) and by consumers that need to resolve or
@@ -349,6 +375,21 @@ impl Document {
         {
             self.page_settings = properties.page_settings.clone();
         }
+    }
+
+    /// Whether a section's footnotes sit right under its text
+    /// (`w:footnotePr/w:pos="beneathText"`) rather than at the page bottom.
+    pub fn resolved_footnote_beneath_text(&self, section_index: Option<usize>) -> bool {
+        let section = match section_index {
+            Some(index) if !self.sections.is_empty() => self
+                .sections
+                .get(index)
+                .and_then(|section| section.properties.as_ref()),
+            _ => self.default_section.as_ref(),
+        };
+        section
+            .and_then(|section| section.footnote_beneath_text)
+            .unwrap_or(false)
     }
 
     /// Resolves section placement over the document-wide endnote default.
@@ -2096,6 +2137,14 @@ pub const PAGE_BREAK_CHAR: char = '\u{000C}';
 /// 文字列版の手動改ページ。テストや文字列操作向けに用意する。
 pub const PAGE_BREAK_STR: &str = "\u{000C}";
 
+/// 段区切り (`<w:br w:type="column"/>`, ECMA-376 Part 1 §17.3.3.1): the
+/// text continues at the top of the next column, or of the next page after
+/// the last column. Word's own text model uses the same control character.
+pub const COLUMN_BREAK_CHAR: char = '\u{000E}';
+
+/// [`COLUMN_BREAK_CHAR`] as a string.
+pub const COLUMN_BREAK_STR: &str = "\u{000E}";
+
 /// Metadata describing a hyperlink applied to a run.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -2302,6 +2351,14 @@ pub enum RunFieldKind {
     Locked {
         kind: Rc<RunFieldKind>,
     },
+    /// A page-number family field (PAGE, NUMPAGES, SECTIONPAGES, SECTION)
+    /// whose general switches (`\* ROMAN`, `\# "0"`) format the number
+    /// live. `instruction` is the field's instruction, from which the
+    /// renderer reads the switches.
+    Formatted {
+        kind: Rc<RunFieldKind>,
+        instruction: Rc<str>,
+    },
     PageNumber,
     /// Total number of pages in the document (`NUMPAGES` field). Commonly
     /// paired with `PAGE` in headers/footers to produce "X / Y" style page
@@ -2328,6 +2385,17 @@ pub enum RunFieldKind {
     SectionPages,
     /// 1-based number of the section containing the field (`SECTION`).
     SectionNumber,
+    /// The text of the nearest paragraph in a style (`STYLEREF "name"`,
+    /// §17.16.5.66): in a header or footer, the first such paragraph on the
+    /// page (the last with `\l`), or else the nearest one before it — the
+    /// running chapter title of a dictionary-style header.
+    StyleRef {
+        /// The style as the instruction names it (`heading 1`, `見出し 1`,
+        /// or a style id).
+        style: String,
+        /// `\l`: the last paragraph on the page rather than the first.
+        from_bottom: bool,
+    },
     /// Value of a package document property (`DOCPROPERTY name`). The property
     /// name is retained exactly as written in the instruction; package lookup
     /// is ASCII case-insensitive and occurs after all OPC metadata parts load.
@@ -2542,6 +2610,14 @@ pub enum RunFieldKind {
         text: String,
         guide: String,
     },
+    /// Word's 囲い文字: an `EQ` overstrike of an enclosure and a character
+    /// (`EQ \o\ac(○,秘)`, §17.16.5.22), drawn one over the other.
+    EqEnclosed {
+        /// The enclosed character.
+        text: String,
+        /// The enclosure: ○, □, △ or ◇.
+        enclosure: String,
+    },
     /// Ruby written as an `EQ` overstrike (`EQ \* jc2 \* hps11
     /// \o\ad(\s\up11(guide),text)`, §17.16.5.22): `text` is the base and
     /// `guide` the raised phonetic guide. Word lays it out like `w:ruby`.
@@ -2614,10 +2690,20 @@ impl RunFieldKind {
     /// Original semantic kind, for formatting/inspection rather than refresh.
     pub fn base_kind(&self) -> &Self {
         let mut kind = self;
-        while let Self::Locked { kind: inner } = kind {
-            kind = inner;
+        loop {
+            match kind {
+                Self::Locked { kind: inner } | Self::Formatted { kind: inner, .. } => kind = inner,
+                _ => return kind,
+            }
         }
-        kind
+    }
+
+    /// The kind without a [`Self::Formatted`] wrapper (a lock is kept).
+    pub fn without_format(&self) -> &Self {
+        match self {
+            Self::Formatted { kind, .. } => kind,
+            other => other,
+        }
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -2638,6 +2724,19 @@ impl RunFieldKind {
                 }
                 | RunFieldKind::PageRef { .. }
                 | RunFieldKind::NoteRef { .. }
+        ) || self.is_form_text()
+    }
+
+    /// Whether this is a legacy form text box (`FORMTEXT`, §17.16.5.24),
+    /// whose result is what the form's user types.
+    pub fn is_form_text(&self) -> bool {
+        matches!(
+            self.base_kind(),
+            RunFieldKind::Unsupported { instruction }
+                if instruction
+                    .split_whitespace()
+                    .next()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("FORMTEXT"))
         )
     }
 }
@@ -2733,6 +2832,13 @@ pub struct RunImage {
     pub title: Option<String>,
     /// Optional alternative text/description for accessibility.
     pub description: Option<String>,
+    /// 装飾用にする: the drawing is decorative and has no alternative text
+    /// (`adec:decorative` in `wp:docPr`'s extension list).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub decorative: bool,
+    /// 署名欄: a VML shape asking for a signature (`o:signatureline`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_line: Option<Box<SignatureLine>>,
     /// Optional label shown when the image bytes cannot be decoded (e.g. WMF/EMF placeholder).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
@@ -2762,6 +2868,14 @@ pub struct RunImage {
     /// Layout information describing whether the image participates in text
     /// flow or floats at an absolute position.
     pub layout: RunImageLayout,
+    /// The picture's outline, effects, shape and colour adjustments — kept
+    /// apart so a run without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<Box<PictureFormat>>,
+    /// Word ink (`w14:contentPart` over an InkML part): the strokes this
+    /// drawing holds, which are drawn in place of its fallback picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink: Option<Box<crate::inkml::InkContent>>,
 }
 
 /// Coordinate system and supported child shapes from a DrawingML group.
@@ -2864,6 +2978,21 @@ pub struct RunGroupShape {
     /// `None` and use the text-box defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_style: Option<GroupShapeTextStyle>,
+    /// A picture in the group (`pic:pic`), drawn in the child's box.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<Box<GroupPicture>>,
+}
+
+/// A grouped picture: its media relationship, the data URI loading
+/// resolves it to, and its crop.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupPicture {
+    pub relationship_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop: Option<ImageCrop>,
 }
 
 /// Uniform formatting for a grouped shape's DrawingML text body. Taken from
@@ -2910,13 +3039,31 @@ pub struct ChartSeries {
 }
 
 /// Editable cached data for a native Word chart part.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RunChart {
     pub kind: ChartKind,
     pub title: String,
     pub categories: Vec<String>,
     pub series: Vec<ChartSeries>,
+    /// Where the legend is (`r`, `t`, `l`, `b`), `None` for no legend.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<String>,
+    /// The chart part as the package has it, which the chart is drawn
+    /// from: its titles, legend, axes and formatting as Word wrote them.
+    #[serde(skip)]
+    pub xml: Option<std::rc::Rc<str>>,
+}
+
+/// Charts are equal by what they say, whatever part XML they came from.
+impl PartialEq for RunChart {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+            && self.title == other.title
+            && self.categories == other.categories
+            && self.series == other.series
+            && self.legend == other.legend
+    }
 }
 
 /// Fractions removed from each edge of an image before it is fitted into the
@@ -3050,6 +3197,9 @@ pub enum TextBoxShape {
     RoundOneRectangle,
     RoundTwoSameRectangle,
     RoundTwoDiagonalRectangle,
+    /// Any other ECMA-376 preset, or a preset with moved adjust handles:
+    /// drawn from the shape-guide definitions with its own `a:avLst`.
+    Preset(PresetGeometryId),
 }
 
 impl TextBoxShape {
@@ -3167,9 +3317,36 @@ impl TextBoxShape {
         Self::RoundTwoDiagonalRectangle,
     ];
 
-    /// DrawingML `a:prstGeom@prst` token.
-    pub const fn preset_name(self) -> &'static str {
+    /// The hand-traced shape this one is drawn and measured like: itself, or
+    /// for a [`Self::Preset`] the hand-traced shape of the same name
+    /// (a rectangle when there is none).
+    pub fn hand_traced(self) -> Self {
         match self {
+            Self::Preset(id) => Self::from_preset_name(id.name()).unwrap_or_default(),
+            shape => shape,
+        }
+    }
+
+    /// The shape for `prst` with `adjustments` (`a:avLst/a:gd`): the
+    /// hand-traced shape when there is one and no handle moved, the preset
+    /// geometry otherwise. Connectors and lines stay hand-traced.
+    pub fn from_preset(name: &str, adjustments: Vec<(String, i64)>) -> Self {
+        let traced = Self::from_preset_name(name);
+        match traced {
+            Some(shape) if shape.is_line() => shape,
+            Some(shape) if adjustments.is_empty() => shape,
+            _ if name.is_empty() || (name == "rect" && adjustments.is_empty()) => Self::Rectangle,
+            _ => Self::Preset(PresetGeometryId::intern(PresetGeometry {
+                name: name.to_string(),
+                adjustments,
+            })),
+        }
+    }
+
+    /// DrawingML `a:prstGeom@prst` token.
+    pub fn preset_name(self) -> &'static str {
+        match self {
+            Self::Preset(id) => id.name(),
             Self::Rectangle => "rect",
             Self::Line => "line",
             Self::LineArrow | Self::LineArrowDouble => "straightConnector1",
@@ -3582,6 +3759,15 @@ pub struct RunTextBox {
     /// represent shapes that do not contain `wps:txbx`.
     #[serde(default)]
     pub shape: TextBoxShape,
+    /// The theme effect style the shape names (`wps:style/a:effectRef
+    /// @idx`, 1-based; 0 for none), drawn when the shape sets no effects
+    /// of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect_ref: Option<u8>,
+    /// Reflection, bevel, freeform paths, connector ends, WordArt warp and
+    /// text box links — kept apart so a run without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extras: Option<Box<ShapeExtras>>,
 }
 
 /// Text box inner margins in CSS pixels. The defaults mirror Word's standard
@@ -3619,6 +3805,26 @@ pub enum TextBoxVerticalAlignment {
     /// Distribute remaining height around every line, including the outer
     /// edges of the text body.
     Distributed,
+}
+
+/// A signature line's setup (`o:signatureline`): who is asked to sign.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureLine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// 署名者 (`o:suggestedsigner`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signer: Option<String>,
+    /// 署名者の役職 (`o:suggestedsigner2`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// 署名者の電子メール アドレス (`o:suggestedsigneremail`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    /// 署名者への説明 (`o:signinginstructions`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
 }
 
 /// Tracks revision metadata (e.g. change tracking) attached to a run.
@@ -3814,8 +4020,17 @@ mod tests {
         // (`RunField::word_mac_body_result`).
         assert_eq!(std::mem::size_of::<RunField>(), 176);
         // 8 bytes of it: the insertion a tracked deletion sits in
-        // (`RevisionMark::insertion`).
-        assert_eq!(std::mem::size_of::<Run>(), 3032);
+        // (`RevisionMark::insertion`); 24 the boxed theme colour, East Asian
+        // layout and text effects the フォント dialog sets. 32 more: a drawing's boxed format,
+        // shape extras and anchor options (`RunImage::format`,
+        // `RunTextBox::extras`, `RunImageLayout::options`, twice). 40 more:
+        // a chart's legend and the part XML it is drawn from
+        // (`RunChart::legend`, `RunChart::xml`). 8 more: a picture's boxed
+        // Word ink strokes (`RunImage::ink`). 24 more: a picture's 装飾用
+        // flag (`RunImage::decorative`), the boxed tracked formatting change
+        // (`RunProperties::change`) and a picture's boxed 署名欄 setup
+        // (`RunImage::signature_line`).
+        assert_eq!(std::mem::size_of::<Run>(), 3160);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -4255,6 +4470,10 @@ pub struct RunImageLayout {
     pub dist_left: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dist_right: Option<f64>,
+    /// The anchor's options and the object's name — kept apart so a run
+    /// without them stays small.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<Box<AnchorOptions>>,
 }
 
 /// Absolute page coordinates used by DrawingML's simple-positioning mode.
@@ -4569,6 +4788,14 @@ pub struct ParagraphProperties {
     /// is applied, as Word's final view shows it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mark_revision: Option<Box<RevisionMark>>,
+    /// Who changed the paragraph's own formatting with changes tracked
+    /// (`w:pPrChange`, ECMA-376 Part 1 §17.13.5.29), for the change bar; the
+    /// formatting before it stays in the XML.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format_change_author: Option<Rc<str>>,
+    /// Whether the paragraph's formatting carries a tracked change.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub has_format_change: bool,
     pub alignment: Option<Rc<str>>,
     /// Base paragraph direction (`w:bidi`, ECMA-376 Part 1 §17.3.1.6).
     /// `Some(true)` selects an RTL paragraph base direction, while
@@ -4981,6 +5208,11 @@ pub struct EastAsianLineBreakingSettings {
     /// 14 = Word 2010, 15 = Word 2013 and later). `None` when absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compatibility_mode: Option<u32>,
+    /// `w:compat/w:spaceForUL` (ECMA-376 Part 1 §17.15.3.46): a line of
+    /// underlined East Asian text grows below its baseline far enough to hold
+    /// the underline instead of letting it run into the next line.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub space_for_underline: bool,
 }
 
 /// Numbering metadata that associates a paragraph with a numbering definition.
@@ -5191,6 +5423,17 @@ impl PartialEq for DirectRunFontProperties {
     }
 }
 
+/// A run's formatting before a tracked change to it (`w:rPrChange`):
+/// rejecting the change puts `previous` back, accepting it drops the record.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct RunPropertiesChange {
+    pub id: Option<String>,
+    pub author: Option<String>,
+    pub date: Option<String>,
+    /// The run's direct formatting before the change.
+    pub previous: RunProperties,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct RunProperties {
     pub style: Option<Rc<str>>,
@@ -5340,6 +5583,11 @@ pub struct RunProperties {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub east_asia_language: Option<Rc<str>>,
     pub color: Option<Rc<str>>,
+    /// The theme colour `color` was resolved from (`w:color/@w:themeColor`,
+    /// `@w:themeTint`, `@w:themeShade`, ECMA-376 Part 1 §17.3.2.6). Kept so
+    /// a written run still follows the theme, as Word's テーマの色 do.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_color: Option<Box<RunThemeColor>>,
     /// Highlight (background) color name (`w:highlight`).
     /// Values are Word highlight color names: "yellow", "green", "cyan",
     /// "magenta", "blue", "red", "darkBlue", "darkCyan", "darkGreen",
@@ -5359,6 +5607,10 @@ pub struct RunProperties {
     /// color). `None` means no character border.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub border: Option<BorderEdge>,
+    /// A tracked formatting change (`w:rPrChange`, ECMA-376 Part 1
+    /// §17.13.5.31): who changed the run's formatting, and what it was before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change: Option<Box<RunPropertiesChange>>,
     /// Ruby (phonetic guide / ふりがな) annotation (`w:ruby`, ECMA-376 Part 1
     /// §17.3.3.25). Attached by the parser to every run produced from the
     /// `w:rubyBase` contents (see [`RubyAnnotation::continuation`]); the guide
@@ -5366,6 +5618,17 @@ pub struct RunProperties {
     /// (so selection offsets stay consistent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ruby: Option<Box<RubyAnnotation>>,
+    /// East Asian layout (`w:eastAsianLayout`, ECMA-376 Part 1 §17.3.2.10):
+    /// two lines in one (組み文字 / 割注) and horizontal-in-vertical text
+    /// (縦中横).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub east_asian_layout: Option<Box<EastAsianLayout>>,
+    /// Word 2010's text effects and OpenType features (`w14:ligatures`,
+    /// `w14:glow`, `w14:textOutline`, …). Their XML is kept with the
+    /// unmodeled children; this is what the renderer and the フォント dialog
+    /// read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_effects: Option<Box<RunTextEffects>>,
     /// Unmodeled `w:rPr` children preserved verbatim (see [`PreservedRunProps`]).
     /// Not serialized: this is an in-memory preservation bridge, reconstructed at
     /// load and consulted only by the export writer.
@@ -5476,6 +5739,140 @@ impl RunProperties {
             && self.shading.is_none()
             && self.border.as_ref().is_none_or(|b| !b.is_visible())
             && self.ruby.is_none()
+            && self.theme_color.is_none()
+            && self.east_asian_layout.is_none()
+            && self.text_effects.is_none()
+    }
+}
+
+/// Word's automatic hyphenation settings (`settings.xml`).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
+pub struct HyphenationSettings {
+    /// `w:autoHyphenation`: 文書を自動的にハイフネーションする.
+    #[serde(default)]
+    pub auto: bool,
+    /// `w:hyphenationZone` in twips: how much room a line may leave at its
+    /// end before the next word is hyphenated. Word's default is 360 (0.25").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone_twips: Option<u32>,
+    /// `w:consecutiveHyphenLimit`: at most this many lines in a row end in a
+    /// hyphen; absent or 0, no limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consecutive_limit: Option<u32>,
+    /// `w:doNotHyphenateCaps`: words in capitals are left whole.
+    #[serde(default)]
+    pub do_not_hyphenate_caps: bool,
+}
+
+impl HyphenationSettings {
+    /// Word's hyphenation zone when the document names none: 0.25".
+    pub const DEFAULT_ZONE_TWIPS: u32 = 360;
+
+    /// The hyphenation zone in points.
+    pub fn zone_pt(&self) -> f32 {
+        self.zone_twips.unwrap_or(Self::DEFAULT_ZONE_TWIPS) as f32 / 20.0
+    }
+}
+
+/// Word 2010's run extensions (the `w14` namespace, [MS-DOCX] 2.6).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RunTextEffects {
+    /// `w14:ligatures/@w14:val`: `none`, `standard`, `contextual`, …
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ligatures: Option<Rc<str>>,
+    /// `w14:numForm/@w14:val`: `default`, `lining`, `oldStyle`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_form: Option<Rc<str>>,
+    /// `w14:numSpacing/@w14:val`: `default`, `proportional`, `tabular`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_spacing: Option<Rc<str>>,
+    /// `w14:stylisticSets`: the one set turned on, 1–20.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stylistic_set: Option<u8>,
+    /// `w14:cntxtAlts`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contextual_alternates: Option<bool>,
+    /// `w14:glow`'s colour, `#RRGGBB`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow_color: Option<Rc<str>>,
+    /// `w14:glow/@w14:rad` in points.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow_radius: Option<f32>,
+    /// `w14:glow`'s opacity, 0–1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow_alpha: Option<f32>,
+    /// `w14:textOutline`'s solid line colour, `#RRGGBB`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline_color: Option<Rc<str>>,
+    /// `w14:textOutline/@w14:w` in points.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline_width: Option<f32>,
+    /// Render-time only: the enclosure a 囲い文字 field (`EQ \o\ac`) draws
+    /// round the run. Never read from or written to `w:rPr`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enclosure: Option<Rc<str>>,
+}
+
+impl RunTextEffects {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+/// A run colour's theme reference (`w:themeColor`, `w:themeTint`,
+/// `w:themeShade`).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RunThemeColor {
+    /// ST_ThemeColor, as written (`accent1`, `text1`, …).
+    pub name: Rc<str>,
+    /// Tint byte, two hex digits.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tint: Option<Rc<str>>,
+    /// Shade byte, two hex digits.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shade: Option<Rc<str>>,
+}
+
+/// `w:eastAsianLayout` (ECMA-376 Part 1 §17.3.2.10).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EastAsianLayout {
+    /// `w:id`: runs of one combined or vertical group share it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<i64>,
+    /// `w:combine`: the run's text is set as two lines in one line's height.
+    #[serde(default)]
+    pub combine: bool,
+    /// `w:combineBrackets`: `none`, `round`, `square`, `angle`, `curly`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub combine_brackets: Option<Rc<str>>,
+    /// `w:vert`: horizontal in vertical text (縦中横).
+    #[serde(default)]
+    pub vert: bool,
+    /// `w:vertCompress`: the horizontal text is compressed to the line.
+    #[serde(default)]
+    pub vert_compress: bool,
+}
+
+impl EastAsianLayout {
+    /// Reads the element's attributes, given as (name, value) pairs.
+    pub fn from_attributes<'a>(attributes: impl IntoIterator<Item = (&'a [u8], String)>) -> Self {
+        let mut layout = Self::default();
+        for (name, value) in attributes {
+            let on = !matches!(value.as_str(), "0" | "false" | "off");
+            match name {
+                b"w:id" => layout.id = value.parse().ok(),
+                b"w:combine" => layout.combine = on,
+                b"w:combineBrackets" => layout.combine_brackets = Some(Rc::from(value.as_str())),
+                b"w:vert" => layout.vert = on,
+                b"w:vertCompress" => layout.vert_compress = on,
+                _ => {}
+            }
+        }
+        layout
     }
 }
 
@@ -5574,10 +5971,12 @@ impl Spacing {
         if before {
             self.before = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
             self.before_lines = None;
+            self.before_auto = true;
         }
         if after {
             self.after = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
             self.after_lines = None;
+            self.after_auto = true;
         }
     }
 }
@@ -5590,6 +5989,14 @@ pub struct Spacing {
     pub after_lines: Option<f32>,
     pub line: Option<f32>,
     pub line_rule: Option<String>,
+    /// `before` came from `w:beforeAutospacing`: unless the document sets
+    /// `w:doNotUseHTMLParagraphAutoSpacing`, Word drops it where HTML would
+    /// collapse the margin (see [`Self::apply_autospacing`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub before_auto: bool,
+    /// `after` came from `w:afterAutospacing`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub after_auto: bool,
 }
 
 /// Page size and margin information derived from the section properties.
@@ -5670,6 +6077,11 @@ pub struct SectionProperties {
     /// Section-wide endnote placement (`w:endnotePr/w:pos`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endnote_position: Option<EndnotePosition>,
+    /// Footnote placement (`w:footnotePr/w:pos`, §17.11.21): `Some(true)`
+    /// for `beneathText` — the notes right under the page's last line —
+    /// `Some(false)` for `pageBottom`, the default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub footnote_beneath_text: Option<bool>,
     /// Vertical justification of the section's text on the page
     /// (`w:vAlign`, ECMA-376 Part 1 §17.6.22 — ST_VerticalJc). One of
     /// `top` (default), `center`, `both` (justified), or `bottom`,
@@ -5678,6 +6090,13 @@ pub struct SectionProperties {
     /// of the page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vertical_alignment: Option<String>,
+    /// The section reads right to left (`w:bidi`): columns run from the
+    /// right.
+    #[serde(default)]
+    pub bidi: bool,
+    /// The binding gutter is on the right edge (`w:rtlGutter`).
+    #[serde(default)]
+    pub rtl_gutter: bool,
 }
 
 /// Footnote/endnote numbering settings (`w:footnotePr` / `w:endnotePr`,
@@ -5759,12 +6178,20 @@ pub struct PageNumberType {
     /// means continue from the previous section.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<u32>,
+    /// `w:chapStyle` — the heading level whose number leads the page number
+    /// (Word's 章番号を含める), as `1-3` for page 3 of chapter 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter_style: Option<u8>,
+    /// `w:chapSep` — what separates the chapter number from the page number:
+    /// `hyphen` (the default), `period`, `colon`, `emDash` or `enDash`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter_separator: Option<String>,
 }
 
 impl PageNumberType {
     /// Returns true when neither a format nor a start value was supplied.
     pub fn is_empty(&self) -> bool {
-        self.format.is_none() && self.start.is_none()
+        self.format.is_none() && self.start.is_none() && self.chapter_style.is_none()
     }
 }
 

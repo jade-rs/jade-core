@@ -113,3 +113,31 @@ fn repository_fixtures_fit_default_budgets() {
     }
     assert!(checked > 0);
 }
+
+#[test]
+fn filenames_decode_utf8_and_cp437() {
+    let utf8 = zip(&[("資料.xml", b"contents")]);
+    assert_eq!(
+        OpcPackage::open(&utf8).unwrap().part("資料.xml").unwrap(),
+        b"contents"
+    );
+    let mut legacy = zip(&[("a.xml", b"contents")]);
+    let offsets: Vec<_> = legacy
+        .windows(5)
+        .enumerate()
+        .filter_map(|(offset, name)| (name == b"a.xml").then_some(offset))
+        .collect();
+    assert_eq!(offsets.len(), 2);
+    for offset in offsets {
+        legacy[offset] = 0x82;
+    }
+    assert_eq!(
+        OpcPackage::open(&legacy).unwrap().part("é.xml").unwrap(),
+        b"contents"
+    );
+}
+
+#[test]
+fn corrupt_archive_returns_error() {
+    assert!(OpcPackage::open(b"not a ZIP archive").is_err());
+}

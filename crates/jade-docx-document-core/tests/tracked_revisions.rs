@@ -435,7 +435,7 @@ fn text_box_then_deletion() -> WordDocument {
         let mut entry = archive.by_index(i).unwrap();
         let mut bytes = Vec::new();
         entry.read_to_end(&mut bytes).unwrap();
-        if entry.name() == "word/document.xml" {
+        if entry.name().unwrap() == "word/document.xml" {
             let xml = String::from_utf8(bytes).unwrap();
             let hello_start = xml.find("<w:r><w:rPr><w:rtl").unwrap();
             let hello_end =
@@ -446,8 +446,11 @@ fn text_box_then_deletion() -> WordDocument {
             let deleted = r#"<w:del w:id="90" w:author="A" w:date="2026-10-18T00:00:00Z"><w:r><w:delText>a</w:delText></w:r></w:del>"#;
             bytes = format!("{}{deleted}{}", &xml[..box_end], &xml[box_end..]).into_bytes();
         }
-        out.start_file(entry.name(), zip::write::SimpleFileOptions::default())
-            .unwrap();
+        out.start_file(
+            entry.name().unwrap(),
+            zip::write::SimpleFileOptions::default(),
+        )
+        .unwrap();
         out.write_all(&bytes).unwrap();
     }
     let bytes = out.finish().unwrap().into_inner();
@@ -606,6 +609,8 @@ fn tracked_formatting_survives_export_and_can_be_rejected_individually() {
                 hanging: None,
                 left_chars: None,
                 right_chars: None,
+                first_line_chars: None,
+                hanging_chars: None,
                 clear_special: false,
             },
         ],

@@ -1,5 +1,5 @@
 use crate::document::{
-    BorderEdge, DropCap, DropCapKind, Indent, ParagraphBorders, Shading, Spacing,
+    BorderEdge, DropCap, DropCapKind, Indent, ParagraphBorders, Shading, Spacing, TabStop,
 };
 use crate::docx_xml::{DocxXmlDocument, XmlAttribute, XmlElement, XmlNode, XmlNodeId};
 use crate::word_document::WordDocument;
@@ -42,6 +42,46 @@ pub(crate) fn sync_paragraph_bidi_xml(
                 if value { "1" } else { "0" },
             ),
             None => remove_paragraph_property_child(paragraph_properties, "w:bidi"),
+        },
+    );
+}
+
+/// `w:snapToGrid`: absent (on, the default) or `w:val="0"` (off).
+pub(crate) fn sync_paragraph_snap_to_grid_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    snap: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        if snap {
+            remove_paragraph_property_child(paragraph_properties, "w:snapToGrid")
+        } else {
+            upsert_paragraph_property_child_with_value(
+                raw,
+                paragraph_properties,
+                "w:snapToGrid",
+                "0",
+            )
+        }
+    });
+}
+
+/// Sets (`Some`) or removes (`None`) a `w:val` paragraph property such as
+/// `w:kinsoku` or `w:autoSpaceDE`, keeping the rest of the paragraph's XML.
+pub(crate) fn sync_paragraph_value_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &str,
+    value: Option<&str>,
+) {
+    sync_paragraph_properties_xml(
+        word_doc,
+        paragraph_index,
+        |raw, paragraph_properties| match value {
+            Some(value) => {
+                upsert_paragraph_property_child_with_value(raw, paragraph_properties, tag, value)
+            }
+            None => remove_paragraph_property_child(paragraph_properties, tag),
         },
     );
 }
@@ -163,6 +203,31 @@ pub(crate) fn reset_paragraph_formatting_xml(paragraph_properties: &mut XmlEleme
     }
 }
 
+/// Writes an on/off paragraph property (`w:keepNext`, `w:keepLines`,
+/// `w:pageBreakBefore`, `w:widowControl`) as direct formatting: the bare
+/// element for on, `w:val="0"` for off — which overrides a style that turns
+/// it on — in its `CT_PPrBase` place.
+pub(crate) fn sync_paragraph_toggle_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    on: bool,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        let attributes = if on {
+            Vec::new()
+        } else {
+            vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: "0".to_string(),
+            }]
+        };
+        let child = raw.create_element(tag, attributes, Vec::new());
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
 pub(crate) fn sync_paragraph_shading_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
@@ -170,35 +235,43 @@ pub(crate) fn sync_paragraph_shading_xml(
 ) {
     let shading = shading.cloned();
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        remove_paragraph_property_child(paragraph_properties, "w:shd");
-        let Some(shading) = shading.as_ref() else {
-            return;
-        };
-        let mut attributes = Vec::new();
-        if let Some(value) = shading.val.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:val".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(color) = shading.color.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:color".to_string(),
-                value: color.trim_start_matches('#').to_string(),
-            });
-        }
-        if let Some(fill) = shading.fill.as_deref() {
-            attributes.push(XmlAttribute {
-                name: "w:fill".to_string(),
-                value: fill.trim_start_matches('#').to_string(),
-            });
-        }
-        if attributes.is_empty() {
-            return;
-        }
-        let child = raw.create_element("w:shd", attributes, Vec::new());
-        insert_paragraph_property_child(paragraph_properties, child);
+        set_paragraph_shading_xml(raw, paragraph_properties, shading.as_ref());
     });
+}
+
+pub(crate) fn set_paragraph_shading_xml(
+    raw: &mut DocxXmlDocument,
+    paragraph_properties: &mut XmlElement,
+    shading: Option<&Shading>,
+) {
+    remove_paragraph_property_child(paragraph_properties, "w:shd");
+    let Some(shading) = shading else {
+        return;
+    };
+    let mut attributes = Vec::new();
+    if let Some(value) = shading.val.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:val".to_string(),
+            value: value.to_string(),
+        });
+    }
+    if let Some(color) = shading.color.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:color".to_string(),
+            value: color.trim_start_matches('#').to_string(),
+        });
+    }
+    if let Some(fill) = shading.fill.as_deref() {
+        attributes.push(XmlAttribute {
+            name: "w:fill".to_string(),
+            value: fill.trim_start_matches('#').to_string(),
+        });
+    }
+    if attributes.is_empty() {
+        return;
+    }
+    let child = raw.create_element("w:shd", attributes, Vec::new());
+    insert_paragraph_property_child(paragraph_properties, child);
 }
 
 pub(crate) fn sync_paragraph_borders_xml(
@@ -230,6 +303,85 @@ pub(crate) fn sync_paragraph_borders_xml(
         let child = raw.create_element_preserving_child_ids("w:pBdr", Vec::new(), children);
         insert_paragraph_property_child(paragraph_properties, child);
     });
+}
+
+/// Writes a paragraph on/off switch (`w:contextualSpacing`,
+/// `w:suppressLineNumbers`, …): `Some(true)` the bare element, `Some(false)`
+/// `w:val="0"` (which turns off what the style turns on), `None` none.
+pub(crate) fn sync_paragraph_flag_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    value: Option<bool>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        let Some(value) = value else {
+            return;
+        };
+        let attributes = if value {
+            Vec::new()
+        } else {
+            vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: "0".to_string(),
+            }]
+        };
+        let child = raw.create_element(tag, attributes, Vec::new());
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
+/// Writes the paragraph's own `w:tabs`, positions in points, or takes it off
+/// when `tabs` is empty.
+pub(crate) fn sync_paragraph_tabs_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tabs: &[TabStop],
+) {
+    let tabs = tabs.to_vec();
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        set_paragraph_tabs_xml(raw, paragraph_properties, &tabs);
+    });
+}
+
+/// Writes tab stops into either a body or header/footer paragraph's properties.
+pub(crate) fn set_paragraph_tabs_xml(
+    raw: &mut DocxXmlDocument,
+    paragraph_properties: &mut XmlElement,
+    tabs: &[TabStop],
+) {
+    remove_paragraph_property_child(paragraph_properties, "w:tabs");
+    let children: Vec<XmlNode> = tabs
+        .iter()
+        .filter_map(|tab| {
+            let position = tab.position?;
+            let mut attributes = vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: tab.kind.clone().unwrap_or_else(|| "left".to_string()),
+            }];
+            if let Some(leader) = tab.leader.as_deref().filter(|leader| *leader != "none") {
+                attributes.push(XmlAttribute {
+                    name: "w:leader".to_string(),
+                    value: leader.to_string(),
+                });
+            }
+            attributes.push(XmlAttribute {
+                name: "w:pos".to_string(),
+                value: ((position * 20.0).round() as i32).to_string(),
+            });
+            Some(XmlNode::Element(raw.create_element(
+                "w:tab",
+                attributes,
+                Vec::new(),
+            )))
+        })
+        .collect();
+    if children.is_empty() {
+        return;
+    }
+    let child = raw.create_element_preserving_child_ids("w:tabs", Vec::new(), children);
+    insert_paragraph_property_child(paragraph_properties, child);
 }
 
 /// The paragraph's `<w:pPr>`, so an undo can put it back exactly. It is read
@@ -402,7 +554,10 @@ fn sync_paragraph_properties_xml<F>(
     // VML fallback) are reached through the host run instead.
     let targets = match paragraph_id {
         Some(paragraph_id) => vec![paragraph_id],
-        None => word_doc.text_box_paragraph_element_ids(paragraph_index),
+        None => {
+            word_doc.ensure_text_box_paragraph_xml(paragraph_index);
+            word_doc.text_box_paragraph_element_ids(paragraph_index)
+        }
     };
     let Some(raw) = word_doc.raw_document.as_mut() else {
         return;

@@ -1340,8 +1340,32 @@ enum ArgType {
     DocumentProtection,
     /// Editable package-wide DrawingML theme fonts and colors.
     DocumentTheme,
+    /// The Font dialog's fields, camelCase, each optional.
+    RunFormat,
+    /// The 体裁 tab's paragraph options, camelCase, each optional.
+    ParagraphTypography,
+    /// The document's 文字体裁 settings, camelCase, each optional.
+    JapaneseTypography,
+    /// A ruby: `{ text, align?, size?, raise?, font? }`.
+    Ruby,
+    /// `{ "kind": "caret" | "caret_to_end" | "all" }`, `{ "kind": "index", "index" }`
+    /// or `{ "kind": "range", "first", "last" }`.
+    SectionScope,
+    /// The Page Setup fields to change, snake_case, each optional.
+    SectionLayoutPatch,
+    /// `[{ "position": pt, "alignment"?, "leader"? }, …]`
+    TabStopList,
+    /// Explicit tab stops, including clears of inherited style stops.
+    DirectTabStopList,
+    /// `{ top?, bottom?, left?, right?, between? }`, each
+    /// `{ style, width, color?, space? }`.
+    ParagraphBorderBox,
+    /// `{ pattern?, color?, fill? }`, or null to take the shading off.
+    NullableParagraphShading,
     /// `[{"row": …, "column": …, "column_span": …}, …]`
     CellList,
+    /// `[{"column": …, "kind": "text"|"number"|"date", "descending": …}, …]`
+    SortKeyList,
     /// Free-form JSON object.
     Object,
     /// One table border edge: `{ style, width, color }`, or null.
@@ -1443,6 +1467,58 @@ impl ArgType {
                 "required": ["edit", "enforced"],
                 "additionalProperties": false
             }),
+            ArgType::TabStopList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "position": { "type": "number", "description": "From the paragraph's start edge, in points." },
+                        "alignment": { "type": "string", "description": "left, center, right, decimal or bar." },
+                        "leader": { "type": "string", "description": "none, dot, hyphen, underscore, middleDot or heavy." }
+                    },
+                    "required": ["position"]
+                }
+            }),
+            ArgType::DirectTabStopList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "position": { "type": "number", "minimum": 0, "description": "From the text margin, in points." },
+                        "kind": { "type": "string", "enum": ["left", "center", "right", "decimal", "bar", "clear"], "description": "Tab alignment, bar, or clear to suppress an inherited stop." },
+                        "leader": { "type": ["string", "null"], "enum": ["none", "dot", "hyphen", "underscore", "heavy", "middleDot", null], "description": "Optional leader pattern; null removes the explicit leader." }
+                    },
+                    "required": ["position", "kind"],
+                    "additionalProperties": false
+                }
+            }),
+            ArgType::ParagraphBorderBox => json!({ "type": "object" }),
+            ArgType::NullableParagraphShading => json!({ "type": ["object", "null"] }),
+            ArgType::RunFormat
+            | ArgType::ParagraphTypography
+            | ArgType::JapaneseTypography
+            | ArgType::SectionLayoutPatch => json!({ "type": "object" }),
+            ArgType::Ruby => json!({
+                "type": "object",
+                "properties": {
+                    "text": { "type": "string", "description": "The guide text." },
+                    "align": { "type": "string", "description": "center, distributeLetter, distributeSpace, left, right or rightVertical." },
+                    "size": { "type": "number", "description": "The guide size in points; half the base by default." },
+                    "raise": { "type": "number", "description": "Points from the base baseline up to the guide." },
+                    "font": { "type": "string", "description": "The guide font." }
+                },
+                "required": ["text"]
+            }),
+            ArgType::SectionScope => json!({
+                "type": "object",
+                "properties": {
+                    "kind": { "type": "string", "enum": ["caret", "index", "range", "caret_to_end", "all"], "description": "Which sections: the caret's, one by index, a range, the caret's and every later one, or all." },
+                    "index": { "type": "integer", "minimum": 0, "description": "The section, for kind index." },
+                    "first": { "type": "integer", "minimum": 0, "description": "The first section, for kind range." },
+                    "last": { "type": "integer", "minimum": 0, "description": "The last section, for kind range." }
+                },
+                "required": ["kind"]
+            }),
             ArgType::DocumentTheme => json!({
                 "type": "object",
                 "properties": {
@@ -1472,6 +1548,19 @@ impl ArgType {
                         "column_span": { "type": "integer", "minimum": 1, "description": "How many grid columns the cell occupies (1 when it is not merged)." }
                     },
                     "required": ["row", "column", "column_span"],
+                    "additionalProperties": false
+                }
+            }),
+            ArgType::SortKeyList => json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "column": { "type": "integer", "minimum": 0, "description": "Zero-based logical-grid column the key reads." },
+                        "kind": { "type": "string", "enum": ["text", "number", "date"], "description": "How the column compares (Word's 種類). Defaults to text." },
+                        "descending": { "type": "boolean", "description": "Sort this key from largest to smallest. Defaults to false." }
+                    },
+                    "required": ["column"],
                     "additionalProperties": false
                 }
             }),
@@ -2099,11 +2188,26 @@ const COMMANDS: &[Variant] = &[
                 "Character-based right indent (w:rightChars, 100 = one character).",
             ),
             opt(
+                "first_line_chars",
+                ArgType::Int,
+                "Character-based first-line indent (w:firstLineChars, 100 = one character), as a Japanese document's paragraph dialog writes it. Clears any hanging indent.",
+            ),
+            opt(
+                "hanging_chars",
+                ArgType::Int,
+                "Character-based hanging indent (w:hangingChars, 100 = one character).",
+            ),
+            opt(
                 "clear_special",
                 ArgType::Flag,
                 "Word's 特殊インデント「なし」: remove any first-line or hanging indent (character twins included) while keeping the left/right edges.",
             ),
         ],
+    ),
+    paragraphs(
+        "set_paragraph_tabs",
+        "Replace explicit tab stops on a paragraph range. Include clear stops at inherited tab positions that must stay removed. An empty array removes direct stops but leaves inherited style stops effective.",
+        &[req("tabs", ArgType::DirectTabStopList, "Explicit tab stops in points, including inherited-stop clears.")],
     ),
     paragraphs(
         "adjust_paragraph_indent",
@@ -2125,6 +2229,16 @@ const COMMANDS: &[Variant] = &[
         "toggle_paragraph_space_before",
         "Word's Ctrl+0: add 12pt of space before every paragraph in the range, or remove it (set 0) when every paragraph already carries exactly 12pt. One undo step.",
         &[],
+    ),
+    paragraphs(
+        "set_paragraph_pagination",
+        "The paragraph dialog's line and page break options, as direct formatting on the range: keep with next (w:keepNext), keep lines together (w:keepLines), page break before (w:pageBreakBefore) and widow/orphan control (w:widowControl). Omitted options stay as they are; false writes the option off, overriding a style. One undo step.",
+        &[
+            opt("keep_next", ArgType::Flag, "Keep the paragraph on the page of the one after it."),
+            opt("keep_lines", ArgType::Flag, "Keep the paragraph's lines on one page."),
+            opt("page_break_before", ArgType::Flag, "Start the paragraph on a new page."),
+            opt("widow_control", ArgType::Flag, "Never leave a single line of the paragraph alone at the top or bottom of a page."),
+        ],
     ),
     paragraphs(
         "reset_paragraph_formatting",
@@ -2542,6 +2656,19 @@ const COMMANDS: &[Variant] = &[
                 ArgType::Choice(&["inline", "block"]),
                 "Insert inside the paragraph or as a separate display equation.",
             ),
+        ],
+    ),
+    variant(
+        "replace_equation",
+        "Replace an existing equation's OMML in place: a display equation (its paragraph, an m:oMathPara root) or an inline one (the math run of a paragraph, an m:oMath root).",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based paragraph index."),
+            opt(
+                "run_index",
+                ArgType::Index,
+                "The inline equation's run in the paragraph; omit for a display equation.",
+            ),
+            req("omml", ArgType::Text, "The equation's new m:oMath or m:oMathPara XML."),
         ],
     ),
     span(
@@ -2970,7 +3097,7 @@ const COMMANDS: &[Variant] = &[
     ),
     variant(
         "set_table_look",
-        "Toggle the first-row and banded-row conditional regions stored in Word's table-look properties.",
+        "Toggle the conditional regions (header row, total row, first/last column, row and column bands) stored in Word's table-look properties.",
         &[
             req(
                 "table_order_index",
@@ -2986,6 +3113,26 @@ const COMMANDS: &[Variant] = &[
                 "banded_rows",
                 ArgType::Flag,
                 "Whether the named table style's alternating row bands are active.",
+            ),
+            opt(
+                "last_row",
+                ArgType::Flag,
+                "Whether the named table style's last-row (total row) formatting is active.",
+            ),
+            opt(
+                "first_column",
+                ArgType::Flag,
+                "Whether the named table style's first-column formatting is active.",
+            ),
+            opt(
+                "last_column",
+                ArgType::Flag,
+                "Whether the named table style's last-column formatting is active.",
+            ),
+            opt(
+                "banded_columns",
+                ArgType::Flag,
+                "Whether the named table style's alternating column bands are active.",
             ),
         ],
     ),
@@ -3412,6 +3559,209 @@ const COMMANDS: &[Variant] = &[
                 ArgType::CellList,
                 "Logical-grid positions currently held by the merged master cells.",
             ),
+        ],
+    ),
+    variant(
+        "set_table_cell_spacing",
+        "Set the space between cells (Word's Table Properties ▸ Options ▸ cell spacing), or remove it.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            opt("spacing", ArgType::NullableNumber, "Spacing in points as stored in w:tblCellSpacing; null removes it."),
+        ],
+    ),
+    variant(
+        "set_table_cell_text_direction",
+        "Set the text direction of one cell (Word's Text Direction), e.g. tbRl for vertical Japanese.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("row", ArgType::Index, "Zero-based row index."),
+            req("column", ArgType::Index, "Zero-based logical-grid column index."),
+            opt(
+                "direction",
+                ArgType::NullableChoice(&["lrTb", "tbRl", "btLr", "lrTbV", "tbRlV", "btLrV"]),
+                "The w:textDirection value; null restores horizontal text.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_indent",
+        "Set the table's indent from the left margin (w:tblInd).",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("indent", ArgType::Number, "Indent in points."),
+        ],
+    ),
+    variant(
+        "set_table_position",
+        "Float the table and position it (Word's Table Positioning): alignment or offset on each axis, anchors, distance from surrounding text, overlap.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            opt("horizontal_align", ArgType::NullableChoice(&["left", "center", "right", "inside", "outside"]), "Horizontal alignment; wins over the offset."),
+            opt("horizontal_offset", ArgType::NullableNumber, "Horizontal offset from the anchor in points."),
+            req("horizontal_anchor", ArgType::Choice(&["margin", "page", "text"]), "What the horizontal position is measured from."),
+            opt("vertical_align", ArgType::NullableChoice(&["top", "center", "bottom", "inside", "outside"]), "Vertical alignment; wins over the offset."),
+            opt("vertical_offset", ArgType::NullableNumber, "Vertical offset from the anchor in points."),
+            req("vertical_anchor", ArgType::Choice(&["margin", "page", "text"]), "What the vertical position is measured from; text moves the table with its paragraph."),
+            opt("distance_top", ArgType::Number, "Distance from the text above, in points."),
+            opt("distance_bottom", ArgType::Number, "Distance from the text below, in points."),
+            opt("distance_left", ArgType::Number, "Distance from the text on the left, in points."),
+            opt("distance_right", ArgType::Number, "Distance from the text on the right, in points."),
+            opt("allow_overlap", ArgType::Flag, "Whether the table may overlap other floating tables. Defaults to true."),
+        ],
+    ),
+    variant(
+        "convert_text_to_table",
+        "Turn paragraphs into a table (Word's Convert Text to Table), splitting each at a separator.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph to convert."),
+            req("end_paragraph", ArgType::Index, "Last paragraph to convert (inclusive)."),
+            req("separator", ArgType::Text, "tab, comma, paragraph (one paragraph per cell), or one other character."),
+            opt("columns", ArgType::Index, "Number of columns; defaults to the widest row."),
+        ],
+    ),
+    variant(
+        "convert_table_to_text",
+        "Turn a table into paragraphs (Word's Convert to Text), one per row with the cells joined by a separator.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("separator", ArgType::Text, "tab, comma, paragraph (one paragraph per cell), or one other character."),
+        ],
+    ),
+    variant(
+        "sort_table",
+        "Sort a table's rows by one or more columns (Word's Sort), keeping header rows in place.",
+        &[
+            req("table_order_index", ArgType::Index, "Zero-based index of the table in document order."),
+            req("keys", ArgType::SortKeyList, "Sort keys, most significant first."),
+            opt("header_rows", ArgType::Index, "How many leading rows are headers and stay put."),
+        ],
+    ),
+    variant(
+        "insert_table_formula",
+        "Insert a formula field into a table cell (Word's Formula, e.g. =SUM(ABOVE)), with its result computed.",
+        &[
+            req("paragraph", ArgType::Index, "Cell paragraph to insert into."),
+            req("offset", ArgType::Index, "UTF-8 byte offset in that paragraph."),
+            req("formula", ArgType::Text, "The expression, with or without the leading =."),
+            opt("number_format", ArgType::NullableText, "Word's numeric picture, e.g. #,##0 or 0.00."),
+        ],
+    ),
+    variant(
+        "update_table_formulas",
+        "Recompute every formula field in the document's tables (Word's Update Field).",
+        &[],
+    ),
+    variant(
+        "set_paragraph_options",
+        "Set paragraph options from Word's Tabs, Borders and Shading and Paragraph dialogs; options left out stay as they are.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            opt("tabs", ArgType::TabStopList, "Replaces the paragraphs' effective tab stops."),
+            opt("contextual_spacing", ArgType::Flag, "Don't add space between paragraphs of the same style."),
+            opt("suppress_line_numbers", ArgType::Flag, "Suppress line numbers."),
+            opt("suppress_auto_hyphens", ArgType::Flag, "Don't hyphenate."),
+            opt("borders", ArgType::ParagraphBorderBox, "Replaces the whole border box."),
+            opt("shading", ArgType::NullableParagraphShading, "The shading, or null to take it off."),
+        ],
+    ),
+    // -- characters and Japanese typography -------------------------------
+    variant(
+        "set_run_format",
+        "Apply Word's Font dialog to a range: fonts per script, size, styles, underline, effects, spacing, position, scaling, kerning (only the fields given change).",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            req("format", ArgType::RunFormat, "The Font dialog's fields to set (HeadlessRunFormat)."),
+        ],
+    ),
+    variant(
+        "set_paragraph_typography",
+        "Set the Paragraph dialog's 体裁 (Asian typography) options on a paragraph range: kinsoku, hanging punctuation, auto spacing.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            req("typography", ArgType::ParagraphTypography, "The options to set (HeadlessParagraphTypography)."),
+        ],
+    ),
+    variant(
+        "set_japanese_typography",
+        "Set the document's 文字体裁: kinsoku level, custom line-start/line-end sets and character spacing control.",
+        &[req("typography", ArgType::JapaneseTypography, "The settings (HeadlessJapaneseTypography).")],
+    ),
+    variant(
+        "insert_enclosed_character",
+        "Replace a range with an enclosed character (囲い文字), as Word's EQ \\o\\ac field.",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            req("text", ArgType::Text, "The character to enclose."),
+            req("enclosure", ArgType::Choice(&["○", "□", "△", "◇"]), "The enclosing shape."),
+        ],
+    ),
+    variant(
+        "set_ruby",
+        "Put a ruby (phonetic guide) over part of a paragraph, replacing any there, or remove it.",
+        &[
+            req("paragraph", ArgType::Index, "The paragraph."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the base text starts."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the base text ends."),
+            opt("ruby", ArgType::Ruby, "The ruby (HeadlessRuby), or omitted/null to remove it."),
+        ],
+    ),
+    variant(
+        "insert_date_time_field",
+        "Insert Word's Date and Time as an auto-updating DATE or TIME field in place of a range.",
+        &[
+            req("start_paragraph", ArgType::Index, "Paragraph the range starts in."),
+            req("start_offset", ArgType::Index, "UTF-8 byte offset where the range starts."),
+            req("end_paragraph", ArgType::Index, "Paragraph the range ends in."),
+            req("end_offset", ArgType::Index, "UTF-8 byte offset where the range ends."),
+            opt("time", ArgType::Flag, "A TIME field rather than DATE."),
+            req("format", ArgType::Text, "Word's \\@ date picture, e.g. yyyy/MM/dd or ggge年M月d日."),
+            req("cached_text", ArgType::Text, "The text shown until the field is next evaluated."),
+        ],
+    ),
+    // -- sections and stories ------------------------------------------------
+    variant(
+        "set_section_layout",
+        "Apply Word's Page Setup dialog to the sections a scope reaches, changing only the fields the patch names. One history step.",
+        &[
+            opt("scope", ArgType::SectionScope, "Which sections: this one, selected, this point forward or the whole document (HeadlessSectionScope)."),
+            req("patch", ArgType::SectionLayoutPatch, "The page setup fields to set (HeadlessSectionLayoutPatch)."),
+        ],
+    ),
+    variant(
+        "set_hyphenation",
+        "Set Word's automatic hyphenation (the Hyphenation dialog): on or off, the hyphenation zone, the consecutive-hyphen limit and whether words in capitals are hyphenated. Fields left out are kept. One history step.",
+        &[
+            opt("auto", ArgType::Flag, "Automatically hyphenate the document (w:autoHyphenation)."),
+            opt("zone", ArgType::Number, "Hyphenation zone in points (w:hyphenationZone)."),
+            opt("consecutive_limit", ArgType::Index, "At most this many consecutive lines end in a hyphen; 0 for no limit."),
+            opt("hyphenate_caps", ArgType::Flag, "Hyphenate words in capitals (w:doNotHyphenateCaps off)."),
+        ],
+    ),
+    variant(
+        "set_paragraph_snap_to_grid",
+        "Set whether paragraphs snap to the section's line grid (w:snapToGrid).",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph."),
+            req("end_paragraph", ArgType::Index, "Last paragraph."),
+            req("snap", ArgType::Flag, "Whether they follow the grid."),
+        ],
+    ),
+    variant(
+        "set_header_footer_link",
+        "Link a section's header or footer to the previous section's (Word's Link to Previous), or give it a copy of its own.",
+        &[
+            req("section", ArgType::Index, "Zero-based section index."),
+            req("role", ArgType::Choice(&["header", "footer"]), "Which story."),
+            req("variant", ArgType::Choice(&["default", "first", "even"]), "Which variant."),
+            req("linked", ArgType::Flag, "Link to the previous section."),
         ],
     ),
     // -- table of contents --------------------------------------------------
@@ -3873,6 +4223,11 @@ const QUERIES: &[Variant] = &[
         "page_setup",
         "Page geometry of the default section — size, orientation, margins, header/footer distance and background. The read side of the set_page_* commands.",
         &[],
+    ),
+    variant(
+        "section_layout",
+        "One section's layout as the Page Setup dialog shows it — the read side of set_section_layout.",
+        &[opt("section", ArgType::Index, "Zero-based section index; omit for the final section.")],
     ),
     variant(
         "header_footer_text",
@@ -4816,7 +5171,7 @@ mod tests {
                 .compression_method(zip::CompressionMethod::Deflated);
             for index in 0..archive.len() {
                 let mut entry = archive.by_index(index).unwrap();
-                let name = entry.name().to_string();
+                let name = entry.name().unwrap().into_owned();
                 let mut content = Vec::new();
                 entry.read_to_end(&mut content).unwrap();
                 if name == "word/document.xml" {
@@ -5573,6 +5928,20 @@ mod tests {
                 "edit": "readOnly",
                 "enforced": true
             }),
+            ArgType::TabStopList => {
+                json!([{ "position": 36.0, "alignment": "left", "leader": "dot" }])
+            }
+            ArgType::DirectTabStopList => {
+                json!([{ "position": 36.0, "kind": "left", "leader": "dot" }])
+            }
+            ArgType::ParagraphBorderBox => json!({ "top": { "style": "single", "width": 0.5 } }),
+            ArgType::NullableParagraphShading => json!({ "fill": "#FFFF00" }),
+            ArgType::RunFormat => json!({ "bold": true, "fontSize": 12.0 }),
+            ArgType::ParagraphTypography => json!({ "kinsoku": true }),
+            ArgType::JapaneseTypography => json!({ "kinsokuLevel": "strict" }),
+            ArgType::Ruby => json!({ "text": "ふりがな", "align": "center" }),
+            ArgType::SectionScope => json!({ "kind": "all" }),
+            ArgType::SectionLayoutPatch => json!({ "margin_top": 72.0 }),
             ArgType::DocumentTheme => json!({
                 "name": "Office",
                 "majorFont": "Calibri Light",
@@ -5588,6 +5957,7 @@ mod tests {
                 "accent6": "70AD47"
             }),
             ArgType::CellList => json!([{ "row": 0, "column": 0, "column_span": 1 }]),
+            ArgType::SortKeyList => json!([{ "column": 0, "kind": "number", "descending": true }]),
             ArgType::BorderEdge => json!({ "style": "single", "width": 0.5, "color": "#000000" }),
             ArgType::Object
             | ArgType::CommandList
@@ -7504,6 +7874,19 @@ mod tests {
         }
     }
 
+    #[test]
+    fn splitting_a_replaced_commented_cell_keeps_one_reference() {
+        let mut server = test_server();
+        let session = open_session(&mut server, TABLE_DOCX);
+        // Comment the cell, replace its text, then split the replacement.
+        // Appending text to the surviving reference run used to clone its id.
+        for (step, (op, seed)) in [(16, 3), (12, 1), (3, 3)].into_iter().enumerate() {
+            assert!(run_arbitrary_edit(&mut server, &session, op, seed));
+            let bytes = export_bytes(&mut server, &session);
+            assert_docx_is_structurally_valid(&bytes, &format!("commented cell step {step}"));
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
 
@@ -8895,14 +9278,13 @@ mod tests {
             prop_assert_eq!(comments(&mut server, &session).len(), 1);
         }
 
-        /// With change tracking on, a replacement is a redline: the old text
-        /// stays as a tracked deletion and the new text arrives as a tracked
-        /// insertion. Accepting everything gives the replaced document,
+        /// With change tracking on, only the changed part becomes a redline;
+        /// common prefixes and suffixes remain unchanged. Accepting gives the replaced document,
         /// rejecting everything gives back the original — which is the whole
         /// contract of handing an agent's edit to a human reviewer.
         #[test]
         fn a_tracked_replacement_can_be_accepted_or_rejected(
-            replacement in "[a-z]{1,6}",
+            replacement in prop_oneof![Just("a".to_string()), Just("beta".to_string()), "[a-z]{1,6}"],
             accept in any::<bool>(),
         ) {
             let mut server = test_server();
@@ -8910,21 +9292,40 @@ mod tests {
             try_tool(&mut server, "start_change_tracking", json!({
                 "session_id": session, "author": "AI",
             })).expect("start tracking");
+            let before = revisions(&mut server, &session);
 
             replace_text(&mut server, &session, json!({
                 "find": "beta", "replace": replacement, "start_paragraph": 1,
             }));
 
-            // The removed text is still in the file, marked deleted.
-            let kinds = revisions(&mut server, &session);
-            prop_assert!(
-                kinds.contains(&("deleted".to_string(), "beta".to_string())),
-                "the replaced text must survive as a tracked deletion: {kinds:?}",
-            );
-            prop_assert!(
-                kinds.contains(&("inserted".to_string(), replacement.clone())),
-                "the new text must arrive as a tracked insertion: {kinds:?}",
-            );
+            // Derive the expected middle from the ASCII strings independently
+            // of editor coordinates; also exercise a suffix-only deletion and a no-op.
+            let old = b"beta";
+            let new = replacement.as_bytes();
+            let mut left = 0;
+            while left < old.len().min(new.len()) && old[left] == new[left] {
+                left += 1;
+            }
+            let mut right = 0;
+            while right < (old.len() - left).min(new.len() - left)
+                && old[old.len() - right - 1] == new[new.len() - right - 1]
+            {
+                right += 1;
+            }
+            let mut expected_changes = Vec::new();
+            for (kind, text) in [
+                ("deleted", &"beta"[left..old.len() - right]),
+                ("inserted", &replacement[left..new.len() - right]),
+            ] {
+                if !text.is_empty() {
+                    expected_changes.push((kind.to_string(), text.to_string()));
+                }
+            }
+            let mut changes: Vec<_> = revisions(&mut server, &session)
+                .into_iter().filter(|revision| !before.contains(revision)).collect();
+            changes.sort();
+            expected_changes.sort();
+            prop_assert_eq!(changes, expected_changes);
 
             let tool = if accept { "accept_revisions" } else { "reject_revisions" };
             try_tool(&mut server, tool, json!({
@@ -11654,7 +12055,14 @@ mod tests {
         let mut archive =
             zip::ZipArchive::new(std::io::Cursor::new(docx_bytes)).expect("read the package");
         let names: Vec<String> = (0..archive.len())
-            .map(|index| archive.by_index(index).unwrap().name().to_string())
+            .map(|index| {
+                archive
+                    .by_index(index)
+                    .unwrap()
+                    .name()
+                    .unwrap()
+                    .into_owned()
+            })
             .collect();
         for name in &names {
             if name.ends_with('/') || name == "[Content_Types].xml" {

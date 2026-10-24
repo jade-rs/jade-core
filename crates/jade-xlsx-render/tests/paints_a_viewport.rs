@@ -53,6 +53,9 @@ fn tall_sheet(rows: u32) -> Sheet {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         phonetic_readings: Default::default(),
+        rich_text: Default::default(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
         protection: None,
     }
 }

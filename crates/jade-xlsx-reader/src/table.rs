@@ -41,6 +41,10 @@ pub fn parse_table(part_name: &str, xml: &str) -> Result<Option<Table>> {
                                 .unwrap_or(0),
                             columns: Vec::new(),
                             style_name: None,
+                            show_first_column: false,
+                            show_last_column: false,
+                            show_row_stripes: false,
+                            show_column_stripes: false,
                             auto_filter: false,
                             filter: None,
                         });
@@ -55,6 +59,17 @@ pub fn parse_table(part_name: &str, xml: &str) -> Result<Option<Table>> {
                     b"tableStyleInfo" => {
                         if let Some(table) = table.as_mut() {
                             table.style_name = attribute_value(element, b"name")?;
+                            let flag = |value: Option<String>| {
+                                value.is_some_and(|value| value == "1" || value == "true")
+                            };
+                            table.show_first_column =
+                                flag(attribute_value(element, b"showFirstColumn")?);
+                            table.show_last_column =
+                                flag(attribute_value(element, b"showLastColumn")?);
+                            table.show_row_stripes =
+                                flag(attribute_value(element, b"showRowStripes")?);
+                            table.show_column_stripes =
+                                flag(attribute_value(element, b"showColumnStripes")?);
                         }
                     }
                     _ => {}

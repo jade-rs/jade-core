@@ -53,8 +53,59 @@ fn push_line_break_entries(target: &mut Vec<String>, raw: &str) {
     }
 }
 
+/// The document's math properties (`m:mathPr`, ECMA-376 §22.1.2.62):
+/// defaults every equation in the document lays out with.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct MathProperties {
+    /// `m:mathFont`: the default math face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub math_font: Option<String>,
+    /// `m:brkBin`: before, after or repeat.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub break_binary: Option<String>,
+    /// `m:brkBinSub`: --, -+ or +-.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub break_binary_subtraction: Option<String>,
+    /// `m:smallFrac`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub small_fractions: Option<bool>,
+    /// `m:dispDef`: display math by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_default: Option<bool>,
+    /// `m:lMargin` / `m:rMargin`, twips.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub left_margin: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right_margin: Option<f32>,
+    /// `m:defJc`: left, right, center or centerGroup.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_justification: Option<String>,
+    /// `m:preSp`, `m:postSp`, `m:interSp`, `m:intraSp`, twips.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_before: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_after: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inter_equation_space: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intra_equation_space: Option<f32>,
+    /// `m:wrapIndent`, twips, or `m:wrapRight`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap_indent: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap_right: Option<bool>,
+    /// `m:intLim` / `m:naryLim`: subSup or undOvr.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integral_limits: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nary_limits: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DocumentSettings {
+    /// `m:mathPr`.
+    #[serde(default)]
+    pub math: MathProperties,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_properties: Option<NoteNumbering>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -129,11 +180,96 @@ pub struct DocumentSettings {
     /// Swaps physical left/right margins on even pages.
     #[serde(default)]
     pub mirror_margins: bool,
+    /// `w:bookFoldPrinting`.
+    #[serde(default)]
+    pub book_fold_printing: bool,
+    /// `w:printTwoOnOne`.
+    #[serde(default)]
+    pub print_two_on_one: bool,
+    /// Automatic hyphenation (`w:autoHyphenation` and its companions).
+    #[serde(default)]
+    pub hyphenation: crate::document::HyphenationSettings,
     /// Values declared by `w:docVars/w:docVar`. Keys are normalized for the
     /// case-insensitive lookup Word applies to `DOCVARIABLE` instructions.
     #[serde(default)]
     pub document_variables: HashMap<String, String>,
+    /// Everything `w:compat` says: every `w:compatSetting` and every legacy
+    /// layout option, read whether jade acts on it or not.
+    #[serde(default)]
+    pub compat: CompatOptions,
 }
+
+/// The `w:compat` element (ECMA-376 Part 1 §17.15.1.21, §17.15.3).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompatOptions {
+    /// Every `w:compatSetting` as `(w:name, w:val)`, in document order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub settings: Vec<(String, String)>,
+    /// Every other child of `w:compat` (the legacy options such as
+    /// `spaceForUL`) as `(local name, on)`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<(String, bool)>,
+}
+
+impl CompatOptions {
+    pub fn is_empty(&self) -> bool {
+        self.settings.is_empty() && self.options.is_empty()
+    }
+
+    /// Whether the legacy option `name` is present and on.
+    pub fn option(&self, name: &str) -> bool {
+        self.options
+            .iter()
+            .rev()
+            .find(|(option, _)| option == name)
+            .is_some_and(|(_, on)| *on)
+    }
+
+    /// The value of the `w:compatSetting` named `name`.
+    pub fn setting(&self, name: &str) -> Option<&str> {
+        self.settings
+            .iter()
+            .rev()
+            .find(|(setting, _)| setting == name)
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// Whether the `w:compatSetting` named `name` is on.
+    pub fn setting_on(&self, name: &str) -> bool {
+        self.setting(name)
+            .is_some_and(|value| matches!(value, "1" | "true" | "on"))
+    }
+
+    /// `doNotExpandShiftReturn`: a justified line that ends in a manual line
+    /// break keeps its natural spacing. Without it Word spreads such a line.
+    pub fn do_not_expand_shift_return(&self) -> bool {
+        self.option("doNotExpandShiftReturn")
+    }
+
+    /// `ulTrailSpace`: spaces at the end of a line are underlined too.
+    pub fn underline_trailing_spaces(&self) -> bool {
+        self.option("ulTrailSpace")
+    }
+
+    /// `spaceForUL`: a line of underlined East Asian text reserves room for
+    /// the underline below its baseline.
+    pub fn space_for_underline(&self) -> bool {
+        self.option("spaceForUL")
+    }
+
+    /// `doNotUseHTMLParagraphAutoSpacing`: auto paragraph spacing is a fixed
+    /// amount rather than collapsing at the start and end of a table cell
+    /// the way HTML margins do.
+    pub fn do_not_use_html_paragraph_auto_spacing(&self) -> bool {
+        self.option("doNotUseHTMLParagraphAutoSpacing")
+    }
+}
+
+/// The compatibility mode Word assumes for a document that names none: the
+/// mode Word 2007 wrote implicitly, before `compatibilityMode` existed. Word
+/// opens such a file in Compatibility Mode.
+pub const UNDECLARED_COMPATIBILITY_MODE: u32 = 12;
 
 impl DocumentSettings {
     /// ISO/IEC 29500 §17.11.9: unlisted special notes must not be loaded.
@@ -206,6 +342,23 @@ impl DocumentSettings {
         }
     }
 
+    /// A `compatSetting`'s `(w:name, w:val)`.
+    fn parse_compat_setting(
+        element: &quick_xml::events::BytesStart<'_>,
+    ) -> Option<(String, String)> {
+        let mut name = None;
+        let mut value = String::new();
+        for attr in element.attributes().flatten() {
+            let text = String::from_utf8_lossy(&attr.value).into_owned();
+            match local_name(attr.key.as_ref()) {
+                b"name" => name = Some(text),
+                b"val" => value = text,
+                _ => {}
+            }
+        }
+        Some((name?, value))
+    }
+
     /// The `w:val` of a `compatSetting` named `compatibilityMode`.
     fn parse_compatibility_mode(element: &quick_xml::events::BytesStart<'_>) -> Option<u32> {
         let mut is_mode = false;
@@ -260,6 +413,76 @@ impl DocumentSettings {
         true
     }
 
+    /// One child of `m:mathPr`.
+    fn parse_math_property<'a>(
+        math: &mut MathProperties,
+        name: &[u8],
+        attributes: impl Iterator<Item = quick_xml::events::attributes::Attribute<'a>>,
+    ) {
+        let value = attributes
+            .filter(|attr| local_name(attr.key.as_ref()) == b"val")
+            .map(|attr| String::from_utf8_lossy(&attr.value).to_string())
+            .next();
+        let on = || {
+            value
+                .as_deref()
+                .is_none_or(|v| matches!(v, "1" | "true" | "on"))
+        };
+        let twips = || value.as_deref().and_then(|v| v.parse::<f32>().ok());
+        match name {
+            b"mathFont" => math.math_font = value.clone(),
+            b"brkBin" => math.break_binary = value.clone(),
+            b"brkBinSub" => math.break_binary_subtraction = value.clone(),
+            b"smallFrac" => math.small_fractions = Some(on()),
+            b"dispDef" => math.display_default = Some(on()),
+            b"lMargin" => math.left_margin = twips(),
+            b"rMargin" => math.right_margin = twips(),
+            b"defJc" => math.default_justification = value.clone(),
+            b"preSp" => math.space_before = twips(),
+            b"postSp" => math.space_after = twips(),
+            b"interSp" => math.inter_equation_space = twips(),
+            b"intraSp" => math.intra_equation_space = twips(),
+            b"wrapIndent" => math.wrap_indent = twips(),
+            b"wrapRight" => math.wrap_right = Some(on()),
+            b"intLim" => math.integral_limits = value.clone(),
+            b"naryLim" => math.nary_limits = value.clone(),
+            _ => {}
+        }
+    }
+
+    /// Reads one of the hyphenation settings (ECMA-376 §17.15.1.10, .21,
+    /// .53, .37) into `hyphenation`; false when `name` is none of them.
+    fn parse_hyphenation_setting<'a, I>(
+        name: &[u8],
+        attrs: I,
+        hyphenation: &mut crate::document::HyphenationSettings,
+    ) -> bool
+    where
+        I: IntoIterator<Item = quick_xml::events::attributes::Attribute<'a>>,
+    {
+        let number = |attrs: I| {
+            attrs
+                .into_iter()
+                .find(|attr| local_name(attr.key.as_ref()) == b"val")
+                .and_then(|attr| {
+                    String::from_utf8_lossy(&attr.value)
+                        .trim()
+                        .parse::<u32>()
+                        .ok()
+                })
+        };
+        match name {
+            b"autoHyphenation" => hyphenation.auto = Self::parse_on_off_attribute(attrs),
+            b"doNotHyphenateCaps" => {
+                hyphenation.do_not_hyphenate_caps = Self::parse_on_off_attribute(attrs)
+            }
+            b"hyphenationZone" => hyphenation.zone_twips = number(attrs),
+            b"consecutiveHyphenLimit" => hyphenation.consecutive_limit = number(attrs),
+            _ => return false,
+        }
+        true
+    }
+
     fn parse_twips_attribute<'a, I>(attrs: I) -> Option<f32>
     where
         I: IntoIterator<Item = quick_xml::events::attributes::Attribute<'a>>,
@@ -278,7 +501,10 @@ impl DocumentSettings {
         let mut name = None;
         let mut value = None;
         for attr in attrs {
-            let decoded = attr.unescape_value().ok()?.into_owned();
+            let decoded = attr
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .ok()?
+                .into_owned();
             match local_name(attr.key.as_ref()) {
                 b"name" => name = Some(decoded),
                 b"val" => value = Some(decoded),
@@ -340,6 +566,7 @@ impl DocumentSettings {
                         settings.display_content_revisions =
                             Self::parse_revision_content_visibility(e);
                     }
+                    Self::parse_math_property(&mut settings.math, name, e.attributes().flatten());
                     if name == b"compat" {
                         compat_depth += 1;
                     } else if name == b"kinsoku" {
@@ -381,6 +608,17 @@ impl DocumentSettings {
                     } else if name == b"mirrorMargins" {
                         settings.mirror_margins =
                             Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"bookFoldPrinting" {
+                        settings.book_fold_printing =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"printTwoOnOne" {
+                        settings.print_two_on_one =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if Self::parse_hyphenation_setting(
+                        name,
+                        e.attributes().flatten(),
+                        &mut settings.hyphenation,
+                    ) {
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =
                             Self::parse_twips_attribute(e.attributes().flatten());
@@ -422,6 +660,17 @@ impl DocumentSettings {
                             );
                         }
                     }
+                    if compat_depth > 0
+                        && !matches!(
+                            name,
+                            b"compat" | b"compatSetting" | b"characterSpacingControl"
+                        )
+                    {
+                        settings.compat.options.push((
+                            String::from_utf8_lossy(name).into_owned(),
+                            Self::parse_on_off_attribute(e.attributes().flatten()),
+                        ));
+                    }
                     if compat_depth > 0 {
                         match name {
                             b"useFELayout" => {
@@ -455,6 +704,9 @@ impl DocumentSettings {
                             b"compatSetting" => {
                                 if let Some(mode) = Self::parse_compatibility_mode(e) {
                                     settings.compatibility_mode = Some(mode);
+                                }
+                                if let Some(setting) = Self::parse_compat_setting(e) {
+                                    settings.compat.settings.push(setting);
                                 }
                             }
                             _ => {}
@@ -516,6 +768,7 @@ impl DocumentSettings {
                         settings.top_line_punctuation =
                             Some(Self::parse_on_off_attribute(e.attributes().flatten()));
                     }
+                    Self::parse_math_property(&mut settings.math, name, e.attributes().flatten());
                     if name == b"autoSpaceDE" {
                         settings.auto_space_de =
                             Some(Self::parse_on_off_attribute(e.attributes().flatten()));
@@ -534,6 +787,17 @@ impl DocumentSettings {
                     } else if name == b"mirrorMargins" {
                         settings.mirror_margins =
                             Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"bookFoldPrinting" {
+                        settings.book_fold_printing =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if name == b"printTwoOnOne" {
+                        settings.print_two_on_one =
+                            Self::parse_on_off_attribute(e.attributes().flatten());
+                    } else if Self::parse_hyphenation_setting(
+                        name,
+                        e.attributes().flatten(),
+                        &mut settings.hyphenation,
+                    ) {
                     } else if name == b"defaultTabStop" {
                         settings.default_tab_stop =
                             Self::parse_twips_attribute(e.attributes().flatten());
@@ -573,6 +837,17 @@ impl DocumentSettings {
                             );
                         }
                     }
+                    if compat_depth > 0
+                        && !matches!(
+                            name,
+                            b"compat" | b"compatSetting" | b"characterSpacingControl"
+                        )
+                    {
+                        settings.compat.options.push((
+                            String::from_utf8_lossy(name).into_owned(),
+                            Self::parse_on_off_attribute(e.attributes().flatten()),
+                        ));
+                    }
                     if compat_depth > 0 {
                         match name {
                             b"useFELayout" => {
@@ -606,6 +881,9 @@ impl DocumentSettings {
                             b"compatSetting" => {
                                 if let Some(mode) = Self::parse_compatibility_mode(e) {
                                     settings.compatibility_mode = Some(mode);
+                                }
+                                if let Some(setting) = Self::parse_compat_setting(e) {
+                                    settings.compat.settings.push(setting);
                                 }
                             }
                             _ => {}
@@ -655,6 +933,11 @@ impl DocumentSettings {
             }
         }
 
+        // Word 2007 wrote no `compatibilityMode`; Word lays such a file out
+        // as mode 12.
+        if settings.compatibility_mode.is_none() {
+            settings.compatibility_mode = Some(UNDECLARED_COMPATIBILITY_MODE);
+        }
         Ok(settings)
     }
 
@@ -675,6 +958,7 @@ impl DocumentSettings {
             no_line_break_after_replaces_default: self.no_line_break_after_replaces_default,
             strict_first_and_last_chars: self.strict_first_and_last_chars,
             compatibility_mode: self.compatibility_mode,
+            space_for_underline: self.compat.space_for_underline(),
         }
     }
 }
@@ -720,6 +1004,20 @@ mod saved_revision_view_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn math_properties_are_read_from_math_pr() {
+        let xml = r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:mathPr><m:mathFont m:val="Cambria Math"/><m:brkBin m:val="after"/><m:brkBinSub m:val="--"/><m:smallFrac m:val="0"/><m:dispDef/><m:lMargin m:val="0"/><m:rMargin m:val="0"/><m:defJc m:val="centerGroup"/><m:wrapIndent m:val="1440"/><m:intLim m:val="undOvr"/><m:naryLim m:val="subSup"/></m:mathPr></w:settings>"#;
+        let math = DocumentSettings::from_xml(xml).unwrap().math;
+        assert_eq!(math.math_font.as_deref(), Some("Cambria Math"));
+        assert_eq!(math.break_binary.as_deref(), Some("after"));
+        assert_eq!(math.small_fractions, Some(false));
+        assert_eq!(math.display_default, Some(true));
+        assert_eq!(math.wrap_indent, Some(1440.0));
+        assert_eq!(math.integral_limits.as_deref(), Some("undOvr"));
+        assert_eq!(math.nary_limits.as_deref(), Some("subSup"));
+        assert_eq!(math.default_justification.as_deref(), Some("centerGroup"));
+    }
 
     #[test]
     fn special_note_lists_select_only_direct_matching_references() {
@@ -987,6 +1285,41 @@ mod tests {
     }
 
     #[test]
+    fn reads_every_compat_setting_and_option_and_the_mode_word_assumes() {
+        let xml = r#"
+        <w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:compat>
+            <w:spaceForUL/>
+            <w:doNotExpandShiftReturn/>
+            <w:ulTrailSpace w:val="0"/>
+            <w:useFELayout/>
+            <w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="14"/>
+            <w:compatSetting w:name="overrideTableStyleFontSizeAndJustification" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/>
+          </w:compat>
+        </w:settings>"#;
+        let settings = DocumentSettings::from_xml(xml).expect("settings");
+        assert_eq!(settings.compatibility_mode, Some(14));
+        assert!(settings.compat.space_for_underline());
+        assert!(settings.compat.do_not_expand_shift_return());
+        assert!(!settings.compat.underline_trailing_spaces());
+        assert!(settings.compat.option("useFELayout"));
+        assert!(settings
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification"));
+        assert_eq!(settings.compat.setting("compatibilityMode"), Some("14"));
+
+        // Word 2007 wrote no mode; Word lays such a file out as mode 12.
+        let undeclared = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:compat><w:useFELayout/></w:compat></w:settings>"#,
+        )
+        .expect("settings");
+        assert_eq!(
+            undeclared.compatibility_mode,
+            Some(UNDECLARED_COMPATIBILITY_MODE)
+        );
+    }
+
+    #[test]
     fn parses_compat_flags_with_explicit_off_values() {
         let xml = r#"
         <w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1093,6 +1426,28 @@ mod tests {
         "#;
         let settings = DocumentSettings::from_xml(off_xml).expect("parse settings");
         assert!(!settings.gutter_at_top);
+    }
+
+    #[test]
+    fn parses_hyphenation_settings() {
+        let settings = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:autoHyphenation/>
+                <w:consecutiveHyphenLimit w:val="2"/>
+                <w:hyphenationZone w:val="425"/>
+                <w:doNotHyphenateCaps/>
+            </w:settings>"#,
+        )
+        .unwrap();
+        assert!(settings.hyphenation.auto);
+        assert_eq!(settings.hyphenation.consecutive_limit, Some(2));
+        assert_eq!(settings.hyphenation.zone_twips, Some(425));
+        assert!(settings.hyphenation.do_not_hyphenate_caps);
+        let off = DocumentSettings::from_xml(
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:autoHyphenation w:val="0"/></w:settings>"#,
+        )
+        .unwrap();
+        assert!(!off.hyphenation.auto);
     }
 
     #[test]

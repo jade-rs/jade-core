@@ -1,7 +1,10 @@
 //! Renders a DOCX to one PNG per page, with no browser involved.
 //!
-//! Usage: `docx_to_png <input.docx> <output.png>` — later pages are written
-//! beside the first as `<output>-2.png`, `<output>-3.png`, and so on.
+//! Usage: `docx_to_png [--real-fonts] <input.docx> <output.png>` — later
+//! pages are written beside the first as `<output>-2.png`, `<output>-3.png`,
+//! and so on. With `--real-fonts` the document's own fonts are used where
+//! they are installed (Office's own first), as the native app draws it;
+//! without, every face is the bundled Noto Sans JP.
 //!
 //! This is the end-to-end check that the renderer is no longer tied to a
 //! canvas. Everything it does — parsing, layout, wrapping, pagination, drawing
@@ -28,9 +31,12 @@ fn bundled_font(name: &str) -> PathBuf {
 }
 
 fn main() -> Result<(), String> {
-    let mut args = std::env::args().skip(1);
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let real_fonts = args.iter().any(|arg| arg == "--real-fonts");
+    args.retain(|arg| arg != "--real-fonts");
+    let mut args = args.into_iter();
     let (Some(input), Some(output)) = (args.next(), args.next()) else {
-        return Err("usage: docx_to_png <input.docx> <output.png>".to_string());
+        return Err("usage: docx_to_png [--real-fonts] <input.docx> <output.png>".to_string());
     };
 
     let bytes = std::fs::read(&input).map_err(|err| format!("{input}: {err}"))?;
@@ -55,9 +61,11 @@ fn main() -> Result<(), String> {
         (700, "NotoSansJP-Bold.ttf"),
     ] {
         host.register_font("Noto Sans JP", weight, bundled_font(file))?;
+        if real_fonts {
+            continue;
+        }
         // Documents name Word's fonts, not the bundled one. Aliasing keeps the
-        // first render legible rather than silently blank; real font matching
-        // is a separate problem from proving the renderer runs.
+        // first render legible rather than silently blank.
         for alias in [
             "Times New Roman",
             "Yu Mincho",
@@ -68,6 +76,19 @@ fn main() -> Result<(), String> {
             host.register_font(alias, weight, bundled_font(file))?;
         }
     }
+    if real_fonts {
+        for face in jade_docx_native_render::system_fonts::word_document_faces(&bytes, &[]) {
+            if let Err(error) = host.register_font_styled(
+                &face.family,
+                face.weight,
+                face.italic,
+                &face.path,
+                face.index,
+            ) {
+                eprintln!("skipped {}: {error}", face.family);
+            }
+        }
+    }
 
     // Taken before the host moves into the renderer, which owns it from then
     // on. The handle stays valid because the pages are shared, not copied.
@@ -75,6 +96,17 @@ fn main() -> Result<(), String> {
 
     let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
         .map_err(|_| "renderer setup failed".to_string())?;
+    if real_fonts {
+        // Equations as the app draws them: Cambria Math's MATH table.
+        for face in jade_docx_native_render::system_fonts::word_document_faces(&bytes, &[]) {
+            if face.family == jade_docx_native_render::system_fonts::MATH_FAMILY {
+                if let Ok(font) = std::fs::read(&face.path) {
+                    let _ = renderer.register_math_face(face.family.clone(), font, face.index);
+                }
+                break;
+            }
+        }
+    }
     renderer
         .render(document, &options)
         .map_err(|_| "render failed".to_string())?;

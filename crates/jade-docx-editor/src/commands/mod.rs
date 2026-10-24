@@ -27,6 +27,8 @@ pub mod composite;
 pub mod delete_object;
 pub mod delete_table;
 pub mod delete_text;
+pub mod document_edit;
+pub mod edit_drawing;
 mod edit_offset;
 pub mod format_image;
 pub mod format_text_box;
@@ -45,6 +47,7 @@ pub mod insert_index;
 pub mod insert_paragraph_break;
 pub mod insert_section_break;
 pub mod insert_shape;
+pub mod insert_signature_line;
 pub mod insert_table;
 pub mod insert_text;
 pub mod insert_text_box;
@@ -52,7 +55,9 @@ pub mod insert_toc;
 pub mod merge_table_cells;
 pub(crate) mod paragraph_property_sync;
 pub(crate) mod paragraph_undo;
+pub mod range_notes;
 pub(crate) mod raw_xml_undo;
+pub mod replace_equation;
 pub mod replace_image;
 pub mod reset_paragraph_formatting;
 pub mod resize_table_column;
@@ -71,6 +76,7 @@ pub mod set_font_size;
 pub mod set_header_footer_variants;
 pub mod set_highlight_color;
 pub mod set_ink_annotations;
+pub mod set_ink_drawings;
 pub mod set_note_numbering;
 pub mod set_numbering;
 pub mod set_page_borders;
@@ -81,11 +87,18 @@ pub mod set_paragraph_direction;
 pub mod set_paragraph_indent;
 pub mod set_paragraph_line_spacing;
 pub mod set_paragraph_metrics;
+pub mod set_paragraph_options;
+pub mod set_paragraph_pagination;
 pub mod set_paragraph_style;
+pub mod set_paragraph_tabs;
 pub mod set_paragraph_visuals;
+pub mod set_ruby;
+pub mod set_run_format;
+pub mod set_typography;
 pub mod set_watermark;
 pub mod snapshot_edit;
 pub mod split_table;
+mod table_range;
 pub mod table_structure;
 pub(crate) mod text_edit;
 pub mod toggle_paragraph_space_before;
@@ -226,6 +239,81 @@ pub trait Command {
 /// over a long editing session. Oldest entries past this cap are dropped.
 const MAX_UNDO_HISTORY: usize = 200;
 
+/// A paragraph formatting command run with changes tracked, and the
+/// `w:pPrChange` records put in after it: undone, the records go first.
+struct TrackedParagraphFormats {
+    inner: Box<dyn Command>,
+    records: Vec<crate::docx_xml::XmlNodeId>,
+}
+
+impl Command for TrackedParagraphFormats {
+    fn name(&self) -> &'static str {
+        self.inner.name()
+    }
+
+    fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.inner.apply(ctx)
+    }
+
+    fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        ctx.document.remove_paragraph_format_records(&self.records);
+        self.inner.undo(ctx)
+    }
+
+    fn redo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        let before = ctx.document.paragraph_formats();
+        self.inner.redo(ctx)?;
+        let session = ctx.document.revision_session().cloned().unwrap_or_default();
+        self.records = ctx.document.track_paragraph_format_changes(
+            before,
+            session.author.as_deref(),
+            session.date.as_deref(),
+        );
+        Ok(())
+    }
+
+    fn should_record_history(&self) -> bool {
+        self.inner.should_record_history()
+    }
+
+    fn history_render_footprint(&self) -> HistoryRenderFootprint {
+        self.inner.history_render_footprint()
+    }
+}
+
+/// Applies `command`, its formatting edits recorded as tracked changes
+/// (`w:rPrChange`) while the document has a revision session open.
+fn apply_tracking_formatting(
+    command: &mut dyn Command,
+    ctx: &mut CommandContext<'_>,
+) -> CommandResult<()> {
+    tracking_formatting(ctx, |ctx| command.apply(ctx))
+}
+
+/// Runs `step` with formatting edits recorded as tracked changes while the
+/// document has a revision session open.
+fn tracking_formatting(
+    ctx: &mut CommandContext<'_>,
+    step: impl FnOnce(&mut CommandContext<'_>) -> CommandResult<()>,
+) -> CommandResult<()> {
+    let stamp = ctx
+        .document
+        .revision_session()
+        .map(|session| text_edit::FormatRevisionStamp {
+            author: session.author.clone(),
+            date: session.date.clone(),
+            next_id: ctx.document.revision_id_counter(),
+        });
+    let tracking = stamp.is_some();
+    let (result, next_id) = text_edit::with_format_revision(stamp, || step(ctx));
+    if let Some(next_id) = next_id.filter(|_| tracking) {
+        if next_id > ctx.document.revision_id_counter() {
+            ctx.document.restore_revision_id_counter(next_id);
+        }
+    }
+    result
+}
+
 /// Lightweight executor that owns the undo/redo stacks and orchestrates command
 /// lifecycle.
 #[derive(Default)]
@@ -241,6 +329,8 @@ pub struct CommandExecutor {
     /// Counts history entries ever recorded. Unlike the stack depth it moves
     /// even once the history is full and the oldest entry falls off.
     recorded: u64,
+    /// A synchronous provisional edit must not evict existing undo/redo entries.
+    provisional_recording: bool,
 }
 
 impl CommandExecutor {
@@ -268,7 +358,37 @@ impl CommandExecutor {
         } else {
             None
         };
-        command.apply(ctx)?;
+        // 編集の制限: a restricted document refuses what its restriction
+        // does not allow, outside the ranges everyone may edit.
+        let at = ctx.selection.map(|selection| {
+            let (start, _) = selection.normalized();
+            (start.paragraph, start.offset)
+        });
+        ctx.document
+            .restriction_allows(command.name(), at)
+            .map_err(CommandError::Custom)?;
+        // With changes tracked, a paragraph formatting command's changes are
+        // recorded as `w:pPrChange`s, which undo takes back out.
+        let paragraph_formats = ctx
+            .document
+            .revision_session()
+            .filter(|_| crate::word_document::PARAGRAPH_FORMAT_COMMANDS.contains(&command.name()))
+            .map(|_| ctx.document.paragraph_formats());
+        apply_tracking_formatting(command.as_mut(), ctx)?;
+        if let Some(before) = paragraph_formats {
+            let session = ctx.document.revision_session().cloned().unwrap_or_default();
+            let records = ctx.document.track_paragraph_format_changes(
+                before,
+                session.author.as_deref(),
+                session.date.as_deref(),
+            );
+            if !records.is_empty() {
+                command = Box::new(TrackedParagraphFormats {
+                    inner: command,
+                    records,
+                });
+            }
+        }
         if let Some((before, paragraphs, selection_before)) = before {
             if let Some(raw) = before.raw_document.as_ref() {
                 ctx.document.record_formatting_changes(&paragraphs, raw);
@@ -296,11 +416,20 @@ impl CommandExecutor {
     fn record(&mut self, command: Box<dyn Command>) {
         self.recorded += 1;
         self.undo_stack.push(command);
-        if self.undo_stack.len() > MAX_UNDO_HISTORY {
-            let overflow = self.undo_stack.len() - MAX_UNDO_HISTORY;
-            self.undo_stack.drain(0..overflow);
+        if !self.provisional_recording {
+            if self.undo_stack.len() > MAX_UNDO_HISTORY {
+                let overflow = self.undo_stack.len() - MAX_UNDO_HISTORY;
+                self.undo_stack.drain(0..overflow);
+            }
+            self.redo_stack.clear();
         }
-        self.redo_stack.clear();
+    }
+
+    /// Brackets a synchronous edit which will be retracted. Its undo entry may
+    /// temporarily exceed the history limit, and existing redo entries survive.
+    /// A subsequent ordinary edit commits the usual limit/redo invalidation.
+    pub fn set_provisional_recording(&mut self, provisional: bool) {
+        self.provisional_recording = provisional;
     }
 
     /// Starts collecting the commands executed from here on into one undo
@@ -387,6 +516,12 @@ impl CommandExecutor {
         Ok(self.redo_with_footprint(ctx)?.is_some())
     }
 
+    /// Forgets the newest redo entry: an undo that only took back a
+    /// provisional edit, such as a gallery preview.
+    pub fn discard_newest_redo(&mut self) {
+        self.redo_stack.pop();
+    }
+
     /// Reverts the newest history entry and forgets it, leaving the redo
     /// history alone. For edits that were only ever provisional, like the
     /// live preview of a table border drag.
@@ -427,7 +562,7 @@ impl CommandExecutor {
             None => return Ok(None),
         };
         let footprint = command.history_render_footprint();
-        command.redo(ctx)?;
+        tracking_formatting(ctx, |ctx| command.redo(ctx))?;
         if command.should_record_history() {
             self.undo_stack.push(command);
         }
@@ -680,6 +815,87 @@ mod tests {
             .map(|run| run.text.as_str())
             .collect::<String>();
         assert_eq!(text_after_redo, "Hello world");
+    }
+
+    #[test]
+    fn provisional_history_keeps_redo_and_the_oldest_undo_at_capacity() {
+        let mut document = sample_document("Hello");
+        let mut selection = None;
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        let mut executor = CommandExecutor::new();
+        let insert = || {
+            Box::new(InsertTextCommand::new(
+                SelectionRange::collapsed(TextPosition {
+                    paragraph: 0,
+                    offset: 5,
+                }),
+                "!".into(),
+                None,
+            )) as Box<dyn Command>
+        };
+        for _ in 0..MAX_UNDO_HISTORY {
+            executor.execute(insert(), &mut ctx).unwrap();
+        }
+        executor.undo(&mut ctx).unwrap();
+        assert!(executor.can_redo());
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        executor.undo(&mut ctx).unwrap();
+        executor.discard_newest_redo();
+        assert!(executor.can_redo());
+        executor.redo(&mut ctx).unwrap();
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
+        // With a full history, even one provisional edit must not drop its oldest entry.
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        executor.undo(&mut ctx).unwrap();
+        executor.discard_newest_redo();
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
+        assert!(!executor.can_redo());
+        for _ in 0..MAX_UNDO_HISTORY {
+            assert!(executor.undo(&mut ctx).unwrap());
+        }
+        assert!(!executor.can_undo());
+        let text: String = ctx
+            .document
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "Hello");
+    }
+
+    #[test]
+    fn ordinary_edit_after_provisional_recording_invalidates_redo_and_bounds_history() {
+        let mut document = sample_document("Hello");
+        let mut selection = None;
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        let mut executor = CommandExecutor::new();
+        let insert = || {
+            Box::new(InsertTextCommand::new(
+                SelectionRange::collapsed(TextPosition {
+                    paragraph: 0,
+                    offset: 5,
+                }),
+                "!".into(),
+                None,
+            )) as Box<dyn Command>
+        };
+        for _ in 0..MAX_UNDO_HISTORY {
+            executor.execute(insert(), &mut ctx).unwrap();
+        }
+        executor.undo(&mut ctx).unwrap();
+        executor.set_provisional_recording(true);
+        executor.execute(insert(), &mut ctx).unwrap();
+        executor.set_provisional_recording(false);
+        assert!(executor.can_redo());
+        executor.execute(insert(), &mut ctx).unwrap();
+        assert!(!executor.can_redo());
+        assert_eq!(executor.undo_depth(), MAX_UNDO_HISTORY);
     }
 
     #[test]

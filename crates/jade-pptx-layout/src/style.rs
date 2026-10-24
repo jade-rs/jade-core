@@ -255,6 +255,7 @@ pub(crate) struct ResolvedRun {
     pub(crate) spacing_px: f64,
     pub(crate) outline: Option<crate::PlacedOutline>,
     pub(crate) shadow: Option<crate::PlacedShadow>,
+    pub(crate) glow: Option<crate::PlacedGlow>,
     pub(crate) underline_style: Option<String>,
     pub(crate) double_strike: bool,
 }
@@ -340,6 +341,10 @@ pub(crate) fn resolve_run(
         spacing_px: run.spacing_pt.unwrap_or(0.0) as f64 * crate::PX_PER_PT,
         outline: crate::resolve_outline(run.outline.as_ref(), None, context.theme, None),
         shadow: crate::place_shadow(run.shadow.as_ref(), context.theme),
+        glow: run
+            .glow
+            .as_ref()
+            .and_then(|glow| crate::place_glow(glow, context.theme)),
         underline_style: run.underline_style.clone(),
         double_strike: run.double_strike,
     }

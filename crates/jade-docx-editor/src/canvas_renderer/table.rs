@@ -258,6 +258,9 @@ struct LineLayout {
     /// picture stands on the baseline and the text's descent hangs below it.
     /// Zero for a line of text only.
     min_advance: f64,
+    /// Automatic hyphenation ended the line with a hyphen this wide, already
+    /// part of its last glyph's advance (as in body paragraphs).
+    hyphen: Option<f64>,
 }
 
 impl LineLayout {
@@ -339,6 +342,7 @@ impl CellPicture {
         jade_docx_layout::line_wrap::InlineObject {
             width: self.image.width_px.unwrap_or(1.0).max(1.0),
             height: self.image.height_px.unwrap_or(1.0).max(1.0),
+            descent: 0.0,
         }
     }
 }
@@ -612,9 +616,54 @@ pub(super) enum BorderKind {
     Dotted,
     DotDash,
     DotDotDash,
-    /// `wave` / `doubleWave` — approximated with a dashed pattern since the
-    /// Canvas API has no built-in wavy-stroke primitive.
+    /// `wave`: one wavy line.
     Wave,
+    /// `doubleWave`: two wavy lines.
+    DoubleWave,
+    /// `dashDotStroked`: dashes separated by diagonal strokes.
+    DashDotStroked,
+    ThinThickSmallGap,
+    ThickThinSmallGap,
+    ThinThickThinSmallGap,
+    ThinThickMediumGap,
+    ThickThinMediumGap,
+    ThinThickThinMediumGap,
+    ThinThickLargeGap,
+    ThickThinLargeGap,
+    ThinThickThinLargeGap,
+    ThreeDEmboss,
+    ThreeDEngrave,
+    Outset,
+    Inset,
+    /// A page-border art style (`apples`, `hearts`, …): an index into
+    /// [`super::art_borders::ART_BORDERS`].
+    Art(u16),
+}
+
+impl BorderKind {
+    /// The styles drawn through [`super::border_styles`]: several rules,
+    /// shading or a pattern that is not a dash.
+    pub(super) fn is_banded_style(self) -> bool {
+        matches!(
+            self,
+            BorderKind::Wave
+                | BorderKind::DoubleWave
+                | BorderKind::DashDotStroked
+                | BorderKind::ThinThickSmallGap
+                | BorderKind::ThickThinSmallGap
+                | BorderKind::ThinThickThinSmallGap
+                | BorderKind::ThinThickMediumGap
+                | BorderKind::ThickThinMediumGap
+                | BorderKind::ThinThickThinMediumGap
+                | BorderKind::ThinThickLargeGap
+                | BorderKind::ThickThinLargeGap
+                | BorderKind::ThinThickThinLargeGap
+                | BorderKind::ThreeDEmboss
+                | BorderKind::ThreeDEngrave
+                | BorderKind::Outset
+                | BorderKind::Inset
+        )
+    }
 }
 
 /// Fully resolved drawing parameters for one side of a table cell border.
@@ -1074,6 +1123,11 @@ struct LayoutConfig {
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
     word_modern_border_insets: bool,
+    /// Auto paragraph spacing collapses like HTML margins (no
+    /// `doNotUseHTMLParagraphAutoSpacing`).
+    html_auto_spacing: bool,
+    /// The document's automatic hyphenation, which cell text takes too.
+    hyphenation: jade_docx_reader::HyphenationSettings,
 }
 
 /// Rendered reference marks ("1", "ⅰ", …) keyed by note id, one map per note
@@ -1153,6 +1207,14 @@ impl LayoutConfig {
         {
             style.alignment = alignment.to_string();
         }
+        style.hyphenation = jade_docx_layout::line_wrap::ParagraphHyphenation::for_paragraph(
+            &self.hyphenation,
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|props| props.suppress_auto_hyphens)
+                .unwrap_or(false),
+        );
         if let Some(rules) = self
             .paragraph_east_asian_rules
             .get(&(paragraph as *const Paragraph as usize))
@@ -1418,8 +1480,9 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
 fn justify_table_wrapped_lines(lines: &mut [WrappedLine], max_width: f64, style: &ParagraphStyle) {
     if jade_docx_layout::line_wrap::is_justified_alignment(&style.alignment) {
         for (index, line) in lines.iter_mut().enumerate() {
-            line.justify_word_spaces_to_width(
+            line.justify_word_spaces_to_width_with(
                 (max_width - style.line_indent(index) - style.right_indent).max(1.0),
+                style.expand_lines_ending_in_breaks,
             );
         }
     }
@@ -1818,13 +1881,35 @@ where
         options: &Options,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
+        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+    ) -> Result<(), JsValue> {
+        // A table's cells are nodes of a tagged PDF's structure.
+        self.begin_structure_table();
+        let result = self.render_table_with_numbering_untagged(
+            table,
+            options,
+            numbering_part,
+            numbering_counter,
+            deleted_numbering_offsets,
+        );
+        self.end_structure_table();
+        result
+    }
+
+    fn render_table_with_numbering_untagged(
+        &mut self,
+        table: &Table,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
         _deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
     ) -> Result<(), JsValue> {
         // 表の描画は本文と経路が分かれていて Options を持ち回っていない。
         // 描く関数から見えるように、ここで置いておく。
         self.table_render_changes.set(options.render_changes);
+        ROW_REVISION_VIEW.with(|view| view.set((options.render_changes, options.render_original)));
         self.table_show_formatting_marks
-            .set(options.show_formatting_marks);
+            .set(options.shown_formatting_marks().paragraph_marks);
         if table.rows.is_empty() {
             return Ok(());
         }
@@ -1916,6 +2001,8 @@ where
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
+            html_auto_spacing: self.document_html_auto_spacing,
+            hyphenation: self.document_hyphenation,
         };
 
         let column_count = compute_column_count(table);
@@ -2966,6 +3053,7 @@ where
             }
 
             let start_paragraph = self.paragraph_counter;
+            self.set_structure_row(row_index);
             self.render_cell_blocks(
                 cell,
                 cell_rect.x,
@@ -3008,6 +3096,12 @@ where
             );
             if !paragraph_indices.is_empty() {
                 let layout = CellLayout {
+                    text_bounds: cell_ink_projection_is_horizontal(cell.text_direction).then_some(
+                        (
+                            cell_rect.x + cell.padding.left,
+                            cell_rect.x + cell_rect.width - cell.padding.right,
+                        ),
+                    ),
                     paragraphs: paragraph_indices,
                     left: cell_rect.x,
                     right: cell_rect.x + cell_rect.width,
@@ -3030,7 +3124,48 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn render_cell_blocks(
+        &mut self,
+        cell: &mut PreparedCell,
+        x_start: f64,
+        y_top: f64,
+        cell_width: f64,
+        row_height: f64,
+        line_height: f64,
+        numbering_part: Option<&NumberingPart>,
+        numbering_counter: &mut NumberingCounter,
+        ancestor_clip: Option<(f64, f64)>,
+        bottom_band: f64,
+    ) -> Result<f64, JsValue> {
+        let tagged = self.begin_structure_cell(cell.column_index);
+        // Authored cell shading stays in the document colour in dark mode.
+        // Its text (including an unfilled nested table) must do the same.
+        let previous_suppression = self.dark_mode_text_suppressed;
+        self.dark_mode_text_suppressed = previous_suppression
+            || cell
+                .background
+                .as_deref()
+                .is_some_and(fill_hides_page_background);
+        let result = self.render_cell_blocks_untagged(
+            cell,
+            x_start,
+            y_top,
+            cell_width,
+            row_height,
+            line_height,
+            numbering_part,
+            numbering_counter,
+            ancestor_clip,
+            bottom_band,
+        );
+        self.dark_mode_text_suppressed = previous_suppression;
+        self.end_structure(tagged);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_cell_blocks_untagged(
         &mut self,
         cell: &mut PreparedCell,
         x_start: f64,
@@ -3149,6 +3284,21 @@ where
                     );
 
                     if let Some(direction) = cell.text_direction {
+                        // The cell's fill set the painter's colour; vertical
+                        // text paints with the current fill, so it would come
+                        // out in the shading colour and vanish into it.
+                        if draw_enabled {
+                            let first_run_color = paragraph
+                                .styled_runs
+                                .first()
+                                .and_then(|run| run.properties.as_ref())
+                                .and_then(|properties| properties.color.clone());
+                            let color = self.resolve_text_fill_color(
+                                first_run_color.as_deref().unwrap_or(text_color),
+                            );
+                            #[allow(deprecated)]
+                            clip_painter.set_fill_style_str(color.as_ref());
+                        }
                         if direction_requires_rotated_layout(direction) {
                             let mut base_y = block_top + paragraph.spacing_before;
                             if matches!(direction, TextDirection::BtLr | TextDirection::BtLrV) {
@@ -3692,7 +3842,40 @@ where
                     visual_text_top
                 };
 
-                if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                // 縦中横: the group upright and across the column, centred,
+                // and with 行の幅に合わせる squeezed to the column's width.
+                let tate_chu_yoko = turned_angle
+                    .is_none()
+                    .then(|| paragraph_line_tate_chu_yoko(paragraph, line))
+                    .flatten();
+                if let Some((compress, font)) = tate_chu_yoko.as_ref() {
+                    if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                        context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
+                        context.set_text_baseline(if center_glyphs { "alphabetic" } else { "top" });
+                        let width = context
+                            .measure_text_width(&line.text)
+                            .map_err(PainterError::into_js_value)?
+                            .max(0.01);
+                        // One character's width: the cell the group takes.
+                        let fit = line_advance.max(1.0);
+                        let squeeze = if *compress && width > fit {
+                            fit / width
+                        } else {
+                            1.0
+                        };
+                        let drawn = width * squeeze;
+                        let _guard = StateGuard::new(context);
+                        context
+                            .translate(column_x + (column_width - drawn) * 0.5, paint_y)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .scale(squeeze, 1.0)
+                            .map_err(PainterError::into_js_value)?;
+                        context
+                            .fill_text(&line.text, 0.0, 0.0)
+                            .map_err(PainterError::into_js_value)?;
+                    }
+                } else if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
                     let font = paragraph_line_font_descriptor(paragraph, line);
                     context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
                     if turned_angle.is_none() {
@@ -4003,6 +4186,36 @@ where
     /// prepared layout, without recording another editable copy of the text.
     #[allow(clippy::too_many_arguments)]
     fn draw_cell_text_visual_only(
+        &mut self,
+        cell: &PreparedCell,
+        x_start: f64,
+        y_top: f64,
+        cell_width: f64,
+        row_height: f64,
+        line_height: f64,
+        bottom_band: f64,
+    ) -> Result<(), JsValue> {
+        let previous_suppression = self.dark_mode_text_suppressed;
+        self.dark_mode_text_suppressed = previous_suppression
+            || cell
+                .background
+                .as_deref()
+                .is_some_and(fill_hides_page_background);
+        let result = self.draw_cell_text_visual_only_inner(
+            cell,
+            x_start,
+            y_top,
+            cell_width,
+            row_height,
+            line_height,
+            bottom_band,
+        );
+        self.dark_mode_text_suppressed = previous_suppression;
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_cell_text_visual_only_inner(
         &mut self,
         cell: &PreparedCell,
         x_start: f64,
@@ -4390,8 +4603,10 @@ where
         let context = &painter;
         // The shared cell layout supplies every advance; painting does not measure spelling ranges.
         for decoration in decorations {
-            let crate::plugins::DecorationStyle::Squiggly { color } = &decoration.style else {
-                continue;
+            let (color, double) = match &decoration.style {
+                crate::plugins::DecorationStyle::Squiggly { color } => (color, false),
+                crate::plugins::DecorationStyle::DoubleUnderline { color } => (color, true),
+                _ => continue,
             };
             let mut spans: Vec<(f64, f64)> = Vec::new();
             for glyph in &line.glyphs {
@@ -4409,6 +4624,19 @@ where
                 spans.push((x0, x1));
             }
             for (x0, x1) in spans {
+                if double {
+                    crate::draw_command::executor::execute_underline(
+                        context,
+                        x0,
+                        line_top + line_height * 0.8,
+                        x1 - x0,
+                        12.0,
+                        color,
+                        Some("double"),
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                    continue;
+                }
                 self.draw_colored_squiggly(
                     context,
                     x0,
@@ -4845,7 +5073,7 @@ where
                 paragraph_index,
                 run_index: picture.run_index,
             };
-            if image.data_uri.is_some() {
+            if image.data_uri.is_some() || super::has_ink_strokes(image) {
                 self.draw_image_element(image, draw_spec)?;
             } else if let Some(group) = image.shape_group.as_ref() {
                 self.draw_shape_group(group, draw_spec)?;
@@ -4976,6 +5204,42 @@ where
                 decorations,
             )?;
         }
+        self.draw_line_hyphen(context, paragraph, line, start_x, text_y, default_color)?;
+        Ok(())
+    }
+
+    /// The hyphen automatic hyphenation ended `line` with, after its last
+    /// glyph in that glyph's run's font and colour, as body lines draw it.
+    fn draw_line_hyphen<P: Painter<Error: PainterError>>(
+        &self,
+        context: &P,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        start_x: f64,
+        text_y: f64,
+        default_color: &str,
+    ) -> Result<(), JsValue> {
+        let (Some(hyphen), Some(last)) = (line.hyphen, line.glyphs.last()) else {
+            return Ok(());
+        };
+        let run_props = paragraph
+            .styled_runs
+            .iter()
+            .find(|run| run.start <= last.start && last.start < run.end)
+            .and_then(|run| run.properties.as_ref());
+        let font = table_font_descriptor_for_text(run_props, "-");
+        context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
+        let requested = run_props
+            .and_then(|props| props.color.as_deref())
+            .unwrap_or(default_color);
+        let color = self.resolve_text_fill_color(requested);
+        context.set_fill_style_str(color.as_ref());
+        let x = start_x + last.x + (last.width - hyphen).max(0.0);
+        let y = text_y + self.table_run_baseline_shift(line, run_props);
+        context
+            .fill_text("-", x, y)
+            .map_err(PainterError::into_js_value)?;
+        self.reset_font_state();
         Ok(())
     }
 
@@ -5136,6 +5400,14 @@ where
         }
         if run_props.and_then(|props| props.underline).unwrap_or(false) {
             self.draw_table_underline_line(context, x, y, width, line_height, resolved.as_ref());
+        }
+        // A character border (`w:bdr`) in a cell, in its line style, as in
+        // the body.
+        if let Some(edge) = run_props
+            .and_then(|props| props.border.as_ref())
+            .and_then(|border| super::resolve_character_border(border, Some(requested)))
+        {
+            self.draw_character_border(context, &edge, (x, y, width, line_height), None);
         }
 
         Ok(width)
@@ -5309,6 +5581,7 @@ where
         let draw_enabled = self.should_draw_current_page_for_render();
         let lines = if paragraph.lines.is_empty() {
             vec![LineLayout {
+                hyphen: None,
                 min_advance: 0.0,
                 left_inset: 0.0,
                 right_inset: 0.0,
@@ -5706,6 +5979,7 @@ where
                     )?;
                 }
 
+                self.set_structure_row(row_index);
                 self.render_cell_blocks(
                     cell,
                     cell_rect.x,
@@ -5725,6 +5999,11 @@ where
                 }
                 if !paragraph_indices.is_empty() {
                     self.selection.record_table_cell_fragment(CellLayout {
+                        text_bounds: cell_ink_projection_is_horizontal(cell.text_direction)
+                            .then_some((
+                                cell_rect.x + cell.padding.left,
+                                cell_rect.x + cell_rect.width - cell.padding.right,
+                            )),
                         paragraphs: paragraph_indices,
                         left: cell_rect.x,
                         right: cell_rect.x + cell_rect.width,
@@ -5885,14 +6164,16 @@ where
             } else {
                 y - bands.top
             }),
+            super::border_styles::BorderSide::Top,
         )?;
-        self.draw_cell_border_side(
+        self.draw_border_side(
             context,
             x + width,
             y,
             x + width,
             y + height,
             &cell.border_right,
+            super::border_styles::BorderSide::Right,
         )?;
         self.draw_horizontal_cell_border(
             context,
@@ -5902,8 +6183,17 @@ where
             &cell.border_bottom,
             &cell.border_bottom_segments,
             (bands.bottom > 0.0).then_some(y + height - bands.bottom),
+            super::border_styles::BorderSide::Bottom,
         )?;
-        self.draw_cell_border_side(context, x, y, x, y + height, &cell.border_left)?;
+        self.draw_border_side(
+            context,
+            x,
+            y,
+            x,
+            y + height,
+            &cell.border_left,
+            super::border_styles::BorderSide::Left,
+        )?;
         if let Some(border) = cell.border_tl2br.as_ref() {
             self.draw_cell_border_side(context, x, y, x + width, y + height, border)?;
         }
@@ -5952,18 +6242,50 @@ where
         context.save();
         if frame.draw_top {
             if let Some(spec) = edge(TableBorderSide::Top) {
-                self.draw_cell_border_side(context, left, top, right, top, &spec)?;
+                self.draw_border_side(
+                    context,
+                    left,
+                    top,
+                    right,
+                    top,
+                    &spec,
+                    super::border_styles::BorderSide::Top,
+                )?;
             }
         }
         if let Some(spec) = edge(TableBorderSide::Left) {
-            self.draw_cell_border_side(context, left, top, left, bottom, &spec)?;
+            self.draw_border_side(
+                context,
+                left,
+                top,
+                left,
+                bottom,
+                &spec,
+                super::border_styles::BorderSide::Left,
+            )?;
         }
         if let Some(spec) = edge(TableBorderSide::Right) {
-            self.draw_cell_border_side(context, right, top, right, bottom, &spec)?;
+            self.draw_border_side(
+                context,
+                right,
+                top,
+                right,
+                bottom,
+                &spec,
+                super::border_styles::BorderSide::Right,
+            )?;
         }
         if frame.draw_bottom {
             if let Some(spec) = edge(TableBorderSide::Bottom) {
-                self.draw_cell_border_side(context, left, bottom, right, bottom, &spec)?;
+                self.draw_border_side(
+                    context,
+                    left,
+                    bottom,
+                    right,
+                    bottom,
+                    &spec,
+                    super::border_styles::BorderSide::Bottom,
+                )?;
             }
         }
         context.restore();
@@ -5997,15 +6319,17 @@ where
                 &cell.border_top,
                 &cell.border_top_segments,
                 None,
+                super::border_styles::BorderSide::Top,
             )?;
         }
-        self.draw_cell_border_side(
+        self.draw_border_side(
             context,
             x + width,
             y,
             x + width,
             y + height,
             &cell.border_right,
+            super::border_styles::BorderSide::Right,
         )?;
         if sides.bottom {
             self.draw_horizontal_cell_border(
@@ -6016,9 +6340,18 @@ where
                 &cell.border_bottom,
                 &cell.border_bottom_segments,
                 None,
+                super::border_styles::BorderSide::Bottom,
             )?;
         }
-        self.draw_cell_border_side(context, x, y + height, x, y, &cell.border_left)?;
+        self.draw_border_side(
+            context,
+            x,
+            y + height,
+            x,
+            y,
+            &cell.border_left,
+            super::border_styles::BorderSide::Left,
+        )?;
         context.restore();
 
         Ok(())
@@ -6034,17 +6367,18 @@ where
         fallback: &CellBorderSpec,
         segments: &[HorizontalBorderSegment],
         band_top: Option<f64>,
+        side: super::border_styles::BorderSide,
     ) -> Result<(), JsValue> {
         if segments.is_empty() {
             let y = band_top.map_or(y, |top| top + visible_border_width(fallback) * 0.5);
-            return self.draw_cell_border_side(context, x, y, x + width, y, fallback);
+            return self.draw_border_side(context, x, y, x + width, y, fallback, side);
         }
         for segment in segments {
             let y = band_top.map_or(y, |top| top + visible_border_width(&segment.border) * 0.5);
             let start = segment.start_px.clamp(0.0, width);
             let end = segment.end_px.clamp(start, width);
             if end - start > f64::EPSILON {
-                self.draw_cell_border_side(context, x + start, y, x + end, y, &segment.border)?;
+                self.draw_border_side(context, x + start, y, x + end, y, &segment.border, side)?;
             }
         }
         Ok(())
@@ -6064,6 +6398,30 @@ where
         end_x: f64,
         end_y: f64,
         spec: &CellBorderSpec,
+    ) -> Result<(), JsValue> {
+        // A cell edge does not say which side of the box it closes; a
+        // horizontal one is drawn as a top and a vertical one as a left, which
+        // only matters for the styles whose two sides differ.
+        let side = if (end_x - start_x).abs() >= (end_y - start_y).abs() {
+            super::border_styles::BorderSide::Top
+        } else {
+            super::border_styles::BorderSide::Left
+        };
+        self.draw_border_side(context, start_x, start_y, end_x, end_y, spec, side)
+    }
+
+    /// [`Self::draw_cell_border_side`] for an edge whose side of the box is
+    /// known, as a page border's is.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_border_side<P: Painter<Error: PainterError>>(
+        &self,
+        context: &P,
+        start_x: f64,
+        start_y: f64,
+        end_x: f64,
+        end_y: f64,
+        spec: &CellBorderSpec,
+        side: super::border_styles::BorderSide,
     ) -> Result<(), JsValue> {
         if matches!(spec.kind, BorderKind::None) {
             // Word-like guide line: thin dashed stroke in pale gray so an
@@ -6196,17 +6554,116 @@ where
                 .map_err(PainterError::into_js_value)?;
                 Self::stroke_segment(context, start_x, start_y, end_x, end_y);
             }
-            BorderKind::Wave => {
-                // Canvas has no wave primitive. Approximate with a short
-                // alternating dash pattern so `wave`/`doubleWave` still
-                // renders visually distinct from `single`.
+            kind if kind.is_banded_style() => {
+                Self::stroke_border_band(
+                    context,
+                    (start_x, start_y),
+                    (end_x, end_y),
+                    base_width * super::border_styles::band_units(kind),
+                    kind,
+                    stroke_color.as_ref(),
+                    side,
+                )
+                .map_err(PainterError::into_js_value)?;
+            }
+            BorderKind::Art(index) => {
+                // Art belongs on page borders; anywhere else Word shows its
+                // motif row too.
+                super::art_borders::paint_art_border_edge(
+                    context,
+                    (start_x, start_y),
+                    (end_x, end_y),
+                    spec.width_px,
+                    index,
+                    stroke_color.as_ref(),
+                    side,
+                )
+                .map_err(PainterError::into_js_value)?;
+            }
+            _ => {
                 context.set_line_width(base_width);
-                Self::apply_line_dash(context, &[base_width * 2.0, base_width * 2.0])
-                    .map_err(PainterError::into_js_value)?;
+                Self::apply_line_dash(context, &[]).map_err(PainterError::into_js_value)?;
                 Self::stroke_segment(context, start_x, start_y, end_x, end_y);
             }
         }
 
+        Ok(())
+    }
+
+    /// Strokes a border of a [`BorderKind::is_banded_style`] style along the
+    /// line from `start` to `end`, its band `thickness` wide and centred on
+    /// the line, the band's outer edge facing away from the box on `side`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn stroke_border_band<P: Painter>(
+        context: &P,
+        start: (f64, f64),
+        end: (f64, f64),
+        thickness: f64,
+        kind: BorderKind,
+        color: &str,
+        side: super::border_styles::BorderSide,
+    ) -> Result<(), P::Error> {
+        use super::border_styles::{self, Pattern};
+        let (dx, dy) = (end.0 - start.0, end.1 - start.1);
+        let length = (dx * dx + dy * dy).sqrt();
+        if length <= f64::EPSILON || thickness <= 0.0 {
+            return Ok(());
+        }
+        let (tx, ty) = (dx / length, dy / length);
+        // Unit vector pointing out of the bordered box.
+        let (ox, oy) = match side {
+            border_styles::BorderSide::Top => (0.0, -1.0),
+            border_styles::BorderSide::Bottom => (0.0, 1.0),
+            border_styles::BorderSide::Left => (-1.0, 0.0),
+            border_styles::BorderSide::Right => (1.0, 0.0),
+        };
+        // A point `along` the edge and `across` the band from its outer edge.
+        let at = |along: f64, across: f64| {
+            let out = thickness / 2.0 - across;
+            (
+                start.0 + tx * along + ox * out,
+                start.1 + ty * along + oy * out,
+            )
+        };
+        context.save();
+        context.set_line_dash(&[]);
+        let pattern = border_styles::pattern(kind);
+        let (line_width, polylines) = border_styles::pattern_polylines(pattern, length, thickness);
+        if !polylines.is_empty() {
+            context.set_stroke_style_str(color);
+            context.set_line_width(line_width);
+            for line in polylines {
+                context.begin_path();
+                for (index, (along, across)) in line.into_iter().enumerate() {
+                    let (x, y) = at(along, across);
+                    if index == 0 {
+                        context.move_to(x, y);
+                    } else {
+                        context.line_to(x, y);
+                    }
+                }
+                context.stroke();
+            }
+        } else {
+            for stripe in border_styles::stripes(kind) {
+                let width = (stripe.width * thickness).max(0.5);
+                let across = (stripe.start + stripe.width / 2.0) * thickness;
+                context.set_stroke_style_str(&border_styles::tone_color(color, stripe.tone, side));
+                context.set_line_width(width);
+                if let Pattern::Dash(lengths) = pattern {
+                    let unit = thickness.max(1.0);
+                    let dashes: Vec<f64> = lengths.iter().map(|value| value * unit).collect();
+                    context.set_line_dash(&dashes);
+                }
+                let (x0, y0) = at(0.0, across);
+                let (x1, y1) = at(length, across);
+                context.begin_path();
+                context.move_to(x0, y0);
+                context.line_to(x1, y1);
+                context.stroke();
+            }
+        }
+        context.restore();
         Ok(())
     }
 
@@ -8237,6 +8694,8 @@ fn visible_border_width(border: &CellBorderSpec) -> f64 {
             jade_docx_layout::line_metrics::word_layout_platform(),
         )
         .layout_width
+    } else if border.kind.is_banded_style() {
+        border.width_px * super::border_styles::band_units(border.kind)
     } else {
         border.width_px
     }
@@ -8554,9 +9013,33 @@ fn add_row_border_extents(
     bottom
 }
 
+thread_local! {
+    /// The table being drawn shows the markup (`.0`), or else the original
+    /// (`.1`) or the final text: set where a table's drawing starts, read by
+    /// the row checks that have no options to hand.
+    static ROW_REVISION_VIEW: std::cell::Cell<(bool, bool)> = const { std::cell::Cell::new((true, false)) };
+}
+
+/// Word's colours for inserted and deleted table cells.
+const INSERTED_ROW_FILL: &str = "#CCE4F7";
+const DELETED_ROW_FILL: &str = "#F9D2DC";
+
+/// A row a tracked change takes out of the view shown: a deleted row in the
+/// final text, an inserted one in the original.
+fn row_revision_hides(row: &TableRow) -> bool {
+    let Some(mark) = row.revision.as_deref() else {
+        return false;
+    };
+    let (changes, original) = ROW_REVISION_VIEW.with(std::cell::Cell::get);
+    !changes && mark.is_deletion() != original
+}
+
 /// `w:hidden` hides the row-end marker, not visible cell content.
 /// A row collapses only when its content and paragraph markers are hidden too.
 fn table_row_is_hidden(row: &TableRow) -> bool {
+    if row_revision_hides(row) {
+        return true;
+    }
     row.style
         .get("hidden")
         .is_some_and(|value| value.eq_ignore_ascii_case("true"))
@@ -9177,10 +9660,27 @@ pub(super) fn parse_border_kind(style: Option<&String>) -> BorderKind {
         "dashed" | "dashlarge" | "dashlonglarge" | "dashlong" => BorderKind::Dashed,
         "dashsmallgap" => BorderKind::DashSmallGap,
         "dotted" | "dottedlarge" => BorderKind::Dotted,
-        "dotdash" | "dashdotstroked" => BorderKind::DotDash,
+        "dotdash" => BorderKind::DotDash,
+        "dashdotstroked" => BorderKind::DashDotStroked,
         "dotdotdash" => BorderKind::DotDotDash,
-        "wave" | "doublewave" => BorderKind::Wave,
-        _ => BorderKind::Single,
+        "wave" => BorderKind::Wave,
+        "doublewave" => BorderKind::DoubleWave,
+        "thinthicksmallgap" => BorderKind::ThinThickSmallGap,
+        "thickthinsmallgap" => BorderKind::ThickThinSmallGap,
+        "thinthickthinsmallgap" => BorderKind::ThinThickThinSmallGap,
+        "thinthickmediumgap" => BorderKind::ThinThickMediumGap,
+        "thickthinmediumgap" => BorderKind::ThickThinMediumGap,
+        "thinthickthinmediumgap" => BorderKind::ThinThickThinMediumGap,
+        "thinthicklargegap" => BorderKind::ThinThickLargeGap,
+        "thickthinlargegap" => BorderKind::ThickThinLargeGap,
+        "thinthickthinlargegap" => BorderKind::ThinThickThinLargeGap,
+        "threedemboss" => BorderKind::ThreeDEmboss,
+        "threedengrave" => BorderKind::ThreeDEngrave,
+        "outset" => BorderKind::Outset,
+        "inset" => BorderKind::Inset,
+        other => super::art_borders::art_border_index(other)
+            .map(BorderKind::Art)
+            .unwrap_or(BorderKind::Single),
     }
 }
 
@@ -9235,9 +9735,16 @@ pub(super) fn border_edge_to_spec(edge: &crate::document::BorderEdge) -> CellBor
     if matches!(kind, BorderKind::None) {
         return CellBorderSpec::hidden();
     }
+    // An art border's `w:sz` is its tile size in whole points (§17.18.2),
+    // not eighths of a point.
+    let points_per_unit = if matches!(kind, BorderKind::Art(_)) {
+        1.0
+    } else {
+        1.0 / 8.0
+    };
     let width_px = edge
         .size_eighths
-        .map(|eighths| points_to_px(eighths as f32 / 8.0))
+        .map(|size| points_to_px(size as f32 * points_per_unit))
         .filter(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(1.0);
     let color = edge
@@ -10648,7 +11155,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                 content_height_hint
             };
             let (suppress_before, suppress_after) =
-                super::compute_contextual_spacing_suppression(&cell.blocks);
+                super::compute_cell_spacing_suppression(&cell.blocks, config.html_auto_spacing);
             let mut previous_after = 0.0_f64;
             for (block_index, block) in cell.blocks.iter().enumerate() {
                 if contains_only_hidden_end_marker && matches!(block, BodyElement::Paragraph(_)) {
@@ -10967,7 +11474,21 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         // Exact row heights remain authoritative later.
         let cell_height = content_height + padding.vertical() + 2.0 * cell_spacing;
 
-        let background = resolve_cell_background(cell, table, &style_format);
+        // A row inserted or deleted with changes tracked is shaded as Word
+        // shades inserted and deleted cells, while the markup is shown.
+        let background = row
+            .revision
+            .as_deref()
+            .filter(|_| config.render_changes)
+            .map(|mark| {
+                if mark.is_deletion() {
+                    DELETED_ROW_FILL
+                } else {
+                    INSERTED_ROW_FILL
+                }
+                .to_string()
+            })
+            .or_else(|| resolve_cell_background(cell, table, &style_format));
 
         let text_color = cell
             .style
@@ -11220,9 +11741,12 @@ fn collect_paragraph_text(
         }
         if !run.text.is_empty() || field_text.as_deref().is_some_and(|text| !text.is_empty()) {
             let start = text.len();
-            text.push_str(&run.text);
-            if let Some(value) = field_text.as_deref() {
-                text.push_str(value);
+            // As in body paragraphs: a field's result lives in `run.text`
+            // once authored or brought up to date, and a resolved value
+            // replaces it — appended, a field in a cell drew twice.
+            match field_text.as_deref().filter(|value| !value.is_empty()) {
+                Some(value) => text.push_str(value),
+                None => text.push_str(&run.text),
             }
             let end = text.len();
             styled_runs.push(StyledRunRange {
@@ -11599,6 +12123,26 @@ fn paragraph_line_text_scale(paragraph: &CellParagraph, line: &LineLayout) -> f6
         .unwrap_or(1.0)
 }
 
+/// Whether a vertical line is a 縦中横 group (`w:eastAsianLayout w:vert`),
+/// with whether it is fitted to the line (`w:vertCompress`) and the font of
+/// the run it starts in.
+fn paragraph_line_tate_chu_yoko(
+    paragraph: &CellParagraph,
+    line: &LineLayout,
+) -> Option<(bool, Option<Rc<str>>)> {
+    let run = paragraph
+        .styled_runs
+        .iter()
+        .find(|run| run.start <= line.start && line.start < run.end)?;
+    let layout = run.properties.as_ref()?.east_asian_layout.as_deref()?;
+    layout.vert.then(|| {
+        (
+            layout.vert_compress,
+            table_font_descriptor_for_text(run.properties.as_ref(), &line.text),
+        )
+    })
+}
+
 fn paragraph_line_font_descriptor(paragraph: &CellParagraph, line: &LineLayout) -> Option<Rc<str>> {
     let run = paragraph
         .styled_runs
@@ -11721,6 +12265,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
     };
 
     LineLayout {
+        hyphen: line.hyphen.map(|hyphen| hyphen.width),
         left_inset: 0.0,
         right_inset: 0.0,
         text,
@@ -11826,9 +12371,10 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
     if let Some(dir) = direction {
         if matches!(
             dir,
-            TextDirection::TbRlV | TextDirection::TbRl | TextDirection::BtLr
+            TextDirection::TbRlV | TextDirection::TbRl | TextDirection::BtLr | TextDirection::TbLrV
         ) {
-            let result = if dir == TextDirection::TbRlV {
+            // tbLrV stacks like tbRlV; only its columns run left to right.
+            let result = if matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) {
                 jade_docx_layout::line_wrap::layout_cell_text_vertically(
                     context,
                     text,
@@ -12149,6 +12695,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
 
     if lines.is_empty() {
         lines.push(LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: paragraph_style.line_indent(0),
             right_inset: paragraph_style.right_indent,
@@ -12218,6 +12765,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
         spacing_after: 0.0,
         align: None,
         lines: Rc::new(vec![LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -12252,7 +12800,11 @@ fn direction_requires_rotated_layout(_direction: TextDirection) -> bool {
 fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
     matches!(
         direction,
-        TextDirection::TbRl | TextDirection::TbRlV | TextDirection::BtLr | TextDirection::BtLrV
+        TextDirection::TbRl
+            | TextDirection::TbRlV
+            | TextDirection::BtLr
+            | TextDirection::BtLrV
+            | TextDirection::TbLrV
     )
 }
 
@@ -12441,6 +12993,20 @@ mod tests {
                 renderer.resolve_run_field(field)
             });
         assert_eq!(text, "editable");
+        // An authored field keeps its result in the run as well as in the
+        // field; a cell draws it once, as a body paragraph does.
+        let mut paragraph = paragraph_with_field(
+            RunFieldKind::Unsupported {
+                instruction: "=SUM(ABOVE)".into(),
+            },
+            "8",
+        );
+        paragraph.runs[0].text = "8".into();
+        let (text, _, _) =
+            collect_paragraph_text(&paragraph, true, false, &NoteMarkers::default(), &|field| {
+                renderer.resolve_run_field(field)
+            });
+        assert_eq!(text, "8");
     }
 
     #[test]
@@ -12928,6 +13494,8 @@ mod tests {
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
+                html_auto_spacing: true,
+                hyphenation: Default::default(),
                 styles_part: None,
             };
             let marks = if footnote {
@@ -13035,6 +13603,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let context = FixedWidthWrapContext::new();
@@ -14308,6 +14878,7 @@ mod tests {
             break_properties: None,
             leaders: Vec::new(),
             tab_stops: Vec::new(),
+            hyphen: None,
         };
         let mut style = ParagraphStyle {
             word_east_asian_font_line_box: true,
@@ -14375,6 +14946,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let paragraph = |text: &str| -> Paragraph {
@@ -14786,6 +15359,7 @@ mod tests {
     #[test]
     fn line_range_width_handles_partial_overlap() {
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -14824,6 +15398,7 @@ mod tests {
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
         };
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             text: "AB ".into(),
             visual_width: 23.0,
@@ -14877,6 +15452,7 @@ mod tests {
     #[test]
     fn line_layout_visual_end_x_uses_visual_width() {
         let line = LineLayout {
+            hyphen: None,
             min_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
@@ -15020,6 +15596,77 @@ mod tests {
         assert_eq!(
             rotated_visual_anchor_x(TextDirection::BtLr, base_x, content_right, line_height),
             base_x
+        );
+    }
+
+    /// A shaded cell set in 縦書き draws its text in the text colour: the
+    /// shading's fill used to stay on the painter, and the text vanished
+    /// into it.
+    #[test]
+    fn vertical_text_in_a_shaded_cell_is_drawn_in_the_text_colour() {
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        let paragraph = |text: &str| {
+            BodyElement::from_paragraph(crate::document::Paragraph {
+                runs: vec![serde_json::from_value(serde_json::json!({ "text": text })).unwrap()],
+                properties: None,
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+            })
+        };
+        let mut cell = TableCell {
+            blocks: vec![paragraph("縦書き")],
+            text_direction: Some(TextDirection::TbRlV),
+            ..Default::default()
+        };
+        cell.style
+            .insert("background-color".into(), "#FFF2CC".into());
+        let table = Table {
+            rows: vec![TableRow {
+                cells: vec![cell],
+                ..Default::default()
+            }],
+            columns: vec![crate::document::TableColumn { width: Some(100.0) }],
+            ..Default::default()
+        };
+        let document = crate::document::Document {
+            body: Some(crate::document::Body {
+                elements: vec![BodyElement::from_table(table), paragraph("")],
+            }),
+            ..Default::default()
+        };
+        renderer
+            .render(&document, &crate::Options::default())
+            .expect("render");
+        let mut fill = String::new();
+        let mut saved = Vec::new();
+        let mut drawn = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::Save => saved.push(fill.clone()),
+                Op::Restore => fill = saved.pop().unwrap_or_default(),
+                Op::SetFillStyle(value) => fill = value,
+                Op::FillText(text, _, _)
+                    if "縦書き".contains(text.as_str()) && !text.is_empty() =>
+                {
+                    drawn.push(fill.clone())
+                }
+                _ => {}
+            }
+        }
+        assert!(!drawn.is_empty(), "the vertical text was drawn");
+        assert!(
+            drawn
+                .iter()
+                .all(|fill| !fill.eq_ignore_ascii_case("#FFF2CC")),
+            "drawn in the shading colour: {drawn:?}"
         );
     }
 
@@ -15397,6 +16044,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         for exact_middle in [false, true] {
@@ -16023,7 +16672,21 @@ mod tests {
             ("dotDash", BorderKind::DotDash),
             ("dotDotDash", BorderKind::DotDotDash),
             ("wave", BorderKind::Wave),
-            ("doubleWave", BorderKind::Wave),
+            ("doubleWave", BorderKind::DoubleWave),
+            ("dashDotStroked", BorderKind::DashDotStroked),
+            ("thinThickSmallGap", BorderKind::ThinThickSmallGap),
+            ("thickThinSmallGap", BorderKind::ThickThinSmallGap),
+            ("thinThickThinSmallGap", BorderKind::ThinThickThinSmallGap),
+            ("thinThickMediumGap", BorderKind::ThinThickMediumGap),
+            ("thickThinMediumGap", BorderKind::ThickThinMediumGap),
+            ("thinThickThinMediumGap", BorderKind::ThinThickThinMediumGap),
+            ("thinThickLargeGap", BorderKind::ThinThickLargeGap),
+            ("thickThinLargeGap", BorderKind::ThickThinLargeGap),
+            ("thinThickThinLargeGap", BorderKind::ThinThickThinLargeGap),
+            ("threeDEmboss", BorderKind::ThreeDEmboss),
+            ("threeDEngrave", BorderKind::ThreeDEngrave),
+            ("outset", BorderKind::Outset),
+            ("inset", BorderKind::Inset),
             ("unknown-token", BorderKind::Single),
         ];
         for (input, expected) in cases {
@@ -16710,6 +17373,39 @@ mod tests {
     }
 
     #[test]
+    fn tracked_rows_leave_the_view_their_change_takes_them_out_of() {
+        use jade_docx_reader::{RevisionKind, RevisionMark};
+        let row_of = |kind| TableRow {
+            revision: Some(Box::new(RevisionMark {
+                kind,
+                id: None,
+                author: None,
+                date: None,
+                date_utc: None,
+                insertion: None,
+            })),
+            ..TableRow::default()
+        };
+        let (inserted, deleted) = (
+            row_of(RevisionKind::Inserted),
+            row_of(RevisionKind::Deleted),
+        );
+        let hidden = |view: (bool, bool)| {
+            ROW_REVISION_VIEW.with(|cell| cell.set(view));
+            (
+                table_row_is_hidden(&inserted),
+                table_row_is_hidden(&deleted),
+            )
+        };
+        // All Markup shows both; the final text drops the deleted row, the
+        // original the inserted one.
+        assert_eq!(hidden((true, false)), (false, false));
+        assert_eq!(hidden((false, false)), (false, true));
+        assert_eq!(hidden((false, true)), (true, false));
+        ROW_REVISION_VIEW.with(|cell| cell.set((true, false)));
+    }
+
+    #[test]
     fn hidden_row_marker_preserves_visible_content_and_paragraph_marks() {
         let paragraph: Paragraph = serde_json::from_value(serde_json::json!({
             "runs": [{"text": "visible"}],
@@ -16864,6 +17560,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let row = TableRow {
@@ -17782,6 +18480,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         for bidi in [false, true] {
@@ -17882,6 +18582,134 @@ mod tests {
     }
 
     #[test]
+    fn shaded_cells_keep_document_text_color_in_dark_mode() {
+        use jade_painter::recording::Op;
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let config = LayoutConfig {
+            padding_x: 7.2,
+            padding_y: 0.0,
+            line_height: 20.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            available_width: 200.0,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            doc_grid: None,
+            document_snap_to_grid_default: false,
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
+            styles_part: None,
+        };
+        let paragraph = |text: &str| {
+            BodyElement::from_paragraph(
+                serde_json::from_value(serde_json::json!({"runs": [{"text": text}]})).unwrap(),
+            )
+        };
+        let nested = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell {
+                    blocks: vec![paragraph("Nested")],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for background in [None, Some("#D9E2F3"), Some("transparent")] {
+            let mut shaded = TableCell {
+                blocks: vec![paragraph("Shaded"), BodyElement::from_table(nested.clone())],
+                ..Default::default()
+            };
+            if let Some(background) = background {
+                shaded
+                    .style
+                    .insert("background-color".into(), background.into());
+            }
+            let table = Table {
+                rows: vec![TableRow {
+                    cells: vec![
+                        shaded,
+                        TableCell {
+                            blocks: vec![paragraph("Bare")],
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+            for repeated in [false, true] {
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+                renderer.dark_mode_text = true;
+                if repeated {
+                    renderer
+                        .draw_repeated_header_rows(
+                            &[layout.rows[0].cells.clone()],
+                            &[layout.rows[0].height],
+                            &table,
+                            TableVisualGrid {
+                                table_x: 100.0,
+                                column_positions: &layout.column_positions,
+                                column_widths: &layout.column_widths,
+                                bidi_visual: false,
+                            },
+                            20.0,
+                        )
+                        .unwrap();
+                } else {
+                    renderer
+                        .render_nested_table(
+                            &mut layout.clone(),
+                            None,
+                            &mut NumberingCounter::default(),
+                            100.0,
+                            40.0,
+                            200.0,
+                            None,
+                        )
+                        .unwrap();
+                }
+                let mut color = String::new();
+                let mut text_colors: Vec<(String, String)> = Vec::new();
+                for op in painter.ops() {
+                    match op {
+                        Op::SetFillStyle(value) => color = value,
+                        Op::FillText(text, ..) => match text_colors.last_mut() {
+                            Some((previous, previous_color)) if previous_color == &color => {
+                                previous.push_str(&text)
+                            }
+                            _ => text_colors.push((text, color.clone())),
+                        },
+                        _ => {}
+                    }
+                }
+                let expected = if background == Some("#D9E2F3") {
+                    DEFAULT_TEXT_COLOR
+                } else {
+                    super::super::DARK_MODE_TEXT_COLOR
+                };
+                for text in ["Shaded", "Nested"] {
+                    assert!(
+                        text_colors
+                            .iter()
+                            .any(|(t, c)| t.contains(text) && c == expected),
+                        "{text} on {background:?}, repeated={repeated}: {text_colors:?}"
+                    );
+                }
+                assert!(text_colors.iter().any(|(t,c)| t.contains("Bare") && c == super::super::DARK_MODE_TEXT_COLOR),
+                    "the next cell still uses dark-mode contrast: {text_colors:?}");
+                assert!(!renderer.dark_mode_text_suppressed);
+            }
+        }
+    }
+
+    #[test]
     fn repeated_nested_table_paints_at_the_editable_content_frame_origin() {
         let painter = RecordingPainter::with_width_per_char(7.0);
         let context = TableLineWrapContext::new(&painter);
@@ -17899,6 +18727,8 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             styles_part: None,
         };
         let table = Table {
@@ -18891,6 +19721,8 @@ mod tests {
             paragraph_east_asian_rules: FxHashMap::default(),
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            html_auto_spacing: true,
+            hyphenation: Default::default(),
             available_width: 120.0,
             render_changes: false,
             render_original: false,

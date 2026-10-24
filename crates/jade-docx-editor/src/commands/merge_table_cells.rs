@@ -880,6 +880,7 @@ mod tests {
         let table = Table {
             rows: vec![
                 TableRow {
+                    revision: None,
                     cells: vec![make_cell("A1"), make_cell("A2")],
                     style: StyleMap::default(),
                     class_name: None,
@@ -898,6 +899,7 @@ mod tests {
                     node_id: None,
                 },
                 TableRow {
+                    revision: None,
                     cells: vec![make_cell("B1"), make_cell("B2")],
                     style: StyleMap::default(),
                     class_name: None,
@@ -946,6 +948,7 @@ mod tests {
             rows: rows
                 .into_iter()
                 .map(|cells| TableRow {
+                    revision: None,
                     cells,
                     style: StyleMap::default(),
                     class_name: None,

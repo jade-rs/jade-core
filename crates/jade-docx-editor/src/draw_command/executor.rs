@@ -642,6 +642,27 @@ pub fn execute_command_with_font_state<P: Painter>(
             context.fill_rect(*x, *y, *width, *height);
             font_state.invalidate_fill_style();
         }
+        DrawCommand::StrokePolyline {
+            points,
+            line_width,
+            color,
+        } => {
+            context.save();
+            context.set_line_dash(&[]);
+            context.set_stroke_style_str(color);
+            context.set_line_width(*line_width);
+            context.begin_path();
+            for (index, &(x, y)) in points.iter().enumerate() {
+                if index == 0 {
+                    context.move_to(x, y);
+                } else {
+                    context.line_to(x, y);
+                }
+            }
+            context.stroke();
+            context.restore();
+            font_state.invalidate();
+        }
         DrawCommand::ClearRect {
             x,
             y,
@@ -760,6 +781,24 @@ fn execute_text_run_with_font_state<P: Painter>(
     if glyphs.is_empty() {
         return Ok(());
     }
+    if let Some(enclosure) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.enclosure.as_ref())
+    {
+        return draw_enclosed_character(
+            context, text, x, y, enclosure, style, fonts, glyphs, font_state,
+        );
+    }
+    if let Some(combine) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.combine.as_ref())
+    {
+        return draw_combined_characters(
+            context, text, x, y, combine, style, fonts, glyphs, font_state,
+        );
+    }
     // `w:shadow` (§17.3.2.31) / `w:emboss` (§17.3.2.13) / `w:imprint`
     // (§17.3.2.18): apply a native canvas shadow around the glyph fills, then
     // always clear it so later draws are unaffected. The shadow propagates to
@@ -769,6 +808,25 @@ fn execute_text_run_with_font_state<P: Painter>(
     // offset in opposite directions to fake the raised/engraved look on a light
     // page; emboss takes priority over imprint over shadow (mutually exclusive
     // in Word).
+    // `w14:glow`: the glyphs drawn once with a soft, unoffset shadow of the
+    // glow's colour, which haloes them; their own fill draws over it.
+    if let Some((color, radius)) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.glow.as_ref())
+    {
+        context.set_shadow_color(color);
+        context.set_shadow_offset_x(0.0);
+        context.set_shadow_offset_y(0.0);
+        context.set_shadow_blur(*radius);
+        // Twice: one blurred pass is fainter near the glyph than Word's glow.
+        let halo = draw_text_run_glyphs(context, text, x, y, style, fonts, glyphs, font_state)
+            .and_then(|()| {
+                draw_text_run_glyphs(context, text, x, y, style, fonts, glyphs, font_state)
+            });
+        clear_text_shadow(context);
+        halo?;
+    }
     let shadow_applied = if style.emboss {
         apply_emboss_shadow(context, style.font_size_pt, false);
         true
@@ -787,7 +845,163 @@ fn execute_text_run_with_font_state<P: Painter>(
     if shadow_applied {
         clear_text_shadow(context);
     }
-    result
+    result?;
+    // `w14:textOutline`: the glyph outlines stroked in their own colour over
+    // the fill.
+    if let Some((color, width)) = style
+        .effects
+        .as_ref()
+        .and_then(|effects| effects.outline.as_ref())
+    {
+        let mut stroked = style.clone();
+        stroked.outline = true;
+        stroked.fill_color = Rc::clone(color);
+        stroked.effects = None;
+        context.set_stroke_style_str(color);
+        context.set_line_width(width.max(0.5));
+        stroke_text_run_glyphs(context, text, x, y, &stroked, fonts, glyphs, font_state)?;
+        font_state.invalidate();
+    }
+    Ok(())
+}
+
+/// 組み文字 / 割注: the run's glyphs as two lines, the first half raised and
+/// the second lowered, each starting where the run does, unscaled; 割注's
+/// brackets at full size either side.
+#[allow(clippy::too_many_arguments)]
+fn draw_combined_characters<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    combine: &crate::draw_command::CombinedCharacters,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    let split = glyphs.len().div_ceil(2);
+    let mut start_x = x + glyphs.first().map_or(0.0, |glyph| glyph.x_offset);
+    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.ensure_text_baseline_alphabetic(context);
+    let first_font = glyphs
+        .first()
+        .and_then(|glyph| fonts.get(glyph.font_index as usize));
+    // A bracket at twice the run's size, sitting on the line's baseline.
+    let bracket =
+        |mark: &str, at: f64, font_state: &mut FontStateTracker| -> Result<f64, P::Error> {
+            if let Some(font) = first_font {
+                font_state.set_font_rc_if_changed(context, font);
+            }
+            let width = context.measure_text_width(mark)? * 2.0;
+            context.save();
+            context.translate(at, y + combine.lower)?;
+            context.scale(2.0, 2.0)?;
+            context.fill_text(mark, 0.0, 0.0)?;
+            context.restore();
+            font_state.invalidate();
+            Ok(width)
+        };
+    if let Some((open, _)) = combine.brackets.as_ref() {
+        start_x += bracket(open, start_x, font_state)?;
+    }
+    let mut widest = start_x;
+    for (line, baseline) in [
+        (&glyphs[..split], y - combine.raise),
+        (&glyphs[split..], y + combine.lower),
+    ] {
+        let mut pen = start_x;
+        for glyph in line {
+            let (Some(font_descriptor), Some(glyph_text)) =
+                (fonts.get(glyph.font_index as usize), glyph.text(text))
+            else {
+                continue;
+            };
+            font_state.set_font_rc_if_changed(context, font_descriptor);
+            context.fill_text(glyph_text, pen, baseline)?;
+            pen += context.measure_text_width(glyph_text)?;
+        }
+        widest = widest.max(pen);
+    }
+    if let Some((_, close)) = combine.brackets.as_ref() {
+        bracket(close, widest, font_state)?;
+    }
+    font_state.invalidate();
+    Ok(())
+}
+
+/// 囲い文字: the enclosure at the run's size and the character at two
+/// thirds of it, centred inside, as Word's 文字のサイズを合わせる draws it.
+#[allow(clippy::too_many_arguments)]
+fn draw_enclosed_character<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    enclosure: &str,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    let Some(first) = glyphs.first() else {
+        return Ok(());
+    };
+    let Some(font) = fonts.get(first.font_index as usize) else {
+        return Ok(());
+    };
+    let start_x = x + first.x_offset;
+    let inner: String = glyphs.iter().filter_map(|glyph| glyph.text(text)).collect();
+    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.ensure_text_baseline_alphabetic(context);
+    font_state.set_font_rc_if_changed(context, font);
+    let enclosure_width = context.measure_text_width(enclosure)?;
+    context.fill_text(enclosure, start_x, y)?;
+    let inner_width = context.measure_text_width(&inner)?;
+    const SHRINK: f64 = 2.0 / 3.0;
+    let em = style.font_size_pt as f64 * 96.0 / 72.0;
+    context.save();
+    context.translate(
+        start_x + (enclosure_width - inner_width * SHRINK) * 0.5,
+        // Raised so the smaller character sits in the middle of the
+        // enclosure rather than on the baseline.
+        y - em * 0.11,
+    )?;
+    context.scale(SHRINK, SHRINK)?;
+    context.fill_text(&inner, 0.0, 0.0)?;
+    context.restore();
+    font_state.invalidate();
+    Ok(())
+}
+
+/// Strokes each glyph of a run with the current stroke style.
+#[allow(clippy::too_many_arguments)]
+fn stroke_text_run_glyphs<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    let scale = style.text_scale_x;
+    context.save();
+    context.translate(0.0, y)?;
+    context.scale(scale, 1.0)?;
+    for glyph in glyphs {
+        let (Some(font_descriptor), Some(glyph_text)) =
+            (fonts.get(glyph.font_index as usize), glyph.text(text))
+        else {
+            continue;
+        };
+        font_state.set_font_rc_if_changed(context, font_descriptor);
+        context.stroke_text(glyph_text, (x + glyph.x_offset) / scale, 0.0)?;
+    }
+    context.restore();
+    font_state.invalidate();
+    Ok(())
 }
 
 /// Applies a Word-style drop shadow to the canvas context. The offset and blur
@@ -917,6 +1131,32 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
+    let characters: Vec<PlacedCharacter<'_>> = if fonts
+        .iter()
+        .any(|font| jade_painter::font_features::has_features(font))
+    {
+        glyphs
+            .iter()
+            .filter_map(|glyph| {
+                Some(PlacedCharacter {
+                    start: glyph.text_start as usize,
+                    end: glyph.text_end as usize,
+                    font: fonts.get(glyph.font_index as usize)?.as_ref(),
+                    x_offset: glyph.x_offset,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    if !characters.is_empty()
+        && try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
+            font_state.set_font_if_changed(context, font);
+        })?
+    {
+        record_replay_batch_run(glyphs.len() as u64);
+        return Ok(());
+    }
     if try_execute_bmp_glyph_run_batch(context, text, x, y, fonts, glyphs, font_state)? {
         record_replay_batch_run(glyphs.len() as u64);
         return Ok(());
@@ -933,6 +1173,77 @@ fn draw_text_run_glyphs<P: Painter>(
         context.fill_text(glyph_text, x + glyph.x_offset, y)?;
     }
     Ok(())
+}
+
+/// One character of a text run as layout placed it: its byte range in the
+/// run's text, its font, and its x from the run's origin.
+pub(crate) struct PlacedCharacter<'a> {
+    pub start: usize,
+    pub end: usize,
+    pub font: &'a str,
+    pub x_offset: f64,
+}
+
+/// Draws a run whose fonts carry OpenType features (Word 2010 typography:
+/// ligatures, figure styles, stylistic sets) shaped a font's stretch at a
+/// time, so a ligature is drawn as the font's ligature glyph rather than its
+/// letters side by side. Each character keeps the x layout gave it.
+///
+/// `Ok(false)` — nothing drawn — when no font in the run carries features;
+/// the caller draws it as before. A stretch the painter cannot shape is
+/// drawn a character at a time.
+pub(crate) fn try_fill_featured_text<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    characters: &[PlacedCharacter<'_>],
+    set_font: &mut dyn FnMut(&P, &str),
+) -> Result<bool, P::Error> {
+    if !characters
+        .iter()
+        .any(|character| jade_painter::font_features::has_features(character.font))
+    {
+        return Ok(false);
+    }
+    let mut index = 0;
+    while index < characters.len() {
+        let first = &characters[index];
+        let mut end = index + 1;
+        while end < characters.len()
+            && characters[end].font == first.font
+            && characters[end].start == characters[end - 1].end
+        {
+            end += 1;
+        }
+        let group = &characters[index..end];
+        set_font(context, first.font);
+        let shaped = if jade_painter::font_features::has_features(first.font) {
+            let start = first.start;
+            let stop = group[group.len() - 1].end;
+            match text.get(start..stop) {
+                Some(stretch) => {
+                    let clusters: Vec<(usize, f64)> = group
+                        .iter()
+                        .map(|character| (character.start - start, x + character.x_offset))
+                        .collect();
+                    context.try_fill_shaped_text(stretch, &clusters, y)?
+                }
+                None => false,
+            }
+        } else {
+            false
+        };
+        if !shaped {
+            for character in group {
+                if let Some(glyph) = text.get(character.start..character.end) {
+                    context.fill_text(glyph, x + character.x_offset, y)?;
+                }
+            }
+        }
+        index = end;
+    }
+    Ok(true)
 }
 
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
@@ -1308,7 +1619,7 @@ fn execute_strike_through<P: Painter>(
 }
 
 /// Executes underline drawing.
-fn execute_underline<P: Painter>(
+pub(crate) fn execute_underline<P: Painter>(
     context: &P,
     start_x: f64,
     baseline_y: f64,
@@ -1669,6 +1980,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Arial"),
             font_descriptor_latin_hansi: Rc::from("12pt Arial Unicode"),
             font_descriptor_east_asia: Rc::from("12pt 'MS Mincho'"),
@@ -1703,6 +2015,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from("12pt HAnsi"),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),
@@ -1736,6 +2049,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from(""),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),
@@ -1765,6 +2079,7 @@ mod tests {
             outline: false,
             emboss: false,
             imprint: false,
+            effects: None,
             font_descriptor_latin_ascii: Rc::from("12pt Ascii"),
             font_descriptor_latin_hansi: Rc::from("12pt HAnsi"),
             font_descriptor_east_asia: Rc::from("12pt EastAsia"),

@@ -87,6 +87,39 @@ pub struct TextStyle {
     pub fill_color: Rc<str>,
     /// Highlight/background color (optional)
     pub highlight_color: Option<Rc<str>>,
+    /// Word 2010's glow and coloured text outline (`w14:glow`,
+    /// `w14:textOutline`), when the run has either.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effects: Option<Box<TextEffectStyle>>,
+}
+
+/// `w14:glow` and `w14:textOutline` as the painter draws them.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TextEffectStyle {
+    /// The glow's CSS colour (with its opacity) and blur radius in px.
+    pub glow: Option<(Rc<str>, f64)>,
+    /// The outline's CSS colour and line width in px, stroked over the fill.
+    pub outline: Option<(Rc<str>, f64)>,
+    /// 組み文字 / 割注 (`w:eastAsianLayout w:combine`): the run's text drawn
+    /// as two lines, the first raised and the second lowered by these px,
+    /// in the room the layout squeezed the run into.
+    #[serde(default)]
+    pub combine: Option<CombinedCharacters>,
+    /// 囲い文字: an enclosure (○, □, △, ◇) drawn round the run's character,
+    /// which is drawn smaller inside it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enclosure: Option<Rc<str>>,
+}
+
+/// How a 組み文字 / 割注 run is drawn.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CombinedCharacters {
+    /// px the first line's baseline is raised.
+    pub raise: f64,
+    /// px the second line's baseline is lowered.
+    pub lower: f64,
+    /// 割注's brackets, drawn at twice the run's (half) size round the lines.
+    pub brackets: Option<(Rc<str>, Rc<str>)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -130,6 +163,7 @@ impl Default for TextStyle {
             fill_color: Rc::from("#000000"),
             highlight_color: None,
             font_hint: None,
+            effects: None,
         }
     }
 }
@@ -254,6 +288,13 @@ pub enum DrawCommand {
         y: f64,
         width: f64,
         height: f64,
+        color: Rc<str>,
+    },
+
+    /// Stroke an open polyline (wavy and stroked border rules).
+    StrokePolyline {
+        points: Rc<[(f64, f64)]>,
+        line_width: f64,
         color: Rc<str>,
     },
 
@@ -438,6 +479,15 @@ impl DrawCommand {
                 y: *y + offset,
                 width: *width,
                 height: *height,
+                color: color.clone(),
+            },
+            DrawCommand::StrokePolyline {
+                points,
+                line_width,
+                color,
+            } => DrawCommand::StrokePolyline {
+                points: points.iter().map(|&(x, y)| (x, y + offset)).collect(),
+                line_width: *line_width,
                 color: color.clone(),
             },
             DrawCommand::ClearRect {

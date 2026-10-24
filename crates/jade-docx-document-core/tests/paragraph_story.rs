@@ -179,7 +179,7 @@ fn two_text_boxes() -> Vec<u8> {
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let name = file.name().to_string();
+        let name = file.name().unwrap().into_owned();
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes).unwrap();
         if name == "word/document.xml" {

@@ -7,13 +7,20 @@ pub mod canvas_view;
 pub(crate) mod chart;
 pub mod commands;
 pub mod draw_command;
+pub mod format_convert;
 pub mod headless_api;
 pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
+pub mod revision_view;
+pub mod text_edit;
+/// Word's ribbon and dialogs as UI-free models over a [`word::WordSession`]:
+/// what every shell — the browser IDE, jade-office's native and web apps —
+/// edits a document with.
+pub mod word;
 pub use jade_docx_reader::{
-    comments, common, document, docx_xml, field_datetime, numbering, parser, settings, styles,
-    theme,
+    comments, common, document, docx_xml, field_datetime, inkml, numbering, parser, settings,
+    styles, theme,
 };
 #[cfg(feature = "otel")]
 pub mod otel_layer;
@@ -21,11 +28,18 @@ pub mod render_host;
 #[cfg(not(feature = "otel"))]
 #[macro_use]
 pub(crate) mod tracing_stub;
+pub(crate) mod art_border_names;
+pub(crate) mod chart_paint;
+pub mod drawing_xml;
+pub mod fields;
+pub mod picture_effects;
 pub mod serializer;
 pub mod shortcuts;
+pub mod smartart;
 pub(crate) mod snapshot_plan;
 pub(crate) mod typed_autoformat;
 pub mod word_document;
+pub(crate) mod wordart_paint;
 
 use crate::canvas_view::OffscreenDocumentView;
 use crate::shortcuts::{ShortcutBinding, ShortcutConfig};
@@ -198,6 +212,9 @@ pub struct Options {
     pub show_crop_marks: bool,
     record_changes: bool,
     revision_author: Option<String>,
+    /// ユーザー名の頭文字: written on comments beside the author. `None`
+    /// takes the author name's.
+    author_initials: Option<String>,
     revision_date: Option<String>,
     revision_date_utc: Option<String>,
     pageless: bool,
@@ -206,6 +223,52 @@ pub struct Options {
     /// the binding table is the bulk of them.
     shortcut_config: std::rc::Rc<ShortcutConfig>,
     dark_mode: bool,
+    /// Whose changes are marked up, in which colours, with change bars or
+    /// not: see [`revision_view::RevisionView`].
+    revision_view: std::rc::Rc<revision_view::RevisionView>,
+    /// Top-level body elements a collapsed heading hides (Word's 見出しの
+    /// 折りたたみ), sorted: laid out as if absent, until expanded again.
+    collapsed_blocks: std::rc::Rc<Vec<usize>>,
+    /// Word のオプション → 表示's 常に画面に表示する編集記号: the marks shown
+    /// whatever the ¶ toggle says.
+    formatting_mark_kinds: FormattingMarkKinds,
+}
+
+/// Which formatting marks show, by kind (Word のオプション → 表示 →
+/// 常に画面に表示する編集記号). With [`Options::show_formatting_marks`] on,
+/// every kind shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FormattingMarkKinds {
+    /// タブ: an arrow across each tab.
+    pub tabs: bool,
+    /// スペース: a dot in each space, a square in each full-width one.
+    pub spaces: bool,
+    /// 段落記号: the paragraph, line and page break marks.
+    pub paragraph_marks: bool,
+    /// 隠し文字: hidden text laid out, underlined with dots.
+    pub hidden_text: bool,
+    /// 任意指定のハイフン: ¬ where an optional hyphen is.
+    pub optional_hyphens: bool,
+    /// アンカー: an anchor beside each paragraph a floating object is
+    /// anchored to.
+    pub anchors: bool,
+}
+
+impl FormattingMarkKinds {
+    pub fn all() -> Self {
+        FormattingMarkKinds {
+            tabs: true,
+            spaces: true,
+            paragraph_marks: true,
+            hidden_text: true,
+            optional_hyphens: true,
+            anchors: true,
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        *self != FormattingMarkKinds::default()
+    }
 }
 
 #[wasm_bindgen]
@@ -646,17 +709,72 @@ impl Default for Options {
             show_crop_marks: true,
             record_changes: false,
             revision_author: None,
+            author_initials: None,
             revision_date: None,
             revision_date_utc: None,
             pageless: false,
             preview_mode: false,
             shortcut_config: std::rc::Rc::new(ShortcutConfig::default()),
             dark_mode: false,
+            collapsed_blocks: std::rc::Rc::new(Vec::new()),
+            formatting_mark_kinds: FormattingMarkKinds::default(),
+            revision_view: std::rc::Rc::default(),
         }
     }
 }
 
 impl Options {
+    /// The marks shown by kind, beside the ¶ toggle.
+    pub fn formatting_mark_kinds(&self) -> FormattingMarkKinds {
+        self.formatting_mark_kinds
+    }
+
+    pub fn set_formatting_mark_kinds(&mut self, kinds: FormattingMarkKinds) {
+        self.formatting_mark_kinds = kinds;
+    }
+
+    /// The marks that show: every kind with ¶ on, else the chosen ones.
+    pub fn shown_formatting_marks(&self) -> FormattingMarkKinds {
+        if self.show_formatting_marks {
+            FormattingMarkKinds::all()
+        } else {
+            self.formatting_mark_kinds
+        }
+    }
+
+    /// Whether any mark shows, which keeps the render caches off.
+    pub fn any_formatting_marks(&self) -> bool {
+        self.show_formatting_marks || self.formatting_mark_kinds.any()
+    }
+
+    /// The top-level body elements collapsed headings hide, sorted.
+    pub fn collapsed_blocks(&self) -> &[usize] {
+        &self.collapsed_blocks
+    }
+
+    /// Hides top-level body elements under collapsed headings; empty shows
+    /// them all.
+    pub fn set_collapsed_blocks(&mut self, mut blocks: Vec<usize>) {
+        blocks.sort_unstable();
+        blocks.dedup();
+        self.collapsed_blocks = std::rc::Rc::new(blocks);
+    }
+}
+
+impl Options {
+    /// How tracked changes are drawn beyond markup on or off.
+    pub fn revision_view(&self) -> &revision_view::RevisionView {
+        &self.revision_view
+    }
+
+    pub fn set_revision_view(&mut self, view: revision_view::RevisionView) {
+        self.revision_view = std::rc::Rc::new(view);
+    }
+
+    pub(crate) fn revision_view_rc(&self) -> &std::rc::Rc<revision_view::RevisionView> {
+        &self.revision_view
+    }
+
     pub(crate) fn shortcut_config(&self) -> &ShortcutConfig {
         &self.shortcut_config
     }
@@ -679,6 +797,25 @@ impl Options {
         self.revision_author
             .clone()
             .unwrap_or_else(|| DEFAULT_AUTHOR_NAME.to_string())
+    }
+
+    pub(crate) fn set_author_initials(&mut self, value: Option<String>) {
+        self.author_initials = value.and_then(normalize_optional_string);
+    }
+
+    /// The initials written on comments: the ones set, or — as Word makes
+    /// them from the user name — the first letter of each word of the
+    /// author's name, at most three.
+    pub(crate) fn author_initials_or_default(&self) -> String {
+        if let Some(initials) = &self.author_initials {
+            return initials.clone();
+        }
+        self.author_name_or_default()
+            .split_whitespace()
+            .filter_map(|word| word.chars().next())
+            .flat_map(char::to_uppercase)
+            .take(3)
+            .collect()
     }
 
     pub(crate) fn revision_date_internal(&self) -> Option<String> {

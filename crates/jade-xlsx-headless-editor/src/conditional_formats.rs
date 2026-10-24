@@ -243,5 +243,6 @@ fn visual_rule(rule: &ConditionalRule) -> Option<NewConditionalRule> {
         ConditionalVisual::ColorScale { colors, .. } => Some(NewConditionalRule::ColorScale(
             colors.iter().map(rgb).collect::<Option<Vec<_>>>()?,
         )),
+        ConditionalVisual::IconSet { .. } => None,
     }
 }

@@ -39,6 +39,8 @@ pub enum Op {
     SetTextBaseline(String),
     FillText(String, f64, f64),
     StrokeText(String, f64, f64),
+    /// [`Painter::try_fill_shaped_text`]: the text, its clusters, and `y`.
+    FillShapedText(String, Vec<(usize, f64)>, f64),
     MeasureText(String),
     FillRect(f64, f64, f64, f64),
     HorizontalGradientRect(ImageRect, [u8; 4], [u8; 4]),
@@ -196,6 +198,25 @@ impl Painter for RecordingPainter {
 
     fn set_text_baseline(&self, value: &str) {
         self.push(Op::SetTextBaseline(value.to_string()));
+    }
+
+    /// Takes the run whenever the font last set carries OpenType features,
+    /// as a shaping backend would.
+    fn try_fill_shaped_text(
+        &self,
+        text: &str,
+        clusters: &[(usize, f64)],
+        y: f64,
+    ) -> Result<bool, Self::Error> {
+        let featured = self.ops.borrow().iter().rev().find_map(|op| match op {
+            Op::SetFont(font) => Some(crate::font_features::has_features(font)),
+            _ => None,
+        });
+        if featured != Some(true) {
+            return Ok(false);
+        }
+        self.push(Op::FillShapedText(text.to_string(), clusters.to_vec(), y));
+        Ok(true)
     }
 
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
