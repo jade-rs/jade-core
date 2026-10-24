@@ -320,5 +320,26 @@ fn bench_scroll_then_edit(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_scroll_then_edit);
+// A single long paragraph has a different cost from many short paragraphs:
+// final-width repair may repeatedly transfer a suffix between adjacent lines.
+// Keep the mock font measurement identical to the scroll/edit workload above.
+fn bench_long_paragraph(c: &mut Criterion) {
+    let mut group = c.benchmark_group("long_paragraph_wrap");
+    group.sample_size(20);
+    for (name, seed) in [
+        ("latin", "Paragraph text only. "),
+        ("japanese", "これは日本語の文章です。"),
+    ] {
+        for chars in [1_000, 5_000, 10_000, 20_000] {
+            let text = seed.repeat(chars).chars().take(chars).collect::<String>();
+            let ctx = MeasuringWrapContext::new();
+            group.bench_with_input(BenchmarkId::new(name, chars), &text, |b, text| {
+                b.iter(|| wrap_one(&ctx, black_box(text)));
+            });
+        }
+    }
+    group.finish();
+}
+
+criterion_group!(benches, bench_scroll_then_edit, bench_long_paragraph);
 criterion_main!(benches);
