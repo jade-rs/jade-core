@@ -79,6 +79,9 @@ impl ResetParagraphFormattingCommand {
 }
 
 impl Command for ResetParagraphFormattingCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "reset_paragraph_formatting"
     }

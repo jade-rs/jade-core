@@ -68,6 +68,9 @@ impl SetParagraphStyleCommand {
 }
 
 impl Command for SetParagraphStyleCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_style"
     }

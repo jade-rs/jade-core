@@ -695,6 +695,9 @@ pub struct HeadlessRevisionTarget {
     pub paragraph_mark: bool,
     #[serde(default)]
     pub id: Option<String>,
+    /// Property revision kind (`runFormat` or `paragraphFormat`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format_change: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

@@ -145,6 +145,9 @@ pub fn step_font_size(size: f32, direction: FontSizeDirection, step: FontSizeSte
 }
 
 impl Command for AdjustFontSizeCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "adjust_font_size"
     }

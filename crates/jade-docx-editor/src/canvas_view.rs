@@ -8596,6 +8596,7 @@ type SelectionAfterEdit = Box<dyn FnOnce(&WordDocument) -> Option<SelectionRange
 struct HeadlessApplyOverrides {
     /// Re-lay-out from this paragraph when it comes before the selection.
     dirty_from: Option<usize>,
+    dirty_to: Option<usize>,
     /// The selection after the command, from the edited document. `None`
     /// from the closure keeps the executor's selection.
     selection_after: Option<SelectionAfterEdit>,
@@ -10931,9 +10932,12 @@ impl OffscreenDocumentView {
             .dirty_from
             .map_or(start_para, |from| from.min(start_para));
         let edited_paragraph_index = selection_before.focus.paragraph;
-        let old_height = {
-            let renderer = self.renderer.borrow();
-            renderer.cached_paragraph_height(edited_paragraph_index)
+        let old_height = if overrides.dirty_to.is_some() {
+            None
+        } else {
+            self.renderer
+                .borrow()
+                .cached_paragraph_height(edited_paragraph_index)
         };
 
         let commands = command_factory(start_para, end_para);
@@ -11258,7 +11262,7 @@ impl OffscreenDocumentView {
         };
 
         renderer.set_incremental_dirty_from(dirty_from);
-        for pi in start_para..=end_para {
+        for pi in dirty_from..=overrides.dirty_to.unwrap_or(end_para).max(end_para) {
             renderer.mark_paragraph_dirty(pi);
         }
         if is_structural_insert {
@@ -18458,6 +18462,7 @@ impl OffscreenDocumentView {
                 move |_start, _end| vec![command],
                 HeadlessApplyOverrides {
                     dirty_from: first_paragraph,
+                    dirty_to: None,
                     selection_after: Some(Box::new(move |doc: &WordDocument| {
                         let to_display = |position| {
                             model_to_display_position(
@@ -18851,6 +18856,108 @@ impl OffscreenDocumentView {
                 after: None,
             }
         })
+    }
+
+    /// Format a body paragraph without changing the user's selection.
+    #[wasm_bindgen(js_name = "setParagraphFormat")]
+    pub fn set_paragraph_format(&self, index: usize, value: JsValue) -> Result<JsValue, JsValue> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase", deny_unknown_fields)]
+        struct Format {
+            indent_left: Option<f32>,
+            indent_right: Option<f32>,
+            first_line: Option<f32>,
+            hanging: Option<f32>,
+            style_id: Option<String>,
+        }
+        let format: Format = serde_wasm_bindgen::from_value(value)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        for value in [
+            format.indent_left,
+            format.indent_right,
+            format.first_line,
+            format.hanging,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if !value.is_finite() {
+                return Err(JsValue::from_str(
+                    "paragraph format must contain finite point values",
+                ));
+            }
+        }
+        if format.first_line.is_some() && format.hanging.is_some() {
+            return Err(JsValue::from_str(
+                "firstLine and hanging are mutually exclusive",
+            ));
+        }
+        if !self.body_commands_allowed() {
+            return Err(JsValue::from_str(
+                "body paragraph formatting requires body editing",
+            ));
+        }
+        let (target, selection) = {
+            let state = self.state.borrow();
+            let target = state
+                .word_doc
+                .as_ref()
+                .and_then(|doc| doc.surface_index_for_body(index))
+                .ok_or_else(|| JsValue::from_str("paragraph index out of range"))?;
+            (
+                target,
+                state
+                    .selection
+                    .or_else(|| self.renderer.borrow().selection_range()),
+            )
+        };
+        self.apply_paragraph_style_headless_many_with(
+            move |_, _| {
+                let mut commands = Vec::new();
+                if format.indent_left.is_some()
+                    || format.indent_right.is_some()
+                    || format.first_line.is_some()
+                    || format.hanging.is_some()
+                {
+                    commands.push(HeadlessCommand::SetParagraphIndent {
+                        start_paragraph: target,
+                        end_paragraph: target,
+                        left: format.indent_left,
+                        right: format.indent_right,
+                        first_line: format.first_line,
+                        first_line_chars: None,
+                        hanging: format.hanging,
+                        hanging_chars: None,
+                        left_chars: None,
+                        right_chars: None,
+                        clear_special: false,
+                    });
+                }
+                if let Some(style_id) = format.style_id {
+                    commands.push(HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: target,
+                        end_paragraph: target,
+                        style_id: Some(style_id),
+                    });
+                }
+                commands
+            },
+            HeadlessApplyOverrides {
+                dirty_from: Some(target),
+                dirty_to: Some(target),
+                selection_after: Some(Box::new(move |_| selection)),
+            },
+        )
+    }
+
+    #[wasm_bindgen(js_name = "beginUndoGroup")]
+    pub fn begin_undo_group(&self) {
+        self.state.borrow_mut().command_executor.begin_group();
+    }
+
+    #[wasm_bindgen(js_name = "endUndoGroup")]
+    pub fn end_undo_group(&self) {
+        self.state.borrow_mut().command_executor.end_group();
     }
 
     /// Replaces explicit tab stops on the selected body or active story paragraph.

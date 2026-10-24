@@ -61,6 +61,9 @@ impl SetParagraphVisualsCommand {
 }
 
 impl Command for SetParagraphVisualsCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_visuals"
     }

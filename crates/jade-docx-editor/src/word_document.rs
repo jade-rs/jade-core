@@ -1,3 +1,5 @@
+#[path = "formatting_revisions.rs"]
+mod formatting_revisions;
 use crate::chart::{
     build_chart_workbook, build_chart_xml, chart_preview_data_uri, parse_chart_xml,
     parse_chart_xml_for_preview, validate_chart,
@@ -11934,6 +11936,19 @@ impl WordDocument {
         } else {
             None
         };
+        let formatting_count = if kind_filter.is_none() {
+            match self.decide_formatting_revisions(decision, start, end, id_filter, targets) {
+                Ok(count) => count,
+                Err(error) => {
+                    if let Some(snapshot) = snapshot {
+                        self.restore_snapshot(snapshot);
+                    }
+                    return Err(error);
+                }
+            }
+        } else {
+            0
+        };
         let mut paragraph_mark_ids = {
             let mut ids = Vec::new();
             if let Some(raw) = self.raw_document.as_ref() {
@@ -12226,7 +12241,9 @@ impl WordDocument {
         if !touched_paragraphs.is_empty() || !paragraph_mark_ids.is_empty() {
             self.refresh_revision_counter();
         }
-        Ok(changed_runs.saturating_add(paragraph_mark_ids.len()))
+        Ok(changed_runs
+            .saturating_add(paragraph_mark_ids.len())
+            .saturating_add(formatting_count))
     }
 
     /// Inserts `text` at model offset `offset` of the paragraph at surface
@@ -37600,10 +37617,13 @@ fn normalize_background_hex(input: &str) -> Option<String> {
 /// Unlike a `w:id` filter this stays exact when a file reuses ids — some
 /// tools write `w:id="0"` on every change — and it also reaches revisions the
 /// file left unidentified.
+type FormattingRevisionTarget = (usize, usize, Option<String>, String);
+
 #[derive(Debug, Clone, Default)]
 pub struct RevisionTargets {
     runs: HashMap<usize, Vec<(usize, usize, Option<String>)>>,
     marks: HashMap<usize, Vec<Option<String>>>,
+    formats: HashMap<usize, Vec<FormattingRevisionTarget>>,
 }
 
 impl RevisionTargets {
@@ -37620,13 +37640,31 @@ impl RevisionTargets {
         self.marks.entry(paragraph).or_default().push(id);
     }
 
+    pub fn add_format(
+        &mut self,
+        paragraph: usize,
+        start: usize,
+        end: usize,
+        id: Option<String>,
+        kind: String,
+    ) {
+        self.formats
+            .entry(paragraph)
+            .or_default()
+            .push((start, end, id, kind));
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.runs.is_empty() && self.marks.is_empty()
+        self.runs.is_empty() && self.marks.is_empty() && self.formats.is_empty()
     }
 
     /// The first and last paragraph any target names.
     pub fn paragraph_range(&self) -> Option<(usize, usize)> {
-        let paragraphs = self.runs.keys().chain(self.marks.keys());
+        let paragraphs = self
+            .runs
+            .keys()
+            .chain(self.marks.keys())
+            .chain(self.formats.keys());
         let first = paragraphs.clone().min()?;
         Some((*first, *paragraphs.max()?))
     }

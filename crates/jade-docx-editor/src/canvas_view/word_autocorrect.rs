@@ -217,6 +217,7 @@ impl OffscreenDocumentView {
             move |_, _| commands,
             HeadlessApplyOverrides {
                 dirty_from: Some(paragraph),
+                dirty_to: None,
                 selection_after: Some(Box::new(move |_| {
                     Some(SelectionRange::collapsed(TextPosition::new(
                         after.0, after.1,

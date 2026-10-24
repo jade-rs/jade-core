@@ -26,6 +26,9 @@ impl SetHighlightColorCommand {
 }
 
 impl Command for SetHighlightColorCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_highlight_color"
     }

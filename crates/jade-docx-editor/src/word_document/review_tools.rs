@@ -837,7 +837,7 @@ pub(super) mod tests {
             );
             let listed = revisions(&document);
             assert_eq!(listed.len(), 1, "{listed:?}");
-            assert_eq!(listed[0].kind, "formatted");
+            assert_eq!(listed[0].kind, "runFormat");
             assert_eq!(listed[0].author.as_deref(), Some("Ann"));
             assert_eq!((listed[0].start_offset, listed[0].end_offset), (0, 5));
             let xml = document_xml(&document.export_docx().unwrap());
@@ -951,7 +951,7 @@ pub(super) mod tests {
         );
         let listed = revisions(&document);
         assert_eq!(listed.len(), 1, "{listed:?}");
-        assert_eq!(listed[0].kind, "formatted");
+        assert_eq!(listed[0].kind, "paragraphFormat");
         assert!(document.paragraph_format_change(0).is_some());
         assert!(
             document

@@ -64,6 +64,9 @@ impl ApplyMultilevelListCommand {
 }
 
 impl Command for ApplyMultilevelListCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "apply_multilevel_list"
     }

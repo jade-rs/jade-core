@@ -112,6 +112,9 @@ impl SetFontFamilyCommand {
 }
 
 impl Command for SetFontFamilyCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_font_family"
     }

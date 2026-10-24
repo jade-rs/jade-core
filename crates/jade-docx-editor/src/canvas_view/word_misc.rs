@@ -354,6 +354,7 @@ impl OffscreenDocumentView {
             },
             HeadlessApplyOverrides {
                 dirty_from: Some(start.paragraph),
+                dirty_to: None,
                 selection_after: Some(Box::new(move |_| Some(SelectionRange::collapsed(caret)))),
             },
         )

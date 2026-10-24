@@ -50,6 +50,9 @@ impl SetParagraphDirectionCommand {
 }
 
 impl Command for SetParagraphDirectionCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_direction"
     }
