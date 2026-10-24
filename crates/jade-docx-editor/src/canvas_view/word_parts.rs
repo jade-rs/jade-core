@@ -146,8 +146,9 @@ impl OffscreenDocumentView {
     /// 表示 ▸ 表示: `print` (印刷レイアウト, the sections' pages), `web` (Web
     /// レイアウト, the text wrapped to a window `width`×`height` CSS pixels
     /// at `zoom`, no page chrome) or `outline` (アウトライン, the headings
-    /// and body text set in by level). The document is laid out again; the
-    /// result carries the new pages.
+    /// and body text set in by level). Nonprint views close header/footer
+    /// editing and restore the saved body selection. The document is laid out
+    /// again; the result carries the new pages without a content/history edit.
     #[wasm_bindgen(js_name = setViewMode)]
     pub fn set_view_mode(
         &self,
@@ -176,10 +177,30 @@ impl OffscreenDocumentView {
         };
         let hidden =
             self.refresh_outline_display(|display, _| display.active = mode == "outline")?;
-        self.rerender_after_display_change(move |renderer| {
+        // Nonprint views have no editable header/footer surface. Restore the
+        // saved body range before painting the new geometry, in the same frame.
+        // Validate the requested view above before changing the active story.
+        let body_selection = {
+            let mut state = self.state.borrow_mut();
+            (mode != "print" && state.editing_mode != EditingMode::Body)
+                .then(|| state.exit_hf_editing_mode())
+        };
+        let result = self.rerender_after_display_change(move |renderer| {
+            if let Some(selection) = body_selection {
+                renderer.set_selection_range(selection);
+                renderer.set_editing_mode(EditingMode::Body);
+            }
             renderer.set_view_layout(geometry, indents);
             renderer.set_collapsed_blocks(hidden);
-        })
+        })?;
+        if mode != "print" {
+            Reflect::set(
+                &result,
+                &JsValue::from_str("editingMode"),
+                &JsValue::from_str("body"),
+            )?;
+        }
+        Ok(result)
     }
 
     /// 下書き: what of a page the view keeps — its text band, with a strip of
