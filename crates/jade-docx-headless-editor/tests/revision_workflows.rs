@@ -656,6 +656,187 @@ fn tracked_paragraph_split_and_join_survive_reload_and_decisions() {
 }
 
 #[test]
+fn plain_join_keeps_the_surviving_paragraph_mark_revision() {
+    for revision in ["ins", "del", "moveFrom", "moveTo"] {
+        let input = fixture(&format!(
+            r#"<w:r><w:t>甲</w:t></w:r></w:p>
+            <w:p><w:pPr><w:rPr><w:b/><w:{revision} w:id="71" w:author="Reviewer" w:date="2026-10-23T01:02:03Z"/></w:rPr></w:pPr><w:r><w:t>😀</w:t></w:r></w:p>
+            <w:p><w:r><w:t>乙</w:t></w:r>"#
+        ));
+        let joined = edit(&input, vec![range_delete(0, 3, 1, 0)]);
+        assert_eq!(body_paragraph_count(&joined), 2);
+        assert_eq!(final_text(&joined), "甲😀乙");
+        let xml = part(&joined, "word/document.xml");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        let mark = doc
+            .descendants()
+            .find(|n| n.has_tag_name((NS, revision)))
+            .expect("unselected final paragraph mark revision must survive the join");
+        assert_eq!(mark.attribute((NS, "id")), Some("71"));
+        assert_eq!(mark.attribute((NS, "author")), Some("Reviewer"));
+        assert_eq!(mark.attribute((NS, "date")), Some("2026-10-23T01:02:03Z"));
+        let paragraph = mark
+            .ancestors()
+            .find(|n| n.has_tag_name((NS, "p")))
+            .unwrap();
+        let text: String = paragraph
+            .descendants()
+            .filter(|n| n.has_tag_name((NS, "t")))
+            .filter_map(|n| n.text())
+            .collect();
+        assert_eq!(text, "甲😀");
+    }
+}
+
+#[test]
+fn cancelling_adjacent_inserted_breaks_keeps_one_surviving_revision() {
+    for offset in [0, 3] {
+        let input = fixture("<w:r><w:t>甲😀乙</w:t></w:r>");
+        let split = edit(
+            &input,
+            vec![
+                tracking(),
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset,
+                    count: 1,
+                },
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 1,
+                    offset: if offset == 0 { 0 } else { 4 },
+                    count: 1,
+                },
+            ],
+        );
+        assert_eq!(body_paragraph_count(&split), 3);
+        assert_eq!(lg_ids(&split).len(), 2);
+        let joined = edit(&split, vec![tracking(), range_delete(0, offset, 1, 0)]);
+        assert_eq!(body_paragraph_count(&joined), 2);
+        assert_eq!(lg_ids(&joined).len(), 1);
+        let xml = part(&joined, "word/document.xml");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        assert_eq!(
+            doc.descendants()
+                .filter(|n| n.has_tag_name((NS, "ins")))
+                .count(),
+            1
+        );
+        assert_eq!(final_text(&joined), "甲😀乙");
+        for accept in [false, true] {
+            let decided = edit(&joined, vec![decide(accept, lg_ids(&joined))]);
+            assert_eq!(body_paragraph_count(&decided), if accept { 2 } else { 1 });
+            assert!(lg_ids(&decided).is_empty());
+            assert_eq!(final_text(&decided), "甲😀乙");
+        }
+    }
+}
+
+// An independent boundary model: a paragraph break is stable, inserted, or
+// deleted. Text is never edited in this property, so every split/join must
+// preserve its exact Unicode character sequence, including across reloads.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_paragraph_boundaries_match_model(
+        initial in prop::collection::vec(prop::sample::select(vec!['甲', '😀', '乙', 'x']), 1..17),
+        actions in prop::collection::vec((0u8..7, any::<usize>(), any::<usize>(), any::<bool>()), 1..33),
+    ) {
+        let initial: String = initial.into_iter().collect();
+        let mut bytes = fixture(&format!("<w:r><w:t>{initial}</w:t></w:r>"));
+        let mut paragraphs = vec![initial.clone()];
+        // None is stable, true is inserted, false is deleted; last has no mark.
+        let mut boundaries: Vec<Option<bool>> = Vec::new();
+        for (step, (kind, a, b, tracked)) in actions.into_iter().enumerate() {
+            let p = a % paragraphs.len();
+            let chars: Vec<_> = paragraphs[p].char_indices().map(|(i, _)| i)
+                .chain(std::iter::once(paragraphs[p].len())).collect();
+            let offset = chars[b % chars.len()];
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            let actual_paragraphs: Vec<_> = doc.descendants().filter(|n| n.has_tag_name((NS, "p"))).collect();
+            let mark_id = |index: usize| actual_paragraphs[index].children()
+                .filter(|n| n.has_tag_name((NS, "pPr")))
+                .flat_map(|n| n.descendants())
+                .find(|n| n.has_tag_name((NS, "ins")) || n.has_tag_name((NS, "del")))
+                .and_then(|n| n.attribute((NS, "id"))).map(str::to_owned);
+            let join = a % paragraphs.len().saturating_sub(1).max(1);
+            let invalid = kind == 5 || (kind == 1 && (paragraphs.len() == 1 || (tracked && boundaries[join] == Some(false))));
+            let command = match kind {
+                0 => HeadlessCommand::InsertParagraphBreak { paragraph:p, offset, count:1 },
+                1 if paragraphs.len() > 1 => range_delete(join, paragraphs[join].len(), join+1, 0),
+                2 | 3 => decide(kind == 2, if p < boundaries.len() { mark_id(p).into_iter().collect() } else { vec![] }),
+                4 => decide(tracked, lg_ids(&bytes)),
+                6 => range_delete(p, offset, p, offset),
+                _ => range_delete(999, 0, 999, 0),
+            };
+            let result = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![
+                if tracked { tracking() } else { HeadlessCommand::StopChangeTracking }, command,
+            ] });
+            if invalid {
+                prop_assert!(result.is_err(), "invalid step {}", step);
+            } else {
+                prop_assert!(result.is_ok(), "step {} kind {} tracked {}: {:?}", step, kind, tracked, result.as_ref().err());
+                bytes = result.unwrap();
+                let mut remove = Vec::new();
+                match kind {
+                    0 => {
+                        let right = paragraphs[p].split_off(offset);
+                        paragraphs.insert(p+1, right);
+                        boundaries.insert(p, tracked.then_some(true));
+                    }
+                    1 => {
+                        if !tracked || boundaries[join] == Some(true) { remove.push(join); }
+                        else { boundaries[join] = Some(false); }
+                    }
+                    2 | 3 if p < boundaries.len() => {
+                        if let Some(inserted) = boundaries[p] {
+                            if inserted == (kind == 3) { remove.push(p); }
+                            else { boundaries[p] = None; }
+                        }
+                    }
+                    4 => {
+                        for (index, boundary) in boundaries.iter_mut().enumerate() {
+                            if let Some(inserted) = *boundary {
+                                if inserted != tracked { remove.push(index); }
+                                else { *boundary = None; }
+                            }
+                        }
+                    }
+                    _ => {},
+                }
+                for index in remove.into_iter().rev() {
+                    let right = paragraphs.remove(index+1);
+                    paragraphs[index].push_str(&right);
+                    boundaries.remove(index);
+                }
+            }
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            let actual: Vec<_> = doc.descendants().filter(|n| n.has_tag_name((NS, "p"))).map(|p| {
+                let text: String = p.descendants().filter(|n| n.has_tag_name((NS, "t"))).filter_map(|n| n.text()).collect();
+                let marks: Vec<_> = p.children().filter(|n| n.has_tag_name((NS, "pPr")))
+                    .flat_map(|n| n.descendants())
+                    .filter(|n| n.has_tag_name((NS, "ins")) || n.has_tag_name((NS, "del"))).collect();
+                (text, marks)
+            }).collect();
+            prop_assert_eq!(actual.len(), paragraphs.len(), "paragraph count at step {}", step);
+            for (index, (text, marks)) in actual.iter().enumerate() {
+                prop_assert_eq!(text, &paragraphs[index], "paragraph {} at step {}", index, step);
+                let expected = boundaries.get(index).copied().flatten();
+                prop_assert_eq!(marks.len(), usize::from(expected.is_some()), "mark count at paragraph {} step {}", index, step);
+                if let Some(inserted) = expected {
+                    prop_assert!(marks[0].has_tag_name((NS, if inserted { "ins" } else { "del" })), "revision kind at step {}", step);
+                    prop_assert_eq!(marks[0].attribute((NS, "author")), Some("LAWGUE"));
+                    prop_assert_eq!(marks[0].attribute((NS, "date")), Some("2026-10-24T00:00:00Z"));
+                }
+            }
+            prop_assert_eq!(paragraphs.concat(), initial.clone(), "Unicode text at step {}", step);
+            prop_assert_eq!(final_text(&bytes), initial.clone(), "saved text at step {}", step);
+        }
+    }
+}
+
+#[test]
 fn tracked_table_rows_survive_reload_and_decisions() {
     let input = edit(
         &fixture("<w:r><w:t>契約</w:t></w:r>"),

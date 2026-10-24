@@ -866,6 +866,9 @@ impl InsertTextCommand {
             // As for a deleted selection: the merged paragraph ends with the
             // last paragraph's mark, and its section break.
             ctx.document
+                .move_paragraph_mark_revisions(end.paragraph, start.paragraph)
+                .map_err(CommandError::Custom)?;
+            ctx.document
                 .move_section_break(end.paragraph, start.paragraph)
                 .map_err(CommandError::Custom)?;
             ctx.document

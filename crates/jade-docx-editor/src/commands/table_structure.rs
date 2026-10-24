@@ -957,14 +957,14 @@ mod tests {
         /// both the chain and the explicit grid widths.
         #[test]
         fn row_edits_preserve_vertical_merge_chains_and_undo(
-            rows in 2usize..8,
-            merge_start in 0usize..7,
-            merge_len in 2usize..8,
-            insert in any::<bool>(),
-            at in 0usize..8,
+            (rows, merge_start, merge_len, insert, at) in
+                (2usize..8, any::<bool>())
+                    .prop_flat_map(|(rows, insert)| (Just(rows), 0usize..rows - 1, Just(insert)))
+                    .prop_flat_map(|(rows, merge_start, insert)| (
+                        Just(rows), Just(merge_start), 2usize..=rows - merge_start,
+                        Just(insert), 0usize..rows + usize::from(insert),
+                    )),
         ) {
-            prop_assume!(merge_start + merge_len <= rows);
-            prop_assume!(if insert { at <= rows } else { at < rows });
 
             let row_values: Vec<TableRow> = (0..rows)
                 .map(|row| make_row(&[&format!("{row}:0"), &format!("{row}:1")]))

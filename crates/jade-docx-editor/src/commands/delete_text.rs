@@ -173,6 +173,9 @@ impl DeleteTextCommand {
         // break on the previous mark goes, joining the sections, and one on
         // this mark now ends the merged paragraph.
         ctx.document
+            .move_paragraph_mark_revisions(paragraph_index, prev_index)
+            .map_err(CommandError::Custom)?;
+        ctx.document
             .move_section_break(paragraph_index, prev_index)
             .map_err(CommandError::Custom)?;
 
@@ -245,6 +248,9 @@ impl DeleteTextCommand {
 
         // Delete at the end of a paragraph deletes its mark and keeps the next
         // one, as Backspace from the other side does, section breaks included.
+        ctx.document
+            .move_paragraph_mark_revisions(next_index, paragraph_index)
+            .map_err(CommandError::Custom)?;
         ctx.document
             .move_section_break(next_index, paragraph_index)
             .map_err(CommandError::Custom)?;
@@ -1014,6 +1020,9 @@ impl DeleteTextCommand {
 
         // The selection deletes every mark but the last paragraph's, so the
         // merged paragraph ends with that mark and its section break.
+        ctx.document
+            .move_paragraph_mark_revisions(end.paragraph, start.paragraph)
+            .map_err(CommandError::Custom)?;
         ctx.document
             .move_section_break(end.paragraph, start.paragraph)
             .map_err(CommandError::Custom)?;
@@ -6387,6 +6396,91 @@ mod tests {
             let xml = exported_document_xml(&word_doc);
             assert_eq!(toc_code(&xml), [1; 4], "{label}: {xml}");
             assert_in_order(&xml, &order, label);
+        }
+    }
+
+    #[test]
+    fn joins_preserve_surviving_mark_revisions_and_undo_redo() {
+        for kind in [
+            None,
+            Some("ins"),
+            Some("del"),
+            Some("moveFrom"),
+            Some("moveTo"),
+        ] {
+            for old_mark in ["", r#"<w:ins w:id="70" w:author="Other"/>"#] {
+                for (caret, direction, selected) in [
+                    (TextPosition::new(1, 0), DeleteDirection::Backward, false),
+                    (TextPosition::new(0, 2), DeleteDirection::Forward, false),
+                    (TextPosition::new(0, 2), DeleteDirection::Forward, true),
+                ] {
+                    let tail = kind.map(|kind| format!(r#"<w:{kind} w:id="71" w:author="Reviewer" w:date="2026-10-23T01:02:03Z"/>"#)).unwrap_or_default();
+                    let mut document = load_body(&format!(
+                        r#"<w:p><w:pPr><w:jc w:val="center"/><w:rPr><w:i/>{old_mark}</w:rPr></w:pPr><w:r><w:t>AB</w:t></w:r></w:p><w:p><w:pPr><w:rPr>{tail}</w:rPr></w:pPr><w:r><w:t>CD</w:t></w:r></w:p><w:p><w:r><w:t>EF</w:t></w:r></w:p>"#
+                    ));
+                    let before = exported_document_xml(&document);
+                    let range = if selected {
+                        range_across((0, 2), (1, 0))
+                    } else {
+                        SelectionRange::collapsed(caret)
+                    };
+                    let mut selection = Some(range);
+                    let mut executor = CommandExecutor::new();
+                    {
+                        let mut ctx = CommandContext::new(&mut document, &mut selection);
+                        executor
+                            .execute(Box::new(DeleteTextCommand::new(range, direction)), &mut ctx)
+                            .expect("join");
+                    }
+                    assert_eq!(paragraph_texts(&document), ["ABCD", "EF"]);
+                    let after = exported_document_xml(&document);
+                    assert!(
+                        !after.contains("w:id=\"70\""),
+                        "selected mark is removed: {after}"
+                    );
+                    assert_eq!(
+                        after.matches("w:id=\"71\"").count(),
+                        usize::from(kind.is_some()),
+                        "{after}"
+                    );
+                    assert!(
+                        after.contains("w:val=\"center\""),
+                        "head formatting: {after}"
+                    );
+                    assert!(after.contains("<w:i"), "head mark formatting: {after}");
+                    let mark = document
+                        .paragraph(0)
+                        .unwrap()
+                        .properties
+                        .as_ref()
+                        .and_then(|p| p.mark_revision.as_ref());
+                    assert_eq!(
+                        mark.and_then(|m| m.author.as_deref()),
+                        kind.map(|_| "Reviewer")
+                    );
+                    if kind.is_some() {
+                        assert!(after.contains("2026-10-23T01:02:03Z"));
+                    }
+                    {
+                        let mut ctx = CommandContext::new(&mut document, &mut selection);
+                        assert!(executor.undo(&mut ctx).expect("undo"));
+                    }
+                    assert_eq!(
+                        exported_document_xml(&document),
+                        before,
+                        "undo {kind:?} {direction:?}"
+                    );
+                    {
+                        let mut ctx = CommandContext::new(&mut document, &mut selection);
+                        assert!(executor.redo(&mut ctx).expect("redo"));
+                    }
+                    assert_eq!(
+                        exported_document_xml(&document),
+                        after,
+                        "redo {kind:?} {direction:?}"
+                    );
+                }
+            }
         }
     }
 
