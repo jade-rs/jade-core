@@ -174,8 +174,11 @@ impl OffscreenDocumentView {
                 other => return Err(JsValue::from_str(&format!("unknown view {other}"))),
             }
         };
+        let hidden =
+            self.refresh_outline_display(|display, _| display.active = mode == "outline")?;
         self.rerender_after_display_change(move |renderer| {
             renderer.set_view_layout(geometry, indents);
+            renderer.set_collapsed_blocks(hidden);
         })
     }
 
