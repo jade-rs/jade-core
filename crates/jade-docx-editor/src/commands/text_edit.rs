@@ -628,6 +628,35 @@ pub fn apply_text_edit(
         && !insertion_joins_ruby_base(runs, start);
 
     let removed_at = remove_range_from_runs(runs, start, end, zero_width);
+    // A replacement takes the selected text's formatting. Inserting through
+    // the caret path instead joins the run on the left at a run boundary,
+    // silently changing (for example) italic replacement text to bold.
+    let replacement_needs_own_style = start < end
+        && !insert.is_empty()
+        && match (template.as_ref(), insertion_point(runs, start)) {
+            (Some(selected), Some(InsertionPoint::Run { index, .. })) => {
+                ruby_of(selected).is_none()
+                    && (selected.properties != runs[index].properties
+                        || selected.hyperlink != runs[index].hyperlink)
+            }
+            _ => false,
+        };
+    if replacement_needs_own_style {
+        let mut tail = split_runs_at_preserving_source(runs, start, zero_width);
+        if start == 0 {
+            let leading = tail
+                .iter()
+                .take_while(|run| run.text.is_empty() && places_a_story(run))
+                .count();
+            runs.extend(tail.drain(..leading));
+        }
+        let mut replacement = create_run_from_template(template.as_ref(), insert);
+        replacement.revision = None;
+        runs.push(replacement);
+        runs.extend(tail);
+        normalize_break_runs(runs);
+        return;
+    }
     // With no run left but the zero-width ones kept for their XML, the text
     // goes where the removed text was among them, as a run of its own.
     let only_zero_width = |runs: &[Run]| runs.iter().all(|run| zero_width.keeps(run));
