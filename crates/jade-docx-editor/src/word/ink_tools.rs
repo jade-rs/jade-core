@@ -921,10 +921,19 @@ pub trait WordInkTools: WordSession {
 
     /// Gives the selected strokes `pen`'s colour, thickness and effect.
     fn restyle_strokes(&mut self, selection: &[usize], pen: &Pen) -> Result<(), String> {
+        self.restyle_strokes_with_brush(selection, &pen.brush())
+    }
+
+    /// Applies a complete brush, including the nib dimensions and opacity.
+    fn restyle_strokes_with_brush(
+        &mut self,
+        selection: &[usize],
+        brush: &InkBrush,
+    ) -> Result<(), String> {
         let mut strokes = self.ink_strokes();
         for &index in selection {
             if let Some(stroke) = strokes.get_mut(index) {
-                stroke.trace.brush = pen.brush();
+                stroke.trace.brush = brush.clone();
                 stroke.source = None;
             }
         }
