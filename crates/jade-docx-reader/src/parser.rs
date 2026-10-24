@@ -443,7 +443,9 @@ impl DocumentParser {
                                 .get_or_insert_with(ParagraphProperties::default);
                             props.has_format_change = true;
                             props.format_change_author = author.map(Into::into);
-                            self.skip_element(reader, b"w:pPrChange")?;
+                            let raw = Self::capture_element_xml(reader, e.to_owned())?;
+                            props.numbering_before_change =
+                                self.parse_previous_paragraph_numbering(&raw);
                         }
                         // A tracked change to a run's formatting: what the
                         // run's formatting was before it, for review.
@@ -4287,6 +4289,26 @@ impl DocumentParser {
 
         let bytes = writer.into_inner();
         Ok(String::from_utf8(bytes)?)
+    }
+
+    fn parse_previous_paragraph_numbering(&self, xml: &str) -> Option<crate::document::Numbering> {
+        let inner_start = xml.find('>')? + 1;
+        let inner_end = xml.rfind("</")?.max(inner_start);
+        let inner = &xml[inner_start..inner_end];
+        let wrapper = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{inner}</w:p></w:body></w:document>"#
+        );
+        self.parse_document_xml(&wrapper)
+            .ok()?
+            .body?
+            .elements
+            .into_iter()
+            .find_map(|element| {
+                let crate::document::BodyElement::Paragraph(paragraph) = element else {
+                    return None;
+                };
+                paragraph.properties?.numbering
+            })
     }
 
     /// A captured `<w:rPrChange>`: its id, author and date, and the
@@ -11378,6 +11400,25 @@ mod tests {
         parser
             .parse_document_xml(&xml)
             .expect("failed to parse test document")
+    }
+
+    #[test]
+    fn paragraph_numbering_history_does_not_override_current_properties() {
+        let document = parse_document_from_body(
+            r#"
+            <w:p><w:pPr><w:jc w:val="right"/><w:pPrChange w:id="0"><w:pPr>
+            <w:numPr><w:ilvl w:val="2"/><w:numId w:val="7"/></w:numPr><w:jc w:val="left"/>
+            </w:pPr></w:pPrChange></w:pPr><w:r><w:t>text</w:t></w:r></w:p>"#,
+        );
+        let BodyElement::Paragraph(paragraph) = &document.body.unwrap().elements[0] else {
+            panic!("paragraph missing")
+        };
+        let properties = paragraph.properties.as_ref().unwrap();
+        assert!(properties.numbering.is_none());
+        assert_eq!(properties.alignment.as_deref(), Some("right"));
+        let previous = properties.numbering_before_change.as_ref().unwrap();
+        assert_eq!(previous.id.as_deref(), Some("7"));
+        assert_eq!(previous.level, Some(2));
     }
 
     fn read_document_xml(path: &std::path::Path) -> Option<String> {

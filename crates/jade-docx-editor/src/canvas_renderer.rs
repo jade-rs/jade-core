@@ -15696,6 +15696,32 @@ where
         body_element_index: usize,
         section_index: usize,
     ) -> Result<(), JsValue> {
+        // Keep historical numbering out of the current model. A fully deleted
+        // list item still paints its old marker in Markup; pass that projection
+        // through the existing shared indent/layout and numbering paths.
+        let reviewed_paragraph = if options.render_changes {
+            paragraph.properties.as_ref().and_then(|properties| {
+                if properties
+                    .numbering
+                    .as_ref()
+                    .and_then(Numbering::list_id)
+                    .is_some()
+                {
+                    return None;
+                }
+                let previous = properties.numbering_before_change.as_ref()?;
+                previous.list_id()?;
+                if !Self::paragraph_is_entirely_deleted(paragraph) {
+                    return None;
+                }
+                let mut reviewed = paragraph.clone();
+                reviewed.properties.as_mut()?.numbering = Some(previous.clone());
+                Some(reviewed)
+            })
+        } else {
+            None
+        };
+        let paragraph = reviewed_paragraph.as_ref().unwrap_or(paragraph);
         // Set again below once this paragraph turns out to be a cache miss.
         self.drawing_uncached_paragraph = false;
         // A note paragraph continued from the previous page's footnote area
@@ -53167,6 +53193,65 @@ mod tests {
 
         renderer.set_auxiliary_story_capture_enabled(false);
         assert!(renderer.auxiliary_story_debug_lines().is_empty());
+    }
+
+    #[test]
+    fn deleted_numbering_history_is_drawn_only_in_markup_without_changing_current_properties() {
+        use jade_painter::recording::Op;
+        let document = jade_docx_reader::DocumentParser::new().parse_document_xml(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+            <w:p><w:pPr><w:jc w:val="right"/><w:pPrChange w:id="0" w:author="Alice"><w:pPr>
+            <w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr><w:jc w:val="left"/>
+            </w:pPr></w:pPrChange></w:pPr><w:del w:id="1" w:author="Alice"><w:r><w:delText>World</w:delText></w:r></w:del></w:p>
+            </w:body></w:document>"#,
+        ).unwrap();
+        let BodyElement::Paragraph(paragraph) = &document.body.as_ref().unwrap().elements[0] else {
+            panic!("paragraph missing")
+        };
+        let numbering = NumberingPart::from_xml(
+            r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="3"/>
+            <w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum>
+            <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#,
+        )
+        .unwrap();
+        for show_changes in [true, false, true] {
+            let (mut renderer, painter) = recording_renderer();
+            let options = Options {
+                render_changes: show_changes,
+                ..Default::default()
+            };
+            renderer
+                .render_paragraph_with_numbering(
+                    paragraph,
+                    &options,
+                    Some(&numbering),
+                    &mut NumberingCounter::new(),
+                    &mut HashMap::new(),
+                    0,
+                    0,
+                    0,
+                )
+                .unwrap();
+            let labels: Vec<_> = painter
+                .ops()
+                .into_iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, _) if text.starts_with('3') => Some(text),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                !labels.is_empty(),
+                show_changes,
+                "deleted marker follows markup mode"
+            );
+            assert!(paragraph.properties.as_ref().unwrap().numbering.is_none());
+            assert_eq!(
+                paragraph.properties.as_ref().unwrap().alignment.as_deref(),
+                Some("right")
+            );
+        }
     }
 
     #[test]
