@@ -16290,6 +16290,36 @@ impl OffscreenDocumentView {
         }
     }
 
+    /// Page/content bounds in CSS pixels, without changing or consulting the caret.
+    #[wasm_bindgen(js_name = pageGeometry)]
+    pub fn page_geometry(&self, page_index: usize) -> JsValue {
+        let state = self.state.borrow();
+        let Some(document) = state
+            .word_doc
+            .as_ref()
+            .and_then(|word| word.document.as_ref())
+        else {
+            return JsValue::NULL;
+        };
+        let renderer = self.renderer.borrow();
+        if page_index >= renderer.page_count() {
+            return JsValue::NULL;
+        }
+        let section = document
+            .sections
+            .get(renderer.section_index_for_zero_based_page(page_index))
+            .and_then(|section| section.properties.as_ref());
+        let geometry =
+            jade_docx_layout::text_extract::ruler_geometry(document, section, page_index + 1, 0.0);
+        let value = to_value(&geometry).unwrap_or(JsValue::NULL);
+        let _ = Reflect::set(
+            &value,
+            &JsValue::from_str("pageIndex"),
+            &JsValue::from_f64(page_index as f64),
+        );
+        value
+    }
+
     /// Geometry for UI rulers, resolved by the shared layout engine.
     #[wasm_bindgen(js_name = rulerGeometry)]
     pub fn ruler_geometry(&self) -> JsValue {
