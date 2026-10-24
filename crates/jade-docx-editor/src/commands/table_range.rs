@@ -7,7 +7,7 @@ use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::docx_xml::XmlNodeId;
 use crate::word_document::{WordDocument, WordDocumentSnapshot};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 fn len(document: &WordDocument, paragraph: usize) -> usize {
     document
@@ -105,6 +105,20 @@ pub(super) fn delete_range_with_tables(
         })
         .flatten();
     let tracking = ctx.document.revision_session().is_some();
+    let selected_tables = tables.iter().copied().collect();
+    let table_boundaries: HashMap<_, _> = outside
+        .iter()
+        .filter_map(|(id, _, to)| {
+            let index = index_of(ctx.document, *id)?;
+            if *to < len(ctx.document, index) {
+                return None;
+            }
+            let next = ctx
+                .document
+                .paragraph_after_removed_tables(index, &selected_tables)?;
+            Some((*id, ctx.document.paragraph(next)?.node_id?))
+        })
+        .collect();
     let snapshot = ctx
         .document
         .snapshot_including_package()
@@ -159,6 +173,32 @@ pub(super) fn delete_range_with_tables(
                 focus: ctx.document.model_to_rendered_text_position(to),
             };
             InsertTextCommand::new(range, String::new(), None).apply(ctx)?;
+            if tracking {
+                if let Some(index) = group
+                    .iter()
+                    .rev()
+                    .find_map(|item| index_of(ctx.document, item.0))
+                {
+                    // This group's boundary is selected only when the range
+                    // continues into one of the tables covered above.
+                    if let Some(next) = table_boundaries
+                        .get(&last.0)
+                        .and_then(|id| index_of(ctx.document, *id))
+                    {
+                        if next == index + 1
+                            && ctx.document.paragraphs_share_a_container(index, next)
+                        {
+                            // Cancelling an inserted table removes it now;
+                            // its heading boundary is still a tracked edit.
+                            ctx.document.mark_deleted_paragraph_break(index)
+                        } else {
+                            ctx.document
+                                .mark_deleted_paragraph_break_before_tables(index, &selected_tables)
+                        }
+                        .map_err(CommandError::Custom)?;
+                    }
+                }
+            }
         }
         Ok(())
     })();
