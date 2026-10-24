@@ -136,7 +136,7 @@ fn build_element(start: &BytesStart<'_>) -> Result<MathElement, MathParseError> 
         let attr = attr.map_err(|err| MathParseError::Xml(err.to_string()))?;
         let key = extract_attribute_name(attr.key.as_ref());
         let value = attr
-            .unescape_value()
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
             .map_err(|err| MathParseError::Xml(err.to_string()))?;
         attributes.insert(key, value.into_owned());
     }

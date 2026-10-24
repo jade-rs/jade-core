@@ -77,7 +77,7 @@ fn rewrite_document_xml(xml: impl FnOnce(String) -> String) -> Vec<u8> {
     let mut transform = Some(xml);
     for index in 0..input.len() {
         let mut part = input.by_index(index).unwrap();
-        let name = part.name().to_string();
+        let name = part.name().unwrap().into_owned();
         let mut data = Vec::new();
         part.read_to_end(&mut data).unwrap();
         if name == "word/document.xml" {
@@ -100,7 +100,7 @@ fn malformed_embedded_image_returns_an_error_instead_of_panicking() {
     let mut replaced = false;
     for index in 0..input.len() {
         let mut part = input.by_index(index).unwrap();
-        let name = part.name().to_string();
+        let name = part.name().unwrap().into_owned();
         let mut data = Vec::new();
         part.read_to_end(&mut data).unwrap();
         if name.starts_with("word/media/") {

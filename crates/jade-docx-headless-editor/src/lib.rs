@@ -415,7 +415,7 @@ mod tests {
 
         for i in 0..input.len() {
             let mut file = input.by_index(i).expect("zip entry by index");
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             let mut contents = Vec::new();
             file.read_to_end(&mut contents).expect("read zip entry");
 
@@ -575,7 +575,7 @@ mod tests {
         let mut archive = ZipArchive::new(Cursor::new(docx)).expect("zip archive");
         for i in 0..archive.len() {
             let file = archive.by_index(i).expect("zip entry by index");
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             if name.starts_with(prefix) && name.ends_with(".xml") {
                 return name;
             }
@@ -587,7 +587,7 @@ mod tests {
         let mut archive = ZipArchive::new(Cursor::new(docx)).expect("zip archive");
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).expect("zip entry by index");
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             if !name.starts_with(prefix) || !name.ends_with(".xml") {
                 continue;
             }

@@ -211,7 +211,7 @@ impl OpcPackage {
             if entry.is_dir() {
                 continue;
             }
-            let name = entry.name().to_string();
+            let name = entry.name()?.into_owned();
             // Not `Vec::with_capacity(entry.size())`: that size comes from the
             // archive and would let it pick our allocation.
             let contents = package_limits::read_part(entry, limits, &mut total)?;
@@ -461,13 +461,32 @@ pub fn parse_relationships(xml: &str) -> Result<Relationships> {
                 for attribute in element.attributes() {
                     let attribute = attribute?;
                     match local_name(attribute.key.as_ref()) {
-                        b"Id" => id = Some(attribute.unescape_value()?.into_owned()),
-                        b"Type" => {
-                            relationship_type = Some(attribute.unescape_value()?.into_owned())
+                        b"Id" => {
+                            id = Some(
+                                attribute
+                                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                    .into_owned(),
+                            )
                         }
-                        b"Target" => target = Some(attribute.unescape_value()?.into_owned()),
+                        b"Type" => {
+                            relationship_type = Some(
+                                attribute
+                                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                    .into_owned(),
+                            )
+                        }
+                        b"Target" => {
+                            target = Some(
+                                attribute
+                                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                    .into_owned(),
+                            )
+                        }
                         b"TargetMode" => {
-                            external = attribute.unescape_value()?.as_ref() == "External"
+                            external = attribute
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                .as_ref()
+                                == "External"
                         }
                         _ => {}
                     }

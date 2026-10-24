@@ -114,7 +114,14 @@ mod tests {
     fn package_paths(bytes: &[u8]) -> Vec<String> {
         let mut archive = ZipArchive::new(std::io::Cursor::new(bytes)).expect("open package");
         (0..archive.len())
-            .map(|index| archive.by_index(index).expect("entry").name().to_string())
+            .map(|index| {
+                archive
+                    .by_index(index)
+                    .expect("entry")
+                    .name()
+                    .unwrap()
+                    .into_owned()
+            })
             .collect()
     }
 

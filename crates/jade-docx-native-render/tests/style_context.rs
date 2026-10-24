@@ -18,7 +18,7 @@ fn with_styles(styles: impl FnOnce(String) -> String) -> Vec<u8> {
     let mut transform = Some(styles);
     for index in 0..input.len() {
         let mut part = input.by_index(index).unwrap();
-        let name = part.name().to_string();
+        let name = part.name().unwrap().into_owned();
         let mut data = Vec::new();
         part.read_to_end(&mut data).unwrap();
         if name == "word/styles.xml" {

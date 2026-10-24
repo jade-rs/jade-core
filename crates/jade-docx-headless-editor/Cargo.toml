@@ -9,7 +9,7 @@ jade-docx-document-core = { path = "../jade-docx-document-core" }
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 thiserror = "2.0"
 futures = "0.3"
-zip = { version = "8.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 proptest = "1.6"

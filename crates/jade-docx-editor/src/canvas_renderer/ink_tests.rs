@@ -146,7 +146,7 @@ fn vertical_word_ink_docx() -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(&mut cursor);
         for index in 0..input.len() {
             let mut file = input.by_index(index).unwrap();
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             let mut data = String::new();
             std::io::Read::read_to_string(&mut file, &mut data).unwrap();
             let data = data

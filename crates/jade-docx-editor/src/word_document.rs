@@ -49171,7 +49171,7 @@ mod tests {
             let mut entry = archive.by_index(index).expect("package entry");
             let mut contents = Vec::new();
             entry.read_to_end(&mut contents).expect("read part");
-            files.insert(entry.name().to_string(), contents);
+            files.insert(entry.name().unwrap().into_owned(), contents);
         }
         let part = |path: &str| String::from_utf8(files[path].clone()).expect("UTF-8 part");
 
@@ -55168,7 +55168,8 @@ mod tests {
                     .by_index(index)
                     .expect("read fixture part name")
                     .name()
-                    .to_string()
+                    .unwrap()
+                    .into_owned()
             })
             .collect::<Vec<_>>();
 
@@ -55674,7 +55675,7 @@ mod tests {
         let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
         for index in 0..archive.len() {
             let mut entry = archive.by_index(index).expect("zip entry");
-            let name = entry.name().to_string();
+            let name = entry.name().unwrap().into_owned();
             let mut bytes = Vec::new();
             entry.read_to_end(&mut bytes).expect("read zip entry");
             if name == "word/document.xml" {

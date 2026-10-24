@@ -117,7 +117,7 @@ impl OpenXmlPackage {
 
         for i in 0..archive.len() {
             let file = archive.by_index(i)?;
-            let name = file.name().to_string();
+            let name = file.name()?.into_owned();
             let contents = crate::package_limits::read_part(file, limits, &mut total)?;
             files.insert(name, contents);
         }
@@ -208,7 +208,9 @@ impl OpenXmlPackage {
 
                         for attr in e.attributes() {
                             let attr = attr?;
-                            let value = attr.unescape_value()?.into_owned();
+                            let value = attr
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                .into_owned();
                             match attr.key.as_ref() {
                                 b"Id" => id = value,
                                 b"Type" => r#type = value,
@@ -335,7 +337,12 @@ fn parse_custom_document_properties(xml: &str) -> HashMap<String, String> {
             Ok(Event::Start(element)) if local_name(element.name().as_ref()) == b"property" => {
                 let name = element.attributes().flatten().find_map(|attribute| {
                     (attribute.key.as_ref() == b"name")
-                        .then(|| attribute.unescape_value().ok().map(|v| v.into_owned()))
+                        .then(|| {
+                            attribute
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                .ok()
+                                .map(|v| v.into_owned())
+                        })
                         .flatten()
                 });
                 if let Some(name) = name {
@@ -441,6 +448,48 @@ fn parse_extended_document_properties(xml: &str) -> HashMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn load_package(bytes: &[u8]) -> Result<OpenXmlPackage, Box<dyn std::error::Error>> {
+        use std::future::Future;
+        let mut future = std::pin::pin!(OpenXmlPackage::load(bytes));
+        let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+        match future.as_mut().poll(&mut context) {
+            std::task::Poll::Ready(result) => result,
+            std::task::Poll::Pending => panic!("in-memory ZIP loading must complete immediately"),
+        }
+    }
+
+    fn named_zip(name: &str) -> Vec<u8> {
+        use std::io::Write;
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        writer
+            .start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"contents").unwrap();
+        writer.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn load_zip_decodes_utf8_and_legacy_cp437_names() {
+        let utf8 = named_zip("資料.xml");
+        assert_eq!(load_package(&utf8).unwrap().files["資料.xml"], b"contents");
+        let mut legacy = named_zip("a.xml");
+        let positions: Vec<_> = legacy
+            .windows(5)
+            .enumerate()
+            .filter_map(|(i, bytes)| (bytes == b"a.xml").then_some(i))
+            .collect();
+        assert_eq!(positions.len(), 2);
+        for index in positions {
+            legacy[index] = 0x82;
+        }
+        assert_eq!(load_package(&legacy).unwrap().files["é.xml"], b"contents");
+    }
+
+    #[test]
+    fn load_zip_rejects_corrupt_archive() {
+        assert!(load_package(b"not a ZIP archive").is_err());
+    }
 
     #[test]
     fn parse_relationships_reads_target_mode() {
