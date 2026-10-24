@@ -211,6 +211,46 @@ impl OffscreenDocumentView {
         })))
     }
 
+    /// Crops for all physical pages, resolved from each page's section rather
+    /// than the caret. Reading these does not change selection or layout.
+    #[wasm_bindgen(js_name = draftPageCrops)]
+    pub fn draft_page_crops(&self, hide_white_space: Option<bool>) -> Result<JsValue, JsValue> {
+        use crate::word::view::{points_to_px, PageBand, ViewKind};
+        let state = self.state.borrow();
+        let document = state
+            .word_doc
+            .as_ref()
+            .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+        let renderer = self.renderer.borrow();
+        let kind = if hide_white_space.unwrap_or(false) {
+            ViewKind::Print
+        } else {
+            ViewKind::Draft
+        };
+        // A section can span many pages. Resolve its layout only once.
+        let mut sections = std::collections::BTreeMap::new();
+        let pages: Vec<_> = (0..renderer.page_count())
+            .map(|index| {
+                let section = renderer.section_index_for_zero_based_page(index);
+                let (page, crop) = sections.entry(section).or_insert_with(|| {
+                    let layout = document.section_layout(Some(section));
+                    let page = (points_to_px(layout.width), points_to_px(layout.height));
+                    (page, PageBand::of(&layout).crop(kind, page))
+                });
+                json!({
+                    "pageIndex": index,
+                    "top": crop.top,
+                    "height": crop.height,
+                    "left": crop.left,
+                    "width": crop.width,
+                    "pageWidth": page.0,
+                    "pageHeight": page.1,
+                })
+            })
+            .collect();
+        Ok(to_js(&pages))
+    }
+
     /// 文書パーツ オーガナイザー's 削除.
     #[wasm_bindgen(js_name = deleteQuickPart)]
     pub fn delete_quick_part(&self, index: usize) -> Result<JsValue, JsValue> {
