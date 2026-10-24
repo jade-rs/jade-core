@@ -1347,6 +1347,7 @@ struct PendingNumberingRender {
     display_text: String,
     display_props: Option<RunProperties>,
     deleted_text: Option<String>,
+    display_deleted: bool,
     suffix_space: bool,
     following_grapheme: Option<CompactString>,
     /// A picture bullet (`w:lvlPicBulletId`), drawn instead of the text.
@@ -17323,6 +17324,7 @@ where
                                     display_text: number_text.clone(),
                                     display_props: numbering_run_props.clone(),
                                     deleted_text: None,
+                                    display_deleted: true,
                                     suffix_space,
                                     following_grapheme: following_grapheme.map(CompactString::new),
                                     picture: None,
@@ -17417,6 +17419,7 @@ where
                                 display_text,
                                 display_props: numbering_run_props.clone(),
                                 deleted_text,
+                                display_deleted: false,
                                 suffix_space,
                                 following_grapheme: following_grapheme.map(CompactString::new),
                                 picture,
@@ -26643,6 +26646,7 @@ where
                     display_text,
                     display_props,
                     deleted_text: None,
+                    display_deleted: false,
                     suffix_space,
                     following_grapheme: following_grapheme.map(CompactString::new),
                     picture: None,
@@ -31282,6 +31286,19 @@ where
             numbering_context,
             commands_out,
         )?;
+        if pending.display_deleted {
+            self.revision_debug_regions
+                .borrow_mut()
+                .push(RevisionDebugInfo {
+                    page: self.current_page_number,
+                    kind: RevisionDebugKind::Deleted,
+                    x: current_x,
+                    y: self.page_offset_y + (baseline_y - line_height),
+                    width: marker_width,
+                    height: line_height.max(1.0),
+                    text: pending.display_text.clone(),
+                });
+        }
         self.band_guard_numbering_marker(pending.paragraph_index, baseline_y, &style);
         if style.strike || style.double_strike {
             self.draw_strike_through(
@@ -39737,6 +39754,7 @@ mod tests {
                 ..RunProperties::default()
             }),
             deleted_text: None,
+            display_deleted: false,
             suffix_space: true,
             following_grapheme: Some("A".into()),
             picture: None,
@@ -39788,6 +39806,38 @@ mod tests {
     }
 
     #[test]
+    fn deleted_paragraph_numbering_exposes_the_painted_marker_as_a_revision() {
+        for deleted in [false, true] {
+            let (mut renderer, _) = recording_renderer();
+            let pending = PendingNumberingRender {
+                paragraph_index: 0,
+                number_x: 10.0,
+                display_text: "3.".into(),
+                display_props: Some(RunProperties {
+                    strike: Some(deleted),
+                    ..RunProperties::default()
+                }),
+                deleted_text: None,
+                display_deleted: deleted,
+                suffix_space: false,
+                following_grapheme: None,
+                picture: None,
+            };
+            renderer
+                .draw_pending_numbering_marker(&pending, 20.0, 16.0, None, &mut None)
+                .unwrap();
+            let regions = renderer.revision_debug_regions.borrow();
+            assert_eq!(regions.len(), usize::from(deleted));
+            if deleted {
+                assert!(matches!(regions[0].kind, RevisionDebugKind::Deleted));
+                assert_eq!(regions[0].text, "3.");
+                assert!(regions[0].width > 0.0);
+                assert_eq!(regions[0].height, 16.0);
+            }
+        }
+    }
+
+    #[test]
     fn numbering_advances_and_paint_skip_unused_ink_box_queries() {
         use jade_painter::recording::Op;
         for label in ["17. ", "第１７条"] {
@@ -39809,6 +39859,7 @@ mod tests {
                     ..RunProperties::default()
                 }),
                 deleted_text: None,
+                display_deleted: false,
                 suffix_space: label.ends_with(' '),
                 following_grapheme: Some("A".into()),
                 picture: None,
@@ -39892,6 +39943,7 @@ mod tests {
                 ..RunProperties::default()
             }),
             deleted_text: None,
+            display_deleted: false,
             suffix_space: false,
             following_grapheme: None,
             picture: None,
@@ -39940,6 +39992,7 @@ mod tests {
                 ..RunProperties::default()
             }),
             deleted_text: Some("第４３条".into()),
+            display_deleted: false,
             suffix_space: false,
             following_grapheme: None,
             picture: None,
@@ -40172,6 +40225,7 @@ mod tests {
                     ..RunProperties::default()
                 }),
                 deleted_text: deleted.map(str::to_string),
+                display_deleted: false,
                 suffix_space,
                 following_grapheme: Some("A".into()),
                 picture: None,
