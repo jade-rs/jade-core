@@ -11233,6 +11233,13 @@ impl WordDocument {
             );
         }
         let (start, end) = range.unwrap_or((0, self.paragraph_count().saturating_sub(1)));
+        let removed_tables = self.table_ids_removed_by_rows(&self.rows_to_decide(
+            decision == RevisionDecision::Accept,
+            kind_filter,
+            id_filter,
+            range,
+            targets,
+        ));
         let mut joins = Vec::new();
         for index in start..=end {
             let Some(element) = self
@@ -11273,7 +11280,10 @@ impl WordDocument {
             }
             if ids.len() != 1
                 || index + 1 >= self.paragraph_count()
-                || !self.paragraphs_share_a_container(index, index + 1)
+                || (!self.paragraphs_share_a_container(index, index + 1)
+                    && self
+                        .paragraph_after_removed_tables(index, &removed_tables)
+                        .is_none())
             {
                 return Err("Paragraph-mark revision cannot safely join its next paragraph".into());
             }
@@ -11640,10 +11650,9 @@ impl WordDocument {
         &mut self,
         paragraph_index: usize,
     ) -> Result<(), String> {
-        let session = self
-            .revision_session
-            .clone()
-            .ok_or("paragraph break has no revision session")?;
+        if self.revision_session.is_none() {
+            return Err("paragraph break has no revision session".into());
+        }
         if paragraph_index + 1 >= self.paragraph_count()
             || !self.paragraphs_share_a_container(paragraph_index, paragraph_index + 1)
         {
@@ -11667,6 +11676,38 @@ impl WordDocument {
             )?;
             return Ok(());
         }
+        self.mark_deleted_paragraph_break_raw(paragraph_index)
+    }
+
+    /// The selected table is still present until its row deletions are accepted.
+    /// Preserve the heading boundary without joining through that table now.
+    pub(crate) fn mark_deleted_paragraph_break_before_tables(
+        &mut self,
+        paragraph_index: usize,
+        selected: &HashSet<XmlNodeId>,
+    ) -> Result<(), String> {
+        let rows: Vec<_> = self
+            .table_row_revisions()
+            .into_iter()
+            .filter(|row| row.mark.is_deletion())
+            .map(|row| (row.table, row.row, true))
+            .collect();
+        let deleted = self.table_ids_removed_by_rows(&rows);
+        let tables = selected.intersection(&deleted).copied().collect();
+        if self
+            .paragraph_after_removed_tables(paragraph_index, &tables)
+            .is_none()
+        {
+            return Ok(());
+        }
+        self.mark_deleted_paragraph_break_raw(paragraph_index)
+    }
+
+    fn mark_deleted_paragraph_break_raw(&mut self, paragraph_index: usize) -> Result<(), String> {
+        let session = self
+            .revision_session
+            .clone()
+            .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
             .and_then(|paragraph| paragraph.node_id)
@@ -11683,7 +11724,7 @@ impl WordDocument {
                 p_pr.children.iter().any(|child| match child {
                     XmlNode::Element(r_pr) if r_pr.name.rsplit(':').next() == Some("rPr") => {
                         r_pr.children.iter().any(|child| {
-                            matches!(child, XmlNode::Element(mark) if matches!(mark.name.rsplit(':').next(), Some("ins" | "del")))
+                            matches!(child, XmlNode::Element(mark) if matches!(mark.name.rsplit(':').next(), Some("ins" | "del" | "moveFrom" | "moveTo")))
                         })
                     }
                     _ => false,
@@ -11773,16 +11814,7 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
-            (
-                start_paragraph.unwrap_or(0),
-                end_paragraph.unwrap_or(usize::MAX),
-            )
-        });
-        // Rows are found before the paragraphs are decided, and taken out
-        // or unmarked after, by their places then.
-        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
-        let decided = self.apply_revision_decision(
+        self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11790,8 +11822,7 @@ impl WordDocument {
             id_filter,
             targets,
             true,
-        )?;
-        Ok(decided + self.decide_rows(rows)?)
+        )
     }
 
     /// [`Self::decide_revisions`] for a caller that puts the document back
@@ -11807,16 +11838,7 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         targets: Option<&RevisionTargets>,
     ) -> Result<usize, String> {
-        let range = (start_paragraph.is_some() || end_paragraph.is_some()).then(|| {
-            (
-                start_paragraph.unwrap_or(0),
-                end_paragraph.unwrap_or(usize::MAX),
-            )
-        });
-        // Rows are found before the paragraphs are decided, and taken out
-        // or unmarked after, by their places then.
-        let rows = self.rows_to_decide(accept, kind_filter.as_ref(), id_filter, range, targets);
-        let decided = self.apply_revision_decision(
+        self.apply_revision_decision(
             RevisionDecision::from_accept(accept),
             kind_filter,
             start_paragraph,
@@ -11824,8 +11846,7 @@ impl WordDocument {
             id_filter,
             targets,
             false,
-        )?;
-        Ok(decided + self.decide_rows(rows)?)
+        )
     }
 
     /// What [`Self::decide_revisions`] would change: the package, the
@@ -11996,6 +12017,17 @@ impl WordDocument {
             },
             targets,
         )?;
+        let rows = self.rows_to_decide(
+            decision == RevisionDecision::Accept,
+            kind_filter.as_ref(),
+            id_filter,
+            (start_paragraph.is_some() || end_paragraph.is_some()).then_some((start, end)),
+            targets,
+        );
+        let join_paragraphs: Vec<_> = joins
+            .iter()
+            .filter_map(|(index, _)| self.paragraph(*index).and_then(|p| p.node_id))
+            .collect();
         let snapshot = if snapshot_on_failure {
             self.snapshot_including_package()
         } else {
@@ -12264,13 +12296,28 @@ impl WordDocument {
                 self.refresh_paragraph_mark_revision(index);
             }
         }
+        let decided_rows = match self.decide_rows(rows) {
+            Ok(count) => count,
+            Err(error) => {
+                if let Some(snapshot) = snapshot {
+                    self.restore_snapshot(snapshot);
+                }
+                return Err(error);
+            }
+        };
         // Review decisions must use the same paragraph join as ordinary
         // editing, so comments, inline XML, and section breaks move together.
-        // Descending order keeps the original paragraph indices stable.
+        // Resolve stable XML IDs after removing rows, joining from the end.
         let session = self.revision_session.take();
-        for (index, _) in joins.iter().rev() {
+        for id in join_paragraphs.iter().rev() {
+            // A decided row may have removed this paragraph altogether.
+            let Some(index) = (0..self.paragraph_count())
+                .find(|index| self.paragraph(*index).and_then(|p| p.node_id) == Some(*id))
+            else {
+                continue;
+            };
             let Some(model_offset) = self
-                .paragraph(*index)
+                .paragraph(index)
                 .map(|paragraph| paragraph.runs.iter().map(|run| run.text.len()).sum())
             else {
                 if let Some(snapshot) = snapshot {
@@ -12281,7 +12328,7 @@ impl WordDocument {
                 return Err("paragraph selected for revision join was lost".into());
             };
             let position =
-                self.model_to_rendered_text_position(TextPosition::new(*index, model_offset));
+                self.model_to_rendered_text_position(TextPosition::new(index, model_offset));
             let range = SelectionRange::collapsed(position);
             let mut selection = Some(range);
             let mut context = CommandContext::new(self, &mut selection);
@@ -12308,7 +12355,8 @@ impl WordDocument {
         }
         Ok(changed_runs
             .saturating_add(paragraph_mark_ids.len())
-            .saturating_add(formatting_count))
+            .saturating_add(formatting_count)
+            .saturating_add(decided_rows))
     }
 
     /// Inserts `text` at model offset `offset` of the paragraph at surface

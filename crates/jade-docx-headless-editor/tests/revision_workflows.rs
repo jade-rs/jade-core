@@ -241,6 +241,353 @@ fn range_table(left: &str, right: &str) -> String {
     )
 }
 
+#[test]
+fn tracked_table_range_keeps_heading_boundary_reviewable() {
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{}<w:p><w:r><w:t>TAIL</w:t></w:r>",
+        range_table("AB", "CD")
+    ));
+    let tracked = edit(&input, vec![tracking(), range_delete(0, 0, 2, 2)]);
+    let xml = part(&tracked, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let heading = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "p")))
+        .unwrap();
+    assert!(
+        heading
+            .children()
+            .filter(|n| n.has_tag_name((NS, "pPr")))
+            .flat_map(|n| n.children())
+            .filter(|n| n.has_tag_name((NS, "rPr")))
+            .flat_map(|n| n.children())
+            .any(|n| n.has_tag_name((NS, "del"))),
+        "the selected heading's paragraph mark must be reviewable"
+    );
+    for accept in [false, true] {
+        let decided = edit(&tracked, vec![decide(accept, lg_ids(&tracked))]);
+        let xml = part(&decided, "word/document.xml");
+        let document = roxmltree::Document::parse(&xml).unwrap();
+        let body = document
+            .descendants()
+            .find(|n| n.has_tag_name((NS, "body")))
+            .unwrap();
+        assert_eq!(
+            body.children()
+                .filter(|n| n.has_tag_name((NS, "p")))
+                .count(),
+            if accept { 1 } else { 2 }
+        );
+        assert_eq!(
+            final_text(&decided),
+            if accept { "TAIL" } else { "HEADABCDTAIL" }
+        );
+    }
+}
+
+#[test]
+fn tracked_heading_table_decisions_can_be_reviewed_separately() {
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{}<w:p><w:r><w:t>TAIL</w:t></w:r>",
+        range_table("AB", "CD")
+    ));
+    let tracked = edit(&input, vec![tracking(), range_delete(0, 2, 2, 2)]);
+    let xml = part(&tracked, "word/document.xml");
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    let row_ids: Vec<_> = doc
+        .descendants()
+        .filter(|n| {
+            n.has_tag_name((NS, "del")) && n.parent().is_some_and(|p| p.has_tag_name((NS, "trPr")))
+        })
+        .filter_map(|n| n.attribute((NS, "id")).map(str::to_owned))
+        .collect();
+    let heading_ids: Vec<_> = lg_ids(&tracked)
+        .into_iter()
+        .filter(|id| !row_ids.contains(id))
+        .collect();
+    // Joining the heading while its table survives would lose the grid.
+    assert!(apply_headless_commands(
+        &tracked,
+        &HeadlessEditRequest {
+            commands: vec![decide(true, heading_ids.clone())]
+        }
+    )
+    .is_err());
+    for accept in [false, true] {
+        let rows_first = edit(&tracked, vec![decide(accept, row_ids.clone())]);
+        let decided = edit(&rows_first, vec![decide(accept, heading_ids.clone())]);
+        assert_eq!(body_paragraph_count(&decided), if accept { 1 } else { 2 });
+        assert_eq!(
+            final_text(&decided),
+            if accept { "HETAIL" } else { "HEADABCDTAIL" }
+        );
+    }
+    let heading_first = edit(&tracked, vec![decide(false, heading_ids)]);
+    let decided = edit(&heading_first, vec![decide(false, row_ids)]);
+    assert_eq!(body_paragraph_count(&decided), 2);
+    assert_eq!(final_text(&decided), "HEADABCDTAIL");
+}
+
+#[test]
+fn cancelling_our_inserted_table_keeps_the_heading_break_reviewable() {
+    let table = range_table("AB", "CD").replace(
+        "<w:tr>",
+        r#"<w:tr><w:trPr><w:ins w:id="41" w:author="LAWGUE"/></w:trPr>"#,
+    );
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"
+    ));
+    let deleted = edit(&input, vec![tracking(), range_delete(0, 0, 2, 2)]);
+    assert_eq!(table_shape(&deleted), None);
+    assert_eq!(body_paragraph_count(&deleted), 2);
+    let accepted = edit(&deleted, vec![decide(true, lg_ids(&deleted))]);
+    assert_eq!(body_paragraph_count(&accepted), 1);
+    assert_eq!(final_text(&accepted), "TAIL");
+    let rejected = edit(&deleted, vec![decide(false, lg_ids(&deleted))]);
+    assert_eq!(body_paragraph_count(&rejected), 2);
+    assert_eq!(final_text(&rejected), "HEADTAIL");
+}
+
+#[test]
+fn heading_table_review_and_delete_undo_redo_restore_the_package() {
+    use jade_docx_document_core::{
+        commands::{CommandContext, CommandExecutor},
+        headless_api::apply_headless_commands_with_executor_to_document,
+        word_document::WordDocument,
+        Options,
+    };
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{}<w:p><w:r><w:t>TAIL</w:t></w:r>",
+        range_table("AB", "CD")
+    ));
+    for accept in [false, true] {
+        let mut document =
+            futures::executor::block_on(WordDocument::load(&input, &Options::default())).unwrap();
+        let mut executor = CommandExecutor::new();
+        let before = part(&document.export_docx().unwrap(), "word/document.xml");
+        let mut selection = apply_headless_commands_with_executor_to_document(
+            &mut document,
+            &mut executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![tracking(), range_delete(0, 0, 2, 2)],
+            },
+        )
+        .unwrap();
+        let tracked = document.export_docx().unwrap();
+        let tracked_xml = part(&tracked, "word/document.xml");
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(executor.undo(&mut ctx).unwrap());
+        }
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            before
+        );
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(executor.redo(&mut ctx).unwrap());
+        }
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            tracked_xml
+        );
+        // A refused selective decision must leave the live document untouched.
+        let xml = part(&tracked, "word/document.xml");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        let heading_mark = doc
+            .descendants()
+            .find(|n| {
+                n.has_tag_name((NS, "del"))
+                    && n.parent().is_some_and(|p| p.has_tag_name((NS, "rPr")))
+            })
+            .unwrap()
+            .attribute((NS, "id"))
+            .unwrap()
+            .to_owned();
+        assert!(document
+            .accept_revisions(None, None, None, Some(&heading_mark))
+            .is_err());
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            tracked_xml
+        );
+        selection = apply_headless_commands_with_executor_to_document(
+            &mut document,
+            &mut executor,
+            selection,
+            &HeadlessEditRequest {
+                commands: vec![decide(accept, lg_ids(&tracked))],
+            },
+        )
+        .unwrap();
+        let decided = part(&document.export_docx().unwrap(), "word/document.xml");
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(executor.undo(&mut ctx).unwrap());
+        }
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            tracked_xml
+        );
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(executor.redo(&mut ctx).unwrap());
+        }
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            decided
+        );
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum HeadingTableBlock {
+    Paragraph {
+        runs: Vec<(String, bool)>,
+        deleted_break: bool,
+    },
+    Table {
+        deleted: bool,
+    },
+}
+
+fn normalize_heading_runs(runs: Vec<(String, bool)>) -> Vec<(String, bool)> {
+    let mut result: Vec<(String, bool)> = Vec::new();
+    for (text, deleted) in runs {
+        if text.is_empty() {
+            continue;
+        }
+        if let Some(last) = result.last_mut().filter(|last| last.1 == deleted) {
+            last.0.push_str(&text);
+        } else {
+            result.push((text, deleted));
+        }
+    }
+    result
+}
+
+// The model consists only of ordered body blocks, text chunks, and pending
+// deletions. It does not call document/model helpers. Each step exports a DOCX
+// and the next public operation reloads that package, including selective
+// decisions, dependency errors, empty selections, and invalid coordinates.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_heading_table_decisions_match_block_model(
+        headings in prop::collection::vec("[a-z甲乙😀]{1,8}", 1..5),
+        cut in any::<usize>(),
+        actions in prop::collection::vec((0u8..7, any::<bool>(), any::<usize>()), 1..33),
+    ) {
+        let mut source = String::new();
+        let mut model = Vec::new();
+        let offsets: Vec<_> = headings[0].char_indices().map(|(i, _)| i).chain(std::iter::once(headings[0].len())).collect();
+        let offset = offsets[cut % offsets.len()];
+        for (index, heading) in headings.iter().enumerate() {
+            source.push_str(&format!("<w:r><w:t>{heading}</w:t></w:r></w:p>{}<w:p>", range_table("AB", "CD")));
+            let from = if index == 0 { offset } else { 0 };
+            model.push(HeadingTableBlock::Paragraph {
+                runs: normalize_heading_runs(vec![(heading[..from].into(), false), (heading[from..].into(), true)]),
+                deleted_break: true,
+            });
+            model.push(HeadingTableBlock::Table { deleted: true });
+        }
+        source.push_str(r#"<w:r><w:t>TAIL</w:t></w:r><w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins>"#);
+        model.push(HeadingTableBlock::Paragraph { runs: vec![("TAILR".into(), false)], deleted_break: false });
+        let input = fixture(&source);
+        let mut bytes = edit(&input, vec![tracking(), range_delete(0, offset, headings.len()*3-1, 2)]);
+        for (step, (scope, accept, index)) in actions.into_iter().enumerate() {
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            let body = doc.descendants().find(|n| n.has_tag_name((NS, "body"))).unwrap();
+            let blocks: Vec<_> = body.children().filter(|n| n.has_tag_name((NS, "p")) || n.has_tag_name((NS, "tbl"))).collect();
+            let chosen = index % model.len();
+            // (row deletion, paragraph break deletion, text deletion)
+            let selected: Vec<_> = (0..model.len()).map(|i| (
+                scope == 0 || scope == 1 || (scope == 4 && chosen == i),
+                scope == 0 || scope == 2 || (scope == 4 && chosen == i),
+                scope == 0 || scope == 3 || (scope == 4 && chosen == i),
+            )).collect();
+            let ids: Vec<_> = blocks.iter().enumerate().flat_map(|(i, block)| {
+                let flags = selected[i];
+                block.descendants().filter(move |n| {
+                    if !n.has_tag_name((NS, "del")) || n.attribute((NS, "author")) != Some("LAWGUE") { return false; }
+                    let parent = n.parent().unwrap();
+                    if parent.has_tag_name((NS, "trPr")) { flags.0 }
+                    else if parent.has_tag_name((NS, "rPr")) && parent.parent().is_some_and(|p| p.has_tag_name((NS, "pPr"))) { flags.1 }
+                    else { flags.2 }
+                }).filter_map(|n| n.attribute((NS, "id")).map(str::to_owned))
+            }).collect();
+            let mut expected = model.clone();
+            let mut invalid = scope == 6;
+            // A paragraph boundary can join only when every intervening table
+            // is physically removed in this same decision (or already gone).
+            if accept {
+                for i in 0..model.len() {
+                    if matches!(model[i], HeadingTableBlock::Paragraph { deleted_break: true, .. }) && selected[i].1 {
+                        let mut next = i+1;
+                        while next < model.len() && matches!(model[next], HeadingTableBlock::Table { deleted: true }) && selected[next].0 { next += 1; }
+                        if !matches!(model.get(next), Some(HeadingTableBlock::Paragraph { .. })) { invalid = true; }
+                    }
+                }
+            }
+            let mut remove = Vec::new();
+            for (i, block) in expected.iter_mut().enumerate() {
+                match block {
+                    HeadingTableBlock::Table { deleted } if *deleted && selected[i].0 => {
+                        if accept { remove.push(i); } else { *deleted = false; }
+                    }
+                    HeadingTableBlock::Paragraph { runs, deleted_break } => {
+                        if selected[i].2 {
+                            *runs = normalize_heading_runs(runs.iter().filter(|(_, del)| !accept || !del).map(|(text, _)| (text.clone(), false)).collect());
+                        }
+                        if *deleted_break && selected[i].1 { *deleted_break = false; }
+                    }
+                    _ => {},
+                }
+            }
+            if !invalid {
+                // Join backwards before removing table placeholders so that
+                // selected block indices are independent of engine IDs.
+                for i in (0..model.len()).rev() {
+                    if accept && selected[i].1 && matches!(model[i], HeadingTableBlock::Paragraph { deleted_break:true, .. }) {
+                        let mut next = i+1;
+                        while remove.contains(&next) { next += 1; }
+                        let right = expected[next].clone();
+                        if let (HeadingTableBlock::Paragraph { runs, deleted_break }, HeadingTableBlock::Paragraph { runs:right_runs, deleted_break:right_break }) = (&mut expected[i], right) {
+                            runs.extend(right_runs);
+                            *runs = normalize_heading_runs(std::mem::take(runs));
+                            *deleted_break = right_break;
+                            remove.push(next);
+                        }
+                    }
+                }
+                remove.sort_unstable(); remove.dedup();
+                for i in remove.into_iter().rev() { expected.remove(i); }
+            }
+            let command = if scope == 6 { range_delete(999, 0, 999, 0) } else { decide(accept, ids) };
+            let result = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![command] });
+            if invalid { prop_assert!(result.is_err(), "invalid step {} scope {} accept {}", step, scope, accept); }
+            else { prop_assert!(result.is_ok(), "step {} scope {} accept {}: {:?}", step, scope, accept, result.as_ref().err()); bytes = result.unwrap(); model = expected; }
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            let body = doc.descendants().find(|n| n.has_tag_name((NS, "body"))).unwrap();
+            let actual: Vec<_> = body.children().filter_map(|block| {
+                if block.has_tag_name((NS, "tbl")) {
+                    Some(HeadingTableBlock::Table { deleted: block.descendants().any(|n| n.has_tag_name((NS, "del")) && n.parent().is_some_and(|p| p.has_tag_name((NS, "trPr")))) })
+                } else if block.has_tag_name((NS, "p")) {
+                    let runs = block.descendants().filter(|n| n.has_tag_name((NS, "t")) || n.has_tag_name((NS, "delText")))
+                        .filter_map(|n| n.text().map(|text| (text.to_owned(), n.ancestors().any(|a| a.has_tag_name((NS, "del")))))).collect();
+                    let deleted_break = block.children().filter(|n| n.has_tag_name((NS, "pPr"))).flat_map(|n| n.descendants()).any(|n| n.has_tag_name((NS, "del")));
+                    Some(HeadingTableBlock::Paragraph { runs: normalize_heading_runs(runs), deleted_break })
+                } else { None }
+            }).collect();
+            prop_assert_eq!(&actual, &model, "saved block model at step {} scope {} accept {}", step, scope, accept);
+            assert_other_author(&bytes);
+        }
+    }
+}
+
 fn range_delete(
     start: usize,
     start_offset: usize,

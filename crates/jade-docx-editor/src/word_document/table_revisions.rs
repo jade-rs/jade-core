@@ -60,6 +60,61 @@ fn collect_row_paragraphs(
 }
 
 impl WordDocument {
+    /// Only whole tables physically removed by this decision may be crossed.
+    pub(super) fn table_ids_removed_by_rows(
+        &self,
+        rows: &[(usize, usize, bool)],
+    ) -> HashSet<XmlNodeId> {
+        let removed: HashSet<_> = rows
+            .iter()
+            .filter(|(_, _, removes)| *removes)
+            .map(|(table, row, _)| (*table, *row))
+            .collect();
+        (0..)
+            .map_while(|order| self.table_by_order(order).map(|table| (order, table)))
+            .filter(|(order, table)| {
+                !table.rows.is_empty()
+                    && (0..table.rows.len()).all(|row| removed.contains(&(*order, row)))
+            })
+            .filter_map(|(_, table)| table.node_id)
+            .collect()
+    }
+
+    /// A paragraph mark may cross selected deleted tables, never a surviving
+    /// table, math block, content control, or a different container.
+    pub(crate) fn paragraph_after_removed_tables(
+        &self,
+        paragraph: usize,
+        tables: &HashSet<XmlNodeId>,
+    ) -> Option<usize> {
+        let raw = self.raw_document.as_ref()?;
+        let id = self.paragraph(paragraph)?.node_id?;
+        let parent = raw.element(raw.parent_id(id)?)?;
+        let start = parent
+            .children
+            .iter()
+            .position(|node| matches!(node, XmlNode::Element(element) if element.id == id))?;
+        let mut crossed = false;
+        for node in &parent.children[start + 1..] {
+            match node {
+                XmlNode::Element(element)
+                    if local(&element.name) == "tbl" && tables.contains(&element.id) =>
+                {
+                    crossed = true
+                }
+                XmlNode::Element(element) if local(&element.name) == "p" && crossed => {
+                    return (paragraph + 1..self.paragraph_count()).find(|index| {
+                        self.paragraph(*index).and_then(|p| p.node_id) == Some(element.id)
+                    });
+                }
+                XmlNode::Text(text) if text.trim().is_empty() => {}
+                XmlNode::Comment(_) => {}
+                _ => return None,
+            }
+        }
+        None
+    }
+
     pub(crate) fn table_paragraphs(&self, table: usize) -> Vec<usize> {
         let indices: HashMap<_, _> = (0..self.paragraph_count())
             .filter_map(|index| self.paragraph(index)?.node_id.map(|id| (id, index)))
