@@ -104,10 +104,6 @@ impl StructureChange {
             }
         })
     }
-
-    fn applies_to(&self, sheet: &str) -> bool {
-        self.sheet.eq_ignore_ascii_case(sheet)
-    }
 }
 
 /// One end of a reference as written: a column, a row, or both, each with
@@ -139,68 +135,153 @@ impl Endpoint {
 /// reference into `change.sheet` moved. `formula_sheet` is the sheet the
 /// formula sits on, which is what an unqualified reference means.
 pub fn shift_formula(formula: &str, formula_sheet: &str, change: &StructureChange) -> String {
+    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference| {
+        shift_reference(reference, change)
+    })
+}
+
+/// Rewrites structural references within a cell shift's perpendicular strip.
+/// This is distinct from translating a copied formula: `$` references follow
+/// the moved grid too, and a deleted single-cell reference becomes `#REF!`.
+pub fn shift_cells_formula(
+    formula: &str,
+    formula_sheet: &str,
+    change: &crate::CellShift,
+) -> String {
+    let axis = change.axis_change();
+    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference| {
+        let span = |end: Endpoint| match change.axis {
+            Axis::Rows => end.column,
+            Axis::Columns => end.row,
+        };
+        let last = reference.end.unwrap_or(reference.start);
+        let fits = match (span(reference.start), span(last)) {
+            (Some((_, a)), Some((_, b))) => {
+                let (first, last) = change.strip();
+                first <= a.min(b) && a.max(b) <= last
+            }
+            _ => false,
+        };
+        if fits {
+            shift_reference(reference, &axis)
+        } else {
+            Some(render(reference))
+        }
+    })
+}
+
+// Returns the end (including `!`), decoded first sheet, and whether a
+// qualifier names a 3-D range or an external workbook. Those references do
+// not identify the single local sheet whose geometry changes.
+fn grid_qualifier(formula: &str, start: usize) -> Option<(usize, String, bool)> {
+    fn token(formula: &str, start: usize) -> Option<(usize, String)> {
+        let bytes = formula.as_bytes();
+        if bytes.get(start) == Some(&b'\'') {
+            let end = quoted_end(formula, start);
+            if end <= start + 1 || bytes.get(end - 1) != Some(&b'\'') {
+                return None;
+            }
+            Some((end, formula[start + 1..end - 1].replace("''", "'")))
+        } else {
+            let mut end = start;
+            while bytes.get(end).is_some_and(|b| is_name_byte(*b)) {
+                end += 1;
+            }
+            (end > start).then(|| (end, formula[start..end].to_string()))
+        }
+    }
+    let bytes = formula.as_bytes();
+    let (end, first) = token(formula, start)?;
+    if bytes.get(end) == Some(&b'!') {
+        let skip = first.contains(':') || first.contains('[');
+        return Some((end + 1, first, skip));
+    }
+    if bytes.get(end) == Some(&b':') {
+        let (last, _) = token(formula, end + 1)?;
+        if bytes.get(last) == Some(&b'!') {
+            return Some((last + 1, first, true));
+        }
+    }
+    None
+}
+
+fn rewrite_grid_formula(
+    formula: &str,
+    formula_sheet: &str,
+    changed_sheet: &str,
+    mut map: impl FnMut(&Reference) -> Option<String>,
+) -> String {
     let bytes = formula.as_bytes();
     let mut output = String::with_capacity(formula.len());
     let mut index = 0usize;
-    // The sheet the next reference belongs to, once a `Name!` has gone by.
     let mut qualified: Option<String> = None;
-
+    let mut skip = false;
     while index < bytes.len() {
         let byte = bytes[index];
         if byte == b'"' {
             let end = string_end(formula, index);
             output.push_str(&formula[index..end]);
             index = end;
+            qualified = None;
+            skip = false;
             continue;
         }
-        if byte == b'\'' {
-            let end = quoted_end(formula, index);
+        if byte == b'[' {
+            let end = bracket_end(formula, index);
             output.push_str(&formula[index..end]);
-            if bytes.get(end) == Some(&b'!') {
-                output.push('!');
-                qualified = Some(formula[index + 1..end - 1].replace("''", "'"));
-                index = end + 1;
-            } else {
-                index = end;
-            }
+            index = end;
+            // A following sheet qualifier belongs to this workbook prefix;
+            // a structured selector is consumed without examining its names.
+            skip = true;
             continue;
         }
-
         let previous = index.checked_sub(1).and_then(|at| bytes.get(at)).copied();
-        let starts_token = !previous.is_some_and(is_name_byte) && previous != Some(b'[');
+        let starts_token = !previous.is_some_and(is_name_byte) && previous != Some(b'#');
         if starts_token {
+            if let Some((end, sheet, nonlocal)) = grid_qualifier(formula, index) {
+                output.push_str(&formula[index..end]);
+                qualified = Some(sheet);
+                skip |= nonlocal;
+                index = end;
+                continue;
+            }
             if let Some((end, reference)) = parse_reference(formula, index) {
-                let sheet = qualified.take();
-                let applies = change.applies_to(sheet.as_deref().unwrap_or(formula_sheet));
-                if applies {
-                    match shift_reference(&reference, change) {
-                        Some(shifted) => output.push_str(&shifted),
-                        None => output.push_str("#REF!"),
-                    }
+                if !skip
+                    && same_sheet_name(qualified.as_deref().unwrap_or(formula_sheet), changed_sheet)
+                {
+                    output.push_str(&map(&reference).unwrap_or_else(|| "#REF!".into()));
                 } else {
                     output.push_str(&formula[index..end]);
                 }
                 index = end;
-                continue;
-            }
-            // A bare sheet name before `!`.
-            let mut end = index;
-            while bytes.get(end).is_some_and(|byte| is_name_byte(*byte)) {
-                end += 1;
-            }
-            if end > index && bytes.get(end) == Some(&b'!') {
-                qualified = Some(formula[index..end].to_string());
-                output.push_str(&formula[index..=end]);
-                index = end + 1;
+                qualified = None;
+                skip = false;
                 continue;
             }
         }
-
+        if byte == b'\'' {
+            let end = quoted_end(formula, index);
+            output.push_str(&formula[index..end]);
+            index = end;
+            continue;
+        }
+        // Preserve the suffix of an already-invalid sheet reference, rather
+        // than accidentally interpreting it as a local reference.
+        if formula[index..].starts_with("#REF!") {
+            let end = index + 5;
+            let end = parse_reference(formula, end).map_or(end, |(end, _)| end);
+            output.push_str(&formula[index..end]);
+            index = end;
+            qualified = None;
+            skip = false;
+            continue;
+        }
         let character = formula[index..].chars().next().expect("a character");
         output.push(character);
         index += character.len_utf8();
         if !is_name_byte(byte) && byte != b'!' {
             qualified = None;
+            skip = false;
         }
     }
     output
@@ -645,6 +726,27 @@ pub fn quote_sheet_name(name: &str) -> String {
     }
 }
 
+/// Decode the optional surrounding apostrophes of a worksheet-name token.
+/// Interior apostrophes in a quoted token must be doubled. This also rejects
+/// a lone apostrophe without slicing outside the input string.
+pub fn unquote_sheet_name(name: &str) -> Option<String> {
+    if let Some(rest) = name.strip_prefix('\'') {
+        let mut out = String::new();
+        let mut chars = rest.strip_suffix('\'')?.chars();
+        while let Some(c) = chars.next() {
+            if c == '\'' && chars.next() != Some('\'') {
+                return None;
+            }
+            out.push(c);
+        }
+        Some(out)
+    } else if name.ends_with('\'') {
+        None
+    } else {
+        Some(name.to_string())
+    }
+}
+
 /// `Sheet!` or `First:Last!`, quoted as the names need.
 fn qualifier(first: &str, last: Option<&str>) -> String {
     match last {
@@ -828,7 +930,7 @@ fn rewrite_sheet_qualifiers(
 
 /// One past the `]` that closes the bracket opened at `start`, counting
 /// nested brackets and skipping characters escaped with `'`.
-fn bracket_end(formula: &str, start: usize) -> usize {
+pub(crate) fn bracket_end(formula: &str, start: usize) -> usize {
     let bytes = formula.as_bytes();
     let mut depth = 0usize;
     let mut index = start;
@@ -897,4 +999,97 @@ pub fn collapse_ref_errors(formula: &str) -> String {
         index += character.len_utf8();
     }
     output
+}
+
+/// Rewrites local table references without changing strings, sheet qualifiers,
+/// bracket contents that are not table references, or external workbook links.
+/// The callback receives a table name (None for an implicit current table)
+/// and its complete bracket selector (None for a bare table name).
+pub fn rewrite_table_references(
+    formula: &str,
+    mut rewrite: impl FnMut(Option<&str>, Option<&str>) -> Option<String>,
+) -> String {
+    let bytes = formula.as_bytes();
+    let mut out = String::with_capacity(formula.len());
+    let mut i = 0;
+    let mut external = false;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            let end = string_end(formula, i);
+            out.push_str(&formula[i..end]);
+            i = end;
+            external = false;
+            continue;
+        }
+        if bytes[i] == b'\'' {
+            let end = quoted_end(formula, i);
+            let qualified = bytes.get(end) == Some(&b'!');
+            if qualified {
+                external = formula[i + 1..end.saturating_sub(1)].starts_with('[');
+                out.push_str(&formula[i..=end]);
+                i = end + 1;
+            } else {
+                out.push_str(&formula[i..end]);
+                i = end;
+            }
+            continue;
+        }
+        if bytes[i] == b'[' {
+            let end = bracket_end(formula, i);
+            let mut next = end;
+            while bytes.get(next).is_some_and(|b| is_name_byte(*b)) {
+                next += 1;
+            }
+            let workbook = next > end && bytes.get(next) == Some(&b'!');
+            let value = if external || workbook {
+                None
+            } else {
+                rewrite(None, Some(&formula[i..end]))
+            };
+            out.push_str(value.as_deref().unwrap_or(&formula[i..end]));
+            i = end;
+            external |= workbook;
+            continue;
+        }
+        if is_name_byte(bytes[i]) && !i.checked_sub(1).is_some_and(|p| is_name_byte(bytes[p])) {
+            let start = i;
+            while bytes.get(i).is_some_and(|b| is_name_byte(*b)) {
+                i += 1;
+            }
+            let name = &formula[start..i];
+            if bytes.get(i) == Some(&b'!') {
+                out.push_str(&formula[start..=i]);
+                i += 1;
+                continue;
+            }
+            if bytes.get(i) == Some(&b'[') {
+                let end = bracket_end(formula, i);
+                let replacement = if external {
+                    None
+                } else {
+                    rewrite(Some(name), Some(&formula[i..end]))
+                };
+                out.push_str(replacement.as_deref().unwrap_or(&formula[start..end]));
+                i = end;
+                external = false;
+                continue;
+            }
+            let call = bytes.get(i) == Some(&b'(');
+            let replacement = if external || call {
+                None
+            } else {
+                rewrite(Some(name), None)
+            };
+            out.push_str(replacement.as_deref().unwrap_or(name));
+            external = false;
+            continue;
+        }
+        let c = formula[i..].chars().next().unwrap();
+        out.push(c);
+        i += c.len_utf8();
+        if !c.is_whitespace() {
+            external = false;
+        }
+    }
+    out
 }

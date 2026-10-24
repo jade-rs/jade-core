@@ -140,14 +140,16 @@ impl<'a> Model<'a> {
                     }
                 }
             } else {
-                // Try the full parser — the formula might be a LAMBDA definition.
+                // Constants, expressions and LAMBDAs use the full parser.
                 // Defined-name formulas may carry a leading '='; strip it before parsing.
                 let formula_body = formula.strip_prefix('=').unwrap_or(&formula);
                 let dummy_ref = CellReferenceRC {
                     sheet: self
                         .workbook
                         .worksheets
-                        .first()
+                        .iter()
+                        .find(|ws| Some(ws.sheet_id) == sheet_id)
+                        .or_else(|| self.workbook.worksheets.first())
                         .map(|ws| ws.get_name())
                         .unwrap_or_else(|| "Sheet1".to_string()),
                     row: 1,
@@ -160,7 +162,8 @@ impl<'a> Model<'a> {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
-                    _ => ParsedDefinedName::InvalidDefinedNameFormula,
+                    Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
+                    node => ParsedDefinedName::FormulaDefinition(node),
                 }
             };
 
@@ -678,10 +681,13 @@ impl<'a> Model<'a> {
         let cells = HashMap::new();
 
         let mut model = Model {
+            pivot_regions: Vec::new(),
+            read_trace: None,
             workbook,
             shared_strings: HashMap::new(),
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
+            evaluating_names: std::collections::HashSet::new(),
             parser,
             cells,
             locale,

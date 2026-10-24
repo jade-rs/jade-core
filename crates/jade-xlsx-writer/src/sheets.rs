@@ -33,11 +33,204 @@ use quick_xml::Reader;
 
 use jade_opc::OpcPackage;
 use jade_xlsx_reader::formula::same_sheet_name;
+use jade_xlsx_reader::xstring::{decode_xstring, encode_xstring};
 use jade_xlsx_reader::{delete_sheet_in_formula, quote_sheet_name, rename_sheet_in_formula};
 
 use crate::patch::{apply, attribute, escape, local, namespace_prefix, Splice};
 use crate::shift::{remove_elements, rewrite};
 use crate::{Result, WriteError};
+
+/// Changes a tab's visibility, retaining at least one visible worksheet and
+/// moving the saved active tab away from a newly hidden sheet.
+pub fn set_sheet_visibility(
+    original: &[u8],
+    name: &str,
+    visibility: jade_xlsx_reader::SheetVisibility,
+) -> Result<Vec<u8>> {
+    use jade_xlsx_reader::SheetVisibility;
+    let mut parts = WorkbookParts::open(original)?;
+    let index = parts.position(name)?;
+    let parsed = jade_xlsx_reader::workbook_part::parse_workbook(&parts.workbook_xml)?;
+    if parsed.sheets[index].visibility == visibility {
+        return Ok(original.to_vec());
+    }
+    parts.ensure_structure_unlocked()?;
+    if visibility != SheetVisibility::Visible
+        && !parts
+            .sheets
+            .iter()
+            .enumerate()
+            .any(|(i, s)| i != index && s.visible)
+    {
+        return Err(WriteError::LastVisibleSheet(name.to_string()));
+    }
+    let entry = &parts.sheets[index];
+    let state = match visibility {
+        SheetVisibility::Visible => None,
+        SheetVisibility::Hidden => Some("hidden".to_string()),
+        SheetVisibility::VeryHidden => Some("veryHidden".to_string()),
+    };
+    let mut reader = Reader::from_str(&parts.workbook_xml[entry.start..entry.end]);
+    let event = reader.read_event()?;
+    let empty = matches!(event, Event::Empty(_));
+    let head = match event {
+        Event::Start(ref element) | Event::Empty(ref element) => {
+            rewrite(element, &[("state", state)], empty)?
+        }
+        _ => unreachable!(),
+    };
+    let mut xml = apply(
+        &parts.workbook_xml,
+        vec![Splice {
+            start: entry.start,
+            end: entry.start + reader.buffer_position() as usize,
+            text: head,
+        }],
+    );
+    if visibility != SheetVisibility::Visible {
+        let next = (index + 1..parts.sheets.len())
+            .chain(0..index)
+            .find(|i| parts.sheets[*i].visible)
+            .unwrap();
+        let mut views = Reader::from_str(&xml);
+        let mut splices = Vec::new();
+        let mut seen = false;
+        let mut buf = Vec::new();
+        loop {
+            let start = views.buffer_position() as usize;
+            let event = views.read_event_into(&mut buf)?;
+            match event {
+                Event::Start(ref e) | Event::Empty(ref e)
+                    if local(e.name().as_ref()) == b"workbookView" =>
+                {
+                    seen = true;
+                    let mut updates = Vec::new();
+                    for key in ["activeTab", "firstSheet"] {
+                        let current = attribute(e, key.as_bytes())?
+                            .and_then(|s| s.parse::<usize>().ok())
+                            .unwrap_or(0);
+                        if current == index {
+                            updates.push((key, Some(next.to_string())));
+                        }
+                    }
+                    if !updates.is_empty() {
+                        splices.push(Splice {
+                            start,
+                            end: views.buffer_position() as usize,
+                            text: rewrite(e, &updates, matches!(event, Event::Empty(_)))?,
+                        });
+                    }
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+            buf.clear();
+        }
+        xml = apply(&xml, splices);
+        if !seen && index == 0 {
+            xml = crate::header_footer::set_child(
+                &xml,
+                b"bookViews",
+                |p| {
+                    format!("<{p}bookViews><{p}workbookView activeTab=\"{next}\" firstSheet=\"{next}\"/></{p}bookViews>")
+                },
+                &[
+                    b"sheets",
+                    b"functionGroups",
+                    b"externalReferences",
+                    b"definedNames",
+                    b"calcPr",
+                    b"extLst",
+                ],
+            )?;
+        }
+        if let Some(part) = parts.sheet_parts()?.get(index).and_then(Clone::clone) {
+            if let Some(sheet_xml) = parts.package.part_str(&part)? {
+                let sheet_xml = rewrite_selected_tabs(&sheet_xml)?;
+                parts.package.replace(&part, sheet_xml.into_bytes());
+            }
+        }
+    }
+    parts.finish(xml)
+}
+
+fn rewrite_selected_tabs(xml: &str) -> Result<String> {
+    let mut reader = Reader::from_str(xml);
+    let mut splices = Vec::new();
+    let mut buf = Vec::new();
+    loop {
+        let start = reader.buffer_position() as usize;
+        let event = reader.read_event_into(&mut buf)?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e)
+                if local(e.name().as_ref()) == b"sheetView" =>
+            {
+                splices.push(Splice {
+                    start,
+                    end: reader.buffer_position() as usize,
+                    text: rewrite(
+                        e,
+                        &[("tabSelected", Some("0".into()))],
+                        matches!(event, Event::Empty(_)),
+                    )?,
+                });
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    Ok(apply(xml, splices))
+}
+
+/// Sets or clears a sheet tab's sRGB colour without replacing sheetPr.
+pub fn set_tab_color(original: &[u8], name: &str, color: Option<&str>) -> Result<Vec<u8>> {
+    if color.is_some_and(|color| color.len() != 6 || !color.bytes().all(|c| c.is_ascii_hexdigit()))
+    {
+        return Err(WriteError::BadColor {
+            value: color.unwrap().into(),
+        });
+    }
+    let mut parts = WorkbookParts::open(original)?;
+    let index = parts.position(name)?;
+    let part = parts
+        .sheet_parts()?
+        .get(index)
+        .and_then(Clone::clone)
+        .ok_or_else(|| WriteError::NoSuchSheet(name.to_string()))?;
+    let xml = parts.package.required_part_str(&part)?;
+    if color.is_none() && crate::xml_edit::child_xml(&xml, b"sheetPr")?.is_none() {
+        return Ok(original.to_vec());
+    }
+    let patched = crate::xml_edit::edit_child(
+        &xml,
+        b"sheetPr",
+        &[
+            b"dimension",
+            b"sheetViews",
+            b"sheetFormatPr",
+            b"cols",
+            b"sheetData",
+            b"extLst",
+        ],
+        |property| {
+            crate::header_footer::set_child(
+                property,
+                b"tabColor",
+                |p| {
+                    color
+                        .map(|color| {
+                            format!("<{p}tabColor rgb=\"FF{}\"/>", color.to_ascii_uppercase())
+                        })
+                        .unwrap_or_default()
+                },
+                &[b"outlinePr", b"pageSetUpPr"],
+            )
+        },
+    )?;
+    parts.package.replace(&part, patched.into_bytes());
+    parts.package.write().map_err(Into::into)
+}
 
 const WORKSHEET_CONTENT_TYPE: &str =
     "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml";
@@ -119,6 +312,14 @@ struct WorkbookParts {
 }
 
 impl WorkbookParts {
+    fn ensure_structure_unlocked(&self) -> Result<()> {
+        if jade_xlsx_reader::workbook_part::parse_workbook(&self.workbook_xml)?.structure_protected
+        {
+            return Err(WriteError::WorkbookStructureProtected);
+        }
+        Ok(())
+    }
+
     fn open(original: &[u8]) -> Result<Self> {
         let package = OpcPackage::open(original)?;
         let workbook_part = crate::workbook_part_name(&package)?;
@@ -168,7 +369,7 @@ impl WorkbookParts {
                         let key = attribute.key.as_ref();
                         let value = attribute.unescape_value()?.into_owned();
                         match local(key) {
-                            b"name" => name = value,
+                            b"name" => name = decode_xstring(&value),
                             b"sheetId" => sheet_id = value.parse().ok(),
                             b"state" => visible = value == "visible",
                             b"id" if key.contains(&b':') => {
@@ -447,7 +648,10 @@ fn escape_text(text: &str) -> String {
 /// conditional format's `<formula>`, a validation's `<formula1>` and
 /// `<formula2>`, an extension's `<xm:f>`, a chart series' `<c:f>`, a table
 /// column's calculated and totals formulas — passed through `formula`.
-fn rewrite_formula_elements(xml: &str, formula: &dyn Fn(&str) -> String) -> Result<String> {
+pub(crate) fn rewrite_formula_elements(
+    xml: &str,
+    formula: &dyn Fn(&str) -> String,
+) -> Result<String> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -494,10 +698,33 @@ fn is_formula_element(name: &[u8]) -> bool {
 
 /// Every part a formula can name a sheet in: the worksheets, the tables
 /// hung off them, and every chart.
-fn formula_parts(package: &OpcPackage) -> Result<BTreeSet<String>> {
+pub(crate) fn formula_parts(package: &OpcPackage) -> Result<BTreeSet<String>> {
     let mut parts = BTreeSet::new();
+    let mut active_tables = std::collections::BTreeMap::<String, BTreeSet<String>>::new();
     for (source, relationship) in all_relationships(package)? {
         let kind = &relationship.relationship_type;
+        if kind.ends_with("/table") {
+            if !active_tables.contains_key(&source) {
+                let active = match package.part_str(&source)? {
+                    Some(sheet_xml) => {
+                        let rels = package
+                            .part_str(&jade_opc::rels_part_name(&source))?
+                            .map(|x| jade_opc::parse_relationships(&x))
+                            .transpose()?
+                            .unwrap_or_default();
+                        jade_xlsx_reader::table::referenced_table_parts(&sheet_xml, &rels, &source)?
+                            .into_iter()
+                            .collect()
+                    }
+                    None => BTreeSet::new(),
+                };
+                active_tables.insert(source.clone(), active);
+            }
+            let target = jade_opc::resolve_target(&source, &relationship.target);
+            if !active_tables[&source].contains(&target) {
+                continue;
+            }
+        }
         if ["/worksheet", "/table", "/chart", "/chartEx"]
             .iter()
             .any(|suffix| kind.ends_with(suffix))
@@ -533,7 +760,7 @@ fn all_relationships(package: &OpcPackage) -> Result<Vec<(String, jade_opc::Rela
 
 /// The part a `.rels` part describes: `xl/_rels/workbook.xml.rels` →
 /// `xl/workbook.xml`, `_rels/.rels` → the package (`""`).
-fn source_of_rels(rels: &str) -> Option<String> {
+pub(crate) fn source_of_rels(rels: &str) -> Option<String> {
     let file = rels.strip_suffix(".rels")?;
     let (directory, name) = match file.rsplit_once('/') {
         Some((directory, name)) => (directory, name),
@@ -552,7 +779,7 @@ fn source_of_rels(rels: &str) -> Option<String> {
 }
 
 /// Passes every formula in the package through `formula`.
-fn rewrite_package_formulas(
+pub(crate) fn rewrite_package_formulas(
     package: &mut OpcPackage,
     formula: &dyn Fn(&str) -> String,
 ) -> Result<()> {
@@ -913,6 +1140,7 @@ impl AppTitles {
 /// pointing at the same sheets.
 pub fn add_sheet(original: &[u8], name: &str, after: Option<&str>) -> Result<(Vec<u8>, usize)> {
     let mut parts = WorkbookParts::open(original)?;
+    parts.ensure_structure_unlocked()?;
     let names = parts.names();
     validate_sheet_name(name, &names.iter().map(String::as_str).collect::<Vec<_>>())?;
     let at = match after {
@@ -1019,7 +1247,7 @@ pub fn add_sheet(original: &[u8], name: &str, after: Option<&str>) -> Result<(Ve
     };
     let element = format!(
         "<{prefix}sheet name=\"{}\" sheetId=\"{sheet_id}\" {id_attribute}/>",
-        escape(name)
+        escape(&encode_xstring(name))
     );
     let insert_at = parts
         .sheets
@@ -1090,6 +1318,7 @@ pub fn rename_sheet(original: &[u8], old: &str, new: &str) -> Result<Vec<u8>> {
     if current == new {
         return Ok(original.to_vec());
     }
+    parts.ensure_structure_unlocked()?;
     let others: Vec<&str> = parts
         .sheets
         .iter()
@@ -1102,7 +1331,9 @@ pub fn rename_sheet(original: &[u8], old: &str, new: &str) -> Result<Vec<u8>> {
 
     let transform = |formula: &str| rename_sheet_in_formula(formula, &current, new);
     rewrite_package_formulas(&mut parts.package, &transform)?;
-    rename_pivot_sources(&mut parts.package, &current, new)?;
+    let before = jade_xlsx_reader::read_xlsx(original)?;
+    crate::pivots::rename_sources(&mut parts.package, &before, &current, new)?;
+    crate::pivot_chart::rename_sheet_sources(&mut parts.package, &before, &current, new)?;
 
     let entry = &parts.sheets[at];
     let element = renamed_sheet_element(&parts.workbook_xml[entry.start..entry.end], new)?;
@@ -1152,7 +1383,7 @@ fn renamed_sheet_element(element_xml: &str, name: &str) -> Result<String> {
             Event::Start(ref element) | Event::Empty(ref element) => {
                 let empty = matches!(event, Event::Empty(_));
                 let head_end = reader.buffer_position() as usize;
-                let head = rewrite(element, &[("name", Some(name.to_string()))], empty)?;
+                let head = rewrite(element, &[("name", Some(encode_xstring(name)))], empty)?;
                 return Ok(apply(
                     element_xml,
                     vec![Splice {
@@ -1169,62 +1400,13 @@ fn renamed_sheet_element(element_xml: &str, name: &str) -> Result<String> {
     }
 }
 
-/// Every pivot cache whose source is a range on `old` now reads it from
-/// `new`.
-fn rename_pivot_sources(package: &mut OpcPackage, old: &str, new: &str) -> Result<()> {
-    let mut caches = BTreeSet::new();
-    for (source, relationship) in all_relationships(package)? {
-        if relationship
-            .relationship_type
-            .ends_with("/pivotCacheDefinition")
-        {
-            caches.insert(jade_opc::resolve_target(&source, &relationship.target));
-        }
-    }
-    for part in caches {
-        let Some(xml) = package.part_str(&part)? else {
-            continue;
-        };
-        let mut reader = Reader::from_str(&xml);
-        reader.config_mut().trim_text(false);
-        let mut buf = Vec::new();
-        let mut splices = Vec::new();
-        loop {
-            let start = reader.buffer_position() as usize;
-            let event = reader.read_event_into(&mut buf)?;
-            match event {
-                Event::Start(ref element) | Event::Empty(ref element)
-                    if local(element.name().as_ref()) == b"worksheetSource" =>
-                {
-                    let empty = matches!(event, Event::Empty(_));
-                    if attribute(element, b"sheet")?
-                        .is_some_and(|sheet| same_sheet_name(&sheet, old))
-                    {
-                        splices.push(Splice {
-                            start,
-                            end: reader.buffer_position() as usize,
-                            text: rewrite(element, &[("sheet", Some(new.to_string()))], empty)?,
-                        });
-                    }
-                }
-                Event::Eof => break,
-                _ => {}
-            }
-            buf.clear();
-        }
-        if !splices.is_empty() {
-            package.replace(&part, apply(&xml, splices).into_bytes());
-        }
-    }
-    Ok(())
-}
-
 /// Deletes the sheet `name` with every part only it reached, turning
 /// references into it into `#REF!` and removing the names scoped to it.
 /// The last visible sheet cannot be deleted.
 pub fn delete_sheet(original: &[u8], name: &str) -> Result<Vec<u8>> {
     let mut parts = WorkbookParts::open(original)?;
     let at = parts.position(name)?;
+    parts.ensure_structure_unlocked()?;
     let deleted = parts.sheets[at].clone();
     if !parts
         .sheets
@@ -1350,6 +1532,7 @@ pub fn move_sheet(original: &[u8], name: &str, to_index: usize) -> Result<Vec<u8
     if from == to_index {
         return Ok(original.to_vec());
     }
+    parts.ensure_structure_unlocked()?;
     let before_worksheets = parts.worksheet_names()?;
     let mut order: Vec<usize> = (0..count).collect();
     let moved = order.remove(from);

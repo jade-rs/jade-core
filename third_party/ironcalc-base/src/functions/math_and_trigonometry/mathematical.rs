@@ -787,29 +787,82 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
+        let value = match self.get_number_or_array(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let significance = match self.get_number(&args[1], cell) {
+        let significance = match self.get_number_or_array(&args[1], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if significance == 0.0 {
-            // This behaviour is different from FLOOR where division by zero returns an error
-            return CalcResult::Number(0.0);
-        }
-        if significance < 0.0 && value > 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Significance must be positive when value is positive".to_string(),
+        let ceiling = |value: f64, significance: f64| -> Result<f64, Error> {
+            if !value.is_finite()
+                || !significance.is_finite()
+                || (significance < 0.0 && value > 0.0)
+            {
+                return Err(Error::NUM);
+            }
+            if significance == 0.0 {
+                return Ok(0.0);
+            }
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let result = ratio.ceil() * significance;
+            if result.is_finite() {
+                Ok(result)
+            } else {
+                Err(Error::NUM)
+            }
+        };
+        if let (NumberOrArray::Number(a), NumberOrArray::Number(b)) = (&value, &significance) {
+            return match ceiling(*a, *b) {
+                Ok(n) => CalcResult::Number(n),
+                Err(e) => CalcResult::new_error(e, cell, "Invalid ceiling operands".into()),
             };
         }
-        // Apply Excel precision fix
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::ceil(ratio) * significance;
-        CalcResult::Number(result)
+        let shape = |value: &NumberOrArray| match value {
+            NumberOrArray::Number(_) => (1, 1),
+            NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, |r| r.len())),
+        };
+        let (a, b) = (shape(&value), shape(&significance));
+        let (rows, columns) = (a.0.max(b.0), a.1.max(b.1));
+        if let Some((error, message)) = super::array_size::check_array_size(rows, columns) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let number = |value: &NumberOrArray, row: usize, column: usize| -> Result<f64, Error> {
+            let array = match value {
+                NumberOrArray::Number(n) => return Ok(*n),
+                NumberOrArray::Array(a) => a,
+            };
+            let r = array
+                .get(if array.len() == 1 { 0 } else { row })
+                .ok_or(Error::NA)?;
+            match r
+                .get(if r.len() == 1 { 0 } else { column })
+                .ok_or(Error::NA)?
+            {
+                ArrayNode::Number(n) => Ok(*n),
+                ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
+                ArrayNode::Empty => Ok(0.0),
+                ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
+                ArrayNode::Error(e) => Err(e.clone()),
+            }
+        };
+        CalcResult::Array(
+            (0..rows)
+                .map(|r| {
+                    (0..columns)
+                        .map(|c| {
+                            match number(&value, r, c).and_then(|a| {
+                                number(&significance, r, c).and_then(|b| ceiling(a, b))
+                            }) {
+                                Ok(n) => ArrayNode::Number(n),
+                                Err(e) => ArrayNode::Error(e),
+                            }
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     pub(crate) fn fn_ceiling_math(

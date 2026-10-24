@@ -19,6 +19,8 @@ pub mod filter_button;
 pub mod measure;
 pub mod navigation;
 pub mod number_format;
+pub mod pivot_fit;
+pub mod pivot_style;
 pub mod resize;
 pub mod selection;
 pub mod shape_style;
@@ -344,6 +346,9 @@ pub struct SheetLayout {
     /// Tables with a table style, which paints their unstored cells too.
     #[serde(default)]
     pub tables: Vec<table_style::StyledTable>,
+    /// Pivot style geometry, including unstored cells inside saved reports.
+    #[serde(default)]
+    pub pivots: Vec<pivot_style::StyledPivot>,
     /// Sparklines, each in its cell.
     #[serde(default)]
     pub sparklines: Vec<sparkline::PlacedSparkline>,
@@ -398,6 +403,7 @@ impl SheetLayout {
             && self.blank_row_styles.is_empty()
             && self.blank_column_styles.is_empty()
             && self.tables.is_empty()
+            && self.pivots.is_empty()
         {
             return Vec::new();
         }
@@ -428,7 +434,8 @@ impl SheetLayout {
                 let table = self
                     .tables
                     .iter()
-                    .find_map(|table| table.style_at(reference));
+                    .find_map(|table| table.style_at(reference))
+                    .or_else(|| self.pivots.iter().find_map(|p| p.style_at(reference)));
                 let fill = conditional_format::conditional_fill(&style).unwrap_or_else(|| {
                     axis_style
                         .and_then(|style| style.fill.clone())
@@ -461,6 +468,12 @@ impl SheetLayout {
                 let mut font = axis_style
                     .map(|style| style.font.clone())
                     .unwrap_or_default();
+                if let Some(table) = &table {
+                    font.bold |= table.bold;
+                    font.italic |= table.italic;
+                    font.underline |= table.underline;
+                    font.strike |= table.strike;
+                }
                 conditional_format::apply_font(&style, &mut font);
                 cells.push(PlacedCell {
                     reference,
@@ -472,7 +485,8 @@ impl SheetLayout {
                     font,
                     text_color: style
                         .text_color
-                        .or_else(|| axis_style.and_then(|style| style.text_color)),
+                        .or_else(|| axis_style.and_then(|style| style.text_color))
+                        .or_else(|| table.as_ref().and_then(|t| t.text_color)),
                     fill,
                     border,
                     alignment: axis_style.map(|style| style.alignment).unwrap_or_default(),
@@ -998,6 +1012,23 @@ fn layout_sheet_with_workbook(
         );
 
     let styled_tables = table_style::styled_tables(sheet, styles);
+    let styled_pivots = workbook
+        .map(|b| pivot_style::styled_pivots(b, &sheet.part_name))
+        .unwrap_or_default();
+    let column_count = column_count.max(
+        styled_pivots
+            .iter()
+            .map(|p| p.range.end.column + 1)
+            .max()
+            .unwrap_or(0),
+    );
+    let row_count = row_count.max(
+        styled_pivots
+            .iter()
+            .map(|p| p.range.end.row + 1)
+            .max()
+            .unwrap_or(0),
+    );
     let formula_matches =
         formula_rule_matches(sheet, styles, workbook, column_count, row_count, options);
     let conditional =
@@ -1063,10 +1094,19 @@ fn layout_sheet_with_workbook(
             );
             let table_style = styled_tables
                 .iter()
-                .find_map(|table| table.style_at(cell.reference));
-            if let Some(table) = &table_style {
-                font.bold |= table.bold;
-                font.italic |= table.italic;
+                .find_map(|table| table.style_at(cell.reference))
+                .or_else(|| {
+                    styled_pivots
+                        .iter()
+                        .find_map(|p| p.style_at(cell.reference))
+                });
+            if format.is_none_or(|f| f.apply_font != Some(true)) {
+                if let Some(table) = &table_style {
+                    font.bold |= table.bold;
+                    font.italic |= table.italic;
+                    font.underline |= table.underline;
+                    font.strike |= table.strike;
+                }
             }
             let (conditional_style, visuals) =
                 conditional.for_cell_with_visual(cell.reference, &cell.value);
@@ -1257,7 +1297,8 @@ fn layout_sheet_with_workbook(
         let conditional_style = conditional.for_cell(merge.start, &CellValue::Empty);
         let table_style = styled_tables
             .iter()
-            .find_map(|table| table.style_at(merge.start));
+            .find_map(|table| table.style_at(merge.start))
+            .or_else(|| styled_pivots.iter().find_map(|p| p.style_at(merge.start)));
         let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
         alignment.horizontal = resolve_horizontal(alignment.horizontal, &CellValue::Empty);
         prepared.push(PreparedCell {
@@ -1271,9 +1312,13 @@ fn layout_sheet_with_workbook(
                     format.and_then(|format| styles.font(format)),
                     &options.default_font,
                 );
-                if let Some(table) = &table_style {
-                    font.bold |= table.bold;
-                    font.italic |= table.italic;
+                if format.is_none_or(|f| f.apply_font != Some(true)) {
+                    if let Some(table) = &table_style {
+                        font.bold |= table.bold;
+                        font.italic |= table.italic;
+                        font.underline |= table.underline;
+                        font.strike |= table.strike;
+                    }
                 }
                 conditional_format::apply_font(&conditional_style, &mut font);
                 font
@@ -1500,6 +1545,7 @@ fn layout_sheet_with_workbook(
         shapes,
         notes,
         tables: styled_tables,
+        pivots: styled_pivots,
         sparklines,
         show_grid_lines: sheet.show_grid_lines,
         content_width,
@@ -1604,6 +1650,9 @@ fn cell_text_color(
     let own = format
         .and_then(|format| styles.font(format))
         .and_then(|font| font.color);
+    if format.is_some_and(|f| f.apply_font == Some(true)) {
+        return own;
+    }
     match table.and_then(|table| table.text_color) {
         Some(table_color) => {
             let normal = styles.normal_font().and_then(|font| font.color);

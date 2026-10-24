@@ -70,3 +70,34 @@ fn structural_edits_keep_standard_and_xm_ranges_linked_and_restore_on_undo() {
     book.undo().unwrap();
     assert_eq!(book.bytes(), before);
 }
+
+#[test]
+fn partial_cell_shift_keeps_one_data_set_and_the_extended_bar_properties() {
+    use jade_opc::OpcPackage;
+    use jade_xlsx_reader::{Axis, CellRange};
+    let mut book = HeadlessWorkbook::open_for_editing(fixture()).unwrap();
+    let old = bar(&book, "A2");
+    let before = book.bytes().to_vec();
+    book.shift_cells("Modern", CellRange::parse("A3").unwrap(), Axis::Rows, true)
+        .unwrap();
+    assert_eq!(
+        bar(&book, "A2"),
+        old,
+        "insertion must not split the min/max population"
+    );
+    let xml = OpcPackage::open(book.bytes())
+        .unwrap()
+        .required_part_str("xl/worksheets/sheet1.xml")
+        .unwrap();
+    assert_eq!(xml.matches("<conditionalFormatting ").count(), 7);
+    assert!(xml.contains("<xm:sqref>A1:A6</xm:sqref>"));
+    assert!(book.conditional_formatting_status().unsupported.is_empty());
+    let saved = book.export_bytes().unwrap();
+    let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    assert_eq!(bar(&reopened, "A2"), old);
+    assert_eq!(reopened.conditional_formatting_status().supported_rules, 16);
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    assert_eq!(bar(&book, "A2"), old);
+}

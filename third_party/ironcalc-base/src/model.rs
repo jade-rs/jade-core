@@ -117,6 +117,8 @@ pub(crate) enum ParsedDefinedName {
     RangeReference(Range),
     /// `=LAMBDA(params..., body)`
     LambdaDefinition(Vec<NamedVariable>, Node),
+    /// A constant, expression or range-producing formula.
+    FormulaDefinition(Node),
     /// `=SomethingElse`
     InvalidDefinedNameFormula,
 }
@@ -195,12 +197,16 @@ pub(crate) enum CellOrRange {
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
 pub struct Model<'a> {
+    pub(crate) read_trace: Option<crate::dependencies::ReadTrace>,
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
+    /// Host pivot descriptors, independent of stored cells and other models.
+    pub(crate) pivot_regions: Vec<std::sync::Arc<crate::pivot::Region>>,
     /// A list of parsed formulas
     pub parsed_formulas: Vec<Vec<(Node, StaticResult)>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
+    pub(crate) evaluating_names: std::collections::HashSet<(Option<u32>, String)>,
     /// An optimization to lookup strings faster
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
@@ -263,6 +269,15 @@ impl<'a> Model<'a> {
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let result = self.evaluate_node_with_reference_inner(node, cell);
+        self.trace_range_result(cell, &result);
+        result
+    }
+    fn evaluate_node_with_reference_inner(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
@@ -339,17 +354,38 @@ impl<'a> Model<'a> {
                     },
                 }
             }
+            Node::DefinedNameKind((name, scope, _)) => {
+                match self.get_parsed_defined_name(name, *scope) {
+                    Ok(Some(ParsedDefinedName::CellReference(reference))) => CalcResult::Range {
+                        left: reference,
+                        right: reference,
+                    },
+                    Ok(Some(ParsedDefinedName::RangeReference(range))) => CalcResult::Range {
+                        left: range.left,
+                        right: range.right,
+                    },
+                    Ok(Some(ParsedDefinedName::FormulaDefinition(child))) => {
+                        let key = (*scope, name.to_lowercase());
+                        if self.evaluating_names.len() >= 128
+                            || !self.evaluating_names.insert(key.clone())
+                        {
+                            return CalcResult::new_error(
+                                Error::CIRC,
+                                cell,
+                                "Circular defined name".into(),
+                            );
+                        }
+                        let result = self.evaluate_node_with_reference(&child, cell);
+                        self.evaluating_names.remove(&key);
+                        result
+                    }
+                    _ => self.evaluate_node_in_context(node, cell),
+                }
+            }
             Node::ImplicitIntersection {
                 automatic: _,
                 child,
-            } => match self.evaluate_node_with_reference(child, cell) {
-                CalcResult::Range { left, right } => CalcResult::Range { left, right },
-                _ => CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("Error with Implicit Intersection in cell {cell:?}"),
-                ),
-            },
+            } => self.evaluate_intersection(child, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -558,6 +594,15 @@ impl<'a> Model<'a> {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let result = self.evaluate_node_in_context_inner(node, cell);
+        self.trace_range_result(cell, &result);
+        result
+    }
+    fn evaluate_node_in_context_inner(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         use Node::*;
         match node {
             OpSumKind { kind, left, right } => match kind {
@@ -728,6 +773,21 @@ impl<'a> Model<'a> {
                             self.lambdas.insert(lambda_id, (param_names, body));
                             CalcResult::Lambda(lambda_id)
                         }
+                        ParsedDefinedName::FormulaDefinition(node) => {
+                            let key = (*scope, name.to_lowercase());
+                            if self.evaluating_names.len() >= 128
+                                || !self.evaluating_names.insert(key.clone())
+                            {
+                                return CalcResult::new_error(
+                                    Error::CIRC,
+                                    cell,
+                                    "Circular defined name".to_string(),
+                                );
+                            }
+                            let result = self.evaluate_node_in_context(&node, cell);
+                            self.evaluating_names.remove(&key);
+                            result
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
@@ -788,12 +848,17 @@ impl<'a> Model<'a> {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(
-                            Error::ERROR,
+                            Error::REF,
                             cell,
                             format!("Error with Spill Range Operator in cell {cell:?}"),
                         );
                     }
-                    //
+                    // The anchor may occur later in evaluation order or have
+                    // changed its spill shape. Evaluate it before querying
+                    // the range, propagating errors (including cycle guards).
+                    if let error @ CalcResult::Error { .. } = self.evaluate_cell(left) {
+                        return error;
+                    }
                     let sheet = left.sheet;
                     let row = left.row;
                     let column = left.column;
@@ -823,8 +888,9 @@ impl<'a> Model<'a> {
                         ),
                     }
                 }
+                error @ CalcResult::Error { .. } => error,
                 _ => CalcResult::new_error(
-                    Error::ERROR,
+                    Error::REF,
                     cell,
                     format!("Error with Spill Range Operator in cell {cell:?}"),
                 ),
@@ -832,19 +898,7 @@ impl<'a> Model<'a> {
             ImplicitIntersection {
                 automatic: _,
                 child,
-            } => match self.evaluate_node_with_reference(child, cell) {
-                CalcResult::Range { left, right } => {
-                    match implicit_intersection(&cell, &Range { left, right }) {
-                        Some(cell_reference) => self.evaluate_cell(cell_reference),
-                        None => CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error with Implicit Intersection in cell {cell:?}"),
-                        ),
-                    }
-                }
-                _ => self.evaluate_node_in_context(child, cell),
-            },
+            } => self.evaluate_intersection(child, cell),
             LambdaDefKind { parameters, body } => {
                 let id = self.get_next_lambda_id();
                 self.lambdas.insert(id, (parameters.clone(), *body.clone()));
@@ -854,6 +908,36 @@ impl<'a> Model<'a> {
                 let lambda_result = self.evaluate_node_in_context(lambda, cell);
                 self.call_lambda(lambda_result, args, cell)
             }
+        }
+    }
+
+    // Implicit intersection returns one value, including when its operand
+    // is a reference. Arrays use their top-left element.
+    fn evaluate_intersection(&mut self, child: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match self.evaluate_node_with_reference(child, cell) {
+            CalcResult::Range { left, right } => {
+                match implicit_intersection(&cell, &Range { left, right }) {
+                    Some(at) => self.evaluate_cell(at),
+                    None => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "No single-cell intersection".into(),
+                    ),
+                }
+            }
+            CalcResult::Array(values) => match values.first().and_then(|r| r.first()) {
+                Some(ArrayNode::Number(n)) => CalcResult::Number(*n),
+                Some(ArrayNode::String(s)) => CalcResult::String(s.clone()),
+                Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(*b),
+                Some(ArrayNode::Error(e)) => {
+                    CalcResult::new_error(e.clone(), cell, "Array intersection error".into())
+                }
+                Some(ArrayNode::Empty) => CalcResult::EmptyCell,
+                None => {
+                    CalcResult::new_error(Error::VALUE, cell, "Empty array intersection".into())
+                }
+            },
+            value => value,
         }
     }
 
@@ -1241,7 +1325,10 @@ impl<'a> Model<'a> {
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: crate::types::Theme) {
         self.workbook.theme = theme;
+        // Formatting formulas do not contribute value dependencies.
+        let trace = self.read_trace.take();
         self.evaluate_conditional_formatting();
+        self.read_trace = trace;
     }
 
     /// Returns the Theme
@@ -1414,6 +1501,20 @@ impl<'a> Model<'a> {
     // Evaluates a cell and returns the value in the cell
     // FIXME: CalcResult cannot be Array or Range, should we have a different type?
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
+        let Some(trace) = self.read_trace.as_mut() else {
+            return self.evaluate_cell_inner(cell_reference);
+        };
+        if let Some(caller) = trace.stack.last().copied() {
+            trace.record(caller, cell_reference, cell_reference);
+        }
+        trace.stack.push(cell_reference);
+        let result = self.evaluate_cell_inner(cell_reference);
+        if let Some(trace) = self.read_trace.as_mut() {
+            trace.stack.pop();
+        }
+        result
+    }
+    fn evaluate_cell_inner(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
         let original_cell = match self.fetch_cell(cell_reference) {
             Some(c) => c.clone(),
             None => return CalcResult::EmptyCell,
@@ -1709,10 +1810,13 @@ impl<'a> Model<'a> {
         }
 
         let mut model = Model {
+            read_trace: None,
+            pivot_regions: Vec::new(),
             workbook,
             parsed_formulas,
             shared_strings,
             parsed_defined_names: HashMap::new(),
+            evaluating_names: std::collections::HashSet::new(),
             parser,
             cells,
             language,
@@ -3044,6 +3148,9 @@ impl<'a> Model<'a> {
             retry = false;
             self.cells.clear();
             self.support.clear();
+            if let Some(trace) = self.read_trace.as_mut() {
+                trace.reset();
+            }
             self.clear_variable_stack();
             self.clear_lambdas();
 
@@ -3546,7 +3653,10 @@ impl<'a> Model<'a> {
         let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
         // Defined-name formulas are stored internally in English so they keep
         // working when the user switches language/locale.
-        let context = self.defined_name_context();
+        let mut context = self.defined_name_context();
+        if let Some(index) = scope {
+            context.sheet = self.workbook.worksheet(index)?.get_name();
+        }
         let internal_formula = self.user_formula_to_internal(formula, &context)?;
         self.workbook.defined_names.push(DefinedName {
             name: name.to_string(),
@@ -3599,7 +3709,7 @@ impl<'a> Model<'a> {
             }
         }
 
-        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
+        // Names may denote references, constants, expressions or LAMBDAs.
         let is_reference =
             common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                 self.get_sheet_index_by_name(name)
@@ -3607,7 +3717,7 @@ impl<'a> Model<'a> {
             .is_ok();
 
         if !is_reference {
-            // Try the full parser to see if it is a LAMBDA definition.
+            // Parse expressions as well as reference-valued names.
             // Defined-name formulas may carry a leading '='; strip it before parsing.
             use crate::expressions::types::CellReferenceRC;
             let formula_body = formula.strip_prefix('=').unwrap_or(formula);
@@ -3628,7 +3738,7 @@ impl<'a> Model<'a> {
             if let Node::ParseErrorKind { .. } = node {
                 node = self.parse_internal_formula(formula_body, &dummy_ref);
             }
-            if !matches!(node, Node::LambdaDefKind { .. }) {
+            if matches!(node, Node::ParseErrorKind { .. }) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }

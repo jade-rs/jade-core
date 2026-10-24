@@ -751,7 +751,7 @@ impl Worksheet {
     // Returns:
     // - If it is an anchor for a dynamic array => full range
     // - If it is an anchor for an array formula => full range
-    // - If it is a single cell with a formula => SingleCell
+    // - A scalar formula without an array/spill area => Error
     // - If it is a single cell without formula => Error
     // - If it is a spill cell => Error
     // - Any other case => Error
@@ -766,8 +766,7 @@ impl Worksheet {
         };
         match cell {
             Cell::ArrayFormula { r, .. } => Ok((r.0, r.1)),
-            Cell::CellFormula { .. } => Ok((1, 1)),
-            _ => Err("Cell does not contain a formula.".to_string()),
+            _ => Err("Cell is not an array anchor.".to_string()),
         }
     }
 

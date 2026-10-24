@@ -315,3 +315,80 @@ fn saved_table_filter_buttons_reach_native_pixels_with_shared_rectangles() {
     let glyph = at(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
     assert!(glyph[..3].iter().all(|color| *color < 150), "{glyph:?}");
 }
+
+#[test]
+fn owned_pivot_header_manual_fill_and_unstored_cells_reach_native_pixels() {
+    let bytes = include_bytes!("../../../public/fixtures/pivot-style-compat.xlsx");
+    let (regular, bold) = bundled_font_paths(&repository_root());
+    let mut workbook = NativeWorkbook::open(bytes, &aliased_faces(&regular, &bold)).unwrap();
+    workbook.select_sheet(1).unwrap();
+    let metrics = workbook.header_metrics();
+    let positions = ["F3", "F4", "F5", "F6"].map(|s| {
+        let r = workbook
+            .layout()
+            .cell_rect(jade_xlsx_reader::CellRef::parse(s).unwrap())
+            .unwrap();
+        (
+            (metrics.row_width + r.x + 2.).floor() as usize,
+            (metrics.column_height + r.y + 2.).floor() as usize,
+        )
+    });
+    let (pixels, width, _) = workbook.viewport_pixels((0., 0.), (900, 300)).unwrap();
+    for ((x, y), expected) in positions.into_iter().zip([
+        [255, 0, 0, 255],
+        [0, 255, 255, 255],
+        [0, 0, 255, 255],
+        [0, 255, 0, 255],
+    ]) {
+        let i = (y * width as usize + x) * 4;
+        assert_eq!(&pixels[i..i + 4], &expected, "pixel at {x},{y}");
+    }
+}
+
+#[test]
+fn an_owned_pivot_chart_keeps_its_saved_bars_and_point_colors_in_native_pixels() {
+    use jade_xlsx_layout::chart::ChartOp;
+    let mut workbook = open("pivot-chart-compat.xlsx");
+    workbook.select_sheet(1).unwrap();
+    let placed = workbook
+        .layout()
+        .shapes
+        .iter()
+        .find_map(|s| s.chart.as_ref())
+        .unwrap();
+    let bars = placed
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            ChartOp::Rectangle {
+                rect,
+                fill: Some(fill),
+                ..
+            } if ["#336699", "#ff9900"]
+                .iter()
+                .any(|c| fill.eq_ignore_ascii_case(c))
+                && rect.x >= placed.plot.x
+                && rect.right() <= placed.plot.right() + 0.01
+                && rect.y >= placed.plot.y
+                && rect.bottom() <= placed.plot.bottom() + 0.01 =>
+            {
+                Some((*rect, fill.clone()))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(bars.len(), 2);
+    let metrics = workbook.header_metrics();
+    let (pixels, width, _) = workbook.viewport_pixels((0., 0.), (1400, 700)).unwrap();
+    for (rect, color) in bars {
+        let x = (rect.x + rect.width / 2. + metrics.row_width).floor() as usize;
+        let y = (rect.y + rect.height / 2. + metrics.column_height).floor() as usize;
+        let rgb = [
+            u8::from_str_radix(&color[1..3], 16).unwrap(),
+            u8::from_str_radix(&color[3..5], 16).unwrap(),
+            u8::from_str_radix(&color[5..7], 16).unwrap(),
+        ];
+        let i = (y * width as usize + x) * 4;
+        assert_eq!(&pixels[i..i + 4], &[rgb[2], rgb[1], rgb[0], 255]);
+    }
+}

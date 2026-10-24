@@ -1022,6 +1022,10 @@ fn group_thousands(digits: &str) -> String {
 /// outside a literal is a date, which is why `0 "m"` is a number and `0 m` is
 /// not.
 fn is_date_pattern(pattern: &str) -> bool {
+    // General is a complete numeric keyword; its G is not a Japanese era.
+    if pattern.trim().eq_ignore_ascii_case("General") {
+        return false;
+    }
     let mut in_quotes = false;
     let mut escaped = false;
     // A run of three or more `a` is the Japanese weekday.
@@ -1523,6 +1527,26 @@ pub fn is_calendar_date_valid(year: u32, month: u32, day: u32, dates: DateSystem
         return true;
     }
     civil_from_days(days_from_civil(i64::from(year), month, day)) == (i64::from(year), month, day)
+}
+
+/// The serial of a validated calendar date in either workbook epoch. This
+/// complements calendar_fields, including serial zero and Excel's leap day.
+pub fn calendar_serial(year: u32, month: u32, day: u32, dates: DateSystem) -> Option<f64> {
+    if !is_calendar_date_valid(year, month, day, dates) {
+        return None;
+    }
+    if dates == DateSystem::Nineteen00 && (year, month, day) == (1900, 2, 29) {
+        return Some(60.);
+    }
+    let epoch = match dates {
+        DateSystem::Nineteen00 if (year, month, day) < (1900, 3, 1) => {
+            days_from_civil(1899, 12, 31)
+        }
+        DateSystem::Nineteen00 => days_from_civil(1899, 12, 30),
+        DateSystem::Nineteen04 => days_from_civil(1904, 1, 1),
+    };
+    let value = days_from_civil(i64::from(year), month, day) - epoch;
+    (value >= 0).then_some(value as f64)
 }
 
 /// The (year, month, day) a date serial falls on.

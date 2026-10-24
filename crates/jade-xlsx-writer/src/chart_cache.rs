@@ -19,28 +19,28 @@ pub struct ChartCacheRefresh {
     pub unresolved_references: usize,
 }
 #[derive(Default)]
-struct Element {
-    name: String,
-    prefix: String,
-    main: bool,
-    start: usize,
-    head_end: usize,
-    tail_start: usize,
-    end: usize,
-    empty: bool,
-    text: String,
-    attrs: BTreeMap<String, String>,
-    children: Vec<Element>,
+pub(crate) struct Element {
+    pub(crate) name: String,
+    pub(crate) prefix: String,
+    pub(crate) main: bool,
+    pub(crate) start: usize,
+    pub(crate) head_end: usize,
+    pub(crate) tail_start: usize,
+    pub(crate) end: usize,
+    pub(crate) empty: bool,
+    pub(crate) text: String,
+    pub(crate) attrs: BTreeMap<String, String>,
+    pub(crate) children: Vec<Element>,
 }
 impl Element {
-    fn child(&self, name: &str) -> Option<&Self> {
+    pub(crate) fn child(&self, name: &str) -> Option<&Self> {
         self.children.iter().find(|n| n.main && n.name == name)
     }
 }
 fn main_ns(ns: ResolveResult<'_>) -> bool {
     matches!(ns,ResolveResult::Bound(n) if matches!(n.as_ref(),b"http://schemas.openxmlformats.org/drawingml/2006/chart"|b"http://purl.oclc.org/ooxml/drawingml/chart"))
 }
-fn tree(xml: &str) -> Result<Element> {
+pub(crate) fn tree(xml: &str) -> Result<Element> {
     let mut reader = NsReader::from_str(xml);
     let mut stack = vec![Element::default()];
     let mut buf = Vec::new();
@@ -114,7 +114,7 @@ fn point_xml(prefix: &str, index: usize, value: &str) -> String {
         value_xml(prefix, value)
     )
 }
-fn replace_text(xml: &str, node: &Element, value: &str, splices: &mut Vec<Splice>) {
+pub(crate) fn replace_text(xml: &str, node: &Element, value: &str, splices: &mut Vec<Splice>) {
     if jade_xlsx_reader::xstring::decode_xstring(&node.text) == value && !node.empty {
         return;
     }
@@ -180,15 +180,139 @@ fn format_code<'a>(
         .cell_format(sheet.effective_style_index(reference, cell.and_then(|c| c.style_index)))
         .and_then(|f| book.styles.number_format_code(f))
 }
+pub(crate) fn patch_cache_points(
+    xml: &str,
+    cache: &Element,
+    points: &[Option<String>],
+    format: Option<&str>,
+    splices: &mut Vec<Splice>,
+) -> Result<()> {
+    let old_points = cache
+        .children
+        .iter()
+        .filter(|c| c.main && c.name == "pt")
+        .filter_map(|pt| Some((pt.attrs.get("idx")?.parse::<usize>().ok()?, pt)))
+        .collect::<BTreeMap<_, _>>();
+    if cache.empty {
+        let head = xml[cache.start..cache.head_end]
+            .trim_end()
+            .trim_end_matches("/>")
+            .trim_end();
+        splices.push(Splice {
+            start: cache.start,
+            end: cache.end,
+            text: format!(
+                "{head}>{}</{}{}>",
+                cache_inner(&cache.prefix, format, points),
+                cache.prefix,
+                cache.name
+            ),
+        });
+    } else {
+        if let (Some(code), Some(node)) = (format, cache.child("formatCode")) {
+            replace_text(xml, node, code, splices);
+        }
+        if format.is_some() && cache.child("formatCode").is_none() {
+            splices.push(Splice {
+                start: cache.head_end,
+                end: cache.head_end,
+                text: format!(
+                    "<{}formatCode>{}</{}formatCode>",
+                    cache.prefix,
+                    xtext(format.unwrap_or("General")),
+                    cache.prefix
+                ),
+            });
+        }
+        if let Some(count) = cache.child("ptCount") {
+            patch_count(xml, count, points.len(), splices)?;
+        } else {
+            let at = cache
+                .child("formatCode")
+                .map(|n| n.end)
+                .unwrap_or(cache.head_end);
+            splices.push(Splice {
+                start: at,
+                end: at,
+                text: format!("<{}ptCount val=\"{}\"/>", cache.prefix, points.len()),
+            });
+        }
+        for (&i, pt) in &old_points {
+            match points.get(i).and_then(Option::as_deref) {
+                Some(value) => {
+                    if pt.empty {
+                        let head = xml[pt.start..pt.head_end]
+                            .trim_end()
+                            .trim_end_matches("/>")
+                            .trim_end();
+                        splices.push(Splice {
+                            start: pt.start,
+                            end: pt.end,
+                            text: format!(
+                                "{head}>{}</{}pt>",
+                                value_xml(&pt.prefix, value),
+                                pt.prefix
+                            ),
+                        });
+                    } else if let Some(v) = pt.child("v") {
+                        replace_text(xml, v, value, splices)
+                    } else {
+                        splices.push(Splice {
+                            start: pt.head_end,
+                            end: pt.head_end,
+                            text: value_xml(&pt.prefix, value),
+                        });
+                    }
+                }
+                None => splices.push(Splice {
+                    start: pt.start,
+                    end: pt.end,
+                    text: String::new(),
+                }),
+            }
+        }
+        let mut new_points = String::new();
+        for (i, value) in points.iter().enumerate() {
+            if !old_points.contains_key(&i) {
+                if let Some(value) = value {
+                    new_points.push_str(&point_xml(&cache.prefix, i, value));
+                }
+            }
+        }
+        if !new_points.is_empty() {
+            let at = cache
+                .child("extLst")
+                .map(|n| n.start)
+                .unwrap_or(cache.tail_start);
+            splices.push(Splice {
+                start: at,
+                end: at,
+                text: new_points,
+            });
+        }
+    }
+    Ok(())
+}
+struct ChartContext<'a> {
+    sheet: &'a Sheet,
+    book: &'a Workbook,
+    verified: &'a VerifiedChartCells,
+    snapshot: Option<bool>,
+}
 fn patch_reference(
     xml: &str,
     node: &Element,
-    sheet: &Sheet,
-    book: &Workbook,
-    verified: &VerifiedChartCells,
+    context: &ChartContext<'_>,
     splices: &mut Vec<Splice>,
     report: &mut ChartCacheRefresh,
+    category: bool,
 ) -> Result<()> {
+    let (sheet, book, verified, snapshot) = (
+        context.sheet,
+        context.book,
+        context.verified,
+        context.snapshot,
+    );
     let Some(formula) = node.child("f") else {
         return Ok(());
     };
@@ -196,6 +320,11 @@ fn patch_reference(
         report.unresolved_references += 1;
         return Ok(());
     };
+    if snapshot == Some(true) && reference.points.iter().any(|p| p.hidden) {
+        return Err(WriteError::Pivot(
+            "detaching visible-only hidden chart points needs index reconciliation".into(),
+        ));
+    }
     let numeric = node.name == "numRef";
     let cache_name = if numeric { "numCache" } else { "strCache" };
     let cache = node.child(cache_name);
@@ -206,7 +335,8 @@ fn patch_reference(
         .filter_map(|pt| Some((pt.attrs.get("idx")?.parse::<usize>().ok()?, pt)))
         .collect();
     let fresh = |point: &jade_xlsx_reader::chart::ChartReferencePoint<'_>| {
-        point.state == ChartPointState::Live
+        snapshot.is_some()
+            || point.state == ChartPointState::Live
             || verified
                 .get(&reference.sheet.part_name)
                 .is_some_and(|refs| refs.contains(&point.reference))
@@ -255,7 +385,36 @@ fn patch_reference(
         };
         points.push(text);
     }
+    let category_format = if snapshot.is_some() && category && numeric {
+        let mut codes = std::collections::BTreeSet::new();
+        for point in &reference.points {
+            let value = point.cell.map(|c| &c.value).unwrap_or(&CellValue::Empty);
+            if !value.is_empty() {
+                let style = conditional.for_cell(point.reference, value);
+                codes.insert(
+                    style
+                        .number_format_code
+                        .as_deref()
+                        .or_else(|| format_code(reference.sheet, point.reference, point.cell, book))
+                        .unwrap_or("General")
+                        .to_string(),
+                );
+            }
+        }
+        if codes.len() > 1 {
+            return Err(WriteError::Pivot(
+                "detaching mixed numeric category formats needs per-point format support".into(),
+            ));
+        }
+        codes.into_iter().next()
+    } else {
+        None
+    };
     let fmt = numeric.then(|| {
+        if let Some(format) = category_format {
+            return format;
+        }
+
         cache
             .and_then(|c| c.child("formatCode"))
             .map(|n| jade_xlsx_reader::xstring::decode_xstring(&n.text))
@@ -270,101 +429,7 @@ fn patch_reference(
     });
     let before = splices.len();
     if let Some(cache) = cache {
-        if cache.empty {
-            let head = xml[cache.start..cache.head_end]
-                .trim_end()
-                .trim_end_matches("/>")
-                .trim_end();
-            splices.push(Splice {
-                start: cache.start,
-                end: cache.end,
-                text: format!(
-                    "{head}>{}</{}{}>",
-                    cache_inner(&cache.prefix, fmt.as_deref(), &points),
-                    cache.prefix,
-                    cache.name
-                ),
-            });
-        } else {
-            if numeric && cache.child("formatCode").is_none() {
-                splices.push(Splice {
-                    start: cache.head_end,
-                    end: cache.head_end,
-                    text: format!(
-                        "<{}formatCode>{}</{}formatCode>",
-                        cache.prefix,
-                        xtext(fmt.as_deref().unwrap_or("General")),
-                        cache.prefix
-                    ),
-                });
-            }
-            if let Some(count) = cache.child("ptCount") {
-                patch_count(xml, count, points.len(), splices)?;
-            } else {
-                let at = cache
-                    .child("formatCode")
-                    .map(|n| n.end)
-                    .unwrap_or(cache.head_end);
-                splices.push(Splice {
-                    start: at,
-                    end: at,
-                    text: format!("<{}ptCount val=\"{}\"/>", cache.prefix, points.len()),
-                });
-            }
-            for (&i, pt) in &old_points {
-                match points.get(i).and_then(Option::as_deref) {
-                    Some(value) => {
-                        if pt.empty {
-                            let head = xml[pt.start..pt.head_end]
-                                .trim_end()
-                                .trim_end_matches("/>")
-                                .trim_end();
-                            splices.push(Splice {
-                                start: pt.start,
-                                end: pt.end,
-                                text: format!(
-                                    "{head}>{}</{}pt>",
-                                    value_xml(&pt.prefix, value),
-                                    pt.prefix
-                                ),
-                            });
-                        } else if let Some(v) = pt.child("v") {
-                            replace_text(xml, v, value, splices)
-                        } else {
-                            splices.push(Splice {
-                                start: pt.head_end,
-                                end: pt.head_end,
-                                text: value_xml(&pt.prefix, value),
-                            });
-                        }
-                    }
-                    None => splices.push(Splice {
-                        start: pt.start,
-                        end: pt.end,
-                        text: String::new(),
-                    }),
-                }
-            }
-            let mut new_points = String::new();
-            for (i, value) in points.iter().enumerate() {
-                if !old_points.contains_key(&i) {
-                    if let Some(value) = value {
-                        new_points.push_str(&point_xml(&cache.prefix, i, value));
-                    }
-                }
-            }
-            if !new_points.is_empty() {
-                let at = cache
-                    .child("extLst")
-                    .map(|n| n.start)
-                    .unwrap_or(cache.tail_start);
-                splices.push(Splice {
-                    start: at,
-                    end: at,
-                    text: new_points,
-                });
-            }
-        }
+        patch_cache_points(xml, cache, &points, fmt.as_deref(), splices)?;
     } else {
         splices.push(Splice {
             start: formula.end,
@@ -385,21 +450,20 @@ fn patch_reference(
 fn patch_references(
     xml: &str,
     node: &Element,
-    sheet: &Sheet,
-    book: &Workbook,
-    verified: &VerifiedChartCells,
+    context: &ChartContext<'_>,
     splices: &mut Vec<Splice>,
     report: &mut ChartCacheRefresh,
+    parent: Option<&str>,
 ) -> Result<()> {
     if !node.main || matches!(node.name.as_str(), "ext" | "extLst") {
         return Ok(());
     }
     if matches!(node.name.as_str(), "numRef" | "strRef") {
-        patch_reference(xml, node, sheet, book, verified, splices, report)?;
+        patch_reference(xml, node, context, splices, report, parent == Some("cat"))?;
         return Ok(());
     }
     for child in &node.children {
-        patch_references(xml, child, sheet, book, verified, splices, report)?;
+        patch_references(xml, child, context, splices, report, Some(&node.name))?;
     }
     Ok(())
 }
@@ -441,6 +505,14 @@ pub(crate) fn refresh_package(
     let mut seen = HashSet::new();
     for sheet in &book.sheets {
         for chart in sheet.shapes.iter().filter_map(|s| s.chart.as_ref()) {
+            if chart.pivot_source.is_some()
+                && chart
+                    .unsupported_properties
+                    .iter()
+                    .any(|p| p == "external chart data")
+            {
+                continue;
+            }
             let Some(part) = chart.part_name.as_ref() else {
                 continue;
             };
@@ -456,11 +528,15 @@ pub(crate) fn refresh_package(
                 patch_references(
                     &xml,
                     root,
-                    sheet,
-                    &book,
-                    verified,
+                    &ChartContext {
+                        sheet,
+                        book: &book,
+                        verified,
+                        snapshot: None,
+                    },
                     &mut splices,
                     &mut report,
+                    None,
                 )?;
             }
             if !splices.is_empty() {
@@ -469,6 +545,35 @@ pub(crate) fn refresh_package(
         }
     }
     Ok(report)
+}
+/// A static chart snapshot follows the same saved worksheet points displayed
+/// by layout, including a formula's displayed cached value. It performs no
+/// calculation and does not mark those values verified for normal refresh.
+pub(crate) fn snapshot_chart_data(
+    xml: &str,
+    sheet: &Sheet,
+    book: &Workbook,
+    visible_only: bool,
+) -> Result<String> {
+    let root = tree(xml)?;
+    let mut splices = Vec::new();
+    let mut report = ChartCacheRefresh::default();
+    for node in &root.children {
+        patch_references(
+            xml,
+            node,
+            &ChartContext {
+                sheet,
+                book,
+                verified: &VerifiedChartCells::new(),
+                snapshot: Some(visible_only),
+            },
+            &mut splices,
+            &mut report,
+            None,
+        )?;
+    }
+    Ok(apply(xml, splices))
 }
 /// Explicit cache synchronization for an existing workbook. Unresolved and
 /// uncalculated points retain their caches and are counted in the report.

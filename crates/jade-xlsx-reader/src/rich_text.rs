@@ -36,7 +36,8 @@ pub struct TextRun {
 
 /// The runs of each shared string, `None` for a plain one.
 pub fn parse_shared_runs(xml: &str) -> Result<Vec<Option<Vec<TextRun>>>> {
-    let mut reader = Reader::from_str(xml);
+    let content = crate::cell_content::shared_strings(xml)?;
+    let mut reader = Reader::from_str(&content);
     reader.config_mut().trim_text(false);
     let mut pool = Vec::new();
     let mut runs: Option<Vec<TextRun>> = None;
@@ -74,7 +75,8 @@ pub fn sheet_runs(
     if !xml.contains("inlineStr") && shared.iter().all(Option::is_none) {
         return Ok(found);
     }
-    let mut reader = Reader::from_str(xml);
+    let content = crate::cell_content::worksheet(xml)?;
+    let mut reader = Reader::from_str(&content);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
     // The cell being read: where, and how its value is stored.
@@ -107,6 +109,12 @@ pub fn sheet_runs(
                 }
             },
             Event::Text(text) if in_value => value.push_str(&text.decode()?),
+            Event::CData(text) if in_value => value.push_str(&text.decode()?),
+            Event::GeneralRef(reference) if in_value => {
+                if let Some(character) = reference.resolve_char_ref()? {
+                    value.push(character);
+                }
+            }
             Event::End(element) => match local_name(element.name().as_ref()) {
                 b"v" => in_value = false,
                 b"is" => {

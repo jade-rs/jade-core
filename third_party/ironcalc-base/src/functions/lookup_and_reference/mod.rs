@@ -1026,16 +1026,14 @@ impl<'a> Model<'a> {
                     message: "3D ranges not supported".to_string(),
                 };
             }
-            if left.row != right.row || left.column != right.column {
-                // FIXME: Implicit intersection or dynamic arrays
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "argument must be a reference to a single cell".to_string(),
-                };
-            }
+            // A multi-cell reference uses its top-left cell, rather than
+            // implicit intersection with the caller's row or column.
             if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
-                CalcResult::String(f)
+                if f.encode_utf16().count() > 8192 {
+                    CalcResult::new_error(Error::NA, cell, "Formula exceeds 8192 characters".into())
+                } else {
+                    CalcResult::String(f)
+                }
             } else {
                 CalcResult::Error {
                     error: Error::NA,
@@ -1045,7 +1043,7 @@ impl<'a> Model<'a> {
             }
         } else {
             CalcResult::Error {
-                error: Error::ERROR,
+                error: Error::VALUE,
                 origin: cell,
                 message: "Argument must be a reference".to_string(),
             }

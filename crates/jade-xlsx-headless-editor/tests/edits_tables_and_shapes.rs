@@ -251,10 +251,25 @@ fn a_text_box_takes_new_text_and_keeps_its_font() {
     assert_eq!(view.text.as_deref(), Some("Final\n\nv2 & up"));
     assert_eq!(view.anchor, "E2:G4");
     let drawing = part(&workbook, "xl/drawings/drawing1.xml");
+    let owned = jade_xlsx_reader::object_protection::drawing_source(&drawing, 2)
+        .expect("owned drawing")
+        .expect("shape")
+        .text
+        .expect("text body");
+    assert_eq!(owned.paragraphs.len(), 3);
+    for span in &owned.paragraphs {
+        assert!(drawing[span.clone()].contains(r#"<a:pPr algn="ctr"/>"#));
+    }
     assert!(
-        drawing.contains(r#"<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="1400" b="1"/><a:t>Final</a:t></a:r></a:p><a:p><a:pPr algn="ctr"/><a:endParaRPr lang="en-US" sz="1400" b="1"/></a:p><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="1400" b="1"/><a:t>v2 &amp; up</a:t></a:r></a:p>"#),
-        "{drawing}"
+        drawing[owned.paragraphs[0].clone()].contains(r#"<a:rPr lang="en-US" sz="1400" b="1"/>"#)
     );
+    assert!(drawing[owned.paragraphs[1].clone()]
+        .contains(r#"<a:endParaRPr lang="en-US" sz="1400" b="1"/>"#));
+    assert!(
+        drawing[owned.paragraphs[2].clone()].contains(r#"<a:rPr lang="en-US" sz="1400" b="1"/>"#)
+    );
+    assert!(drawing[owned.paragraphs[0].clone()].contains(">Final</"));
+    assert!(drawing[owned.paragraphs[2].clone()].contains(">v2 &amp; up</"));
     // Position, size and the other shapes are untouched.
     assert!(drawing.contains("<xdr:row>3</xdr:row><xdr:rowOff>76200</xdr:rowOff>"));
     assert!(drawing.contains("<a:t>line two</a:t>"));
@@ -315,6 +330,7 @@ fn the_grid_operations_carry_the_table_and_the_shapes_along() {
 #[test]
 fn a_note_can_be_put_on_a_cell_and_taken_off_again() {
     let mut workbook = open();
+    let original_vml = part(&workbook, "xl/drawings/vmlDrawing1.vml");
     // Replacing the note a cell has.
     let view = workbook
         .set_note(SHEET, "B2", "Recount & confirm", "Auditor")
@@ -322,21 +338,23 @@ fn a_note_can_be_put_on_a_cell_and_taken_off_again() {
     assert_eq!(view.text, "Recount & confirm");
     assert_eq!(view.author.as_deref(), Some("Auditor"));
     let comments = part(&workbook, "xl/comments1.xml");
-    assert!(
-        comments.contains("<author>Reviewer</author><author>Auditor</author>"),
-        "{comments}"
+    let owned = jade_xlsx_reader::object_protection::comments_source(&comments).expect("comments");
+    assert_eq!(owned.authors, ["Reviewer", "Auditor"]);
+    assert_eq!(owned.comments.len(), 1);
+    assert_eq!(
+        owned.comments[0].at,
+        Some(jade_xlsx_reader::CellRef::new(1, 1))
     );
-    assert_eq!(comments.matches("<comment ").count(), 1, "{comments}");
-    assert!(
-        comments.contains(r#"<comment ref="B2" authorId="1">"#),
-        "{comments}"
-    );
+    assert_eq!(owned.comments[0].author_id, Some(1));
+    assert_eq!(owned.comments[0].value, "Recount & confirm");
+    // Retain the existing comment identity attribute instead of rebuilding it.
+    assert!(comments.contains(r#"shapeId="0""#));
     let vml = part(&workbook, "xl/drawings/vmlDrawing1.vml");
+    assert_eq!(vml, original_vml);
     assert_eq!(vml.matches("<v:shape ").count(), 1, "{vml}");
-    assert!(
-        vml.contains("<x:Row>1</x:Row><x:Column>1</x:Column>"),
-        "{vml}"
-    );
+    let owned_vml = jade_xlsx_reader::object_protection::vml_sources(&vml).expect("VML");
+    assert_eq!(owned_vml.notes.len(), 1);
+    assert_eq!(owned_vml.notes[0].at, jade_xlsx_reader::CellRef::new(1, 1));
 
     // A second note lands in cell order, before the existing one.
     workbook
@@ -406,7 +424,10 @@ fn the_first_note_on_a_sheet_brings_its_parts_with_it() {
         "{comments}"
     );
     let vml = part(&workbook, "xl/drawings/vmlDrawing1.vml");
-    assert!(vml.contains(r#"<v:shapetype id="_x0000_t202""#), "{vml}");
+    let owned = jade_xlsx_reader::object_protection::vml_sources(&vml).expect("VML");
+    assert!(owned.has_note_type);
+    assert_eq!(owned.notes.len(), 1);
+    assert_eq!(owned.notes[0].at, jade_xlsx_reader::CellRef::new(2, 2));
     assert!(
         vml.contains("<x:Row>2</x:Row><x:Column>2</x:Column>"),
         "{vml}"
@@ -421,7 +442,17 @@ fn the_first_note_on_a_sheet_brings_its_parts_with_it() {
         "{rels}"
     );
     let sheet = part(&workbook, &sheet_part);
-    assert!(sheet.contains("<legacyDrawing r:id=\"rId"), "{sheet}");
+    let id = jade_xlsx_reader::object_protection::worksheet_drawing_relationship(&sheet, true)
+        .expect("owned legacy drawing")
+        .expect("relationship id");
+    let relationships =
+        jade_xlsx_reader::object_protection::owned_relationships(&rels).expect("relationships");
+    let relationship = relationships.relationship(&id).expect("VML binding");
+    assert!(jade_xlsx_reader::object_protection::office_relationship(
+        relationship,
+        "vmlDrawing"
+    ));
+    assert_eq!(relationship.target, "../drawings/vmlDrawing1.vml");
     // Before the end of the sheet, after everything that precedes it.
     let at = sheet.find("<legacyDrawing").expect("legacyDrawing");
     assert!(sheet.rfind("</sheetData>").expect("sheetData") < at);
