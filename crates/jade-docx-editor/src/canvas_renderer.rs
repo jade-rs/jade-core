@@ -48,9 +48,10 @@ use jade_docx_layout::line_wrap::{
     mirror_indent_for_page, prepare_drop_cap_layout, resolve_indent_first_line_pt,
     resolve_indent_left_pt, resolve_physical_paragraph_alignment, resolve_tab_stops,
     walk_text_advance_steps, EastAsianLineBreakingRules, FloatExclusion, FloatPoint,
-    FloatWrapPolygon, InlineClusterKind, InlineObject, LineBreakKind, LineWrapContext,
-    ParagraphStyle, PhysicalParagraphAlignment, RunStyle, ScriptCategory, TabAlignment, TabLeader,
-    TabLeaderSegment, TextAdvanceState, TextSegment, WrappedLine, DEFAULT_INDENT_CHAR_UNIT_PT,
+    FloatWrapPolygon, InlineCluster, InlineClusterKind, InlineObject, LineBreakKind,
+    LineWrapContext, ParagraphStyle, PhysicalParagraphAlignment, RunStyle, ScriptCategory,
+    TabAlignment, TabLeader, TabLeaderSegment, TextAdvanceState, TextSegment, WrappedLine,
+    DEFAULT_INDENT_CHAR_UNIT_PT,
 };
 use jade_docx_layout::note_area::{
     fitting_note_prefix_height, note_area_top, note_line_overflows, reserve_note_area,
@@ -410,6 +411,10 @@ const WRAP_CACHE_FLOOR_CAPACITY: usize = 8192;
 /// cached while scrolling, but capped here to bound memory on pathologically
 /// large documents (entries store only wrapped-line metadata, no bitmaps).
 const WRAP_CACHE_MAX_CAPACITY: usize = 32768;
+/// Bound retained wrap payloads as well as entry count. A paragraph contains
+/// owned cluster buffers, so keeping thousands of edited versions can consume
+/// gigabytes even when the document itself contains only one paragraph.
+const WRAP_CACHE_BYTE_CAPACITY: usize = 64 * 1024 * 1024;
 const HF_EDIT_LINE_HEIGHT: f64 = 20.0;
 const SELECTION_FILL_STYLE: &str = "rgba(88, 79, 232, 0.20)";
 const SELECTION_EDGE_STYLE: &str = "rgba(88, 79, 232, 0.78)";
@@ -1620,6 +1625,75 @@ impl ParagraphWrapCacheKey {
 #[derive(Clone)]
 struct ParagraphWrapCacheEntry {
     lines: Rc<[WrappedLine]>,
+    bytes: usize,
+}
+
+/// Charge owned buffers by allocated capacity, not logical length: width repair
+/// can leave a short physical line backed by a much larger cluster allocation.
+/// Shared document style objects are excluded; this is a payload budget, not an
+/// exact measurement of allocator or document memory.
+fn wrapped_lines_payload_bytes(lines: &[WrappedLine]) -> usize {
+    let mut bytes = std::mem::size_of_val(lines);
+    for line in lines {
+        bytes = bytes.saturating_add(
+            line.segments
+                .capacity()
+                .saturating_mul(std::mem::size_of::<TextSegment>()),
+        );
+        bytes = bytes.saturating_add(
+            line.clusters
+                .capacity()
+                .saturating_mul(std::mem::size_of::<InlineCluster>()),
+        );
+        bytes = bytes.saturating_add(
+            line.leaders
+                .capacity()
+                .saturating_mul(std::mem::size_of::<TabLeaderSegment>()),
+        );
+        bytes = bytes.saturating_add(line.tab_stops.capacity().saturating_mul(
+            std::mem::size_of::<jade_docx_layout::line_wrap::TabStopSegment>(),
+        ));
+        for segment in &line.segments {
+            bytes = bytes.saturating_add(segment.text.capacity());
+            if let Some(link) = &segment.hyperlink {
+                for text in [
+                    &link.relationship_id,
+                    &link.anchor,
+                    &link.target,
+                    &link.target_mode,
+                    &link.tooltip,
+                    &link.target_frame,
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    bytes = bytes.saturating_add(text.capacity());
+                }
+            }
+            let mut revision = segment.revision.as_ref();
+            while let Some(mark) = revision {
+                for text in [&mark.id, &mark.author, &mark.date, &mark.date_utc]
+                    .into_iter()
+                    .flatten()
+                {
+                    bytes = bytes.saturating_add(text.capacity());
+                }
+                revision = mark.insertion.as_deref();
+                if revision.is_some() {
+                    bytes = bytes.saturating_add(std::mem::size_of::<RevisionMark>());
+                }
+            }
+        }
+        for cluster in &line.clusters {
+            if let jade_docx_layout::compact_string::CompactString::Heap(text) = &cluster.text {
+                bytes = bytes.saturating_add(text.capacity());
+            }
+        }
+        for leader in &line.leaders {
+            bytes = bytes.saturating_add(std::mem::size_of_val(leader.glyph_positions.as_ref()));
+        }
+    }
+    bytes
 }
 
 /// LRU cache for paragraph wrap results.
@@ -1632,6 +1706,8 @@ struct ParagraphWrapCache {
     tail: Option<usize>,
     len: usize,
     capacity: usize,
+    byte_capacity: usize,
+    retained_bytes: usize,
     hits: u64,
     misses: u64,
     table_hits: u64,
@@ -1653,9 +1729,9 @@ impl Default for ParagraphWrapCache {
         // re-wrap drives ~hundreds of text-measure-cache lookups + canvas
         // `setFont` calls — the dominant worker cost while editing-and-scrolling
         // large documents. The cache is content-addressed (LRU), keyed by
-        // paragraph content + layout context, and stores only wrapped-line
-        // metadata (no bitmaps), so a larger cap trades modest memory for far
-        // fewer re-wraps. Entries are still bounded by this cap.
+        // paragraph content + layout context. Retain a large entry working set
+        // for scrolling, while a separate byte budget bounds large paragraphs
+        // and stale content versions created by repeated edits.
         Self::new(WRAP_CACHE_FLOOR_CAPACITY) // grown per-document via ensure_capacity
     }
 }
@@ -1670,6 +1746,8 @@ impl ParagraphWrapCache {
             tail: None,
             len: 0,
             capacity,
+            byte_capacity: WRAP_CACHE_BYTE_CAPACITY,
+            retained_bytes: 0,
             hits: 0,
             misses: 0,
             table_hits: 0,
@@ -1705,31 +1783,29 @@ impl ParagraphWrapCache {
 
     /// Inserts wrap results into the cache.
     fn insert(&mut self, key: ParagraphWrapCacheKey, lines: Rc<[WrappedLine]>) {
-        if self.capacity == 0 {
-            return;
-        }
-
+        let bytes = wrapped_lines_payload_bytes(&lines);
+        // Replacing an entry must release its old charge before checking the
+        // budget, including when the replacement is too large to retain.
         if let Some(&index) = self.entries.get(&key) {
-            if let Some(node) = self.node_mut(index) {
-                node.entry.lines = lines;
-            }
-            self.touch(index);
+            self.remove_index(index);
+        }
+        if self.capacity == 0 || bytes > self.byte_capacity {
             return;
         }
-
-        if self.len >= self.capacity {
+        while self.len >= self.capacity || self.retained_bytes > self.byte_capacity - bytes {
             self.evict_lru();
         }
 
         let index = self.alloc_node(ParagraphWrapCacheNode {
             key: key.clone(),
-            entry: ParagraphWrapCacheEntry { lines },
+            entry: ParagraphWrapCacheEntry { lines, bytes },
             prev: None,
             next: None,
         });
         self.attach_to_tail(index);
         self.entries.insert(key, index);
         self.len += 1;
+        self.retained_bytes += bytes;
     }
 
     /// Called when paragraphs from `paragraph_index` onwards may have changed.
@@ -1755,6 +1831,7 @@ impl ParagraphWrapCache {
         self.head = None;
         self.tail = None;
         self.len = 0;
+        self.retained_bytes = 0;
     }
 
     /// Returns cache statistics.
@@ -1857,11 +1934,12 @@ impl ParagraphWrapCache {
     }
 
     fn remove_index(&mut self, index: usize) {
-        let key = if let Some(node) = self.node(index) {
-            node.key.clone()
+        let (key, bytes) = if let Some(node) = self.node(index) {
+            (node.key.clone(), node.entry.bytes)
         } else {
             return;
         };
+        self.retained_bytes -= bytes;
         self.detach(index);
         self.entries.remove(&key);
         self.nodes[index] = None;
@@ -49895,6 +49973,132 @@ mod tests {
 
     fn empty_wrapped_lines() -> Rc<[WrappedLine]> {
         Rc::from(Vec::<WrappedLine>::new())
+    }
+
+    fn wrap_cache_lines_with_text(bytes: usize) -> Rc<[WrappedLine]> {
+        vec![WrappedLine {
+            segments: vec![TextSegment {
+                text: "a".repeat(bytes),
+                start: 0,
+                end: bytes,
+                properties: None,
+                revision: None,
+                hyperlink: None,
+                leading_width: 0.0,
+            }],
+            break_kind: LineBreakKind::ParagraphEnd,
+            break_range: None,
+            break_properties: None,
+            leaders: Vec::new(),
+            tab_stops: Vec::new(),
+            clusters: Vec::new(),
+            hyphen: None,
+        }]
+        .into()
+    }
+
+    #[test]
+    fn paragraph_wrap_cache_bounds_large_edit_history() {
+        let mut cache = ParagraphWrapCache::default();
+        for version in 0..20 {
+            cache.insert(
+                wrap_cache_test_key(version),
+                wrap_cache_lines_with_text(4 * 1024 * 1024),
+            );
+        }
+        assert!(
+            cache.stats().size <= 16,
+            "old large paragraph versions must not grow beyond a 64 MiB payload budget"
+        );
+        assert!(cache.get(&wrap_cache_test_key(19)).is_some());
+        assert!(cache.get(&wrap_cache_test_key(0)).is_none());
+    }
+
+    #[test]
+    fn paragraph_wrap_cache_charges_owned_metadata() {
+        let mut lines = wrap_cache_lines_with_text(1);
+        let baseline = wrapped_lines_payload_bytes(&lines);
+        let segment = &mut Rc::get_mut(&mut lines).unwrap()[0].segments[0];
+        segment.hyperlink = Some(RunHyperlink {
+            target: Some("u".repeat(4096)),
+            ..RunHyperlink::default()
+        });
+        segment.revision = Some(RevisionMark {
+            kind: RevisionKind::Inserted,
+            id: None,
+            author: Some("a".repeat(2048)),
+            date: None,
+            date_utc: None,
+            insertion: None,
+        });
+        assert_eq!(wrapped_lines_payload_bytes(&lines), baseline + 4096 + 2048);
+    }
+
+    #[test]
+    fn paragraph_wrap_cache_charges_unused_cluster_capacity() {
+        let mut cache = ParagraphWrapCache::default();
+        let mut lines = wrap_cache_lines_with_text(1);
+        Rc::get_mut(&mut lines).unwrap()[0]
+            .clusters
+            .reserve_exact(WRAP_CACHE_BYTE_CAPACITY / std::mem::size_of::<InlineCluster>() + 1);
+        let key = wrap_cache_test_key(1);
+        cache.insert(key.clone(), lines);
+        assert!(
+            cache.get(&key).is_none(),
+            "short lines may retain large backing buffers"
+        );
+        assert_eq!(cache.retained_bytes, 0);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn paragraph_wrap_cache_matches_weighted_lru_model(
+            operations in proptest::collection::vec((0u8..10, 0u64..12, 0usize..5000), 1..120)
+        ) {
+            use proptest::prelude::*;
+            let mut cache = ParagraphWrapCache::new(4);
+            cache.byte_capacity = 4096;
+            let mut capacity = 4;
+            // Oldest first; the model stores only fixture payload sizes.
+            let mut model: Vec<(u64, usize, usize)> = Vec::new();
+            for (step, (op, key, bytes)) in operations.into_iter().enumerate() {
+                match op {
+                    0..=5 => {
+                        let weight = std::mem::size_of::<WrappedLine>()
+                            + std::mem::size_of::<TextSegment>() + bytes;
+                        model.retain(|entry| entry.0 != key);
+                        if weight <= 4096 {
+                            while model.len() >= capacity
+                                || model.iter().map(|entry| entry.1).sum::<usize>() + weight > 4096 {
+                                model.remove(0);
+                            }
+                            model.push((key, weight, bytes));
+                        }
+                        cache.insert(wrap_cache_test_key(key), wrap_cache_lines_with_text(bytes));
+                    }
+                    6..=7 => {
+                        let expected = model.iter().position(|entry| entry.0 == key)
+                            .map(|index| { let value = model.remove(index); model.push(value); value.2 });
+                        let actual = cache.get(&wrap_cache_test_key(key))
+                            .map(|lines| lines[0].segments[0].text.len());
+                        prop_assert_eq!(actual, expected, "step {} get {}", step, key);
+                    }
+                    8 => { model.clear(); cache.clear(); }
+                    _ => {
+                        let requested = key as usize;
+                        capacity = capacity.max(requested);
+                        cache.ensure_capacity(requested);
+                    }
+                }
+                prop_assert_eq!(cache.len, model.len(), "step {}", step);
+                prop_assert_eq!(cache.retained_bytes, model.iter().map(|entry| entry.1).sum::<usize>(), "step {}", step);
+                prop_assert!(cache.retained_bytes <= 4096);
+                let mut actual: Vec<_> = cache.entries.keys().map(|key| key.content_hash).collect();
+                let mut expected: Vec<_> = model.iter().map(|entry| entry.0).collect();
+                actual.sort_unstable(); expected.sort_unstable();
+                prop_assert_eq!(actual, expected, "step {}", step);
+            }
+        }
     }
 
     #[test]
