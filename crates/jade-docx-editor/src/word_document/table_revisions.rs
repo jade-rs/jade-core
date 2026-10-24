@@ -29,6 +29,36 @@ impl RevisionTargets {
     }
 }
 
+// A deleted outer row also hides paragraphs in nested tables and text boxes.
+fn collect_row_paragraphs(
+    elements: &[BodyElement],
+    index_of: &HashMap<XmlNodeId, usize>,
+    paragraphs: &mut Vec<usize>,
+) {
+    for element in elements {
+        match element {
+            BodyElement::Paragraph(paragraph) => {
+                if let Some(index) = paragraph.node_id.and_then(|id| index_of.get(&id)) {
+                    paragraphs.push(*index);
+                }
+                for run in &paragraph.runs {
+                    if let Some(text_box) = &run.text_box {
+                        collect_row_paragraphs(&text_box.blocks, index_of, paragraphs);
+                    }
+                }
+            }
+            BodyElement::Table(table) => {
+                for row in &table.rows {
+                    for cell in &row.cells {
+                        collect_row_paragraphs(&cell.blocks, index_of, paragraphs);
+                    }
+                }
+            }
+            BodyElement::Math(_) => {}
+        }
+    }
+}
+
 impl WordDocument {
     /// Every row inserted or deleted with changes tracked, in document
     /// order.
@@ -43,17 +73,10 @@ impl WordDocument {
                 let Some(mark) = row.revision.as_deref() else {
                     continue;
                 };
-                let paragraphs = row
-                    .cells
-                    .iter()
-                    .flat_map(|cell| cell.blocks.iter())
-                    .filter_map(|block| match block {
-                        BodyElement::Paragraph(paragraph) => {
-                            index_of.get(&paragraph.node_id?).copied()
-                        }
-                        _ => None,
-                    })
-                    .collect();
+                let mut paragraphs = Vec::new();
+                for cell in &row.cells {
+                    collect_row_paragraphs(&cell.blocks, &index_of, &mut paragraphs);
+                }
                 out.push(RowRevision {
                     table: order,
                     row: row_index,

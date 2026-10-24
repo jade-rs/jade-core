@@ -1971,15 +1971,29 @@ pub fn apply_headless_commands_with_executor_to_document(
             } => {
                 validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
                 validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+                // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
+                // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
+                let (start_offset, end_offset, text) = trimmed_replacement(
+                    word_doc,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                    text,
+                );
                 let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                    range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
+                if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty()
+                {
+                    continue;
+                }
                 selection = Some(range);
 
                 // A replacement that spans paragraphs removes the ones in
                 // between, and any comment anchored there goes with them.
                 let spans_paragraphs = start_paragraph != end_paragraph;
                 let command: Box<dyn Command> =
-                    Box::new(InsertTextCommand::new(range, text.clone(), None));
+                    Box::new(InsertTextCommand::new(range, text.to_owned(), None));
                 let command: Box<dyn Command> = if spans_paragraphs {
                     Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
                 } else {
@@ -5497,24 +5511,95 @@ fn find_nth_text_match(word_doc: &WordDocument, query: &str, nth: usize) -> Opti
         return None;
     }
     let mut seen = 0usize;
-    let mut paragraph = 0usize;
-    while let Some(text) = paragraph_text(word_doc, paragraph) {
+    let deleted_rows: std::collections::HashSet<usize> = word_doc
+        .table_row_revisions()
+        .into_iter()
+        .filter(|revision| revision.mark.is_deletion())
+        .flat_map(|revision| revision.paragraphs)
+        .collect();
+    for paragraph in 0..word_doc.paragraph_count() {
+        if deleted_rows.contains(&paragraph) {
+            continue;
+        }
+        let source = word_doc.paragraph(paragraph)?;
+        let mut text = String::new();
+        let mut offsets = Vec::new();
+        let mut original = 0;
+        for run in &source.runs {
+            if !run.revision.as_ref().is_some_and(|mark| mark.is_deletion()) {
+                for (offset, character) in run.text.char_indices() {
+                    offsets.push((text.len(), original + offset, character.len_utf8()));
+                    text.push(character);
+                }
+            }
+            original += run.text.len();
+        }
         let mut from = 0usize;
         while let Some(found) = text[from..].find(query) {
             let start = from + found;
             if seen == nth {
+                // 表示上の文字位置を、アンカーが使う元の UTF-8 座標へ戻す。
+                let end = start + query.len();
+                let original_start = offsets.iter().find(|(at, _, _)| *at == start)?.1;
+                let (_, last, width) = offsets.iter().rev().find(|(at, _, _)| *at < end)?;
                 return Some(TextMatch {
                     paragraph,
-                    start,
-                    end: start + query.len(),
+                    start: original_start,
+                    end: last + width,
                 });
             }
             seen += 1;
             from = start + query.len();
         }
-        paragraph += 1;
     }
     None
+}
+
+fn trimmed_replacement<'a>(
+    word_doc: &WordDocument,
+    start_paragraph: usize,
+    start: usize,
+    end_paragraph: usize,
+    end: usize,
+    replacement: &'a str,
+) -> (usize, usize, &'a str) {
+    if start_paragraph != end_paragraph || start > end {
+        return (start, end, replacement);
+    }
+    let Some(paragraph) = word_doc.paragraph(start_paragraph) else {
+        return (start, end, replacement);
+    };
+    let mut at = 0;
+    for run in &paragraph.runs {
+        let next = at + run.text.len();
+        if at < end && next > start && run.revision.as_ref().is_some_and(|mark| mark.is_deletion())
+        {
+            return (start, end, replacement);
+        }
+        at = next;
+    }
+    let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+    let Some(selected) = text.get(start..end) else {
+        return (start, end, replacement);
+    };
+    let prefix = selected
+        .chars()
+        .zip(replacement.chars())
+        .take_while(|(left, right)| left == right)
+        .map(|(character, _)| character.len_utf8())
+        .sum::<usize>();
+    let suffix = selected[prefix..]
+        .chars()
+        .rev()
+        .zip(replacement[prefix..].chars().rev())
+        .take_while(|(left, right)| left == right)
+        .map(|(character, _)| character.len_utf8())
+        .sum::<usize>();
+    (
+        start + prefix,
+        end - suffix,
+        &replacement[prefix..replacement.len() - suffix],
+    )
 }
 
 fn paragraph_text(word_doc: &WordDocument, index: usize) -> Option<String> {
