@@ -6,7 +6,7 @@ use super::word_models::to_js;
 use super::*;
 use crate::commands::set_ink_drawings::SetInkDrawingsCommand;
 use crate::word_document::ink_drawing::{InkDrawingInfo, InkDrawingSpec};
-use jade_docx_reader::inkml::InkTrace;
+use jade_docx_reader::inkml::{InkBrush, InkTrace};
 use serde_json::json;
 
 impl OffscreenDocumentView {
@@ -246,6 +246,22 @@ impl OffscreenDocumentView {
         let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
         self.run_word_session("word_restyle_ink", move |session| {
             session.restyle_strokes(&selection, &Pen::new(InkTool::Pen, &color, thickness_mm))
+        })
+    }
+
+    /// Apply a full brush, retaining the rectangular nib and transparency.
+    #[wasm_bindgen(js_name = restyleInkStrokesWithBrush)]
+    pub fn restyle_ink_strokes_with_brush(
+        &self,
+        selection: Vec<u32>,
+        brush: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        use crate::word::ink_tools::WordInkTools;
+        let brush: InkBrush = serde_wasm_bindgen::from_value(brush)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        let selection: Vec<usize> = selection.into_iter().map(|index| index as usize).collect();
+        self.run_word_session("word_restyle_ink", move |session| {
+            session.restyle_strokes_with_brush(&selection, &brush)
         })
     }
 
