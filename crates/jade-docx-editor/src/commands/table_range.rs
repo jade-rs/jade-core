@@ -64,7 +64,8 @@ pub(super) fn delete_range_with_tables(
             *p >= start.paragraph
                 && *p <= end.paragraph
                 && (*p != start.paragraph || only_deleted_text(ctx.document, *p, 0, start.offset))
-                // The range is half-open: offset zero excludes even an empty cell.
+                // The range end is exclusive. Reaching an empty cell at offset
+                // zero does not select that cell or its enclosing table.
                 && (*p != end.paragraph
                     || (end.offset > 0
                         && only_deleted_text(ctx.document, *p, end.offset, len(ctx.document, *p))))
