@@ -153,3 +153,26 @@ pub fn symbol(level: u8, next: Option<u8>, collapsed: bool) -> &'static str {
         "⊖"
     }
 }
+
+/// Symbols are a view snapshot, refreshed with outline indents after structural
+/// edits. Ordinary character input must not rescan paragraph heading styles.
+pub fn symbols(
+    document: &WordDocument,
+    collapsed: &BTreeSet<usize>,
+) -> HashMap<usize, &'static str> {
+    let levels = levels(document);
+    levels
+        .iter()
+        .enumerate()
+        .map(|(at, &(paragraph, level))| {
+            (
+                paragraph,
+                symbol(
+                    level,
+                    levels.get(at + 1).map(|&(_, next)| next),
+                    collapsed.contains(&paragraph),
+                ),
+            )
+        })
+        .collect()
+}
