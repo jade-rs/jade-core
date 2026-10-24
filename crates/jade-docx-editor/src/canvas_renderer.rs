@@ -25622,7 +25622,7 @@ where
             || text_box
                 .fill_color
                 .as_deref()
-                .is_some_and(text_box_fill_hides_page_background)
+                .is_some_and(fill_hides_page_background)
                 && text_box.fill_opacity.unwrap_or(1.0) > 0.0;
         let target = FloatingObjectTarget {
             paragraph_index,
@@ -25677,7 +25677,7 @@ where
             || text_box
                 .fill_color
                 .as_deref()
-                .is_some_and(text_box_fill_hides_page_background)
+                .is_some_and(fill_hides_page_background)
                 && text_box.fill_opacity.unwrap_or(1.0) > 0.0;
         let result = self.render_floating_text_box_inner(
             text_box,
@@ -36252,10 +36252,10 @@ fn horizontal_align_offset_within(
     }
 }
 
-/// Whether a shape fill covers the page behind its text. Only an explicitly
+/// Whether a shape or cell fill covers the page behind its text. Only an explicitly
 /// transparent fill lets the page colour through; every opaque fill, white
 /// included, is painted in the document colour and needs document-colour text.
-fn text_box_fill_hides_page_background(fill: &str) -> bool {
+fn fill_hides_page_background(fill: &str) -> bool {
     let normalized = fill.trim().to_ascii_lowercase();
     if matches!(normalized.as_str(), "" | "none" | "transparent") {
         return false;
@@ -41271,13 +41271,13 @@ mod tests {
     }
 
     #[test]
-    fn text_box_fill_hides_page_background_only_for_opaque_fills() {
-        assert!(text_box_fill_hides_page_background("#D9EAF7"));
-        assert!(text_box_fill_hides_page_background("#FFFFFF"));
-        assert!(text_box_fill_hides_page_background("rgba(0, 0, 0, 0.5)"));
-        assert!(!text_box_fill_hides_page_background("transparent"));
-        assert!(!text_box_fill_hides_page_background("none"));
-        assert!(!text_box_fill_hides_page_background("rgba(0,0,0,0)"));
+    fn fill_hides_page_background_only_for_opaque_fills() {
+        assert!(fill_hides_page_background("#D9EAF7"));
+        assert!(fill_hides_page_background("#FFFFFF"));
+        assert!(fill_hides_page_background("rgba(0, 0, 0, 0.5)"));
+        assert!(!fill_hides_page_background("transparent"));
+        assert!(!fill_hides_page_background("none"));
+        assert!(!fill_hides_page_background("rgba(0,0,0,0)"));
     }
 
     /// The wrap width of a text-box line comes from the run's own font. The
