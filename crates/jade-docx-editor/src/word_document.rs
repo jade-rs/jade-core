@@ -11216,7 +11216,7 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         range: Option<(usize, usize)>,
         targets: Option<&RevisionTargets>,
-    ) -> Result<Vec<(usize, XmlNodeId, Vec<XmlElement>)>, String> {
+    ) -> Result<Vec<(usize, XmlNodeId)>, String> {
         let Some(raw) = self.raw_document.as_ref() else {
             return Ok(Vec::new());
         };
@@ -11275,51 +11275,10 @@ impl WordDocument {
             {
                 return Err("Paragraph-mark revision cannot safely join its next paragraph".into());
             }
-            let next = self
-                .paragraph(index + 1)
-                .and_then(|paragraph| paragraph.node_id)
-                .and_then(|id| raw.element(id))
-                .ok_or("Paragraph-mark revision cannot inspect its next paragraph")?;
-            let mut next_marks = Vec::new();
-            collect_join_paragraph_mark_revision_ids(next, decision, None, None, &mut next_marks);
-            collect_safe_paragraph_mark_revision_ids(next, decision, None, None, &mut next_marks);
-            let mut retained_marks = Vec::new();
-            if !next_marks.is_empty() {
-                let mut selected = Vec::new();
-                if range.is_none_or(|(_, end)| index < end) {
-                    collect_join_paragraph_mark_revision_ids(
-                        next,
-                        decision,
-                        kind_filter,
-                        id_filter,
-                        &mut selected,
-                    );
-                    collect_safe_paragraph_mark_revision_ids(
-                        next,
-                        decision,
-                        kind_filter,
-                        id_filter,
-                        &mut selected,
-                    );
-                    if let Some(targets) = targets {
-                        targets.retain_paragraph_marks(index + 1, next, &mut selected);
-                    }
-                }
-                let selected = selected.into_iter().collect::<HashSet<_>>();
-                for mark_id in next_marks {
-                    if !selected.contains(&mark_id) {
-                        retained_marks.push(
-                            raw.element(mark_id)
-                                .cloned()
-                                .ok_or("Paragraph-mark revision XML node was lost")?,
-                        );
-                    }
-                }
-            }
-            joins.push((index, ids[0], retained_marks));
+            joins.push((index, ids[0]));
         }
         if range.is_none()
-            && joins.iter().map(|(_, id, _)| *id).collect::<HashSet<_>>()
+            && joins.iter().map(|(_, id)| *id).collect::<HashSet<_>>()
                 != all_ids.into_iter().collect::<HashSet<_>>()
         {
             return Err("Paragraph-mark revision has no editable paragraph surface".into());
@@ -11343,6 +11302,112 @@ impl WordDocument {
             Some((start, end)),
             targets,
         )?;
+        Ok(())
+    }
+
+    /// A physical join removes the head mark, but retains the tail mark's
+    /// revision. Keep its raw metadata (including extensions) and model in
+    /// agreement while leaving the head paragraph's other properties intact.
+    pub(crate) fn move_paragraph_mark_revisions(
+        &mut self,
+        from: usize,
+        to: usize,
+    ) -> Result<(), String> {
+        if from == to {
+            return Ok(());
+        }
+        let mark = |index| {
+            self.paragraph(index)
+                .and_then(|p| p.properties.as_ref())
+                .and_then(|p| p.mark_revision.clone())
+        };
+        let tail_mark = mark(from);
+        if tail_mark.is_none() && mark(to).is_none() {
+            return Ok(());
+        }
+        let source = self
+            .paragraph_xml_element(from)
+            .ok_or("tail paragraph XML is missing")?;
+        let child = |element: &XmlElement, name: &str| {
+            element.children.iter().find_map(|n| match n {
+                XmlNode::Element(e) if e.name.rsplit(':').next() == Some(name) => Some(e.clone()),
+                _ => None,
+            })
+        };
+        let is_mark = |e: &XmlElement| {
+            matches!(
+                e.name.rsplit(':').next(),
+                Some("ins" | "del" | "moveFrom" | "moveTo")
+            )
+        };
+        let marks: Vec<_> = child(&source, "pPr")
+            .and_then(|p| child(&p, "rPr"))
+            .map(|r| {
+                r.children
+                    .into_iter()
+                    .filter(|n| matches!(n, XmlNode::Element(e) if is_mark(e)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let replace = |raw: &mut DocxXmlDocument, id| -> Result<(), String> {
+            let paragraph = raw.element(id).ok_or("joined paragraph XML is missing")?;
+            let p_pr = child(paragraph, "pPr");
+            let old_r_pr = p_pr.as_ref().and_then(|p| child(p, "rPr"));
+            let mut r_pr = old_r_pr
+                .clone()
+                .unwrap_or_else(|| raw.create_element("w:rPr", Vec::new(), Vec::new()));
+            r_pr.children
+                .retain(|n| !matches!(n, XmlNode::Element(e) if is_mark(e)));
+            r_pr.children.extend(marks);
+            let p_pr_id = if let Some(p_pr) = p_pr {
+                p_pr.id
+            } else {
+                let p_pr = raw.create_element("w:pPr", Vec::new(), Vec::new());
+                raw.insert_node(id, 0, XmlNode::Element(p_pr))
+                    .map_err(|e| e.to_string())?
+                    .ok_or("failed to create joined paragraph properties")?
+            };
+            let insert_at = if let Some(old) = old_r_pr {
+                let path = raw
+                    .path(old.id)
+                    .ok_or("paragraph mark properties are not indexed")?;
+                let index = *path
+                    .as_slice()
+                    .last()
+                    .ok_or("paragraph mark properties have no parent")?;
+                raw.remove_node(&path).map_err(|e| e.to_string())?;
+                index
+            } else {
+                raw.element(p_pr_id).ok_or("joined properties are missing")?.children.iter()
+                    .position(|n| matches!(n, XmlNode::Element(e) if matches!(e.name.rsplit(':').next(), Some("sectPr" | "pPrChange"))))
+                    .unwrap_or(raw.element(p_pr_id).unwrap().children.len())
+            };
+            raw.insert_node(p_pr_id, insert_at, XmlNode::Element(r_pr))
+                .map_err(|e| e.to_string())?;
+            Ok(())
+        };
+        if self.is_note_paragraph_surface(to) {
+            let (part, mut raw, id) = self
+                .note_paragraph_xml(to)
+                .ok_or("note paragraph XML is missing")?;
+            replace(&mut raw, id)?;
+            self.upsert_xml_part_content(&part, raw.to_string().map_err(|e| e.to_string())?);
+        } else {
+            let id = self
+                .paragraph(to)
+                .and_then(|p| p.node_id)
+                .ok_or("joined paragraph has no XML node")?;
+            let raw = self
+                .raw_document
+                .as_mut()
+                .ok_or("joined paragraph XML is missing")?;
+            replace(raw, id)?;
+        }
+        self.paragraph_mut(to)
+            .ok_or("joined paragraph is missing")?
+            .properties
+            .get_or_insert_with(Default::default)
+            .mark_revision = tail_mark;
         Ok(())
     }
 
@@ -11970,7 +12035,7 @@ impl WordDocument {
             }
             ids
         };
-        paragraph_mark_ids.extend(joins.iter().map(|(_, id, _)| *id));
+        paragraph_mark_ids.extend(joins.iter().map(|(_, id)| *id));
 
         let mut changed_runs = 0usize;
         let mut touched_paragraphs = Vec::new();
@@ -12176,11 +12241,19 @@ impl WordDocument {
             }
             return Err(error);
         }
+        // Remove decided marks from the model before joins too. The shared
+        // join transfers the surviving tail mark, which may itself have been
+        // decided in this batch.
+        if !paragraph_mark_ids.is_empty() {
+            for index in 0..self.paragraph_count() {
+                self.refresh_paragraph_mark_revision(index);
+            }
+        }
         // Review decisions must use the same paragraph join as ordinary
         // editing, so comments, inline XML, and section breaks move together.
         // Descending order keeps the original paragraph indices stable.
         let session = self.revision_session.take();
-        for (index, _, retained_marks) in joins.iter().rev() {
+        for (index, _) in joins.iter().rev() {
             let Some(model_offset) = self
                 .paragraph(*index)
                 .map(|paragraph| paragraph.runs.iter().map(|run| run.text.len()).sum())
@@ -12207,14 +12280,6 @@ impl WordDocument {
                     self.revision_session = session;
                 }
                 return Err(format!("failed to join reviewed paragraph mark: {error}"));
-            }
-            if let Err(error) = self.append_paragraph_mark_revisions_raw(*index, retained_marks) {
-                if let Some(snapshot) = snapshot {
-                    self.restore_snapshot(snapshot);
-                } else {
-                    self.revision_session = session;
-                }
-                return Err(error);
             }
         }
         self.revision_session = session;
