@@ -15938,7 +15938,19 @@ impl OffscreenDocumentView {
             // Rendering/editing may hold a mutable borrow; return null instead of panicking.
             return JsValue::NULL;
         };
-        to_value(&state.table_resize).unwrap_or(JsValue::NULL)
+        let metadata = to_value(&state.table_resize).unwrap_or(JsValue::NULL);
+        if metadata.is_object() {
+            let Ok(renderer) = self.renderer.try_borrow() else {
+                return metadata;
+            };
+            let regions = renderer.outline_heading_regions();
+            let _ = js_sys::Reflect::set(
+                &metadata,
+                &JsValue::from_str("outlineHeadings"),
+                &to_value(&regions).unwrap_or(JsValue::NULL),
+            );
+        }
+        metadata
     }
 
     #[wasm_bindgen]

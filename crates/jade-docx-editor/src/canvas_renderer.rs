@@ -12880,18 +12880,41 @@ where
     /// Heading symbols are hit against the same first-line geometry used to
     /// paint them. Body circles and continuation lines do not fold anything.
     pub fn outline_heading_at(&self, x: f64, y: f64) -> Option<usize> {
+        self.outline_symbols.as_ref()?;
         if self.outline_symbols_hidden {
             return None;
         }
-        let symbols = self.outline_symbols.as_ref()?;
         let paragraph = self.hit_test_position(x, y)?.paragraph;
-        if *symbols.get(&paragraph)? == "○" {
+        let [left, top, width, height] = self.outline_heading_rect(paragraph)?;
+        ((left..=left + width).contains(&x) && (top..top + height).contains(&y))
+            .then_some(paragraph)
+    }
+
+    fn outline_heading_rect(&self, paragraph: usize) -> Option<[f64; 4]> {
+        if self.outline_symbols_hidden || *self.outline_symbols.as_ref()?.get(&paragraph)? == "○"
+        {
             return None;
         }
         let line = self.selection.paragraphs().get(paragraph)?.lines.first()?;
-        ((line.start_x - 18.0..=line.start_x - 18.0 + self.outline_symbol_font_size()).contains(&x)
-            && (line.absolute_top..line.absolute_top + line.height).contains(&y))
-        .then_some(paragraph)
+        Some([
+            line.start_x - 18.0,
+            line.absolute_top,
+            self.outline_symbol_font_size(),
+            line.height,
+        ])
+    }
+
+    /// Hover metadata reuses painted line geometry, without a worker request
+    /// per pointer move or scanning paragraphs on ordinary text input.
+    pub fn outline_heading_regions(&self) -> Vec<[f64; 4]> {
+        if self.editing_mode != crate::canvas_view::EditingMode::Body {
+            return Vec::new();
+        }
+        self.outline_symbols
+            .iter()
+            .flat_map(|symbols| symbols.keys())
+            .filter_map(|paragraph| self.outline_heading_rect(*paragraph))
+            .collect()
     }
 
     fn outline_symbol_font_size(&self) -> f64 {
@@ -40836,6 +40859,9 @@ mod tests {
         let x = line.start_x - 12.0;
         let y = line.absolute_top + line.height / 2.0;
         assert_eq!(renderer.outline_heading_at(x, y), Some(0));
+        let regions = renderer.outline_heading_regions();
+        assert_eq!(regions.len(), 2);
+        assert!(regions.contains(&[line.start_x - 18.0, line.absolute_top, 11.0, line.height]));
         assert_eq!(renderer.outline_heading_at(line.start_x + 1.0, y), None);
         let continuation = &renderer.selection.paragraphs()[0].lines[1];
         assert_eq!(
@@ -40856,10 +40882,16 @@ mod tests {
         renderer.set_outline_symbols_hidden(true);
         renderer.render(&document, &options).unwrap();
         assert!(symbols(painter.ops()).is_empty());
+        assert!(renderer.outline_heading_regions().is_empty());
         painter.clear();
         renderer.set_outline_symbols_hidden(false);
         renderer.render(&document, &options).unwrap();
         assert_eq!(symbols(painter.ops()), first);
+        assert_eq!(renderer.outline_heading_regions().len(), 2);
+        renderer.set_editing_mode(crate::canvas_view::EditingMode::Header);
+        assert!(renderer.outline_heading_regions().is_empty());
+        renderer.set_editing_mode(crate::canvas_view::EditingMode::Body);
+        assert_eq!(renderer.outline_heading_regions().len(), 2);
         painter.clear();
         renderer.set_outline_symbols(None);
         renderer.render(&document, &options).unwrap();
@@ -40886,6 +40918,9 @@ mod tests {
                 .filter(|(text, _)| text == "⊕")
                 .collect::<Vec<_>>();
             assert_eq!(symbols, [("⊕".to_string(), expected_font.to_string())]);
+            let regions = renderer.outline_heading_regions();
+            assert_eq!(regions.len(), 1);
+            assert_eq!(regions[0][2], 11.0_f64.max(8.0 / zoom));
         }
     }
 
