@@ -39,6 +39,24 @@ struct TableLookJs {
     banded_columns: Option<bool>,
 }
 
+impl OffscreenDocumentView {
+    pub(super) fn refresh_outline_display(
+        &self,
+        update: impl FnOnce(&mut crate::word::outline::OutlineDisplay, &WordDocument),
+    ) -> Result<Vec<usize>, JsValue> {
+        let mut display = self.state.borrow().outline_display.clone();
+        let (display, hidden) = self.read_word_session(|session| {
+            update(&mut display, session.word_document());
+            let hidden = display.hidden_blocks(session);
+            (display, hidden)
+        })?;
+        let mut state = self.state.borrow_mut();
+        state.outline_display = display;
+        state.options.set_collapsed_blocks(hidden.clone());
+        Ok(hidden)
+    }
+}
+
 #[wasm_bindgen]
 impl OffscreenDocumentView {
     /// 表スタイルのオプション for the caret's table: タイトル行, 集計行,
@@ -99,18 +117,39 @@ impl OffscreenDocumentView {
     /// all. The document is laid out again.
     #[wasm_bindgen(js_name = setCollapsedHeadings)]
     pub fn set_collapsed_headings(&self, headings: Vec<usize>) -> Result<JsValue, JsValue> {
-        let hidden = self.read_word_session(|session| {
-            let document = session.word_document();
-            let collapsed: std::collections::BTreeSet<usize> = headings
+        let hidden = self.refresh_outline_display(|display, document| {
+            display.collapsed = headings
                 .iter()
                 .filter_map(|body| document.surface_index_for_body(*body))
                 .collect();
-            session.hidden_by_collapse(&collapsed)
         })?;
-        self.state
-            .borrow_mut()
-            .options
-            .set_collapsed_blocks(hidden.clone());
+        self.rerender_after_display_change(move |renderer| renderer.set_collapsed_blocks(hidden))
+    }
+
+    /// Navigation and Outline share this document's fold preferences. Reading
+    /// them does not relayout the document or change its undo history.
+    #[wasm_bindgen(js_name = outlineDisplay)]
+    pub fn outline_display(&self) -> Result<JsValue, JsValue> {
+        let mut display = self.state.borrow().outline_display.clone();
+        self.read_word_session(|session| {
+            display.hidden_blocks(session);
+            let collapsed: Vec<_> = display
+                .collapsed
+                .iter()
+                .filter_map(|surface| session.word_document().body_index_for_surface(*surface))
+                .collect();
+            to_js(&json!({ "collapsedHeadings": collapsed, "shownLevel": display.shown }))
+        })
+    }
+
+    /// レベルの表示: Heading 1–9, or 10 for all levels including body. This
+    /// filter only applies in Outline and is independent of navigation folds.
+    #[wasm_bindgen(js_name = setOutlineShownLevel)]
+    pub fn set_outline_shown_level(&self, level: u8) -> Result<JsValue, JsValue> {
+        if !(1..=crate::word::outline::BODY_LEVEL).contains(&level) {
+            return Err(JsValue::from_str("outline level must be between 1 and 10"));
+        }
+        let hidden = self.refresh_outline_display(|display, _| display.shown = level)?;
         self.rerender_after_display_change(move |renderer| renderer.set_collapsed_blocks(hidden))
     }
 
