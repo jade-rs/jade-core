@@ -1647,6 +1647,7 @@ dependencies = [
  "jade-docx-document-core",
  "jade-docx-headless-api",
  "proptest",
+ "roxmltree",
  "thiserror",
  "zip 8.6.0",
 ]

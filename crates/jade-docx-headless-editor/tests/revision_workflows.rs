@@ -1,0 +1,622 @@
+use jade_docx_headless_editor::{apply_headless_commands, HeadlessCommand, HeadlessEditRequest};
+use proptest::prelude::*;
+use std::io::{Cursor, Read, Write};
+
+const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+fn part(bytes: &[u8], name: &str) -> String {
+    let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+    let mut xml = String::new();
+    zip.by_name(name).unwrap().read_to_string(&mut xml).unwrap();
+    xml
+}
+
+fn fixture(runs: &str) -> Vec<u8> {
+    let input = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../public/fixtures/hello.docx"
+    ))
+    .unwrap();
+    let mut source = zip::ZipArchive::new(Cursor::new(input)).unwrap();
+    let mut target = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for i in 0..source.len() {
+        let mut entry = source.by_index(i).unwrap();
+        let mut bytes = Vec::new();
+        entry.read_to_end(&mut bytes).unwrap();
+        if entry.name() == "word/document.xml" {
+            bytes = format!(r#"<w:document xmlns:w="{NS}"><w:body><w:p>{runs}</w:p><w:sectPr/></w:body></w:document>"#).into_bytes();
+        }
+        if entry.name() == "word/styles.xml" {
+            bytes = format!(r#"<w:styles xmlns:w="{NS}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Cambria"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="MS Mincho" w:eastAsia="MS Mincho"/><w:sz w:val="21"/></w:rPr></w:style></w:styles>"#).into_bytes();
+        }
+        target
+            .start_file(entry.name(), zip::write::SimpleFileOptions::default())
+            .unwrap();
+        target.write_all(&bytes).unwrap();
+    }
+    target.finish().unwrap().into_inner()
+}
+
+fn edit(bytes: &[u8], commands: Vec<HeadlessCommand>) -> Vec<u8> {
+    apply_headless_commands(bytes, &HeadlessEditRequest { commands }).unwrap()
+}
+
+/// Independent package oracle: Word's final view excludes text inside w:del.
+fn final_text(bytes: &[u8]) -> String {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    document
+        .descendants()
+        .filter(|n| {
+            n.has_tag_name((NS, "t")) && !n.ancestors().any(|a| a.has_tag_name((NS, "del")))
+        })
+        .filter_map(|n| n.text())
+        .collect()
+}
+
+fn tracking() -> HeadlessCommand {
+    HeadlessCommand::StartChangeTracking {
+        author: Some("LAWGUE".into()),
+        initials: Some("LG".into()),
+        date: Some("2026-10-24T00:00:00Z".into()),
+        date_utc: None,
+    }
+}
+
+fn decide(accept: bool, ids: Vec<String>) -> HeadlessCommand {
+    if accept {
+        HeadlessCommand::AcceptRevisions {
+            kind: None,
+            start_paragraph: None,
+            end_paragraph: None,
+            revision_id: None,
+            revision_ids: Some(ids),
+            revision_targets: None,
+        }
+    } else {
+        HeadlessCommand::RejectRevisions {
+            kind: None,
+            start_paragraph: None,
+            end_paragraph: None,
+            revision_id: None,
+            revision_ids: Some(ids),
+            revision_targets: None,
+        }
+    }
+}
+
+fn lg_ids(bytes: &[u8]) -> Vec<String> {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    document
+        .descendants()
+        .filter(|n| n.attribute((NS, "author")) == Some("LAWGUE"))
+        .filter_map(|n| n.attribute((NS, "id")).map(str::to_owned))
+        .collect()
+}
+
+fn assert_other_author(bytes: &[u8]) {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let insertion = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "ins")) && n.attribute((NS, "id")) == Some("41"))
+        .expect("other author's insertion survives");
+    assert_eq!(insertion.attribute((NS, "author")), Some("Reviewer"));
+    assert_eq!(
+        insertion.attribute((NS, "date")),
+        Some("2025-01-01T00:00:00Z")
+    );
+    assert_eq!(
+        insertion
+            .descendants()
+            .filter(|n| n.has_tag_name((NS, "t")))
+            .filter_map(|n| n.text())
+            .collect::<String>(),
+        "R"
+    );
+}
+
+#[test]
+fn replacement_at_run_boundary_uses_replaced_run_format() {
+    let input = fixture(
+        r#"<w:r><w:rPr><w:b/></w:rPr><w:t>前</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>30日</w:t></w:r>"#,
+    );
+    let output = edit(
+        &input,
+        vec![HeadlessCommand::ReplaceRange {
+            start_paragraph: 0,
+            start_offset: 3,
+            end_paragraph: 0,
+            end_offset: 5,
+            text: "60".into(),
+        }],
+    );
+    let xml = part(&output, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let replacement = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("60")))
+        .unwrap()
+        .parent()
+        .unwrap();
+    assert!(
+        replacement.descendants().any(|n| n.has_tag_name((NS, "i"))),
+        "replacement must inherit italic: {xml}"
+    );
+    assert!(
+        !replacement.descendants().any(|n| n.has_tag_name((NS, "b"))),
+        "replacement must not inherit preceding bold run: {xml}"
+    );
+    assert!(
+        !xml.contains("Cambria"),
+        "editing must not materialize docDefaults over Normal: {xml}"
+    );
+    assert_eq!(
+        part(&input, "word/styles.xml"),
+        part(&output, "word/styles.xml")
+    );
+}
+
+fn body_paragraph_count(bytes: &[u8]) -> usize {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "body")))
+        .unwrap()
+        .children()
+        .filter(|n| n.has_tag_name((NS, "p")))
+        .count()
+}
+
+// Synthetic contracts reproduced from lawgue#19947. These fixtures include
+// inherited fonts, numbering, a table, and (review) foreign revisions/comments.
+#[test]
+fn replacing_across_table_boundaries_cannot_leave_invalid_cells() {
+    let input = include_bytes!("fixtures/staging-base.docx");
+    let result = apply_headless_commands(
+        input,
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::ReplaceRange {
+                start_paragraph: 24,
+                start_offset: 0,
+                end_paragraph: 36,
+                end_offset: 27,
+                text: String::new(),
+            }],
+        },
+    );
+    let output = result.unwrap();
+    let xml = part(&output, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let cells: Vec<_> = document
+        .descendants()
+        .filter(|node| node.has_tag_name((NS, "tc")))
+        .collect();
+    assert_eq!(cells.len(), 12);
+    assert!(cells
+        .iter()
+        .all(|cell| cell.children().any(|node| node.has_tag_name((NS, "p")))));
+    assert_eq!(table_shape(&output), Some((4, 3)));
+}
+
+#[test]
+fn staging_contract_workflows_preserve_styles_and_foreign_parts() {
+    let base = include_bytes!("fixtures/staging-base.docx");
+    let review = include_bytes!("fixtures/staging-review.docx");
+    for (name, input, tracked) in [
+        ("T00", base.as_slice(), false),
+        ("T01", base.as_slice(), true),
+        ("T02", base.as_slice(), true),
+        ("T03", review.as_slice(), true),
+        ("T04", review.as_slice(), true),
+    ] {
+        let mut commands = Vec::new();
+        if tracked {
+            commands.push(tracking());
+        }
+        commands.push(HeadlessCommand::ReplaceRange {
+            start_paragraph: 12,
+            start_offset: 52,
+            end_paragraph: 12,
+            end_offset: 63,
+            text: "60日以内".into(),
+        });
+        commands.push(HeadlessCommand::InsertParagraphBreak {
+            paragraph: 9,
+            offset: 0,
+            count: 1,
+        });
+        commands.push(HeadlessCommand::InsertText {
+            paragraph: 9,
+            offset: 0,
+            text: "(4)　分析結果に基づく改善提案".into(),
+        });
+        let output = edit(input, commands);
+        assert!(final_text(&output).contains("60日以内"));
+        assert!(final_text(&output).contains("(4)　分析結果に基づく改善提案"));
+        assert_eq!(
+            part(input, "word/styles.xml"),
+            part(&output, "word/styles.xml")
+        );
+        assert_eq!(
+            part(input, "word/numbering.xml"),
+            part(&output, "word/numbering.xml")
+        );
+        assert_eq!(table_shape(&output), Some((4, 3)));
+        let xml = part(&output, "word/document.xml");
+        let document = roxmltree::Document::parse(&xml).unwrap();
+        let replacement = document
+            .descendants()
+            .find(|n| n.has_tag_name((NS, "t")) && n.text().is_some_and(|t| t.contains("60日以内")))
+            .unwrap()
+            .parent()
+            .unwrap();
+        assert!(
+            replacement.descendants().any(|n| n.has_tag_name((NS, "u"))),
+            "{name}: underline survives"
+        );
+        if name == "T03" || name == "T04" {
+            for part_name in ["word/header1.xml", "word/footer1.xml", "word/comments.xml"] {
+                assert_eq!(
+                    part(input, part_name),
+                    part(&output, part_name),
+                    "{name}: {part_name}"
+                );
+            }
+            let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+            assert_eq!(final_text(&rejected), final_text(input));
+            let before_xml = part(input, "word/document.xml");
+            let before = roxmltree::Document::parse(&before_xml).unwrap();
+            let foreign = |doc: &roxmltree::Document<'_>| {
+                doc.descendants()
+                    .filter(|n| n.attribute((NS, "author")) == Some("相手方法務"))
+                    .map(|n| {
+                        (
+                            n.tag_name().name().to_owned(),
+                            n.attribute((NS, "id")).map(str::to_owned),
+                            n.attribute((NS, "date")).map(str::to_owned),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(foreign(&before), foreign(&document));
+        }
+        if let Ok(directory) = std::env::var("DOCX_VERIFICATION_DIR") {
+            std::fs::create_dir_all(&directory).unwrap();
+            std::fs::write(
+                std::path::Path::new(&directory).join(format!("{name}.docx")),
+                &output,
+            )
+            .unwrap();
+            if tracked {
+                let accepted = edit(&output, vec![decide(true, lg_ids(&output))]);
+                std::fs::write(
+                    std::path::Path::new(&directory).join(format!("{name}-accepted.docx")),
+                    accepted,
+                )
+                .unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn replacing_another_authors_insertion_nests_our_deletion() {
+    let input = fixture(
+        r#"<w:r><w:t>直近</w:t></w:r><w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>6か月</w:t></w:r></w:ins>"#,
+    );
+    let output = edit(
+        &input,
+        vec![
+            tracking(),
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 6,
+                end_paragraph: 0,
+                end_offset: 7,
+                text: "9".into(),
+            },
+        ],
+    );
+    assert_eq!(final_text(&output), "直近9か月");
+    let xml = part(&output, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let deletion = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "del")) && n.attribute((NS, "author")) == Some("LAWGUE"))
+        .expect("our deletion remains tracked");
+    assert!(
+        deletion.ancestors().any(|n| n.has_tag_name((NS, "ins"))
+            && n.attribute((NS, "author")) == Some("Reviewer")
+            && n.attribute((NS, "id")) == Some("41")),
+        "source insertion and authorship survive: {xml}"
+    );
+    let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+    assert_eq!(final_text(&rejected), "直近6か月");
+    assert!(part(&rejected, "word/document.xml").contains("Reviewer"));
+}
+
+#[test]
+fn tracked_paragraph_split_and_join_survive_reload_and_decisions() {
+    let input = fixture("<w:r><w:t>契約本文</w:t></w:r>");
+    for accept in [false, true] {
+        let split = edit(
+            &input,
+            vec![
+                tracking(),
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 6,
+                    count: 1,
+                },
+            ],
+        );
+        assert_eq!(body_paragraph_count(&split), 2);
+        assert_eq!(final_text(&split), "契約本文");
+        let ids = lg_ids(&split);
+        assert!(!ids.is_empty(), "paragraph mark must be tracked");
+        let decided = edit(&split, vec![decide(accept, ids)]);
+        assert_eq!(body_paragraph_count(&decided), if accept { 2 } else { 1 });
+        assert_eq!(final_text(&decided), "契約本文");
+    }
+    let split = edit(
+        &input,
+        vec![HeadlessCommand::InsertParagraphBreak {
+            paragraph: 0,
+            offset: 6,
+            count: 1,
+        }],
+    );
+    for accept in [false, true] {
+        let joined = edit(
+            &split,
+            vec![
+                tracking(),
+                HeadlessCommand::ReplaceRange {
+                    start_paragraph: 0,
+                    start_offset: 6,
+                    end_paragraph: 1,
+                    end_offset: 0,
+                    text: String::new(),
+                },
+            ],
+        );
+        let ids = lg_ids(&joined);
+        assert!(!ids.is_empty(), "deleted paragraph mark must be tracked");
+        let decided = edit(&joined, vec![decide(accept, ids)]);
+        assert_eq!(body_paragraph_count(&decided), if accept { 1 } else { 2 });
+        assert_eq!(final_text(&decided), "契約本文");
+    }
+}
+
+#[test]
+fn tracked_table_rows_survive_reload_and_decisions() {
+    let input = edit(
+        &fixture("<w:r><w:t>契約</w:t></w:r>"),
+        vec![HeadlessCommand::InsertTable {
+            after_paragraph: 0,
+            rows: 2,
+            columns: 2,
+            column_widths: vec![],
+            caret_offset: None,
+        }],
+    );
+    for accept in [false, true] {
+        let inserted = edit(
+            &input,
+            vec![
+                tracking(),
+                HeadlessCommand::InsertTableRow {
+                    table_order_index: 0,
+                    row_index: 1,
+                    template_row: None,
+                },
+            ],
+        );
+        let ids = lg_ids(&inserted);
+        assert!(!ids.is_empty());
+        let decided = edit(&inserted, vec![decide(accept, ids)]);
+        assert_eq!(table_shape(&decided), Some((if accept { 3 } else { 2 }, 2)));
+        let deleted = edit(
+            &input,
+            vec![
+                tracking(),
+                HeadlessCommand::DeleteTableRow {
+                    table_order_index: 0,
+                    row_index: 0,
+                },
+            ],
+        );
+        assert_eq!(
+            table_shape(&deleted),
+            Some((2, 2)),
+            "tracked deletion retains source row"
+        );
+        let ids = lg_ids(&deleted);
+        assert!(!ids.is_empty());
+        let decided = edit(&deleted, vec![decide(accept, ids)]);
+        assert_eq!(table_shape(&decided), Some((if accept { 1 } else { 2 }, 2)));
+    }
+}
+
+#[test]
+fn deleting_another_authors_tracked_row_requires_a_revision_decision() {
+    let input = edit(
+        &fixture("<w:r><w:t>契約</w:t></w:r>"),
+        vec![
+            HeadlessCommand::InsertTable {
+                after_paragraph: 0,
+                rows: 2,
+                columns: 2,
+                column_widths: vec![],
+                caret_offset: None,
+            },
+            HeadlessCommand::StartChangeTracking {
+                author: Some("Reviewer".into()),
+                initials: None,
+                date: Some("2025-01-01T00:00:00Z".into()),
+                date_utc: None,
+            },
+            HeadlessCommand::InsertTableRow {
+                table_order_index: 0,
+                row_index: 1,
+                template_row: None,
+            },
+        ],
+    );
+    let error = apply_headless_commands(
+        &input,
+        &HeadlessEditRequest {
+            commands: vec![
+                tracking(),
+                HeadlessCommand::DeleteTableRow {
+                    table_order_index: 0,
+                    row_index: 1,
+                },
+            ],
+        },
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("decide the existing row revision"));
+    let unchanged = edit(&input, vec![HeadlessCommand::StopChangeTracking]);
+    assert_eq!(table_shape(&unchanged), Some((3, 2)));
+    let xml = part(&unchanged, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    assert!(document
+        .descendants()
+        .any(|node| node.has_tag_name((NS, "ins"))
+            && node.attribute((NS, "author")) == Some("Reviewer")));
+}
+
+#[derive(Clone, Debug)]
+enum Action {
+    Replace {
+        from: u8,
+        to: u8,
+        text: String,
+        tracked: bool,
+        accept: bool,
+    },
+    InvalidBoundary,
+    NoopDecision(bool),
+}
+
+fn action() -> impl Strategy<Value = Action> {
+    prop_oneof![
+        8 => (any::<u8>(), any::<u8>(), prop::collection::vec(prop_oneof![Just('日'), Just('😀'), Just('é'), Just('A')], 0..5), any::<bool>(), any::<bool>()).prop_map(|(from,to,text,tracked,accept)| Action::Replace { from,to,text:text.into_iter().collect(),tracked,accept }),
+        1 => Just(Action::InvalidBoundary),
+        1 => any::<bool>().prop_map(Action::NoopDecision),
+    ]
+}
+
+fn table_shape(bytes: &[u8]) -> Option<(usize, usize)> {
+    let xml = part(bytes, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let table = document
+        .descendants()
+        .find(|n| n.has_tag_name((NS, "tbl")))?;
+    let rows: Vec<_> = table
+        .children()
+        .filter(|n| n.has_tag_name((NS, "tr")))
+        .collect();
+    let columns = rows
+        .first()?
+        .children()
+        .filter(|n| n.has_tag_name((NS, "tc")))
+        .count();
+    assert!(rows
+        .iter()
+        .all(|r| r.children().filter(|n| n.has_tag_name((NS, "tc"))).count() == columns));
+    Some((rows.len(), columns))
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_table_structure_matches_grid_model(actions in prop::collection::vec((0u8..6, any::<u8>()), 1..31)) {
+        let mut bytes = fixture("<w:r><w:t>契約</w:t></w:r>");
+        let mut model: Option<(usize,usize)> = None;
+        for (step,(kind,index)) in actions.into_iter().enumerate() {
+            let mut expected = model;
+            let command = match (kind,model) {
+                (0,None) => {
+                    expected = Some((2,2));
+                    HeadlessCommand::InsertTable { after_paragraph:0, rows:2, columns:2, column_widths:vec![], caret_offset:None }
+                }
+                (0,Some(_)) => { expected=None; HeadlessCommand::DeleteTable { table_order_index:0 } }
+                (1,Some((r,c))) => {
+                    expected=Some((r+1,c));
+                    HeadlessCommand::InsertTableRow { table_order_index:0, row_index:index as usize % (r+1), template_row:None }
+                }
+                (2,Some((r,c))) if r>1 => {
+                    expected=Some((r-1,c));
+                    HeadlessCommand::DeleteTableRow { table_order_index:0, row_index:index as usize % r }
+                }
+                (3,Some((r,c))) => {
+                    expected=Some((r,c+1));
+                    HeadlessCommand::InsertTableColumn { table_order_index:0, column_index:index as usize % (c+1), width:None, template_column:None }
+                }
+                (4,Some((r,c))) if c>1 => {
+                    expected=Some((r,c-1));
+                    HeadlessCommand::DeleteTableColumn { table_order_index:0, column_index:index as usize % c }
+                }
+                _ => HeadlessCommand::DeleteTableRow { table_order_index:99, row_index:0 },
+            };
+            let invalid = matches!(command, HeadlessCommand::DeleteTableRow { table_order_index:99, .. });
+            let output = apply_headless_commands(&bytes,&HeadlessEditRequest {commands:vec![command]});
+            if invalid { prop_assert!(output.is_err(), "step {} invalid table must fail", step); }
+            else { bytes=output.unwrap(); model=expected; }
+            prop_assert_eq!(table_shape(&bytes), model, "persisted grid at step {}", step);
+            prop_assert_eq!(final_text(&bytes), "契約", "body text at step {}", step);
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(128))]
+    #[test]
+    fn persisted_revision_workflows_match_string_model(actions in prop::collection::vec(action(), 1..41)) {
+        // The protected insertion shares the editable paragraph, exposing accidental
+        // adoption/flattening of another author's revision at run boundaries.
+        let mut bytes = fixture(r#"<w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins><w:r><w:t>契約😀éA</w:t></w:r>"#);
+        let mut model = "契約😀éA".to_string();
+        for (step, action) in actions.into_iter().enumerate() {
+            match action {
+                Action::Replace { from, to, text, tracked, accept } => {
+                    let boundaries: Vec<usize> = model.char_indices().map(|(i,_)| i).chain(std::iter::once(model.len())).collect();
+                    let a = boundaries[from as usize % boundaries.len()];
+                    let b = boundaries[to as usize % boundaries.len()];
+                    let (a,b) = (a.min(b), a.max(b));
+                    let before = model.clone();
+                    let mut after = model.clone();
+                    after.replace_range(a..b, &text);
+                    let mut commands = vec![if tracked { tracking() } else { HeadlessCommand::StopChangeTracking }];
+                    commands.push(HeadlessCommand::ReplaceRange { start_paragraph: 0, start_offset: a+1, end_paragraph: 0, end_offset: b+1, text });
+                    bytes = edit(&bytes, commands);
+                    prop_assert_eq!(final_text(&bytes), format!("R{after}"), "step {} before decision", step);
+                    assert_other_author(&bytes);
+                    if tracked {
+                        bytes = edit(&bytes, vec![decide(accept, lg_ids(&bytes))]);
+                        model = if accept { after } else { before };
+                    } else { model = after; }
+                }
+                Action::InvalidBoundary => {
+                    // Byte 2 bisects a Japanese character after a stable ASCII prefix.
+                    let offset = model.char_indices().find(|(_,c)| c.len_utf8()>1).map(|(i,_)| i+2);
+                    if let Some(offset) = offset {
+                        let result = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![HeadlessCommand::InsertText { paragraph: 0, offset, text: "bad".into() }] });
+                        prop_assert!(result.is_err(), "step {} must reject a non-UTF8 boundary", step);
+                    }
+                }
+                Action::NoopDecision(accept) => { bytes = edit(&bytes, vec![decide(accept, vec![])]); }
+            }
+            prop_assert_eq!(final_text(&bytes), format!("R{model}"), "persisted step {}", step);
+            assert_other_author(&bytes);
+            prop_assert!(lg_ids(&bytes).is_empty(), "each decision removes only our revisions");
+        }
+    }
+}
