@@ -98,6 +98,7 @@ pub mod set_typography;
 pub mod set_watermark;
 pub mod snapshot_edit;
 pub mod split_table;
+mod table_range;
 pub mod table_structure;
 pub(crate) mod text_edit;
 pub mod toggle_paragraph_space_before;

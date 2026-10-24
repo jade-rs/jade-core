@@ -1992,8 +1992,9 @@ pub fn apply_headless_commands_with_executor_to_document(
                 // A replacement that spans paragraphs removes the ones in
                 // between, and any comment anchored there goes with them.
                 let spans_paragraphs = start_paragraph != end_paragraph;
-                let command: Box<dyn Command> =
-                    Box::new(InsertTextCommand::new(range, text.to_owned(), None));
+                let command: Box<dyn Command> = Box::new(
+                    InsertTextCommand::new(range, text.to_owned(), None).deleting_selected_tables(),
+                );
                 let command: Box<dyn Command> = if spans_paragraphs {
                     Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
                 } else {
