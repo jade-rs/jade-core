@@ -43,7 +43,9 @@ pub(super) fn delete_range_with_tables(
             *p >= start.paragraph
                 && *p <= end.paragraph
                 && (*p != start.paragraph || start.offset == 0)
-                && (*p != end.paragraph || end.offset >= len(ctx.document, *p))
+                // The range is half-open: offset zero excludes even an empty cell.
+                && (*p != end.paragraph
+                    || (end.offset > 0 && end.offset >= len(ctx.document, *p)))
         }) {
             covered.extend(paragraphs);
             tables.push(id);
