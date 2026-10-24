@@ -136,8 +136,26 @@ impl Command for TableStructureCommand {
                     }
                 }),
             TableStructureOp::DeleteRow { row_index } => {
+                // A row can carry only one structural revision. Do not replace
+                // another author's mark or physically remove their insertion.
+                if let (Some(session), Some(mark)) = (
+                    ctx.document.revision_session(),
+                    ctx.document
+                        .table_by_order(self.table_order_index)
+                        .and_then(|table| table.rows.get(row_index))
+                        .and_then(|row| row.revision.as_deref()),
+                ) {
+                    if mark.author != session.author {
+                        return Err(CommandError::Custom(
+                            "decide the existing row revision before deleting this row".into(),
+                        ));
+                    }
+                    if mark.is_deletion() {
+                        return Ok(());
+                    }
+                }
                 // With changes tracked the row stays, marked deleted — unless
-                // it is itself a tracked insertion, which simply goes.
+                // it is our own tracked insertion, which simply goes.
                 let inserted = ctx
                     .document
                     .table_by_order(self.table_order_index)
