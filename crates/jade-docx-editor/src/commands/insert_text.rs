@@ -20,6 +20,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 pub struct InsertTextCommand {
     range: SelectionRange,
     text: String,
+    delete_selected_tables: bool,
     inline_properties: Option<RunProperties>,
     previous_runs: Option<Vec<Run>>,
     previous_anchors: Option<CommentAnchors>,
@@ -47,6 +48,7 @@ impl InsertTextCommand {
         Self {
             range,
             text,
+            delete_selected_tables: false,
             inline_properties,
             previous_runs: None,
             previous_anchors: None,
@@ -58,6 +60,13 @@ impl InsertTextCommand {
             note_range_deletion: None,
             paragraph_index,
         }
+    }
+
+    /// Server range deletion includes tables whose complete content is selected.
+    /// Browser text selections retain their existing cell-clearing behavior.
+    pub(crate) fn deleting_selected_tables(mut self) -> Self {
+        self.delete_selected_tables = true;
+        self
     }
 
     fn apply_edit(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
@@ -85,6 +94,18 @@ impl InsertTextCommand {
         let start_offset = start.offset.min(start_len);
         let end_offset = end.offset.min(end_len);
 
+        if self.delete_selected_tables && self.text.is_empty() {
+            if let Some(snapshot) = super::table_range::delete_range_with_tables(ctx, start, end)? {
+                self.previous_snapshot = Some(snapshot);
+                self.previous_selection = previous_selection;
+                self.in_place = None;
+                self.note_range_deletion = None;
+                self.previous_paragraphs = None;
+                self.raw_xml_undo = RawXmlUndo::default();
+                return Ok(());
+            }
+        }
+
         // A tracked selection spanning sibling paragraphs keeps both source
         // paragraphs until review. The selected text and every intervening
         // paragraph mark are deleted revisions; replacement text is inserted
@@ -99,7 +120,10 @@ impl InsertTextCommand {
             // A note keeps its paragraphs' XML in its own part, which the
             // journal does not cover.
             let (mut tracked_range, snapshot) =
-                if ctx.document.is_note_paragraph_surface(start.paragraph) {
+                if ctx.document.is_note_paragraph_surface(start.paragraph)
+                    || (start.paragraph..end.paragraph)
+                        .any(|index| ctx.document.is_own_inserted_paragraph_break(index))
+                {
                     let snapshot = ctx
                         .document
                         .snapshot_including_package()
@@ -110,6 +134,7 @@ impl InsertTextCommand {
                     (Some(ParagraphRangeUndo::begin(ctx, range)?), None)
                 };
             let result = (|| -> Result<usize, String> {
+                let mut insert_offset = start_len;
                 for index in start.paragraph..=end.paragraph {
                     let (from, to) = if index == start.paragraph {
                         (start_offset, start_len)
@@ -140,14 +165,20 @@ impl InsertTextCommand {
                             return Err("failed to mark selected text as deleted".into());
                         }
                     }
+                    if index == start.paragraph {
+                        insert_offset = ctx
+                            .document
+                            .paragraph(index)
+                            .map(paragraph_len)
+                            .ok_or("first selected paragraph is unavailable")?;
+                    }
                     if !spans.is_empty() {
                         ctx.document.sync_paragraph_text_preserving_drawings(index);
                     }
                 }
-                for index in start.paragraph..end.paragraph {
+                for index in (start.paragraph..end.paragraph).rev() {
                     ctx.document.mark_deleted_paragraph_break(index)?;
                 }
-                let insert_offset = start_len;
                 if !self.text.is_empty() {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     let paragraph = ctx
@@ -374,7 +405,12 @@ impl InsertTextCommand {
                     }
                     if index == start.paragraph {
                         insert_offset = if recording {
-                            to
+                            let current_len = ctx
+                                .document
+                                .paragraph(index)
+                                .map(paragraph_len)
+                                .ok_or(CommandError::ParagraphUnavailable)?;
+                            to.saturating_sub(len.saturating_sub(current_len))
                         } else {
                             to - spans.iter().map(|(a, b)| b - a).sum::<usize>()
                         };
@@ -542,11 +578,21 @@ impl InsertTextCommand {
                     .map(|paragraph| paragraph.runs.clone())
                     .ok_or(CommandError::ParagraphUnavailable)?;
                 if ctx.document.revision_session().is_some() {
+                    let previous_len = previous_runs
+                        .iter()
+                        .map(|run| run.text.len())
+                        .sum::<usize>();
                     for (from, to) in unprotected_spans.iter().rev() {
                         ctx.document
                             .apply_deletion_revision(start.paragraph, *from, to - from);
                     }
-                    insert_offset = end_offset;
+                    let current_len = ctx
+                        .document
+                        .paragraph(start.paragraph)
+                        .map(paragraph_len)
+                        .ok_or(CommandError::ParagraphUnavailable)?;
+                    insert_offset =
+                        end_offset.saturating_sub(previous_len.saturating_sub(current_len));
                 } else {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     for (from, to) in unprotected_spans.iter().rev() {
@@ -591,22 +637,31 @@ impl InsertTextCommand {
                     start_offset,
                     end_offset - start_offset,
                 );
-                // The struck-out text stays in the paragraph, so the insertion
-                // goes after it rather than where the range began.
+                let previous_len = previous_runs
+                    .iter()
+                    .map(|run| run.text.len())
+                    .sum::<usize>();
+                let current_len = ctx
+                    .document
+                    .paragraph(start.paragraph)
+                    .map(paragraph_len)
+                    .ok_or(CommandError::ParagraphUnavailable)?;
+                insert_offset = end_offset.saturating_sub(previous_len.saturating_sub(current_len));
+                // Insert after retained deletions, accounting for canceled insertions.
                 if !self.text.is_empty() {
                     let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     if let Some(paragraph) = ctx.document.paragraph_mut(start.paragraph) {
                         apply_text_edit(
                             &mut paragraph.runs,
-                            end_offset,
-                            end_offset,
+                            insert_offset,
+                            insert_offset,
                             &self.text,
                             &zero_width,
                         );
                         rebase_comment_anchors_for_edit(
                             paragraph,
-                            end_offset,
-                            end_offset,
+                            insert_offset,
+                            insert_offset,
                             self.text.len(),
                         );
                     }
@@ -3895,5 +3950,75 @@ mod tests {
             ],
             "tracked",
         );
+    }
+
+    #[test]
+    fn deleting_selected_tables_undoes_and_redoes_the_entire_package() {
+        let table = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>CELL</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+        let data = build_docx_with_body(&format!(
+            "<w:p><w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"
+        ));
+        for tracked in [false, true] {
+            let mut document =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            if tracked {
+                document.set_revision_session(Some(RevisionSession {
+                    author: Some("LAWGUE".into()),
+                    ..Default::default()
+                }));
+            }
+            let before = exported_document_xml(&mut document);
+            let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 4));
+            let mut selection = Some(range);
+            let mut history = CommandExecutor::new();
+            let command =
+                InsertTextCommand::new(range, String::new(), None).deleting_selected_tables();
+            history
+                .execute(
+                    Box::new(command),
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            let after = exported_document_xml(&mut document);
+            assert_ne!(after, before);
+            assert_eq!(document.table_by_order(0).is_some(), tracked);
+            assert!(history
+                .undo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(exported_document_xml(&mut document), before);
+            assert_eq!(selection, Some(range));
+            assert!(history
+                .redo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(exported_document_xml(&mut document), after);
+        }
+    }
+
+    #[test]
+    fn deleting_selected_tables_rolls_back_when_a_later_table_refuses_deletion() {
+        let inserted = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="1" w:author="LAWGUE"/></w:trPr><w:tc><w:p><w:ins w:id="2" w:author="Reviewer"><w:r><w:t>REVIEW</w:t></w:r></w:ins></w:p></w:tc></w:tr></w:tbl>"#;
+        let plain = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>CELL</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+        let data = build_docx_with_body(&format!("<w:p><w:r><w:t>HEAD</w:t></w:r></w:p>{inserted}{plain}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"));
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        document.set_revision_session(Some(RevisionSession {
+            author: Some("LAWGUE".into()),
+            ..Default::default()
+        }));
+        let before = exported_document_xml(&mut document);
+        let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(2, 4));
+        let mut selection = Some(range);
+        let mut history = CommandExecutor::new();
+        let command = InsertTextCommand::new(range, String::new(), None).deleting_selected_tables();
+        let error = history
+            .execute(
+                Box::new(command),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap_err();
+        assert!(error.to_string().contains("other author's revisions"));
+        assert_eq!(exported_document_xml(&mut document), before);
+        assert_eq!(selection, Some(range));
+        assert!(!history.can_undo());
     }
 }
