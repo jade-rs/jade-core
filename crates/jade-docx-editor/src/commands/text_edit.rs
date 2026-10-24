@@ -548,11 +548,12 @@ fn insert_into_runs(
 }
 
 /// Whether `run` holds an object that is not text: a text box, an image,
-/// an equation, a note reference or a note's own number.
+/// an equation, a comment/note reference or a note's own number.
 fn run_holds_object(run: &Run) -> bool {
     run.text_box.is_some()
         || run.image.is_some()
         || run.math.is_some()
+        || !run.comment_reference_ids.is_empty()
         || !run.footnote_reference_ids.is_empty()
         || !run.endnote_reference_ids.is_empty()
         || run.has_footnote_ref
