@@ -127,6 +127,7 @@ fn decide(
                     end_offset,
                     paragraph_mark: false,
                     id: Some(id),
+                    format_change: None,
                 },
             )
             .collect()
@@ -564,4 +565,170 @@ fn typing_where_an_insertion_was_emptied_after_a_note_reference_is_plain() {
     run(&mut word, vec![insert(1, 0, "日本")]);
     assert_eq!(runs(&word, 1), ["日本"]);
     assert_eq!(runs(&reload(&word), 1), ["日本"]);
+}
+
+fn formatting_revisions(
+    word: &WordDocument,
+) -> Vec<jade_docx_headless_api::HeadlessRevisionSnapshot> {
+    use jade_docx_headless_api::{HeadlessQueryRequest, HeadlessQueryResult};
+    let request: HeadlessQueryRequest =
+        serde_json::from_value(serde_json::json!({"queries": [{"type": "revisions"}]})).unwrap();
+    let response =
+        jade_docx_document_core::headless_api::execute_headless_queries_on_document(word, &request)
+            .unwrap();
+    match response.results.into_iter().next().unwrap() {
+        HeadlessQueryResult::Revisions { revisions, .. } => revisions,
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn tracked_formatting_survives_export_and_can_be_rejected_individually() {
+    let mut word = hello();
+    let original = word.paragraph(0).unwrap().properties.clone();
+    run(
+        &mut word,
+        vec![
+            track("Reviewer"),
+            HeadlessCommand::SetBold {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 5,
+                value: true,
+            },
+            HeadlessCommand::SetParagraphIndent {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                left: Some(36.0),
+                right: None,
+                first_line: None,
+                hanging: None,
+                left_chars: None,
+                right_chars: None,
+                clear_special: false,
+            },
+        ],
+    );
+    let mut word = reload(&word);
+    let revisions = formatting_revisions(&word);
+    assert_eq!(revisions.len(), 2, "{revisions:?}");
+    assert!(revisions
+        .iter()
+        .all(|r| r.author.as_deref() == Some("Reviewer") && r.date.is_some() && r.id.is_some()));
+    for kind in ["runFormat", "paragraphFormat"] {
+        let revision = revisions.iter().find(|r| r.kind == kind).unwrap();
+        run(
+            &mut word,
+            vec![HeadlessCommand::RejectRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: None,
+                revision_ids: None,
+                revision_targets: Some(vec![HeadlessRevisionTarget {
+                    paragraph: revision.paragraph,
+                    start_offset: revision.start_offset,
+                    end_offset: revision.end_offset,
+                    id: revision.id.clone(),
+                    paragraph_mark: false,
+                    format_change: Some(kind.into()),
+                }]),
+            }],
+        );
+    }
+    assert!(!word.paragraph(0).unwrap().runs[0]
+        .properties
+        .as_ref()
+        .and_then(|props| props.bold)
+        .unwrap_or(false));
+    assert_eq!(
+        word.paragraph(0)
+            .unwrap()
+            .properties
+            .as_ref()
+            .and_then(|props| props.indent.as_ref())
+            .and_then(|indent| indent.left),
+        original
+            .as_ref()
+            .and_then(|props| props.indent.as_ref())
+            .and_then(|indent| indent.left)
+    );
+    assert!(formatting_revisions(&reload(&word)).is_empty());
+}
+
+#[test]
+fn accepting_formatting_keeps_latest_value_and_repeated_edits_keep_original() {
+    for accept in [false, true] {
+        let mut word = hello();
+        run(
+            &mut word,
+            vec![
+                track("Reviewer"),
+                HeadlessCommand::SetBold {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 5,
+                    value: true,
+                },
+                HeadlessCommand::SetBold {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 5,
+                    value: false,
+                },
+                HeadlessCommand::SetBold {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 5,
+                    value: true,
+                },
+            ],
+        );
+        run(&mut word, vec![decide(accept, None, None)]);
+        let word = reload(&word);
+        assert_eq!(
+            word.paragraph(0).unwrap().runs[0]
+                .properties
+                .as_ref()
+                .and_then(|props| props.bold)
+                .unwrap_or(false),
+            accept
+        );
+        assert!(formatting_revisions(&word).is_empty());
+    }
+}
+
+#[test]
+fn rejecting_text_and_formatting_together_restores_original_properties() {
+    let mut word = hello();
+    let original = runs(&word, 0);
+    run(
+        &mut word,
+        vec![
+            track("Reviewer"),
+            HeadlessCommand::SetBold {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 5,
+                value: true,
+            },
+            insert(0, 0, "new"),
+            delete(0, 4, 6),
+        ],
+    );
+    let mut word = reload(&word);
+    run(&mut word, vec![decide(false, None, None)]);
+    let word = reload(&word);
+    assert_eq!(runs(&word, 0), original);
+    assert!(word.paragraph(0).unwrap().runs.iter().all(|run| !run
+        .properties
+        .as_ref()
+        .and_then(|props| props.bold)
+        .unwrap_or(false)));
+    assert!(formatting_revisions(&word).is_empty());
 }

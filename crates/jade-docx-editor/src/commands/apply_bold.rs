@@ -37,6 +37,9 @@ impl ApplyBoldCommand {
 }
 
 impl Command for ApplyBoldCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "apply_bold"
     }

@@ -35,6 +35,9 @@ impl ToggleParagraphSpaceBeforeCommand {
 }
 
 impl Command for ToggleParagraphSpaceBeforeCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "toggle_paragraph_space_before"
     }

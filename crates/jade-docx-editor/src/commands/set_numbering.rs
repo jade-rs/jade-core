@@ -92,6 +92,9 @@ impl SetNumberingCommand {
 }
 
 impl Command for SetNumberingCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_numbering"
     }
@@ -259,9 +262,8 @@ mod tests {
     fn removing_numbering_a_pending_change_records_writes_num_id_zero() {
         // numbering-with-review.docx's first paragraph had its list taken off
         // with tracking on: its `w:pPr` has no `w:numPr`, and its
-        // `w:pPrChange` keeps the list, by which the reader numbers it while
-        // the change is pending. Removing the numbering left the file as it
-        // was, so the number came back on reload.
+        // `w:pPrChange` keeps the previous list. Historical properties must
+        // not affect the current numbering, including after undo or reload.
         let bytes = std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../public/fixtures/numbering-with-review.docx"
@@ -269,7 +271,7 @@ mod tests {
         .expect("read fixture");
         let mut word_doc = load(&bytes);
         let original = paragraphs_xml(&word_doc.export_docx().expect("export"));
-        assert_eq!(num_id(&word_doc, 0).as_deref(), Some("3"));
+        assert_eq!(num_id(&word_doc, 0), None);
         let mut selection = None;
         let mut executor = CommandExecutor::new();
         executor
@@ -285,7 +287,7 @@ mod tests {
         executor
             .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
             .expect("undo");
-        assert_eq!(num_id(&word_doc, 0).as_deref(), Some("3"));
+        assert_eq!(num_id(&word_doc, 0), None);
         assert_eq!(
             paragraphs_xml(&word_doc.export_docx().expect("export")),
             original

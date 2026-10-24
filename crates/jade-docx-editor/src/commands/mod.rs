@@ -8,7 +8,7 @@
 
 use std::fmt;
 
-use crate::word_document::WordDocument;
+use crate::word_document::{WordDocument, WordDocumentSnapshot};
 use jade_docx_layout::selection::SelectionRange;
 
 pub mod adjust_font_size;
@@ -178,6 +178,11 @@ pub trait Command {
     /// Human readable identifier (useful for debugging and telemetry).
     fn name(&self) -> &'static str;
 
+    /// Whether this command changes character or paragraph formatting.
+    fn tracks_formatting(&self) -> bool {
+        false
+    }
+
     /// Applies the command, mutating the document and updating the selection.
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()>;
 
@@ -250,7 +255,34 @@ impl CommandExecutor {
         mut command: Box<dyn Command>,
         ctx: &mut CommandContext<'_>,
     ) -> CommandResult<()> {
+        let before = if command.tracks_formatting() && ctx.document.revision_session().is_some() {
+            ctx.document
+                .ensure_roundtrip_xml()
+                .map_err(|error| CommandError::Custom(error.to_string()))?;
+            ctx.document.snapshot_including_package().map(|snapshot| {
+                let paragraphs = (0..ctx.document.paragraph_count())
+                    .filter_map(|index| ctx.document.paragraph(index).cloned())
+                    .collect::<Vec<_>>();
+                (snapshot, paragraphs, *ctx.selection)
+            })
+        } else {
+            None
+        };
         command.apply(ctx)?;
+        if let Some((before, paragraphs, selection_before)) = before {
+            if let Some(raw) = before.raw_document.as_ref() {
+                ctx.document.record_formatting_changes(&paragraphs, raw);
+            }
+            if let Some(after) = ctx.document.snapshot_including_package() {
+                command = Box::new(TrackedFormattingCommand {
+                    inner: command,
+                    before,
+                    after,
+                    selection_before,
+                    selection_after: *ctx.selection,
+                });
+            }
+        }
         if command.should_record_history() {
             if let Some(group) = self.group.as_mut() {
                 group.push(command);
@@ -403,6 +435,43 @@ impl CommandExecutor {
     }
 }
 
+/// Formatting revisions must undo both the formatting and its OOXML record.
+struct TrackedFormattingCommand {
+    inner: Box<dyn Command>,
+    before: WordDocumentSnapshot,
+    after: WordDocumentSnapshot,
+    selection_before: Option<SelectionRange>,
+    selection_after: Option<SelectionRange>,
+}
+impl Command for TrackedFormattingCommand {
+    fn name(&self) -> &'static str {
+        self.inner.name()
+    }
+    fn should_record_history(&self) -> bool {
+        self.inner.should_record_history()
+    }
+    fn history_render_footprint(&self) -> HistoryRenderFootprint {
+        self.inner.history_render_footprint()
+    }
+    fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.redo(ctx)
+    }
+    fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        let session = ctx.document.revision_session().cloned();
+        ctx.document.restore_snapshot(self.before.clone());
+        ctx.document.set_revision_session(session);
+        *ctx.selection = self.selection_before;
+        Ok(())
+    }
+    fn redo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        let session = ctx.document.revision_session().cloned();
+        ctx.document.restore_snapshot(self.after.clone());
+        ctx.document.set_revision_session(session);
+        *ctx.selection = self.selection_after;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -443,6 +512,61 @@ mod tests {
             }),
             ..Document::default()
         })
+    }
+
+    #[test]
+    fn tracked_formatting_undo_redo_restores_revisions_and_keeps_current_session() {
+        use crate::commands::set_bold::SetBoldCommand;
+        use crate::word_document::RevisionSession;
+
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../hello.docx"),
+        )
+        .unwrap();
+        let mut document =
+            futures::executor::block_on(WordDocument::load(&bytes, &crate::Options::default()))
+                .unwrap();
+        document.set_revision_session(Some(RevisionSession {
+            author: Some("Reviewer".into()),
+            ..RevisionSession::default()
+        }));
+        let range = SelectionRange {
+            anchor: TextPosition {
+                paragraph: 0,
+                offset: 0,
+            },
+            focus: TextPosition {
+                paragraph: 0,
+                offset: 5,
+            },
+        };
+        let mut selection = Some(range);
+        let mut executor = CommandExecutor::new();
+        executor
+            .execute(
+                Box::new(SetBoldCommand::new(range, true)),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap();
+        let revisions = document.formatting_revision_snapshots();
+        assert_eq!(revisions.len(), 1);
+        assert_eq!(revisions[0].kind, "runFormat");
+        // Switching tracking off must not be undone along with a format edit.
+        document.set_revision_session(None);
+        executor
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap();
+        assert!(document.formatting_revision_snapshots().is_empty());
+        assert!(document.revision_session().is_none());
+        assert_eq!(selection, Some(range));
+        executor
+            .redo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap();
+        let redone = document.formatting_revision_snapshots();
+        assert_eq!(redone.len(), 1);
+        assert_eq!(redone[0].id, revisions[0].id);
+        assert!(document.revision_session().is_none());
+        assert_eq!(selection, Some(range));
     }
 
     #[test]

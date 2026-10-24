@@ -3012,7 +3012,15 @@ pub fn apply_headless_commands_with_executor_to_document(
                     let groups = revision_groups(word_doc);
                     let mut set = RevisionTargets::default();
                     for target in targets {
-                        if target.paragraph_mark {
+                        if let Some(kind) = target.format_change.as_ref() {
+                            set.add_format(
+                                target.paragraph,
+                                target.start_offset,
+                                target.end_offset,
+                                target.id.clone(),
+                                kind.clone(),
+                            );
+                        } else if target.paragraph_mark {
                             set.add_paragraph_mark(target.paragraph, target.id.clone());
                         } else {
                             for id in revision_target_run_ids(&groups, target) {
@@ -5947,6 +5955,7 @@ fn revision_target_run_ids(
     let mut ids = vec![target.id.clone()];
     for (listed, pieces) in groups {
         if !listed.paragraph_mark
+            && !matches!(listed.kind.as_str(), "runFormat" | "paragraphFormat")
             && listed.paragraph == target.paragraph
             && target.start_offset <= listed.start_offset
             && listed.end_offset <= target.end_offset
@@ -6043,6 +6052,16 @@ fn revision_groups(
             );
         }
     }
+    revisions.extend(
+        word_doc
+            .formatting_revision_snapshots()
+            .into_iter()
+            .map(|snapshot| {
+                let ids = vec![snapshot.id.clone()];
+                (snapshot, ids)
+            }),
+    );
+    revisions.sort_by_key(|(snapshot, _)| (snapshot.paragraph, snapshot.start_offset));
     revisions
 }
 
@@ -6064,7 +6083,9 @@ pub struct RevisionSelector {
 /// a selection reaches it only when it runs past the end of the paragraph.
 fn revision_span(revision: &HeadlessRevisionSnapshot) -> ((usize, usize), (usize, usize)) {
     let start = (revision.paragraph, revision.start_offset);
-    let end = if revision.paragraph_mark {
+    let end = if revision.paragraph_mark
+        || revision.kind == "paragraphFormat" && revision.start_offset == revision.end_offset
+    {
         (revision.paragraph, revision.start_offset.saturating_add(1))
     } else {
         (revision.paragraph, revision.end_offset)
@@ -6159,6 +6180,8 @@ pub fn revision_targets_for(
             end_offset: revision.end_offset,
             paragraph_mark: revision.paragraph_mark,
             id: revision.id.clone(),
+            format_change: matches!(revision.kind.as_str(), "runFormat" | "paragraphFormat")
+                .then(|| revision.kind.clone()),
         })
         .collect()
 }
@@ -16400,6 +16423,7 @@ mod tests {
                         end_offset: 15,
                         paragraph_mark: false,
                         id: Some("2".to_string()),
+                        format_change: None,
                     }],
                 )],
             },
@@ -16417,6 +16441,7 @@ mod tests {
                         end_offset: 1,
                         paragraph_mark: false,
                         id: None,
+                        format_change: None,
                     }],
                 )],
             },

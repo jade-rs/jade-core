@@ -75,6 +75,9 @@ impl SetParagraphLineSpacingCommand {
 }
 
 impl Command for SetParagraphLineSpacingCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_line_spacing"
     }
