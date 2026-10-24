@@ -15107,6 +15107,27 @@ impl OffscreenDocumentView {
     pub fn pointer_down(&self, x: f64, y: f64) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            let outline_heading = if view.state.borrow().editing_mode == EditingMode::Body {
+                view.renderer.borrow().outline_heading_at(x, y)
+            } else {
+                None
+            };
+            if let Some(paragraph) = outline_heading {
+                view.drag_state.replace(PointerDragState::None);
+                view.set_selection_range_surface_async(paragraph, 0, paragraph, 0)
+                    .await?;
+                let hidden = view.refresh_outline_display(|display, _| {
+                    display.collapsed_nodes.clear();
+                    if !display.collapsed.remove(&paragraph) {
+                        display.collapsed.insert(paragraph);
+                    }
+                })?;
+                let result = view.rerender_after_display_change(|renderer| {
+                    renderer.set_collapsed_blocks(hidden)
+                })?;
+                Reflect::set(&result, &"outlineChanged".into(), &true.into())?;
+                return Ok(result);
+            }
             view.pointer_down_async(x, y).await?;
             let mode = view.state.borrow().editing_mode;
             if mode == EditingMode::Body {
@@ -17758,6 +17779,7 @@ impl OffscreenDocumentView {
         let mut renderer = self.renderer.borrow_mut();
         renderer.set_page_export_render_options(show_formatting_marks, show_crop_marks);
         renderer.set_spelling_export_mode(enabled);
+        renderer.set_outline_symbols_hidden(enabled);
         Ok(())
     }
 
@@ -20157,6 +20179,12 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = setBandRedrawEnabled)]
     pub fn set_band_redraw_enabled(&self, enabled: bool) {
         self.renderer.borrow_mut().set_band_redraw_enabled(enabled);
+    }
+
+    /// Keeps presentation controls legible independently of raster density.
+    #[wasm_bindgen(js_name = setViewZoom)]
+    pub fn set_view_zoom(&self, zoom: f64) {
+        self.renderer.borrow_mut().set_view_zoom(zoom);
     }
 
     /// Enables or disables the spanning-paragraph seek fast path. Default
