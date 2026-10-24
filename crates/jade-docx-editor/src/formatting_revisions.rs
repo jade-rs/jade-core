@@ -17,11 +17,6 @@ fn attr(element: &XmlElement, name: &str) -> Option<String> {
 }
 fn without_changes(mut element: XmlElement) -> XmlElement {
     element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange"));
-    // pPrChange contains CT_PPrGeneral, which excludes paragraph-mark run
-    // properties and section properties. Those have their own revisions.
-    if element.name == "w:pPr" {
-        element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr"));
-    }
     element
 }
 fn signature(element: Option<&XmlElement>) -> String {
