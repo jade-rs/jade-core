@@ -184,7 +184,7 @@ fn body_paragraph_count(bytes: &[u8]) -> usize {
 // Synthetic contracts reproduced from lawgue#19947. These fixtures include
 // inherited fonts, numbering, a table, and (review) foreign revisions/comments.
 #[test]
-fn replacing_across_table_boundaries_cannot_leave_invalid_cells() {
+fn deleting_a_range_containing_a_whole_table_removes_its_grid() {
     let input = include_bytes!("fixtures/staging-base.docx");
     let result = apply_headless_commands(
         input,
@@ -205,11 +205,161 @@ fn replacing_across_table_boundaries_cannot_leave_invalid_cells() {
         .descendants()
         .filter(|node| node.has_tag_name((NS, "tc")))
         .collect();
-    assert_eq!(cells.len(), 12);
-    assert!(cells
-        .iter()
-        .all(|cell| cell.children().any(|node| node.has_tag_name((NS, "p")))));
-    assert_eq!(table_shape(&output), Some((4, 3)));
+    assert!(cells.is_empty());
+    assert_eq!(table_shape(&output), None);
+    assert!(!final_text(&output).contains("別表（委託料）"));
+    for accept in [false, true] {
+        let tracked = edit(
+            input,
+            vec![
+                tracking(),
+                HeadlessCommand::ReplaceRange {
+                    start_paragraph: 24,
+                    start_offset: 0,
+                    end_paragraph: 36,
+                    end_offset: 27,
+                    text: String::new(),
+                },
+            ],
+        );
+        assert_eq!(tracked_rows(&tracked), Some(vec![2; 4]));
+        assert!(!final_text(&tracked).contains("別表（委託料）"));
+        let decided = edit(&tracked, vec![decide(accept, lg_ids(&tracked))]);
+        assert_eq!(
+            table_shape(&decided),
+            if accept { None } else { Some((4, 3)) }
+        );
+        if !accept {
+            assert_eq!(final_text(&decided), final_text(input));
+        }
+    }
+}
+
+fn range_table(left: &str, right: &str) -> String {
+    format!(
+        r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>{left}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{right}</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#
+    )
+}
+
+fn range_delete(
+    start: usize,
+    start_offset: usize,
+    end: usize,
+    end_offset: usize,
+) -> HeadlessCommand {
+    HeadlessCommand::ReplaceRange {
+        start_paragraph: start,
+        start_offset,
+        end_paragraph: end,
+        end_offset,
+        text: String::new(),
+    }
+}
+
+#[test]
+fn range_deletion_removes_multiple_and_nested_tables_but_keeps_partial_cells() {
+    let one = range_table("AB", "CD");
+    let nested = range_table(&format!("A</w:t></w:r></w:p>{one}<w:p><w:r><w:t>B"), "CD");
+    for table in [format!("{one}{one}"), nested] {
+        let input = fixture(&format!(
+            "<w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"
+        ));
+        let paragraph_count = {
+            let xml = part(&input, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            doc.descendants()
+                .filter(|n| n.has_tag_name((NS, "p")))
+                .count()
+        };
+        for tracked in [false, true] {
+            let mut commands = vec![];
+            if tracked {
+                commands.push(tracking());
+            }
+            commands.push(range_delete(0, 0, paragraph_count - 2, 2));
+            let output = edit(&input, commands);
+            assert_eq!(final_text(&output), "TAIL");
+            let accepted = if tracked {
+                edit(&output, vec![decide(true, lg_ids(&output))])
+            } else {
+                output
+            };
+            assert_eq!(table_shape(&accepted), None);
+        }
+    }
+    let input = fixture(&format!(
+        "<w:r><w:t>HEAD</w:t></w:r></w:p>{one}<w:p><w:r><w:t>TAIL</w:t></w:r>"
+    ));
+    let partial = edit(&input, vec![range_delete(1, 1, 2, 1)]);
+    assert_eq!(table_shape(&partial), Some((1, 2)));
+    assert_eq!(final_text(&partial), "HEADADTAIL");
+}
+
+// Independent model: each one-row table has a plain/inserted/deleted mark and
+// two cell strings. Every public operation exports and reloads a DOCX package.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_range_table_deletion_matches_model(actions in prop::collection::vec((0u8..7, any::<u8>(), any::<bool>()), 1..25)) {
+        let table = range_table("AB", "CD");
+        let mut bytes = fixture(&format!(r#"<w:ins w:id="40" w:author="Reviewer"><w:r><w:t>R</w:t></w:r></w:ins></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"#));
+        let mut model = vec![(0u8, ["AB".to_string(), "CD".to_string()])];
+        for (step, (kind, index, tracked)) in actions.into_iter().enumerate() {
+            let mut expected = model.clone();
+            let mut invalid = false;
+            let command = match kind {
+                0 => {
+                    expected.insert(0, (u8::from(tracked), [String::new(), String::new()]));
+                    HeadlessCommand::InsertTable { after_paragraph: 0, rows: 1, columns: 2, column_widths: vec![], caret_offset: None }
+                },
+                1 if !expected.is_empty() => {
+                    let table = index as usize % expected.len();
+                    let end = expected[table].1[1].len();
+                    if !tracked || expected[table].0 == 1 { expected.remove(table); }
+                    else { expected[table].0 = 2; }
+                    range_delete(1 + table * 2, 0, 2 + table * 2, end)
+                },
+                2 if !expected.is_empty() => {
+                    let table = index as usize % expected.len();
+                    let end = usize::from(!expected[table].1[0].is_empty());
+                    expected[table].1[0].replace_range(..end, "");
+                    // A partial cell edit never removes the grid, even if empty.
+                    let command = range_delete(1 + table * 2, 0, 1 + table * 2, end);
+                    let output = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![HeadlessCommand::StopChangeTracking, command] });
+                    prop_assert!(output.is_ok(), "partial cell step {}: {:?}", step, output.as_ref().err());
+                    bytes = output.unwrap();
+                    model = expected.clone();
+                    HeadlessCommand::StopChangeTracking
+                },
+                3 | 4 => {
+                    let accept = kind == 3;
+                    expected.retain(|(state, _)| *state != if accept { 2 } else { 1 });
+                    for (state, _) in &mut expected { *state = 0; }
+                    decide(accept, lg_ids(&bytes))
+                },
+                6 => decide(tracked, vec![]),
+                _ => { invalid = true; range_delete(99, 0, 99, 0) },
+            };
+            let output = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![if tracked { tracking() } else { HeadlessCommand::StopChangeTracking }, command] });
+            if invalid { prop_assert!(output.is_err(), "invalid range at step {}", step); }
+            else { prop_assert!(output.is_ok(), "step {} kind {}: {:?}", step, kind, output.as_ref().err()); bytes = output.unwrap(); model = expected; }
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            let actual: Vec<_> = doc.descendants().filter(|n| n.has_tag_name((NS, "tbl"))).map(|table| {
+                let row = table.children().find(|n| n.has_tag_name((NS, "tr"))).unwrap();
+                let state = row.children().find(|n| n.has_tag_name((NS, "trPr"))).map_or(0, |p| {
+                    if p.children().any(|n| n.has_tag_name((NS, "ins"))) { 1 } else if p.children().any(|n| n.has_tag_name((NS, "del"))) { 2 } else { 0 }
+                });
+                let cells: Vec<String> = row.children().filter(|n| n.has_tag_name((NS, "tc"))).map(|c| c.descendants().filter(|n| n.has_tag_name((NS, "t"))).filter_map(|n| n.text()).collect()).collect();
+                (state, cells)
+            }).collect();
+            let expected: Vec<_> = model.iter().map(|(state, cells)| (*state, cells.to_vec())).collect();
+            prop_assert_eq!(actual, expected, "persisted table state at step {} kind {}", step, kind);
+            let expected_text = format!("R{}TAIL", model.iter().filter(|(state, _)| *state != 2).flat_map(|(_, cells)| cells.iter()).cloned().collect::<String>());
+            prop_assert_eq!(final_text(&bytes), expected_text, "visible text at step {}", step);
+            prop_assert!(doc.descendants().any(|n| n.has_tag_name((NS, "ins")) && n.attribute((NS, "author")) == Some("Reviewer") && n.attribute((NS, "id")) == Some("40")), "foreign revision at step {}", step);
+        }
+    }
 }
 
 #[test]

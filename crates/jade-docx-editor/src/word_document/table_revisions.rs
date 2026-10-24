@@ -60,6 +60,23 @@ fn collect_row_paragraphs(
 }
 
 impl WordDocument {
+    pub(crate) fn table_paragraphs(&self, table: usize) -> Vec<usize> {
+        let indices: HashMap<_, _> = (0..self.paragraph_count())
+            .filter_map(|index| self.paragraph(index)?.node_id.map(|id| (id, index)))
+            .collect();
+        let mut paragraphs = Vec::new();
+        if let Some(table) = self.table_by_order(table) {
+            for row in &table.rows {
+                for cell in &row.cells {
+                    collect_row_paragraphs(&cell.blocks, &indices, &mut paragraphs);
+                }
+            }
+        }
+        paragraphs.sort_unstable();
+        paragraphs.dedup();
+        paragraphs
+    }
+
     /// Cancelling our inserted row must not discard another author's later edits.
     pub(crate) fn row_has_foreign_revisions(
         &self,
