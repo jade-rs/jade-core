@@ -1,6 +1,7 @@
 //! Word's 検索と置換 with its オプション, AutoCorrect's edits and the
 //! drag-and-drop move, through the shared model on a blank document — as
 //! either shell drives them.
+mod common;
 
 use std::future::Future;
 
@@ -10,6 +11,7 @@ use jade_docx_editor::word::autocorrect::{
 };
 use jade_docx_editor::word::clipboard::WordClipboard;
 use jade_docx_editor::word::new::{blank_document, Blank};
+use jade_docx_editor::word::references::navigation::WordNavigation;
 use jade_docx_editor::word::search::{Direction, FormatFilter, Scope, SearchOptions, WordSearch};
 use jade_docx_editor::word::{CellLayout, WordSession};
 use jade_docx_editor::word_document::WordDocument;
@@ -148,6 +150,44 @@ fn wildcards() -> SearchOptions {
         wildcards: true,
         ..SearchOptions::default()
     }
+}
+
+#[test]
+fn outline_movement_is_one_undo_step_and_rejects_document_edges() {
+    let mut session = Session::with(&["A", "B", "C", "D", "E"]);
+    let original_selection = Some(SelectionRange {
+        anchor: TextPosition::new(2, 1),
+        focus: TextPosition::new(1, 0),
+    });
+    session.selection = original_selection;
+    let original = common::document_xml(&session.document);
+    for (first, last, up) in [(0, 0, true), (4, 4, false), (5, 5, true)] {
+        assert!(session.move_outline_paragraphs(first, last, up).is_err());
+    }
+    assert_eq!(session.executor.undo_depth(), 0);
+    let position = session.move_outline_paragraphs(2, 1, false).unwrap();
+    assert_eq!(position, (2, 0));
+    assert_eq!(
+        (0..5).map(|i| session.text(i)).collect::<Vec<_>>(),
+        ["A", "D", "B", "C", "E"]
+    );
+    assert_eq!(session.executor.undo_depth(), 1);
+    {
+        let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+        assert!(session.executor.undo(&mut ctx).unwrap());
+    }
+    assert_eq!(common::document_xml(&session.document), original);
+    assert_eq!(session.selection, original_selection);
+    {
+        let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+        assert!(session.executor.redo(&mut ctx).unwrap());
+    }
+    assert_eq!(
+        (0..5).map(|i| session.text(i)).collect::<Vec<_>>(),
+        ["A", "D", "B", "C", "E"]
+    );
+    session.move_outline_paragraphs(2, 3, true).unwrap();
+    assert_eq!(common::document_xml(&session.document), original);
 }
 
 #[test]

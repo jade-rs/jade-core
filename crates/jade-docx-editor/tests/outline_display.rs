@@ -73,6 +73,7 @@ fn leaving_outline_removes_the_level_filter_and_preserves_folds() {
         collapsed: [0].into(),
         shown: 1,
         active: true,
+        ..Default::default()
     };
     assert_eq!(display.hidden_blocks(&session), [1, 2, 3, 4, 6]);
     display.active = false;
@@ -104,4 +105,37 @@ fn nested_folds_are_deduplicated_and_invalid_headings_are_pruned() {
     display.active = true;
     display.shown = 2;
     assert_eq!(display.hidden_blocks(&session), [1, 2, 4, 6]);
+}
+
+#[test]
+fn folds_follow_nodes_when_sections_move_and_history_restores() {
+    // Identical titles must not make folds jump to the other section.
+    let mut session = ReadSession(common::load(&common::package(
+        concat!(
+            r#"<w:p><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:r><w:t>Same</w:t></w:r></w:p>"#,
+            r#"<w:p><w:r><w:t>First body</w:t></w:r></w:p>"#,
+            r#"<w:p><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:r><w:t>Same</w:t></w:r></w:p>"#,
+            r#"<w:p><w:r><w:t>Second body</w:t></w:r></w:p>"#,
+        ),
+        &[],
+    )));
+    let before_xml = common::document_xml(&session.0);
+    let before = session.0.snapshot().unwrap();
+    let mut display = OutlineDisplay {
+        collapsed: [0].into(),
+        ..Default::default()
+    };
+    assert_eq!(display.hidden_blocks(&session), [1]);
+    session.0.move_body_elements(2, 3, 0).unwrap();
+    let after = session.0.snapshot().unwrap();
+    assert_eq!(display.hidden_blocks(&session), [3]);
+    assert_eq!(display.collapsed, [2].into());
+    session.0.restore_snapshot(before);
+    assert_eq!(display.hidden_blocks(&session), [1]);
+    assert_eq!(display.collapsed, [0].into());
+    assert_eq!(common::document_xml(&session.0), before_xml);
+    session.0.restore_snapshot(after);
+    assert_eq!(display.hidden_blocks(&session), [3]);
+    display.collapsed.clear();
+    assert!(display.hidden_blocks(&session).is_empty());
 }
