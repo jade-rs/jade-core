@@ -16,7 +16,61 @@ use crate::{
 /// move along by the same offset.
 pub struct AnchoredFormula(Node);
 
+/// Public, typed result of a formula evaluated without adding a workbook cell.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnchoredValue {
+    Number(f64),
+    Text(String),
+    Boolean(bool),
+    Empty,
+    Error(String),
+    Range {
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+    },
+    Array(Vec<Vec<AnchoredValue>>),
+}
+
+fn public_value(result: CalcResult) -> AnchoredValue {
+    match result {
+        CalcResult::Number(v) => AnchoredValue::Number(v),
+        CalcResult::String(v) => AnchoredValue::Text(v),
+        CalcResult::Boolean(v) => AnchoredValue::Boolean(v),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => AnchoredValue::Empty,
+        CalcResult::Error { error, .. } => AnchoredValue::Error(error.to_string()),
+        CalcResult::Range { left, right } => AnchoredValue::Range { left, right },
+        CalcResult::Lambda(_) => AnchoredValue::Error("#CALC!".into()),
+        CalcResult::Array(rows) => AnchoredValue::Array(
+            rows.into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|v| match v {
+                            ArrayNode::Number(v) => AnchoredValue::Number(v),
+                            ArrayNode::String(v) => AnchoredValue::Text(v),
+                            ArrayNode::Boolean(v) => AnchoredValue::Boolean(v),
+                            ArrayNode::Empty => AnchoredValue::Empty,
+                            ArrayNode::Error(v) => AnchoredValue::Error(v.to_string()),
+                        })
+                        .collect()
+                })
+                .collect(),
+        ),
+    }
+}
+
 impl Model<'_> {
+    /// Returns the formula's scalar, range or array result at this cell.
+    pub fn anchored_formula_value(
+        &mut self,
+        formula: &AnchoredFormula,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> AnchoredValue {
+        public_value(
+            self.evaluate_node_in_context(&formula.0, CellReferenceIndex { sheet, row, column }),
+        )
+    }
     /// Parses `formula` (English, with or without `=`) relative to the cell at
     /// (`sheet`, `row`, `column`), 1-based. `None` when it does not parse.
     pub fn parse_anchored_formula(

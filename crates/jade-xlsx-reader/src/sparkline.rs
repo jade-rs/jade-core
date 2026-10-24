@@ -2,12 +2,14 @@
 //! worksheet's `x14:sparklineGroups` extension.
 
 use quick_xml::events::{BytesStart, Event};
-use quick_xml::Reader;
+use quick_xml::{name::ResolveResult, NsReader};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::model::{CellRef, Color};
+use crate::model::{CellRange, CellRef, Color};
 use jade_opc::local_name;
+
+use crate::data_validations::{X14_NAMESPACE, XM_NAMESPACE};
 
 /// A group of sparklines sharing one look.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -65,137 +67,211 @@ fn flag(element: &BytesStart<'_>, key: &[u8]) -> Result<bool> {
     Ok(attribute(element, key)?.is_some_and(|value| value == "1" || value == "true"))
 }
 
-/// The sparkline groups of a worksheet's XML.
+type Element = (Vec<u8>, Vec<u8>);
+
+fn is_groups_container(stack: &[Element]) -> bool {
+    if stack.len() != 4 {
+        return false;
+    }
+    let main = stack[0].0.as_slice();
+    matches!(
+        main,
+        b"" | b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+            | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
+    ) && stack[0].1 == b"worksheet"
+        && stack[1].0 == main
+        && stack[1].1 == b"extLst"
+        && stack[2].0 == main
+        && stack[2].1 == b"ext"
+        && stack[3].0 == X14_NAMESPACE
+        && stack[3].1 == b"sparklineGroups"
+}
+
+struct PendingSparkline {
+    depth: usize,
+    formula: String,
+    cell: Option<CellRef>,
+}
+struct Leaf {
+    depth: usize,
+    formula: bool,
+    text: String,
+}
+
+fn finish_leaf(sparkline: &mut PendingSparkline, formula: bool, text: &str) {
+    if formula {
+        sparkline.formula = text.trim().to_string();
+    } else {
+        sparkline.cell = CellRange::parse(text.trim())
+            .ok()
+            .filter(|range| range.start == range.end)
+            .map(|range| range.start);
+    }
+}
+
+/// The owned x14 groups of a worksheet. Foreign and misplaced lookalikes stay
+/// opaque; a missing/invalid display cell never silently becomes A1.
 pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
     if !xml.contains("sparklineGroup") {
         return Ok(Vec::new());
     }
-    let mut reader = Reader::from_str(xml);
+    let mut reader = NsReader::from_str(xml);
+    let mut stack: Vec<Element> = Vec::new();
     let mut groups = Vec::new();
-    let mut group: Option<SparklineGroup> = None;
-    let mut sparkline: Option<Sparkline> = None;
-    // Which text is being read: 1 the formula, 2 the cell.
-    let mut reading = 0u8;
-    let mut text = String::new();
-    let mut buf = Vec::new();
+    let mut group: Option<(usize, SparklineGroup)> = None;
+    let mut sparkline: Option<PendingSparkline> = None;
+    let mut leaf: Option<Leaf> = None;
     loop {
-        let event = reader.read_event_into(&mut buf)?;
+        let event = reader.read_event()?;
         match &event {
             Event::Start(element) | Event::Empty(element) => {
                 let empty = matches!(event, Event::Empty(_));
-                let qualified = element.name();
-                match local_name(qualified.as_ref()) {
-                    b"sparklineGroup" => {
-                        let number = |key: &[u8]| -> Result<Option<f64>> {
-                            Ok(attribute(element, key)?.and_then(|value| value.parse().ok()))
-                        };
-                        let parsed = SparklineGroup {
-                            kind: attribute(element, b"type")?.unwrap_or_else(|| "line".into()),
-                            line_weight_points: number(b"lineWeight")?.unwrap_or(0.75),
-                            empty_cells: attribute(element, b"displayEmptyCellsAs")?
-                                .unwrap_or_else(|| "zero".into()),
-                            markers: flag(element, b"markers")?,
-                            high: flag(element, b"high")?,
-                            low: flag(element, b"low")?,
-                            first: flag(element, b"first")?,
-                            last: flag(element, b"last")?,
-                            negative: flag(element, b"negative")?,
-                            display_axis: flag(element, b"displayXAxis")?,
-                            display_hidden: flag(element, b"displayHidden")?,
-                            right_to_left: flag(element, b"rightToLeft")?,
-                            min_axis: attribute(element, b"minAxisType")?
-                                .unwrap_or_else(|| "individual".into()),
-                            max_axis: attribute(element, b"maxAxisType")?
-                                .unwrap_or_else(|| "individual".into()),
-                            manual_min: number(b"manualMin")?,
-                            manual_max: number(b"manualMax")?,
-                            ..Default::default()
-                        };
-                        if empty {
-                            groups.push(parsed);
-                        } else {
-                            group = Some(parsed);
-                        }
+                let namespace = match reader.resolver().resolve_element(element.name()).0 {
+                    ResolveResult::Unbound => Vec::new(),
+                    ResolveResult::Bound(ns) => ns.as_ref().to_vec(),
+                    _ => b"?unknown".to_vec(),
+                };
+                let name = local_name(element.name().as_ref()).to_vec();
+                let depth = stack.len();
+                if namespace == X14_NAMESPACE
+                    && name == b"sparklineGroup"
+                    && is_groups_container(&stack)
+                {
+                    let number = |key: &[u8]| -> Result<Option<f64>> {
+                        Ok(attribute(element, key)?.and_then(|value| value.parse().ok()))
+                    };
+                    let parsed = SparklineGroup {
+                        kind: attribute(element, b"type")?.unwrap_or_else(|| "line".into()),
+                        line_weight_points: number(b"lineWeight")?.unwrap_or(0.75),
+                        empty_cells: attribute(element, b"displayEmptyCellsAs")?
+                            .unwrap_or_else(|| "zero".into()),
+                        markers: flag(element, b"markers")?,
+                        high: flag(element, b"high")?,
+                        low: flag(element, b"low")?,
+                        first: flag(element, b"first")?,
+                        last: flag(element, b"last")?,
+                        negative: flag(element, b"negative")?,
+                        display_axis: flag(element, b"displayXAxis")?,
+                        display_hidden: flag(element, b"displayHidden")?,
+                        right_to_left: flag(element, b"rightToLeft")?,
+                        min_axis: attribute(element, b"minAxisType")?
+                            .unwrap_or_else(|| "individual".into()),
+                        max_axis: attribute(element, b"maxAxisType")?
+                            .unwrap_or_else(|| "individual".into()),
+                        manual_min: number(b"manualMin")?,
+                        manual_max: number(b"manualMax")?,
+                        ..Default::default()
+                    };
+
+                    if empty {
+                        groups.push(parsed);
+                    } else {
+                        group = Some((depth, parsed));
                     }
-                    name @ (b"colorSeries" | b"colorNegative" | b"colorAxis" | b"colorMarkers"
-                    | b"colorFirst" | b"colorLast" | b"colorHigh" | b"colorLow") => {
-                        if let Some(group) = group.as_mut() {
-                            let color = crate::styles::parse_color(element)?;
-                            match name {
-                                b"colorSeries" => group.color_series = color,
-                                b"colorNegative" => group.color_negative = color,
-                                b"colorAxis" => group.color_axis = color,
-                                b"colorMarkers" => group.color_markers = color,
-                                b"colorFirst" => group.color_first = color,
-                                b"colorLast" => group.color_last = color,
-                                b"colorHigh" => group.color_high = color,
-                                _ => group.color_low = color,
+                } else if namespace == X14_NAMESPACE
+                    && group.as_ref().is_some_and(|(at, _)| at + 1 == depth)
+                {
+                    if let Some((_, group)) = group.as_mut() {
+                        match name.as_slice() {
+                            b"colorSeries" => {
+                                group.color_series = crate::styles::parse_color(element)?
                             }
+                            b"colorNegative" => {
+                                group.color_negative = crate::styles::parse_color(element)?
+                            }
+                            b"colorAxis" => group.color_axis = crate::styles::parse_color(element)?,
+                            b"colorMarkers" => {
+                                group.color_markers = crate::styles::parse_color(element)?
+                            }
+                            b"colorFirst" => {
+                                group.color_first = crate::styles::parse_color(element)?
+                            }
+                            b"colorLast" => group.color_last = crate::styles::parse_color(element)?,
+                            b"colorHigh" => group.color_high = crate::styles::parse_color(element)?,
+                            b"colorLow" => group.color_low = crate::styles::parse_color(element)?,
+                            _ => {}
                         }
                     }
-                    b"sparkline" if group.is_some() && !empty => {
-                        sparkline = Some(Sparkline {
-                            formula: String::new(),
-                            cell: CellRef::new(0, 0),
+                } else if namespace == X14_NAMESPACE
+                    && name == b"sparkline"
+                    && !empty
+                    && group.as_ref().is_some_and(|(at, _)| at + 2 == depth)
+                    && stack
+                        .last()
+                        .is_some_and(|(ns, n)| ns == X14_NAMESPACE && n == b"sparklines")
+                {
+                    sparkline = Some(PendingSparkline {
+                        depth,
+                        formula: String::new(),
+                        cell: None,
+                    });
+                } else if namespace == XM_NAMESPACE
+                    && matches!(name.as_slice(), b"f" | b"sqref")
+                    && sparkline.as_ref().is_some_and(|s| s.depth + 1 == depth)
+                {
+                    let formula = name == b"f";
+                    if empty {
+                        finish_leaf(sparkline.as_mut().unwrap(), formula, "");
+                    } else {
+                        leaf = Some(Leaf {
+                            depth,
+                            formula,
+                            text: String::new(),
                         });
                     }
-                    b"f" if sparkline.is_some() && !empty => {
-                        reading = 1;
-                        text.clear();
-                    }
-                    b"sqref" if sparkline.is_some() && !empty => {
-                        reading = 2;
-                        text.clear();
-                    }
-                    _ => {}
+                }
+                if !empty {
+                    stack.push((namespace, name));
                 }
             }
-            Event::Text(value) if reading != 0 => text.push_str(&value.decode()?),
-            Event::GeneralRef(reference) if reading != 0 => {
-                if let Some(character) = reference.resolve_char_ref()? {
-                    text.push(character);
-                } else if let Some(value) =
-                    quick_xml::escape::resolve_predefined_entity(&reference.decode()?)
-                {
-                    text.push_str(value);
+            Event::Text(value) => {
+                if let Some(leaf) = leaf.as_mut().filter(|v| stack.len() == v.depth + 1) {
+                    leaf.text.push_str(&value.decode()?);
                 }
             }
-            Event::End(element) => {
-                let qualified = element.name();
-                match local_name(qualified.as_ref()) {
-                    b"f" if reading == 1 => {
-                        if let Some(sparkline) = sparkline.as_mut() {
-                            sparkline.formula = text.trim().to_string();
-                        }
-                        reading = 0;
-                    }
-                    b"sqref" if reading == 2 => {
-                        if let Some(sparkline) = sparkline.as_mut() {
-                            if let Ok(cell) = CellRef::parse(text.trim()) {
-                                sparkline.cell = cell;
-                            }
-                        }
-                        reading = 0;
-                    }
-                    b"sparkline" => {
-                        if let (Some(group), Some(sparkline)) = (group.as_mut(), sparkline.take()) {
-                            if !sparkline.formula.is_empty() {
-                                group.sparklines.push(sparkline);
-                            }
-                        }
-                    }
-                    b"sparklineGroup" => {
-                        if let Some(group) = group.take() {
-                            groups.push(group);
-                        }
-                    }
-                    _ => {}
+            Event::CData(value) => {
+                if let Some(leaf) = leaf.as_mut().filter(|v| stack.len() == v.depth + 1) {
+                    leaf.text.push_str(&value.decode()?);
                 }
+            }
+            Event::GeneralRef(reference) => {
+                if let Some(leaf) = leaf.as_mut().filter(|v| stack.len() == v.depth + 1) {
+                    if let Some(character) = reference.resolve_char_ref()? {
+                        leaf.text.push(character);
+                    } else if let Some(value) =
+                        quick_xml::escape::resolve_predefined_entity(&reference.decode()?)
+                    {
+                        leaf.text.push_str(value);
+                    }
+                }
+            }
+            Event::End(_) => {
+                let depth = stack.len().saturating_sub(1);
+                if leaf.as_ref().is_some_and(|v| v.depth == depth) {
+                    let value = leaf.take().unwrap();
+                    if let Some(sparkline) = sparkline.as_mut() {
+                        finish_leaf(sparkline, value.formula, &value.text);
+                    }
+                }
+                if sparkline.as_ref().is_some_and(|s| s.depth == depth) {
+                    let value = sparkline.take().unwrap();
+                    if let (Some((_, group)), Some(cell)) = (group.as_mut(), value.cell) {
+                        if !value.formula.is_empty() {
+                            group.sparklines.push(Sparkline {
+                                formula: value.formula,
+                                cell,
+                            });
+                        }
+                    }
+                }
+                if group.as_ref().is_some_and(|(at, _)| *at == depth) {
+                    groups.push(group.take().unwrap().1);
+                }
+                stack.pop();
             }
             Event::Eof => break,
             _ => {}
         }
-        buf.clear();
     }
     Ok(groups)
 }

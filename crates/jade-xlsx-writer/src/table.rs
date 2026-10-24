@@ -13,7 +13,6 @@
 //! column, the way it does in Excel.
 
 use quick_xml::events::Event;
-use quick_xml::name::QName;
 use quick_xml::Reader;
 
 /// Normalizes edited table headers and updates the table parts in the same
@@ -90,8 +89,8 @@ pub fn follow_table_headers(
 
 use jade_xlsx_reader::{shift_formula, Axis, CellRange, CellRef, StructureChange};
 
-use crate::patch::{apply, attribute, escape, local, Splice};
-use crate::shift::{range_text, rewrite, rewrite_head_text};
+use crate::patch::{apply, escape, Splice};
+use crate::shift::range_text;
 use crate::{CellEdit, NewValue, Result};
 
 /// A table part after a structural change.
@@ -116,43 +115,16 @@ struct TableShape {
 }
 
 fn read_shape(xml: &str) -> Result<TableShape> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut shape = TableShape::default();
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                match local(element.name().as_ref()) {
-                    b"table" => {
-                        shape.reference = attribute(element, b"ref")?
-                            .and_then(|value| CellRange::parse(&value).ok());
-                        shape.header_row_count = attribute(element, b"headerRowCount")?
-                            .and_then(|value| value.parse().ok())
-                            .unwrap_or(1);
-                        shape.totals_row_count = attribute(element, b"totalsRowCount")?
-                            .and_then(|value| value.parse().ok())
-                            .unwrap_or(0);
-                    }
-                    b"tableColumn" => {
-                        shape
-                            .names
-                            .push(attribute(element, b"name")?.unwrap_or_default());
-                        shape.ids.push(
-                            attribute(element, b"id")?
-                                .and_then(|value| value.parse().ok())
-                                .unwrap_or(0),
-                        );
-                    }
-                    _ => {}
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-    Ok(shape)
+    Ok(match jade_xlsx_reader::table::parse_table("", xml)? {
+        Some(t) => TableShape {
+            reference: Some(t.reference),
+            header_row_count: t.header_row_count,
+            totals_row_count: t.totals_row_count,
+            names: t.columns,
+            ids: t.column_properties.into_iter().map(|c| c.id).collect(),
+        },
+        None => TableShape::default(),
+    })
 }
 
 /// A name no column of the table has, the way Excel picks one: `Column1`,
@@ -178,7 +150,7 @@ pub fn unique_column_name(wanted: &str, taken: &[String], own: usize) -> String 
         taken
             .iter()
             .enumerate()
-            .any(|(index, name)| index != own && name.eq_ignore_ascii_case(candidate))
+            .any(|(index, name)| index != own && name.to_lowercase() == candidate.to_lowercase())
     };
     if !clashes(wanted) {
         return wanted.to_string();
@@ -196,6 +168,23 @@ pub fn unique_column_name(wanted: &str, taken: &[String], own: usize) -> String 
 /// The table part with `change` applied. `sheet_name` is the sheet the
 /// table sits on, which is what a bare reference in a column formula means.
 pub fn shift_table(xml: &str, sheet_name: &str, change: &StructureChange) -> Result<ShiftedTable> {
+    shift_table_impl(xml, sheet_name, change, true)
+}
+
+pub(crate) fn shift_table_geometry(
+    xml: &str,
+    sheet_name: &str,
+    change: &StructureChange,
+) -> Result<ShiftedTable> {
+    shift_table_impl(xml, sheet_name, change, false)
+}
+
+fn shift_table_impl(
+    xml: &str,
+    sheet_name: &str,
+    change: &StructureChange,
+    formulas: bool,
+) -> Result<ShiftedTable> {
     let shape = read_shape(xml)?;
     let Some(reference) = shape.reference else {
         return Ok(ShiftedTable {
@@ -303,154 +292,106 @@ pub fn shift_table(xml: &str, sheet_name: &str, change: &StructureChange) -> Res
         ),
     };
     let column_count = shape.names.len() + new_columns.len() - dropped.len();
-    let next_id = shape.ids.iter().copied().max().unwrap_or(0) + 1;
+    let next_id = shape
+        .ids
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(0)
+        .checked_add(1)
+        .filter(|n| {
+            n.checked_add(new_columns.len().saturating_sub(1) as u32)
+                .is_some()
+        })
+        .unwrap_or_else(|| {
+            (1..)
+                .find(|first| {
+                    (0..new_columns.len() as u32)
+                        .all(|offset| !shape.ids.contains(&(first + offset)))
+                })
+                .unwrap()
+        });
 
-    // Second pass: splice.
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut splices: Vec<Splice> = Vec::new();
-    let mut column_position = 0usize;
-    let mut formula_content: Option<usize> = None;
-    let mut columns_head_end: Option<usize> = None;
-    let mut column_prefix = String::new();
-    // Where each new column's element goes: before the existing column at
-    // its position. All new columns share one position.
-    let mut inserted_new = false;
-
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                let name = element.name().as_ref().to_vec();
-                let head_end = reader.buffer_position() as usize;
-                match local(&name) {
-                    b"table" => {
-                        let mut updates = vec![("ref", Some(range_text(mapped)))];
-                        if totals_row_count != shape.totals_row_count {
-                            updates.push(("totalsRowCount", None));
-                            updates.push(("totalsRowShown", Some("0".to_string())));
+    let mut updates = vec![("ref", Some(range_text(mapped)))];
+    if totals_row_count != shape.totals_row_count {
+        updates.push(("totalsRowCount", None));
+        updates.push(("totalsRowShown", Some("0".into())));
+    }
+    let mut xml = crate::xml_edit::root_attributes(xml, &updates)?;
+    xml = crate::cell_shift::children_map(&xml, b"autoFilter", |f| {
+        crate::filter::shift_auto_filter(f, change, filter_range)
+    })?;
+    xml = crate::cell_shift::children_map(&xml, b"sortState", |f| {
+        Ok(crate::filter::shift_sort_state(f, change)?.unwrap_or_default())
+    })?;
+    xml = crate::cell_shift::children_map(&xml, b"tableColumns", |container| {
+        let mut splices = Vec::new();
+        let entries = crate::xml_edit_ns::children(container, b"tableColumn")?;
+        let mut inserted = false;
+        for (position, (start, end, entry)) in entries.iter().enumerate() {
+            let prefix = root_prefix(container)?;
+            if !inserted && new_columns.first().is_some_and(|(at, _)| *at == position) {
+                splices.push(Splice {
+                    start: *start,
+                    end: *start,
+                    text: new_column_xml(&new_columns, next_id, &prefix),
+                });
+                inserted = true;
+            }
+            if dropped.contains(&position) {
+                splices.push(Splice {
+                    start: *start,
+                    end: *end,
+                    text: String::new(),
+                });
+            } else if formulas {
+                let mut changed = entry.text.clone();
+                for name in [b"calculatedColumnFormula".as_slice(), b"totalsRowFormula"] {
+                    changed = crate::cell_shift::children_map(&changed, name, |f| {
+                        let formula = crate::cell_shift::leaf_text(f)?;
+                        let shifted = shift_formula(&formula, sheet_name, change);
+                        if shifted == formula {
+                            Ok(f.into())
+                        } else {
+                            crate::cell_shift::text_content(f, &shifted)
                         }
-                        splices.push(Splice {
-                            start,
-                            end: head_end,
-                            text: rewrite(element, &updates, empty)?,
-                        });
-                    }
-                    b"autoFilter" => {
-                        if !empty {
-                            reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        splices.push(Splice {
-                            start,
-                            end,
-                            text: crate::filter::shift_auto_filter(
-                                &xml[start..end],
-                                change,
-                                filter_range,
-                            )?,
-                        });
-                    }
-                    b"sortState" => {
-                        if !empty {
-                            reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                        }
-                        let end = reader.buffer_position() as usize;
-                        splices.push(Splice {
-                            start,
-                            end,
-                            text: crate::filter::shift_sort_state(&xml[start..end], change)?
-                                .unwrap_or_default(),
-                        });
-                    }
-                    b"tableColumns" => {
-                        splices.push(Splice {
-                            start,
-                            end: head_end,
-                            text: rewrite(
-                                element,
-                                &[("count", Some(column_count.to_string()))],
-                                empty,
-                            )?,
-                        });
-                        columns_head_end = Some(head_end);
-                        column_prefix = crate::patch::namespace_prefix(&name);
-                    }
-                    b"tableColumn" => {
-                        column_prefix = crate::patch::namespace_prefix(&name);
-                        if !inserted_new {
-                            if let Some((position, _)) = new_columns.first() {
-                                if *position == column_position {
-                                    splices.push(Splice {
-                                        start,
-                                        end: start,
-                                        text: new_column_xml(&new_columns, next_id, &column_prefix),
-                                    });
-                                    inserted_new = true;
-                                }
-                            }
-                        }
-                        if dropped.contains(&column_position) {
-                            if !empty {
-                                reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                            }
-                            let end = reader.buffer_position() as usize;
-                            splices.push(Splice {
-                                start,
-                                end,
-                                text: String::new(),
-                            });
-                        }
-                        column_position += 1;
-                    }
-                    b"calculatedColumnFormula" | b"totalsRowFormula" if !empty => {
-                        formula_content = Some(head_end);
-                    }
-                    _ => {}
+                    })?;
+                }
+                if changed != entry.text {
+                    splices.push(Splice {
+                        start: *start,
+                        end: *end,
+                        text: entry.finish(&changed)?,
+                    });
                 }
             }
-            Event::End(ref element) => match local(element.name().as_ref()) {
-                b"calculatedColumnFormula" | b"totalsRowFormula" => {
-                    if let Some(content_start) = formula_content.take() {
-                        let raw = &xml[content_start..start];
-                        let formula =
-                            quick_xml::escape::unescape(raw).map_err(quick_xml::Error::from)?;
-                        let shifted = shift_formula(&formula, sheet_name, change);
-                        if shifted != formula {
-                            splices.push(Splice {
-                                start: content_start,
-                                end: start,
-                                text: escape(&shifted),
-                            });
-                        }
-                    }
-                }
-                b"tableColumns" => {
-                    if !inserted_new && !new_columns.is_empty() {
-                        splices.push(Splice {
-                            start,
-                            end: start,
-                            text: new_column_xml(&new_columns, next_id, &column_prefix),
-                        });
-                        inserted_new = true;
-                    }
-                    let _ = columns_head_end.take();
-                }
-                _ => {}
-            },
-            Event::Eof => break,
-            _ => {}
         }
-        buf.clear();
-    }
-
+        let mut moved = apply(container, splices);
+        if !inserted && !new_columns.is_empty() {
+            moved = crate::xml_edit::append_child(
+                &moved,
+                &new_column_xml(&new_columns, next_id, &root_prefix(container)?),
+            )?;
+        }
+        crate::xml_edit::root_attributes(&moved, &[("count", Some(column_count.to_string()))])
+    })?;
     Ok(ShiftedTable {
-        xml: Some(apply(xml, splices)),
+        xml: Some(xml),
         header_cells,
     })
+}
+
+fn root_prefix(xml: &str) -> Result<String> {
+    let mut reader = Reader::from_str(xml);
+    loop {
+        match reader.read_event()? {
+            Event::Start(e) | Event::Empty(e) => {
+                return Ok(crate::patch::namespace_prefix(e.name().as_ref()))
+            }
+            Event::Eof => return Err(crate::WriteError::NoRoot("table")),
+            _ => {}
+        }
+    }
 }
 
 fn new_column_xml(columns: &[(usize, String)], first_id: u32, prefix: &str) -> String {
@@ -468,35 +409,34 @@ fn new_column_xml(columns: &[(usize, String)], first_id: u32, prefix: &str) -> S
 /// The table part with the column at `position` (0-based, left to right)
 /// renamed to `name`. The caller has made the name unique.
 pub fn rename_table_column(xml: &str, position: usize, name: &str) -> Result<String> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut splices: Vec<Splice> = Vec::new();
-    let mut column_position = 0usize;
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"tableColumn" =>
-            {
-                let empty = matches!(event, Event::Empty(_));
-                if column_position == position {
-                    let head_end = reader.buffer_position() as usize;
-                    splices.push(Splice {
-                        start,
-                        end: head_end,
-                        text: rewrite(element, &[("name", Some(name.to_string()))], empty)?,
-                    });
-                }
-                column_position += 1;
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
+    if name.encode_utf16().count() > 255 {
+        return Err(crate::WriteError::Table(
+            "a table header exceeds 255 characters".into(),
+        ));
     }
-    Ok(apply(xml, splices))
+    let container = crate::xml_edit_ns::children(xml, b"tableColumns")?
+        .into_iter()
+        .next()
+        .ok_or_else(|| crate::WriteError::Table("missing table columns".into()))?
+        .2;
+    let (start, end, entry) = crate::xml_edit_ns::children(&container.text, b"tableColumn")?
+        .into_iter()
+        .nth(position)
+        .ok_or_else(|| crate::WriteError::Table("column is outside the table".into()))?;
+    let name = jade_xlsx_reader::xstring::encode_xstring(name)
+        .replace('\n', "_x000A_")
+        .replace('\t', "_x0009_");
+    let updated = crate::xml_edit::root_attributes(&entry.text, &[("name", Some(name))])?;
+    let updated = apply(
+        &container.text,
+        vec![Splice {
+            start,
+            end,
+            text: entry.finish(&updated)?,
+        }],
+    );
+    let updated = container.finish(&updated)?;
+    crate::xml_edit_ns::set_child(xml, b"tableColumns", |_| updated, &[])
 }
 
 /// The sheet part without the `<tablePart>` entries whose `r:id` is in
@@ -506,66 +446,31 @@ pub fn remove_table_parts(xml: &str, ids: &[String]) -> Result<String> {
     if ids.is_empty() {
         return Ok(xml.to_string());
     }
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(false);
-    let mut buf = Vec::new();
-    let mut splices: Vec<Splice> = Vec::new();
-    let mut list: Option<(usize, usize, usize)> = None; // start, head end, kept
-    loop {
-        let start = reader.buffer_position() as usize;
-        let event = reader.read_event_into(&mut buf)?;
-        match event {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                let empty = matches!(event, Event::Empty(_));
-                match local(element.name().as_ref()) {
-                    b"tableParts" if !empty => {
-                        list = Some((start, reader.buffer_position() as usize, 0));
-                    }
-                    b"tablePart" => {
-                        let id = attribute(element, b"id")?.unwrap_or_default();
-                        if ids.contains(&id) {
-                            if !empty {
-                                let name = element.name().as_ref().to_vec();
-                                reader.read_to_end_into(QName(&name), &mut Vec::new())?;
-                            }
-                            let end = reader.buffer_position() as usize;
-                            splices.push(Splice {
-                                start,
-                                end,
-                                text: String::new(),
-                            });
-                        } else if let Some(list) = list.as_mut() {
-                            list.2 += 1;
-                        }
-                    }
-                    _ => {}
-                }
+    crate::cell_shift::children_map(xml, b"tableParts", |container| {
+        let entries = crate::xml_edit_ns::children(container, b"tablePart")?;
+        let mut kept = entries.len();
+        let mut edits = Vec::new();
+        for (start, end, entry) in entries {
+            if jade_xlsx_reader::table::table_part_id(&entry.text)?
+                .is_some_and(|id| ids.contains(&id))
+            {
+                kept -= 1;
+                edits.push(Splice {
+                    start,
+                    end,
+                    text: String::new(),
+                });
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"tableParts" => {
-                if let Some((list_start, head_end, kept)) = list.take() {
-                    let end = reader.buffer_position() as usize;
-                    if kept == 0 {
-                        splices.push(Splice {
-                            start: list_start,
-                            end,
-                            text: String::new(),
-                        });
-                    } else {
-                        let head = &xml[list_start..head_end];
-                        if head.contains("count=") {
-                            splices.push(Splice {
-                                start: list_start,
-                                end: head_end,
-                                text: rewrite_head_text(head, "count", &kept.to_string())?,
-                            });
-                        }
-                    }
-                }
-            }
-            Event::Eof => break,
-            _ => {}
         }
-        buf.clear();
-    }
-    Ok(apply(xml, splices))
+        if edits.is_empty() {
+            return Ok(container.into());
+        }
+        if kept == 0 {
+            return Ok(String::new());
+        }
+        crate::xml_edit::root_attributes(
+            &apply(container, edits),
+            &[("count", Some(kept.to_string()))],
+        )
+    })
 }

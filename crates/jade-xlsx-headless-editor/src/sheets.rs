@@ -11,6 +11,45 @@ use std::collections::BTreeMap;
 use crate::{HeadlessWorkbook, Result};
 
 impl HeadlessWorkbook {
+    pub fn set_sheet_visibility(
+        &mut self,
+        sheet: &str,
+        visibility: jade_xlsx_reader::SheetVisibility,
+    ) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let written = jade_xlsx_writer::sheets::set_sheet_visibility(
+            &self.source,
+            &self.workbook.sheets[index].name,
+            visibility,
+        )?;
+        if written == self.source {
+            return Ok(false);
+        }
+        self.replace_parts_from_bytes(written)?;
+        Ok(true)
+    }
+
+    pub fn set_tab_color(&mut self, sheet: &str, color: Option<&str>) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let written = jade_xlsx_writer::sheets::set_tab_color(
+            &self.source,
+            &self.workbook.sheets[index].name,
+            color,
+        )?;
+        if written == self.source {
+            return Ok(false);
+        }
+        self.replace_parts_from_bytes(written)?;
+        Ok(true)
+    }
+
+    pub(crate) fn replace_parts_from_bytes(&mut self, written: Vec<u8>) -> Result<()> {
+        let workbook = jade_xlsx_reader::read_xlsx(&written)?;
+        self.workbook = workbook;
+        let before = std::mem::replace(&mut self.source, written);
+        self.remember(before);
+        Ok(())
+    }
     /// Adds an empty worksheet called `name` right after the sheet `after`
     /// (a name or an index, as everywhere here), or after the last sheet
     /// when `after` is `None`. Returns the new sheet's position in the tab
@@ -87,7 +126,7 @@ impl HeadlessWorkbook {
     /// Makes `written` the workbook — one undo step — with the per-sheet
     /// filter state, which is keyed by sheet name, following the change
     /// before formulas are recalculated against it.
-    fn commit_sheet_change(
+    pub(crate) fn commit_sheet_change(
         &mut self,
         written: Vec<u8>,
         follow: impl FnOnce(&mut BTreeMap<String, crate::auto_filter::FilterRowState>),

@@ -11,9 +11,10 @@ pub(crate) fn implicit_intersection(
 ) -> Option<CellReferenceIndex> {
     let left = &range.left;
     let right = &range.right;
-    let sheet = cell_reference.sheet;
-    // If they are not all in the same sheet there is no intersection
-    if sheet != left.sheet && sheet != right.sheet {
+    let sheet = left.sheet;
+    // Intersection uses the caller's row/column, on the referenced sheet.
+    // A multi-sheet range cannot identify one cell this way.
+    if left.sheet != right.sheet {
         return None;
     }
     let row = cell_reference.row;

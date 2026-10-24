@@ -76,6 +76,7 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     // pointing at a group that no longer describes them. Expand only groups
     // touched by the edit, keeping each cell's cached <v> unchanged.
     let expanded = detach_edited_shared_formulas(xml, edits)?;
+    let expanded = patch_compatible_cells(&expanded, edits)?;
     // A sheet whose rows or cells are already out of order — some writers
     // leave them so — is put in order first: Excel drops such a sheet's
     // cells when it repairs the file, and the splices below assume order.
@@ -92,6 +93,7 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
             .insert(edit.reference.column, edit);
     }
 
+    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut splices: Vec<Splice> = Vec::new();
@@ -107,11 +109,11 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
         let event = reader.read_event_into(&mut buf)?;
         match event {
             Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"dimension" =>
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"dimension" =>
             {
                 let empty = matches!(event, Event::Empty(_));
                 if let Some(original) =
-                    attribute(element, b"ref")?.and_then(|value| CellRange::parse(&value).ok())
+                    cell_attribute(element, b"ref")?.and_then(|value| CellRange::parse(&value).ok())
                 {
                     let expanded = expand_range(original, edits);
                     if expanded != original {
@@ -123,12 +125,16 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                     }
                 }
             }
-            Event::Start(ref element) if local(element.name().as_ref()) == b"sheetData" => {
+            Event::Start(ref element)
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"sheetData" =>
+            {
                 in_sheet_data = true;
                 saw_sheet_data = true;
                 sheet_data_prefix = namespace_prefix(element.name().as_ref());
             }
-            Event::Empty(ref element) if local(element.name().as_ref()) == b"sheetData" => {
+            Event::Empty(ref element)
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"sheetData" =>
+            {
                 // An empty sheet: everything goes inside a `<sheetData>` that
                 // has to be opened first.
                 saw_sheet_data = true;
@@ -144,11 +150,13 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                 splices.push(Splice { start, end, text });
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if in_sheet_data && local(element.name().as_ref()) == b"row" =>
+                if owned.owns_start(start)
+                    && in_sheet_data
+                    && local(element.name().as_ref()) == b"row" =>
             {
                 let empty = matches!(event, Event::Empty(_));
                 let row_prefix = namespace_prefix(element.name().as_ref());
-                let index = attribute(element, b"r")?
+                let index = cell_attribute(element, b"r")?
                     .and_then(|value| value.parse::<u32>().ok())
                     .filter(|value| *value > 0)
                     .map(|value| value - 1)
@@ -196,14 +204,16 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                 }
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if current_row.is_some() && local(element.name().as_ref()) == b"c" =>
+                if owned.owns_start(start)
+                    && current_row.is_some()
+                    && local(element.name().as_ref()) == b"c" =>
             {
                 let empty = matches!(event, Event::Empty(_));
                 let name_bytes = element.name().as_ref().to_vec();
                 let cell_prefix = namespace_prefix(&name_bytes);
                 let (row, cells, row_prefix, next_column) = current_row.as_mut().expect("a row");
                 let row = *row;
-                let reference = match attribute(element, b"r")? {
+                let reference = match cell_attribute(element, b"r")? {
                     Some(value) => {
                         CellRef::parse(&value).unwrap_or_else(|_| CellRef::new(*next_column, row))
                     }
@@ -243,7 +253,7 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                         // The style index moves to the replacement, so a
                         // value written into a formatted cell keeps its
                         // format unless the edit brings its own.
-                        let style = attribute(element, b"s")?;
+                        let style = cell_attribute(element, b"s")?;
                         if !empty {
                             reader.read_to_end_into(QName(&name_bytes), &mut Vec::new())?;
                         }
@@ -251,12 +261,17 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                         splices.push(Splice {
                             start,
                             end,
-                            text: cell_xml(reference, edit, style.as_deref(), &cell_prefix),
+                            text: preserve_namespaces(
+                                cell_xml(reference, edit, style.as_deref(), &cell_prefix),
+                                element,
+                            )?,
                         });
                     }
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"row" => {
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"row" =>
+            {
                 if let Some((row, cells, prefix, _)) = current_row.take() {
                     let mut text = String::new();
                     for (column, edit) in &cells {
@@ -271,7 +286,9 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                     }
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"sheetData" => {
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"sheetData" =>
+            {
                 in_sheet_data = false;
                 let mut text = String::new();
                 for (row, cells) in std::mem::take(&mut pending) {
@@ -298,12 +315,60 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     Ok(apply(xml, splices))
 }
 
+fn patch_compatible_cells(xml: &str, edits: &[CellEdit]) -> Result<String> {
+    if !xml.contains("AlternateContent") || edits.is_empty() {
+        return Ok(xml.to_string());
+    }
+    let by_cell: HashMap<_, _> = edits.iter().map(|edit| (edit.reference, edit)).collect();
+    let mut splices = Vec::new();
+    let references = by_cell.keys().copied().collect();
+    for source in jade_xlsx_reader::cell_content::compatible_cells(xml, &references)? {
+        if source.selected {
+            continue;
+        }
+        let Some(edit) = by_cell.get(&source.reference) else {
+            continue;
+        };
+        let mut reader = Reader::from_str(&xml[source.range.start..source.head_end]);
+        let event = reader.read_event()?;
+        let (Event::Start(ref element) | Event::Empty(ref element)) = event else {
+            continue;
+        };
+        if matches!(edit.value, NewValue::Unchanged) {
+            if let Some(style) = edit.style_index {
+                splices.push(Splice {
+                    start: source.range.start,
+                    end: source.head_end,
+                    text: element_head_with_style(
+                        element,
+                        &style.to_string(),
+                        matches!(event, Event::Empty(_)),
+                    )?,
+                });
+            }
+        } else {
+            let style = cell_attribute(element, b"s")?;
+            let prefix = namespace_prefix(element.name().as_ref());
+            splices.push(Splice {
+                start: source.range.start,
+                end: source.range.end,
+                text: preserve_namespaces(
+                    cell_xml(source.reference, edit, style.as_deref(), &prefix),
+                    element,
+                )?,
+            });
+        }
+    }
+    Ok(apply(xml, splices))
+}
+
 struct SharedFormulaTag {
     reference: CellRef,
     index: u32,
     start: usize,
     end: usize,
     prefix: String,
+    namespaces: String,
 }
 
 /// Whether `keys` rise strictly.
@@ -330,6 +395,7 @@ struct Span {
 /// column, or `None` when they already are (or cannot be sorted safely: an
 /// element without an `r`, or anything else among them).
 pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
+    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -345,21 +411,25 @@ pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
         let end = reader.buffer_position() as usize;
         match (&event, depth_in_data) {
             (Event::Eof, _) => break,
-            (Event::Start(element), None) if local(element.name().as_ref()) == b"sheetData" => {
+            (Event::Start(element), None)
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"sheetData" =>
+            {
                 depth_in_data = Some(0);
                 data_span = Some((end, end));
             }
-            (Event::End(element), Some(0)) if local(element.name().as_ref()) == b"sheetData" => {
+            (Event::End(element), Some(0))
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"sheetData" =>
+            {
                 if let Some((inner, _)) = data_span {
                     data_span = Some((inner, start));
                 }
                 depth_in_data = None;
             }
             (Event::Start(element) | Event::Empty(element), Some(0)) => {
-                if local(element.name().as_ref()) != b"row" {
+                if !owned.owns_start(start) || local(element.name().as_ref()) != b"row" {
                     return Ok(None);
                 }
-                let key = attribute(element, b"r")?.and_then(|value| value.parse().ok());
+                let key = cell_attribute(element, b"r")?.and_then(|value| value.parse().ok());
                 if key.is_none() {
                     return Ok(None);
                 }
@@ -370,7 +440,9 @@ pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
                 }
                 rows.push((span, Vec::new(), end, end));
             }
-            (Event::End(element), Some(1)) if local(element.name().as_ref()) == b"row" => {
+            (Event::End(element), Some(1))
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"row" =>
+            {
                 if let Some(row) = rows.last_mut() {
                     row.0.end = end;
                     row.2 = row_inner_start;
@@ -379,10 +451,10 @@ pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
                 depth_in_data = Some(0);
             }
             (Event::Start(element) | Event::Empty(element), Some(1)) => {
-                if local(element.name().as_ref()) != b"c" {
+                if !owned.owns_start(start) || local(element.name().as_ref()) != b"c" {
                     return Ok(None);
                 }
-                let key = attribute(element, b"r")?
+                let key = cell_attribute(element, b"r")?
                     .and_then(|value| CellRange::parse(&value).ok())
                     .map(|range| range.start.column);
                 if key.is_none() {
@@ -398,7 +470,9 @@ pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
                     depth_in_data = Some(2);
                 }
             }
-            (Event::End(element), Some(2)) if local(element.name().as_ref()) == b"c" => {
+            (Event::End(element), Some(2))
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"c" =>
+            {
                 if let Some(row) = rows.last_mut() {
                     row.1.push(Span {
                         start: cell_start,
@@ -466,6 +540,7 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
     if edited.is_empty() {
         return Ok(xml.to_string());
     }
+    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut tags = Vec::new();
@@ -481,9 +556,9 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
         let event = reader.read_event_into(&mut buf)?;
         match event {
             Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"row" =>
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"row" =>
             {
-                let row = attribute(element, b"r")?
+                let row = cell_attribute(element, b"r")?
                     .and_then(|value| value.parse::<u32>().ok())
                     .filter(|value| *value > 0)
                     .map(|value| value - 1)
@@ -496,10 +571,12 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
                 }
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if current_row.is_some() && local(element.name().as_ref()) == b"c" =>
+                if owned.owns_start(start)
+                    && current_row.is_some()
+                    && local(element.name().as_ref()) == b"c" =>
             {
                 let row = current_row.expect("inside row");
-                let reference = attribute(element, b"r")?
+                let reference = cell_attribute(element, b"r")?
                     .and_then(|value| CellRef::parse(&value).ok())
                     .unwrap_or_else(|| CellRef::new(next_column, row));
                 next_column = reference.column.saturating_add(1);
@@ -509,11 +586,13 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
                 }
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if current_cell.is_some() && local(element.name().as_ref()) == b"f" =>
+                if owned.owns_start(start)
+                    && current_cell.is_some()
+                    && local(element.name().as_ref()) == b"f" =>
             {
-                if attribute(element, b"t")?.as_deref() == Some("shared") {
+                if cell_attribute(element, b"t")?.as_deref() == Some("shared") {
                     if let Some(index) =
-                        attribute(element, b"si")?.and_then(|value| value.parse::<u32>().ok())
+                        cell_attribute(element, b"si")?.and_then(|value| value.parse::<u32>().ok())
                     {
                         let tag = SharedFormulaTag {
                             reference: current_cell.expect("inside cell"),
@@ -521,6 +600,7 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
                             start,
                             end: reader.buffer_position() as usize,
                             prefix: namespace_prefix(element.name().as_ref()),
+                            namespaces: namespace_declarations(element)?,
                         };
                         if matches!(event, Event::Empty(_)) {
                             tags.push(tag);
@@ -530,16 +610,22 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
                     }
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"f" => {
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"f" =>
+            {
                 if let Some(mut tag) = pending_formula.take() {
                     tag.end = reader.buffer_position() as usize;
                     tags.push(tag);
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"c" => {
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"c" =>
+            {
                 current_cell = None;
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"row" => {
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"row" =>
+            {
                 current_row = None;
             }
             Event::Eof => break,
@@ -576,7 +662,12 @@ pub(crate) fn detach_edited_shared_formulas(xml: &str, edits: &[CellEdit]) -> Re
             Some(Splice {
                 start: tag.start,
                 end: tag.end,
-                text: format!("<{0}f>{1}</{0}f>", tag.prefix, escape(formula)),
+                text: format!(
+                    "<{0}f{2}>{1}</{0}f>",
+                    tag.prefix,
+                    escape(formula),
+                    tag.namespaces
+                ),
             })
         })
         .collect();
@@ -641,7 +732,7 @@ fn format_dimension(range: CellRange) -> String {
     )
 }
 
-fn is_xml_10_character(character: char) -> bool {
+pub(crate) fn is_xml_10_character(character: char) -> bool {
     matches!(
         character,
         '\u{9}' | '\u{A}' | '\u{D}'
@@ -786,7 +877,7 @@ pub(crate) fn element_head_with_attribute(
         head.push(' ');
         head.push_str(&String::from_utf8_lossy(attribute.key.as_ref()));
         head.push_str("=\"");
-        if local(attribute.key.as_ref()) == key {
+        if attribute.key.as_ref() == key {
             head.push_str(&escape(value));
             replaced = true;
         } else {
@@ -807,7 +898,7 @@ pub(crate) fn element_head_with_attribute(
 
 /// The opening tag of an element, as written, turned from `<row .../>` into
 /// `<row ...>`.
-fn element_head(element: &quick_xml::events::BytesStart<'_>) -> Result<String> {
+pub(crate) fn element_head(element: &quick_xml::events::BytesStart<'_>) -> Result<String> {
     let mut head = String::from("<");
     head.push_str(&String::from_utf8_lossy(element.name().as_ref()));
     for attribute in element.attributes() {
@@ -820,6 +911,49 @@ fn element_head(element: &quick_xml::events::BytesStart<'_>) -> Result<String> {
     }
     head.push('>');
     Ok(head)
+}
+
+pub(crate) fn cell_attribute(
+    element: &quick_xml::events::BytesStart<'_>,
+    key: &[u8],
+) -> Result<Option<String>> {
+    for attribute in element.attributes() {
+        let attribute = attribute?;
+        if attribute.key.as_ref() == key {
+            return Ok(Some(attribute.unescape_value()?.into_owned()));
+        }
+    }
+    Ok(None)
+}
+
+fn namespace_declarations(element: &quick_xml::events::BytesStart<'_>) -> Result<String> {
+    let mut out = String::new();
+    for attribute in element.attributes() {
+        let attribute = attribute?;
+        if attribute.key.as_ref() == b"xmlns" || attribute.key.as_ref().starts_with(b"xmlns:") {
+            out.push(' ');
+            out.push_str(&String::from_utf8_lossy(attribute.key.as_ref()));
+            out.push_str("=\"");
+            out.push_str(&escape(&attribute.unescape_value()?));
+            out.push('"');
+        }
+    }
+    Ok(out)
+}
+
+pub(crate) fn preserve_namespaces(
+    mut replacement: String,
+    element: &quick_xml::events::BytesStart<'_>,
+) -> Result<String> {
+    if let Some(close) = replacement.find('>') {
+        let at = if replacement.as_bytes().get(close.wrapping_sub(1)) == Some(&b'/') {
+            close - 1
+        } else {
+            close
+        };
+        replacement.insert_str(at, &namespace_declarations(element)?);
+    }
+    Ok(replacement)
 }
 
 pub(crate) fn attribute(

@@ -23,7 +23,7 @@ pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> 
     // If rows * columns exceeds MAX_SIZE, return #VALUE!
     // Otherwise this would be an easy way to crash the program by trying to create a huge array.
     // NB: This is a limitation of IronCalc
-    if rows * columns > MAX_SIZE {
+    if rows.saturating_mul(columns) > MAX_SIZE {
         return Some((
             Error::ERROR,
             format!("rows * columns exceeds matrix size limit of {}", MAX_SIZE),

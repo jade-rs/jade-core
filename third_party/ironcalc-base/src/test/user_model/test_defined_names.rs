@@ -103,9 +103,10 @@ fn delete_sheet() {
 
     model.delete_sheet(0).unwrap();
 
+    // The name survives, but its source reference has been deleted.
     assert_eq!(
         model.get_formatted_cell_value(0, 2, 1),
-        Ok("#NAME?".to_string())
+        Ok("#REF!".to_string())
     );
 
     assert_eq!(
@@ -322,7 +323,7 @@ fn invalid_sheet() {
 fn invalid_formula() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
-    assert!(model.new_defined_name("MyName", None, "A1").is_err());
+    assert!(model.new_defined_name("MyName", None, "SUM(").is_err());
 
     model.set_user_input(0, 1, 2, "=MyName").unwrap();
 

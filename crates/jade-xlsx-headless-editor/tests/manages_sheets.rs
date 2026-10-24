@@ -68,6 +68,35 @@ fn open() -> HeadlessWorkbook {
     HeadlessWorkbook::open_for_editing(&fixture()).expect("open")
 }
 
+#[test]
+fn literal_xstring_sheet_names_survive_authoring_reopen_and_history() {
+    let mut book = open();
+    let added = "Data_x0041_";
+    let renamed = "O'Brien & _x0042_";
+    book.add_sheet(added, None).unwrap();
+    book.set(added, "A1", CellInput::Number(42.)).unwrap();
+    let before = book.bytes().to_vec();
+    book.rename_sheet(added, renamed).unwrap();
+    let after = book.bytes().to_vec();
+    let reopened = jade_xlsx_reader::read_xlsx(&after).unwrap();
+    assert_eq!(reopened.sheets.last().unwrap().name, renamed);
+    let package = OpcPackage::open(&after).unwrap();
+    assert!(package
+        .required_part_str("xl/workbook.xml")
+        .unwrap()
+        .contains("_x005F_x0042_"));
+    let mut reopened = HeadlessWorkbook::open_for_editing(&after).unwrap();
+    reopened.set(renamed, "A2", CellInput::Number(7.)).unwrap();
+    assert!(book.undo().unwrap());
+    assert_eq!(book.bytes(), before);
+    assert!(book.redo().unwrap());
+    assert_eq!(book.bytes(), after);
+    assert!(matches!(
+        book.add_sheet(renamed, None),
+        Err(HeadlessError::Write(WriteError::DuplicateSheetName(_)))
+    ));
+}
+
 fn names(summary: &WorkbookSummary) -> Vec<String> {
     summary
         .sheets
@@ -387,15 +416,16 @@ fn references_left_broken_by_a_deletion_evaluate_to_ref_errors() {
         assert_eq!(cell.kind, CellKind::Error, "{reference}: {cell:?}");
         assert_eq!(cell.display, "#REF!", "{reference}");
     }
-    // A defined name that became `#REF!$D$7` is one the engine will not
-    // define, so `Total+1` keeps its cached value — reported stale, with
-    // the file asking Excel to recalculate on open.
+    // A defined name that became `#REF!$D$7` is an error-valued formula.
+    // Its dependents must receive #REF!, rather than keep a stale number.
     let b2 = workbook.cell("Notes", "B2").unwrap();
+    assert_eq!(b2.kind, CellKind::Error);
+    assert_eq!(b2.display, "#REF!");
     assert_eq!(
         b2.formula_state,
-        Some(jade_xlsx_headless_api::FormulaState::Stale)
+        Some(jade_xlsx_headless_api::FormulaState::Cached)
     );
-    assert!(workbook.summary().full_calculation_on_load);
+    assert!(!workbook.summary().full_calculation_on_load);
 }
 
 #[test]

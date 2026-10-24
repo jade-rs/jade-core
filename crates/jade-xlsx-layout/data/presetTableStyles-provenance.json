@@ -1,0 +1,20 @@
+{
+  "source": "ECMA-376 Part1 fifth edition2016, normative SpreadsheetML styles component",
+  "url": "https://ecma-international.org/wp-content/uploads/ECMA-376-1_5th_edition_december_2016.zip",
+  "archive_sha256": "9d0bcad9cf06054785b03762fcfadbf6bab7e54a5f9d69434e34b7fd464d4129",
+  "component": "OfficeOpenXML-SpreadsheetMLStyles.zip",
+  "component_sha256": "bfe5b222db0c12494350b6c36cf0c24ebad3c8ef0cd470d18a0d96a316bbc0c9",
+  "file": "presetTableStyles.xml",
+  "sha256": "74c6cf73d551bb2bd33a51690d4922095260b6647b2a38fcbc0d6da6c6275d7e",
+  "data_modified": false,
+  "code_source": "Independent Jade implementation; no ibis/Apache implementation code incorporated",
+  "pivot_presets": 84,
+  "style_references_in_normative_data": "Pivot definitions use zero-based dxf indices (0..N-1). The ordinary table definitions in the same unmodified file use one-based indices and are not loaded by this pivot renderer.",
+  "normative_sample": {
+    "original_name": "PivotTableFormats.xlsx",
+    "path": "public/fixtures/pivot-style-ecma-2016.xlsx",
+    "sha256": "f2f2f862b4f7e88e7510757eb0d93e674af87dcce89775e204de4764ec3c810a",
+    "modified": false,
+    "purpose": "Legacy explicitly formatted reports must not receive a style merely from defaultPivotStyle."
+  }
+}

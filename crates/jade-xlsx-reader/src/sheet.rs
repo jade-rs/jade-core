@@ -9,7 +9,7 @@ use quick_xml::Reader;
 use crate::error::Result;
 use crate::model::{
     ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
-    Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
+    PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
 };
 use jade_opc::{local_name, Relationships};
 
@@ -64,7 +64,9 @@ pub fn parse_sheet_with_relationships(
     shared_strings: &[String],
     relationships: &Relationships,
 ) -> Result<Sheet> {
-    let mut reader = Reader::from_str(xml);
+    let grid = crate::cell_content::worksheet(xml)?;
+    let mut protection_seen = false;
+    let mut reader = Reader::from_str(&grid);
     reader.config_mut().trim_text(false);
 
     let (auto_filter, filter_mode) = crate::auto_filter::parse(xml, b"worksheet")?;
@@ -78,7 +80,7 @@ pub fn parse_sheet_with_relationships(
         columns: Vec::new(),
         rows: Vec::new(),
         merges: Vec::new(),
-        hyperlinks: Vec::new(),
+        hyperlinks: crate::hyperlinks::parse(xml, relationships)?,
         comments: Vec::new(),
         data_validations: Vec::new(),
         conditional_formats: crate::conditional_format::parse_conditional_formats(xml)?,
@@ -171,7 +173,14 @@ pub fn parse_sheet_with_relationships(
                         }
                     }
                     b"sheetProtection" => {
-                        sheet.protection = parse_sheet_protection(element)?;
+                        if protection_seen {
+                            return Err(crate::XlsxError::BadSheetProtection(
+                                "multiple records".into(),
+                            ));
+                        }
+                        protection_seen = true;
+                        let (active, permissions) = crate::sheet_protection::flags(element)?;
+                        sheet.protection = active.then_some(permissions);
                     }
                     b"tabColor" => {
                         sheet.tab_color = crate::styles::parse_color(element)?;
@@ -278,11 +287,7 @@ pub fn parse_sheet_with_relationships(
                             sheet.merges.push(CellRange::parse(&value)?);
                         }
                     }
-                    b"hyperlink" => {
-                        if let Some(link) = parse_hyperlink(element, relationships)? {
-                            sheet.hyperlinks.push(link);
-                        }
-                    }
+
                     _ => {}
                 }
             }
@@ -407,32 +412,6 @@ pub fn parse_sheet_with_relationships(
         }
     }
     Ok(sheet)
-}
-
-fn parse_hyperlink(
-    element: &BytesStart<'_>,
-    relationships: &Relationships,
-) -> Result<Option<Hyperlink>> {
-    let Some(reference) = attribute_value(element, b"ref")? else {
-        return Ok(None);
-    };
-    let relationship_id = attribute_value(element, b"id")?;
-    let target = relationship_id.and_then(|id| {
-        relationships.relationship(&id).and_then(|relationship| {
-            relationship
-                .relationship_type
-                .ends_with("/hyperlink")
-                .then(|| relationship.target.clone())
-        })
-    });
-
-    Ok(Some(Hyperlink {
-        reference: CellRange::parse(&reference)?,
-        target,
-        location: attribute_value(element, b"location")?,
-        display: attribute_value(element, b"display")?,
-        tooltip: attribute_value(element, b"tooltip")?,
-    }))
 }
 
 fn parse_header_footer(element: &BytesStart<'_>) -> Result<HeaderFooter> {
@@ -648,6 +627,12 @@ fn map_references(formula: &str, place: impl Fn(&FoundReference) -> Option<(u32,
             output.push('"');
             index += 1;
             in_string = true;
+            continue;
+        }
+        if byte == b'[' {
+            let end = crate::formula::bracket_end(formula, index);
+            output.push_str(&formula[index..end]);
+            index = end;
             continue;
         }
         if byte == b'\'' {
@@ -895,36 +880,6 @@ fn parse_row(element: &BytesStart<'_>, fallback_index: u32, sheet: &Sheet) -> Re
         style_index,
         cells: Vec::new(),
     })
-}
-
-/// A `sheetProtection` that protects the sheet: what it still allows. Each
-/// attribute names an operation and is `true` (the default) when the
-/// protection forbids it, so an operation is allowed only where the file
-/// says `0` (`objects` and `scenarios` default the other way).
-fn parse_sheet_protection(
-    element: &BytesStart<'_>,
-) -> Result<Option<crate::model::SheetProtection>> {
-    let flag = |key: &[u8], default: bool| -> Result<bool> {
-        Ok(attribute_value(element, key)?
-            .map(|value| value == "1" || value == "true")
-            .unwrap_or(default))
-    };
-    if !flag(b"sheet", false)? {
-        return Ok(None);
-    }
-    Ok(Some(crate::model::SheetProtection {
-        format_cells: !flag(b"formatCells", true)?,
-        format_columns: !flag(b"formatColumns", true)?,
-        format_rows: !flag(b"formatRows", true)?,
-        insert_columns: !flag(b"insertColumns", true)?,
-        insert_rows: !flag(b"insertRows", true)?,
-        insert_hyperlinks: !flag(b"insertHyperlinks", true)?,
-        delete_columns: !flag(b"deleteColumns", true)?,
-        delete_rows: !flag(b"deleteRows", true)?,
-        sort: !flag(b"sort", true)?,
-        auto_filter: !flag(b"autoFilter", true)?,
-        objects: !flag(b"objects", false)?,
-    }))
 }
 
 fn attribute_value(element: &BytesStart<'_>, key: &[u8]) -> Result<Option<String>> {

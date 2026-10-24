@@ -13,7 +13,8 @@ use jade_opc::local_name;
 /// Japanese text) also contains `<t>` but is *not* part of the value, so it is
 /// skipped — joining it in would duplicate the reading into the cell.
 pub fn parse_shared_strings(xml: &str) -> Result<Vec<String>> {
-    let mut reader = Reader::from_str(xml);
+    let content = crate::cell_content::shared_strings(xml)?;
+    let mut reader = Reader::from_str(&content);
     reader.config_mut().trim_text(false);
     let mut strings = Vec::new();
     let mut current: Option<String> = None;

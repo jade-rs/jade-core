@@ -934,14 +934,13 @@ impl<'a> Parser<'a> {
                         };
                     }
                     // We should do this *only* importing functions from xlsx: Implicit Intersection
-                    if &name == "_xlfn.SINGLE" {
+                    if name.eq_ignore_ascii_case("_xlfn.SINGLE")
+                        || name.eq_ignore_ascii_case("SINGLE")
+                    {
                         if args.len() != 1 {
-                            return Node::ParseErrorKind {
-                                formula: self.lexer.get_formula(),
-                                expecting: vec![ExpectedTokens::Other],
-                                position: self.lexer.get_position() as usize,
-                                message: "Implicit Intersection requires just one argument"
-                                    .to_string(),
+                            return Node::FunctionKind {
+                                kind: crate::functions::Function::Single,
+                                args,
                             };
                         }
                         return Node::ImplicitIntersection {
@@ -950,13 +949,13 @@ impl<'a> Parser<'a> {
                         };
                     }
                     // We should do this *only* importing functions from xlsx: Spill Range Operator
-                    if &name == "_xlfn.ANCHORARRAY" {
+                    if name.eq_ignore_ascii_case("_xlfn.ANCHORARRAY")
+                        || name.eq_ignore_ascii_case("ANCHORARRAY")
+                    {
                         if args.len() != 1 {
-                            return Node::ParseErrorKind {
-                                formula: self.lexer.get_formula(),
-                                expecting: vec![ExpectedTokens::Other],
-                                position: self.lexer.get_position() as usize,
-                                message: "ANCHORARRAY requires one argument".to_string(),
+                            return Node::FunctionKind {
+                                kind: crate::functions::Function::Anchorarray,
+                                args,
                             };
                         }
                         return Node::SpillRangeOperator {

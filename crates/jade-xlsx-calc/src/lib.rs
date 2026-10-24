@@ -29,6 +29,8 @@
 
 pub mod conditional;
 pub mod formula_text;
+mod pivot;
+pub mod validation;
 
 use ironcalc_base::cell::CellValue as EngineValue;
 use ironcalc_base::Model;
@@ -73,6 +75,54 @@ pub struct Recalculated {
     /// The array formulas that spilled beyond their anchor cell, in document
     /// order: plain cells in the file, but the formula's values.
     pub spills: Vec<Spill>,
+    /// Present only when explicitly requested by a dependency-aware consumer.
+    pub dependencies: Option<ValueDependencies>,
+}
+
+/// Observed value dependencies from one actual calculation. Rectangles include
+/// empty cells and are never expanded into whole-axis coordinate lists.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ValueDependencies {
+    /// (formula sheet index, formula cell) -> (read sheet index, read range).
+    pub reads:
+        std::collections::BTreeMap<(usize, CellRef), Vec<(usize, jade_xlsx_reader::CellRange)>>,
+    pub incomplete: bool,
+}
+fn value_dependencies(model: &mut Model<'_>) -> ValueDependencies {
+    let trace = model.take_value_reads();
+    let mut result = ValueDependencies {
+        incomplete: trace.incomplete,
+        ..Default::default()
+    };
+    for (cell, reads) in trace.cells {
+        if cell.row <= 0 || cell.column <= 0 {
+            result.incomplete = true;
+            continue;
+        }
+        let key = (
+            cell.sheet as usize,
+            CellRef::new((cell.column - 1) as u32, (cell.row - 1) as u32),
+        );
+        let entries = result.reads.entry(key).or_default();
+        for area in reads {
+            if area.first_row <= 0 || area.first_column <= 0 {
+                result.incomplete = true;
+                continue;
+            }
+            entries.push((
+                area.sheet as usize,
+                jade_xlsx_reader::CellRange {
+                    start: CellRef::new(
+                        (area.first_column - 1) as u32,
+                        (area.first_row - 1) as u32,
+                    ),
+                    end: CellRef::new((area.last_column - 1) as u32, (area.last_row - 1) as u32),
+                },
+            ));
+        }
+        entries.sort_by_key(|(sheet, r)| (*sheet, r.start, r.end));
+    }
+    result
 }
 
 /// What one array formula spilled.
@@ -109,6 +159,22 @@ pub fn evaluate_with_manual_filter_rows(
     workbook: &Workbook,
     time_zone: &str,
     manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+) -> Result<Recalculated> {
+    evaluate_with_dependency_setting(workbook, time_zone, manual, false)
+}
+/// Evaluate normally and retain actual cell/range reads for refresh scheduling.
+pub fn evaluate_with_value_dependencies(
+    workbook: &Workbook,
+    time_zone: &str,
+    manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+) -> Result<Recalculated> {
+    evaluate_with_dependency_setting(workbook, time_zone, manual, true)
+}
+fn evaluate_with_dependency_setting(
+    workbook: &Workbook,
+    time_zone: &str,
+    manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+    trace: bool,
 ) -> Result<Recalculated> {
     let instant = ironcalc_base::get_milliseconds_since_epoch();
     let visibility = workbook
@@ -172,13 +238,13 @@ pub fn evaluate_with_manual_filter_rows(
                 })
                 .collect();
             ironcalc_base::phonetic::with_readings(readings, || {
-                evaluate_at_instant(workbook, time_zone)
+                evaluate_at_instant(workbook, time_zone, trace)
             })
         })
     })
 }
 
-fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalculated> {
+fn evaluate_at_instant(workbook: &Workbook, time_zone: &str, trace: bool) -> Result<Recalculated> {
     // Each skipped cell and what it holds: its cached value, or the engine's
     // answer when nothing is cached.
     let mut skipped: HashMap<(usize, CellRef), CellValue> = HashMap::new();
@@ -203,7 +269,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
     // off with it. `formula_count` bounds the rounds.
     let mut reasons: Vec<SkippedCell> = Vec::new();
     for _ in 0..=formula_count {
-        let (model, projected, unparsed) = project(workbook, &skipped, time_zone)?;
+        let (mut model, projected, unparsed) = project(workbook, &skipped, time_zone, trace)?;
         let round = read_back(&model, workbook, &projected)?;
 
         let Some(first) = round.disqualified.first().cloned() else {
@@ -224,6 +290,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str) -> Result<Recalcula
                 cells,
                 skipped: reasons,
                 spills: round.spills,
+                dependencies: trace.then(|| value_dependencies(&mut model)),
             });
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
@@ -246,19 +313,23 @@ fn project<'a>(
     workbook: &Workbook,
     skipped: &HashMap<(usize, CellRef), CellValue>,
     time_zone: &'a str,
+    trace: bool,
 ) -> Result<Projection<'a>> {
     use ironcalc_base::date_system::{with_date_system, DateSystem as EngineDateSystem};
     let system = match workbook.date_system {
         DateSystem::Nineteen00 => EngineDateSystem::Excel1900,
         DateSystem::Nineteen04 => EngineDateSystem::Excel1904,
     };
-    with_date_system(system, || project_with_epoch(workbook, skipped, time_zone))
+    with_date_system(system, || {
+        project_with_epoch(workbook, skipped, time_zone, trace)
+    })
 }
 
 fn project_with_epoch<'a>(
     workbook: &Workbook,
     skipped: &HashMap<(usize, CellRef), CellValue>,
     time_zone: &'a str,
+    trace: bool,
 ) -> Result<Projection<'a>> {
     let mut model = project_structure(workbook, time_zone)?;
     let mut projected = Vec::new();
@@ -289,7 +360,15 @@ fn project_with_epoch<'a>(
                             engine_column,
                             // A reference into a deleted sheet reads `#REF!B4`
                             // in the file; Excel evaluates it as `#REF!`.
-                            format!("={}", jade_xlsx_reader::collapse_ref_errors(formula)),
+                            format!(
+                                "={}",
+                                jade_xlsx_reader::collapse_ref_errors(&table_formula(
+                                    workbook,
+                                    index,
+                                    Some(cell.reference),
+                                    formula
+                                ))
+                            ),
                         )
                         .is_ok()
                     {
@@ -308,6 +387,9 @@ fn project_with_epoch<'a>(
                 set_literal(&mut model, engine_sheet, engine_row, engine_column, value);
             }
         }
+    }
+    if trace {
+        model.trace_value_reads(1_000_000);
     }
     model.evaluate();
     Ok((model, projected, unparsed))
@@ -330,6 +412,8 @@ fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Mode
             model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
         }
     }
+
+    model.set_pivot_regions(pivot::regions(workbook));
 
     // Tables before formulas, so structured references (`Table1[Amount]`)
     // parse.
@@ -441,6 +525,7 @@ fn read_back(
         // Excel computed only when the cache holds the same answer and the
         // file is not waiting on a full calculation that would replace it.
         if is_engine_artifact(&value)
+            && !genuine_name_error(model, workbook, *sheet_index, *reference)
             && artifact_starts_here(model, *sheet_index, *reference)
             && (cached_value(workbook, *sheet_index, *reference) != value
                 || workbook.full_calculation_on_load)
@@ -552,6 +637,52 @@ fn artifact_starts_here(model: &Model<'_>, sheet: usize, reference: CellRef) -> 
         && CellRef::parse(address).is_ok_and(|origin| origin == reference)
 }
 
+/// A removed/unknown name is a real #NAME?, while a known definition the
+/// backend could not register must retain its cache like an unknown function.
+/// Empty messages are explicit error literals, including error-valued names.
+fn genuine_name_error(
+    model: &Model<'_>,
+    workbook: &Workbook,
+    sheet: usize,
+    reference: CellRef,
+) -> bool {
+    use ironcalc_base::{
+        expressions::token::Error,
+        types::{Cell, FormulaValue},
+    };
+    let Ok(worksheet) = model.workbook.worksheet(sheet as u32) else {
+        return false;
+    };
+    let message = match worksheet.cell(reference.row as i32 + 1, reference.column as i32 + 1) {
+        Some(Cell::CellFormula {
+            v: FormulaValue::Error {
+                ei: Error::NAME, m, ..
+            },
+            ..
+        })
+        | Some(Cell::ArrayFormula {
+            v: FormulaValue::Error {
+                ei: Error::NAME, m, ..
+            },
+            ..
+        }) => m,
+        _ => return false,
+    };
+    if message.is_empty() {
+        return true;
+    }
+    let Some(name) = message
+        .strip_prefix("Variable name \"")
+        .and_then(|m| m.strip_suffix("\" not found."))
+    else {
+        return false;
+    };
+    !workbook.defined_names.iter().any(|n| {
+        n.name.to_lowercase() == name.to_lowercase()
+            && (n.local_sheet_index.is_none() || n.local_sheet_index == Some(sheet))
+    })
+}
+
 /// `#NAME?` and `#ERROR!` are what the engine says for a function or syntax
 /// it does not know — results Excel would not have produced from a file whose
 /// cached value differs, so they must never overwrite one.
@@ -589,4 +720,36 @@ fn is_excel_error(text: &str) -> bool {
             | "#SPILL!"
             | "#CIRC!"
     )
+}
+
+/// Static structured references are projected to their current A1 ranges for
+/// the backend. Saved formula text stays unchanged; @ keeps a relative row.
+pub(crate) fn table_formula(
+    workbook: &Workbook,
+    sheet: usize,
+    at: Option<CellRef>,
+    formula: &str,
+) -> String {
+    let context = workbook
+        .sheets
+        .get(sheet)
+        .and_then(|s| at.and_then(|at| s.table_at(at)));
+    jade_xlsx_reader::rewrite_table_references(formula, |name, selector| {
+        let name = name.or_else(|| context.map(|t| t.name.as_str()))?;
+        let (source, table) = workbook.sheets.iter().find_map(|s| {
+            s.tables
+                .iter()
+                .find(|t| {
+                    t.name.to_lowercase() == name.to_lowercase()
+                        || t.display_name.to_lowercase() == name.to_lowercase()
+                })
+                .map(|t| (s, t))
+        })?;
+        Some(jade_xlsx_reader::table_reference::to_a1(
+            table,
+            &source.name,
+            selector,
+            at,
+        ))
+    })
 }
