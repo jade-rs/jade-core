@@ -9278,14 +9278,13 @@ mod tests {
             prop_assert_eq!(comments(&mut server, &session).len(), 1);
         }
 
-        /// With change tracking on, a replacement is a redline: the old text
-        /// stays as a tracked deletion and the new text arrives as a tracked
-        /// insertion. Accepting everything gives the replaced document,
+        /// With change tracking on, only the changed part becomes a redline;
+        /// common prefixes and suffixes remain unchanged. Accepting gives the replaced document,
         /// rejecting everything gives back the original — which is the whole
         /// contract of handing an agent's edit to a human reviewer.
         #[test]
         fn a_tracked_replacement_can_be_accepted_or_rejected(
-            replacement in "[a-z]{1,6}",
+            replacement in prop_oneof![Just("a".to_string()), Just("beta".to_string()), "[a-z]{1,6}"],
             accept in any::<bool>(),
         ) {
             let mut server = test_server();
@@ -9293,21 +9292,40 @@ mod tests {
             try_tool(&mut server, "start_change_tracking", json!({
                 "session_id": session, "author": "AI",
             })).expect("start tracking");
+            let before = revisions(&mut server, &session);
 
             replace_text(&mut server, &session, json!({
                 "find": "beta", "replace": replacement, "start_paragraph": 1,
             }));
 
-            // The removed text is still in the file, marked deleted.
-            let kinds = revisions(&mut server, &session);
-            prop_assert!(
-                kinds.contains(&("deleted".to_string(), "beta".to_string())),
-                "the replaced text must survive as a tracked deletion: {kinds:?}",
-            );
-            prop_assert!(
-                kinds.contains(&("inserted".to_string(), replacement.clone())),
-                "the new text must arrive as a tracked insertion: {kinds:?}",
-            );
+            // Derive the expected middle from the ASCII strings independently
+            // of editor coordinates; also exercise a suffix-only deletion and a no-op.
+            let old = b"beta";
+            let new = replacement.as_bytes();
+            let mut left = 0;
+            while left < old.len().min(new.len()) && old[left] == new[left] {
+                left += 1;
+            }
+            let mut right = 0;
+            while right < (old.len() - left).min(new.len() - left)
+                && old[old.len() - right - 1] == new[new.len() - right - 1]
+            {
+                right += 1;
+            }
+            let mut expected_changes = Vec::new();
+            for (kind, text) in [
+                ("deleted", &"beta"[left..old.len() - right]),
+                ("inserted", &replacement[left..new.len() - right]),
+            ] {
+                if !text.is_empty() {
+                    expected_changes.push((kind.to_string(), text.to_string()));
+                }
+            }
+            let mut changes: Vec<_> = revisions(&mut server, &session)
+                .into_iter().filter(|revision| !before.contains(revision)).collect();
+            changes.sort();
+            expected_changes.sort();
+            prop_assert_eq!(changes, expected_changes);
 
             let tool = if accept { "accept_revisions" } else { "reject_revisions" };
             try_tool(&mut server, tool, json!({
