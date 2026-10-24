@@ -237,7 +237,7 @@ fn literal(b: &mut Workbook, target: &str, value: CellValue) {
             .cells
             .first()
             .cloned()
-            .unwrap_or_else(|| jade_xlsx_reader::Cell {
+            .unwrap_or(jade_xlsx_reader::Cell {
                 reference,
                 value: CellValue::Empty,
                 formula: None,

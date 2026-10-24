@@ -62,7 +62,7 @@ fn only_direct_standard_table_parts_and_relationship_id_attributes_are_links() {
     p.replace(PART,format!(r#"<worksheet xmlns="{MAIN}" xmlns:r="{REL}" xmlns:u="urn:foreign"><sheetData/><u:tableParts><tablePart r:id="table"/></u:tableParts><tableParts count="2"><u:tablePart r:id="table"/><tablePart u:id="table"/></tableParts><extLst><ext uri="opaque"><tableParts><tablePart r:id="table"/></tableParts></ext></extLst></worksheet>"#).into_bytes());
     assert!(book(&p).workbook().sheets[0].tables.is_empty());
     for attribute in [
-        format!("xmlns:r=\"urn:foreign\" r:id=\"table\""),
+        "xmlns:r=\"urn:foreign\" r:id=\"table\"".to_string(),
         format!("xmlns:r=\"{REL}\" r:id=\"table\""),
     ] {
         p.replace(PART,format!(r#"<worksheet xmlns="{MAIN}"><sheetData/><tableParts><tablePart {attribute}/></tableParts></worksheet>"#).into_bytes());

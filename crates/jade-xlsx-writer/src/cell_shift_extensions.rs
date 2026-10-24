@@ -198,8 +198,11 @@ fn move_cf(
                     result.push_str(&structural(&set_coverage(&one, &targets)?, change)?);
                 }
             } else {
-                let mut copies = 0;
-                for piece in ranges.iter().flat_map(|r| rule_pieces(*r, change)) {
+                for (copies, piece) in ranges
+                    .iter()
+                    .flat_map(|r| rule_pieces(*r, change))
+                    .enumerate()
+                {
                     if copies >= crate::cell_shift::CELL_SHIFT_LIMIT {
                         return Err(crate::WriteError::CellShift(
                             "too many split rule regions".into(),
@@ -213,7 +216,6 @@ fn move_cf(
                             xml_edit::root_attributes(r, &[("id", Some(id.clone()))])
                         })?;
                     }
-                    copies += 1;
                     result.push_str(&moved);
                 }
             }

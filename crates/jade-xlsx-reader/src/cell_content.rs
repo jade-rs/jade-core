@@ -500,51 +500,46 @@ fn project(
                         }
                     }
                 }
-                let leaf =
-                    if all_known && current_cell.is_some() && matches!(name.as_str(), "f" | "v") {
-                        let direct = frames.len() == cell_frame + 1;
-                        if name == "v" {
-                            for frame in frames.iter_mut().skip(cell_frame + 1) {
-                                if let Frame::Alternate { contains_value, .. } = frame {
-                                    *contains_value = true;
-                                }
+                let leaf = if let Some(cell) = current_cell
+                    .as_mut()
+                    .filter(|_| all_known && matches!(name.as_str(), "f" | "v"))
+                {
+                    let direct = frames.len() == cell_frame + 1;
+                    if name == "v" {
+                        for frame in frames.iter_mut().skip(cell_frame + 1) {
+                            if let Frame::Alternate { contains_value, .. } = frame {
+                                *contains_value = true;
                             }
                         }
-                        let formula = name == "f";
-                        let selected = frames.iter().all(|f| {
-                            !matches!(
-                                f,
-                                Frame::Branch {
-                                    selected: false,
-                                    ..
-                                }
-                            )
-                        });
-                        let preferred = frames.iter().skip(cell_frame + 1).all(|f| {
-                            !matches!(
-                                f,
-                                Frame::Branch {
-                                    selected: false,
-                                    ..
-                                }
-                            )
-                        });
-                        if empty {
-                            record_leaf(
-                                current_cell.as_mut().unwrap(),
-                                start..end,
-                                formula,
-                                direct,
-                                selected,
-                                preferred,
-                            );
-                            None
-                        } else {
-                            Some((start, formula, direct, selected))
-                        }
-                    } else {
+                    }
+                    let formula = name == "f";
+                    let selected = frames.iter().all(|f| {
+                        !matches!(
+                            f,
+                            Frame::Branch {
+                                selected: false,
+                                ..
+                            }
+                        )
+                    });
+                    let preferred = frames.iter().skip(cell_frame + 1).all(|f| {
+                        !matches!(
+                            f,
+                            Frame::Branch {
+                                selected: false,
+                                ..
+                            }
+                        )
+                    });
+                    if empty {
+                        record_leaf(cell, start..end, formula, direct, selected, preferred);
                         None
-                    };
+                    } else {
+                        Some((start, formula, direct, selected))
+                    }
+                } else {
+                    None
+                };
                 let record = record_structure
                     && !all_known
                     && matches!(

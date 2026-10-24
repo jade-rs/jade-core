@@ -243,9 +243,7 @@ fn protected_hyperlinks_honor_insert_permission_and_cell_lock() {
     );
     let mut book = xml_book(
         &xml,
-        &format!(
-            r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#
-        ),
+        r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#,
     );
     let name = book.workbook().sheets[0].name.clone();
     let before = book.bytes().to_vec();

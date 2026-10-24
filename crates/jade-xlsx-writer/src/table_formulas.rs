@@ -48,10 +48,12 @@ struct Capture {
     cell: Option<CellRef>,
     sheet: String,
 }
+type FormulaRewrite<'a> = dyn Fn(&str, Option<&Table>, Option<CellRef>) -> String + 'a;
+type ContextFormulaRewrite<'a> = dyn Fn(&str, Option<&Table>, Option<CellRef>, &str) -> String + 'a;
 pub(crate) fn rewrite_package(
     package: &mut OpcPackage,
     book: &Workbook,
-    rewrite: &dyn Fn(&str, Option<&Table>, Option<CellRef>) -> String,
+    rewrite: &FormulaRewrite<'_>,
 ) -> Result<()> {
     rewrite_package_context(package, book, &|formula, table, at, _| {
         rewrite(formula, table, at)
@@ -71,7 +73,7 @@ pub(crate) fn rewrite_grid_package(
 fn rewrite_package_context(
     package: &mut OpcPackage,
     book: &Workbook,
-    rewrite: &dyn Fn(&str, Option<&Table>, Option<CellRef>, &str) -> String,
+    rewrite: &ContextFormulaRewrite<'_>,
 ) -> Result<()> {
     let mut parts = crate::sheets::formula_parts(package)?;
     parts.insert(crate::workbook_part_name(package)?);
