@@ -2,6 +2,7 @@
 //! outline level (見出し 1–9, or 本文), how far the view sets each one in,
 //! which paragraphs レベルの表示 hides, and the level レベル上げ gives 本文.
 
+use jade_docx_reader::docx_xml::XmlNodeId;
 use std::collections::{BTreeSet, HashMap};
 
 use super::{references::navigation::WordNavigation, WordSession};
@@ -12,6 +13,10 @@ use crate::word_document::WordDocument;
 #[derive(Clone, Debug)]
 pub struct OutlineDisplay {
     pub collapsed: BTreeSet<usize>,
+    /// Native node identities at the last resolved surface positions. This is
+    /// view state only; it must never add identifiers to the exported DOCX.
+    #[doc(hidden)]
+    pub collapsed_nodes: HashMap<usize, XmlNodeId>,
     pub shown: u8,
     pub active: bool,
 }
@@ -20,6 +25,7 @@ impl Default for OutlineDisplay {
     fn default() -> Self {
         Self {
             collapsed: BTreeSet::new(),
+            collapsed_nodes: HashMap::new(),
             shown: BODY_LEVEL,
             active: false,
         }
@@ -35,8 +41,25 @@ impl OutlineDisplay {
             .into_iter()
             .map(|heading| heading.paragraph)
             .collect();
-        self.collapsed
-            .retain(|paragraph| headings.contains(paragraph));
+        let document = session.word_document();
+        // An explicit fold/unfold replaces the index set. Otherwise resolve
+        // the same nodes after an insertion, move, or history restoration.
+        if self.collapsed != self.collapsed_nodes.keys().copied().collect() {
+            self.collapsed_nodes = self
+                .collapsed
+                .iter()
+                .filter_map(|&paragraph| Some((paragraph, document.paragraph(paragraph)?.node_id?)))
+                .collect();
+        }
+        let nodes: std::collections::HashSet<_> = self.collapsed_nodes.values().copied().collect();
+        self.collapsed_nodes = headings
+            .into_iter()
+            .filter_map(|paragraph| {
+                let node = document.paragraph(paragraph)?.node_id?;
+                nodes.contains(&node).then_some((paragraph, node))
+            })
+            .collect();
+        self.collapsed = self.collapsed_nodes.keys().copied().collect();
         let mut hidden = session.hidden_by_collapse(&self.collapsed);
         if self.active {
             hidden.extend(hidden_by_level(session.word_document(), self.shown));
