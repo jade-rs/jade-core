@@ -123,9 +123,17 @@ impl WordDocument {
             let change = if let Some(existing) = existing {
                 raw.create_element(change_name, existing.attributes, existing.children)
             } else {
-                let original = previous
+                let mut original = previous
                     .map(without_changes)
                     .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
+                // CT_PPrBase excludes paragraph-mark and section properties.
+                // Their current values stay outside the paragraph-format revision.
+                if property_name == "w:pPr" {
+                    original.children.retain(|node| {
+                        !matches!(node, XmlNode::Element(e)
+                        if e.name == "w:rPr" || e.name == "w:sectPr")
+                    });
+                }
                 let mut attributes = vec![XmlAttribute {
                     name: "w:id".into(),
                     value: revision_id,
@@ -292,6 +300,13 @@ impl WordDocument {
             } else {
                 props.clone()
             };
+            if decision == RevisionDecision::Reject && property == "w:pPr" {
+                // Reject paragraph formatting without deleting the independently
+                // tracked paragraph mark or the paragraph's section boundary.
+                replacement.children.extend(props.children.iter().filter(|node|
+                    matches!(node, XmlNode::Element(e) if e.name == "w:rPr" || e.name == "w:sectPr")
+                ).cloned());
+            }
             replacement.id = props.id;
             replacement
                 .children

@@ -18360,7 +18360,13 @@ impl OffscreenDocumentView {
         if let Some(kind) = options.kinds.iter().flatten().find(|kind| {
             !matches!(
                 kind.as_str(),
-                "inserted" | "deleted" | "movedFrom" | "movedTo"
+                "inserted"
+                    | "deleted"
+                    | "movedFrom"
+                    | "movedTo"
+                    | "runFormat"
+                    | "paragraphFormat"
+                    | "formatted"
             )
         }) {
             return Err(JsValue::from_str(&format!(
