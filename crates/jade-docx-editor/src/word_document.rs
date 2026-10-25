@@ -13392,6 +13392,9 @@ impl WordDocument {
             if let Some(theme) = self.loaded_theme_part() {
                 self.apply_theme_fonts_at(index, &theme);
             }
+            // Establish the same XML baseline that subsequent text edits and
+            // Undo serialize from the resolved runs, including the note mark.
+            self.sync_paragraph_text(index);
         }
 
         Ok(note_id)
@@ -40338,6 +40341,66 @@ mod tests {
             document.contains(r#"w:color="FF0000""#),
             "underline color must survive resync: {document}"
         );
+    }
+
+    fn assert_inserted_note_xml_survives_text_undo(kind: NoteKind) {
+        use crate::commands::insert_text::InsertTextCommand;
+        use crate::commands::{CommandContext, CommandExecutor};
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+
+        let data = std::fs::read(fixture_path("hello.docx")).expect("read fixture");
+        let mut doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let note_id = doc.insert_note_at(0, 1, "", kind).expect("insert note");
+        let index = doc
+            .surface_index_for_story(kind.story(), 0, None, Some(&note_id))
+            .expect("note paragraph");
+        let part = match kind {
+            NoteKind::Footnote => "word/footnotes.xml",
+            NoteKind::Endnote => "word/endnotes.xml",
+        };
+        let before = exported_part_xml(&doc, part);
+        let body = exported_document_xml(&doc);
+        let range = SelectionRange::collapsed(TextPosition::new(index, 1));
+        let mut selection = Some(range);
+        let mut history = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            history
+                .execute(
+                    Box::new(InsertTextCommand::new(range, "hello".to_string(), None)),
+                    &mut ctx,
+                )
+                .expect("type in note");
+        }
+        let edited = exported_part_xml(&doc, part);
+        assert!(edited.contains("hello"));
+        {
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            history.undo(&mut ctx).expect("undo note text");
+        }
+        // Empty text elements may be normalized by a text edit; all run and
+        // paragraph properties, including the reference mark, must be stable.
+        assert_eq!(
+            exported_part_xml(&doc, part).replace("<w:t></w:t>", ""),
+            before.replace("<w:t></w:t>", "")
+        );
+        assert_eq!(exported_document_xml(&doc), body);
+        {
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            history.redo(&mut ctx).expect("redo note text");
+        }
+        assert_eq!(exported_part_xml(&doc, part), edited);
+    }
+
+    #[test]
+    fn inserted_footnote_xml_survives_text_undo() {
+        assert_inserted_note_xml_survives_text_undo(NoteKind::Footnote);
+    }
+
+    #[test]
+    fn inserted_endnote_xml_survives_text_undo() {
+        assert_inserted_note_xml_survives_text_undo(NoteKind::Endnote);
     }
 
     /// Redo of an endnote/footnote insertion must reproduce the exact package
