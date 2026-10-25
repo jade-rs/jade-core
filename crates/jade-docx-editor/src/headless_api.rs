@@ -13745,6 +13745,68 @@ mod tests {
     }
 
     #[test]
+    fn a_section_break_adds_paragraphs_with_their_styles_defaults() {
+        // A section break splits its paragraph, or, in a table, puts an
+        // empty paragraph in front of the table's second part. Those
+        // paragraphs were added without what their styles give them, which a
+        // load fills in: the document's default spacing and alignment were
+        // missing on screen until it was reopened.
+        for (fixture, paragraph, offset) in [
+            ("document-variable-fields.docx", 3, 11),
+            ("table3x2merged.docx", 1, 0),
+            ("table3x2merged.docx", 3, 5),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertSectionBreak {
+                        paragraph,
+                        offset,
+                        break_type: HeadlessSectionBreakType::NextPage,
+                    }],
+                },
+            )
+            .expect("section break inserted");
+            let paragraphs = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .filter_map(|index| word_doc.paragraph(index))
+                    .map(|paragraph| {
+                        let props = paragraph.properties.clone().unwrap_or_default();
+                        format!(
+                            "{:?} {:?} {:?}",
+                            props.style,
+                            props.alignment,
+                            props.spacing.as_ref().map(|spacing| (
+                                spacing.before,
+                                spacing.after,
+                                spacing.line
+                            )),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                paragraphs(&word_doc),
+                paragraphs(&reloaded),
+                "{fixture} {paragraph}:{offset}"
+            );
+        }
+    }
+
+    #[test]
     fn a_tracked_deletion_kept_from_a_joined_paragraph_takes_its_style() {
         // review-kinds.docx's second paragraph opens with tracked moved-from
         // text, which a replacement across it keeps. Joined to the first
