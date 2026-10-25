@@ -1266,7 +1266,7 @@ fn tracked_table_rows_survive_reload_and_decisions() {
 }
 
 #[test]
-fn deleting_another_authors_tracked_row_requires_a_revision_decision() {
+fn deleting_another_authors_tracked_row_preserves_independent_revisions() {
     let input = edit(
         &fixture("<w:r><w:t>契約</w:t></w:r>"),
         vec![
@@ -1290,30 +1290,272 @@ fn deleting_another_authors_tracked_row_requires_a_revision_decision() {
             },
         ],
     );
-    let error = apply_headless_commands(
+    let deleted = edit(
         &input,
-        &HeadlessEditRequest {
-            commands: vec![
-                tracking(),
+        vec![
+            tracking(),
+            HeadlessCommand::DeleteTableRow {
+                table_order_index: 0,
+                row_index: 1,
+            },
+        ],
+    );
+    assert_eq!(table_shape(&deleted), Some((3, 2)));
+    let xml = part(&deleted, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    let insertion = document
+        .descendants()
+        .find(|node| {
+            node.has_tag_name((NS, "ins")) && node.attribute((NS, "author")) == Some("Reviewer")
+        })
+        .unwrap();
+    let insertion_id = insertion.attribute((NS, "id")).unwrap().to_string();
+    assert_eq!(
+        insertion.attribute((NS, "date")),
+        Some("2025-01-01T00:00:00Z")
+    );
+    let deletion_ids = lg_ids(&deleted);
+    assert_eq!(deletion_ids.len(), 1);
+    // Each author can decide their revision independently, even after saving.
+    let restored = edit(&deleted, vec![decide(false, deletion_ids.clone())]);
+    assert_eq!(tracked_rows(&restored), Some(vec![0, 1, 0]));
+    let inserted = edit(&deleted, vec![decide(true, vec![insertion_id.clone()])]);
+    assert_eq!(tracked_rows(&inserted), Some(vec![0, 2, 0]));
+    assert_eq!(
+        table_shape(&edit(&deleted, vec![decide(true, deletion_ids)])),
+        Some((2, 2))
+    );
+    assert_eq!(
+        table_shape(&edit(&deleted, vec![decide(false, vec![insertion_id])])),
+        Some((2, 2))
+    );
+}
+
+#[test]
+fn overlapping_row_history_preserves_extensions_repeated_deletion_and_review_queries() {
+    use jade_docx_headless_editor::{
+        execute_headless_queries, HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResult,
+    };
+    let input = fixture(
+        r#"</w:p><w:tbl><w:tblGrid><w:gridCol w:w="1440"/></w:tblGrid>
+    <w:tr><w:trPr><w:ins xmlns:w16du="http://schemas.microsoft.com/office/word/2023/wordml/word16du" xmlns:ext="urn:revision-extension" w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z" w16du:dateUtc="2025-01-01T00:00:00Z" ext:source="kept"/></w:trPr><w:tc><w:p><w:r><w:t>reviewed</w:t></w:r></w:p></w:tc></w:tr>
+    </w:tbl><w:p>"#,
+    );
+    for whole_table in [false, true] {
+        let delete = || {
+            if whole_table {
+                HeadlessCommand::DeleteTable {
+                    table_order_index: 0,
+                }
+            } else {
                 HeadlessCommand::DeleteTableRow {
                     table_order_index: 0,
-                    row_index: 1,
-                },
-            ],
-        },
-    )
-    .unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("decide the existing row revision"));
-    let unchanged = edit(&input, vec![HeadlessCommand::StopChangeTracking]);
-    assert_eq!(table_shape(&unchanged), Some((3, 2)));
-    let xml = part(&unchanged, "word/document.xml");
-    let document = roxmltree::Document::parse(&xml).unwrap();
-    assert!(document
+                    row_index: 0,
+                }
+            }
+        };
+        let deleted = edit(&input, vec![tracking(), delete(), delete()]);
+        let response = execute_headless_queries(
+            &deleted,
+            &HeadlessQueryRequest {
+                queries: vec![HeadlessQuery::Revisions {
+                    start_revision: 0,
+                    max_revisions: 10,
+                    kind: None,
+                    author: None,
+                    date_from: None,
+                    date_to: None,
+                }],
+            },
+        )
+        .unwrap();
+        let HeadlessQueryResult::Revisions {
+            total_revisions,
+            revisions,
+            ..
+        } = &response.results[0]
+        else {
+            panic!("expected revision list")
+        };
+        assert_eq!(*total_revisions, 2);
+        assert!(revisions
+            .iter()
+            .any(|revision| revision.author.as_deref() == Some("Reviewer")));
+        assert!(revisions
+            .iter()
+            .any(|revision| revision.author.as_deref() == Some("LAWGUE")));
+        let restored = edit(&deleted, vec![decide(false, lg_ids(&deleted))]);
+        assert_eq!(final_text(&restored), "reviewed");
+        let xml = part(&restored, "word/document.xml");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        let insertion = doc
+            .descendants()
+            .find(|node| node.has_tag_name((NS, "ins")))
+            .unwrap();
+        assert_eq!(
+            insertion.attribute(("urn:revision-extension", "source")),
+            Some("kept")
+        );
+        assert_eq!(
+            insertion.attribute((
+                "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+                "dateUtc"
+            )),
+            Some("2025-01-01T00:00:00Z")
+        );
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct RowHistory {
+    inserted_by: Option<bool>,
+    deleted_by: Option<bool>,
+}
+
+fn persisted_row_history(bytes: &[u8]) -> Option<Vec<RowHistory>> {
+    let xml = part(bytes, "word/document.xml");
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    let table = doc
         .descendants()
-        .any(|node| node.has_tag_name((NS, "ins"))
-            && node.attribute((NS, "author")) == Some("Reviewer")));
+        .find(|node| node.has_tag_name((NS, "tbl")))?;
+    Some(
+        table
+            .children()
+            .filter(|node| node.has_tag_name((NS, "tr")))
+            .map(|row| {
+                let marks: Vec<_> = row
+                    .children()
+                    .filter(|node| node.has_tag_name((NS, "trPr")))
+                    .flat_map(|node| node.children())
+                    .filter(|node| node.has_tag_name((NS, "ins")) || node.has_tag_name((NS, "del")))
+                    .collect();
+                let author = |name| {
+                    marks
+                        .iter()
+                        .find(|node| node.has_tag_name((NS, name)))
+                        .map(|node| {
+                            assert_eq!(
+                                marks
+                                    .iter()
+                                    .filter(|mark| mark.tag_name().name() == name)
+                                    .count(),
+                                1
+                            );
+                            assert_eq!(node.attribute((NS, "date")), Some("2026-10-25T00:00:00Z"));
+                            match node.attribute((NS, "author")) {
+                                Some("Ann") => false,
+                                Some("Bob") => true,
+                                other => panic!("unexpected row author: {other:?}"),
+                            }
+                        })
+                };
+                RowHistory {
+                    inserted_by: author("ins"),
+                    deleted_by: author("del"),
+                }
+            })
+            .collect(),
+    )
+}
+
+#[derive(Clone, Debug)]
+enum RowAction {
+    EnsureTable(bool),
+    Insert(bool, usize),
+    Delete(bool, usize),
+    DeleteTable(bool),
+    Decide { accept: bool, kind: u8 },
+    UnknownDecision,
+}
+
+fn row_action() -> impl Strategy<Value = RowAction> {
+    prop_oneof![
+        any::<bool>().prop_map(RowAction::EnsureTable),
+        (any::<bool>(), 0usize..7).prop_map(|(author, row)| RowAction::Insert(author, row)),
+        (any::<bool>(), 0usize..7).prop_map(|(author, row)| RowAction::Delete(author, row)),
+        any::<bool>().prop_map(RowAction::DeleteTable),
+        (any::<bool>(), 0u8..3).prop_map(|(accept, kind)| RowAction::Decide { accept, kind }),
+        Just(RowAction::UnknownDecision),
+    ]
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+    #[test]
+    fn persisted_foreign_row_revisions_match_independent_model(actions in prop::collection::vec(row_action(), 1..33)) {
+        use jade_docx_headless_editor::HeadlessRevisionKindFilter;
+        let mut bytes = fixture("<w:r><w:t>契約</w:t></w:r>");
+        let mut rows: Option<Vec<RowHistory>> = None;
+        for (step, action) in actions.iter().enumerate() {
+            let mut expected = rows.clone();
+            let mut invalid = false;
+            let author = match action {
+                RowAction::EnsureTable(author) | RowAction::Insert(author, _) | RowAction::Delete(author, _) | RowAction::DeleteTable(author) => *author,
+                _ => false,
+            };
+            let delete = |row: &mut RowHistory| {
+                if row.deleted_by.is_some() { return false; }
+                if row.inserted_by == Some(author) { return true; }
+                row.deleted_by = Some(author);
+                false
+            };
+            let command = match action {
+                RowAction::EnsureTable(_) if expected.is_none() => {
+                    expected = Some(vec![RowHistory { inserted_by: Some(author), deleted_by: None }; 2]);
+                    HeadlessCommand::InsertTable { after_paragraph: 0, rows: 2, columns: 1, column_widths: vec![], caret_offset: None }
+                }
+                RowAction::Insert(_, index) if expected.as_ref().is_some_and(|rows| *index <= rows.len()) => {
+                    expected.as_mut().unwrap().insert(*index, RowHistory { inserted_by: Some(author), deleted_by: None });
+                    HeadlessCommand::InsertTableRow { table_order_index: 0, row_index: *index, template_row: None }
+                }
+                RowAction::Delete(_, index) if expected.as_ref().is_some_and(|rows| *index < rows.len()) => {
+                    let rows = expected.as_mut().unwrap();
+                    if delete(&mut rows[*index]) { rows.remove(*index); }
+                    HeadlessCommand::DeleteTableRow { table_order_index: 0, row_index: *index }
+                }
+                RowAction::DeleteTable(_) if expected.is_some() => {
+                    expected.as_mut().unwrap().retain_mut(|row| !delete(row));
+                    HeadlessCommand::DeleteTable { table_order_index: 0 }
+                }
+                RowAction::Decide { accept, kind } => {
+                    let insertion = *kind != 2;
+                    let deletion = *kind != 1;
+                    if let Some(rows) = &mut expected {
+                        rows.retain_mut(|row| {
+                            let remove = (insertion && row.inserted_by.is_some() && !accept)
+                                || (deletion && row.deleted_by.is_some() && *accept);
+                            if insertion { row.inserted_by = None; }
+                            if deletion { row.deleted_by = None; }
+                            !remove
+                        });
+                    }
+                    let kind = match kind { 1 => Some(HeadlessRevisionKindFilter::Inserted), 2 => Some(HeadlessRevisionKindFilter::Deleted), _ => None };
+                    if *accept {
+                        HeadlessCommand::AcceptRevisions { kind, start_paragraph: None, end_paragraph: None, revision_id: None, revision_ids: None, revision_targets: None }
+                    } else {
+                        HeadlessCommand::RejectRevisions { kind, start_paragraph: None, end_paragraph: None, revision_id: None, revision_ids: None, revision_targets: None }
+                    }
+                }
+                RowAction::UnknownDecision => decide(false, vec!["999999".into()]),
+                RowAction::EnsureTable(_) => HeadlessCommand::StopChangeTracking,
+                RowAction::Insert(_, index) => { invalid = true; HeadlessCommand::InsertTableRow { table_order_index: 0, row_index: *index, template_row: None } }
+                RowAction::Delete(_, index) => { invalid = true; HeadlessCommand::DeleteTableRow { table_order_index: 0, row_index: *index } }
+                RowAction::DeleteTable(_) => { invalid = true; HeadlessCommand::DeleteTable { table_order_index: 0 } }
+            };
+            if expected.as_ref().is_some_and(Vec::is_empty) { expected = None; }
+            let output = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![
+                HeadlessCommand::StartChangeTracking { author: Some(if author { "Bob" } else { "Ann" }.into()), initials: None, date: Some("2026-10-25T00:00:00Z".into()), date_utc: None }, command,
+            ] });
+            if invalid { prop_assert!(output.is_err(), "step {} {:?}: invalid operation succeeded", step, action); }
+            else {
+                prop_assert!(output.is_ok(), "step {} {:?}: {:?}", step, action, output.as_ref().err());
+                bytes = output.unwrap();
+                rows = expected;
+            }
+            prop_assert_eq!(persisted_row_history(&bytes), rows.clone(), "step {} {:?}", step, action);
+            prop_assert_eq!(final_text(&bytes), "契約", "step {} {:?}", step, action);
+        }
+    }
 }
 
 fn tracked_rows(bytes: &[u8]) -> Option<Vec<u8>> {
@@ -1479,16 +1721,24 @@ fn cancelling_our_inserted_rows_keeps_other_authors_later_changes() {
                 row_index: 0,
             },
         ] {
-            let error = apply_headless_commands(
-                &input,
-                &HeadlessEditRequest {
-                    commands: vec![tracking(), command],
-                },
-            )
-            .unwrap_err();
-            assert!(
-                error.to_string().contains("other author's revisions"),
-                "{error}"
+            let deleted = edit(&input, vec![tracking(), command]);
+            assert_eq!(table_shape(&deleted), Some((rows, 1)));
+            let xml = part(&deleted, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            assert!(doc.descendants().any(|node| node.has_tag_name((NS, "ins"))
+                && node.attribute((NS, "id")) == Some("42")
+                && node.attribute((NS, "author")) == Some("Reviewer")));
+            let deletion_ids: Vec<_> = doc
+                .descendants()
+                .filter(|node| node.has_tag_name((NS, "del")))
+                .map(|node| node.attribute((NS, "id")).unwrap().to_string())
+                .collect();
+            let restored = edit(&deleted, vec![decide(false, deletion_ids)]);
+            assert_eq!(final_text(&restored), "reviewed");
+            assert!(part(&restored, "word/document.xml").contains("Reviewer"));
+            assert_eq!(
+                tracked_rows(&restored),
+                Some(if rows == 1 { vec![1] } else { vec![1, 0] })
             );
         }
         assert_eq!(final_text(&input), "reviewed");

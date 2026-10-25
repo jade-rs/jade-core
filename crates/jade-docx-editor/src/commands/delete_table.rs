@@ -142,70 +142,38 @@ impl Command for DeleteTableCommand {
     }
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let Some(session) = ctx.document.revision_session().cloned() else {
+        let Some(_) = ctx.document.revision_session() else {
             return self.apply_untracked(ctx);
         };
-        let rows: Vec<_> = ctx
+        let row_count = ctx
             .document
             .table_by_order(self.table_order_index)
             .ok_or_else(|| {
                 CommandError::Custom(format!("table {} was not found", self.table_order_index))
             })?
             .rows
-            .iter()
-            .map(|row| row.revision.as_deref().cloned())
-            .collect();
-        if rows
-            .iter()
-            .flatten()
-            .any(|mark| mark.author != session.author)
-        {
-            return Err(CommandError::Custom(
-                "decide the existing row revision before deleting this table".into(),
-            ));
-        }
-        for (row, mark) in rows.iter().enumerate() {
-            if mark.as_ref().is_some_and(|mark| !mark.is_deletion())
-                && ctx.document.row_has_foreign_revisions(
-                    self.table_order_index,
-                    row,
-                    session.author.as_deref(),
-                )
-            {
-                return Err(CommandError::Custom(
-                    "decide the other author's revisions before cancelling this inserted row"
-                        .into(),
-                ));
-            }
-        }
+            .len();
         let snapshot = ctx
             .document
             .snapshot_including_package()
             .ok_or(CommandError::DocumentUnavailable)?;
         let previous_selection = *ctx.selection;
         let result = (|| {
-            for (row, existing) in rows.into_iter().enumerate().rev() {
-                match existing {
-                    Some(existing) if existing.is_deletion() => {}
-                    Some(_) => {
-                        if ctx
-                            .document
-                            .table_by_order(self.table_order_index)
-                            .is_some_and(|table| table.rows.len() == 1)
-                        {
-                            self.apply_untracked(ctx)?;
-                        } else {
-                            ctx.document
-                                .delete_table_row(self.table_order_index, row)
-                                .map_err(CommandError::Custom)?;
-                        }
-                    }
-                    None => {
-                        let mark = ctx
-                            .document
-                            .new_row_revision(jade_docx_reader::RevisionKind::Deleted);
+            for row in (0..row_count).rev() {
+                if ctx
+                    .document
+                    .track_table_row_deletion(self.table_order_index, row)
+                    .map_err(CommandError::Custom)?
+                {
+                    if ctx
+                        .document
+                        .table_by_order(self.table_order_index)
+                        .is_some_and(|table| table.rows.len() == 1)
+                    {
+                        self.apply_untracked(ctx)?;
+                    } else {
                         ctx.document
-                            .set_table_row_revision(self.table_order_index, row, mark)
+                            .delete_table_row(self.table_order_index, row)
                             .map_err(CommandError::Custom)?;
                     }
                 }

@@ -4042,7 +4042,7 @@ mod tests {
     }
 
     #[test]
-    fn deleting_selected_tables_rolls_back_when_a_later_table_refuses_deletion() {
+    fn deleting_selected_tables_preserves_foreign_changes_and_supports_undo() {
         let inserted = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="1" w:author="LAWGUE"/></w:trPr><w:tc><w:p><w:ins w:id="2" w:author="Reviewer"><w:r><w:t>REVIEW</w:t></w:r></w:ins></w:p></w:tc></w:tr></w:tbl>"#;
         let plain = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>CELL</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
         let data = build_docx_with_body(&format!("<w:p><w:r><w:t>HEAD</w:t></w:r></w:p>{inserted}{plain}<w:p><w:r><w:t>TAIL</w:t></w:r></w:p>"));
@@ -4057,15 +4057,25 @@ mod tests {
         let mut selection = Some(range);
         let mut history = CommandExecutor::new();
         let command = InsertTextCommand::new(range, String::new(), None).deleting_selected_tables();
-        let error = history
+        history
             .execute(
                 Box::new(command),
                 &mut CommandContext::new(&mut document, &mut selection),
             )
-            .unwrap_err();
-        assert!(error.to_string().contains("other author's revisions"));
+            .unwrap();
+        let after = exported_document_xml(&mut document);
+        assert!(after.contains("Reviewer"));
+        assert!(after.contains("REVIEW"));
+        assert_eq!(document.table_row_revisions().len(), 3);
+        assert!(history
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
         assert_eq!(exported_document_xml(&mut document), before);
         assert_eq!(selection, Some(range));
-        assert!(!history.can_undo());
+        assert!(history
+            .redo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
+        assert_eq!(document.table_row_revisions().len(), 3);
+        assert!(exported_document_xml(&mut document).contains("Reviewer"));
     }
 }
