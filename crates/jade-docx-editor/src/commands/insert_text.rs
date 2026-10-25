@@ -28,6 +28,7 @@ pub struct InsertTextCommand {
     previous_paragraphs: Option<Vec<Paragraph>>,
     raw_xml_undo: RawXmlUndo,
     previous_selection: Option<SelectionRange>,
+    previous_revision_id: Option<u32>,
     /// Package snapshot for cross-container replacements and structural note
     /// edits, whose raw part XML cannot be restored from paragraph models.
     previous_snapshot: Option<crate::word_document::WordDocumentSnapshot>,
@@ -57,6 +58,7 @@ impl InsertTextCommand {
             previous_paragraphs: None,
             raw_xml_undo: RawXmlUndo::default(),
             previous_selection: None,
+            previous_revision_id: None,
             previous_snapshot: None,
             in_place: None,
             note_range_deletion: None,
@@ -973,6 +975,7 @@ impl Command for InsertTextCommand {
 
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(text_len = self.text.len(), paragraph = self.paragraph_index)))]
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.previous_revision_id = Some(ctx.document.revision_id_counter());
         let result = self.apply_edit(ctx);
         self.raw_xml_undo.finish(ctx, result.is_ok());
         result
@@ -1003,57 +1006,67 @@ impl Command for InsertTextCommand {
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        if let Some(mut command) = self.note_range_deletion.take() {
-            return command.undo(ctx);
-        }
-        if let Some(in_place) = self.in_place.take() {
-            in_place.undo(ctx)?;
-            *ctx.selection = self.previous_selection;
-            return Ok(());
-        }
-        if let Some(snapshot) = self.previous_snapshot.take() {
-            ctx.document.restore_snapshot(snapshot);
-            *ctx.selection = self.previous_selection;
-            return Ok(());
-        }
-        if let Some(previous_paragraphs) = self.previous_paragraphs.take() {
-            let raw_xml_undo = std::mem::take(&mut self.raw_xml_undo);
-            let preserve_xml_bindings = raw_xml_undo.restores_xml();
-            let paragraph_index = self.paragraph_index;
-            raw_xml_undo.undo(ctx, |ctx| {
-                restore_multi_paragraph_edit(
-                    ctx,
-                    paragraph_index,
-                    &previous_paragraphs,
-                    preserve_xml_bindings,
-                )
-            })?;
-            // As after undoing a join: restored paragraph properties can bring
-            // a section break back, and the paragraph list changed.
-            if let Some(document) = ctx.document.document_mut() {
-                crate::word_document::WordDocument::rebuild_section_ranges(document);
+        let result = (|| {
+            if let Some(mut command) = self.note_range_deletion.take() {
+                return command.undo(ctx);
             }
-            ctx.document.rebuild_paragraph_surfaces();
-            *ctx.selection = self.previous_selection;
-            return Ok(());
-        }
+            if let Some(in_place) = self.in_place.take() {
+                in_place.undo(ctx)?;
+                *ctx.selection = self.previous_selection;
+                return Ok(());
+            }
+            if let Some(snapshot) = self.previous_snapshot.take() {
+                ctx.document.restore_snapshot(snapshot);
+                *ctx.selection = self.previous_selection;
+                return Ok(());
+            }
+            if let Some(previous_paragraphs) = self.previous_paragraphs.take() {
+                let raw_xml_undo = std::mem::take(&mut self.raw_xml_undo);
+                let preserve_xml_bindings = raw_xml_undo.restores_xml();
+                let paragraph_index = self.paragraph_index;
+                raw_xml_undo.undo(ctx, |ctx| {
+                    restore_multi_paragraph_edit(
+                        ctx,
+                        paragraph_index,
+                        &previous_paragraphs,
+                        preserve_xml_bindings,
+                    )
+                })?;
+                // As after undoing a join: restored paragraph properties can bring
+                // a section break back, and the paragraph list changed.
+                if let Some(document) = ctx.document.document_mut() {
+                    crate::word_document::WordDocument::rebuild_section_ranges(document);
+                }
+                ctx.document.rebuild_paragraph_surfaces();
+                *ctx.selection = self.previous_selection;
+                return Ok(());
+            }
 
-        let paragraph = ctx
-            .document
-            .paragraph_mut(self.paragraph_index)
-            .ok_or(CommandError::ParagraphUnavailable)?;
-        let backup = self
-            .previous_runs
-            .as_ref()
-            .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
-        paragraph.runs = backup.clone();
-        if let Some(anchors) = &self.previous_anchors {
-            anchors.restore(paragraph);
+            let paragraph = ctx
+                .document
+                .paragraph_mut(self.paragraph_index)
+                .ok_or(CommandError::ParagraphUnavailable)?;
+            let backup = self
+                .previous_runs
+                .as_ref()
+                .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
+            paragraph.runs = backup.clone();
+            if let Some(anchors) = &self.previous_anchors {
+                anchors.restore(paragraph);
+            }
+            ctx.document
+                .sync_paragraph_text_preserving_drawings(self.paragraph_index);
+            *ctx.selection = self.previous_selection;
+            Ok(())
+        })();
+        if result.is_ok() {
+            if let Some(counter) = self.previous_revision_id.take() {
+                // Redo must allocate the same revision IDs as the original edit,
+                // including the single-paragraph path without a full snapshot.
+                ctx.document.restore_revision_id_counter(counter);
+            }
         }
-        ctx.document
-            .sync_paragraph_text_preserving_drawings(self.paragraph_index);
-        *ctx.selection = self.previous_selection;
-        Ok(())
+        result
     }
 }
 
@@ -1742,6 +1755,42 @@ mod tests {
         assert_eq!(word_doc.paragraph_count(), 3);
         let xml = exported_document_xml(&mut word_doc);
         assert!(xml.contains("Title"), "{xml}");
+    }
+
+    #[test]
+    fn tracked_single_paragraph_redo_reuses_revision_ids() {
+        let bytes = build_docx_with_body("<w:p><w:r><w:t>Original</w:t></w:r></w:p>");
+        for range in [
+            SelectionRange::collapsed(TextPosition::new(0, 0)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 8)),
+        ] {
+            let mut doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            doc.set_revision_session(Some(RevisionSession {
+                author: Some("reviewer".into()),
+                date: Some("2026-10-25T00:00:00Z".into()),
+                date_utc: None,
+            }));
+            let original = exported_document_xml(&mut doc);
+            let counter = doc.revision_id_counter();
+            let mut command = InsertTextCommand::new(range, "契約😀".into(), None);
+            let mut selection = Some(range);
+            command
+                .apply(&mut CommandContext::new(&mut doc, &mut selection))
+                .unwrap();
+            let applied = exported_document_xml(&mut doc);
+            for _ in 0..2 {
+                command
+                    .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap();
+                assert_eq!(exported_document_xml(&mut doc), original);
+                assert_eq!(doc.revision_id_counter(), counter);
+                command
+                    .apply(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap();
+                assert_eq!(exported_document_xml(&mut doc), applied);
+            }
+        }
     }
 
     /// A tracked replacement across sibling paragraphs and a replacement

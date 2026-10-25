@@ -4435,12 +4435,16 @@ pub fn apply_headless_commands_with_executor_to_document(
                 row,
                 values,
             } => {
-                fill_table_row(word_doc, *table_order_index, *row, values).map_err(|message| {
-                    HeadlessApiApplyError::Command {
-                        index,
-                        source: CommandError::Custom(message),
-                    }
-                })?;
+                let (table_order_index, row, values) = (*table_order_index, *row, values.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "fill_table_row",
+                    EditScope::Document,
+                    move |doc| fill_table_row(doc, table_order_index, row, &values),
+                )?;
             }
             HeadlessCommand::InsertTableRow {
                 table_order_index,
@@ -4467,17 +4471,19 @@ pub fn apply_headless_commands_with_executor_to_document(
                 target_row,
                 clear_text,
             } => {
-                clone_table_row(
+                let (table_order_index, source_row, target_row, clear_text) =
+                    (*table_order_index, *source_row, *target_row, *clear_text);
+                execute_snapshot_edit(
                     word_doc,
-                    *table_order_index,
-                    *source_row,
-                    *target_row,
-                    *clear_text,
-                )
-                .map_err(|message| HeadlessApiApplyError::Command {
+                    command_executor,
+                    &mut selection,
                     index,
-                    source: CommandError::Custom(message),
-                })?;
+                    "clone_table_row",
+                    EditScope::Document,
+                    move |doc| {
+                        clone_table_row(doc, table_order_index, source_row, target_row, clear_text)
+                    },
+                )?;
             }
             HeadlessCommand::DeleteTableRow {
                 table_order_index,
@@ -5794,6 +5800,7 @@ fn clone_table_row(
     target_row: usize,
     clear_text: bool,
 ) -> Result<(), String> {
+    let insert_at;
     {
         let table = word_doc
             .table_mut_by_order(table_order_index)
@@ -5801,7 +5808,7 @@ fn clone_table_row(
         if source_row >= table.rows.len() {
             return Err(format!("source row {source_row} is out of range"));
         }
-        let insert_at = target_row.min(table.rows.len());
+        insert_at = target_row.min(table.rows.len());
         let mut row = table.rows[source_row].clone();
         clear_table_row_runtime_ids(&mut row);
         if clear_text {
@@ -5812,6 +5819,9 @@ fn clone_table_row(
 
     word_doc.rewrite_table_xml_from_model(table_order_index)?;
     word_doc.rebuild_paragraph_surfaces();
+    if let Some(mark) = word_doc.new_row_revision(jade_docx_reader::RevisionKind::Inserted) {
+        word_doc.set_table_row_revision(table_order_index, insert_at, Some(mark))?;
+    }
     Ok(())
 }
 
@@ -5821,78 +5831,32 @@ fn fill_table_row(
     row: usize,
     values: &[String],
 ) -> Result<(), String> {
-    // Resolve every target before mutating so an out-of-range logical column
-    // cannot leave a partially filled row. These paragraph surface indices
-    // also let us synchronize only the edited cell bodies below.
-    let mut paragraph_indices = values
+    // Validate every cell before editing; the snapshot command also rolls back
+    // failures during the replacements, keeping the whole row one undo step.
+    let paragraph_indices = values
         .iter()
         .enumerate()
         .map(|(column, _)| {
             table_cell_first_paragraph_index(word_doc, table_order_index, row, column)
         })
         .collect::<Result<Vec<_>, _>>()?;
-
-    {
-        let table = word_doc
-            .table_mut_by_order(table_order_index)
-            .ok_or_else(|| format!("table {table_order_index} was not found"))?;
-        let row_ref = table
-            .rows
-            .get_mut(row)
-            .ok_or_else(|| format!("row {row} is out of range"))?;
-        for (column, text) in values.iter().enumerate() {
-            let cell_index = cell_index_by_logical_column(row_ref, column)
-                .ok_or_else(|| format!("column {column} is out of range"))?;
-            let cell = row_ref
-                .cells
-                .get_mut(cell_index)
-                .ok_or_else(|| format!("column {column} is out of range"))?;
-            let paragraph = first_paragraph_mut_in_blocks(&mut cell.blocks)
-                .ok_or_else(|| "target cell has no paragraph".to_string())?;
-            set_paragraph_plain_text(paragraph, text);
-        }
-    }
-
-    // Filling a row changes paragraph content, not table structure. Rewriting
-    // `<w:tbl>` here would make the raw-cell preservation path restore the
-    // pre-fill body over the newly generated text. Synchronize the affected
-    // paragraphs in place so bookmarks, OMML, nested tables and other sibling
-    // cell content remain intact.
-    paragraph_indices.sort_unstable();
-    paragraph_indices.dedup();
-    for paragraph_index in paragraph_indices {
-        word_doc.sync_paragraph_text(paragraph_index);
+    // Even an empty values list must validate the target row.
+    word_doc
+        .table_by_order(table_order_index)
+        .and_then(|table| table.rows.get(row))
+        .ok_or_else(|| format!("row {row} in table {table_order_index} was not found"))?;
+    for (paragraph_index, text) in paragraph_indices.into_iter().zip(values) {
+        let current_text = paragraph_text(word_doc, paragraph_index).unwrap_or_default();
+        let range = range_from_bounds(paragraph_index, 0, paragraph_index, current_text.len());
+        let mut selection = Some(range);
+        let mut ctx = CommandContext::new(word_doc, &mut selection);
+        crate::commands::Command::apply(
+            &mut InsertTextCommand::new(range, text.clone(), None),
+            &mut ctx,
+        )
+        .map_err(|error| error.to_string())?;
     }
     Ok(())
-}
-
-fn set_paragraph_plain_text(paragraph: &mut Paragraph, text: &str) {
-    if let Some(first) = paragraph.runs.first_mut() {
-        first.text = text.to_string();
-        for run in paragraph.runs.iter_mut().skip(1) {
-            run.text.clear();
-        }
-    } else {
-        paragraph.runs.push(Run {
-            text: text.to_string(),
-            properties: None,
-            image: None,
-            text_box: None,
-            math: None,
-            field: None,
-            hyperlink: None,
-            node_id: None,
-            text_node_id: None,
-            revision_node_id: None,
-            comment_reference_ids: Vec::new(),
-            footnote_reference_ids: Vec::new(),
-            endnote_reference_ids: Vec::new(),
-            note_separator: None,
-            has_footnote_ref: false,
-            has_endnote_ref: false,
-            revision: None,
-        });
-    }
 }
 
 fn clear_table_row_runtime_ids(row: &mut TableRow) {
@@ -6081,25 +6045,6 @@ fn first_paragraph_ptr_in_blocks(blocks: &[BodyElement]) -> Option<*const Paragr
                 for row in &table.rows {
                     for cell in &row.cells {
                         if let Some(found) = first_paragraph_ptr_in_blocks(&cell.blocks) {
-                            return Some(found);
-                        }
-                    }
-                }
-            }
-            BodyElement::Math(_) => {}
-        }
-    }
-    None
-}
-
-fn first_paragraph_mut_in_blocks(blocks: &mut [BodyElement]) -> Option<&mut Paragraph> {
-    for block in blocks {
-        match block {
-            BodyElement::Paragraph(paragraph) => return Some(paragraph.as_mut()),
-            BodyElement::Table(table) => {
-                for row in &mut table.rows {
-                    for cell in &mut row.cells {
-                        if let Some(found) = first_paragraph_mut_in_blocks(&mut cell.blocks) {
                             return Some(found);
                         }
                     }
