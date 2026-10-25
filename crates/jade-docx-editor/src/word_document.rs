@@ -10120,7 +10120,7 @@ impl WordDocument {
             }
             None => return Err(format!("paragraph {paragraph_index} does not exist")),
         };
-        match path.as_slice() {
+        let following = match path.as_slice() {
             [PathEntry::Element(body_index)] => self.insert_section_break_in_body_paragraph(
                 paragraph_index,
                 *body_index,
@@ -10148,6 +10148,34 @@ impl WordDocument {
                 "section breaks can only be inserted in top-level body paragraphs or table cells"
                     .into(),
             ),
+        }?;
+        // The paragraphs the break adds take what their styles give them, as
+        // a load fills every paragraph: left bare, they lost the document's
+        // default spacing and alignment on screen only.
+        // In a table, the break goes in an empty paragraph in front of the
+        // part of the table that follows it, which may come before the caret.
+        for index in paragraph_index.min(following.saturating_sub(1))..=following {
+            self.fill_paragraph_style_defaults_at(index);
+        }
+        Ok(following)
+    }
+
+    /// Fills what the paragraph at `index` leaves unset from what its styles
+    /// give it ([`Self::inherited_paragraph_properties`]), as a load does.
+    fn fill_paragraph_style_defaults_at(&mut self, index: usize) {
+        if !self.is_body_paragraph_surface(index) {
+            return;
+        }
+        let style = self
+            .paragraph(index)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.style.as_deref().map(str::to_string));
+        let Some(inherited) = self.inherited_paragraph_properties(index, style.as_deref()) else {
+            return;
+        };
+        if let Some(paragraph) = self.paragraph_mut(index) {
+            let props = paragraph.properties.get_or_insert_with(Default::default);
+            Self::fill_missing_paragraph_props(props, &inherited);
         }
     }
 
@@ -12273,6 +12301,15 @@ impl WordDocument {
                 } else {
                     // The decided runs' `w:rPr` is written again from the model.
                     self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
+                    // A rejected change puts back the run's formatting before
+                    // it, which holds what the run declared and not what its
+                    // styles give it: fill that in as a load does, after the
+                    // sync so none of it is written as direct formatting.
+                    // Left out, the run lost its font and size on screen.
+                    self.apply_run_font_defaults_at(paragraph_index);
+                    if let Some(theme) = self.loaded_theme_part() {
+                        self.apply_theme_fonts_at(paragraph_index, &theme);
+                    }
                 }
             }
         }
@@ -13347,6 +13384,15 @@ impl WordDocument {
             },
         );
         self.rebuild_paragraph_surfaces();
+        // The runs take their styles' fonts and size, as a load fills a note
+        // body's runs: left unset, the note was drawn in no font at all until
+        // the document was reopened.
+        if let Some(index) = self.surface_index_for_story(kind.story(), 0, None, Some(&note_id)) {
+            self.apply_run_font_defaults_at(index);
+            if let Some(theme) = self.loaded_theme_part() {
+                self.apply_theme_fonts_at(index, &theme);
+            }
+        }
 
         Ok(note_id)
     }
@@ -26946,9 +26992,8 @@ impl WordDocument {
             .ok()??;
         let serialized = styles_doc.to_string().ok()?;
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => styles.parse(&serialized).ok()?,
-            None => self.styles_part = StylesPart::from_xml(&serialized).ok(),
+        if !self.reparse_styles_part(&serialized) {
+            return None;
         }
         resolve(self.styles_part.as_ref())
     }
@@ -27064,9 +27109,8 @@ impl WordDocument {
             .ok()??;
         let serialized = styles_doc.to_string().ok()?;
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => styles.parse(&serialized).ok()?,
-            None => self.styles_part = StylesPart::from_xml(&serialized).ok(),
+        if !self.reparse_styles_part(&serialized) {
+            return None;
         }
         resolve(self.styles_part.as_ref())
     }
@@ -27203,16 +27247,7 @@ impl WordDocument {
             return (para_id, char_id);
         };
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => {
-                let _ = styles.parse(&serialized);
-            }
-            None => {
-                if let Ok(styles) = StylesPart::from_xml(&serialized) {
-                    self.styles_part = Some(styles);
-                }
-            }
-        }
+        self.reparse_styles_part(&serialized);
         resolve(self.styles_part.as_ref())
     }
 
@@ -32074,6 +32109,29 @@ impl WordDocument {
         self.apply_run_font_defaults_at(paragraph_index);
         if let Some(theme) = theme.as_ref() {
             self.apply_theme_fonts_at(paragraph_index, theme);
+        }
+    }
+
+    /// Reads `styles.xml` again after an edit added to it, resolving theme
+    /// colours as a load does (inside a [`ThemeColorScope`]). Read without
+    /// the theme, every style's `w:color` fell back to its cached `w:val`:
+    /// inserting a footnote, which adds its styles, changed the headings'
+    /// colour on screen until the document was reopened. Returns whether it
+    /// parsed.
+    ///
+    /// [`ThemeColorScope`]: jade_docx_reader::theme::ThemeColorScope
+    fn reparse_styles_part(&mut self, serialized: &str) -> bool {
+        let theme = self.loaded_theme_part();
+        let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
+        match self.styles_part.as_mut() {
+            Some(styles) => styles.parse(serialized).is_ok(),
+            None => match StylesPart::from_xml(serialized) {
+                Ok(styles) => {
+                    self.styles_part = Some(styles);
+                    true
+                }
+                Err(_) => false,
+            },
         }
     }
 
