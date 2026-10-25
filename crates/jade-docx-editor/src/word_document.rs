@@ -25214,7 +25214,7 @@ impl WordDocument {
         self.next_revision_id = max_id.saturating_add(1).max(1);
     }
 
-    fn allocate_revision_id(&mut self) -> u32 {
+    pub(crate) fn allocate_revision_id(&mut self) -> u32 {
         let current = self.next_revision_id;
         self.next_revision_id = self.next_revision_id.saturating_add(1);
         current
