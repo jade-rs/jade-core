@@ -9031,7 +9031,12 @@ fn row_revision_hides(row: &TableRow) -> bool {
         return false;
     };
     let (changes, original) = ROW_REVISION_VIEW.with(std::cell::Cell::get);
-    !changes && mark.is_deletion() != original
+    !changes
+        && if original {
+            mark.insertion_layer().is_some()
+        } else {
+            mark.is_deletion()
+        }
 }
 
 /// `w:hidden` hides the row-end marker, not visible cell content.
@@ -17402,6 +17407,16 @@ mod tests {
         assert_eq!(hidden((true, false)), (false, false));
         assert_eq!(hidden((false, false)), (false, true));
         assert_eq!(hidden((false, true)), (true, false));
+        let mut both = deleted.clone();
+        both.revision.as_mut().unwrap().insertion = inserted.revision.clone();
+        for (view, hidden) in [
+            ((true, false), false),
+            ((false, false), true),
+            ((false, true), true),
+        ] {
+            ROW_REVISION_VIEW.with(|cell| cell.set(view));
+            assert_eq!(table_row_is_hidden(&both), hidden);
+        }
         ROW_REVISION_VIEW.with(|cell| cell.set((true, false)));
     }
 

@@ -3840,10 +3840,11 @@ pub struct RevisionMark {
     pub date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_utc: Option<String>,
-    /// For deleted text: the tracked insertion it belongs to
+    /// For deleted text or rows: the tracked insertion it belongs to.
+    /// Rows store both marks as siblings in `w:trPr`; text uses
     /// (`<w:ins><w:del>…</w:del></w:ins>`), as Word writes when someone
     /// deletes text that is still an insertion. Rejecting the deletion
-    /// brings the insertion back; rejecting the insertion removes the text.
+    /// brings the insertion back; rejecting the insertion removes the content.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub insertion: Option<Box<RevisionMark>>,
 }

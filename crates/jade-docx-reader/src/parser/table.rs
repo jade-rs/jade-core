@@ -468,7 +468,23 @@ impl DocumentParser {
                     }
                     b"w:ins" | b"w:del" => {
                         let kind = Self::revision_kind(e);
-                        row.revision = Some(Box::new(Self::build_revision_mark(e, kind)));
+                        let mut mark = Self::build_revision_mark(e, kind);
+                        if mark.is_deletion() {
+                            mark.insertion = row.revision.take().and_then(|previous| {
+                                if previous.is_deletion() {
+                                    previous.insertion
+                                } else {
+                                    Some(previous)
+                                }
+                            });
+                            row.revision = Some(Box::new(mark));
+                        } else if let Some(deletion) =
+                            row.revision.as_mut().filter(|mark| mark.is_deletion())
+                        {
+                            deletion.insertion = Some(Box::new(mark));
+                        } else {
+                            row.revision = Some(Box::new(mark));
+                        }
                         self.skip_element(reader, e.name().as_ref())?;
                     }
                     _ => self.skip_element(reader, e.name().as_ref())?,
@@ -514,7 +530,23 @@ impl DocumentParser {
                     }
                     b"w:ins" | b"w:del" => {
                         let kind = Self::revision_kind(e);
-                        row.revision = Some(Box::new(Self::build_revision_mark(e, kind)));
+                        let mut mark = Self::build_revision_mark(e, kind);
+                        if mark.is_deletion() {
+                            mark.insertion = row.revision.take().and_then(|previous| {
+                                if previous.is_deletion() {
+                                    previous.insertion
+                                } else {
+                                    Some(previous)
+                                }
+                            });
+                            row.revision = Some(Box::new(mark));
+                        } else if let Some(deletion) =
+                            row.revision.as_mut().filter(|mark| mark.is_deletion())
+                        {
+                            deletion.insertion = Some(Box::new(mark));
+                        } else {
+                            row.revision = Some(Box::new(mark));
+                        }
                     }
                     _ => {}
                 },
@@ -1841,6 +1873,23 @@ mod tests {
         );
         assert_eq!(deleted.revision.unwrap().kind, RevisionKind::Deleted);
         assert!(parse_row_pr("<w:trPr></w:trPr>").revision.is_none());
+    }
+
+    #[test]
+    fn row_insertion_and_deletion_survive_in_either_xml_order() {
+        for paired in [
+            r#"<w:ins w:id="7" w:author="Ann"/><w:del w:id="8" w:author="Bob"/>"#,
+            r#"<w:del w:id="8" w:author="Bob"></w:del><w:ins w:id="7" w:author="Ann"></w:ins>"#,
+        ] {
+            let row = parse_row_pr(&format!("<w:trPr>{paired}</w:trPr>"));
+            let deletion = row.revision.unwrap();
+            assert_eq!(deletion.kind, RevisionKind::Deleted);
+            assert_eq!(deletion.author.as_deref(), Some("Bob"));
+            let insertion = deletion.insertion.unwrap();
+            assert_eq!(insertion.kind, RevisionKind::Inserted);
+            assert_eq!(insertion.id.as_deref(), Some("7"));
+            assert_eq!(insertion.author.as_deref(), Some("Ann"));
+        }
     }
 
     #[test]
