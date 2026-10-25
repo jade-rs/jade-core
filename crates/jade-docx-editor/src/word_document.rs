@@ -26992,9 +26992,8 @@ impl WordDocument {
             .ok()??;
         let serialized = styles_doc.to_string().ok()?;
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => styles.parse(&serialized).ok()?,
-            None => self.styles_part = StylesPart::from_xml(&serialized).ok(),
+        if !self.reparse_styles_part(&serialized) {
+            return None;
         }
         resolve(self.styles_part.as_ref())
     }
@@ -27110,9 +27109,8 @@ impl WordDocument {
             .ok()??;
         let serialized = styles_doc.to_string().ok()?;
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => styles.parse(&serialized).ok()?,
-            None => self.styles_part = StylesPart::from_xml(&serialized).ok(),
+        if !self.reparse_styles_part(&serialized) {
+            return None;
         }
         resolve(self.styles_part.as_ref())
     }
@@ -27249,16 +27247,7 @@ impl WordDocument {
             return (para_id, char_id);
         };
         self.upsert_xml_part_content(&styles_path, serialized.clone());
-        match self.styles_part.as_mut() {
-            Some(styles) => {
-                let _ = styles.parse(&serialized);
-            }
-            None => {
-                if let Ok(styles) = StylesPart::from_xml(&serialized) {
-                    self.styles_part = Some(styles);
-                }
-            }
-        }
+        self.reparse_styles_part(&serialized);
         resolve(self.styles_part.as_ref())
     }
 
@@ -32120,6 +32109,29 @@ impl WordDocument {
         self.apply_run_font_defaults_at(paragraph_index);
         if let Some(theme) = theme.as_ref() {
             self.apply_theme_fonts_at(paragraph_index, theme);
+        }
+    }
+
+    /// Reads `styles.xml` again after an edit added to it, resolving theme
+    /// colours as a load does (inside a [`ThemeColorScope`]). Read without
+    /// the theme, every style's `w:color` fell back to its cached `w:val`:
+    /// inserting a footnote, which adds its styles, changed the headings'
+    /// colour on screen until the document was reopened. Returns whether it
+    /// parsed.
+    ///
+    /// [`ThemeColorScope`]: jade_docx_reader::theme::ThemeColorScope
+    fn reparse_styles_part(&mut self, serialized: &str) -> bool {
+        let theme = self.loaded_theme_part();
+        let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
+        match self.styles_part.as_mut() {
+            Some(styles) => styles.parse(serialized).is_ok(),
+            None => match StylesPart::from_xml(serialized) {
+                Ok(styles) => {
+                    self.styles_part = Some(styles);
+                    true
+                }
+                Err(_) => false,
+            },
         }
     }
 
