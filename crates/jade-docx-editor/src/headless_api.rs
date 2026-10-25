@@ -13188,6 +13188,97 @@ mod tests {
     }
 
     #[test]
+    fn rejecting_tracked_formatting_keeps_the_runs_inherited_fonts() {
+        // Italics applied with tracking on in document-variable-fields.docx's
+        // fourth paragraph, across a comment's reference, then rejected: the
+        // run after the reference got back formatting without the font and
+        // size its styles give it, and showed in neither until reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let document_xml = |bytes: &[u8]| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            xml
+        };
+        let direct_sizes = document_xml(&word_doc.export_docx().expect("export"))
+            .matches("<w:sz ")
+            .count();
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 3,
+                        start_offset: Some(7),
+                        end_paragraph: 3,
+                        end_offset: Some(9),
+                        text: "note".to_string(),
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::ApplyItalic {
+                        start_paragraph: 3,
+                        start_offset: 5,
+                        end_paragraph: 3,
+                        end_offset: 14,
+                        enabled: true,
+                    },
+                    HeadlessCommand::RejectRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(3)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.properties.as_ref().and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let exported = word_doc.export_docx().expect("export succeeds");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(sizes(&word_doc), sizes(&reloaded));
+        assert_eq!(
+            document_xml(&exported).matches("<w:sz ").count(),
+            direct_sizes,
+            "nothing filled in is written as direct formatting"
+        );
+    }
+
+    #[test]
     fn undoing_a_replacement_that_emptied_a_field_restores_its_xml() {
         // hyperlink-field-edge-cases.docx's third paragraph is text followed
         // by a HYPERLINK simple field. Replacing all but the field's last
