@@ -13050,6 +13050,114 @@ mod tests {
     }
 
     #[test]
+    fn inserting_a_note_keeps_the_styles_theme_colours() {
+        // Inserting a footnote adds its styles to styles.xml, which was read
+        // again without the theme: toc.docx's headings, coloured by
+        // `w:themeColor`, fell back to their cached `w:val` on screen until
+        // the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let colours = |word_doc: &WordDocument| {
+            let styles = word_doc.styles_part.as_ref().expect("styles");
+            ["1", "2"].map(|id| {
+                styles
+                    .resolve_run_properties(id)
+                    .and_then(|props| props.color)
+            })
+        };
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let loaded = colours(&word_doc);
+        assert!(loaded.iter().all(Option::is_some), "{loaded:?}");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertFootnote {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "note".to_string(),
+                }],
+            },
+        )
+        .expect("footnote inserted");
+        assert_eq!(colours(&word_doc), loaded);
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(colours(&reloaded), loaded);
+    }
+
+    #[test]
+    fn an_inserted_note_takes_its_styles_fonts() {
+        // A note inserted into hello.docx had runs without the font and size
+        // their styles give them, which a load resolves into a note's runs:
+        // the note showed in no font until the document was reopened.
+        for (fixture, endnote) in [
+            ("hello.docx", false),
+            ("hello.docx", true),
+            ("footnote.docx", false),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let command = if endnote {
+                HeadlessCommand::InsertEndnote {
+                    paragraph: 0,
+                    offset: 1,
+                    text: "note".to_string(),
+                }
+            } else {
+                HeadlessCommand::InsertFootnote {
+                    paragraph: 0,
+                    offset: 1,
+                    text: "note".to_string(),
+                }
+            };
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("note inserted");
+            let fonts = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .filter(|&index| word_doc.is_note_paragraph_surface(index))
+                    .filter_map(|index| word_doc.paragraph(index))
+                    .flat_map(|paragraph| paragraph.runs.iter())
+                    .map(|run| {
+                        let props = run.properties.as_ref();
+                        (
+                            run.text.clone(),
+                            props.and_then(|props| props.font_size),
+                            props
+                                .and_then(|props| props.fonts.as_ref())
+                                .and_then(|fonts| fonts.ascii.as_deref().map(str::to_string)),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                fonts(&word_doc),
+                fonts(&reloaded),
+                "{fixture} endnote={endnote}"
+            );
+        }
+    }
+
+    #[test]
     fn text_typed_into_a_shape_without_text_is_saved() {
         // shape-preset-geometries.docx's first shape has no `wps:txbx`. The
         // editor lists an empty paragraph in it to type into, with nothing in
@@ -13117,6 +13225,97 @@ mod tests {
             executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
         assert_eq!(paragraph(&reloaded), paragraph(&word_doc));
         assert_eq!(paragraph(&word_doc).1, "図形");
+    }
+
+    #[test]
+    fn rejecting_tracked_formatting_keeps_the_runs_inherited_fonts() {
+        // Italics applied with tracking on in document-variable-fields.docx's
+        // fourth paragraph, across a comment's reference, then rejected: the
+        // run after the reference got back formatting without the font and
+        // size its styles give it, and showed in neither until reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let document_xml = |bytes: &[u8]| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read part");
+            xml
+        };
+        let direct_sizes = document_xml(&word_doc.export_docx().expect("export"))
+            .matches("<w:sz ")
+            .count();
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 3,
+                        start_offset: Some(7),
+                        end_paragraph: 3,
+                        end_offset: Some(9),
+                        text: "note".to_string(),
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("test".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::ApplyItalic {
+                        start_paragraph: 3,
+                        start_offset: 5,
+                        end_paragraph: 3,
+                        end_offset: 14,
+                        enabled: true,
+                    },
+                    HeadlessCommand::RejectRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits apply");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(3)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.properties.as_ref().and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let exported = word_doc.export_docx().expect("export succeeds");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(sizes(&word_doc), sizes(&reloaded));
+        assert_eq!(
+            document_xml(&exported).matches("<w:sz ").count(),
+            direct_sizes,
+            "nothing filled in is written as direct formatting"
+        );
     }
 
     #[test]
@@ -13674,6 +13873,68 @@ mod tests {
             "{:?}",
             sizes(&word_doc)
         );
+    }
+
+    #[test]
+    fn a_section_break_adds_paragraphs_with_their_styles_defaults() {
+        // A section break splits its paragraph, or, in a table, puts an
+        // empty paragraph in front of the table's second part. Those
+        // paragraphs were added without what their styles give them, which a
+        // load fills in: the document's default spacing and alignment were
+        // missing on screen until it was reopened.
+        for (fixture, paragraph, offset) in [
+            ("document-variable-fields.docx", 3, 11),
+            ("table3x2merged.docx", 1, 0),
+            ("table3x2merged.docx", 3, 5),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertSectionBreak {
+                        paragraph,
+                        offset,
+                        break_type: HeadlessSectionBreakType::NextPage,
+                    }],
+                },
+            )
+            .expect("section break inserted");
+            let paragraphs = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .filter_map(|index| word_doc.paragraph(index))
+                    .map(|paragraph| {
+                        let props = paragraph.properties.clone().unwrap_or_default();
+                        format!(
+                            "{:?} {:?} {:?}",
+                            props.style,
+                            props.alignment,
+                            props.spacing.as_ref().map(|spacing| (
+                                spacing.before,
+                                spacing.after,
+                                spacing.line
+                            )),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                paragraphs(&word_doc),
+                paragraphs(&reloaded),
+                "{fixture} {paragraph}:{offset}"
+            );
+        }
     }
 
     #[test]
