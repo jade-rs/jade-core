@@ -33285,9 +33285,29 @@ where
     /// Updates non-printing control-mark visibility for the next cached-state
     /// re-render without changing document or history state.
     pub fn set_formatting_marks_flag(&mut self, value: bool) {
-        if let Some(options) = self.last_options.as_mut() {
+        let hidden_changed = if let Some(options) = self.last_options.as_mut() {
+            let hidden_before = options.shown_formatting_marks().hidden_text;
             options.show_formatting_marks = value;
+            hidden_before != options.shown_formatting_marks().hidden_text
+        } else {
+            false
+        };
+        if hidden_changed {
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+            self.last_layout_complete = false;
         }
+    }
+
+    /// Hidden text changes layout; cached caret geometry and paragraph draws
+    /// must be rebuilt through the shared layout engine along with the pixels.
+    pub fn set_formatting_mark_kinds_flag(&mut self, kinds: crate::FormattingMarkKinds) {
+        if let Some(options) = self.last_options.as_mut() {
+            options.set_formatting_mark_kinds(kinds);
+        }
+        self.clear_paragraph_layout_cache();
+        self.clear_paragraph_render_cache();
+        self.last_layout_complete = false;
     }
 
     /// Updates editor-only page chrome in the cached render options. Pixel

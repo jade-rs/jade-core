@@ -203,6 +203,7 @@ struct CanvasDocumentState {
     lazy_mode: bool,
     preview_mode: bool,
     page_export_original_formatting_marks: Option<bool>,
+    page_export_original_mark_kinds: Option<crate::FormattingMarkKinds>,
     page_export_original_raster_scale: Option<f64>,
     command_executor: CommandExecutor,
     composition_preview: Option<CompositionPreviewState>,
@@ -8856,6 +8857,7 @@ impl OffscreenDocumentView {
             lazy_mode: false,
             preview_mode: opts.preview_mode(),
             page_export_original_formatting_marks: None,
+            page_export_original_mark_kinds: None,
             page_export_original_raster_scale: None,
             command_executor: CommandExecutor::new(),
             composition_preview: None,
@@ -17757,7 +17759,11 @@ impl OffscreenDocumentView {
     /// a clean page-export surface. The original formatting-mark preference is
     /// retained so a PDF/PNG export cannot change the live editor configuration.
     #[wasm_bindgen(js_name = setPageExportMode)]
-    pub fn set_page_export_mode(&self, enabled: bool, scale: Option<f64>) -> Result<(), JsValue> {
+    pub fn set_page_export_mode(
+        &self,
+        enabled: bool,
+        scale: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
         // Change density before decoration state, so a rejected scale leaves
         // the interactive render options untouched.
         if enabled {
@@ -17779,20 +17785,42 @@ impl OffscreenDocumentView {
         if !enabled {
             self.state.borrow_mut().page_export_original_raster_scale = None;
         }
-        let (show_formatting_marks, show_crop_marks) = {
+        let (show_formatting_marks, show_crop_marks, mark_kinds) = {
             let mut state = self.state.borrow_mut();
             let CanvasDocumentState {
                 options,
                 page_export_original_formatting_marks,
+                page_export_original_mark_kinds,
                 ..
             } = &mut *state;
-            set_page_export_render_mode(options, page_export_original_formatting_marks, enabled)
+            if enabled {
+                page_export_original_mark_kinds.get_or_insert(options.formatting_mark_kinds());
+                options.set_formatting_mark_kinds(crate::FormattingMarkKinds::default());
+            } else if let Some(kinds) = page_export_original_mark_kinds.take() {
+                options.set_formatting_mark_kinds(kinds);
+            }
+            let (marks, crop) = set_page_export_render_mode(
+                options,
+                page_export_original_formatting_marks,
+                enabled,
+            );
+            (marks, crop, options.formatting_mark_kinds())
         };
-        let mut renderer = self.renderer.borrow_mut();
-        renderer.set_page_export_render_options(show_formatting_marks, show_crop_marks);
-        renderer.set_spelling_export_mode(enabled);
-        renderer.set_outline_symbols_hidden(enabled);
-        Ok(())
+        {
+            let mut renderer = self.renderer.borrow_mut();
+            renderer.set_formatting_mark_kinds_flag(mark_kinds);
+            renderer.set_page_export_render_options(show_formatting_marks, show_crop_marks);
+            renderer.set_spelling_export_mode(enabled);
+            renderer.set_outline_symbols_hidden(enabled);
+        }
+        if enabled {
+            Ok(JsValue::NULL)
+        } else {
+            // Export lays out hidden text as nonprinting content. Rebuild the
+            // interactive geometry and visible pixels before another caret or
+            // selection command can consume the export's cached layout.
+            self.rerender_after_display_change(|_| {})
+        }
     }
 
     /// Shows or hides spaces, paragraph marks, tabs, and other non-printing
@@ -17827,6 +17855,27 @@ impl OffscreenDocumentView {
         }
         self.rerender_after_display_change(|renderer| {
             renderer.set_formatting_marks_flag(visible);
+        })
+    }
+
+    /// Individual marks remain visible with the global paragraph toggle off.
+    #[wasm_bindgen(js_name = setFormattingMarkKinds)]
+    pub fn set_formatting_mark_kinds(&self, value: JsValue) -> Result<JsValue, JsValue> {
+        let kinds: crate::FormattingMarkKinds = serde_wasm_bindgen::from_value(value)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        {
+            let mut state = self.state.borrow_mut();
+            if let Some(saved) = state.page_export_original_mark_kinds.as_mut() {
+                *saved = kinds;
+                return Ok(JsValue::NULL);
+            }
+            if state.options.formatting_mark_kinds() == kinds {
+                return Ok(JsValue::NULL);
+            }
+            state.options.set_formatting_mark_kinds(kinds);
+        }
+        self.rerender_after_display_change(|renderer| {
+            renderer.set_formatting_mark_kinds_flag(kinds);
         })
     }
 
