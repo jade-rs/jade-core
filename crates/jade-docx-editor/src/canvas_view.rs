@@ -5099,7 +5099,7 @@ impl OffscreenDocumentView {
             }
         }
 
-        let page_height = renderer.page_height_css();
+        let page_height = renderer.page_height_for_page(cursor.page_index);
         let margin_bottom = renderer.margin_bottom();
         let margin_left = renderer.margin_left();
         let margin_right = renderer.margin_right();
@@ -5116,9 +5116,7 @@ impl OffscreenDocumentView {
             EditingMode::Body => return None,
         };
         let local_line_y = base_y + line_height * cursor.line_index as f64;
-        let page_gap = 16.0_f64;
-        let line_y =
-            local_line_y + cursor.page_index as f64 * (renderer.page_height_css() + page_gap);
+        let line_y = local_line_y + renderer.page_top_y(cursor.page_index);
 
         let text = match cursor.segment {
             HfSegment::Left => line.left.as_deref().unwrap_or(""),

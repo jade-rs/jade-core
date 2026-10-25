@@ -34678,7 +34678,7 @@ where
             .flat_map(|paragraph| &paragraph.lines)
             .map(|line| line.top)
             .reduce(f64::min)?;
-        Some((top - HF_EDIT_LINE_HEIGHT).min(self.page_height - self.margin_bottom))
+        Some((top - HF_EDIT_LINE_HEIGHT).min(self.page_height_for_page(page) - self.margin_bottom))
     }
 
     pub(crate) fn hf_story_caret_metrics(
@@ -37657,6 +37657,27 @@ mod tests {
         renderer.pageless_mode = true;
         assert_eq!(renderer.page_top_y(2), 0.0);
         assert_eq!(renderer.page_for_y(third), 0);
+    }
+
+    #[test]
+    fn footer_hit_boundary_uses_the_target_pages_recorded_height() {
+        let (mut renderer, _) = recording_renderer();
+        renderer.current_page_number = 1;
+        renderer.page_height = 1200.0;
+        renderer.record_page_section(1);
+        let body = Body {
+            elements: vec![BodyElement::from_paragraph(note_test_paragraph(
+                "footer", None,
+            ))],
+        };
+        renderer
+            .render_header_footer_body_at(&body, 1100.0, 100, true, Some("footer"))
+            .expect("paint footer");
+        let expected = renderer.footer_edit_boundary_for_page(0);
+        assert!(expected.is_some_and(|boundary| boundary > 1000.0));
+        // Rendering a shorter section must not move an earlier page's boundary.
+        renderer.page_height = 600.0;
+        assert_eq!(renderer.footer_edit_boundary_for_page(0), expected);
     }
 
     #[test]
