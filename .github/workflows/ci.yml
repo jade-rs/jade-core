@@ -147,7 +147,8 @@ jobs:
           cargo fmt --manifest-path crates/jade-skia-painter/Cargo.toml -- --check
           cargo fmt --manifest-path crates/jade-docx-native-render/Cargo.toml -- --check
           cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked -- --include-ignored
-          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked
+          # Timing checks must not compete with the other render tests.
+          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked -- --test-threads=1
           if [[ "$FULL_PDF_CORPUS" == "true" ]]; then
             JADE_PDF_CORPUS_ALL=1 cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test pdf_export -- --ignored
           else
