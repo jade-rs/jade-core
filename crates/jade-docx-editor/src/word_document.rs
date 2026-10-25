@@ -10120,7 +10120,7 @@ impl WordDocument {
             }
             None => return Err(format!("paragraph {paragraph_index} does not exist")),
         };
-        match path.as_slice() {
+        let following = match path.as_slice() {
             [PathEntry::Element(body_index)] => self.insert_section_break_in_body_paragraph(
                 paragraph_index,
                 *body_index,
@@ -10148,6 +10148,34 @@ impl WordDocument {
                 "section breaks can only be inserted in top-level body paragraphs or table cells"
                     .into(),
             ),
+        }?;
+        // The paragraphs the break adds take what their styles give them, as
+        // a load fills every paragraph: left bare, they lost the document's
+        // default spacing and alignment on screen only.
+        // In a table, the break goes in an empty paragraph in front of the
+        // part of the table that follows it, which may come before the caret.
+        for index in paragraph_index.min(following.saturating_sub(1))..=following {
+            self.fill_paragraph_style_defaults_at(index);
+        }
+        Ok(following)
+    }
+
+    /// Fills what the paragraph at `index` leaves unset from what its styles
+    /// give it ([`Self::inherited_paragraph_properties`]), as a load does.
+    fn fill_paragraph_style_defaults_at(&mut self, index: usize) {
+        if !self.is_body_paragraph_surface(index) {
+            return;
+        }
+        let style = self
+            .paragraph(index)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.style.as_deref().map(str::to_string));
+        let Some(inherited) = self.inherited_paragraph_properties(index, style.as_deref()) else {
+            return;
+        };
+        if let Some(paragraph) = self.paragraph_mut(index) {
+            let props = paragraph.properties.get_or_insert_with(Default::default);
+            Self::fill_missing_paragraph_props(props, &inherited);
         }
     }
 
