@@ -237,7 +237,10 @@ pub struct Options {
 /// Which formatting marks show, by kind (Word のオプション → 表示 →
 /// 常に画面に表示する編集記号). With [`Options::show_formatting_marks`] on,
 /// every kind shows.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct FormattingMarkKinds {
     /// タブ: an arrow across each tab.
     pub tabs: bool,
@@ -273,6 +276,14 @@ impl FormattingMarkKinds {
 
 #[wasm_bindgen]
 impl Options {
+    #[wasm_bindgen(js_name = setFormattingMarkKinds)]
+    pub fn set_formatting_mark_kinds_js(&mut self, value: JsValue) -> Result<(), JsValue> {
+        let kinds = serde_wasm_bindgen::from_value(value)
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        self.set_formatting_mark_kinds(kinds);
+        Ok(())
+    }
+
     #[wasm_bindgen(constructor)]
     pub fn new() -> Options {
         Options::default()
