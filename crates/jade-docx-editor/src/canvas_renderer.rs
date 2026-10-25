@@ -4777,6 +4777,13 @@ where
         }
     }
 
+    pub(crate) fn page_height_for_page(&self, page: usize) -> f64 {
+        self.page_origins
+            .get(page)
+            .or_else(|| self.page_origins.last())
+            .map_or(self.page_height, |origin| origin.height)
+    }
+
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
         // Conservative: only enable seek for the common fast path where paragraph render cache
         // replay is expected to be safe and independent of global prefix-side effects.
@@ -12623,7 +12630,7 @@ where
     }
 
     /// Determines which page a Y coordinate falls on.
-    fn page_for_y(&self, y: f64) -> usize {
+    pub(crate) fn page_for_y(&self, y: f64) -> usize {
         if self.pageless_mode {
             return 0;
         }
@@ -37643,6 +37650,10 @@ mod tests {
         ] {
             assert_eq!(renderer.page_for_y(y), page, "document y={y}");
         }
+        assert_eq!(renderer.page_height_for_page(0), 800.0);
+        assert_eq!(renderer.page_height_for_page(1), 1200.0);
+        assert_eq!(renderer.page_height_for_page(2), 600.0);
+        assert_eq!(renderer.page_height_for_page(3), 600.0);
         renderer.pageless_mode = true;
         assert_eq!(renderer.page_top_y(2), 0.0);
         assert_eq!(renderer.page_for_y(third), 0);
