@@ -138,71 +138,34 @@ impl Command for TableStructureCommand {
                     }
                 }),
             TableStructureOp::DeleteRow { row_index } => {
-                // A row can carry only one structural revision. Do not replace
-                // another author's mark or physically remove their insertion.
-                if let (Some(session), Some(mark)) = (
-                    ctx.document.revision_session(),
-                    ctx.document
-                        .table_by_order(self.table_order_index)
-                        .and_then(|table| table.rows.get(row_index))
-                        .and_then(|row| row.revision.as_deref()),
-                ) {
-                    if mark.author != session.author {
-                        return Err(CommandError::Custom(
-                            "decide the existing row revision before deleting this row".into(),
-                        ));
-                    }
-                    if mark.is_deletion() {
-                        return Ok(());
-                    }
-                    if ctx.document.row_has_foreign_revisions(
-                        self.table_order_index,
-                        row_index,
-                        session.author.as_deref(),
-                    ) {
-                        return Err(CommandError::Custom(
-                            "decide the other author's revisions before cancelling this inserted row".into(),
-                        ));
-                    }
-                }
-                // With changes tracked the row stays, marked deleted — unless
-                // it is our own tracked insertion, which simply goes.
-                let inserted = ctx
-                    .document
-                    .table_by_order(self.table_order_index)
-                    .and_then(|table| table.rows.get(row_index))
-                    .and_then(|row| row.revision.as_deref())
-                    .is_some_and(|mark| !mark.is_deletion());
-                if inserted
-                    && ctx.document.revision_session().is_some()
+                let tracking = ctx.document.revision_session().is_some();
+                let remove = !tracking
+                    || ctx
+                        .document
+                        .track_table_row_deletion(self.table_order_index, row_index)
+                        .map_err(CommandError::Custom)?;
+                if remove
+                    && tracking
                     && ctx
                         .document
                         .table_by_order(self.table_order_index)
                         .is_some_and(|table| table.rows.len() == 1)
                 {
-                    let snapshot = ctx
+                    let backup = ctx
                         .document
                         .snapshot_including_package()
                         .ok_or(CommandError::DocumentUnavailable)?;
                     super::delete_table::DeleteTableCommand::new(self.table_order_index)
-                        .apply(ctx)?;
-                    self.whole_table_backup = Some(snapshot);
+                        .apply_untracked(ctx)?;
+                    self.whole_table_backup = Some(backup);
                     self.previous_selection = previous_selection;
                     return Ok(());
                 }
-                match ctx
-                    .document
-                    .new_row_revision(jade_docx_reader::RevisionKind::Deleted)
-                    .filter(|_| !inserted)
-                {
-                    Some(mark) => ctx.document.set_table_row_revision(
-                        self.table_order_index,
-                        row_index,
-                        Some(mark),
-                    ),
-                    None => ctx
-                        .document
-                        .delete_table_row(self.table_order_index, row_index),
+                if remove {
+                    ctx.document
+                        .delete_table_row(self.table_order_index, row_index)
+                } else {
+                    Ok(())
                 }
             }
             TableStructureOp::InsertColumn {

@@ -427,6 +427,8 @@ pub struct TableRow {
     pub node_id: Option<XmlNodeId>,
     /// The row inserted or deleted with changes tracked (`w:trPr/w:ins` or
     /// `w:trPr/w:del`, ECMA-376 Part 1 §17.13.5.17 and §17.13.5.12).
+    /// When both are present, the deletion retains the insertion in its
+    /// `insertion` field so each revision can be decided independently.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub revision: Option<Box<RevisionMark>>,
 }
