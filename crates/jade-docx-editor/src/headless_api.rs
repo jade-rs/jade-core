@@ -13050,6 +13050,46 @@ mod tests {
     }
 
     #[test]
+    fn inserting_a_note_keeps_the_styles_theme_colours() {
+        // Inserting a footnote adds its styles to styles.xml, which was read
+        // again without the theme: toc.docx's headings, coloured by
+        // `w:themeColor`, fell back to their cached `w:val` on screen until
+        // the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let colours = |word_doc: &WordDocument| {
+            let styles = word_doc.styles_part.as_ref().expect("styles");
+            ["1", "2"].map(|id| {
+                styles
+                    .resolve_run_properties(id)
+                    .and_then(|props| props.color)
+            })
+        };
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let loaded = colours(&word_doc);
+        assert!(loaded.iter().all(Option::is_some), "{loaded:?}");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertFootnote {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "note".to_string(),
+                }],
+            },
+        )
+        .expect("footnote inserted");
+        assert_eq!(colours(&word_doc), loaded);
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(colours(&reloaded), loaded);
+    }
+
+    #[test]
     fn an_inserted_note_takes_its_styles_fonts() {
         // A note inserted into hello.docx had runs without the font and size
         // their styles give them, which a load resolves into a note's runs:
