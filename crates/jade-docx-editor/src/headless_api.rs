@@ -13050,6 +13050,74 @@ mod tests {
     }
 
     #[test]
+    fn an_inserted_note_takes_its_styles_fonts() {
+        // A note inserted into hello.docx had runs without the font and size
+        // their styles give them, which a load resolves into a note's runs:
+        // the note showed in no font until the document was reopened.
+        for (fixture, endnote) in [
+            ("hello.docx", false),
+            ("hello.docx", true),
+            ("footnote.docx", false),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let command = if endnote {
+                HeadlessCommand::InsertEndnote {
+                    paragraph: 0,
+                    offset: 1,
+                    text: "note".to_string(),
+                }
+            } else {
+                HeadlessCommand::InsertFootnote {
+                    paragraph: 0,
+                    offset: 1,
+                    text: "note".to_string(),
+                }
+            };
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("note inserted");
+            let fonts = |word_doc: &WordDocument| {
+                (0..word_doc.paragraph_count())
+                    .filter(|&index| word_doc.is_note_paragraph_surface(index))
+                    .filter_map(|index| word_doc.paragraph(index))
+                    .flat_map(|paragraph| paragraph.runs.iter())
+                    .map(|run| {
+                        let props = run.properties.as_ref();
+                        (
+                            run.text.clone(),
+                            props.and_then(|props| props.font_size),
+                            props
+                                .and_then(|props| props.fonts.as_ref())
+                                .and_then(|fonts| fonts.ascii.as_deref().map(str::to_string)),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export succeeds"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                fonts(&word_doc),
+                fonts(&reloaded),
+                "{fixture} endnote={endnote}"
+            );
+        }
+    }
+
+    #[test]
     fn text_typed_into_a_shape_without_text_is_saved() {
         // shape-preset-geometries.docx's first shape has no `wps:txbx`. The
         // editor lists an empty paragraph in it to type into, with nothing in
