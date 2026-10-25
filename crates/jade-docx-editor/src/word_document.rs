@@ -13347,6 +13347,15 @@ impl WordDocument {
             },
         );
         self.rebuild_paragraph_surfaces();
+        // The runs take their styles' fonts and size, as a load fills a note
+        // body's runs: left unset, the note was drawn in no font at all until
+        // the document was reopened.
+        if let Some(index) = self.surface_index_for_story(kind.story(), 0, None, Some(&note_id)) {
+            self.apply_run_font_defaults_at(index);
+            if let Some(theme) = self.loaded_theme_part() {
+                self.apply_theme_fonts_at(index, &theme);
+            }
+        }
 
         Ok(note_id)
     }
