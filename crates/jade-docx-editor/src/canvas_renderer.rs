@@ -4777,6 +4777,13 @@ where
         }
     }
 
+    pub(crate) fn page_height_for_page(&self, page: usize) -> f64 {
+        self.page_origins
+            .get(page)
+            .or_else(|| self.page_origins.last())
+            .map_or(self.page_height, |origin| origin.height)
+    }
+
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
         // Conservative: only enable seek for the common fast path where paragraph render cache
         // replay is expected to be safe and independent of global prefix-side effects.
@@ -12623,7 +12630,7 @@ where
     }
 
     /// Determines which page a Y coordinate falls on.
-    fn page_for_y(&self, y: f64) -> usize {
+    pub(crate) fn page_for_y(&self, y: f64) -> usize {
         if self.pageless_mode {
             return 0;
         }
@@ -34671,7 +34678,7 @@ where
             .flat_map(|paragraph| &paragraph.lines)
             .map(|line| line.top)
             .reduce(f64::min)?;
-        Some((top - HF_EDIT_LINE_HEIGHT).min(self.page_height - self.margin_bottom))
+        Some((top - HF_EDIT_LINE_HEIGHT).min(self.page_height_for_page(page) - self.margin_bottom))
     }
 
     pub(crate) fn hf_story_caret_metrics(
@@ -37643,9 +37650,34 @@ mod tests {
         ] {
             assert_eq!(renderer.page_for_y(y), page, "document y={y}");
         }
+        assert_eq!(renderer.page_height_for_page(0), 800.0);
+        assert_eq!(renderer.page_height_for_page(1), 1200.0);
+        assert_eq!(renderer.page_height_for_page(2), 600.0);
+        assert_eq!(renderer.page_height_for_page(3), 600.0);
         renderer.pageless_mode = true;
         assert_eq!(renderer.page_top_y(2), 0.0);
         assert_eq!(renderer.page_for_y(third), 0);
+    }
+
+    #[test]
+    fn footer_hit_boundary_uses_the_target_pages_recorded_height() {
+        let (mut renderer, _) = recording_renderer();
+        renderer.current_page_number = 1;
+        renderer.page_height = 1200.0;
+        renderer.record_page_section(1);
+        let body = Body {
+            elements: vec![BodyElement::from_paragraph(note_test_paragraph(
+                "footer", None,
+            ))],
+        };
+        renderer
+            .render_header_footer_body_at(&body, 1100.0, 100, true, Some("footer"))
+            .expect("paint footer");
+        let expected = renderer.footer_edit_boundary_for_page(0);
+        assert!(expected.is_some_and(|boundary| boundary > 1000.0));
+        // Rendering a shorter section must not move an earlier page's boundary.
+        renderer.page_height = 600.0;
+        assert_eq!(renderer.footer_edit_boundary_for_page(0), expected);
     }
 
     #[test]
