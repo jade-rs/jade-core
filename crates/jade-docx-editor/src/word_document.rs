@@ -19290,14 +19290,21 @@ impl WordDocument {
     }
 
     /// Paragraph alignment must not rewrite text, tab stops, fields or runs.
+    /// Use the ruler's mapping guard for flattened table lines and their tail.
     pub(crate) fn set_hf_paragraph_alignment(
         &mut self,
         role: HeaderFooterRole,
         variant: HeaderFooterVariant,
         paragraph_index: usize,
         alignment: &str,
-    ) -> Result<(), String> {
+    ) -> Result<bool, String> {
         self.ensure_hf_part_for_edit(role, variant)?;
+        if self
+            .hf_ruler_paragraph(role, variant, paragraph_index)
+            .is_none()
+        {
+            return Ok(false);
+        }
         let path = self.resolve_header_footer_part_path_for(role, variant)?;
         let existing = self
             .read_xml_part_content(&path)
@@ -19324,7 +19331,8 @@ impl WordDocument {
         raw.element_mut(paragraph_id).unwrap().children = children;
         raw.rebuild_index_for_subtree(paragraph_id);
         self.upsert_xml_part_content(&path, raw.to_string().map_err(|error| error.to_string())?);
-        self.refresh_header_footer_lines_for(role, variant, &path)
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
     }
 
     pub(crate) fn hf_plain_paragraph_text(
@@ -19367,13 +19375,7 @@ impl WordDocument {
         variant: HeaderFooterVariant,
         paragraph_index: usize,
     ) -> Option<String> {
-        let reference = self.active_hf_reference(role, variant)?;
-        let body = self.header_footer_body_for_reference(&reference)?;
-        let paragraph = body
-            .elements
-            .iter()
-            .filter_map(BodyElement::as_paragraph)
-            .nth(paragraph_index)?;
+        let paragraph = self.hf_ruler_paragraph(role, variant, paragraph_index)?;
         let direct = paragraph.properties.as_ref();
         direct
             .and_then(|properties| properties.alignment.clone())
@@ -44938,6 +44940,8 @@ mod tests {
                     <w:r><w:rPr><w:b/></w:rPr><w:t>Left</w:t><w:tab/><w:t>Right</w:t></w:r>
                     <w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:i/></w:rPr><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p/>
                 </w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
                 let before = DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap())
                     .unwrap()
                     .to_string()
@@ -45161,6 +45165,72 @@ mod tests {
                         body
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_alignment_does_not_target_flattened_table_paragraphs() {
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>Leading</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>Cell one</w:t></w:r></w:p><w:p><w:r><w:t>Cell one continued</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Cell two</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>Trailing</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.read_xml_part_content("word/document.xml").unwrap();
+                let before = doc.read_xml_part_content(&path).unwrap();
+                // One flattened table row contains three XML paragraphs. Its
+                // display index, and the trailing line's, cannot index that tree.
+                for line in [1, 2] {
+                    assert!(!doc
+                        .set_hf_paragraph_alignment(role, variant, line, "justify")
+                        .unwrap());
+                    assert_eq!(
+                        doc.read_xml_part_content(&path).unwrap(),
+                        before,
+                        "{role:?} {variant:?} line {line} changed another paragraph"
+                    );
+                    assert!(doc.hf_paragraph_alignment(role, variant, line).is_none());
+                }
+                assert!(doc
+                    .set_hf_paragraph_alignment(role, variant, 0, "right")
+                    .unwrap());
+                assert_eq!(
+                    doc.read_xml_part_content(&path).unwrap(),
+                    DocxXmlDocument::parse(&before)
+                        .unwrap()
+                        .to_string()
+                        .unwrap()
+                        .replacen("w:val=\"left\"", "w:val=\"right\"", 1)
+                );
+                assert_eq!(
+                    doc.read_xml_part_content("word/document.xml").unwrap(),
+                    body
+                );
+                let exported = doc.export_docx().unwrap();
+                let reopened =
+                    futures::executor::block_on(WordDocument::load(&exported, &Options::default()))
+                        .unwrap();
+                assert_eq!(
+                    reopened.read_xml_part_content(&path).unwrap(),
+                    doc.read_xml_part_content(&path).unwrap()
+                );
             }
         }
     }
