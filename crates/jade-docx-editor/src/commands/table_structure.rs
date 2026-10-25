@@ -13,7 +13,7 @@ pub enum TableStructureOp {
         /// Row whose formatting the new row copies (Word's 行の挿入).
         template_row: Option<usize>,
     },
-    /// Delete the row at `row_index`. The document keeps at least one row.
+    /// Delete the row at `row_index`, removing the table with its last row.
     DeleteRow { row_index: usize },
     /// Insert a grid column before `column_index`; the resolved column count
     /// appends after the last column, while larger indices are rejected.
@@ -24,8 +24,8 @@ pub enum TableStructureOp {
         /// Column whose cell formatting the new cells copy.
         template_column: Option<usize>,
     },
-    /// Delete the grid column at `column_index`. The table keeps at least one
-    /// column.
+    /// Delete the grid column at `column_index`, removing the table with its
+    /// last column. Column edits are untracked even during a revision session.
     DeleteColumn { column_index: usize },
     /// Split one cell into `columns` × `rows` cells (Word's セルの分割).
     SplitCell {
@@ -59,6 +59,7 @@ pub struct TableStructureCommand {
 }
 
 struct TableStructureBackup {
+    next_revision_id: u32,
     table: Table,
     table_node_id: Option<XmlNodeId>,
     raw_table_element: Option<XmlElement>,
@@ -92,10 +93,28 @@ impl TableStructureCommand {
         };
 
         Ok(TableStructureBackup {
+            next_revision_id: ctx.document.revision_id_counter(),
             table: table.clone(),
             table_node_id,
             raw_table_element,
         })
+    }
+
+    fn remove_whole_table(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        let snapshot = ctx
+            .document
+            .snapshot_including_package()
+            .ok_or(CommandError::DocumentUnavailable)?;
+        let selection = *ctx.selection;
+        if let Err(error) = super::delete_table::DeleteTableCommand::new(self.table_order_index)
+            .apply_untracked(ctx)
+        {
+            ctx.document.restore_snapshot(snapshot);
+            return Err(error);
+        }
+        self.whole_table_backup = Some(snapshot);
+        self.previous_selection = selection;
+        Ok(())
     }
 }
 
@@ -145,21 +164,13 @@ impl Command for TableStructureCommand {
                         .track_table_row_deletion(self.table_order_index, row_index)
                         .map_err(CommandError::Custom)?;
                 if remove
-                    && tracking
+                    && row_index == 0
                     && ctx
                         .document
                         .table_by_order(self.table_order_index)
                         .is_some_and(|table| table.rows.len() == 1)
                 {
-                    let backup = ctx
-                        .document
-                        .snapshot_including_package()
-                        .ok_or(CommandError::DocumentUnavailable)?;
-                    super::delete_table::DeleteTableCommand::new(self.table_order_index)
-                        .apply_untracked(ctx)?;
-                    self.whole_table_backup = Some(backup);
-                    self.previous_selection = previous_selection;
-                    return Ok(());
+                    return self.remove_whole_table(ctx);
                 }
                 if remove {
                     ctx.document
@@ -178,9 +189,18 @@ impl Command for TableStructureCommand {
                 width,
                 template_column,
             ),
-            TableStructureOp::DeleteColumn { column_index } => ctx
-                .document
-                .delete_table_column(self.table_order_index, column_index),
+            TableStructureOp::DeleteColumn { column_index } => {
+                if column_index == 0
+                    && ctx
+                        .document
+                        .table_dimensions(self.table_order_index)
+                        .is_some_and(|(_, columns)| columns == 1)
+                {
+                    return self.remove_whole_table(ctx);
+                }
+                ctx.document
+                    .delete_table_column(self.table_order_index, column_index)
+            }
             TableStructureOp::SplitCell {
                 row,
                 column,
@@ -254,6 +274,8 @@ impl Command for TableStructureCommand {
                 .map_err(CommandError::Custom)?;
         }
         ctx.document.rebuild_paragraph_surfaces();
+        ctx.document
+            .restore_revision_id_counter(snapshot.next_revision_id);
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -739,6 +761,50 @@ mod tests {
     }
 
     #[test]
+    fn tracked_row_redo_reuses_revision_ids() {
+        for op in [
+            TableStructureOp::InsertRow {
+                row_index: 1,
+                template_row: None,
+            },
+            TableStructureOp::DeleteRow { row_index: 0 },
+        ] {
+            let mut document = two_by_two_document();
+            document.set_revision_session(Some(crate::word_document::RevisionSession {
+                author: Some("reviewer".into()),
+                date: Some("2026-10-25T00:00:00Z".into()),
+                date_utc: None,
+            }));
+            let counter = document.revision_id_counter();
+            let mut selection = None;
+            let mut command = TableStructureCommand::new(0, op);
+            command
+                .apply(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap();
+            let after = document.table_by_order(0).unwrap().rows
+                [usize::from(matches!(op, TableStructureOp::InsertRow { .. }))]
+            .revision
+            .clone();
+            assert!(after.is_some());
+            for _ in 0..2 {
+                command
+                    .undo(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap();
+                assert_eq!(document.revision_id_counter(), counter);
+                command
+                    .apply(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap();
+                assert_eq!(
+                    document.table_by_order(0).unwrap().rows
+                        [usize::from(matches!(op, TableStructureOp::InsertRow { .. }))]
+                    .revision,
+                    after
+                );
+            }
+        }
+    }
+
+    #[test]
     fn insert_row_supports_undo_and_redo() {
         let mut word_doc = two_by_two_document();
         let mut selection = None;
@@ -866,7 +932,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_last_remaining_row_is_rejected_without_corrupting_state() {
+    fn delete_last_remaining_row_removes_table_and_supports_undo() {
         let table = Table {
             rows: vec![make_row(&["only"])],
             columns: Vec::new(),
@@ -903,13 +969,19 @@ mod tests {
                 )),
                 &mut ctx,
             );
-            assert!(result.is_err(), "deleting the only row must be rejected");
+            result.expect("deleting the only row removes the table");
+        }
+        assert_eq!(word_doc.table_dimensions(0), None);
+        {
+            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+            assert!(executor.undo(&mut ctx).expect("undo table removal"));
         }
         assert_eq!(word_doc.table_dimensions(0), Some((1, 1)));
-        assert!(
-            !executor.can_undo(),
-            "failed command must not enter history"
-        );
+        {
+            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+            assert!(executor.redo(&mut ctx).expect("redo table removal"));
+        }
+        assert_eq!(word_doc.table_dimensions(0), None);
     }
 
     proptest! {

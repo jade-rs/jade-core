@@ -2186,3 +2186,393 @@ fn whole_table_revision_ids_remain_stable_after_reload() {
         assert!(!remaining.contains(&ids[1]));
     }
 }
+
+#[test]
+fn deleting_the_last_grid_unit_removes_the_table_and_supports_undo() {
+    use jade_docx_document_core::{
+        commands::{CommandContext, CommandExecutor},
+        headless_api::apply_headless_commands_with_executor_to_document,
+        word_document::WordDocument,
+        Options,
+    };
+    let single = String::from(
+        r#"<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#,
+    );
+    for nested in [false, true] {
+        for column in [false, true] {
+            for tracked in [false, true] {
+                let table = if nested {
+                    format!(
+                        r#"<w:tbl><w:tblGrid><w:gridCol w:w="4800"/></w:tblGrid><w:tr><w:tc>{single}<w:p><w:r><w:t>outer</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#
+                    )
+                } else {
+                    single.clone()
+                };
+                let input = fixture(&format!(
+                    "<w:r><w:t>HEAD</w:t></w:r></w:p>{table}<w:p><w:r><w:t>TAIL</w:t></w:r>"
+                ));
+                let mut document =
+                    futures::executor::block_on(WordDocument::load(&input, &Options::default()))
+                        .unwrap();
+                let mut executor = CommandExecutor::new();
+                apply_headless_commands_with_executor_to_document(
+                    &mut document,
+                    &mut executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![if tracked {
+                            tracking()
+                        } else {
+                            HeadlessCommand::StopChangeTracking
+                        }],
+                    },
+                )
+                .unwrap();
+                let before = part(&document.export_docx().unwrap(), "word/document.xml");
+                let command = if column {
+                    HeadlessCommand::DeleteTableColumn {
+                        table_order_index: usize::from(nested),
+                        column_index: 0,
+                    }
+                } else {
+                    HeadlessCommand::DeleteTableRow {
+                        table_order_index: usize::from(nested),
+                        row_index: 0,
+                    }
+                };
+                let mut selection = apply_headless_commands_with_executor_to_document(
+                    &mut document,
+                    &mut executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .unwrap_or_else(|error| {
+                    panic!("nested={nested} column={column} tracked={tracked}: {error}")
+                });
+                let output = document.export_docx().unwrap();
+                let after = part(&output, "word/document.xml");
+                assert_eq!(
+                    final_text(&output),
+                    if nested { "HEADouterTAIL" } else { "HEADTAIL" }
+                );
+                assert_eq!(lg_ids(&output).is_empty(), column || !tracked);
+                let xml = roxmltree::Document::parse(&after).unwrap();
+                assert_eq!(
+                    xml.descendants()
+                        .filter(|n| n.has_tag_name((NS, "tbl")))
+                        .count(),
+                    usize::from(nested) + usize::from(tracked && !column)
+                );
+                {
+                    let mut ctx = CommandContext::new(&mut document, &mut selection);
+                    assert!(executor.undo(&mut ctx).unwrap());
+                }
+                assert_eq!(
+                    part(&document.export_docx().unwrap(), "word/document.xml"),
+                    before
+                );
+                {
+                    let mut ctx = CommandContext::new(&mut document, &mut selection);
+                    assert!(executor.redo(&mut ctx).unwrap());
+                }
+                assert_eq!(
+                    part(&document.export_docx().unwrap(), "word/document.xml"),
+                    after
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn bulk_cell_edits_and_row_clones_track_changes_and_support_undo() {
+    use jade_docx_document_core::{
+        commands::{CommandContext, CommandExecutor},
+        headless_api::apply_headless_commands_with_executor_to_document,
+        word_document::WordDocument,
+        Options,
+    };
+    let input = fixture(&format!(
+        r#"<w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins></w:p>{}<w:p>"#,
+        range_table("甲", "乙")
+    ));
+    for clone in [false, true] {
+        for tracked in [false, true] {
+            let mut document =
+                futures::executor::block_on(WordDocument::load(&input, &Options::default()))
+                    .unwrap();
+            let mut executor = CommandExecutor::new();
+            apply_headless_commands_with_executor_to_document(
+                &mut document,
+                &mut executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![if tracked {
+                        tracking()
+                    } else {
+                        HeadlessCommand::StopChangeTracking
+                    }],
+                },
+            )
+            .unwrap();
+            let before = part(&document.export_docx().unwrap(), "word/document.xml");
+            let command = if clone {
+                HeadlessCommand::CloneTableRow {
+                    table_order_index: 0,
+                    source_row: 0,
+                    target_row: 1,
+                    clear_text: false,
+                }
+            } else {
+                HeadlessCommand::FillTableRow {
+                    table_order_index: 0,
+                    row: 0,
+                    values: vec!["新😀".into(), "".into()],
+                }
+            };
+            let mut selection = apply_headless_commands_with_executor_to_document(
+                &mut document,
+                &mut executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .unwrap();
+            let output = document.export_docx().unwrap();
+            let after = part(&output, "word/document.xml");
+            assert_eq!(
+                final_text(&output),
+                if clone { "R甲乙甲乙" } else { "R新😀" }
+            );
+            assert_other_author(&output);
+            assert_eq!(
+                lg_ids(&output).is_empty(),
+                !tracked,
+                "clone={clone} tracked={tracked}"
+            );
+            if tracked {
+                let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+                assert_eq!(final_text(&rejected), "R甲乙");
+                assert_eq!(table_shape(&rejected), Some((1, 2)));
+                assert_other_author(&rejected);
+            }
+            {
+                let mut ctx = CommandContext::new(&mut document, &mut selection);
+                assert!(
+                    executor.undo(&mut ctx).unwrap(),
+                    "clone={clone} tracked={tracked}"
+                );
+            }
+            assert_eq!(
+                part(&document.export_docx().unwrap(), "word/document.xml"),
+                before
+            );
+            {
+                let mut ctx = CommandContext::new(&mut document, &mut selection);
+                assert!(executor.redo(&mut ctx).unwrap());
+            }
+            assert_eq!(
+                part(&document.export_docx().unwrap(), "word/document.xml"),
+                after
+            );
+        }
+    }
+}
+
+/// Read saved cells independently of the editor model, excluding deleted text.
+fn saved_grid(bytes: &[u8]) -> Option<Vec<Vec<String>>> {
+    let xml = part(bytes, "word/document.xml");
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    let table = doc.descendants().find(|n| n.has_tag_name((NS, "tbl")))?;
+    let rows: Vec<Vec<String>> = table
+        .children()
+        .filter(|n| {
+            n.has_tag_name((NS, "tr"))
+                && !n
+                    .children()
+                    .filter(|p| p.has_tag_name((NS, "trPr")))
+                    .any(|p| p.children().any(|mark| mark.has_tag_name((NS, "del"))))
+        })
+        .map(|row| {
+            row.children()
+                .filter(|n| n.has_tag_name((NS, "tc")))
+                .map(|cell| {
+                    cell.descendants()
+                        .filter(|n| {
+                            n.has_tag_name((NS, "t"))
+                                && !n.ancestors().any(|a| {
+                                    a.has_tag_name((NS, "del")) || a.has_tag_name((NS, "moveFrom"))
+                                })
+                        })
+                        .filter_map(|n| n.text())
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
+    (!rows.is_empty()).then_some(rows)
+}
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::Direct(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/revision_workflows.proptest-regressions")
+        ))),
+        ..ProptestConfig::default()
+    })]
+    #[test]
+    fn mixed_persisted_grid_workflows_match_cell_model(
+        actions in prop::collection::vec((0u8..10, any::<u8>(), any::<u8>(), prop_oneof![Just(""), Just("契約😀"), Just("a&<b"), Just("e\u{301}条"), Just("更新")], any::<bool>(), any::<bool>()), 1..49)
+    ) {
+        use jade_docx_document_core::{
+            commands::{CommandContext, CommandExecutor},
+            headless_api::apply_headless_commands_with_executor_to_document,
+            word_document::WordDocument, Options,
+        };
+        let mut bytes = fixture(r#"<w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins>"#);
+        let mut model: Option<Vec<Vec<String>>> = None;
+        for (step, (kind, first, second, text, tracked, accept)) in actions.into_iter().enumerate() {
+            let before_model = model.clone();
+            let mut expected = model.clone();
+            let mut invalid = false;
+            let mut reversible_revision = true;
+            let command = match (kind, expected.as_mut()) {
+                (0, None) => {
+                    expected = Some(vec![vec![String::new(); 2]; 2]);
+                    HeadlessCommand::InsertTable { after_paragraph:0, rows:2, columns:2, column_widths:vec![], caret_offset:None }
+                }
+                (0, Some(_)) => {
+                    expected = None;
+                    HeadlessCommand::DeleteTable { table_order_index:0 }
+                }
+                (1, Some(grid)) => {
+                    let row = first as usize % (grid.len()+1);
+                    grid.insert(row, vec![String::new();grid[0].len()]);
+                    HeadlessCommand::InsertTableRow { table_order_index:0, row_index:row, template_row:None }
+                }
+                (2, Some(grid)) => {
+                    let row = first as usize % grid.len();
+                    grid.remove(row);
+                    if grid.is_empty() { expected = None; }
+                    HeadlessCommand::DeleteTableRow { table_order_index:0, row_index:row }
+                }
+                (3, Some(grid)) => {
+                    reversible_revision = false;
+                    let column = first as usize % (grid[0].len()+1);
+                    for row in grid { row.insert(column, String::new()); }
+                    HeadlessCommand::InsertTableColumn { table_order_index:0, column_index:column, width:None, template_column:None }
+                }
+                (4, Some(grid)) => {
+                    reversible_revision = false;
+                    let column = first as usize % grid[0].len();
+                    for row in grid.iter_mut() { row.remove(column); }
+                    if grid[0].is_empty() { expected=None; }
+                    HeadlessCommand::DeleteTableColumn { table_order_index:0, column_index:column }
+                }
+                (5, Some(grid)) => {
+                    let row = first as usize % grid.len();
+                    let column = second as usize % grid[0].len();
+                    grid[row][column] = text.to_owned();
+                    HeadlessCommand::SetTableCellText { table_order_index:0, row, column, text:text.into() }
+                }
+                (6, Some(grid)) => {
+                    let row = first as usize % grid.len();
+                    let values = vec![text.to_owned(); grid[0].len()];
+                    grid[row] = values.clone();
+                    HeadlessCommand::FillTableRow { table_order_index:0, row, values }
+                }
+                (7, Some(grid)) => {
+                    let source_row = first as usize % grid.len();
+                    let target_row = second as usize % (grid.len()+1);
+                    let clear_text = first % 2 == 0;
+                    let row = if clear_text { vec![String::new();grid[0].len()] } else { grid[source_row].clone() };
+                    grid.insert(target_row,row);
+                    HeadlessCommand::CloneTableRow { table_order_index:0, source_row, target_row, clear_text }
+                }
+                (8, Some(grid)) => {
+                    invalid = true;
+                    match first % 3 {
+                        0 => HeadlessCommand::FillTableRow { table_order_index:0, row:0, values:vec![text.to_owned();grid[0].len()+1] },
+                        1 => HeadlessCommand::CloneTableRow { table_order_index:0, source_row:usize::MAX, target_row:0, clear_text:false },
+                        _ => HeadlessCommand::DeleteTableColumn { table_order_index:0, column_index:usize::MAX },
+                    }
+                }
+                (9, Some(grid)) => HeadlessCommand::FillTableRow { table_order_index:0, row:first as usize % grid.len(), values:vec![] },
+                _ => {
+                    invalid = true;
+                    HeadlessCommand::FillTableRow { table_order_index:0, row:usize::MAX, values:vec![text.into()] }
+                }
+            };
+            let mut document = futures::executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            let mut executor = CommandExecutor::new();
+            apply_headless_commands_with_executor_to_document(&mut document, &mut executor, None, &HeadlessEditRequest { commands:vec![if tracked {tracking()} else {HeadlessCommand::StopChangeTracking}] }).unwrap();
+            let before = part(&document.export_docx().unwrap(), "word/document.xml");
+            let result = apply_headless_commands_with_executor_to_document(&mut document, &mut executor, None, &HeadlessEditRequest {commands:vec![command.clone()]});
+            if invalid {
+                prop_assert!(result.is_err(), "step {} {:?} must reject",step,command);
+                prop_assert_eq!(part(&document.export_docx().unwrap(), "word/document.xml"), before, "step {} rejection is atomic",step);
+                continue;
+            }
+            prop_assert!(result.is_ok(), "step {} {:?}: {:?}",step,command,result);
+            let mut selection = result.unwrap();
+            let output = document.export_docx().unwrap();
+            prop_assert_eq!(saved_grid(&output), expected.clone(), "step {} {:?} final view before review",step,command);
+            let after = part(&output, "word/document.xml");
+            {
+                let mut ctx = CommandContext::new(&mut document, &mut selection);
+                prop_assert!(executor.undo(&mut ctx).unwrap(), "step {} {:?} undo",step,command);
+            }
+            prop_assert_eq!(part(&document.export_docx().unwrap(), "word/document.xml"), before, "step {} {:?} undo restores XML",step,command);
+            {
+                let mut ctx = CommandContext::new(&mut document, &mut selection);
+                prop_assert!(executor.redo(&mut ctx).unwrap());
+            }
+            prop_assert_eq!(part(&document.export_docx().unwrap(), "word/document.xml"), after, "step {} {:?} redo restores XML",step,command);
+            bytes = if tracked {
+                edit(&output,vec![decide(accept,lg_ids(&output))])
+            } else { output };
+            model = if tracked && !accept && reversible_revision { before_model } else { expected };
+            prop_assert_eq!(saved_grid(&bytes), model.clone(), "step {} {:?}, tracked={}, accept={}",step,command,tracked,accept);
+            assert_other_author(&bytes);
+            prop_assert!(lg_ids(&bytes).is_empty(), "step {} decisions remove our history",step);
+        }
+    }
+}
+
+#[test]
+fn bulk_fill_on_foreign_inserted_row_preserves_history_when_rejected() {
+    let table = range_table("甲", "乙")
+        .replace("<w:tr>", r#"<w:tr><w:trPr><w:ins w:id="40" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"/></w:trPr>"#)
+        .replace("<w:r><w:t>甲</w:t></w:r>", r#"<w:ins w:id="42" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>甲</w:t></w:r></w:ins>"#);
+    let input = fixture(&format!(
+        r#"<w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins></w:p>{table}<w:p>"#
+    ));
+    let output = edit(
+        &input,
+        vec![
+            tracking(),
+            HeadlessCommand::FillTableRow {
+                table_order_index: 0,
+                row: 0,
+                values: vec!["新😀".into(), "更新".into()],
+            },
+        ],
+    );
+    assert_eq!(final_text(&output), "R新😀更新");
+    let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+    assert_eq!(final_text(&rejected), "R甲乙");
+    assert_other_author(&rejected);
+    let xml = part(&rejected, "word/document.xml");
+    let document = roxmltree::Document::parse(&xml).unwrap();
+    for id in ["40", "42"] {
+        let mark = document
+            .descendants()
+            .find(|n| n.has_tag_name((NS, "ins")) && n.attribute((NS, "id")) == Some(id))
+            .unwrap();
+        assert_eq!(mark.attribute((NS, "author")), Some("Reviewer"));
+        assert_eq!(mark.attribute((NS, "date")), Some("2025-01-01T00:00:00Z"));
+    }
+}
