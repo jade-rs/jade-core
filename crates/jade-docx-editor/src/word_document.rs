@@ -11233,13 +11233,19 @@ impl WordDocument {
             );
         }
         let (start, end) = range.unwrap_or((0, self.paragraph_count().saturating_sub(1)));
-        let removed_tables = self.table_ids_removed_by_rows(&self.rows_to_decide(
-            decision == RevisionDecision::Accept,
-            kind_filter,
-            id_filter,
-            range,
-            targets,
-        ));
+        let removed_tables = self.table_ids_removed_by_rows(
+            &self
+                .rows_to_decide(
+                    decision == RevisionDecision::Accept,
+                    kind_filter,
+                    id_filter,
+                    range,
+                    targets,
+                )
+                .into_iter()
+                .map(|(table, row, removes, _)| (table, row, removes))
+                .collect::<Vec<_>>(),
+        );
         let mut joins = Vec::new();
         for index in start..=end {
             let Some(element) = self

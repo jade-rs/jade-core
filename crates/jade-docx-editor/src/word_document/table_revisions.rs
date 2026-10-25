@@ -147,12 +147,19 @@ impl WordDocument {
                 .iter()
                 .any(|node| matches!(node, XmlNode::Element(child) if in_xml(child, author)))
         }
+        fn in_mark(mark: &RevisionMark, author: Option<&str>) -> bool {
+            mark.author.as_deref() != author
+                || mark
+                    .insertion
+                    .as_deref()
+                    .is_some_and(|mark| in_mark(mark, author))
+        }
         fn in_blocks(blocks: &[BodyElement], author: Option<&str>) -> bool {
             blocks.iter().any(|block| match block {
                 BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
                     run.revision
                         .as_ref()
-                        .is_some_and(|mark| mark.author.as_deref() != author)
+                        .is_some_and(|mark| in_mark(mark, author))
                         || run
                             .text_box
                             .as_ref()
@@ -161,7 +168,7 @@ impl WordDocument {
                 BodyElement::Table(table) => table.rows.iter().any(|row| {
                     row.revision
                         .as_deref()
-                        .is_some_and(|mark| mark.author.as_deref() != author)
+                        .is_some_and(|mark| in_mark(mark, author))
                         || row.cells.iter().any(|cell| in_blocks(&cell.blocks, author))
                 }),
                 BodyElement::Math(_) => false,
@@ -194,12 +201,21 @@ impl WordDocument {
                 for cell in &row.cells {
                     collect_row_paragraphs(&cell.blocks, &index_of, &mut paragraphs);
                 }
-                out.push(RowRevision {
-                    table: order,
-                    row: row_index,
-                    mark: mark.clone(),
-                    paragraphs,
-                });
+                for layer in mark
+                    .insertion
+                    .iter()
+                    .map(Box::as_ref)
+                    .chain(std::iter::once(mark))
+                {
+                    let mut layer = layer.clone();
+                    layer.insertion = None;
+                    out.push(RowRevision {
+                        table: order,
+                        row: row_index,
+                        mark: layer,
+                        paragraphs: paragraphs.clone(),
+                    });
+                }
             }
             order += 1;
         }
@@ -244,12 +260,52 @@ impl WordDocument {
                 .map_or(0, |at| at + 1);
             row.children.insert(at, XmlNode::Element(tr_pr));
         }
-        let element = mark.as_ref().map(|mark| {
+        // Reuse unchanged XML so extension attributes and original metadata survive.
+        let existing: Vec<_> = raw
+            .element(node)
+            .and_then(|row| child(row, "trPr"))
+            .map(|properties| properties.children.clone())
+            .unwrap_or_default();
+        let mut elements = Vec::new();
+        for mark in mark.iter().flat_map(|mark| {
+            mark.insertion
+                .iter()
+                .map(Box::as_ref)
+                .chain(std::iter::once(mark))
+        }) {
+            let name = if mark.is_deletion() { "w:del" } else { "w:ins" };
+            if let Some(element) = existing.iter().find_map(|node| match node {
+                XmlNode::Element(element)
+                    if local(&element.name) == local(name)
+                        && [
+                            ("id", mark.id.as_deref()),
+                            ("author", mark.author.as_deref()),
+                            ("date", mark.date.as_deref()),
+                            ("dateUtc", mark.date_utc.as_deref()),
+                        ]
+                        .into_iter()
+                        .all(|(name, value)| {
+                            element
+                                .attributes
+                                .iter()
+                                .find(|attr| local(&attr.name) == name)
+                                .map(|attr| attr.value.as_str())
+                                == value
+                        }) =>
+                {
+                    Some(element.clone())
+                }
+                _ => None,
+            }) {
+                elements.push(element);
+                continue;
+            }
             let mut attributes = Vec::new();
             for (name, value) in [
                 ("w:id", mark.id.as_deref()),
                 ("w:author", mark.author.as_deref()),
                 ("w:date", mark.date.as_deref()),
+                ("w16du:dateUtc", mark.date_utc.as_deref()),
             ] {
                 if let Some(value) = value {
                     attributes.push(XmlAttribute {
@@ -258,12 +314,8 @@ impl WordDocument {
                     });
                 }
             }
-            let name = match mark.kind {
-                RevisionKind::Deleted | RevisionKind::MovedFrom => "w:del",
-                _ => "w:ins",
-            };
-            raw.create_element(name, attributes, Vec::new())
-        });
+            elements.push(raw.create_element(name, attributes, Vec::new()));
+        }
         let row = raw.element_mut(node).ok_or("the row went missing")?;
         let Some(XmlNode::Element(tr_pr)) = row
             .children
@@ -275,7 +327,7 @@ impl WordDocument {
         tr_pr.children.retain(
             |node| !matches!(node, XmlNode::Element(child) if matches!(local(&child.name), "ins" | "del")),
         );
-        if let Some(element) = element {
+        for element in elements {
             // `w:ins` and `w:del` follow the row's other properties and come
             // before `w:trPrChange`.
             let at = tr_pr
@@ -296,9 +348,41 @@ impl WordDocument {
             id: Some(self.allocate_revision_id().to_string()),
             author: session.author.clone(),
             date: session.date.clone(),
-            date_utc: None,
+            date_utc: session.date_utc.clone(),
             insertion: None,
         })
+    }
+
+    /// Returns true only when cancelling our insertion can safely remove the row.
+    pub(crate) fn track_table_row_deletion(
+        &mut self,
+        table: usize,
+        row: usize,
+    ) -> Result<bool, String> {
+        let existing = self
+            .table_by_order(table)
+            .and_then(|table| table.rows.get(row))
+            .ok_or_else(|| format!("row {row} is out of range"))?
+            .revision
+            .as_deref()
+            .cloned();
+        if existing.as_ref().is_some_and(RevisionMark::is_deletion) {
+            return Ok(false);
+        }
+        let author = self
+            .revision_session()
+            .and_then(|session| session.author.clone());
+        if existing.as_ref().is_some_and(|mark| mark.author == author)
+            && !self.row_has_foreign_revisions(table, row, author.as_deref())
+        {
+            return Ok(true);
+        }
+        let mut deletion = self
+            .new_row_revision(RevisionKind::Deleted)
+            .ok_or("change tracking is not active")?;
+        deletion.insertion = existing.map(Box::new);
+        self.set_table_row_revision(table, row, Some(deletion))?;
+        Ok(false)
     }
 
     /// The row revisions a decision with these filters reaches: the row's
@@ -310,7 +394,7 @@ impl WordDocument {
         id_filter: Option<RevisionIdFilter<'_>>,
         range: Option<(usize, usize)>,
         targets: Option<&RevisionTargets>,
-    ) -> Vec<(usize, usize, bool)> {
+    ) -> Vec<(usize, usize, bool, bool)> {
         self.table_row_revisions()
             .into_iter()
             .filter(|revision| {
@@ -328,7 +412,12 @@ impl WordDocument {
             })
             .map(|revision| {
                 let removes = revision.mark.is_deletion() == accept;
-                (revision.table, revision.row, removes)
+                (
+                    revision.table,
+                    revision.row,
+                    removes,
+                    revision.mark.is_deletion(),
+                )
             })
             .collect()
     }
@@ -337,12 +426,18 @@ impl WordDocument {
     /// the others keep their places.
     pub(crate) fn decide_rows(
         &mut self,
-        mut rows: Vec<(usize, usize, bool)>,
+        rows: Vec<(usize, usize, bool, bool)>,
     ) -> Result<usize, String> {
-        rows.sort();
         let count = rows.len();
-        for (table, row, removes) in rows.into_iter().rev() {
-            if removes {
+        let mut grouped = std::collections::BTreeMap::<_, Vec<_>>::new();
+        for (table, row, removes, deletion) in rows {
+            grouped
+                .entry((table, row))
+                .or_default()
+                .push((removes, deletion));
+        }
+        for ((table, row), decisions) in grouped.into_iter().rev() {
+            if decisions.iter().any(|(removes, _)| *removes) {
                 if self
                     .table_by_order(table)
                     .is_some_and(|table| table.rows.len() == 1)
@@ -356,7 +451,22 @@ impl WordDocument {
                     self.delete_table_row(table, row)?;
                 }
             } else {
-                self.set_table_row_revision(table, row, None)?;
+                let mut mark = self
+                    .table_by_order(table)
+                    .and_then(|table| table.rows.get(row))
+                    .and_then(|row| row.revision.as_deref())
+                    .cloned();
+                for (_, deletion) in decisions {
+                    mark = match mark {
+                        Some(mut mark) if mark.is_deletion() && !deletion => {
+                            mark.insertion = None;
+                            Some(mark)
+                        }
+                        Some(mark) if mark.is_deletion() => mark.insertion.map(|mark| *mark),
+                        _ => None,
+                    };
+                }
+                self.set_table_row_revision(table, row, mark)?;
             }
         }
         Ok(count)
@@ -515,6 +625,91 @@ mod tests {
             .decide_revisions(true, None, None, None, None, None)
             .unwrap();
         assert_eq!(row_texts(&document), ["two"]);
+    }
+
+    #[test]
+    fn overlapping_row_deletion_and_repeated_noop_support_undo_redo_and_rebuild() {
+        use crate::commands::table_structure::{TableStructureCommand, TableStructureOp};
+        use crate::commands::{CommandContext, CommandExecutor};
+        for whole_table in [false, true] {
+            let mut document = table_document();
+            document.set_revision_session(Some(RevisionSession {
+                author: Some("Dee".into()),
+                date: Some("2026-02-03T00:00:00Z".into()),
+                date_utc: Some("2026-02-03T00:00:00Z".into()),
+            }));
+            let mut executor = CommandExecutor::new();
+            let mut selection = None;
+            for _ in 0..2 {
+                let command: Box<dyn crate::commands::Command> = if whole_table {
+                    Box::new(crate::commands::delete_table::DeleteTableCommand::new(0))
+                } else {
+                    Box::new(TableStructureCommand::new(
+                        0,
+                        TableStructureOp::DeleteRow { row_index: 1 },
+                    ))
+                };
+                executor
+                    .execute(
+                        command,
+                        &mut CommandContext::new(&mut document, &mut selection),
+                    )
+                    .unwrap();
+            }
+            assert_eq!(
+                document
+                    .table_row_revisions()
+                    .iter()
+                    .filter(|row| row.row == 1)
+                    .count(),
+                2
+            );
+            for _ in 0..2 {
+                assert!(executor
+                    .undo(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap());
+            }
+            assert_eq!(document.table_row_revisions().len(), 2);
+            for _ in 0..2 {
+                assert!(executor
+                    .redo(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap());
+            }
+            // A later structural rewrite must preserve both marks and their authors.
+            executor
+                .execute(
+                    Box::new(TableStructureCommand::new(
+                        0,
+                        TableStructureOp::InsertRow {
+                            row_index: 0,
+                            template_row: None,
+                        },
+                    )),
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            let bytes = document.export_docx().unwrap();
+            let loaded =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert!(loaded
+                .table_row_revisions()
+                .iter()
+                .filter(|row| row.mark.author.as_deref() == Some("Dee"))
+                .all(|row| row.mark.date_utc.as_deref() == Some("2026-02-03T00:00:00Z")));
+            let marks: Vec<_> = loaded
+                .table_row_revisions()
+                .into_iter()
+                .filter(|row| row.row == 2)
+                .map(|row| (row.mark.kind, row.mark.author))
+                .collect();
+            assert_eq!(
+                marks,
+                vec![
+                    (RevisionKind::Inserted, Some("Ann".into())),
+                    (RevisionKind::Deleted, Some("Dee".into()))
+                ]
+            );
+        }
     }
 
     #[test]
