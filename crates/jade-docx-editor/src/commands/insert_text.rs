@@ -21,6 +21,7 @@ pub struct InsertTextCommand {
     range: SelectionRange,
     text: String,
     delete_selected_tables: bool,
+    retained_suffix_len: usize,
     inline_properties: Option<RunProperties>,
     previous_runs: Option<Vec<Run>>,
     previous_anchors: Option<CommentAnchors>,
@@ -49,6 +50,7 @@ impl InsertTextCommand {
             range,
             text,
             delete_selected_tables: false,
+            retained_suffix_len: 0,
             inline_properties,
             previous_runs: None,
             previous_anchors: None,
@@ -66,6 +68,14 @@ impl InsertTextCommand {
     /// Browser text selections retain their existing cell-clearing behavior.
     pub(crate) fn deleting_selected_tables(mut self) -> Self {
         self.delete_selected_tables = true;
+        self
+    }
+
+    /// A headless replacement may leave an identical suffix untouched to
+    /// preserve its formatting and revision history. The caret still belongs
+    /// after that suffix, including when this command is redone.
+    pub(crate) fn with_retained_suffix_len(mut self, len: usize) -> Self {
+        self.retained_suffix_len = len;
         self
     }
 
@@ -943,7 +953,7 @@ impl InsertTextCommand {
         ctx.document
             .apply_run_font_defaults_at(self.paragraph_index);
 
-        let caret_offset = insert_offset + self.text.len();
+        let caret_offset = insert_offset + self.text.len() + self.retained_suffix_len;
         let new_focus = ctx
             .document
             .model_to_rendered_text_position(TextPosition::new(self.paragraph_index, caret_offset));

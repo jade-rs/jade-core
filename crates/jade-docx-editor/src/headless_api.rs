@@ -1973,6 +1973,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                 validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
                 // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
                 // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
+                let original_end_offset = *end_offset;
                 let (start_offset, end_offset, text) = trimmed_replacement(
                     word_doc,
                     *start_paragraph,
@@ -1985,6 +1986,13 @@ pub fn apply_headless_commands_with_executor_to_document(
                     range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
                 if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty()
                 {
+                    // Even when the document needs no mutation, typing has
+                    // consumed the selection. Leaving it active makes the
+                    // following keystroke overwrite the unchanged text.
+                    selection = Some(SelectionRange::collapsed(TextPosition::new(
+                        *start_paragraph,
+                        start_offset,
+                    )));
                     continue;
                 }
                 selection = Some(range);
@@ -1993,7 +2001,13 @@ pub fn apply_headless_commands_with_executor_to_document(
                 // between, and any comment anchored there goes with them.
                 let spans_paragraphs = start_paragraph != end_paragraph;
                 let command: Box<dyn Command> = Box::new(
-                    InsertTextCommand::new(range, text.to_owned(), None).deleting_selected_tables(),
+                    InsertTextCommand::new(range, text.to_owned(), None)
+                        .deleting_selected_tables()
+                        .with_retained_suffix_len(if spans_paragraphs {
+                            0
+                        } else {
+                            original_end_offset.saturating_sub(end_offset)
+                        }),
                 );
                 let command: Box<dyn Command> = if spans_paragraphs {
                     Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
@@ -8534,6 +8548,165 @@ mod tests {
             );
         }
         assert_eq!(executor.undo_depth(), 1);
+    }
+
+    #[test]
+    fn identical_replacement_collapses_selection_without_recording_an_edit() {
+        for text in ["日本", "abc", "🧑‍💻"] {
+            let mut document = sample_document(text);
+            let mut executor = CommandExecutor::new();
+            let range = range_from_bounds(0, 0, 0, text.len());
+            let selection = apply_headless_commands_with_executor_to_document(
+                &mut document,
+                &mut executor,
+                Some(range),
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::ReplaceRange {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: text.len(),
+                        text: text.to_owned(),
+                    }],
+                },
+            )
+            .expect("identical replacement succeeds");
+            assert_eq!(paragraph_text(&document, 0), text);
+            assert_eq!(executor.undo_depth(), 0);
+            assert_eq!(
+                selection,
+                Some(SelectionRange::collapsed(TextPosition::new(0, text.len()))),
+                "typing over {text:?} must consume the original selection",
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(256))]
+
+        #[test]
+        fn identical_replacement_then_typing_matches_string_model(
+            initial in prop::collection::vec(prop::sample::select(vec!['a', 'b', '日', '本', '🧑', '\u{200d}', '💻']), 0..32),
+            raw_start in any::<usize>(),
+            raw_end in any::<usize>(),
+            typed in "[a-z日本]{1,8}",
+        ) {
+            let initial: String = initial.into_iter().collect();
+            let boundaries: Vec<_> = initial.char_indices().map(|(offset, _)| offset)
+                .chain(std::iter::once(initial.len())).collect();
+            let a = boundaries[raw_start % boundaries.len()];
+            let b = boundaries[raw_end % boundaries.len()];
+            let (start, end) = (a.min(b), a.max(b));
+            let mut document = sample_document(&initial);
+            let mut executor = CommandExecutor::new();
+            let selection = apply_headless_commands_with_executor_to_document(
+                &mut document, &mut executor, Some(range_from_bounds(0, a, 0, b)),
+                &HeadlessEditRequest { commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: 0, start_offset: start,
+                    end_paragraph: 0, end_offset: end,
+                    text: initial[start..end].to_owned(),
+                }] },
+            ).unwrap();
+            prop_assert_eq!(paragraph_text(&document, 0), initial.as_str());
+            prop_assert_eq!(executor.undo_depth(), 0);
+            prop_assert_eq!(selection, Some(SelectionRange::collapsed(TextPosition::new(0, end))));
+            let (at, to) = selection.unwrap().normalized();
+            let mut selection = apply_headless_commands_with_executor_to_document(
+                &mut document, &mut executor, selection,
+                &HeadlessEditRequest { commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: at.paragraph, start_offset: at.offset,
+                    end_paragraph: to.paragraph, end_offset: to.offset, text: typed.clone(),
+                }] },
+            ).unwrap();
+            let mut model = initial.clone();
+            model.insert_str(end, &typed);
+            prop_assert_eq!(paragraph_text(&document, 0), model.as_str());
+            prop_assert_eq!(selection, Some(SelectionRange::collapsed(TextPosition::new(0, end + typed.len()))));
+            prop_assert_eq!(executor.undo_depth(), 1);
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            prop_assert!(executor.undo(&mut context).unwrap());
+            prop_assert_eq!(paragraph_text(context.document, 0), initial.as_str());
+            prop_assert_eq!(*context.selection, Some(SelectionRange::collapsed(TextPosition::new(0, end))));
+            prop_assert!(executor.redo(&mut context).unwrap());
+            prop_assert_eq!(paragraph_text(context.document, 0), model.as_str());
+            prop_assert_eq!(*context.selection, Some(SelectionRange::collapsed(TextPosition::new(0, end + typed.len()))));
+        }
+
+        #[test]
+        fn replacement_caret_includes_unchanged_unicode_suffix_on_redo(
+            prefix in "[ab日本]{0,12}",
+            suffix in "[ab日本🧑💻]{0,12}",
+        ) {
+            let original = format!("{prefix}X{suffix}");
+            let replacement = format!("{prefix}Y{suffix}");
+            let mut document = sample_document(&original);
+            let mut executor = CommandExecutor::new();
+            let mut selection = apply_headless_commands_with_executor_to_document(
+                &mut document, &mut executor, None,
+                &HeadlessEditRequest { commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: 0, start_offset: 0,
+                    end_paragraph: 0, end_offset: original.len(), text: replacement.clone(),
+                }] },
+            ).unwrap();
+            let expected_caret = Some(SelectionRange::collapsed(TextPosition::new(0, replacement.len())));
+            prop_assert_eq!(paragraph_text(&document, 0), replacement.as_str());
+            prop_assert_eq!(selection, expected_caret);
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            prop_assert!(executor.undo(&mut context).unwrap());
+            prop_assert_eq!(paragraph_text(context.document, 0), original.as_str());
+            prop_assert!(executor.redo(&mut context).unwrap());
+            prop_assert_eq!(paragraph_text(context.document, 0), replacement.as_str());
+            prop_assert_eq!(*context.selection, expected_caret);
+        }
+    }
+
+    #[test]
+    fn trimmed_replacement_keeps_caret_after_preserved_suffix() {
+        // Browser CI seed -2092975057: selecting only '>' in '&<>' and typing
+        // '&<>' must leave the caret after the preserved '>', not before it.
+        for (original, start, end, replacement, expected) in [
+            ("&<>", 2, 3, "&<>", "&<&<>"),
+            ("abcd", 0, 4, "abXd", "abXd"),
+            ("日本語", 0, 9, "日英語", "日英語"),
+        ] {
+            let mut document = sample_document(original);
+            let mut executor = CommandExecutor::new();
+            let mut selection = apply_headless_commands_with_executor_to_document(
+                &mut document,
+                &mut executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::ReplaceRange {
+                        start_paragraph: 0,
+                        start_offset: start,
+                        end_paragraph: 0,
+                        end_offset: end,
+                        text: replacement.to_owned(),
+                    }],
+                },
+            )
+            .unwrap();
+            assert_eq!(paragraph_text(&document, 0), expected);
+            assert_eq!(
+                selection,
+                Some(SelectionRange::collapsed(TextPosition::new(
+                    0,
+                    start + replacement.len()
+                )))
+            );
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            assert!(executor.undo(&mut context).unwrap());
+            assert_eq!(paragraph_text(context.document, 0), original);
+            assert!(executor.redo(&mut context).unwrap());
+            assert_eq!(paragraph_text(context.document, 0), expected);
+            assert_eq!(
+                *context.selection,
+                Some(SelectionRange::collapsed(TextPosition::new(
+                    0,
+                    start + replacement.len()
+                )))
+            );
+        }
     }
 
     #[test]
