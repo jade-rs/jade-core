@@ -88,6 +88,16 @@ use web_sys::{
     WorkerGlobalScope,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct SectionSeekGeometry {
+    size_and_top: (f64, f64, f64),
+    margin_left: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    header_distance: f64,
+    footer_distance: f64,
+}
+
 #[derive(Clone, Debug)]
 struct PageStartSeekSnapshot {
     paragraph_index: usize,
@@ -3540,6 +3550,9 @@ where
     /// assignments are retained across renders so SECTIONPAGES can converge in
     /// the same way as NUMPAGES after a full layout pass.
     active_section_index: usize,
+    /// Current page size, margins and header/footer distances for each section.
+    /// Seek validation must not depend on the section left active by the last pass.
+    section_seek_geometry: Vec<SectionSeekGeometry>,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
     /// Absolute document Y of each physical page, captured during pagination.
@@ -5145,6 +5158,20 @@ where
             .cloned()
     }
 
+    fn seek_snapshot_geometry_is_valid(&self, snapshot: &PageStartSeekSnapshot) -> bool {
+        let geometry = if self.section_seek_geometry.is_empty() {
+            // Documents without section ranges retain the document-wide behavior.
+            (self.page_width, self.page_height, self.margin_top)
+        } else if let Some(geometry) = self.section_seek_geometry.get(snapshot.section_index) {
+            geometry.size_and_top
+        } else {
+            return false;
+        };
+        (snapshot.page_width - geometry.0).abs() <= 0.01
+            && (snapshot.page_height - geometry.1).abs() <= 0.01
+            && (snapshot.margin_top - geometry.2).abs() <= 0.01
+    }
+
     /// Geometry/anchor validity gate for a spanning-paragraph seek snapshot (S6).
     /// Unlike [`Self::window_seek_snapshot_is_valid`] this does NOT require the
     /// snapshot to be the column-0 top of a page (spanning snapshots resume at a
@@ -5158,10 +5185,7 @@ where
         snapshot: &PageStartSeekSnapshot,
         options: &Options,
     ) -> bool {
-        if (snapshot.margin_top - self.margin_top).abs() > 0.01
-            || (snapshot.page_height - self.page_height).abs() > 0.01
-            || (snapshot.page_width - self.page_width).abs() > 0.01
-        {
+        if !self.seek_snapshot_geometry_is_valid(snapshot) {
             return false;
         }
         self.paragraph_seek_snapshot_matches_layout(
@@ -5188,10 +5212,7 @@ where
             return false;
         }
         // Page geometry must match the current render (snapshot is from a prior pass).
-        if (snapshot.margin_top - self.margin_top).abs() > 0.01
-            || (snapshot.page_height - self.page_height).abs() > 0.01
-            || (snapshot.page_width - self.page_width).abs() > 0.01
-        {
+        if !self.seek_snapshot_geometry_is_valid(snapshot) {
             return false;
         }
         // The snapshot's cumulative anchor must still agree with the current
@@ -5432,11 +5453,8 @@ where
                 return None;
             }
         }
-        // Basic sanity checks against current page settings (seek snapshot is from a previous render).
-        if (snapshot.margin_top - self.margin_top).abs() > 0.01
-            || (snapshot.page_height - self.page_height).abs() > 0.01
-            || (snapshot.page_width - self.page_width).abs() > 0.01
-        {
+        // Validate against this anchor's section, even when another section is active.
+        if !self.seek_snapshot_geometry_is_valid(&snapshot) {
             return None;
         }
 
@@ -8212,6 +8230,7 @@ where
             chapter_numbers: std::collections::BTreeMap::new(),
             styled_paragraphs: std::collections::BTreeMap::new(),
             active_section_index: 0,
+            section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
             page_origins: Vec::new(),
             footnote_number_format: None,
@@ -13676,7 +13695,9 @@ where
             self.forced_seek_snapshot.take();
             None
         } else {
-            self.forced_seek_snapshot.take()
+            self.forced_seek_snapshot
+                .take()
+                .filter(|snapshot| self.seek_snapshot_geometry_is_valid(snapshot))
         };
         // The window seek (edit fast path) takes precedence over an externally
         // forced snapshot; in practice the two never co-occur (the forced snapshot
@@ -13857,6 +13878,16 @@ where
                 self.page_width = seek.page_width;
                 self.page_height = seek.page_height;
                 self.margin_top = seek.margin_top;
+                // Restoring only size/top leaves the document fallback's bottom
+                // margin and chrome distances active. That changes page breaks
+                // after a mixed-section seek even when its anchor is valid.
+                if let Some(geometry) = self.section_seek_geometry.get(seek.section_index) {
+                    self.margin_left = geometry.margin_left;
+                    self.margin_right = geometry.margin_right;
+                    self.margin_bottom = geometry.margin_bottom;
+                    self.header_distance = geometry.header_distance;
+                    self.footer_distance = geometry.footer_distance;
+                }
                 self.column_layout = seek.column_layout.clone();
                 self.column_index = seek.column_index;
                 self.current_text_direction = seek.current_text_direction;
@@ -15143,6 +15174,82 @@ where
     }
 
     fn apply_document_page_settings(&mut self, document: &Document) -> Result<(), JsValue> {
+        // Resolve against the current document on every pass, so changing section
+        // settings still invalidates old snapshots. Use the same shared page-size
+        // and gutter rules as section transitions, including host view overrides.
+        let section_seek_geometry: Vec<_> = document
+            .sections
+            .iter()
+            .map(|section| {
+                let settings =
+                    Self::resolve_section_page_settings(section.properties.as_ref(), document);
+                let width = settings
+                    .and_then(|s| s.width)
+                    .unwrap_or(DEFAULT_PAGE_WIDTH_PT);
+                let height = settings
+                    .and_then(|s| s.height)
+                    .unwrap_or(DEFAULT_PAGE_HEIGHT_PT);
+                let (width, height) = jade_docx_layout::section_transition::folded_page_size(
+                    width,
+                    height,
+                    document.print_two_on_one,
+                    document.book_fold_printing,
+                );
+                let margins = resolve_page_margins(
+                    settings
+                        .and_then(|s| s.margin_left)
+                        .unwrap_or(DEFAULT_MARGIN_PT),
+                    settings
+                        .and_then(|s| s.margin_right)
+                        .unwrap_or(DEFAULT_MARGIN_PT),
+                    settings
+                        .and_then(|s| s.margin_top)
+                        .unwrap_or(DEFAULT_MARGIN_PT),
+                    settings.and_then(|s| s.gutter).unwrap_or(0.0),
+                    document.gutter_at_top,
+                    document.mirror_margins || document.book_fold_printing,
+                    1,
+                );
+                let mut geometry = SectionSeekGeometry {
+                    size_and_top: (
+                        points_to_px(width),
+                        points_to_px(height),
+                        points_to_px(margins.top),
+                    ),
+                    margin_left: points_to_px(margins.left),
+                    margin_right: points_to_px(margins.right),
+                    margin_bottom: points_to_px(
+                        settings
+                            .and_then(|s| s.margin_bottom)
+                            .unwrap_or(DEFAULT_MARGIN_PT),
+                    ),
+                    header_distance: points_to_px(
+                        settings.and_then(|s| s.header_distance).unwrap_or(36.0),
+                    ),
+                    footer_distance: points_to_px(
+                        settings.and_then(|s| s.footer_distance).unwrap_or(36.0),
+                    ),
+                };
+                if let Some(view) = self.view_geometry {
+                    geometry.size_and_top = (view.page_width, view.page_height, view.margin_top);
+                    geometry.margin_left = view.margin_left;
+                    geometry.margin_right = view.margin_right;
+                    geometry.margin_bottom = view.margin_bottom;
+                }
+                geometry
+            })
+            .collect();
+        let section_geometry_changed = self.section_seek_geometry != section_seek_geometry;
+        if section_geometry_changed {
+            // Earlier sections determine every later anchor's cumulative Y and
+            // page number. A changed section invalidates all recorded seeks.
+            self.page_start_seek_cache.borrow_mut().clear();
+            self.page_start_seek_cache_by_page.borrow_mut().clear();
+            self.page_column_seek_cache.borrow_mut().clear();
+            self.paragraph_seek_cache.borrow_mut().clear();
+            self.forced_seek_snapshot = None;
+        }
+        self.section_seek_geometry = section_seek_geometry;
         // Resolve the document fallback and each section's vertical alignment.
         self.section_vertical_align = resolve_section_vertical_align(
             document
@@ -15347,15 +15454,23 @@ where
             && (self.mirror_margins != effective_mirror_margins
                 || (self.odd_page_margin_left_pt - odd_page_margins.left).abs() > 0.01
                 || (self.odd_page_margin_right_pt - odd_page_margins.right).abs() > 0.01);
-        let layout_changed = binding_layout_changed
-            || (self.page_width - new_page_width).abs() > 0.01
-            || (self.page_height - new_page_height).abs() > 0.01
-            || (self.margin_left - new_margin_left).abs() > 0.01
-            || (self.margin_right - new_margin_right).abs() > 0.01
-            || (self.margin_top - new_margin_top).abs() > 0.01
-            || (self.margin_bottom - new_margin_bottom).abs() > 0.01
-            || (self.header_distance - new_header_distance).abs() > 0.01
-            || (self.footer_distance - new_footer_distance).abs() > 0.01;
+        // The live fields describe the section where the previous pass stopped,
+        // not necessarily the document fallback. Switching back to the first
+        // section must not discard retained prefix slots before a later seek.
+        // Compare resolved document geometry when section ranges are available.
+        let layout_changed = if self.section_seek_geometry.is_empty() {
+            binding_layout_changed
+                || (self.page_width - new_page_width).abs() > 0.01
+                || (self.page_height - new_page_height).abs() > 0.01
+                || (self.margin_left - new_margin_left).abs() > 0.01
+                || (self.margin_right - new_margin_right).abs() > 0.01
+                || (self.margin_top - new_margin_top).abs() > 0.01
+                || (self.margin_bottom - new_margin_bottom).abs() > 0.01
+                || (self.header_distance - new_header_distance).abs() > 0.01
+                || (self.footer_distance - new_footer_distance).abs() > 0.01
+        } else {
+            section_geometry_changed || self.mirror_margins != effective_mirror_margins
+        };
         if layout_changed {
             self.paragraph_wrap_cache.borrow_mut().clear();
         }
@@ -50838,6 +50953,181 @@ mod tests {
         assert!(renderer.skip_layout_cache_update);
         assert!(renderer.preserve_pagination_for_pixel_rerender);
         assert_eq!(renderer.span_seek_stats().1, 1);
+    }
+
+    #[test]
+    fn mixed_section_spanning_seek_uses_the_anchors_section_geometry() {
+        let texts: Vec<String> = (0..900)
+            .map(|index| {
+                format!("Paragraph {index}: mixed section page geometry and local editing.")
+            })
+            .collect();
+        let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
+        let mut document = doc_with_paragraph_texts(&refs);
+        for (index, (width, height, margin)) in [
+            (450.0, 600.0, 45.0),
+            (700.0, 900.0, 90.0),
+            (500.0, 700.0, 60.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            document.sections.push(SectionRange {
+                start: index * 300,
+                end: (index + 1) * 300,
+                properties: Some(SectionProperties {
+                    section_type: Some("nextPage".into()),
+                    page_settings: Some(PageSettings {
+                        width: Some(width),
+                        height: Some(height),
+                        margin_top: Some(margin),
+                        margin_bottom: Some(margin),
+                        margin_left: Some(margin),
+                        margin_right: Some(margin),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+            });
+        }
+        document.default_section = document.sections[0].properties.clone();
+        document.page_settings = document
+            .default_section
+            .as_ref()
+            .unwrap()
+            .page_settings
+            .clone();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(PageCountingHost {
+                inner: NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::new(),
+                },
+                extra_pages: 0,
+                cursor: 0,
+            }),
+            false,
+        )
+        .unwrap();
+        let options = options_for_seek_tests();
+        renderer.render(&document, &options).unwrap();
+        let pages = renderer.page_count();
+        assert!(pages > 20);
+        renderer.apply_document_page_settings(&document).unwrap();
+        assert_eq!(
+            renderer.page_count(),
+            pages,
+            "unchanged sections retain page slots"
+        );
+        for candidate in renderer.page_start_seek_cache_by_page.borrow().values() {
+            assert!(
+                renderer.seek_snapshot_geometry_is_valid(candidate),
+                "geometry {:?} section {} actual {} {} {}",
+                renderer.section_seek_geometry,
+                candidate.section_index,
+                candidate.page_width,
+                candidate.page_height,
+                candidate.margin_top
+            );
+            assert!(
+                renderer.span_seek_snapshot_is_valid(candidate, &options),
+                "anchor {}",
+                candidate.paragraph_index
+            );
+        }
+        let (page, snapshot) = renderer
+            .page_start_seek_cache_by_page
+            .borrow()
+            .iter()
+            .filter(|(_, snapshot)| {
+                snapshot.section_index == 1
+                    && snapshot.spanning
+                    && (400..500).contains(&snapshot.paragraph_index)
+            })
+            .max_by_key(|(page, _)| **page)
+            .map(|(page, snapshot)| (*page, snapshot.clone()))
+            .expect("middle section spanning snapshot");
+        renderer.set_visible_page_range(Some(page..=page));
+        renderer.set_layout_page_limit(Some(page));
+        renderer.prepare_rerender_for_page(page - 1);
+        assert!(
+            renderer.forced_seek_snapshot.is_some(),
+            "bitmap seek into a different section"
+        );
+        renderer.render(&document, &options).unwrap();
+        assert!(renderer.last_render_body_element_count < 100);
+        assert_eq!(renderer.margin_left, points_to_px(90.0));
+        assert_eq!(renderer.margin_right, points_to_px(90.0));
+        assert_eq!(renderer.margin_bottom, points_to_px(90.0));
+
+        // Repeated bitmap passes must keep the completed paragraph anchors.
+        let before = renderer
+            .paragraph_layout_cache
+            .borrow()
+            .get_entry(snapshot.paragraph_index)
+            .unwrap()
+            .clone();
+        renderer.prepare_rerender_for_page(page - 1);
+        renderer.render(&document, &options).unwrap();
+        let after = renderer
+            .paragraph_layout_cache
+            .borrow()
+            .get_entry(snapshot.paragraph_index)
+            .unwrap()
+            .clone();
+        assert_eq!(before.start_y, after.start_y);
+        assert_eq!(before.end_y, after.end_y);
+        assert_eq!(before.start_page, after.start_page);
+        assert_eq!(before.end_page, after.end_page);
+
+        // A render starts on the document's first section, not the target's.
+        renderer.apply_document_page_settings(&document).unwrap();
+        assert!(renderer.span_seek_snapshot_is_valid(&snapshot, &options));
+        let mut stale = snapshot.clone();
+        stale.page_width += 25.0;
+        assert!(!renderer.span_seek_snapshot_is_valid(&stale, &options));
+        stale = snapshot.clone();
+        stale.page_height += 25.0;
+        assert!(!renderer.span_seek_snapshot_is_valid(&stale, &options));
+        stale = snapshot.clone();
+        stale.margin_top += 25.0;
+        assert!(!renderer.span_seek_snapshot_is_valid(&stale, &options));
+        stale = snapshot.clone();
+        stale.section_index = document.sections.len();
+        assert!(!renderer.span_seek_snapshot_is_valid(&stale, &options));
+
+        // A preceding section's height changes cumulative anchors even if this
+        // snapshot's own section retains exactly the same geometry.
+        renderer.forced_seek_snapshot = Some(snapshot.clone());
+        document.sections[0]
+            .properties
+            .as_mut()
+            .unwrap()
+            .page_settings
+            .as_mut()
+            .unwrap()
+            .height = Some(625.0);
+        renderer.apply_document_page_settings(&document).unwrap();
+        assert!(renderer.forced_seek_snapshot.is_none());
+        assert!(renderer.page_start_seek_cache.borrow().is_empty());
+        assert!(renderer.page_start_seek_cache_by_page.borrow().is_empty());
+        assert!(renderer.page_column_seek_cache.borrow().is_empty());
+        assert!(renderer.paragraph_seek_cache.borrow().is_empty());
+
+        // Re-resolving current section settings must reject a previously valid
+        // anchor; a snapshot must never validate against its own stale geometry.
+        document.sections[1]
+            .properties
+            .as_mut()
+            .unwrap()
+            .page_settings
+            .as_mut()
+            .unwrap()
+            .width = Some(750.0);
+        renderer.apply_document_page_settings(&document).unwrap();
+        assert!(!renderer.span_seek_snapshot_is_valid(&snapshot, &options));
+        renderer.forced_seek_snapshot = Some(snapshot);
+        renderer.render(&document, &options).unwrap();
+        assert!(renderer.last_render_body_element_count > 100);
     }
 
     #[test]
