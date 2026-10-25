@@ -2517,17 +2517,7 @@ impl OffscreenDocumentView {
     /// Returns the 0-based page index that contains the given canvas y
     /// coordinate. Returns 0 for pageless / degenerate geometries.
     fn page_index_at_y(&self, y: f64) -> usize {
-        let renderer = self.renderer.borrow();
-        if renderer.pageless_mode() {
-            return 0;
-        }
-        let page_height = renderer.page_height_css();
-        let page_gap = 16.0_f64;
-        let page_with_gap = page_height + page_gap;
-        if page_with_gap <= 0.0 {
-            return 0;
-        }
-        (y / page_with_gap).max(0.0) as usize
+        self.renderer.borrow().page_for_y(y)
     }
 
     /// Picks the header/footer variant that is visible on a given 0-based
@@ -2590,14 +2580,9 @@ impl OffscreenDocumentView {
         if renderer.pageless_mode() {
             return EditingMode::Body;
         }
-        let page_height = renderer.page_height_css();
-        let page_gap = 16.0_f64; // PAGE_GAP_PX
-        let page_with_gap = page_height + page_gap;
-        if page_with_gap <= 0.0 {
-            return EditingMode::Body;
-        }
-        let local_y = y % page_with_gap;
-        let page_index = self.page_index_at_y(y);
+        let page_index = renderer.page_for_y(y);
+        let page_height = renderer.page_height_for_page(page_index);
+        let local_y = y - renderer.page_top_y(page_index);
         let margin_bottom = renderer.margin_bottom();
         let header_boundary = renderer.header_hit_boundary_for_page(page_index);
         let footer_boundary = renderer
@@ -2639,14 +2624,8 @@ impl OffscreenDocumentView {
         let state = self.state.borrow();
         let word_doc = state.word_doc.as_ref()?;
         let lines = Self::variant_lines(word_doc, mode, variant)?;
-        let page_height = renderer.page_height_css();
-        let page_gap = 16.0_f64;
-        let page_with_gap = page_height + page_gap;
-        let page_index = if page_with_gap > 0.0 {
-            (y / page_with_gap).max(0.0) as usize
-        } else {
-            0
-        };
+        let page_index = renderer.page_for_y(y);
+        let page_height = renderer.page_height_for_page(page_index);
         if lines.is_empty() {
             return Some(HfEditCursor {
                 page_index,
@@ -2700,11 +2679,7 @@ impl OffscreenDocumentView {
             }
         }
 
-        let local_y = if page_with_gap > 0.0 {
-            y % page_with_gap
-        } else {
-            y
-        };
+        let local_y = y - renderer.page_top_y(page_index);
         let margin_bottom = renderer.margin_bottom();
         let margin_left = renderer.margin_left();
         let margin_right = renderer.margin_right();
