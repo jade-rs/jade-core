@@ -3230,6 +3230,12 @@ pub struct ParagraphFrameDebugInfo {
     pub height: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PhysicalPageOrigin {
+    top: f64,
+    height: f64,
+}
+
 /// High-level renderer that projects parsed DOCX documents into a 2D canvas.
 ///
 /// The type maintains layout state such as page size, margins, and the current
@@ -3536,6 +3542,10 @@ where
     active_section_index: usize,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
+    /// Absolute document Y of each physical page, captured during pagination.
+    /// Section transitions can change height, so the current height cannot
+    /// reconstruct origins belonging to earlier sections.
+    page_origins: Vec<PhysicalPageOrigin>,
     /// Footnote numeral format (`w:footnotePr/w:numFmt`, §17.11.12) from the
     /// default section. `None` = decimal. MVP: document-wide.
     footnote_number_format: Option<String>,
@@ -4753,7 +4763,17 @@ where
         if self.pageless_mode {
             0.0
         } else {
-            page_0idx as f64 * (self.page_height + PAGE_GAP_PX)
+            self.page_origins
+                .get(page_0idx)
+                .map(|origin| origin.top)
+                .unwrap_or_else(|| {
+                    let (page, top, height) = self
+                        .page_origins
+                        .last()
+                        .map(|origin| (self.page_origins.len() - 1, origin.top, origin.height))
+                        .unwrap_or((0, 0.0, self.page_height));
+                    top + (page_0idx - page) as f64 * (height + PAGE_GAP_PX)
+                })
         }
     }
 
@@ -8186,6 +8206,7 @@ where
             styled_paragraphs: std::collections::BTreeMap::new(),
             active_section_index: 0,
             page_section_indices: Vec::new(),
+            page_origins: Vec::new(),
             footnote_number_format: None,
             footnote_number_restart: NoteRestart::Continuous,
             section_footnote_numbering: Vec::new(),
@@ -12606,11 +12627,24 @@ where
         if self.pageless_mode {
             return 0;
         }
-        let page_with_gap = self.page_height + PAGE_GAP_PX;
+        let page_with_gap = self
+            .page_origins
+            .last()
+            .map_or(self.page_height, |origin| origin.height)
+            + PAGE_GAP_PX;
         if page_with_gap <= 0.0 {
             return 0;
         }
-        (y / page_with_gap).floor() as usize
+        if let Some(origin) = self.page_origins.last().filter(|origin| y >= origin.top) {
+            return self.page_origins.len() - 1
+                + ((y - origin.top) / page_with_gap).floor() as usize;
+        }
+        if self.page_origins.is_empty() {
+            return (y / page_with_gap).floor() as usize;
+        }
+        self.page_origins
+            .partition_point(|origin| origin.top <= y)
+            .saturating_sub(1)
     }
 
     // ==================================================================    // Selection Overlay (Fast Selection Rendering)
@@ -13295,6 +13329,7 @@ where
         } else {
             None
         };
+        let previous_page_origins = self.page_origins.clone();
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
@@ -13802,6 +13837,12 @@ where
             };
 
             if let Some(seek) = seek_snapshot.as_ref() {
+                // A confirmed seek skips an unchanged prefix. Keep its actual
+                // mixed-section origins instead of filling those skipped slots
+                // with the resume page's height. Rebuild the target and tail.
+                self.page_origins.clone_from(&previous_page_origins);
+                self.page_origins
+                    .truncate(seek.page_number.saturating_sub(1));
                 // Restore state from the snapshot.
                 self.paragraph_counter = seek.paragraph_index;
                 self.footnote_counter = seek.footnote_counter;
@@ -14204,10 +14245,12 @@ where
                 if let Some(page_sections) = authoritative_page_sections.as_ref() {
                     self.page_section_indices.clone_from(page_sections);
                 }
+                self.page_origins.clone_from(&previous_page_origins);
                 self.last_completed_pagination_edit_preserved =
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
             } else {
                 self.host.truncate_pages(self.current_page_number)?;
+                self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
                     self.page_section_indices.truncate(self.current_page_number);
                 }
@@ -35679,6 +35722,23 @@ where
         self.page_section_indices
             .resize(physical_page, self.active_section_index);
         self.page_section_indices[physical_page - 1] = self.active_section_index;
+        // Normal layout records a contiguous prefix; a confirmed seek restores
+        // its unchanged prefix. Retain the historical uniform fallback for
+        // genuinely unrecorded page slots.
+        while self.page_origins.len() < physical_page {
+            self.page_origins.push(PhysicalPageOrigin {
+                top: self.page_top_y(self.page_origins.len()),
+                height: self.page_height,
+            });
+        }
+        self.page_origins[physical_page - 1] = PhysicalPageOrigin {
+            top: self.page_offset_y,
+            height: self.page_height,
+        };
+        // Reflow owns this prefix; future origins from the previous pagination
+        // can be out of order after a height change. A pixel-only pass restores
+        // its authoritative snapshot when it completes.
+        self.page_origins.truncate(physical_page);
     }
 
     fn current_section_page_count(&self) -> Option<usize> {
@@ -37547,6 +37607,133 @@ mod tests {
         }
         fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
             Ok(text.chars().count() as f64 * 10.0)
+        }
+    }
+
+    #[test]
+    fn mixed_page_coordinates_use_each_recorded_page_origin() {
+        let (host, _) = PerPageRecordingHost::new(3);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(host), false).expect("paged recording renderer");
+        renderer.page_height = 800.0;
+        renderer.record_page_section(1);
+        renderer.advance_page_offset(800.0);
+        renderer.page_height = 1200.0;
+        renderer.record_page_section(2);
+        renderer.advance_page_offset(1200.0);
+        renderer.page_height = 600.0;
+        renderer.record_page_section(3);
+        // A bitmap window can leave the renderer on an earlier, shorter page.
+        // Coordinate conversion must still use the recorded final page height.
+        renderer.page_height = 100.0;
+
+        let second = 800.0 + PAGE_GAP_PX;
+        let third = second + 1200.0 + PAGE_GAP_PX;
+        assert_eq!(renderer.page_top_y(0), 0.0);
+        assert_eq!(renderer.page_top_y(1), second);
+        assert_eq!(renderer.page_top_y(2), third);
+        assert_eq!(renderer.page_top_y(3), third + 600.0 + PAGE_GAP_PX);
+        for (y, page) in [
+            (0.0, 0),
+            (second - 0.01, 0),
+            (second, 1),
+            (third - 0.01, 1),
+            (third, 2),
+            (third + 500.0, 2),
+        ] {
+            assert_eq!(renderer.page_for_y(y), page, "document y={y}");
+        }
+        renderer.pageless_mode = true;
+        assert_eq!(renderer.page_top_y(2), 0.0);
+        assert_eq!(renderer.page_for_y(third), 0);
+    }
+
+    #[test]
+    fn recording_a_reflowed_page_discards_obsolete_future_origins() {
+        let (host, _) = PerPageRecordingHost::new(3);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(host), false).expect("paged recording renderer");
+        renderer.page_height = 800.0;
+        renderer.record_page_section(1);
+        renderer.advance_page_offset(800.0);
+        renderer.record_page_section(2);
+        renderer.advance_page_offset(800.0);
+        renderer.record_page_section(3);
+
+        // The first page grows beyond both old origins. Retain the known
+        // prefix and extrapolate only from the newly recorded page onward.
+        renderer.page_offset_y = 2400.0 + PAGE_GAP_PX;
+        renderer.page_height = 600.0;
+        renderer.record_page_section(2);
+        assert_eq!(renderer.page_origins.len(), 2);
+        assert_eq!(renderer.page_top_y(0), 0.0);
+        assert_eq!(renderer.page_top_y(1), 2416.0);
+        assert_eq!(renderer.page_for_y(2000.0), 0);
+        assert_eq!(renderer.page_for_y(2416.0), 1);
+        assert_eq!(renderer.page_top_y(2), 2416.0 + 600.0 + PAGE_GAP_PX);
+
+        // Replacing the document starts a fresh prefix.
+        renderer.page_offset_y = 0.0;
+        renderer.record_page_section(1);
+        assert_eq!(renderer.page_origins.len(), 1);
+        assert_eq!(renderer.page_top_y(0), 0.0);
+    }
+
+    #[test]
+    fn cached_seek_retains_mixed_height_page_origins_in_the_unchanged_prefix() {
+        let mut document = doc_with_paragraph_texts(&["first", "second", "third", "fourth"]);
+        for (index, height) in [600.0, 900.0, 450.0, 750.0].into_iter().enumerate() {
+            document.sections.push(SectionRange {
+                start: index,
+                end: index + 1,
+                properties: Some(SectionProperties {
+                    section_type: Some("nextPage".into()),
+                    page_settings: Some(PageSettings {
+                        height: Some(height),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+            });
+        }
+        document.default_section = document.sections[0].properties.clone();
+        document.page_settings = document
+            .default_section
+            .as_ref()
+            .unwrap()
+            .page_settings
+            .clone();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .unwrap();
+        let options = options_for_seek_tests();
+        renderer.render(&document, &options).unwrap();
+        let expected = renderer.page_origins.clone();
+        assert_eq!(expected.len(), 4);
+        assert_eq!(expected[1].top, 800.0 + PAGE_GAP_PX);
+        assert_eq!(expected[2].top, 2000.0 + 2.0 * PAGE_GAP_PX);
+        let seek = renderer.page_start_seek_cache_by_page.borrow()[&4].clone();
+        assert_eq!(seek.paragraph_index, 3);
+        renderer.forced_seek_snapshot = Some(seek);
+        renderer.render(&document, &options).unwrap();
+        assert_eq!(
+            renderer.last_render_body_element_count, 1,
+            "seek skips the prefix"
+        );
+        assert_eq!(renderer.page_origins, expected);
+        for (index, origin) in expected.iter().enumerate() {
+            assert_eq!(renderer.page_for_y(origin.top + 10.0), index);
+        }
+        for page in [0, 3] {
+            renderer.set_visible_page_range(Some(page + 1..=page + 1));
+            renderer.prepare_rerender_for_page(page);
+            renderer.freeze_selection_for_pixel_rerender();
+            renderer.render(&document, &options).unwrap();
+            assert_eq!(renderer.page_origins, expected, "bitmap page {page}");
         }
     }
 
