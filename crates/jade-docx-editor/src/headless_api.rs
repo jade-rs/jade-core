@@ -5800,22 +5800,33 @@ fn clone_table_row(
     target_row: usize,
     clear_text: bool,
 ) -> Result<(), String> {
-    let insert_at;
-    {
+    let (insert_at, mut row) = {
         let table = word_doc
-            .table_mut_by_order(table_order_index)
+            .table_by_order(table_order_index)
             .ok_or_else(|| format!("table {table_order_index} was not found"))?;
         if source_row >= table.rows.len() {
             return Err(format!("source row {source_row} is out of range"));
         }
-        insert_at = target_row.min(table.rows.len());
-        let mut row = table.rows[source_row].clone();
-        clear_table_row_runtime_ids(&mut row);
-        if clear_text {
-            clear_table_row_text(&mut row);
-        }
-        table.rows.insert(insert_at, row);
+        (
+            target_row.min(table.rows.len()),
+            table.rows[source_row].clone(),
+        )
+    };
+    // Allocate copied revisions before insertion. XML normalization must never
+    // resolve duplicate IDs by renumbering revisions in the original row.
+    let mut ids = BTreeMap::new();
+    let mut remap = |mark: &mut jade_docx_reader::RevisionMark| {
+        remap_cloned_revision(mark, word_doc, &mut ids);
+    };
+    clear_table_row_runtime_ids(&mut row, &mut remap);
+    if clear_text {
+        clear_table_row_text(&mut row);
     }
+    word_doc
+        .table_mut_by_order(table_order_index)
+        .ok_or_else(|| format!("table {table_order_index} was not found"))?
+        .rows
+        .insert(insert_at, row);
 
     word_doc.rewrite_table_xml_from_model(table_order_index)?;
     word_doc.rebuild_paragraph_surfaces();
@@ -5859,52 +5870,101 @@ fn fill_table_row(
     Ok(())
 }
 
-fn clear_table_row_runtime_ids(row: &mut TableRow) {
-    row.node_id = None;
-    for cell in &mut row.cells {
-        clear_table_cell_runtime_ids(cell);
+fn remap_cloned_revision(
+    mark: &mut jade_docx_reader::RevisionMark,
+    word_doc: &mut WordDocument,
+    ids: &mut BTreeMap<String, String>,
+) {
+    let id = if let Some(original) = mark.id.as_ref() {
+        ids.entry(original.clone())
+            .or_insert_with(|| word_doc.allocate_revision_id().to_string())
+            .clone()
+    } else {
+        word_doc.allocate_revision_id().to_string()
+    };
+    mark.id = Some(id);
+    if let Some(insertion) = mark.insertion.as_deref_mut() {
+        remap_cloned_revision(insertion, word_doc, ids);
     }
 }
 
-fn clear_table_cell_runtime_ids(cell: &mut TableCell) {
+fn clear_table_row_runtime_ids(
+    row: &mut TableRow,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
+    row.node_id = None;
+    if let Some(mark) = row.revision.as_deref_mut() {
+        remap(mark);
+    }
+    for cell in &mut row.cells {
+        clear_table_cell_runtime_ids(cell, remap);
+    }
+}
+
+fn clear_table_cell_runtime_ids(
+    cell: &mut TableCell,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
     cell.node_id = None;
     for block in &mut cell.blocks {
-        clear_body_element_runtime_ids(block);
+        clear_body_element_runtime_ids(block, remap);
     }
 }
 
-fn clear_body_element_runtime_ids(block: &mut BodyElement) {
+fn clear_body_element_runtime_ids(
+    block: &mut BodyElement,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
     match block {
         BodyElement::Paragraph(paragraph) => {
             paragraph.node_id = None;
+            if let Some(mark) = paragraph
+                .properties
+                .as_mut()
+                .and_then(|properties| properties.mark_revision.as_deref_mut())
+            {
+                remap(mark);
+            }
             for run in &mut paragraph.runs {
-                clear_run_runtime_ids(run);
+                clear_run_runtime_ids(run, remap);
             }
         }
-        BodyElement::Table(table) => clear_table_runtime_ids(table),
+        BodyElement::Table(table) => clear_table_runtime_ids(table, remap),
         BodyElement::Math(_) => {}
     }
 }
 
-fn clear_table_runtime_ids(table: &mut Table) {
+fn clear_table_runtime_ids(
+    table: &mut Table,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
     table.node_id = None;
     for row in &mut table.rows {
-        clear_table_row_runtime_ids(row);
+        clear_table_row_runtime_ids(row, remap);
     }
 }
 
-fn clear_run_runtime_ids(run: &mut Run) {
+fn clear_run_runtime_ids(
+    run: &mut Run,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
     run.node_id = None;
     run.text_node_id = None;
     run.revision_node_id = None;
+    if let Some(mark) = run.revision.as_mut() {
+        remap(mark);
+    }
     if let Some(text_box) = run.text_box.as_mut() {
-        clear_text_box_runtime_ids(text_box);
+        clear_text_box_runtime_ids(text_box, remap);
     }
 }
 
-fn clear_text_box_runtime_ids(text_box: &mut RunTextBox) {
+fn clear_text_box_runtime_ids(
+    text_box: &mut RunTextBox,
+    remap: &mut impl FnMut(&mut jade_docx_reader::RevisionMark),
+) {
     for block in &mut text_box.blocks {
-        clear_body_element_runtime_ids(block);
+        clear_body_element_runtime_ids(block, remap);
     }
 }
 

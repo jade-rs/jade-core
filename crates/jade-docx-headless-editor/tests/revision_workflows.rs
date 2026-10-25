@@ -2576,3 +2576,113 @@ fn bulk_fill_on_foreign_inserted_row_preserves_history_when_rejected() {
         assert_eq!(mark.attribute((NS, "date")), Some("2025-01-01T00:00:00Z"));
     }
 }
+
+fn foreign_revision_row_fixture() -> Vec<u8> {
+    let row = r#"<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:trPr><w:ins w:id="40" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"/></w:trPr><w:tc><w:tcPr/><w:p><w:del w:id="42" w:author="Reviewer"><w:r><w:delText>旧</w:delText></w:r></w:del><w:ins w:id="43" w:author="Reviewer"><w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>新😀</w:t></w:r></w:ins></w:p></w:tc></w:tr></w:tbl>"#;
+    fixture(&format!("</w:p>{row}<w:p>"))
+}
+
+#[test]
+fn cloning_before_or_after_a_row_preserves_source_revision_ids() {
+    let input = foreign_revision_row_fixture();
+    let original_xml = part(&input, "word/document.xml");
+    let original_doc = roxmltree::Document::parse(&original_xml).unwrap();
+    for target_row in [0, 1] {
+        for clear_text in [false, true] {
+            for tracked in [false, true] {
+                let output = edit(
+                    &input,
+                    vec![
+                        if tracked {
+                            tracking()
+                        } else {
+                            HeadlessCommand::StopChangeTracking
+                        },
+                        HeadlessCommand::CloneTableRow {
+                            table_order_index: 0,
+                            source_row: 0,
+                            target_row,
+                            clear_text,
+                        },
+                    ],
+                );
+                let xml = part(&output, "word/document.xml");
+                let doc = roxmltree::Document::parse(&xml).unwrap();
+                for id in ["40", "42", "43"] {
+                    let original = original_doc
+                        .descendants()
+                        .find(|n| n.attribute((NS, "id")) == Some(id))
+                        .unwrap();
+                    let copies: Vec<_> = doc
+                        .descendants()
+                        .filter(|n| n.attribute((NS, "id")) == Some(id))
+                        .collect();
+                    assert_eq!(copies.len(), 1, "foreign revision {id} lost or duplicated");
+                    assert_eq!(&xml[copies[0].range()], &original_xml[original.range()],
+                        "source revision changed: target={target_row} clear={clear_text} tracked={tracked}");
+                }
+                let mut expected = vec![vec!["新😀".into()]];
+                expected.insert(
+                    target_row,
+                    vec![if clear_text {
+                        "".into()
+                    } else {
+                        "新😀".into()
+                    }],
+                );
+                assert_eq!(saved_grid(&output), Some(expected));
+                if tracked {
+                    let rejected = edit(&output, vec![decide(false, lg_ids(&output))]);
+                    assert_eq!(saved_grid(&rejected), Some(vec![vec!["新😀".into()]]));
+                }
+            }
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 64,
+        failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::Direct(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/revision_workflows.proptest-regressions")
+        ))),
+        ..ProptestConfig::default()
+    })]
+    #[test]
+    fn cloning_foreign_rows_survives_repeated_save_reload(
+        actions in prop::collection::vec((any::<u8>(), any::<bool>(), any::<bool>(), any::<bool>()), 1..13)
+    ) {
+        let mut bytes = foreign_revision_row_fixture();
+        let original_xml = part(&bytes, "word/document.xml");
+        let original_doc = roxmltree::Document::parse(&original_xml).unwrap();
+        let foreign_marks: Vec<_> = ["40", "42", "43"].into_iter().map(|id| {
+            let node = original_doc.descendants().find(|n| n.attribute((NS, "id")) == Some(id)).unwrap();
+            (id, original_xml[node.range()].to_owned())
+        }).collect();
+        let mut source_row = 0usize;
+        let mut model = vec![vec!["新😀".to_string()]];
+        for (target, clear_text, tracked, accept) in actions {
+            let target_row = usize::from(target) % (model.len() + 1);
+            let output = edit(&bytes, vec![
+                if tracked { tracking() } else { HeadlessCommand::StopChangeTracking },
+                HeadlessCommand::CloneTableRow { table_order_index: 0, source_row, target_row, clear_text },
+            ]);
+            let mut cloned = model.clone();
+            cloned.insert(target_row, vec![if clear_text { String::new() } else { "新😀".to_string() }]);
+            prop_assert_eq!(saved_grid(&output), Some(cloned.clone()));
+            bytes = if tracked { edit(&output, vec![decide(accept, lg_ids(&output))]) } else { output };
+            if !tracked || accept {
+                model = cloned;
+                if target_row <= source_row { source_row += 1; }
+            }
+            prop_assert_eq!(saved_grid(&bytes), Some(model.clone()));
+            let xml = part(&bytes, "word/document.xml");
+            let doc = roxmltree::Document::parse(&xml).unwrap();
+            for (id, original) in &foreign_marks {
+                let nodes: Vec<_> = doc.descendants().filter(|n| n.attribute((NS, "id")) == Some(*id)).collect();
+                prop_assert_eq!(nodes.len(), 1, "foreign revision {} was lost or duplicated", id);
+                prop_assert_eq!(&xml[nodes[0].range()], original, "{}", xml);
+            }
+        }
+    }
+}
