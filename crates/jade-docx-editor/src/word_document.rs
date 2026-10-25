@@ -12273,6 +12273,15 @@ impl WordDocument {
                 } else {
                     // The decided runs' `w:rPr` is written again from the model.
                     self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
+                    // A rejected change puts back the run's formatting before
+                    // it, which holds what the run declared and not what its
+                    // styles give it: fill that in as a load does, after the
+                    // sync so none of it is written as direct formatting.
+                    // Left out, the run lost its font and size on screen.
+                    self.apply_run_font_defaults_at(paragraph_index);
+                    if let Some(theme) = self.loaded_theme_part() {
+                        self.apply_theme_fonts_at(paragraph_index, &theme);
+                    }
                 }
             }
         }
