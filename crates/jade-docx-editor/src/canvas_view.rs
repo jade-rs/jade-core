@@ -4799,8 +4799,12 @@ impl OffscreenDocumentView {
             let Some(doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            doc.set_hf_paragraph_alignment(role, hf_variant, cursor.line_index, &alignment)
-                .map_err(|error| JsValue::from_str(&error))?;
+            if !doc
+                .set_hf_paragraph_alignment(role, hf_variant, cursor.line_index, &alignment)
+                .map_err(|error| JsValue::from_str(&error))?
+            {
+                return Ok(JsValue::NULL);
+            }
             Self::remap_hf_paragraph_cursor(&mut state, mode, variant, cursor, &alignment);
             (
                 state.word_doc.clone(),
