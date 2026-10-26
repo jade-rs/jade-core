@@ -8,7 +8,10 @@ use jade_docx_document_core::{
     commands::{
         set_paragraph_alignment::SetParagraphAlignmentCommand, CommandContext, CommandExecutor,
     },
-    headless_api::{apply_headless_commands_to_document, execute_headless_queries_on_document},
+    headless_api::{
+        apply_headless_commands_to_document, apply_headless_commands_with_executor_to_document,
+        execute_headless_queries_on_document,
+    },
     selection::{SelectionRange, TextPosition},
     word_document::WordDocument,
     Options,
@@ -105,6 +108,12 @@ fn properties(element: Option<&XmlElement>) -> Value {
         .iter()
         .filter_map(|node| match node {
             XmlNode::Element(e) if matches!(e.name.as_str(), "w:pPrChange" | "w:rPrChange") => None,
+            XmlNode::Element(e)
+                if matches!(e.name.as_str(), "w:rPr" | "w:pPr")
+                    && properties(Some(e)).is_null() =>
+            {
+                None
+            }
             XmlNode::Element(e) => Some(json!([e.name, properties(Some(e))])),
             XmlNode::Text(text) if text.trim().is_empty() => None,
             XmlNode::Text(text) | XmlNode::CData(text) | XmlNode::Comment(text) => {
@@ -220,7 +229,7 @@ fn edits() -> impl Strategy<Value = Vec<Edit>> {
     prop::collection::vec(
         (
             0usize..3,
-            0u8..28,
+            0u8..30,
             0u8..8,
             0usize..4,
             1usize..5,
@@ -306,18 +315,72 @@ impl Edit {
             26 => {
                 json!({"type": "set_character_style", "style_id": if self.value.is_multiple_of(2) { Some("Emphasis") } else { None }})
             }
-            _ => {
+            27 => {
                 json!({"type": "set_run_format", "format": {"latinFont": "Arial", "eastAsiaFont": "Yu Mincho", "bold": self.value.is_multiple_of(2), "complexItalic": true, "spacing": f32::from(self.value) / 2.0, "position": -1.0, "scale": 80, "emphasis": "dot", "underline": "double", "underlineColor": "ABCDEF", "shading": "FFEEDD"}})
+            }
+            28 => {
+                json!({"type": "set_paragraph_typography", "typography": {"kinsoku": self.value.is_multiple_of(2), "wordWrap": false, "overflowPunctuation": false, "topLinePunctuation": true, "autoSpaceDe": false, "autoSpaceDn": false}})
+            }
+            _ => {
+                json!({"type": "set_drop_cap", "kind": if self.value.is_multiple_of(3) { None } else { Some(if self.value.is_multiple_of(2) { "drop" } else { "margin" }) }, "lines": 2 + self.value % 4})
             }
         };
         command["start_paragraph"] = json!(self.paragraph);
         command["end_paragraph"] = json!(self.paragraph);
-        if (8..=10).contains(&self.kind) || self.kind >= 18 {
+        if (8..=10).contains(&self.kind) || (18..28).contains(&self.kind) {
             let boundaries = [0, 1, 4, 8, 9]; // UTF-8 byte offsets: A, あ, 🙂, z.
             command["start_offset"] = json!(boundaries[self.from]);
             command["end_offset"] = json!(boundaries[self.to]);
         }
         command
+    }
+}
+
+#[test]
+fn styled_paragraph_join_does_not_resurrect_replaced_language() {
+    for tracked in [false, true] {
+        for roundtrip in [false, true] {
+            let mut word = fixture();
+            let original = snapshot(&word);
+            if tracked {
+                track(&mut word);
+            }
+            apply(
+                &mut word,
+                vec![Edit {
+                    paragraph: 1,
+                    kind: 12,
+                    value: 0,
+                    from: 0,
+                    to: 4,
+                    reload: false,
+                }
+                .command()],
+            );
+            // Normal replaces the direct language. Subsequent edits must not
+            // resurrect its stale preserved copy, with or without a reload.
+            assert!(!snapshot(&word)[1].to_string().contains("ja-JP"));
+            if roundtrip {
+                word = reload(&word);
+                if tracked {
+                    track(&mut word);
+                }
+            }
+            apply(
+                &mut word,
+                vec![
+                    json!({"type": "delete_text", "paragraph": 2, "offset": 0, "direction": "backward", "count": 1}),
+                ],
+            );
+            if tracked {
+                let mut rejected = reload(&word);
+                decide(&mut rejected, false, None);
+                assert_eq!(snapshot(&reload(&rejected)), original);
+                decide(&mut word, true, None);
+            }
+            assert!(!snapshot(&reload(&word))[1].to_string().contains("ja-JP"));
+            assert_eq!(word.paragraph_count(), 2);
+        }
     }
 }
 
@@ -331,7 +394,7 @@ fn paragraph_style_then_italic_preserves_direct_language() {
         let edit = Edit {
             paragraph: 1,
             kind,
-            value: 0,
+            value: 4,
             from: 0,
             to: 1,
             reload: false,
@@ -409,6 +472,57 @@ fn same_font_size_then_disjoint_bold_can_be_rejected() {
 }
 
 #[test]
+fn formatting_commands_redo_keep_revision_identity() {
+    for kind in [5, 27, 28, 29] {
+        let mut word = fixture();
+        track(&mut word);
+        let original = snapshot(&reload(&word));
+        let mut selection = None;
+        let mut executor = CommandExecutor::new();
+        let command = Edit {
+            paragraph: 0,
+            kind,
+            value: 4,
+            from: 0,
+            to: 1,
+            reload: false,
+        }
+        .command();
+        let request: HeadlessEditRequest =
+            serde_json::from_value(json!({"commands": [command]})).unwrap();
+        selection = apply_headless_commands_with_executor_to_document(
+            &mut word,
+            &mut executor,
+            selection,
+            &request,
+        )
+        .unwrap();
+        let edited = snapshot(&reload(&word));
+        let expected = revisions(&reload(&word));
+        assert!(!expected.is_empty(), "missing revision for kind {kind}");
+        for _ in 0..2 {
+            assert!(executor
+                .undo(&mut CommandContext::new(&mut word, &mut selection))
+                .unwrap());
+            assert_eq!(snapshot(&reload(&word)), original);
+            assert!(revisions(&word).is_empty());
+            assert!(executor
+                .redo(&mut CommandContext::new(&mut word, &mut selection))
+                .unwrap());
+            assert_eq!(snapshot(&reload(&word)), edited);
+            assert_eq!(
+                revisions(&reload(&word)),
+                expected,
+                "revision identity changed for kind {kind}"
+            );
+        }
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        assert_eq!(snapshot(&reload(&rejected)), original);
+    }
+}
+
+#[test]
 fn every_run_format_rejects_to_original_direct_properties() {
     for kind in (8..=10).chain(18..28) {
         for paragraph in 0..3 {
@@ -447,7 +561,10 @@ fn every_run_format_rejects_to_original_direct_properties() {
 
 #[test]
 fn every_paragraph_format_keeps_original_ppr_and_unrelated_mark_and_section() {
-    for kind in (0..18).filter(|kind| !(8..=10).contains(kind)) {
+    for kind in (0..18)
+        .chain([28, 29])
+        .filter(|kind| !(8..=10).contains(kind))
+    {
         let mut word = fixture();
         let original = snapshot(&word);
         track(&mut word);
@@ -499,7 +616,11 @@ fn every_paragraph_format_keeps_original_ppr_and_unrelated_mark_and_section() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+        ..ProptestConfig::default()
+    })]
 
     #[test]
     fn mixed_formatting_accepts_like_untracked_edits_and_rejects_to_original(edits in edits()) {
@@ -542,6 +663,210 @@ proptest! {
         if !accept { expected[target] = original[target].clone(); }
         prop_assert_eq!(snapshot(&word), expected);
         prop_assert!(revisions(&word).iter().all(|r| r.paragraph != target));
+    }
+
+    #[test]
+    fn exact_revision_target_changes_only_its_own_properties(
+        edits in edits(), target in any::<usize>(), accept in any::<bool>()
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        track(&mut word);
+        for edit in &edits { apply(&mut word, vec![edit.command()]); }
+        let mut word = reload(&word);
+        let before = revisions(&word);
+        if before.is_empty() { return Ok(()); }
+        let target = target % before.len();
+        let selected = &before[target];
+        let mut expected = snapshot(&word);
+        if !accept {
+            if selected.kind == "paragraphFormat" {
+                expected[selected.paragraph][0] = original[selected.paragraph][0].clone();
+            } else {
+                let boundaries = [0, 1, 4, 8, 9];
+                for (index, offset) in boundaries[..4].iter().enumerate() {
+                    if selected.start_offset <= *offset && *offset < selected.end_offset {
+                        expected[selected.paragraph][1][index][1] = original[selected.paragraph][1][index][1].clone();
+                    }
+                }
+            }
+        }
+        apply(&mut word, vec![json!({
+            "type": if accept { "accept_revisions" } else { "reject_revisions" },
+            "revision_targets": [{"paragraph": selected.paragraph,
+                "start_offset": selected.start_offset, "end_offset": selected.end_offset,
+                "paragraph_mark": selected.paragraph_mark, "id": selected.id,
+                "format_change": selected.kind}]
+        })]);
+        let word = reload(&word);
+        prop_assert_eq!(snapshot(&word), expected);
+        let mut remaining = serde_json::to_value(&before).unwrap().as_array().unwrap().clone();
+        remaining.remove(target);
+        prop_assert_eq!(serde_json::to_value(revisions(&word)).unwrap(), json!(remaining));
+    }
+
+    #[test]
+    fn repeated_review_epochs_use_the_latest_accepted_baseline(
+        epochs in prop::collection::vec((edits(), any::<bool>()), 2..5)
+    ) {
+        let mut word = fixture();
+        for (edits, accept) in epochs {
+            let original = snapshot(&word);
+            let mut plain = reload(&word);
+            track(&mut word);
+            for edit in edits {
+                apply(&mut word, vec![edit.command()]);
+                apply(&mut plain, vec![edit.command()]);
+                if edit.reload {
+                    word = reload(&word);
+                    track(&mut word);
+                    plain = reload(&plain);
+                }
+                prop_assert_eq!(snapshot(&word), snapshot(&plain));
+            }
+            decide(&mut word, accept, None);
+            word = reload(&word);
+            prop_assert_eq!(snapshot(&word), if accept { snapshot(&reload(&plain)) } else { original });
+            prop_assert!(revisions(&word).is_empty());
+        }
+    }
+
+    #[test]
+    fn text_and_formatting_revisions_review_together(
+        paragraph in 0usize..3, before in 0u8..30, after in 0u8..30,
+        value in 0u8..8, insert in any::<bool>(), boundary in 0usize..5, roundtrip in any::<bool>()
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        let mut plain = reload(&word);
+        track(&mut word);
+        let whole_format = |kind, length| {
+            let mut command = Edit { paragraph, kind, value, from: 0, to: 4, reload: false }.command();
+            if command.get("end_offset").is_some() { command["end_offset"] = json!(length); }
+            command
+        };
+        for doc in [&mut word, &mut plain] { apply(doc, vec![whole_format(before, 9)]); }
+        let boundaries = [0, 1, 4, 8, 9];
+        let deleted = boundary % 4;
+        let text = if insert {
+            json!({"type": "insert_text", "paragraph": paragraph, "offset": boundaries[boundary], "text": "漢"})
+        } else {
+            json!({"type": "delete_text", "paragraph": paragraph, "offset": boundaries[deleted + 1], "direction": "backward", "count": 1})
+        };
+        for doc in [&mut word, &mut plain] { apply(doc, vec![text.clone()]); }
+        if roundtrip { word = reload(&word); track(&mut word); plain = reload(&plain); }
+        apply(&mut word, vec![whole_format(after, if insert { 12 } else { 9 })]);
+        apply(&mut plain, vec![whole_format(after, if insert { 12 } else { 9 - (boundaries[deleted + 1] - boundaries[deleted]) })]);
+        let mut accepted = reload(&word);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original);
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+    }
+
+    #[test]
+    fn paragraph_breaks_keep_reviewed_formatting_reversible(
+        paragraph in 0usize..3, before in 0u8..30, after in 0u8..30,
+        value in 0u8..8, boundary in 0usize..5, roundtrip in any::<bool>()
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        let mut plain = reload(&word);
+        track(&mut word);
+        let command = Edit { paragraph, kind: before, value, from: 0, to: 4, reload: false }.command();
+        for doc in [&mut word, &mut plain] { apply(doc, vec![command.clone()]); }
+        let command = json!({"type": "insert_paragraph_break", "paragraph": paragraph,
+            "offset": ([0, 1, 4, 8, 9][boundary])});
+        for doc in [&mut word, &mut plain] { apply(doc, vec![command.clone()]); }
+        if roundtrip { word = reload(&word); track(&mut word); plain = reload(&plain); }
+        for index in paragraph..=paragraph+1 {
+            for doc in [&mut word, &mut plain] {
+                let length: usize = doc.paragraph(index).unwrap().runs.iter().map(|r| r.text.len()).sum();
+                let mut command = Edit { paragraph: index, kind: after, value, from: 0, to: 4, reload: false }.command();
+                // Drop caps require a nonempty paragraph.
+                if after == 29 && length == 0 { continue; }
+                if command.get("end_offset").is_some() {
+                    if length == 0 { continue; }
+                    command["end_offset"] = json!(length);
+                }
+                apply(doc, vec![command]);
+            }
+        }
+        let mut accepted = reload(&word);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original);
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+    }
+
+    #[test]
+    fn deleted_paragraph_breaks_review_with_both_paragraphs_formatting(
+        paragraph in 0usize..2, first in 0u8..30, second in 0u8..30,
+        value in 0u8..8, roundtrip in any::<bool>()
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        let mut plain = reload(&word);
+        track(&mut word);
+        for (index, kind) in [(paragraph, first), (paragraph + 1, second)] {
+            let command = Edit { paragraph: index, kind, value, from: 0, to: 4, reload: false }.command();
+            for doc in [&mut word, &mut plain] { apply(doc, vec![command.clone()]); }
+        }
+        let command = json!({"type": "delete_text", "paragraph": paragraph + 1,
+            "offset": 0, "direction": "backward", "count": 1});
+        for doc in [&mut word, &mut plain] { apply(doc, vec![command.clone()]); }
+        if roundtrip { word = reload(&word); }
+        let mut accepted = reload(&word);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original);
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+    }
+
+    #[test]
+    fn mixed_formatting_groups_undo_redo_and_abort(edits in edits(), tracked in any::<bool>(), abort in any::<bool>()) {
+        let mut word = fixture();
+        if tracked { track(&mut word); }
+        let original = snapshot(&reload(&word));
+        let mut selection = None;
+        let mut executor = CommandExecutor::new();
+        executor.begin_group();
+        for edit in edits {
+            executor.begin_group();
+            let request: HeadlessEditRequest = serde_json::from_value(json!({"commands": [edit.command()]})).unwrap();
+            selection = apply_headless_commands_with_executor_to_document(&mut word, &mut executor, selection, &request).unwrap();
+            executor.end_group();
+            assert_revision_structure(&word);
+        }
+        let edited = snapshot(&reload(&word));
+        let edited_revisions = revisions(&reload(&word));
+        if abort {
+            executor.abort_group(&mut CommandContext::new(&mut word, &mut selection));
+            prop_assert_eq!(executor.undo_depth(), 0);
+        } else {
+            executor.end_group();
+            prop_assert!(executor.undo_depth() <= 1);
+            if executor.can_undo() {
+                prop_assert!(executor.undo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+                prop_assert_eq!(snapshot(&reload(&word)), original.clone());
+                prop_assert!(revisions(&word).is_empty());
+                prop_assert!(executor.redo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+                prop_assert_eq!(snapshot(&reload(&word)), edited);
+                prop_assert_eq!(revisions(&reload(&word)), edited_revisions);
+                prop_assert!(executor.undo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+            }
+        }
+        prop_assert_eq!(snapshot(&reload(&word)), original);
+        prop_assert!(revisions(&word).is_empty());
     }
 
     #[test]

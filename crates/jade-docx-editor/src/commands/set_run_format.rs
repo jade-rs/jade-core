@@ -44,6 +44,10 @@ impl SetRunFormatCommand {
 }
 
 impl Command for SetRunFormatCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
+
     fn name(&self) -> &'static str {
         "set_run_format"
     }
