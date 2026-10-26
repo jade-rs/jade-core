@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Read, Write};
 use std::iter::FromIterator;
 
 use thiserror::Error;
@@ -289,6 +289,53 @@ pub fn write_docx_with_removed(
 
     let cursor = writer.finish()?;
     Ok(cursor.into_inner())
+}
+
+/// Rebuilds a loaded DOCX without recompressing its untouched ZIP members.
+///
+/// `source` must be the validated, immutable archive from which the document
+/// was loaded. All authored changes belong in `overrides` or `removed`;
+/// tombstones take precedence over both source members and overrides.
+/// WordprocessingML still passes the same markup-compatibility repair as the
+/// map-based writer, including XML parts that the editor did not change.
+pub fn write_docx_preserving_archive(
+    source: &[u8],
+    overrides: &HashMap<String, Vec<u8>>,
+    removed: &HashSet<String>,
+) -> Result<Vec<u8>, DocxWriteError> {
+    let mut archive = zip::ZipArchive::new(Cursor::new(source))?;
+    let mut keys = archive
+        .file_names()
+        .map(|name| name.map(|name| name.into_owned()))
+        .collect::<Result<Vec<_>, _>>()?;
+    keys.extend(overrides.keys().cloned());
+    keys.sort();
+    keys.dedup();
+
+    let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+    writer.set_raw_comment(archive.comment().into())?;
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    for key in keys {
+        if removed.contains(&key) {
+            continue;
+        }
+        if let Some(data) = overrides.get(&key) {
+            writer.start_file(&key, options)?;
+            write_part(&mut writer, &key, data)?;
+            continue;
+        }
+        if is_wordprocessing_xml_part(&key) {
+            let mut data = Vec::new();
+            archive.by_name(&key)?.read_to_end(&mut data)?;
+            if repair_markup_compatibility_root_tag(&data).is_some() {
+                writer.start_file(&key, options)?;
+                write_part(&mut writer, &key, &data)?;
+                continue;
+            }
+        }
+        writer.raw_copy_file(archive.by_name(&key)?)?;
+    }
+    Ok(writer.finish()?.into_inner())
 }
 
 /// Word refuses a package whose `mc:Ignorable` names an undeclared prefix, so
