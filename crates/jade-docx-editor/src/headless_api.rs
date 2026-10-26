@@ -5248,6 +5248,11 @@ fn execute_headless_query(
                         );
                     let snippet = format!("{context_before}{matched_text}{context_after}");
 
+                    let (start_offset, end_offset) = word_doc.model_text_range_to_rendered(
+                        paragraph_index,
+                        start_offset,
+                        end_offset,
+                    );
                     matches.push(HeadlessSearchMatch {
                         paragraph: paragraph_index,
                         start_offset,
