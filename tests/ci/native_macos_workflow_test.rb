@@ -48,6 +48,14 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes cached_workspaces, ". -> target/native-macos"
   end
 
+  def test_mac_coordinate_gate_is_unconditional_and_uses_locked_dependencies
+    step = @steps.find { |item| item["name"] == "Verify unadjusted Word for Mac probe coordinates" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_includes step.fetch("run"), "--locked --test word_mac_coordinates"
+  end
+
   private
 
   def run_command(step_name)
