@@ -31802,6 +31802,20 @@ impl WordDocument {
         if tags.is_empty() {
             return removed;
         }
+        // Removed direct properties must leave the preserved model XML too.
+        // Otherwise the next text edit recreates a language (or another
+        // unmodeled property) that the new paragraph style replaced. A reload
+        // drops that stale copy, so review and ordinary joins used to differ.
+        if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
+            for run in &mut paragraph.runs {
+                if let Some(props) = run.properties.as_mut() {
+                    props.preserved_rpr.0.retain(|node| {
+                        !matches!(node, XmlNode::Element(element)
+                            if tags.contains(&element.name.as_str()))
+                    });
+                }
+            }
+        }
         match self.paragraph_surfaces.get(paragraph_index) {
             Some(ParagraphSurface::Body { .. }) => {}
             Some(ParagraphSurface::TextBox { .. }) => {

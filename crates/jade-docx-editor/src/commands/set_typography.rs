@@ -52,6 +52,10 @@ fn options(typography: &HeadlessParagraphTypography) -> [(&'static str, Option<b
 }
 
 impl Command for SetParagraphTypographyCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
+
     fn name(&self) -> &'static str {
         "set_paragraph_typography"
     }
