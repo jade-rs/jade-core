@@ -1293,6 +1293,11 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
 pub struct WordDocument {
     #[serde(skip)]
     package: Option<OpenXmlPackage>,
+    /// Retain one compressed source archive to copy untouched members during
+    /// export. Clones and undo snapshots share these bytes rather than copying
+    /// large embedded media or recompressing it on every save.
+    #[serde(skip)]
+    source_archive: Option<Rc<[u8]>>,
     /// Newly authored binary OPC parts. Keeping these separate from the
     /// immutable source package makes package-level undo cheap for documents
     /// that contain large pre-existing media while still allowing new images
@@ -1367,6 +1372,7 @@ pub struct WordDocument {
 #[derive(Clone, Debug)]
 pub struct WordDocumentSnapshot {
     source_package: Option<OpenXmlPackage>,
+    source_archive: Option<Rc<[u8]>>,
     pub document: Document,
     pub raw_document: Option<DocxXmlDocument>,
     pub next_revision_id: u32,
@@ -2327,6 +2333,7 @@ impl WordDocument {
 
         let mut document = WordDocument {
             package: Some(package),
+            source_archive: Some(Rc::from(data)),
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
             relationships,
@@ -4811,6 +4818,7 @@ impl WordDocument {
         Self::give_textless_shapes_an_inner_paragraph(&mut document);
         let mut doc = Self {
             package: None,
+            source_archive: None,
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
             relationships: Vec::new(),
@@ -11079,11 +11087,19 @@ impl WordDocument {
             overrides.insert(path.clone(), bytes.clone());
         }
 
-        Ok(jade_docx_writer::write_docx_with_removed(
-            &package.files,
-            &overrides,
-            &self.removed_parts,
-        )?)
+        Ok(if let Some(source) = self.source_archive.as_deref() {
+            jade_docx_writer::write_docx_preserving_archive(
+                source,
+                &overrides,
+                &self.removed_parts,
+            )?
+        } else {
+            jade_docx_writer::write_docx_with_removed(
+                &package.files,
+                &overrides,
+                &self.removed_parts,
+            )?
+        })
     }
 
     pub fn snapshot(&self) -> Option<WordDocumentSnapshot> {
@@ -11092,6 +11108,7 @@ impl WordDocument {
         let document = self.document.as_ref().map(|rc| (**rc).clone())?;
         Some(WordDocumentSnapshot {
             source_package: None,
+            source_archive: None,
             document,
             raw_document: self.raw_document.clone(),
             next_revision_id: self.next_revision_id,
@@ -11167,12 +11184,14 @@ impl WordDocument {
     pub fn snapshot_for_replacement(&self) -> Option<WordDocumentSnapshot> {
         let mut snapshot = self.snapshot_including_package()?;
         snapshot.source_package = self.package.clone();
+        snapshot.source_archive = self.source_archive.clone();
         Some(snapshot)
     }
 
     pub fn restore_snapshot(&mut self, snapshot: WordDocumentSnapshot) {
         if let Some(package) = snapshot.source_package {
             self.package = Some(package);
+            self.source_archive = snapshot.source_archive;
         }
         self.document = Some(Rc::new(snapshot.document));
         self.raw_document = snapshot.raw_document;
@@ -38800,8 +38819,8 @@ mod tests {
     use proptest::prelude::*;
     use std::collections::BTreeMap;
     use std::hint::black_box;
-    use std::io::Read;
     use std::io::Write;
+    use std::io::{Cursor, Read};
     use std::path::PathBuf;
     use std::time::{Duration, Instant};
     use zip::write::SimpleFileOptions;
@@ -38849,6 +38868,50 @@ mod tests {
             .and_then(|(_, body)| body.split_once("</w:body>"))
             .map(|(body, _)| body.to_string())
             .expect("exported body")
+    }
+
+    #[test]
+    fn export_preserves_untouched_zip_members_and_replacement_source() {
+        fn source(marker: u8) -> Vec<u8> {
+            let template = build_document_docx(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>editable</w:t></w:r></w:p></w:body></w:document>"#,
+            );
+            let mut archive = ZipArchive::new(Cursor::new(template)).unwrap();
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let stored =
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+            for index in 0..archive.len() {
+                let mut part = archive.by_index(index).unwrap();
+                writer.start_file(part.name().unwrap(), stored).unwrap();
+                std::io::copy(&mut part, &mut writer).unwrap();
+            }
+            writer.start_file("custom/opaque.bin", stored).unwrap();
+            writer.write_all(&vec![marker; 65_536]).unwrap();
+            writer.finish().unwrap().into_inner()
+        }
+        fn check(doc: &WordDocument, marker: u8) {
+            let bytes = doc.export_docx().unwrap();
+            let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut part = archive.by_name("custom/opaque.bin").unwrap();
+            assert_eq!(
+                part.compression(),
+                zip::CompressionMethod::Stored,
+                "an untouched source member must not be recompressed"
+            );
+            let mut actual = Vec::new();
+            part.read_to_end(&mut actual).unwrap();
+            assert_eq!(actual, vec![marker; 65_536]);
+        }
+        let load = |bytes: &[u8]| {
+            executor::block_on(WordDocument::load(bytes, &Options::default())).unwrap()
+        };
+        let original = load(&source(17));
+        check(&original, 17);
+        let snapshot = original.snapshot_for_replacement().unwrap();
+        let mut replacement = load(&source(29));
+        check(&replacement, 29);
+        replacement.restore_snapshot(snapshot);
+        check(&replacement, 17);
     }
 
     fn load_single_paragraph_document(paragraph_xml: &str) -> WordDocument {
