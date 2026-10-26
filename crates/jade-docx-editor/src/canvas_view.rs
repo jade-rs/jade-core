@@ -16618,7 +16618,21 @@ impl OffscreenDocumentView {
     pub fn canvas_size(&self) -> Result<JsValue, JsValue> {
         let renderer = self.renderer.borrow();
         let (width, height) = renderer.canvas_size_css();
-        to_value(&CanvasSize { width, height }).map_err(|e| JsValue::from_str(&format!("{e}")))
+        let size = to_value(&CanvasSize { width, height })
+            .map_err(|e| JsValue::from_str(&format!("{e}")))?;
+        if let Some((top, raster_height)) = renderer.pageless_viewport() {
+            Reflect::set(
+                &size,
+                &JsValue::from_str("viewportTop"),
+                &JsValue::from_f64(top),
+            )?;
+            Reflect::set(
+                &size,
+                &JsValue::from_str("rasterHeight"),
+                &JsValue::from_f64(raster_height),
+            )?;
+        }
+        Ok(size)
     }
 
     #[wasm_bindgen]
@@ -18077,6 +18091,13 @@ impl OffscreenDocumentView {
         self.rerender_after_display_change(|renderer| {
             renderer.set_revision_display_flags(render_changes, render_original);
         })
+    }
+
+    /// Repaint a bounded surface using the existing document layout/coordinates.
+    #[wasm_bindgen(js_name = setPagelessViewport)]
+    pub fn set_pageless_viewport(&self, top: f64) -> Result<JsValue, JsValue> {
+        self.renderer.borrow_mut().set_pageless_viewport(top)?;
+        self.rerender_after_display_change(|_| {})
     }
 
     /// Re-renders the cached document and builds the payload the embedder

@@ -91,7 +91,7 @@ pub trait CanvasRenderHost {
     /// canvas to its initial state.
     fn reset_pages(&mut self) -> Result<(), JsValue>;
     /// Configures the base canvas element with the desired size and initial
-    /// scaling. Pageless mode uses a dynamic height that can grow later.
+    /// scaling. Pageless hosts may use a bounded raster with a growing logical height.
     fn configure_base_canvas(
         &mut self,
         width: f64,
@@ -102,13 +102,20 @@ pub trait CanvasRenderHost {
     /// Clears the current canvas contents. In pageless mode only the visible
     /// portion is reset to avoid unnecessary growth.
     fn clear(&mut self, page_width: f64, pageless: bool, full_height: f64) -> Result<(), JsValue>;
-    /// Ensures that the pageless canvas is tall enough to fit the requested
-    /// height plus the trailing margin.
+    /// Extends the pageless document's logical height including the trailing margin.
     fn ensure_pageless_height(
         &mut self,
         required_height: f64,
         margin_bottom: f64,
     ) -> Result<(), JsValue>;
+    fn pageless_viewport(&self) -> Option<(f64, f64)> {
+        None
+    }
+    /// Moves the bounded pageless raster within the document's logical space.
+    /// Hosts without viewport rendering keep their existing full-surface behavior.
+    fn set_pageless_viewport(&mut self, _top: f64) -> Result<(), JsValue> {
+        Ok(())
+    }
     /// Allocates and prepares a new canvas that represents the next physical
     /// page.
     fn start_new_page(&mut self, width: f64, height: f64, margin_top: f64) -> Result<(), JsValue>;
@@ -858,6 +865,8 @@ pub struct OffscreenRenderHost {
     keep_window: Option<(usize, usize)>,
     page_cursor: usize,
     pageless_mode: bool,
+    pageless_top: f64,
+    pageless_height: f64,
     device_pixel_ratio: f64,
     /// Whether the base canvas context needs its transform/scale re-applied on
     /// the next activation. `false` means the context already holds the correct
@@ -898,6 +907,19 @@ pub struct OffscreenRenderHost {
     hot_page_backing_reuses: u64,
 }
 
+/// Bound both the raster height and its pixel area independently
+/// of document length. Logical geometry continues to cover the whole document.
+fn pageless_raster_height(width: f64, ratio: f64) -> f64 {
+    let ratio = if ratio.is_finite() && ratio > 0.0 {
+        ratio
+    } else {
+        1.0
+    };
+    let width_px = (width.max(1.0) * ratio).ceil();
+    let height_px = (16_777_216.0 / width_px).floor().clamp(1.0, 8192.0);
+    (4096.0 * ratio).min(height_px) / ratio
+}
+
 impl OffscreenRenderHost {
     pub fn new(canvas: OffscreenCanvas, device_pixel_ratio: f64) -> Result<Self, JsValue> {
         let ratio = if device_pixel_ratio.is_finite() && device_pixel_ratio > 0.0 {
@@ -927,6 +949,8 @@ impl OffscreenRenderHost {
             keep_window: None,
             page_cursor: 0,
             pageless_mode: true,
+            pageless_top: 0.0,
+            pageless_height: 1.0,
             device_pixel_ratio: ratio,
             // `create_scaled_context` above already applied the identity
             // transform + dpr scale + default font/fill, so the base context
@@ -1133,6 +1157,9 @@ impl OffscreenRenderHost {
 
     fn rebuild_context(&mut self) -> Result<(), JsValue> {
         Self::initialize_scaled_context(&self.context, self.device_pixel_ratio)?;
+        if self.pageless_mode {
+            self.context.translate(0.0, -self.pageless_top)?;
+        }
         Ok(())
     }
 
@@ -1273,7 +1300,8 @@ impl CanvasRenderHost for OffscreenRenderHost {
         self.pageless_mode = pageless;
 
         let target_height = if pageless {
-            (margin_top + 1.0).ceil().max(1.0)
+            self.pageless_height = (margin_top + 1.0).ceil().max(1.0);
+            pageless_raster_height(width, self.device_pixel_ratio)
         } else {
             height.max(1.0)
         };
@@ -1304,7 +1332,12 @@ impl CanvasRenderHost for OffscreenRenderHost {
         } else {
             full_height
         };
-        self.context.clear_rect(0.0, 0.0, width, height);
+        self.context.clear_rect(
+            0.0,
+            if pageless { self.pageless_top } else { 0.0 },
+            width,
+            height,
+        );
         Ok(())
     }
 
@@ -1317,47 +1350,28 @@ impl CanvasRenderHost for OffscreenRenderHost {
             return Ok(());
         }
 
-        let current_height_css = self.device_to_css(self.base_canvas.height() as f64);
-        if required_height > current_height_css {
-            let mut new_height_css = (required_height + margin_bottom).ceil();
-            if new_height_css <= current_height_css {
-                new_height_css = current_height_css;
-            }
-
-            if new_height_css > current_height_css {
-                let width_css = self.device_to_css(self.base_canvas.width() as f64);
-                let prev_height = self.base_canvas.height();
-                let image_data: Option<ImageData> =
-                    if self.base_canvas.width() > 0 && prev_height > 0 {
-                        self.context
-                            .get_image_data(
-                                0.0,
-                                0.0,
-                                self.base_canvas.width() as f64,
-                                prev_height as f64,
-                            )
-                            .ok()
-                    } else {
-                        None
-                    };
-
-                if Self::set_canvas_css_size(
-                    &self.base_canvas,
-                    self.device_pixel_ratio,
-                    width_css,
-                    new_height_css,
-                ) {
-                    self.base_context_needs_rebuild = true;
-                }
-                self.base_logical_size = (width_css, new_height_css);
-                self.activate_base_canvas()?;
-
-                if let Some(data) = image_data {
-                    let _ = self.context.put_image_data(&data, 0.0, 0.0);
-                }
-            }
-        }
+        self.pageless_height = self
+            .pageless_height
+            .max((required_height + margin_bottom).ceil());
         Ok(())
+    }
+
+    fn pageless_viewport(&self) -> Option<(f64, f64)> {
+        self.pageless_mode.then(|| {
+            (
+                self.pageless_top,
+                self.device_to_css(self.base_canvas.height() as f64),
+            )
+        })
+    }
+
+    fn set_pageless_viewport(&mut self, top: f64) -> Result<(), JsValue> {
+        if !self.pageless_mode || !top.is_finite() || top < 0.0 {
+            return Err(JsValue::from_str("Invalid pageless viewport"));
+        }
+        self.pageless_top = top;
+        self.base_context_needs_rebuild = true;
+        self.activate_base_canvas()
     }
 
     fn start_new_page(&mut self, width: f64, height: f64, _margin_top: f64) -> Result<(), JsValue> {
@@ -1658,8 +1672,7 @@ impl CanvasRenderHost for OffscreenRenderHost {
     fn canvas_css_size(&self) -> (f64, f64) {
         if self.pageless_mode {
             let width = self.device_to_css(self.current_canvas.width() as f64);
-            let height = self.device_to_css(self.current_canvas.height() as f64);
-            (width, height)
+            (width, self.pageless_height)
         } else {
             self.base_css_size()
         }
@@ -2093,5 +2106,22 @@ mod tests {
     fn snap_css_length_to_device_pixels_rounds_to_backing_store_multiple() {
         let snapped = snap_css_length_to_device_pixels(816.33, 2.0);
         assert!((snapped - 816.5).abs() < 1e-6);
+    }
+}
+
+#[cfg(test)]
+mod pageless_viewport_tests {
+    use super::pageless_raster_height;
+
+    #[test]
+    fn raster_memory_is_bounded_at_high_dpi_and_wide_document_sizes() {
+        for ratio in [1.0, 2.0, 3.0, 4.0] {
+            for width in [800.0, 1600.0, 3200.0] {
+                let height = pageless_raster_height(width, ratio);
+                assert!(height > 0.0);
+                assert!(height * ratio <= 8192.0);
+                assert!((width * ratio).ceil() * (height * ratio).round() <= 16_777_216.0);
+            }
+        }
     }
 }
