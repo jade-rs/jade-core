@@ -29813,6 +29813,31 @@ impl WordDocument {
         TextPosition::new(position.paragraph, offset)
     }
 
+    /// Convert a model-text match to selection coordinates, excluding reference
+    /// marks immediately before the first character or after the last one.
+    pub fn model_text_range_to_rendered(
+        &self,
+        paragraph: usize,
+        start: usize,
+        end: usize,
+    ) -> (usize, usize) {
+        let mut from = self
+            .model_to_rendered_text_position(TextPosition::new(paragraph, start))
+            .offset;
+        let to = self
+            .model_to_rendered_text_position(TextPosition::new(paragraph, end))
+            .offset;
+        if start < end {
+            from += self
+                .reference_marker_spans(paragraph)
+                .iter()
+                .filter(|span| span.model_offset == start)
+                .map(|span| span.rendered_len)
+                .sum::<usize>();
+        }
+        (from, to)
+    }
+
     /// Footnote references in rendered body-story paragraph coordinates.
     pub fn footnote_reference_positions(&self) -> Vec<FootnoteReferencePosition> {
         self.note_reference_positions(NoteKind::Footnote)

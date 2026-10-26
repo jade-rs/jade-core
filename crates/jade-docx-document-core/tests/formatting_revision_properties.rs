@@ -863,6 +863,58 @@ proptest! {
     })]
 
     #[test]
+    fn search_matches_with_note_references_are_editable_and_reversible(
+        prefix in prop::collection::vec(prop::sample::select(vec!['a', '日', '🙂']), 0..12),
+        suffix in prop::collection::vec(prop::sample::select(vec!['z', '本', '🙃']), 0..12),
+        placements in prop::collection::vec((any::<usize>(), any::<bool>()), 1..7),
+        reopen in any::<bool>(),
+    ) {
+        let prefix: String = prefix.into_iter().collect();
+        let suffix: String = suffix.into_iter().collect();
+        let needle = "Abあ🙂Z";
+        let text = format!("{prefix}{needle}{suffix}");
+        let mut word = fixture();
+        apply(&mut word, vec![json!({"type": "replace_range", "start_paragraph": 0,
+            "end_paragraph": 0, "start_offset": 0, "end_offset": "Aあ🙂z".len(), "text": text})]);
+        let boundaries: Vec<_> = text.char_indices().map(|(i, _)| i).chain(std::iter::once(text.len())).collect();
+        for (seed, footnote) in placements {
+            let model = if seed % 3 == 0 { prefix.len() } else { boundaries[seed % boundaries.len()] };
+            let offset = word.model_to_rendered_text_position(TextPosition::new(0, model)).offset;
+            apply(&mut word, vec![json!({"type": if footnote {"insert_footnote"} else {"insert_endnote"},
+                "paragraph": 0, "offset": offset, "text": "注🙂"})]);
+        }
+        if reopen { word = reload(&word); }
+        let original = snapshot(&word);
+        let request: HeadlessQueryRequest = serde_json::from_value(json!({"queries": [{"type": "search_text", "query": needle}]})).unwrap();
+        let response = execute_headless_queries_on_document(&word, &request).unwrap();
+        let HeadlessQueryResult::SearchText {matches, ..} = &response.results[0] else {panic!("search result")};
+        prop_assert_eq!(matches.len(), 1);
+        let hit = &matches[0];
+        prop_assert_eq!(word.rendered_to_model_text_position(TextPosition::new(0, hit.start_offset)).offset, prefix.len());
+        prop_assert_eq!(word.rendered_to_model_text_position(TextPosition::new(0, hit.end_offset)).offset, prefix.len() + needle.len());
+        track(&mut word);
+        apply(&mut word, vec![json!({"type": "set_bold", "start_paragraph": hit.paragraph,
+            "end_paragraph": hit.paragraph, "start_offset": hit.start_offset, "end_offset": hit.end_offset, "value": true})]);
+        let changed = snapshot(&reload(&word));
+        // Only the matched characters change, even with markers inside the match.
+        let from = prefix.chars().count();
+        let to = from + needle.chars().count();
+        prop_assert_ne!(&changed[0], &original[0]);
+        prop_assert_eq!(changed[0][1].as_array().unwrap().len(), original[0][1].as_array().unwrap().len());
+        for (index, (before, after)) in original[0][1].as_array().unwrap().iter().zip(changed[0][1].as_array().unwrap()).enumerate() {
+            if index < from || index >= to {
+                prop_assert_eq!(before, after);
+            } else {
+                prop_assert_eq!(&before[0], &after[0]);
+                prop_assert!(after[1][1].as_array().unwrap().iter().any(|property| property[0] == "w:b"));
+            }
+        }
+        word = reload(&word);
+        decide(&mut word, false, None);
+        prop_assert_eq!(snapshot(&reload(&word)), original);
+    }
+
+    #[test]
     fn note_and_body_formatting_have_independent_review_baselines(edits in edits(), target in 0usize..3, accept in any::<bool>()) {
         let mut word = note_fixture();
         let surfaces = [0, (0..word.paragraph_count()).find(|&p| matches!(word.paragraph_story(p), Some(ParagraphStory::Footnote { .. }))).unwrap(),
