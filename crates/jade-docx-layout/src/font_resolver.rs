@@ -987,6 +987,13 @@ struct CachedAsciiMetrics {
     metrics: Option<crate::line_metrics::WordAsciiMetrics>,
 }
 
+#[derive(Clone, Debug)]
+struct CachedMonospaceMetrics {
+    // Retain allocations so identity remains safe after public slot replacement.
+    descriptors: [Rc<str>; 4],
+    em_px: [Option<f64>; 4],
+}
+
 /// Runtime style metadata exposed to `LineWrapContext`.
 #[derive(Clone, Debug)]
 pub struct ResolvedRunStyle {
@@ -1018,6 +1025,7 @@ pub struct ResolvedRunStyle {
     /// rather than for every stretch of text drawn in the style.
     pub has_font_features: bool,
     fixed_ascii_metrics: std::cell::OnceCell<CachedAsciiMetrics>,
+    monospace_metrics: std::cell::OnceCell<Box<CachedMonospaceMetrics>>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
 }
@@ -1108,9 +1116,36 @@ impl ResolvedRunStyle {
             joins_characters,
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
+            monospace_metrics: std::cell::OnceCell::new(),
             fixed_east_asia_descriptor,
             fixed_east_asia_em_px,
         }
+    }
+
+    /// Resolve each slot once instead of borrowing a thread-local string cache
+    /// for every glyph. Keep the lazy metadata off the hot style structure.
+    #[inline]
+    pub(crate) fn monospace_em_px(&self, descriptor: &str) -> Option<f64> {
+        let cached = self.monospace_metrics.get_or_init(|| {
+            let descriptors = [
+                Rc::clone(&self.font_descriptor_east_asia),
+                Rc::clone(&self.font_descriptor_latin_ascii),
+                Rc::clone(&self.font_descriptor_latin_hansi),
+                Rc::clone(&self.font_descriptor_complex),
+            ];
+            let em_px = descriptors
+                .each_ref()
+                .map(|descriptor| crate::line_metrics::word_monospace_em_px(descriptor));
+            Box::new(CachedMonospaceMetrics { descriptors, em_px })
+        });
+        for (key, em) in cached.descriptors.iter().zip(&cached.em_px) {
+            if std::ptr::eq(key.as_ref(), descriptor) {
+                return *em;
+            }
+        }
+        // Public slots may have changed after initialization. Their new
+        // allocations must never inherit the previous descriptor's metrics.
+        crate::line_metrics::word_monospace_em_px(descriptor)
     }
 
     #[inline]
@@ -1275,6 +1310,73 @@ mod tests {
     use jade_docx_reader::document::RunFonts;
     use std::hint::black_box;
     use std::time::Instant;
+
+    proptest::proptest! {
+        #[test]
+        fn monospace_metrics_follow_slot_replacement_and_cloning(
+            operations in proptest::collection::vec((0u8..4, 0u8..8, 0u16..100, proptest::bool::ANY), 1..200)
+        ) {
+            let families = ["Calibri", "MS Mincho", "MS Gothic", "MS PMincho",
+                "ＭＳ 明朝", "MS UI Gothic", "ＭＳ ゴシック", "Yu Mincho"];
+            let mut style = ResolvedRunStyle::new(
+                "11pt 'Calibri'", "10.5pt 'MS Mincho'", "12pt 'MS Gothic'",
+                "10.5pt 'MS PMincho'", 0.0, 1.0, true, None,
+            );
+            // Populate before cloning: mutations must not contaminate a clone.
+            style.monospace_em_px(&style.font_descriptor_east_asia);
+            let original = style.clone();
+            for (slot, family, size, mutate) in operations {
+                if mutate {
+                    let descriptor = Rc::from(format!("{size}pt '{}'", families[family as usize]));
+                    match slot {
+                        0 => style.font_descriptor_latin_ascii = descriptor,
+                        1 => style.font_descriptor_latin_hansi = descriptor,
+                        2 => style.font_descriptor_east_asia = descriptor,
+                        _ => style.font_descriptor_complex = descriptor,
+                    }
+                }
+                for current in [&style, &original] {
+                    for descriptor in [&current.font_descriptor_latin_ascii,
+                        &current.font_descriptor_latin_hansi, &current.font_descriptor_east_asia,
+                        &current.font_descriptor_complex] {
+                        proptest::prop_assert_eq!(current.monospace_em_px(descriptor),
+                            crate::line_metrics::word_monospace_em_px(descriptor));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn monospace_metrics_reuse_resolved_slots_including_misses() {
+        use crate::line_metrics::WORD_MONOSPACE_DESCRIPTOR_PARSES;
+        let style = ResolvedRunStyle::new(
+            "11pt 'Calibri'",
+            "10.5pt 'MS Mincho'",
+            "12pt 'MS Gothic'",
+            "10.5pt 'MS PMincho'",
+            0.0,
+            1.0,
+            true,
+            None,
+        );
+        crate::line_metrics::word_monospace_em_px("1pt 'cache reset face'");
+        WORD_MONOSPACE_DESCRIPTOR_PARSES.with(|count| count.set(0));
+        for _ in 0..1000 {
+            for (descriptor, expected) in [
+                (&style.font_descriptor_latin_ascii, None),
+                (&style.font_descriptor_latin_hansi, Some(14.0)),
+                (&style.font_descriptor_east_asia, Some(16.0)),
+                (&style.font_descriptor_complex, None),
+            ] {
+                assert_eq!(style.monospace_em_px(descriptor), expected);
+            }
+        }
+        assert_eq!(
+            WORD_MONOSPACE_DESCRIPTOR_PARSES.with(std::cell::Cell::get),
+            4
+        );
+    }
 
     #[test]
     fn noto_jp_ascii_metrics_keep_known_pdf_widths_and_unobserved_faces() {

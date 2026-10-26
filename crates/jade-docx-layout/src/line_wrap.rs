@@ -2476,7 +2476,8 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let monospace_width = if measured_width_is_oracle {
         None
     } else {
-        crate::line_metrics::word_monospace_advance_px(font_descriptor, grapheme)
+        crate::line_metrics::word_monospace_cell_em(grapheme)
+            .and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
             .or_else(|| crate::line_metrics::word_mac_emoji_advance_px(grapheme, font_descriptor))
     };
     let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
