@@ -8405,7 +8405,7 @@ fn page_dimension_runs(sizes: impl IntoIterator<Item = (f64, f64)>) -> Vec<(usiz
 }
 
 /// A single search match returned by [`OffscreenDocumentView::search_text`].
-/// Offsets are byte offsets into the paragraph's concatenated run text.
+/// Offsets use rendered UTF-8 selection coordinates, including note references.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SearchMatchJs {
@@ -16256,9 +16256,8 @@ impl OffscreenDocumentView {
     }
 
     /// Searches the body for `query`, returning up to `max_results` matches as
-    /// `[{paragraph, startOffset, endOffset}]` (byte offsets into the
-    /// paragraph's concatenated run text, matching the selection/replace
-    /// coordinate system). Used by the IDE 検索/置換 panel.
+    /// `[{paragraph, startOffset, endOffset}]` in rendered UTF-8 selection
+    /// coordinates. Used by the IDE 検索/置換 panel.
     #[wasm_bindgen(js_name = "searchText")]
     pub fn search_text(&self, query: &str, max_results: usize) -> JsValue {
         if query.is_empty() {
@@ -16283,10 +16282,15 @@ impl OffscreenDocumentView {
                 text.push_str(&run.text);
             }
             for (start_offset, matched) in text.match_indices(query) {
+                let (start_offset, end_offset) = doc.model_text_range_to_rendered(
+                    surface_index,
+                    start_offset,
+                    start_offset + matched.len(),
+                );
                 matches.push(SearchMatchJs {
                     paragraph: paragraph_index,
                     start_offset,
-                    end_offset: start_offset + matched.len(),
+                    end_offset,
                 });
                 if matches.len() >= limit {
                     break 'paragraphs;
@@ -16294,6 +16298,25 @@ impl OffscreenDocumentView {
             }
         }
         to_value(&matches).unwrap_or(JsValue::NULL)
+    }
+
+    /// Map a browser-side text search match to the same coordinates as searchText.
+    #[wasm_bindgen(js_name = "renderedSearchMatch")]
+    pub fn rendered_search_match(&self, paragraph: usize, start: usize, end: usize) -> JsValue {
+        let state = self.state.borrow();
+        let Some(doc) = state.word_doc.as_ref() else {
+            return JsValue::NULL;
+        };
+        let Some(surface) = doc.surface_index_for_body(paragraph) else {
+            return JsValue::NULL;
+        };
+        let (start_offset, end_offset) = doc.model_text_range_to_rendered(surface, start, end);
+        to_value(&SearchMatchJs {
+            paragraph,
+            start_offset,
+            end_offset,
+        })
+        .unwrap_or(JsValue::NULL)
     }
 
     /// Returns the 0-based page index a body paragraph starts on, or null when
