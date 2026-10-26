@@ -453,17 +453,13 @@ impl WordDocument {
                     && revision.paragraph <= end
                     && ids.is_none_or(|filter| filter.matches(revision.id.as_deref()))
                     && targets.is_none_or(|targets| {
-                        targets
-                            .formats
-                            .get(&revision.paragraph)
-                            .is_some_and(|formats| {
-                                formats.iter().any(|(start, end, id, kind)| {
-                                    *start <= revision.start_offset
-                                        && revision.end_offset <= *end
-                                        && *id == revision.id
-                                        && *kind == revision.kind
-                                })
-                            })
+                        targets.contains_format(
+                            revision.paragraph,
+                            revision.start_offset,
+                            revision.end_offset,
+                            revision.id.as_deref(),
+                            &revision.kind,
+                        )
                     })
             })
             .collect::<Vec<_>>();

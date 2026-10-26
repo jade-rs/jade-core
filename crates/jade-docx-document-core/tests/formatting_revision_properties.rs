@@ -51,6 +51,24 @@ fn fixture() -> WordDocument {
     load(&out.finish().unwrap().into_inner())
 }
 
+fn with_document_xml(word: &WordDocument, xml: &str) -> WordDocument {
+    let mut archive = zip::ZipArchive::new(Cursor::new(word.export_docx().unwrap())).unwrap();
+    let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).unwrap();
+        if name == "word/document.xml" {
+            bytes = xml.as_bytes().to_vec();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        out.write_all(&bytes).unwrap();
+    }
+    load(&out.finish().unwrap().into_inner())
+}
+
 fn load(bytes: &[u8]) -> WordDocument {
     block_on(WordDocument::load(bytes, &Options::default())).unwrap()
 }
@@ -440,8 +458,16 @@ impl Edit {
 
 // Include zero-width note references: a character-only oracle misses corruption
 // of their styles and review baselines.
-fn reference_properties(word: &WordDocument) -> Vec<Value> {
-    fn visit(e: &XmlElement, out: &mut Vec<Value>) {
+fn reference_snapshots(word: &WordDocument) -> Vec<(usize, usize, Value)> {
+    fn visit(
+        e: &XmlElement,
+        paragraph: usize,
+        offset: &mut usize,
+        out: &mut Vec<(usize, usize, Value)>,
+    ) {
+        if matches!(e.name.as_str(), "w:pPr" | "w:rPr") {
+            return;
+        }
         if e.name == "w:r" {
             for node in &e.children {
                 if let XmlNode::Element(reference) = node {
@@ -449,26 +475,45 @@ fn reference_properties(word: &WordDocument) -> Vec<Value> {
                         reference.name.as_str(),
                         "w:footnoteReference" | "w:endnoteReference"
                     ) {
-                        out.push(json!([
-                            reference.name,
-                            properties(Some(reference)),
-                            properties(child(e, "w:rPr"))
-                        ]));
+                        out.push((
+                            paragraph,
+                            *offset,
+                            json!([
+                                reference.name,
+                                properties(Some(reference)),
+                                properties(child(e, "w:rPr"))
+                            ]),
+                        ));
                     }
                 }
             }
         }
-        for node in &e.children {
-            if let XmlNode::Element(e) = node {
-                visit(e, out);
+        if matches!(e.name.as_str(), "w:t" | "w:delText") {
+            for node in &e.children {
+                if let XmlNode::Text(text) = node {
+                    *offset += text.len();
+                }
+            }
+        } else {
+            for node in &e.children {
+                if let XmlNode::Element(e) = node {
+                    visit(e, paragraph, offset, out);
+                }
             }
         }
     }
     let mut out = Vec::new();
     for index in 0..word.paragraph_count() {
-        visit(&paragraph_xml(word, index), &mut out);
+        visit(&paragraph_xml(word, index), index, &mut 0, &mut out);
     }
     out
+}
+
+fn reference_properties(word: &WordDocument) -> Vec<Value> {
+    reference_snapshots(word)
+        .into_iter()
+        .map(|(_, _, properties)| properties)
+        .collect()
 }
 
 #[test]
@@ -986,12 +1031,121 @@ fn every_paragraph_format_keeps_original_ppr_and_unrelated_mark_and_section() {
     }
 }
 
+fn check_shared_id_review(
+    id: u32,
+    insertion: bool,
+    reopen: bool,
+    kind: usize,
+    accept: bool,
+) -> Result<(), proptest::test_runner::TestCaseError> {
+    // Imported documents may reuse IDs across different revision kinds.
+    // Keep text when reviewing its revision; review formatting independently.
+    let tag = if insertion { "ins" } else { "del" };
+    let text_tag = if insertion { "t" } else { "delText" };
+    let xml = format!(
+        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:jc w:val="right"/><w:pPrChange w:id="{id}" w:author="Reviewer" w:date="2026-10-26T00:00:00Z"><w:pPr><w:jc w:val="left"/></w:pPr></w:pPrChange></w:pPr>
+<w:{tag} w:id="{id}" w:author="Reviewer" w:date="2026-10-26T00:00:00Z"><w:r><w:rPr><w:b/><w:rPrChange w:id="{id}" w:author="Reviewer" w:date="2026-10-26T00:00:00Z"><w:rPr><w:i/></w:rPr></w:rPrChange></w:rPr><w:{text_tag}>Aあ🙂z</w:{text_tag}></w:r></w:{tag}></w:p>
+</w:body></w:document>"#
+    );
+    let mut word = with_document_xml(&fixture(), &xml);
+    if reopen {
+        word = reload(&word);
+    }
+    let before = revisions(&word);
+    let selected_kind = [
+        if insertion { "inserted" } else { "deleted" },
+        "paragraphFormat",
+        "runFormat",
+    ][kind];
+    let selected = before
+        .iter()
+        .find(|r| r.kind == selected_kind)
+        .unwrap()
+        .clone();
+    prop_assert_eq!(before.len(), 3);
+    let accept = if kind == 0 { insertion } else { accept };
+    let mut expected = snapshot(&word);
+    if !accept && kind != 0 {
+        let xml = paragraph_xml(&word, 0);
+        if kind == 1 {
+            let ppr = child(&xml, "w:pPr").unwrap();
+            expected[0][0] = properties(child(child(ppr, "w:pPrChange").unwrap(), "w:pPr"));
+        } else {
+            let run = child(child(&xml, &format!("w:{tag}")).unwrap(), "w:r").unwrap();
+            let rpr = child(run, "w:rPr").unwrap();
+            let previous = properties(child(child(rpr, "w:rPrChange").unwrap(), "w:rPr"));
+            for c in expected[0][1].as_array_mut().unwrap() {
+                c[1] = previous.clone();
+            }
+        }
+    }
+    let remaining: Vec<_> = before
+        .into_iter()
+        .filter(|r| r.kind != selected_kind)
+        .collect();
+    apply(
+        &mut word,
+        vec![json!({
+            "type": if accept { "accept_revisions" } else { "reject_revisions" },
+            "revision_targets": [{"paragraph": selected.paragraph, "start_offset": selected.start_offset,
+                "end_offset": selected.end_offset, "id": selected.id, "paragraph_mark": false,
+                "format_change": if kind == 0 { None } else { Some(selected_kind) }}]
+        })],
+    );
+    prop_assert_eq!(
+        serde_json::to_value(revisions(&word)).unwrap(),
+        serde_json::to_value(&remaining).unwrap()
+    );
+    prop_assert_eq!(snapshot(&word), expected.clone());
+    let word = reload(&word);
+    // Export repairs duplicate IDs in imported XML. Compare all other
+    // revision metadata and assert uniqueness of the repaired IDs.
+    let without_ids = |mut entries: Vec<jade_docx_headless_api::HeadlessRevisionSnapshot>| {
+        for r in &mut entries {
+            r.id = None;
+        }
+        serde_json::to_value(entries).unwrap()
+    };
+    prop_assert_eq!(
+        without_ids(revisions(&word)),
+        without_ids(remaining.clone())
+    );
+    let ids: std::collections::HashSet<_> = revisions(&word).into_iter().map(|r| r.id).collect();
+    prop_assert_eq!(ids.len(), remaining.len());
+    prop_assert_eq!(snapshot(&word), expected);
+    Ok(())
+}
+
+#[test]
+fn shared_id_revision_review_regression_matrix() {
+    for id in [0, 46] {
+        for insertion in [false, true] {
+            for reopen in [false, true] {
+                for kind in 0..3 {
+                    for accept in [false, true] {
+                        check_shared_id_review(id, insertion, reopen, kind, accept).unwrap();
+                    }
+                }
+            }
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: std::env::var("PROPTEST_CASES").ok().and_then(|v| v.parse().ok()).unwrap_or(128),
         failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
         ..ProptestConfig::default()
     })]
+
+    #[test]
+    fn review_targets_isolate_kinds_with_a_shared_id(
+        id in 0u32..1000, insertion in any::<bool>(), reopen in any::<bool>(),
+        kind in 0usize..3, accept in any::<bool>(),
+    ) {
+        check_shared_id_review(id, insertion, reopen, kind, accept)?;
+    }
 
     #[test]
     fn search_matches_with_note_references_are_editable_and_reversible(
@@ -1086,6 +1240,85 @@ proptest! {
         decide(&mut word, accept, Some(surfaces[target]));
         prop_assert_eq!(snapshot(&reload(&word)), expected);
         prop_assert!(revisions(&reload(&word)).iter().all(|r| r.paragraph != surfaces[target]));
+    }
+
+    #[test]
+    fn partial_reviews_and_more_edits_keep_per_property_baselines(
+        edits in edits(), decisions in prop::collection::vec((any::<usize>(), any::<bool>()), 1..18),
+    ) {
+        let mut word = note_fixture();
+        let surfaces = [0, (0..word.paragraph_count()).find(|&p| matches!(word.paragraph_story(p), Some(ParagraphStory::Footnote { .. }))).unwrap(),
+            (0..word.paragraph_count()).find(|&p| matches!(word.paragraph_story(p), Some(ParagraphStory::Endnote { .. }))).unwrap()];
+        let mut baseline = snapshot(&word);
+        let mut reference_baseline = reference_snapshots(&word);
+        track(&mut word);
+        for (step, mut edit) in edits.into_iter().enumerate() {
+            edit.paragraph = if edit.kind == 29 { surfaces[0] } else { surfaces[edit.paragraph] };
+            let mut command = edit.command();
+            if command.get("start_offset").is_some() {
+                let text: String = word.paragraph(edit.paragraph).unwrap().runs.iter().map(|r| r.text.as_str()).collect();
+                let boundaries: Vec<_> = text.char_indices().map(|(i, _)| i).chain(std::iter::once(text.len())).collect();
+                let base = boundaries.len() - 5;
+                command["start_offset"] = json!(word.model_to_rendered_text_position(TextPosition::new(edit.paragraph, boundaries[base + edit.from])).offset);
+                command["end_offset"] = json!(word.model_to_rendered_text_position(TextPosition::new(edit.paragraph, boundaries[base + edit.to])).offset);
+            }
+            apply(&mut word, vec![command]);
+            if edit.reload { word = reload(&word); track(&mut word); }
+            assert_revision_structure(&word);
+            let before = revisions(&word);
+            if before.is_empty() { continue; }
+            let (seed, accept) = decisions[step % decisions.len()];
+            let index = seed % before.len();
+            let selected = &before[index];
+            let mut expected = snapshot(&word);
+            let mut expected_references = reference_snapshots(&word);
+            let paragraph = selected.paragraph;
+            if selected.kind == "paragraphFormat" {
+                if accept { baseline[paragraph][0] = expected[paragraph][0].clone(); }
+                else { expected[paragraph][0] = baseline[paragraph][0].clone(); }
+            } else {
+                // Note paragraphs have a model-only reference marker before their
+                // XML text. Revision targets use model UTF-8 byte coordinates.
+                let model: String = word.paragraph(paragraph).unwrap().runs.iter().map(|r| r.text.as_str()).collect();
+                let text: String = expected[paragraph][1].as_array().unwrap().iter().map(|c| c[0].as_str().unwrap()).collect();
+                prop_assert!(model.ends_with(&text));
+                let prefix = model.len() - text.len();
+                for (character, (offset, _)) in text.char_indices().enumerate() {
+                    let offset = prefix + offset;
+                    if selected.start_offset <= offset && offset < selected.end_offset {
+                        if accept { baseline[paragraph][1][character][1] = expected[paragraph][1][character][1].clone(); }
+                        else { expected[paragraph][1][character][1] = baseline[paragraph][1][character][1].clone(); }
+                    }
+                }
+            }
+            if selected.kind == "runFormat" {
+                for (index, (p, offset, properties)) in expected_references.iter_mut().enumerate() {
+                    if *p == paragraph && selected.start_offset == *offset && selected.end_offset == *offset {
+                        if accept { reference_baseline[index].2 = properties.clone(); }
+                        else { *properties = reference_baseline[index].2.clone(); }
+                    }
+                }
+            }
+            apply(&mut word, vec![json!({
+                "type": if accept { "accept_revisions" } else { "reject_revisions" },
+                "revision_targets": [{"paragraph": paragraph, "start_offset": selected.start_offset,
+                    "end_offset": selected.end_offset, "paragraph_mark": selected.paragraph_mark,
+                    "id": selected.id, "format_change": selected.kind}]
+            })]);
+            prop_assert_eq!(snapshot(&word), expected.clone(), "step {}, edit {:?}", step, edit);
+            prop_assert_eq!(reference_snapshots(&word), expected_references.clone());
+            word = reload(&word);
+            prop_assert_eq!(reference_snapshots(&word), expected_references);
+            prop_assert_eq!(snapshot(&word), expected);
+            let mut remaining = serde_json::to_value(&before).unwrap().as_array().unwrap().clone();
+            remaining.remove(index);
+            prop_assert_eq!(serde_json::to_value(revisions(&word)).unwrap(), json!(remaining));
+            track(&mut word);
+        }
+        decide(&mut word, false, None);
+        prop_assert_eq!(snapshot(&reload(&word)), baseline);
+        prop_assert_eq!(reference_snapshots(&reload(&word)), reference_baseline);
+        prop_assert!(revisions(&reload(&word)).is_empty());
     }
 
     #[test]
