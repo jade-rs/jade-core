@@ -350,9 +350,7 @@ impl CommandExecutor {
                 .ensure_roundtrip_xml()
                 .map_err(|error| CommandError::Custom(error.to_string()))?;
             ctx.document.snapshot_including_package().map(|snapshot| {
-                let paragraphs = (0..ctx.document.paragraph_count())
-                    .filter_map(|index| ctx.document.paragraph(index).cloned())
-                    .collect::<Vec<_>>();
+                let paragraphs = ctx.document.formatting_before();
                 (snapshot, paragraphs, *ctx.selection)
             })
         } else {
@@ -391,7 +389,9 @@ impl CommandExecutor {
         }
         if let Some((before, paragraphs, selection_before)) = before {
             if let Some(raw) = before.raw_document.as_ref() {
-                ctx.document.record_formatting_changes(&paragraphs, raw);
+                ctx.document
+                    .record_formatting_changes(&paragraphs, raw)
+                    .map_err(CommandError::Custom)?;
             }
             if let Some(after) = ctx.document.snapshot_including_package() {
                 command = Box::new(TrackedFormattingCommand {

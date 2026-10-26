@@ -25262,6 +25262,15 @@ impl WordDocument {
             .as_ref()
             .map(|raw| collect_max_revision_id(raw.root()))
             .unwrap_or(0);
+        // Revision IDs are document-wide even though note XML uses separate
+        // part-local node IDs. Include notes after load and review decisions.
+        let max_id = [NoteKind::Footnote, NoteKind::Endnote]
+            .into_iter()
+            .filter_map(|kind| self.resolve_existing_notes_part_path(kind).ok())
+            .filter_map(|part| self.read_xml_part_content(&part))
+            .filter_map(|xml| DocxXmlDocument::parse(&xml).ok())
+            .map(|raw| collect_max_revision_id(raw.root()))
+            .fold(max_id, u32::max);
         self.next_revision_id = max_id.saturating_add(1).max(1);
     }
 

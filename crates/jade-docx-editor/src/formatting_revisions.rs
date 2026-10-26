@@ -51,162 +51,223 @@ fn signature(element: Option<&XmlElement>) -> String {
     result
 }
 
-impl WordDocument {
-    pub(crate) fn record_formatting_changes(
-        &mut self,
-        before: &[Paragraph],
-        old_raw: &DocxXmlDocument,
-    ) {
-        let Some(session) = self.revision_session.clone() else {
-            return;
+type RunChanges = HashMap<XmlNodeId, (Box<crate::document::RunPropertiesChange>, XmlElement)>;
+
+/// Note XML is reparsed on each edit. Bind only a temporary paragraph clone:
+/// storing these part-local IDs on the live model would alias body IDs.
+fn bind_note_paragraph(paragraph: &Paragraph, raw: &DocxXmlDocument, id: XmlNodeId) -> Paragraph {
+    let mut parent = raw.element(id).expect("note paragraph XML").clone();
+    parent.children = vec![XmlNode::Element(parent.clone())];
+    let mut blocks = vec![BodyElement::Paragraph(Box::new(paragraph.clone()))];
+    attach_block_xml_ids(&mut blocks, &parent, raw);
+    let BodyElement::Paragraph(paragraph) = blocks.remove(0) else {
+        unreachable!()
+    };
+    *paragraph
+}
+
+fn record_paragraph_changes(
+    old: &Paragraph,
+    current: &Paragraph,
+    old_raw: &DocxXmlDocument,
+    raw: &mut DocxXmlDocument,
+    session: &RevisionSession,
+    next_revision_id: &mut u32,
+) -> RunChanges {
+    let mut pending = Vec::new();
+    let Some(parent) = current.node_id.and_then(|id| raw.element(id)) else {
+        return HashMap::new();
+    };
+    let old_ppr = old
+        .node_id
+        .and_then(|id| old_raw.element(id))
+        .and_then(|element| child(element, "w:pPr"));
+    if signature(old_ppr) != signature(child(parent, "w:pPr")) {
+        pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned(), None));
+    }
+    let mut offset = 0usize;
+    for run in &current.runs {
+        let start = offset;
+        offset += run.text.len();
+        let mut old_offset = 0usize;
+        let source = old.runs.iter().find(|source| {
+            let from = old_offset;
+            old_offset += source.text.len();
+            from <= start
+                && (start < old_offset
+                    || run.text.is_empty() && source.text.is_empty() && from == start)
+        });
+        let Some(source) = source else {
+            continue;
         };
-        let Some(raw) = self.raw_document.as_ref() else {
-            return;
+        let Some(parent) = run.node_id.and_then(|id| raw.element(id)) else {
+            continue;
         };
-        let mut pending = Vec::new();
-        for (index, old) in before.iter().enumerate() {
-            let Some(current) = self.paragraph(index) else {
-                continue;
-            };
-            let Some(parent) = current.node_id.and_then(|id| raw.element(id)) else {
-                continue;
-            };
-            let old_ppr = old
-                .node_id
-                .and_then(|id| old_raw.element(id))
-                .and_then(|element| child(element, "w:pPr"));
-            if signature(old_ppr) != signature(child(parent, "w:pPr")) {
-                pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned(), None));
+        let old_rpr = source
+            .node_id
+            .and_then(|id| old_raw.element(id))
+            .and_then(|element| child(element, "w:rPr"));
+        if signature(old_rpr) != signature(child(parent, "w:rPr")) {
+            let mut original = source.properties.clone().unwrap_or_default();
+            if let Some(change) = original.change.take() {
+                original = change.previous;
             }
-            let mut offset = 0usize;
-            for run in &current.runs {
-                let start = offset;
-                offset += run.text.len();
-                let mut old_offset = 0usize;
-                let source = old.runs.iter().find(|source| {
-                    let from = old_offset;
-                    old_offset += source.text.len();
-                    from <= start && (start < old_offset || source.text.is_empty() && from == start)
-                });
-                let Some(source) = source else {
-                    continue;
-                };
-                let Some(parent) = run.node_id.and_then(|id| raw.element(id)) else {
-                    continue;
-                };
-                let old_rpr = source
-                    .node_id
-                    .and_then(|id| old_raw.element(id))
-                    .and_then(|element| child(element, "w:rPr"));
-                if signature(old_rpr) != signature(child(parent, "w:rPr")) {
-                    let mut original = source.properties.clone().unwrap_or_default();
-                    if let Some(change) = original.change.take() {
-                        original = change.previous;
-                    }
-                    pending.push((
-                        parent.id,
-                        "w:rPr",
-                        "w:rPrChange",
-                        old_rpr.cloned(),
-                        Some(original),
-                    ));
-                }
-            }
+            pending.push((
+                parent.id,
+                "w:rPr",
+                "w:rPrChange",
+                old_rpr.cloned(),
+                Some(original),
+            ));
         }
-        let mut run_changes = HashMap::new();
-        for (parent_id, property_name, change_name, previous, original_model) in pending {
-            let revision_id = self.allocate_revision_id().to_string();
-            let Some(raw) = self.raw_document.as_mut() else {
-                continue;
-            };
-            // Further edits to an unreviewed property retain its original value.
-            // Only the pre-command XML is authoritative. The command's model
-            // stamp may contain inherited properties and omit unmodeled XML.
-            let existing = previous
-                .as_ref()
-                .and_then(|props| child(props, change_name))
-                .cloned();
-            let change = if let Some(existing) = existing {
-                raw.create_element(change_name, existing.attributes, existing.children)
-            } else {
-                let mut original = previous
-                    .map(without_changes)
-                    .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
-                // CT_PPrBase excludes paragraph-mark and section properties.
-                // Their current values stay outside the paragraph-format revision.
-                if property_name == "w:pPr" {
-                    original.children.retain(|node| {
-                        !matches!(node, XmlNode::Element(e)
+    }
+    let mut run_changes = HashMap::new();
+    for (parent_id, property_name, change_name, previous, original_model) in pending {
+        let revision_id = next_revision_id.to_string();
+        *next_revision_id = next_revision_id.saturating_add(1);
+        // Further edits to an unreviewed property retain its original value.
+        // Only the pre-command XML is authoritative. The command's model
+        // stamp may contain inherited properties and omit unmodeled XML.
+        let existing = previous
+            .as_ref()
+            .and_then(|props| child(props, change_name))
+            .cloned();
+        let change = if let Some(existing) = existing {
+            raw.create_element(change_name, existing.attributes, existing.children)
+        } else {
+            let mut original = previous
+                .map(without_changes)
+                .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
+            // CT_PPrBase excludes paragraph-mark and section properties.
+            // Their current values stay outside the paragraph-format revision.
+            if property_name == "w:pPr" {
+                original.children.retain(|node| {
+                    !matches!(node, XmlNode::Element(e)
                         if e.name == "w:rPr" || e.name == "w:sectPr")
+                });
+            }
+            let mut attributes = vec![XmlAttribute {
+                name: "w:id".into(),
+                value: revision_id,
+            }];
+            for (name, value) in [
+                ("w:author", &session.author),
+                ("w:date", &session.date),
+                ("w16du:dateUtc", &session.date_utc),
+            ] {
+                if let Some(value) = value {
+                    attributes.push(XmlAttribute {
+                        name: name.into(),
+                        value: value.clone(),
                     });
                 }
-                let mut attributes = vec![XmlAttribute {
-                    name: "w:id".into(),
-                    value: revision_id,
-                }];
-                for (name, value) in [
-                    ("w:author", &session.author),
-                    ("w:date", &session.date),
-                    ("w16du:dateUtc", &session.date_utc),
-                ] {
-                    if let Some(value) = value {
-                        attributes.push(XmlAttribute {
-                            name: name.into(),
-                            value: value.clone(),
-                        });
-                    }
-                }
-                raw.create_element(change_name, attributes, vec![XmlNode::Element(original)])
-            };
-            if let Some(previous) = original_model {
-                run_changes.insert(
-                    parent_id,
-                    (
-                        Box::new(crate::document::RunPropertiesChange {
-                            id: attr(&change, "w:id"),
-                            author: attr(&change, "w:author"),
-                            date: attr(&change, "w:date"),
-                            previous,
-                        }),
-                        change.clone(),
-                    ),
-                );
             }
-            let mut properties = raw
-                .element(parent_id)
-                .and_then(|parent| child(parent, property_name))
-                .cloned()
-                .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
-            properties
-                .children
-                .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == change_name));
-            properties.children.push(XmlNode::Element(change));
-            if let Some(parent) = raw.element_mut(parent_id) {
-                parent
-                    .children
-                    .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == property_name));
-                parent.children.insert(0, XmlNode::Element(properties));
-            }
-            raw.rebuild_index();
+            raw.create_element(change_name, attributes, vec![XmlNode::Element(original)])
+        };
+        if let Some(previous) = original_model {
+            run_changes.insert(
+                parent_id,
+                (
+                    Box::new(crate::document::RunPropertiesChange {
+                        id: attr(&change, "w:id"),
+                        author: attr(&change, "w:author"),
+                        date: attr(&change, "w:date"),
+                        previous,
+                    }),
+                    change.clone(),
+                ),
+            );
         }
-        // Direct OOXML changes can compare equal in the effective layout
-        // model (e.g. adding szCs at the inherited size). Keep its revision
-        // stamp in sync too, or the next run serialization removes the XML.
-        for index in 0..self.paragraph_count() {
-            if let Some(paragraph) = self.paragraph_mut(index) {
-                for run in &mut paragraph.runs {
+        let mut properties = raw
+            .element(parent_id)
+            .and_then(|parent| child(parent, property_name))
+            .cloned()
+            .unwrap_or_else(|| raw.create_element(property_name, Vec::new(), Vec::new()));
+        properties
+            .children
+            .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == change_name));
+        properties.children.push(XmlNode::Element(change));
+        if let Some(parent) = raw.element_mut(parent_id) {
+            parent
+                .children
+                .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == property_name));
+            parent.children.insert(0, XmlNode::Element(properties));
+        }
+        raw.rebuild_index();
+    }
+    run_changes
+}
+
+impl WordDocument {
+    pub(crate) fn formatting_before(&self) -> Vec<(usize, Paragraph, Option<DocxXmlDocument>)> {
+        (0..self.paragraph_count())
+            .filter_map(|index| {
+                let paragraph = self.paragraph(index)?;
+                if self.is_note_paragraph_surface(index) {
+                    let (_, raw, id) = self.note_paragraph_xml(index)?;
+                    Some((index, bind_note_paragraph(paragraph, &raw, id), Some(raw)))
+                } else {
+                    Some((index, paragraph.clone(), None))
+                }
+            })
+            .collect()
+    }
+
+    pub(crate) fn record_formatting_changes(
+        &mut self,
+        before: &[(usize, Paragraph, Option<DocxXmlDocument>)],
+        old_raw: &DocxXmlDocument,
+    ) -> Result<(), String> {
+        let Some(session) = self.revision_session.clone() else {
+            return Ok(());
+        };
+        for (index, old, old_note_raw) in before {
+            let Some(mut current) = self.paragraph(*index).cloned() else {
+                continue;
+            };
+            let mut changes = if let Some(old_raw) = old_note_raw {
+                let (part, mut raw, id) = self
+                    .note_paragraph_xml(*index)
+                    .ok_or("note paragraph XML is missing")?;
+                current = bind_note_paragraph(&current, &raw, id);
+                let changes = record_paragraph_changes(
+                    old,
+                    &current,
+                    old_raw,
+                    &mut raw,
+                    &session,
+                    &mut self.next_revision_id,
+                );
+                self.upsert_xml_part_content(
+                    &part,
+                    raw.to_string().map_err(|error| error.to_string())?,
+                );
+                changes
+            } else {
+                let Some(raw) = self.raw_document.as_mut() else {
+                    continue;
+                };
+                record_paragraph_changes(
+                    old,
+                    &current,
+                    old_raw,
+                    raw,
+                    &session,
+                    &mut self.next_revision_id,
+                )
+            };
+            // Preserve the stamp in the semantic model too: the next run
+            // serialization must not erase a direct OOXML property revision.
+            if let Some(paragraph) = self.paragraph_mut(*index) {
+                for (run, bound) in paragraph.runs.iter_mut().zip(&current.runs) {
                     if let Some((change, raw_change)) =
-                        run.node_id.and_then(|id| run_changes.remove(&id))
+                        bound.node_id.and_then(|id| changes.remove(&id))
                     {
                         let properties = run.properties.get_or_insert_with(Default::default);
                         properties.change = Some(change);
-                        // Only replace the stamp. Recapturing every preserved
-                        // property here changes how the next command serializes
-                        // a restyled run compared with recording disabled.
-                        properties.preserved_rpr.0.retain(|node| {
-                            !matches!(node,
-                            XmlNode::Element(e) if e.name == "w:rPrChange")
-                        });
+                        properties.preserved_rpr.0.retain(
+                            |node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange"),
+                        );
                         properties
                             .preserved_rpr
                             .0
@@ -214,7 +275,23 @@ impl WordDocument {
                     }
                 }
             }
+            if old_note_raw.is_some() {
+                let change = self.paragraph_xml_element(*index).and_then(|p| {
+                    child(&p, "w:pPr")
+                        .and_then(|p| child(p, "w:pPrChange"))
+                        .cloned()
+                });
+                if let Some(paragraph) = self.paragraph_mut(*index) {
+                    let props = paragraph.properties.get_or_insert_with(Default::default);
+                    props.has_format_change = change.is_some();
+                    props.format_change_author = change
+                        .as_ref()
+                        .and_then(|c| attr(c, "w:author"))
+                        .map(Into::into);
+                }
+            }
         }
+        Ok(())
     }
 
     pub(crate) fn formatting_revision_snapshots(&self) -> Vec<HeadlessRevisionSnapshot> {
@@ -226,6 +303,12 @@ impl WordDocument {
             let Some(paragraph) = self.paragraph(index) else {
                 continue;
             };
+            let note = self.note_paragraph_xml(index);
+            let bound = note
+                .as_ref()
+                .map(|(_, raw, id)| bind_note_paragraph(paragraph, raw, *id));
+            let paragraph = bound.as_ref().unwrap_or(paragraph);
+            let raw = note.as_ref().map(|(_, raw, _)| raw).unwrap_or(raw);
             let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
             let mut append = |parent_id: Option<XmlNodeId>,
                               property: &str,
@@ -314,6 +397,11 @@ impl WordDocument {
             let paragraph = self
                 .paragraph(revision.paragraph)
                 .ok_or("formatting revision paragraph missing")?;
+            let mut note = self.note_paragraph_xml(revision.paragraph);
+            let bound = note
+                .as_ref()
+                .map(|(_, raw, id)| bind_note_paragraph(paragraph, raw, *id));
+            let paragraph = bound.as_ref().unwrap_or(paragraph);
             let (parent, property, change) = if revision.kind == "paragraphFormat" {
                 (paragraph.node_id, "w:pPr", "w:pPrChange")
             } else {
@@ -322,10 +410,23 @@ impl WordDocument {
                     let from = offset;
                     offset += run.text.len();
                     from == revision.start_offset
+                        && offset == revision.end_offset
+                        && run.node_id.and_then(|id| {
+                            let raw = note
+                                .as_ref()
+                                .map(|(_, raw, _)| raw)
+                                .or(self.raw_document.as_ref())?;
+                            let change = child(child(raw.element(id)?, "w:rPr")?, "w:rPrChange")?;
+                            attr(change, "w:id")
+                        }) == revision.id
                 });
                 (run.and_then(|run| run.node_id), "w:rPr", "w:rPrChange")
             };
-            let Some(raw) = self.raw_document.as_mut() else {
+            let raw = if let Some((_, raw, _)) = note.as_mut() {
+                raw
+            } else if let Some(raw) = self.raw_document.as_mut() {
+                raw
+            } else {
                 continue;
             };
             let props = parent
@@ -362,6 +463,12 @@ impl WordDocument {
                 }
             }
             raw.rebuild_index();
+            if let Some((part, raw, _)) = note {
+                self.upsert_xml_part_content(
+                    &part,
+                    raw.to_string().map_err(|error| error.to_string())?,
+                );
+            }
         }
         if !selected.is_empty() {
             self.refresh_formatting_from_xml()?;
@@ -388,6 +495,30 @@ impl WordDocument {
         if let Some(body) = parsed.body.as_mut() {
             Self::capture_preserved_run_props(&mut body.elements, raw);
         }
+        for kind in [NoteKind::Footnote, NoteKind::Endnote] {
+            if let Ok(part) = self.resolve_existing_notes_part_path(kind) {
+                if let Some(xml) = self.read_xml_part_content(&part) {
+                    let mut notes = DocumentParser::new()
+                        .parse_notes_xml(&xml, kind.note_tag().as_bytes())
+                        .map_err(|error| error.to_string())?;
+                    Self::capture_note_run_props(&mut notes, &xml, kind.note_tag());
+                    let notes = notes
+                        .into_iter()
+                        .filter(|note| {
+                            self.document.as_ref().is_some_and(|document| match kind {
+                                NoteKind::Footnote => document.footnotes.contains_key(&note.id),
+                                NoteKind::Endnote => document.endnotes.contains_key(&note.id),
+                            })
+                        })
+                        .map(|note| (note.id.clone(), note))
+                        .collect();
+                    match kind {
+                        NoteKind::Footnote => parsed.footnotes = notes,
+                        NoteKind::Endnote => parsed.endnotes = notes,
+                    }
+                }
+            }
+        }
         if let Some(styles) = self.styles_part.as_ref() {
             Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles);
             Self::apply_table_styles_to_document(&mut parsed, styles);
@@ -409,7 +540,7 @@ impl WordDocument {
                         .runs
                         .iter()
                         .map(|run| (run.node_id, run.properties.clone()))
-                        .collect::<HashMap<_, _>>(),
+                        .collect::<Vec<_>>(),
                 )
             })
             .collect::<Vec<_>>();
@@ -417,13 +548,22 @@ impl WordDocument {
         self.rebuild_paragraph_surfaces();
         for index in 0..self.paragraph_count() {
             if let Some(paragraph) = self.paragraph_mut(index) {
-                if let Some((_, props, runs)) = properties
-                    .iter()
-                    .find(|(id, _, _)| *id == paragraph.node_id)
-                {
+                let saved = if paragraph.node_id.is_none() {
+                    properties.get(index)
+                } else {
+                    properties
+                        .iter()
+                        .find(|(id, _, _)| *id == paragraph.node_id)
+                };
+                if let Some((_, props, runs)) = saved {
                     paragraph.properties = props.clone();
-                    for run in &mut paragraph.runs {
-                        if let Some(props) = runs.get(&run.node_id) {
+                    for (run_index, run) in paragraph.runs.iter_mut().enumerate() {
+                        let saved = if paragraph.node_id.is_none() {
+                            runs.get(run_index)
+                        } else {
+                            runs.iter().find(|(id, _)| *id == run.node_id)
+                        };
+                        if let Some((_, props)) = saved {
                             run.properties = props.clone();
                         }
                     }
