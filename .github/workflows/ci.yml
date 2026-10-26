@@ -86,6 +86,9 @@ jobs:
             --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
             --skip text_extract::tests::line_layout_exposes_index_text_page_and_geometry
 
+      - name: Verify native macOS workflow contract
+        run: ruby tests/ci/native_macos_workflow_test.rb
+
       - name: Audit edited DOCX fixture corpus
         run: |
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
@@ -138,6 +141,9 @@ jobs:
       - name: Install native PDF comparison dependencies
         run: python -m pip install -r tests/pdf/requirements.txt
 
+      - name: Verify unadjusted Word for Mac probe coordinates
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+
       - name: Verify native PDF structure and representative rendering
         env:
           JADE_PDFTOPPM: pdftoppm
@@ -164,6 +170,7 @@ jobs:
           path: |
             crates/jade-docx-native-render/target/pdf-parity
             crates/jade-docx-native-render/target/pdf-text-parity
+            crates/jade-docx-native-render/target/word-mac-coordinates
           if-no-files-found: ignore
 
   xlsx-native:
