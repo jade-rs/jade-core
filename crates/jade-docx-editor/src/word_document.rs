@@ -12155,7 +12155,13 @@ impl WordDocument {
                 let selected = kind_filter.is_none()
                     && id_filter.is_none_or(|filter| filter.matches(change.id.as_deref()))
                     && targets.is_none_or(|targets| {
-                        targets.contains_run(paragraph_index, 0, length, change.id.as_deref())
+                        targets.contains_format(
+                            paragraph_index,
+                            0,
+                            length,
+                            change.id.as_deref(),
+                            "paragraphFormat",
+                        )
                     });
                 if selected {
                     self.decide_paragraph_format_change(
@@ -12196,11 +12202,12 @@ impl WordDocument {
                                 && id_filter
                                     .is_none_or(|filter| filter.matches(change.id.as_deref()))
                                 && targets.is_none_or(|targets| {
-                                    targets.contains_run(
+                                    targets.contains_format(
                                         paragraph_index,
                                         run_start,
                                         run_end,
                                         change.id.as_deref(),
+                                        "runFormat",
                                     )
                                 })
                         })
@@ -37963,6 +37970,26 @@ impl RevisionTargets {
             spans.iter().any(|(span_start, span_end, span_id)| {
                 *span_start <= start && end <= *span_end && span_id.as_deref() == id
             })
+        })
+    }
+
+    fn contains_format(
+        &self,
+        paragraph: usize,
+        start: usize,
+        end: usize,
+        id: Option<&str>,
+        kind: &str,
+    ) -> bool {
+        self.formats.get(&paragraph).is_some_and(|spans| {
+            spans
+                .iter()
+                .any(|(span_start, span_end, span_id, span_kind)| {
+                    *span_start <= start
+                        && end <= *span_end
+                        && span_id.as_deref() == id
+                        && span_kind == kind
+                })
         })
     }
 
