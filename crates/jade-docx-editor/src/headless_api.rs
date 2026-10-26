@@ -395,6 +395,24 @@ fn validate_text_offset(
     Ok(())
 }
 
+/// Formatting commands mutate model runs, while the public API accepts
+/// rendered positions (including note numbers and inline reference markers).
+fn formatting_range(
+    word_doc: &WordDocument,
+    index: usize,
+    first: usize,
+    from: usize,
+    last: usize,
+    to: usize,
+) -> Result<SelectionRange, HeadlessApiApplyError> {
+    validate_text_offset(word_doc, index, first, from)?;
+    validate_text_offset(word_doc, index, last, to)?;
+    Ok(SelectionRange::new(
+        word_doc.rendered_to_model_text_position(TextPosition::new(first, from)),
+        word_doc.rendered_to_model_text_position(TextPosition::new(last, to)),
+    ))
+}
+
 /// The wire form of one border edge, as the model layer wants it.
 fn border_edge_spec(edge: &jade_docx_headless_api::HeadlessBorderEdge) -> BorderEdgeSpec {
     BorderEdgeSpec {
@@ -1939,8 +1957,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_paragraph,
                 end_offset,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2270,8 +2294,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2288,8 +2318,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2307,8 +2343,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 kind,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 let command = match (*enabled, kind) {
@@ -2328,8 +2370,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 double,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 let command = if !*enabled {
@@ -2350,8 +2398,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2368,8 +2422,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 enabled,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2386,8 +2446,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 font_size,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2404,8 +2470,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 font_family,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2422,8 +2494,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 value,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2471,10 +2549,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 style_id,
             } => {
-                validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
-                validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
 
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
@@ -2954,8 +3036,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 color,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2972,8 +3060,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 color,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -2990,8 +3084,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 end_offset,
                 format,
             } => {
-                let range =
-                    range_from_bounds(*start_paragraph, *start_offset, *end_paragraph, *end_offset);
+                let range = formatting_range(
+                    word_doc,
+                    index,
+                    *start_paragraph,
+                    *start_offset,
+                    *end_paragraph,
+                    *end_offset,
+                )?;
                 selection = Some(range);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor

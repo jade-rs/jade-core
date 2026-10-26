@@ -13,11 +13,11 @@ use jade_docx_document_core::{
         execute_headless_queries_on_document,
     },
     selection::{SelectionRange, TextPosition},
-    word_document::WordDocument,
+    word_document::{ParagraphStory, WordDocument},
     Options,
 };
 use jade_docx_headless_api::{HeadlessEditRequest, HeadlessQueryRequest, HeadlessQueryResult};
-use jade_docx_reader::{XmlElement, XmlNode};
+use jade_docx_reader::{DocxXmlDocument, XmlElement, XmlNode};
 use proptest::prelude::*;
 use serde_json::{json, Value};
 
@@ -129,12 +129,111 @@ fn properties(element: Option<&XmlElement>) -> Value {
     }
 }
 
+// Read the note's actual package XML independently of the editor's temporary
+// node bindings. IDs from separate XML parts must never alias body node IDs.
+fn paragraph_xml(word: &WordDocument, index: usize) -> XmlElement {
+    if let Some(id) = word.paragraph(index).unwrap().node_id {
+        return word
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .element(id)
+            .unwrap()
+            .clone();
+    }
+    let (part, tag, id, ordinal) = match word.paragraph_story(index).unwrap() {
+        ParagraphStory::Footnote { note_id, paragraph } => {
+            ("word/footnotes.xml", "w:footnote", note_id, paragraph)
+        }
+        ParagraphStory::Endnote { note_id, paragraph } => {
+            ("word/endnotes.xml", "w:endnote", note_id, paragraph)
+        }
+        other => panic!("unexpected unbound story: {other:?}"),
+    };
+    let bytes = word.export_docx().unwrap();
+    let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+    let mut xml = String::new();
+    zip.by_name(part).unwrap().read_to_string(&mut xml).unwrap();
+    let raw = DocxXmlDocument::parse(&xml).unwrap();
+    let note = raw
+        .root()
+        .children
+        .iter()
+        .find_map(|node| match node {
+            XmlNode::Element(e)
+                if e.name == tag
+                    && e.attributes
+                        .iter()
+                        .any(|a| a.name == "w:id" && a.value == id) =>
+            {
+                Some(e)
+            }
+            _ => None,
+        })
+        .unwrap();
+    fn paragraphs<'a>(e: &'a XmlElement, out: &mut Vec<&'a XmlElement>) {
+        if e.name == "w:p" {
+            out.push(e);
+            return;
+        }
+        for node in &e.children {
+            if let XmlNode::Element(e) = node {
+                paragraphs(e, out);
+            }
+        }
+    }
+    let mut found = Vec::new();
+    paragraphs(note, &mut found);
+    found[ordinal].clone()
+}
+
+fn note_fixture() -> WordDocument {
+    let mut word = fixture();
+    for (kind, paragraph) in [("insert_footnote", 0), ("insert_endnote", 2)] {
+        apply(
+            &mut word,
+            vec![json!({"type": kind, "paragraph": paragraph, "offset": 1, "text": "Aあ🙂z"})],
+        );
+    }
+    reload(&word)
+}
+
 fn snapshot(word: &WordDocument) -> Vec<Value> {
     let raw = word.raw_document.as_ref().unwrap();
     (0..word.paragraph_count())
         .map(|index| {
             let p = word.paragraph(index).unwrap();
-            let xml = raw.element(p.node_id.unwrap()).unwrap();
+            let xml = paragraph_xml(word, index);
+            if word.is_note_paragraph_surface(index) {
+                fn chars(e: &XmlElement, out: &mut Vec<Value>) {
+                    if e.name == "w:r" {
+                        let props = properties(child(e, "w:rPr"));
+                        for node in &e.children {
+                            if let XmlNode::Element(t) = node {
+                                if t.name == "w:t" {
+                                    for node in &t.children {
+                                        if let XmlNode::Text(text) = node {
+                                            out.extend(
+                                                text.chars()
+                                                    .map(|c| json!([c.to_string(), props.clone()])),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        for node in &e.children {
+                            if let XmlNode::Element(e) = node {
+                                chars(e, out);
+                            }
+                        }
+                    }
+                }
+                let mut text = Vec::new();
+                chars(&xml, &mut text);
+                return json!([properties(child(&xml, "w:pPr")), text]);
+            }
             let chars: Vec<_> = p
                 .runs
                 .iter()
@@ -149,7 +248,7 @@ fn snapshot(word: &WordDocument) -> Vec<Value> {
                         .map(move |c| json!([c.to_string(), props.clone()]))
                 })
                 .collect();
-            json!([properties(child(xml, "w:pPr")), chars])
+            json!([properties(child(&xml, "w:pPr")), chars])
         })
         .collect()
 }
@@ -200,12 +299,8 @@ fn assert_revision_structure(word: &WordDocument) {
             }
         }
     }
-    let raw = word.raw_document.as_ref().unwrap();
     for index in 0..word.paragraph_count() {
-        visit(
-            raw.element(word.paragraph(index).unwrap().node_id.unwrap())
-                .unwrap(),
-        );
+        visit(&paragraph_xml(word, index));
     }
     for r in revisions(word) {
         assert!(matches!(r.kind.as_str(), "runFormat" | "paragraphFormat"));
@@ -333,6 +428,151 @@ impl Edit {
             command["end_offset"] = json!(boundaries[self.to]);
         }
         command
+    }
+}
+
+#[test]
+fn note_reference_empty_runs_preserve_rejection_baselines() {
+    let mut word = note_fixture();
+    let original = snapshot(&word);
+    assert_eq!(snapshot(&reload(&word)), original, "initial reload");
+    track(&mut word);
+    apply(
+        &mut word,
+        vec![
+            json!({"type": "set_paragraph_alignment", "start_paragraph": 0, "end_paragraph": 0, "alignment": "left"}),
+        ],
+    );
+    assert_eq!(snapshot(&reload(&word)), snapshot(&word), "pending reload");
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&word), original, "live rejection");
+    assert_eq!(snapshot(&reload(&word)), original, "rejection reload");
+}
+
+#[test]
+fn note_formatting_is_recorded_and_can_be_rejected() {
+    let mut word = note_fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    for paragraph in 0..word.paragraph_count() {
+        let from = if word.is_note_paragraph_surface(paragraph) {
+            2
+        } else {
+            1
+        };
+        let to = if word.is_note_paragraph_surface(paragraph) {
+            9
+        } else {
+            8
+        };
+        let start_offset = word
+            .model_to_rendered_text_position(TextPosition::new(paragraph, from))
+            .offset;
+        let end_offset = word
+            .model_to_rendered_text_position(TextPosition::new(paragraph, to))
+            .offset;
+        apply(
+            &mut word,
+            vec![
+                json!({"type": "set_paragraph_alignment", "start_paragraph": paragraph, "end_paragraph": paragraph, "alignment": "right"}),
+                json!({"type": "set_bold", "start_paragraph": paragraph, "end_paragraph": paragraph, "start_offset": start_offset, "end_offset": end_offset, "value": true}),
+            ],
+        );
+    }
+    assert_revision_structure(&word);
+    for paragraph in 0..word.paragraph_count() {
+        assert!(revisions(&word)
+            .iter()
+            .any(|r| r.paragraph == paragraph && r.kind == "runFormat"));
+        if word.is_note_paragraph_surface(paragraph) {
+            assert!(revisions(&word)
+                .iter()
+                .any(|r| r.paragraph == paragraph && r.kind == "paragraphFormat"));
+        }
+    }
+    let mut word = reload(&word);
+    let pending = snapshot(&word);
+    let identities = revisions(&word);
+    let unique: std::collections::HashSet<_> =
+        identities.iter().map(|r| r.id.clone().unwrap()).collect();
+    assert_eq!(
+        unique.len(),
+        identities.len(),
+        "revision IDs span every story: {identities:?}"
+    );
+    let mut accepted = reload(&word);
+    decide(&mut accepted, true, None);
+    assert_eq!(snapshot(&reload(&accepted)), pending);
+    assert!(revisions(&reload(&accepted)).is_empty());
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&reload(&word)), original);
+    assert!(revisions(&reload(&word)).is_empty());
+}
+
+#[test]
+fn formatting_ranges_select_exact_characters_across_note_markers() {
+    for paragraph in [0, 1, 4] {
+        for kind in [8, 9, 10, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30] {
+            let mut word = note_fixture();
+            let model_start = if word.is_note_paragraph_surface(paragraph) {
+                2
+            } else {
+                1
+            };
+            let from = word
+                .model_to_rendered_text_position(TextPosition::new(paragraph, model_start))
+                .offset;
+            let to = word
+                .model_to_rendered_text_position(TextPosition::new(
+                    paragraph,
+                    model_start + "あ".len(),
+                ))
+                .offset;
+            if kind == 23 {
+                apply(
+                    &mut word,
+                    vec![
+                        json!({"type": "set_bold", "start_paragraph": paragraph, "end_paragraph": paragraph, "start_offset": from, "end_offset": to, "value": true}),
+                    ],
+                );
+            }
+            let original = snapshot(&word);
+            let mut command = Edit {
+                paragraph,
+                kind: kind.min(27),
+                value: 0,
+                from: 1,
+                to: 2,
+                reload: false,
+            }
+            .command();
+            if kind == 30 {
+                command["type"] = json!("apply_bold");
+                command["enabled"] = json!(true);
+                command.as_object_mut().unwrap().remove("format");
+            }
+            command["start_offset"] = json!(from);
+            command["end_offset"] = json!(to);
+            track(&mut word);
+            apply(&mut word, vec![command]);
+            let changed = snapshot(&reload(&word));
+            assert_ne!(
+                changed[paragraph][1][1], original[paragraph][1][1],
+                "paragraph {paragraph}, kind {kind}"
+            );
+            let mut expected = original.clone();
+            expected[paragraph][1][1] = changed[paragraph][1][1].clone();
+            assert_eq!(
+                changed, expected,
+                "only あ should change: paragraph {paragraph}, kind {kind}"
+            );
+            decide(&mut word, false, None);
+            assert_eq!(
+                snapshot(&reload(&word)),
+                original,
+                "rejected: paragraph {paragraph}, kind {kind}"
+            );
+        }
     }
 }
 
@@ -623,6 +863,45 @@ proptest! {
     })]
 
     #[test]
+    fn note_and_body_formatting_have_independent_review_baselines(edits in edits(), target in 0usize..3, accept in any::<bool>()) {
+        let mut word = note_fixture();
+        let surfaces = [0, (0..word.paragraph_count()).find(|&p| matches!(word.paragraph_story(p), Some(ParagraphStory::Footnote { .. }))).unwrap(),
+            (0..word.paragraph_count()).find(|&p| matches!(word.paragraph_story(p), Some(ParagraphStory::Endnote { .. }))).unwrap()];
+        let original = snapshot(&word);
+        let mut plain = reload(&word);
+        track(&mut word);
+        for mut edit in edits {
+            edit.paragraph = if edit.kind == 29 { surfaces[0] } else { surfaces[edit.paragraph] };
+            let mut command = edit.command();
+            if command.get("start_offset").is_some() {
+                let text: String = word.paragraph(edit.paragraph).unwrap().runs.iter().map(|run| run.text.as_str()).collect();
+                let boundaries: Vec<_> = text.char_indices().map(|(offset, _)| offset).chain(std::iter::once(text.len())).collect();
+                let base = boundaries.len() - 5;
+                command["start_offset"] = json!(word.model_to_rendered_text_position(TextPosition::new(edit.paragraph, boundaries[base + edit.from])).offset);
+                command["end_offset"] = json!(word.model_to_rendered_text_position(TextPosition::new(edit.paragraph, boundaries[base + edit.to])).offset);
+            }
+            apply(&mut word, vec![command.clone()]);
+            apply(&mut plain, vec![command]);
+            if edit.reload { word = reload(&word); plain = reload(&plain); track(&mut word); }
+            prop_assert_eq!(snapshot(&word), snapshot(&plain), "after {:?}", edit);
+            assert_revision_structure(&word);
+        }
+        let mut accepted = reload(&word);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original.clone());
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+        let mut expected = snapshot(&word);
+        if !accept { expected[surfaces[target]] = original[surfaces[target]].clone(); }
+        decide(&mut word, accept, Some(surfaces[target]));
+        prop_assert_eq!(snapshot(&reload(&word)), expected);
+        prop_assert!(revisions(&reload(&word)).iter().all(|r| r.paragraph != surfaces[target]));
+    }
+
+    #[test]
     fn mixed_formatting_accepts_like_untracked_edits_and_rejects_to_original(edits in edits()) {
         let mut tracked = fixture();
         let mut plain = reload(&tracked);
@@ -907,6 +1186,75 @@ proptest! {
                 prop_assert_eq!(revisions(&word).len(), revision_count);
             }
             prop_assert_eq!(selection, original_selection);
+        }
+    }
+
+    #[test]
+    fn cross_paragraph_ranges_preserve_review_baselines(
+        edits in prop::collection::vec((0u8..30, 0u8..8, 0usize..2, 1usize..3, 0usize..5, 0usize..5, any::<bool>()), 1..12)
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        let mut plain = reload(&word);
+        track(&mut word);
+        for (kind, value, a, b, from, to, roundtrip) in edits {
+            let mut command = Edit { paragraph: a.min(b), kind, value, from: 0, to: 4, reload: false }.command();
+            command["end_paragraph"] = json!(b.max(a + 1));
+            if command.get("start_offset").is_some() {
+                command["start_offset"] = json!([0, 1, 4, 8, 9][from]);
+                command["end_offset"] = json!([0, 1, 4, 8, 9][to]);
+            }
+            for doc in [&mut word, &mut plain] { apply(doc, vec![command.clone()]); }
+            if roundtrip { word = reload(&word); plain = reload(&plain); track(&mut word); }
+            prop_assert_eq!(snapshot(&word), snapshot(&plain));
+            assert_revision_structure(&word);
+        }
+        let mut accepted = reload(&word);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&word);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original);
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+    }
+
+    #[test]
+    fn review_decisions_undo_redo_restore_pending_revision_identity(
+        edits in edits(), target in prop::option::of(0usize..3), accept in any::<bool>(), roundtrip in any::<bool>()
+    ) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        track(&mut word);
+        for edit in edits { apply(&mut word, vec![edit.command()]); }
+        if roundtrip { word = reload(&word); track(&mut word); }
+        let pending = snapshot(&reload(&word));
+        let pending_revisions = revisions(&reload(&word));
+        let mut executor = CommandExecutor::new();
+        let mut selection = Some(SelectionRange::new(TextPosition::new(2, 8), TextPosition::new(0, 1)));
+        let original_selection = selection;
+        let request: HeadlessEditRequest = serde_json::from_value(json!({"commands": [{
+            "type": if accept { "accept_revisions" } else { "reject_revisions" },
+            "start_paragraph": target, "end_paragraph": target
+        }]})).unwrap();
+        selection = apply_headless_commands_with_executor_to_document(&mut word, &mut executor, selection, &request).unwrap();
+        let reviewed = snapshot(&reload(&word));
+        let reviewed_revisions = revisions(&reload(&word));
+        for _ in 0..2 {
+            if !executor.can_undo() { break; }
+            prop_assert!(executor.undo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+            prop_assert_eq!(snapshot(&reload(&word)), pending.clone());
+            prop_assert_eq!(revisions(&reload(&word)), pending_revisions.clone());
+            prop_assert_eq!(selection, original_selection);
+            prop_assert!(executor.redo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+            prop_assert_eq!(snapshot(&reload(&word)), reviewed.clone());
+            prop_assert_eq!(revisions(&reload(&word)), reviewed_revisions.clone());
+        }
+        if executor.can_undo() {
+            prop_assert!(executor.undo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+            decide(&mut word, false, None);
+            prop_assert_eq!(snapshot(&reload(&word)), original);
+            prop_assert!(revisions(&reload(&word)).is_empty());
         }
     }
 
