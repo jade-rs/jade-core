@@ -5,6 +5,11 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-zip = { version = "9.0", default-features = false, features = ["deflate"] }
+# Raw copies must retain registered extra fields (e.g. Unix UID/GID 0x7875)
+# that zip reads but does not otherwise author itself.
+zip = { version = "9.0", default-features = false, features = ["deflate", "unreserved"] }
 thiserror = "2.0"
 memchr = "2.7"
+
+[dev-dependencies]
+proptest = "1.6"
