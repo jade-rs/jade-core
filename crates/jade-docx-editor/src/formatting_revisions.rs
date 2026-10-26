@@ -76,7 +76,7 @@ impl WordDocument {
                 .and_then(|id| old_raw.element(id))
                 .and_then(|element| child(element, "w:pPr"));
             if signature(old_ppr) != signature(child(parent, "w:pPr")) {
-                pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned()));
+                pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned(), None));
             }
             let mut offset = 0usize;
             for run in &current.runs {
@@ -91,10 +91,6 @@ impl WordDocument {
                 let Some(source) = source else {
                     continue;
                 };
-                // Paragraph style inheritance is represented by pPrChange alone.
-                if source.properties == run.properties {
-                    continue;
-                }
                 let Some(parent) = run.node_id.and_then(|id| raw.element(id)) else {
                     continue;
                 };
@@ -103,27 +99,33 @@ impl WordDocument {
                     .and_then(|id| old_raw.element(id))
                     .and_then(|element| child(element, "w:rPr"));
                 if signature(old_rpr) != signature(child(parent, "w:rPr")) {
-                    pending.push((parent.id, "w:rPr", "w:rPrChange", old_rpr.cloned()));
+                    let mut original = source.properties.clone().unwrap_or_default();
+                    if let Some(change) = original.change.take() {
+                        original = change.previous;
+                    }
+                    pending.push((
+                        parent.id,
+                        "w:rPr",
+                        "w:rPrChange",
+                        old_rpr.cloned(),
+                        Some(original),
+                    ));
                 }
             }
         }
-        for (parent_id, property_name, change_name, previous) in pending {
+        let mut run_changes = HashMap::new();
+        for (parent_id, property_name, change_name, previous, original_model) in pending {
             let revision_id = self.allocate_revision_id().to_string();
             let Some(raw) = self.raw_document.as_mut() else {
                 continue;
             };
             // Further edits to an unreviewed property retain its original value.
-            let existing = raw
-                .element(parent_id)
-                .and_then(|parent| child(parent, property_name))
+            // Only the pre-command XML is authoritative. The command's model
+            // stamp may contain inherited properties and omit unmodeled XML.
+            let existing = previous
+                .as_ref()
                 .and_then(|props| child(props, change_name))
-                .cloned()
-                .or_else(|| {
-                    previous
-                        .as_ref()
-                        .and_then(|props| child(props, change_name))
-                        .cloned()
-                });
+                .cloned();
             let change = if let Some(existing) = existing {
                 raw.create_element(change_name, existing.attributes, existing.children)
             } else {
@@ -156,6 +158,20 @@ impl WordDocument {
                 }
                 raw.create_element(change_name, attributes, vec![XmlNode::Element(original)])
             };
+            if let Some(previous) = original_model {
+                run_changes.insert(
+                    parent_id,
+                    (
+                        Box::new(crate::document::RunPropertiesChange {
+                            id: attr(&change, "w:id"),
+                            author: attr(&change, "w:author"),
+                            date: attr(&change, "w:date"),
+                            previous,
+                        }),
+                        change.clone(),
+                    ),
+                );
+            }
             let mut properties = raw
                 .element(parent_id)
                 .and_then(|parent| child(parent, property_name))
@@ -173,9 +189,30 @@ impl WordDocument {
             }
             raw.rebuild_index();
         }
-        if let (Some(document), Some(raw)) = (self.document.as_mut(), self.raw_document.as_ref()) {
-            if let Some(body) = Rc::make_mut(document).body.as_mut() {
-                Self::capture_preserved_run_props(&mut body.elements, raw);
+        // Direct OOXML changes can compare equal in the effective layout
+        // model (e.g. adding szCs at the inherited size). Keep its revision
+        // stamp in sync too, or the next run serialization removes the XML.
+        for index in 0..self.paragraph_count() {
+            if let Some(paragraph) = self.paragraph_mut(index) {
+                for run in &mut paragraph.runs {
+                    if let Some((change, raw_change)) =
+                        run.node_id.and_then(|id| run_changes.remove(&id))
+                    {
+                        let properties = run.properties.get_or_insert_with(Default::default);
+                        properties.change = Some(change);
+                        // Only replace the stamp. Recapturing every preserved
+                        // property here changes how the next command serializes
+                        // a restyled run compared with recording disabled.
+                        properties.preserved_rpr.0.retain(|node| {
+                            !matches!(node,
+                            XmlNode::Element(e) if e.name == "w:rPrChange")
+                        });
+                        properties
+                            .preserved_rpr
+                            .0
+                            .push(XmlNode::Element(raw_change));
+                    }
+                }
             }
         }
     }
