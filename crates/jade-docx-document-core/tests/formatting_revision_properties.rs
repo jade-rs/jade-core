@@ -1,0 +1,588 @@
+//! Formatting revisions must be reversible, including after ZIP/XML round trips.
+//! The oracle edits a separate document with recording disabled and compares
+//! direct OOXML properties per character, independent of run splitting and IDs.
+use std::io::{Cursor, Read, Write};
+
+use futures::executor::block_on;
+use jade_docx_document_core::{
+    commands::{
+        set_paragraph_alignment::SetParagraphAlignmentCommand, CommandContext, CommandExecutor,
+    },
+    headless_api::{apply_headless_commands_to_document, execute_headless_queries_on_document},
+    selection::{SelectionRange, TextPosition},
+    word_document::WordDocument,
+    Options,
+};
+use jade_docx_headless_api::{HeadlessEditRequest, HeadlessQueryRequest, HeadlessQueryResult};
+use jade_docx_reader::{XmlElement, XmlNode};
+use proptest::prelude::*;
+use serde_json::{json, Value};
+
+fn fixture() -> WordDocument {
+    let source =
+        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../hello.docx"))
+            .unwrap();
+    let mut archive = zip::ZipArchive::new(Cursor::new(source)).unwrap();
+    let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).unwrap();
+        if name == "word/document.xml" {
+            bytes = br#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:t>A&#x3042;&#x1F642;z</w:t></w:r></w:p>
+<w:p><w:pPr><w:keepNext/><w:spacing w:before="120"/><w:ind w:left="240"/><w:jc w:val="right"/><w:rPr><w:b/></w:rPr><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:pPr><w:r><w:rPr><w:i/><w:color w:val="123456"/><w:lang w:val="ja-JP"/></w:rPr><w:t>A&#x3042;&#x1F642;z</w:t></w:r></w:p>
+<w:p><w:pPr><w:bidi w:val="0"/><w:shd w:fill="FFEEDD"/><w:contextualSpacing/></w:pPr><w:r><w:rPr><w:b w:val="0"/><w:sz w:val="28"/></w:rPr><w:t>A&#x3042;&#x1F642;z</w:t></w:r></w:p>
+<w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr>
+</w:body></w:document>"#.to_vec();
+        }
+        if name == "word/styles.xml" {
+            bytes = String::from_utf8(bytes).unwrap().replace("</w:styles>", r#"<w:style w:type="character" w:styleId="Emphasis"><w:name w:val="Emphasis"/><w:rPr><w:i/></w:rPr></w:style></w:styles>"#).into_bytes();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        out.write_all(&bytes).unwrap();
+    }
+    load(&out.finish().unwrap().into_inner())
+}
+
+fn load(bytes: &[u8]) -> WordDocument {
+    block_on(WordDocument::load(bytes, &Options::default())).unwrap()
+}
+
+fn reload(word: &WordDocument) -> WordDocument {
+    load(&word.export_docx().unwrap())
+}
+
+fn apply(word: &mut WordDocument, commands: Vec<Value>) {
+    let request: HeadlessEditRequest =
+        serde_json::from_value(json!({"commands": commands})).unwrap();
+    apply_headless_commands_to_document(word, &request).unwrap();
+}
+
+fn track(word: &mut WordDocument) {
+    apply(
+        word,
+        vec![
+            json!({"type": "start_change_tracking", "author": "Reviewer",
+        "date": "2026-10-26T00:00:00Z"}),
+        ],
+    );
+}
+
+fn decide(word: &mut WordDocument, accept: bool, paragraph: Option<usize>) {
+    apply(
+        word,
+        vec![json!({
+            "type": if accept { "accept_revisions" } else { "reject_revisions" },
+            "start_paragraph": paragraph, "end_paragraph": paragraph
+        })],
+    );
+}
+
+fn child<'a>(element: &'a XmlElement, name: &str) -> Option<&'a XmlElement> {
+    element.children.iter().find_map(|node| match node {
+        XmlNode::Element(e) if e.name == name => Some(e),
+        _ => None,
+    })
+}
+
+// Property order is schema-normalized by the writer. Empty property containers
+// and absent ones both mean no direct formatting. Keep every attribute/value.
+fn properties(element: Option<&XmlElement>) -> Value {
+    let Some(element) = element else {
+        return Value::Null;
+    };
+    let attributes: std::collections::BTreeMap<_, _> = element
+        .attributes
+        .iter()
+        .map(|a| (a.name.clone(), a.value.clone()))
+        .collect();
+    let mut children: Vec<Value> = element
+        .children
+        .iter()
+        .filter_map(|node| match node {
+            XmlNode::Element(e) if matches!(e.name.as_str(), "w:pPrChange" | "w:rPrChange") => None,
+            XmlNode::Element(e) => Some(json!([e.name, properties(Some(e))])),
+            XmlNode::Text(text) if text.trim().is_empty() => None,
+            XmlNode::Text(text) | XmlNode::CData(text) | XmlNode::Comment(text) => {
+                Some(json!(text))
+            }
+        })
+        .collect();
+    children.sort_by_key(Value::to_string);
+    if attributes.is_empty() && children.is_empty() {
+        Value::Null
+    } else {
+        json!([attributes, children])
+    }
+}
+
+fn snapshot(word: &WordDocument) -> Vec<Value> {
+    let raw = word.raw_document.as_ref().unwrap();
+    (0..word.paragraph_count())
+        .map(|index| {
+            let p = word.paragraph(index).unwrap();
+            let xml = raw.element(p.node_id.unwrap()).unwrap();
+            let chars: Vec<_> = p
+                .runs
+                .iter()
+                .flat_map(|r| {
+                    let props = properties(
+                        r.node_id
+                            .and_then(|id| raw.element(id))
+                            .and_then(|r| child(r, "w:rPr")),
+                    );
+                    r.text
+                        .chars()
+                        .map(move |c| json!([c.to_string(), props.clone()]))
+                })
+                .collect();
+            json!([properties(child(xml, "w:pPr")), chars])
+        })
+        .collect()
+}
+
+fn revisions(word: &WordDocument) -> Vec<jade_docx_headless_api::HeadlessRevisionSnapshot> {
+    let request: HeadlessQueryRequest =
+        serde_json::from_value(json!({"queries": [{"type": "revisions"}]})).unwrap();
+    match execute_headless_queries_on_document(word, &request)
+        .unwrap()
+        .results
+        .remove(0)
+    {
+        HeadlessQueryResult::Revisions { revisions, .. } => revisions,
+        other => panic!("unexpected query result: {other:?}"),
+    }
+}
+
+fn assert_revision_structure(word: &WordDocument) {
+    fn visit(element: &XmlElement) {
+        for (property, change) in [("w:pPr", "w:pPrChange"), ("w:rPr", "w:rPrChange")] {
+            if element.name != property {
+                continue;
+            }
+            let changes: Vec<_> = element
+                .children
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Element(e) if e.name == change => Some(e),
+                    _ => None,
+                })
+                .collect();
+            assert!(changes.len() <= 1, "duplicate {change}");
+            for revision in changes {
+                let previous = child(revision, property).expect("original properties");
+                assert!(
+                    child(previous, change).is_none(),
+                    "nested property revision"
+                );
+                if property == "w:pPr" {
+                    assert!(child(previous, "w:rPr").is_none());
+                    assert!(child(previous, "w:sectPr").is_none());
+                }
+            }
+        }
+        for node in &element.children {
+            if let XmlNode::Element(e) = node {
+                visit(e);
+            }
+        }
+    }
+    let raw = word.raw_document.as_ref().unwrap();
+    for index in 0..word.paragraph_count() {
+        visit(
+            raw.element(word.paragraph(index).unwrap().node_id.unwrap())
+                .unwrap(),
+        );
+    }
+    for r in revisions(word) {
+        assert!(matches!(r.kind.as_str(), "runFormat" | "paragraphFormat"));
+        assert_eq!(r.author.as_deref(), Some("Reviewer"));
+        assert_eq!(r.date.as_deref(), Some("2026-10-26T00:00:00Z"));
+        assert!(r.id.is_some());
+    }
+}
+
+#[derive(Clone, Debug)]
+struct Edit {
+    paragraph: usize,
+    kind: u8,
+    value: u8,
+    from: usize,
+    to: usize,
+    reload: bool,
+}
+
+fn edits() -> impl Strategy<Value = Vec<Edit>> {
+    prop::collection::vec(
+        (
+            0usize..3,
+            0u8..28,
+            0u8..8,
+            0usize..4,
+            1usize..5,
+            any::<bool>(),
+        )
+            .prop_map(|(paragraph, kind, value, a, b, reload)| Edit {
+                paragraph,
+                kind,
+                value,
+                from: a.min(b - 1),
+                to: b.max(a + 1),
+                reload,
+            }),
+        1..18,
+    )
+}
+
+impl Edit {
+    fn command(&self) -> Value {
+        let mut command = match self.kind {
+            0 => {
+                json!({"type": "set_paragraph_alignment", "alignment": (["left", "center", "right", "both"][self.value as usize % 4])})
+            }
+            1 => {
+                json!({"type": "set_paragraph_indent", "left": f32::from(self.value) * 6.0, "right": 12.0, "clear_special": false})
+            }
+            2 => {
+                json!({"type": "set_paragraph_indent", "hanging_chars": i32::from(self.value) * 100, "clear_special": true})
+            }
+            3 => {
+                json!({"type": "set_paragraph_metrics", "before": f32::from(self.value) * 3.0, "after": 6.0, "clear_special": false})
+            }
+            4 => json!({"type": "set_paragraph_direction", "bidi": self.value.is_multiple_of(2)}),
+            5 => {
+                json!({"type": "set_paragraph_pagination", "keep_next": self.value.is_multiple_of(2), "keep_lines": true, "widow_control": false})
+            }
+            6 => {
+                json!({"type": "set_paragraph_shading", "color": (["ABCDEF", "FFFFFF", "123456"][self.value as usize % 3])})
+            }
+            7 => json!({"type": "reset_paragraph_formatting"}),
+            8 => json!({"type": "set_bold", "value": self.value.is_multiple_of(2)}),
+            9 => json!({"type": "set_font_size", "font_size": 8.0 + f32::from(self.value) * 2.0}),
+            10 => {
+                json!({"type": "set_font_family", "font_family": (["Arial", "Times New Roman"][self.value as usize % 2])})
+            }
+            11 => {
+                json!({"type": "set_paragraph_line_spacing", "line": 1.0 + f32::from(self.value) / 2.0, "before": 3.0, "line_rule": "auto"})
+            }
+            12 => {
+                json!({"type": "set_paragraph_style", "style_id": if self.value.is_multiple_of(2) { Some("Normal") } else { None }})
+            }
+            13 => {
+                json!({"type": "set_paragraph_tabs", "tabs": [{"position": 12.0 + f32::from(self.value) * 6.0, "kind": "right", "leader": "dot"}]})
+            }
+            14 => {
+                json!({"type": "set_paragraph_options", "contextual_spacing": self.value.is_multiple_of(2), "suppress_line_numbers": true, "suppress_auto_hyphens": false})
+            }
+            15 => {
+                json!({"type": "set_paragraph_borders", "bottom": {"style": "single", "width": 1.0, "color": "123456"}})
+            }
+            16 => {
+                json!({"type": "set_paragraph_snap_to_grid", "snap": self.value.is_multiple_of(2)})
+            }
+            17 => {
+                json!({"type": "set_numbering", "num_id": "1", "level": u32::from(self.value % 3)})
+            }
+            18 => json!({"type": "apply_italic", "enabled": self.value.is_multiple_of(2)}),
+            19 => {
+                json!({"type": "apply_underline", "kind": (["single", "double", "wave"][self.value as usize % 3]), "enabled": self.value.is_multiple_of(2)})
+            }
+            20 => {
+                json!({"type": "apply_strike", "double": self.value.is_multiple_of(3), "enabled": self.value.is_multiple_of(2)})
+            }
+            21 => json!({"type": "apply_superscript", "enabled": self.value.is_multiple_of(2)}),
+            22 => json!({"type": "apply_subscript", "enabled": self.value.is_multiple_of(2)}),
+            23 => json!({"type": "clear_formatting"}),
+            24 => {
+                json!({"type": "set_font_color", "color": (["ABCDEF", "auto", "000000"][self.value as usize % 3])})
+            }
+            25 => {
+                json!({"type": "set_highlight_color", "color": (["yellow", "cyan", "none"][self.value as usize % 3])})
+            }
+            26 => {
+                json!({"type": "set_character_style", "style_id": if self.value.is_multiple_of(2) { Some("Emphasis") } else { None }})
+            }
+            _ => {
+                json!({"type": "set_run_format", "format": {"latinFont": "Arial", "eastAsiaFont": "Yu Mincho", "bold": self.value.is_multiple_of(2), "complexItalic": true, "spacing": f32::from(self.value) / 2.0, "position": -1.0, "scale": 80, "emphasis": "dot", "underline": "double", "underlineColor": "ABCDEF", "shading": "FFEEDD"}})
+            }
+        };
+        command["start_paragraph"] = json!(self.paragraph);
+        command["end_paragraph"] = json!(self.paragraph);
+        if (8..=10).contains(&self.kind) || self.kind >= 18 {
+            let boundaries = [0, 1, 4, 8, 9]; // UTF-8 byte offsets: A, あ, 🙂, z.
+            command["start_offset"] = json!(boundaries[self.from]);
+            command["end_offset"] = json!(boundaries[self.to]);
+        }
+        command
+    }
+}
+
+#[test]
+fn paragraph_style_then_italic_preserves_direct_language() {
+    let mut tracked = fixture();
+    let mut plain = reload(&tracked);
+    let original = snapshot(&plain);
+    track(&mut tracked);
+    for kind in [12, 18] {
+        let edit = Edit {
+            paragraph: 1,
+            kind,
+            value: 0,
+            from: 0,
+            to: 1,
+            reload: false,
+        };
+        apply(&mut tracked, vec![edit.command()]);
+        apply(&mut plain, vec![edit.command()]);
+        assert_eq!(snapshot(&tracked), snapshot(&plain));
+    }
+    decide(&mut tracked, false, None);
+    assert_eq!(snapshot(&reload(&tracked)), original);
+}
+
+#[test]
+fn repeated_bold_after_reload_preserves_language_and_original_properties() {
+    let mut word = fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    let command = json!({"type": "set_bold", "value": true, "start_paragraph": 1,
+        "end_paragraph": 1, "start_offset": 0, "end_offset": 1});
+    apply(&mut word, vec![command.clone()]);
+    let edited = snapshot(&word);
+    word = reload(&word);
+    track(&mut word);
+    apply(&mut word, vec![command]);
+    assert_eq!(snapshot(&word)[1], edited[1]);
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&reload(&word))[1], original[1]);
+}
+
+#[test]
+fn rejecting_font_change_restores_absent_direct_font_properties() {
+    let mut word = fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    apply(
+        &mut word,
+        vec![
+            json!({"type": "set_font_family", "font_family": "Times New Roman",
+        "start_paragraph": 0, "end_paragraph": 0, "start_offset": 0, "end_offset": 1}),
+        ],
+    );
+    word = reload(&word);
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&reload(&word))[0], original[0]);
+}
+
+#[test]
+fn same_font_size_then_disjoint_bold_can_be_rejected() {
+    let mut word = fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    for edit in [
+        Edit {
+            paragraph: 2,
+            kind: 9,
+            value: 3,
+            from: 1,
+            to: 3,
+            reload: false,
+        },
+        Edit {
+            paragraph: 2,
+            kind: 8,
+            value: 0,
+            from: 0,
+            to: 1,
+            reload: false,
+        },
+    ] {
+        apply(&mut word, vec![edit.command()]);
+    }
+    let mut word = reload(&word);
+    decide(&mut word, false, Some(2));
+    assert_eq!(snapshot(&reload(&word)), original);
+}
+
+#[test]
+fn every_run_format_rejects_to_original_direct_properties() {
+    for kind in (8..=10).chain(18..28) {
+        for paragraph in 0..3 {
+            let mut word = fixture();
+            let original = snapshot(&word);
+            track(&mut word);
+            apply(
+                &mut word,
+                vec![Edit {
+                    paragraph,
+                    kind,
+                    value: 4,
+                    from: 1,
+                    to: 3,
+                    reload: false,
+                }
+                .command()],
+            );
+            if snapshot(&word) != original {
+                assert!(
+                    revisions(&word).iter().any(|r| r.kind == "runFormat"),
+                    "missing rPrChange for kind {kind}, paragraph {paragraph}"
+                );
+            }
+            assert_revision_structure(&word);
+            let mut word = reload(&word);
+            decide(&mut word, false, None);
+            assert_eq!(
+                snapshot(&reload(&word)),
+                original,
+                "reject kind {kind}, paragraph {paragraph}"
+            );
+        }
+    }
+}
+
+#[test]
+fn every_paragraph_format_keeps_original_ppr_and_unrelated_mark_and_section() {
+    for kind in (0..18).filter(|kind| !(8..=10).contains(kind)) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        track(&mut word);
+        for value in if kind == 16 { [5, 4] } else { [4, 5] } {
+            apply(
+                &mut word,
+                vec![Edit {
+                    paragraph: 1,
+                    kind,
+                    value,
+                    from: 0,
+                    to: 4,
+                    reload: false,
+                }
+                .command()],
+            );
+            word = reload(&word);
+            track(&mut word);
+            assert_revision_structure(&word);
+            let raw = word.raw_document.as_ref().unwrap();
+            let ppr = child(
+                raw.element(word.paragraph(1).unwrap().node_id.unwrap())
+                    .unwrap(),
+                "w:pPr",
+            )
+            .unwrap();
+            assert!(
+                child(ppr, "w:rPr").is_some(),
+                "mark formatting lost for kind {kind}"
+            );
+            assert!(
+                child(ppr, "w:sectPr").is_some(),
+                "section lost for kind {kind}"
+            );
+            let revision = child(ppr, "w:pPrChange")
+                .unwrap_or_else(|| panic!("pPrChange missing for kind {kind}"));
+            let mut previous = child(revision, "w:pPr").unwrap().clone();
+            // Those children are outside CT_PPrBase and remain live.
+            previous.children.extend(ppr.children.iter().filter(|n| matches!(n, XmlNode::Element(e) if matches!(e.name.as_str(), "w:rPr" | "w:sectPr"))).cloned());
+            assert_eq!(
+                properties(Some(&previous)),
+                original[1][0],
+                "original pPr for kind {kind}"
+            );
+        }
+        decide(&mut word, false, None);
+        assert_eq!(snapshot(&reload(&word)), original, "reject kind {kind}");
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+
+    #[test]
+    fn mixed_formatting_accepts_like_untracked_edits_and_rejects_to_original(edits in edits()) {
+        let mut tracked = fixture();
+        let mut plain = reload(&tracked);
+        let original = snapshot(&plain);
+        track(&mut tracked);
+        for edit in &edits {
+            apply(&mut tracked, vec![edit.command()]);
+            apply(&mut plain, vec![edit.command()]);
+            if edit.reload {
+                tracked = reload(&tracked);
+                plain = reload(&plain);
+                track(&mut tracked);
+            }
+            prop_assert_eq!(snapshot(&tracked), snapshot(&plain), "live formatting after {:?}", edit);
+            assert_revision_structure(&tracked);
+        }
+        let mut accepted = reload(&tracked);
+        decide(&mut accepted, true, None);
+        prop_assert_eq!(snapshot(&reload(&accepted)), snapshot(&reload(&plain)));
+        prop_assert!(revisions(&reload(&accepted)).is_empty());
+        let mut rejected = reload(&tracked);
+        decide(&mut rejected, false, None);
+        prop_assert_eq!(snapshot(&reload(&rejected)), original);
+        prop_assert!(revisions(&reload(&rejected)).is_empty());
+    }
+
+    #[test]
+    fn paragraph_decisions_are_isolated(edits in edits(), target in 0usize..3, accept in any::<bool>()) {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        track(&mut word);
+        for edit in &edits { apply(&mut word, vec![edit.command()]); }
+        let mut word = reload(&word);
+        let edited = snapshot(&word);
+        decide(&mut word, accept, Some(target));
+        let word = reload(&word);
+        let mut expected = edited;
+        if !accept { expected[target] = original[target].clone(); }
+        prop_assert_eq!(snapshot(&word), expected);
+        prop_assert!(revisions(&word).iter().all(|r| r.paragraph != target));
+    }
+
+    #[test]
+    fn nested_groups_restore_formatting_revisions_and_selection(
+        edits in prop::collection::vec((0usize..3, 0usize..4), 1..16),
+        tracked in any::<bool>(), abort in any::<bool>()
+    ) {
+        let mut word = fixture();
+        if tracked { track(&mut word); }
+        let original = snapshot(&word);
+        let mut selection = Some(SelectionRange::new(TextPosition::new(2, 8), TextPosition::new(0, 1)));
+        let original_selection = selection;
+        let mut executor = CommandExecutor::new();
+        executor.begin_group();
+        for (paragraph, alignment) in edits {
+            executor.begin_group();
+            executor.execute(Box::new(SetParagraphAlignmentCommand::new(paragraph, paragraph,
+                ["left", "center", "right", "both"][alignment])), &mut CommandContext::new(&mut word, &mut selection)).unwrap();
+            executor.end_group();
+        }
+        prop_assert_eq!(selection, original_selection);
+        if abort {
+            executor.abort_group(&mut CommandContext::new(&mut word, &mut selection));
+            prop_assert_eq!(snapshot(&reload(&word)), original);
+            prop_assert_eq!(executor.undo_depth(), 0);
+            prop_assert!(revisions(&word).is_empty());
+        } else {
+            executor.end_group();
+            let edited = snapshot(&reload(&word));
+            let revision_count = revisions(&word).len();
+            prop_assert!(executor.undo_depth() <= 1);
+            if executor.can_undo() {
+                prop_assert!(executor.undo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+                prop_assert_eq!(snapshot(&reload(&word)), original);
+                prop_assert!(revisions(&word).is_empty());
+                prop_assert!(executor.redo(&mut CommandContext::new(&mut word, &mut selection)).unwrap());
+                prop_assert_eq!(snapshot(&reload(&word)), edited);
+                prop_assert_eq!(revisions(&word).len(), revision_count);
+            }
+            prop_assert_eq!(selection, original_selection);
+        }
+    }
+
+}

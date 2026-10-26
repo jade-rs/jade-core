@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 56ccb99602f4c73f2fae7e35fbf4daf8d874552461977a90520d824c049f102e # shrinks to edits = [Edit { paragraph: 0, kind: 10, value: 1, from: 0, to: 1, reload: false }], target = 0, accept = false
+cc f18eb97a60ea5151eb4e7a34a73221745157ab1ce5e172dc97775b4129833178 # shrinks to edits = [Edit { paragraph: 1, kind: 8, value: 0, from: 0, to: 1, reload: true }, Edit { paragraph: 1, kind: 8, value: 0, from: 0, to: 1, reload: false }]
+cc ce4969d36465d008323b45e96aff89df1257aa344f358c11666e52e5ab299bf0 # shrinks to edits = [Edit { paragraph: 2, kind: 9, value: 3, from: 1, to: 3, reload: false }, Edit { paragraph: 2, kind: 8, value: 0, from: 0, to: 1, reload: false }], target = 2, accept = false
+cc a408a8cb6b4b61b998926f9607ae9630911bb9f00d46f5ea063d4af228168f8c # shrinks to edits = [Edit { paragraph: 0, kind: 13, value: 0, from: 0, to: 1, reload: false }], target = 0, accept = false
+cc 9f06de7c53584d3850bc9fd37cc0e9897cea2fd022a8d44a167f5e2ff6167485 # shrinks to edits = [Edit { paragraph: 1, kind: 12, value: 0, from: 0, to: 1, reload: false }, Edit { paragraph: 1, kind: 18, value: 0, from: 0, to: 1, reload: false }]

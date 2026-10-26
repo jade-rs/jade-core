@@ -31,6 +31,9 @@ impl SetParagraphTabsCommand {
 }
 
 impl Command for SetParagraphTabsCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_tabs"
     }
