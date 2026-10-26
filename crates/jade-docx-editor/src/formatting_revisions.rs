@@ -73,6 +73,7 @@ fn record_paragraph_changes(
     raw: &mut DocxXmlDocument,
     session: &RevisionSession,
     next_revision_id: &mut u32,
+    seen_ids: &mut std::collections::HashSet<String>,
 ) -> RunChanges {
     let mut pending = Vec::new();
     let Some(parent) = current.node_id.and_then(|id| raw.element(id)) else {
@@ -86,17 +87,33 @@ fn record_paragraph_changes(
         pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned(), None));
     }
     let mut offset = 0usize;
+    let mut empty_ordinal = 0usize;
     for run in &current.runs {
         let start = offset;
         offset += run.text.len();
         let mut old_offset = 0usize;
-        let source = old.runs.iter().find(|source| {
-            let from = old_offset;
-            old_offset += source.text.len();
-            from <= start
-                && (start < old_offset
-                    || run.text.is_empty() && source.text.is_empty() && from == start)
-        });
+        // Several references can occupy the same text offset. Match each
+        // zero-width run in order instead of reusing the first one's baseline.
+        let source = if run.text.is_empty() {
+            let source = old
+                .runs
+                .iter()
+                .filter(|source| {
+                    let from = old_offset;
+                    old_offset += source.text.len();
+                    source.text.is_empty() && from == start
+                })
+                .nth(empty_ordinal);
+            empty_ordinal += 1;
+            source
+        } else {
+            empty_ordinal = 0;
+            old.runs.iter().find(|source| {
+                let from = old_offset;
+                old_offset += source.text.len();
+                from <= start && start < old_offset
+            })
+        };
         let Some(source) = source else {
             continue;
         };
@@ -195,6 +212,60 @@ fn record_paragraph_changes(
         }
         raw.rebuild_index();
     }
+    // Splitting a previously formatted run copies its review stamp. Keep the
+    // first identity stable and allocate a distinct identity for each fragment
+    // before exposing revisions to callers (not only during DOCX export).
+    let targets = std::iter::once((current.node_id, "w:pPr", "w:pPrChange", None))
+        .chain(current.runs.iter().map(|run| {
+            let model = run
+                .node_id
+                .and_then(|id| run_changes.get(&id))
+                .map(|(model, _)| model.clone())
+                .or_else(|| run.properties.as_ref().and_then(|p| p.change.clone()));
+            (run.node_id, "w:rPr", "w:rPrChange", model)
+        }))
+        .collect::<Vec<_>>();
+    for (parent_id, property_name, change_name, model) in targets {
+        let Some(parent_id) = parent_id else {
+            continue;
+        };
+        let Some(mut properties) = raw
+            .element(parent_id)
+            .and_then(|p| child(p, property_name))
+            .cloned()
+        else {
+            continue;
+        };
+        let Some(change) = properties.children.iter_mut().find_map(|node| match node {
+            XmlNode::Element(e) if e.name == change_name => Some(e),
+            _ => None,
+        }) else {
+            continue;
+        };
+        let Some(id) = attr(change, "w:id") else {
+            continue;
+        };
+        if seen_ids.insert(id) {
+            continue;
+        }
+        let id = next_revision_id.to_string();
+        *next_revision_id = next_revision_id.saturating_add(1);
+        seen_ids.insert(id.clone());
+        if let Some(attribute) = change.attributes.iter_mut().find(|a| a.name == "w:id") {
+            attribute.value = id.clone();
+        }
+        if let Some(mut model) = model {
+            model.id = Some(id);
+            run_changes.insert(parent_id, (model, change.clone()));
+        }
+        if let Some(parent) = raw.element_mut(parent_id) {
+            parent
+                .children
+                .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == property_name));
+            parent.children.insert(0, XmlNode::Element(properties));
+        }
+        raw.rebuild_index();
+    }
     run_changes
 }
 
@@ -221,6 +292,7 @@ impl WordDocument {
         let Some(session) = self.revision_session.clone() else {
             return Ok(());
         };
+        let mut seen_ids = std::collections::HashSet::new();
         for (index, old, old_note_raw) in before {
             let Some(mut current) = self.paragraph(*index).cloned() else {
                 continue;
@@ -237,6 +309,7 @@ impl WordDocument {
                     &mut raw,
                     &session,
                     &mut self.next_revision_id,
+                    &mut seen_ids,
                 );
                 self.upsert_xml_part_content(
                     &part,
@@ -254,6 +327,7 @@ impl WordDocument {
                     raw,
                     &session,
                     &mut self.next_revision_id,
+                    &mut seen_ids,
                 )
             };
             // Preserve the stamp in the semantic model too: the next run
