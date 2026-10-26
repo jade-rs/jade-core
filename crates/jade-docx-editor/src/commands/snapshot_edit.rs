@@ -75,6 +75,9 @@ impl SnapshotEditCommand {
 }
 
 impl Command for SnapshotEditCommand {
+    fn tracks_formatting(&self) -> bool {
+        self.name == "set_paragraph_snap_to_grid"
+    }
     fn name(&self) -> &'static str {
         self.name
     }

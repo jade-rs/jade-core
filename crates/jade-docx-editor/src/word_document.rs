@@ -35251,6 +35251,27 @@ impl WordDocument {
         // the `w:rPr` as the schema puts it. Accepted or rejected, it goes.
         match properties.and_then(|props| props.change.as_deref()) {
             Some(change) => {
+                // The raw revision is the original *direct* formatting, including
+                // properties the layout model does not understand. Reconstructing
+                // it from effective RunProperties loses XML (and can materialize
+                // inherited fonts) when a run is edited again or split.
+                let original = element.children.iter().find_map(|node| match node {
+                    XmlNode::Element(child)
+                        if child.name == "w:rPrChange"
+                            && child.attributes.iter().any(|attribute| {
+                                attribute.name == "w:id"
+                                    && Some(&attribute.value) == change.id.as_ref()
+                            }) =>
+                    {
+                        Some(child.clone())
+                    }
+                    _ => None,
+                });
+                if let Some(original) = original {
+                    Self::remove_run_property_child(&mut element, "w:rPrChange");
+                    element.children.push(XmlNode::Element(original));
+                    return Some(element);
+                }
                 let previous = Self::sync_run_properties_element(doc, Some(&change.previous), None)
                     .unwrap_or_else(|| doc.create_element("w:rPr", Vec::new(), Vec::new()));
                 let mut attributes = vec![XmlAttribute {
