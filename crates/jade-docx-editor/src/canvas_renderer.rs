@@ -33828,6 +33828,14 @@ where
         self.pageless_mode
     }
 
+    pub(crate) fn pageless_viewport(&self) -> Option<(f64, f64)> {
+        self.host.pageless_viewport()
+    }
+
+    pub(crate) fn set_pageless_viewport(&mut self, top: f64) -> Result<(), JsValue> {
+        self.host.set_pageless_viewport(top)
+    }
+
     /// Rebinds this renderer to a newly transferred canvas while preserving
     /// the parsed document, selection, and command history owned by the view.
     /// Display-mode changes deliberately invalidate every geometry/draw cache:
