@@ -280,8 +280,10 @@ pub struct HeadlessParagraphText {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HeadlessSearchMatch {
     pub paragraph: usize,
+    /// Rendered UTF-8 selection offsets, including inline reference markers.
     pub start_offset: usize,
     pub end_offset: usize,
+    /// Character offsets into model text, excluding rendered reference markers.
     pub start_char_offset: usize,
     pub end_char_offset: usize,
     pub matched_text: String,
