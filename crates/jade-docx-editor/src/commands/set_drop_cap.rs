@@ -57,6 +57,10 @@ impl SetDropCapCommand {
 }
 
 impl Command for SetDropCapCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
+
     fn name(&self) -> &'static str {
         "set_drop_cap"
     }

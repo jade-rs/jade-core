@@ -9,3 +9,5 @@ cc f18eb97a60ea5151eb4e7a34a73221745157ab1ce5e172dc97775b4129833178 # shrinks to
 cc ce4969d36465d008323b45e96aff89df1257aa344f358c11666e52e5ab299bf0 # shrinks to edits = [Edit { paragraph: 2, kind: 9, value: 3, from: 1, to: 3, reload: false }, Edit { paragraph: 2, kind: 8, value: 0, from: 0, to: 1, reload: false }], target = 2, accept = false
 cc a408a8cb6b4b61b998926f9607ae9630911bb9f00d46f5ea063d4af228168f8c # shrinks to edits = [Edit { paragraph: 0, kind: 13, value: 0, from: 0, to: 1, reload: false }], target = 0, accept = false
 cc 9f06de7c53584d3850bc9fd37cc0e9897cea2fd022a8d44a167f5e2ff6167485 # shrinks to edits = [Edit { paragraph: 1, kind: 12, value: 0, from: 0, to: 1, reload: false }, Edit { paragraph: 1, kind: 18, value: 0, from: 0, to: 1, reload: false }]
+cc 7e369ee36340b318212789af14b46a6e1612d5e3efeacbcf07737a93b2aef606 # shrinks to paragraph = 1, first = 12, second = 0, value = 0, roundtrip = false
+cc 908a968d349385d1a3063830ec624850e33299a3a2bc0f8080002f788e2a3820 # shrinks to edits = [Edit { paragraph: 0, kind: 27, value: 0, from: 0, to: 1, reload: false }], tracked = true, abort = false

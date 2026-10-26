@@ -44,6 +44,10 @@ impl SetParagraphPaginationCommand {
 }
 
 impl Command for SetParagraphPaginationCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
+
     fn name(&self) -> &'static str {
         "set_paragraph_pagination"
     }
