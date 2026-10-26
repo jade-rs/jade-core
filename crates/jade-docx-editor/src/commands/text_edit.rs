@@ -1059,7 +1059,17 @@ pub fn mutate_run_properties(
     }
 
     let mut restyled = Vec::new();
+    let mut selected_bytes = 0usize;
     for run in &mut middle {
+        // Rendered selections after a note marker collapse onto the following
+        // text's model offset. Leading references belong before that text.
+        if selected_bytes == 0
+            && run.text.is_empty()
+            && (!run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty())
+        {
+            continue;
+        }
+        selected_bytes += run.text.len();
         let before = run.properties.clone().unwrap_or_default();
         let mut props = before.clone();
         mutate(&mut props);
