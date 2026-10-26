@@ -1614,14 +1614,25 @@ pub fn word_monospace_em_px(font_descriptor: &str) -> Option<f64> {
                 return *em;
             }
         }
-        let em = split_font_descriptor(font_descriptor)
-            .filter(|(size_pt, family)| {
-                size_pt.is_finite() && *size_pt > 0.0 && is_word_monospace_family(family)
-            })
-            .map(|(size_pt, _)| f64::from(size_pt) * 96.0 / 72.0);
+        let em = parse_word_monospace_em_px(font_descriptor);
         *cached = Some((font_descriptor.to_owned(), em));
         em
     })
+}
+
+#[cfg(test)]
+thread_local! {
+    pub(crate) static WORD_MONOSPACE_DESCRIPTOR_PARSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn parse_word_monospace_em_px(font_descriptor: &str) -> Option<f64> {
+    #[cfg(test)]
+    WORD_MONOSPACE_DESCRIPTOR_PARSES.with(|count| count.set(count.get() + 1));
+    split_font_descriptor(font_descriptor)
+        .filter(|(size_pt, family)| {
+            size_pt.is_finite() && *size_pt > 0.0 && is_word_monospace_family(family)
+        })
+        .map(|(size_pt, _)| f64::from(size_pt) * 96.0 / 72.0)
 }
 
 /// The cell a single-scalar grapheme occupies in a Word fixed-pitch face, in
