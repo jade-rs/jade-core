@@ -38160,7 +38160,10 @@ fn deleted_over(previous: Option<RevisionMark>, deletion: &RevisionMark) -> Revi
 
 fn collect_max_revision_id(element: &XmlElement) -> u32 {
     fn recurse(element: &XmlElement, max_id: &mut u32) {
-        if element.name == "w:ins" || element.name == "w:del" {
+        if matches!(
+            element.name.as_str(),
+            "w:ins" | "w:del" | "w:rPrChange" | "w:pPrChange"
+        ) {
             for attr in &element.attributes {
                 if attr.name == "w:id" {
                     if let Ok(value) = attr.value.parse::<u32>() {

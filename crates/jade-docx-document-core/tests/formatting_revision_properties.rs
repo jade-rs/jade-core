@@ -302,7 +302,14 @@ fn assert_revision_structure(word: &WordDocument) {
     for index in 0..word.paragraph_count() {
         visit(&paragraph_xml(word, index));
     }
+    let mut ids = std::collections::HashSet::new();
     for r in revisions(word) {
+        assert!(
+            ids.insert(r.id.clone()),
+            "duplicate live revision ID: {:?}; all: {:?}",
+            r.id,
+            revisions(word)
+        );
         assert!(matches!(r.kind.as_str(), "runFormat" | "paragraphFormat"));
         assert_eq!(r.author.as_deref(), Some("Reviewer"));
         assert_eq!(r.date.as_deref(), Some("2026-10-26T00:00:00Z"));
@@ -429,6 +436,130 @@ impl Edit {
         }
         command
     }
+}
+
+// Include zero-width note references: a character-only oracle misses corruption
+// of their styles and review baselines.
+fn reference_properties(word: &WordDocument) -> Vec<Value> {
+    fn visit(e: &XmlElement, out: &mut Vec<Value>) {
+        if e.name == "w:r" {
+            for node in &e.children {
+                if let XmlNode::Element(reference) = node {
+                    if matches!(
+                        reference.name.as_str(),
+                        "w:footnoteReference" | "w:endnoteReference"
+                    ) {
+                        out.push(json!([
+                            reference.name,
+                            properties(Some(reference)),
+                            properties(child(e, "w:rPr"))
+                        ]));
+                    }
+                }
+            }
+        }
+        for node in &e.children {
+            if let XmlNode::Element(e) = node {
+                visit(e, out);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for index in 0..word.paragraph_count() {
+        visit(&paragraph_xml(word, index), &mut out);
+    }
+    out
+}
+
+#[test]
+fn colocated_note_references_keep_styles_and_distinct_live_revision_ids() {
+    let mut word = fixture();
+    for kind in ["insert_footnote", "insert_endnote"] {
+        apply(
+            &mut word,
+            vec![json!({"type": kind, "paragraph": 0, "offset": 1, "text": "注🙂"})],
+        );
+    }
+    let original = snapshot(&word);
+    let references = reference_properties(&word);
+    track(&mut word);
+    let start = word
+        .model_to_rendered_text_position(TextPosition::new(0, 1))
+        .offset;
+    let end = word
+        .model_to_rendered_text_position(TextPosition::new(0, 4))
+        .offset;
+    apply(
+        &mut word,
+        vec![
+            json!({"type": "set_bold", "start_paragraph": 0, "end_paragraph": 0,
+        "start_offset": start, "end_offset": end, "value": true}),
+        ],
+    );
+    assert_eq!(
+        reference_properties(&word),
+        references,
+        "leading reference styles"
+    );
+    assert_revision_structure(&word);
+    assert_eq!(
+        revisions(&word).len(),
+        1,
+        "only selected text has a formatting revision"
+    );
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&word), original);
+    assert_eq!(reference_properties(&word), references);
+    assert_eq!(reference_properties(&reload(&word)), references);
+}
+
+#[test]
+fn split_formatting_revisions_keep_unique_ids_before_and_after_reload() {
+    let mut word = fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    apply(
+        &mut word,
+        vec![json!({"type": "set_bold", "start_paragraph": 0,
+        "end_paragraph": 0, "start_offset": 0, "end_offset": 9, "value": true})],
+    );
+    apply(
+        &mut word,
+        vec![json!({"type": "apply_italic", "start_paragraph": 0,
+        "end_paragraph": 0, "start_offset": 1, "end_offset": 4, "enabled": true})],
+    );
+    assert_revision_structure(&word);
+    assert_eq!(revisions(&word).len(), 3);
+    word = reload(&word);
+    track(&mut word);
+    apply(
+        &mut word,
+        vec![json!({"type": "set_paragraph_alignment",
+        "start_paragraph": 1, "end_paragraph": 1, "alignment": "center"})],
+    );
+    assert_revision_structure(&word);
+    assert_eq!(revisions(&word).len(), 4);
+    let target = revisions(&word)
+        .into_iter()
+        .find(|r| r.start_offset == 1)
+        .unwrap();
+    apply(
+        &mut word,
+        vec![json!({"type": "reject_revisions", "revision_targets": [{
+        "paragraph": target.paragraph, "start_offset": target.start_offset,
+        "end_offset": target.end_offset, "paragraph_mark": target.paragraph_mark,
+        "id": target.id, "format_change": target.kind}]})],
+    );
+    assert_revision_structure(&word);
+    assert_eq!(
+        revisions(&word).len(),
+        3,
+        "only the selected fragment is reviewed"
+    );
+    assert_eq!(snapshot(&word)[0][1][1], original[0][1][1]);
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&word), original);
+    assert_eq!(snapshot(&reload(&word)), original);
 }
 
 #[test]
@@ -857,7 +988,7 @@ fn every_paragraph_format_keeps_original_ppr_and_unrelated_mark_and_section() {
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 128,
+        cases: std::env::var("PROPTEST_CASES").ok().and_then(|v| v.parse().ok()).unwrap_or(128),
         failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
         ..ProptestConfig::default()
     })]
@@ -885,6 +1016,7 @@ proptest! {
         }
         if reopen { word = reload(&word); }
         let original = snapshot(&word);
+        let references = reference_properties(&word);
         let request: HeadlessQueryRequest = serde_json::from_value(json!({"queries": [{"type": "search_text", "query": needle}]})).unwrap();
         let response = execute_headless_queries_on_document(&word, &request).unwrap();
         let HeadlessQueryResult::SearchText {matches, ..} = &response.results[0] else {panic!("search result")};
@@ -895,6 +1027,7 @@ proptest! {
         track(&mut word);
         apply(&mut word, vec![json!({"type": "set_bold", "start_paragraph": hit.paragraph,
             "end_paragraph": hit.paragraph, "start_offset": hit.start_offset, "end_offset": hit.end_offset, "value": true})]);
+        assert_revision_structure(&word);
         let changed = snapshot(&reload(&word));
         // Only the matched characters change, even with markers inside the match.
         let from = prefix.chars().count();
@@ -912,6 +1045,8 @@ proptest! {
         word = reload(&word);
         decide(&mut word, false, None);
         prop_assert_eq!(snapshot(&reload(&word)), original);
+        prop_assert_eq!(reference_properties(&word), references.clone());
+        prop_assert_eq!(reference_properties(&reload(&word)), references);
     }
 
     #[test]
@@ -998,13 +1133,14 @@ proptest! {
 
     #[test]
     fn exact_revision_target_changes_only_its_own_properties(
-        edits in edits(), target in any::<usize>(), accept in any::<bool>()
+        edits in edits(), target in any::<usize>(), accept in any::<bool>(), roundtrip in any::<bool>()
     ) {
         let mut word = fixture();
         let original = snapshot(&word);
         track(&mut word);
         for edit in &edits { apply(&mut word, vec![edit.command()]); }
-        let mut word = reload(&word);
+        if roundtrip { word = reload(&word); }
+        assert_revision_structure(&word);
         let before = revisions(&word);
         if before.is_empty() { return Ok(()); }
         let target = target % before.len();
