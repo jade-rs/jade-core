@@ -1077,6 +1077,8 @@ dependencies = [
  "jade-skia-painter",
  "js-sys",
  "lopdf",
+ "serde_json",
+ "sha2",
  "ttf-parser",
  "wasm-bindgen",
  "web-sys",
