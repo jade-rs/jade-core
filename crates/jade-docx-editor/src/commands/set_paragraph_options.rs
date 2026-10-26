@@ -306,6 +306,9 @@ impl SetParagraphOptionsCommand {
 }
 
 impl Command for SetParagraphOptionsCommand {
+    fn tracks_formatting(&self) -> bool {
+        true
+    }
     fn name(&self) -> &'static str {
         "set_paragraph_options"
     }
