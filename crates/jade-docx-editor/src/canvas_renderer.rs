@@ -3423,10 +3423,9 @@ where
     force_prefix_replay_all: bool,
     /// Whether the current document has any footnotes or endnotes.
     document_has_notes: bool,
-    /// Whether the current document has any comments. Used to gate the
-    /// render-cache / seek fast-paths only for documents that actually carry
-    /// comments, so comment-free documents keep full render performance even
-    /// though `render_comments` is enabled by default.
+    /// Whether any rendered story contains comment anchors. Orphan package
+    /// definitions have no geometry and must not disable paged seek/replay.
+    /// Anchors without definitions still require the conservative path.
     document_has_comments: bool,
     /// Overridable colors for comment range/marker decoration.
     comment_colors: CommentDecorationColors,
@@ -7950,6 +7949,61 @@ where
             }
         }
         next
+    }
+
+    fn blocks_contain_comment_anchors(elements: &[BodyElement]) -> bool {
+        elements.iter().any(|element| match element {
+            BodyElement::Paragraph(paragraph) => {
+                !paragraph.comment_ranges.is_empty()
+                    || !paragraph.comment_markers.is_empty()
+                    || paragraph.runs.iter().any(|run| {
+                        !run.comment_reference_ids.is_empty()
+                            || run.text_box.as_ref().is_some_and(|text_box| {
+                                Self::blocks_contain_comment_anchors(&text_box.blocks)
+                            })
+                    })
+            }
+            BodyElement::Table(table) => table.rows.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| Self::blocks_contain_comment_anchors(&cell.blocks))
+            }),
+            BodyElement::Math(_) => false,
+        })
+    }
+
+    fn document_has_comment_anchors(&self, document: &Document) -> bool {
+        let has_anchors = |body: &Body| Self::blocks_contain_comment_anchors(&body.elements);
+        document.body.as_ref().is_some_and(has_anchors)
+            || document
+                .footnotes
+                .values()
+                .chain(document.endnotes.values())
+                .any(|note| Self::blocks_contain_comment_anchors(&note.body))
+            || [
+                self.header_body.as_ref(),
+                self.footer_body.as_ref(),
+                self.header_body_first.as_ref(),
+                self.footer_body_first.as_ref(),
+                self.header_body_even.as_ref(),
+                self.footer_body_even.as_ref(),
+            ]
+            .into_iter()
+            .flatten()
+            .any(has_anchors)
+            || self.section_header_footers.iter().any(|section| {
+                [
+                    section.header_body.as_ref(),
+                    section.footer_body.as_ref(),
+                    section.header_body_first.as_ref(),
+                    section.footer_body_first.as_ref(),
+                    section.header_body_even.as_ref(),
+                    section.footer_body_even.as_ref(),
+                ]
+                .into_iter()
+                .flatten()
+                .any(has_anchors)
+            })
     }
 
     fn body_element_paragraph_surface_count(elements: &[BodyElement]) -> usize {
@@ -13360,7 +13414,7 @@ where
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
         self.document_has_notes = !document.footnotes.is_empty() || !document.endnotes.is_empty();
-        self.document_has_comments = comments.is_some_and(|map| !map.is_empty());
+        self.document_has_comments = self.document_has_comment_anchors(document);
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
         // Edit-pixel-reuse: reset the one-shot signal at every render entry so a
@@ -50043,6 +50097,134 @@ mod tests {
         // comments must keep the unchecked-replay and seek fast-paths.
         assert!(renderer.can_use_unchecked_cache_replay(&options));
         assert!(renderer.is_seek_compatible_options(&options));
+    }
+
+    #[test]
+    fn orphan_comment_metadata_keeps_paged_seek_and_metadata() {
+        let (mut renderer, _) = recording_renderer();
+        let document = doc_with_paragraph_texts(&["body without comment anchors"]);
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let comment = DocumentComment {
+            id: "orphan".into(),
+            text: "retained package metadata".into(),
+            ..Default::default()
+        };
+        let comments = HashMap::from([(comment.id.clone(), comment.clone())]);
+        renderer
+            .render_with_numbering(&document, &options, None, None, None, Some(&comments))
+            .unwrap();
+        assert_eq!(renderer.comment_store.get("orphan"), Some(&comment));
+        assert!(renderer.is_seek_compatible_options(&options));
+        assert!(renderer.can_use_unchecked_cache_replay(&options));
+    }
+
+    fn comment_test_paragraph(kind: u8) -> Paragraph {
+        let mut paragraph = note_test_paragraph("anchored text", None);
+        match kind {
+            0 => paragraph.comment_ranges.push(CommentRange {
+                id: "1".into(),
+                start: 0,
+                end: 1,
+            }),
+            1 => paragraph.comment_markers.push(CommentMarker {
+                id: "1".into(),
+                position: 1,
+            }),
+            2 => paragraph.runs[0].comment_reference_ids.push("1".into()),
+            _ => (),
+        }
+        paragraph
+    }
+
+    #[test]
+    fn comment_anchor_detection_covers_every_auxiliary_story_and_nested_block() {
+        for kind in 0..3 {
+            let anchored = BodyElement::from_paragraph(comment_test_paragraph(kind));
+            let mut text_box_run = build_run(None);
+            let mut text_box = page_anchored_text_box(None, Vec::new());
+            text_box.blocks = vec![anchored.clone()];
+            text_box_run.text_box = Some(text_box);
+            let text_box_block =
+                BodyElement::from_paragraph(band_test_paragraph(vec![text_box_run]));
+            let mut cell = single_text_cell("plain");
+            cell.blocks = vec![text_box_block];
+            let nested = BodyElement::Table(Box::new(Table {
+                rows: vec![jade_docx_reader::document::TableRow {
+                    cells: vec![cell],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }));
+            for block in [anchored, nested] {
+                for story in 0..15 {
+                    let mut renderer = test_renderer();
+                    let mut document = doc_with_paragraph_texts(&["plain body"]);
+                    let body = Body {
+                        elements: vec![block.clone()],
+                    };
+                    let note = crate::document::Note {
+                        id: "1".into(),
+                        body: body.elements.clone(),
+                        ..Default::default()
+                    };
+                    let mut section = SectionHeaderFooters::default();
+                    match story {
+                        0 => document.body = Some(body),
+                        1 => {
+                            document.footnotes.insert("1".into(), note);
+                        }
+                        2 => {
+                            document.endnotes.insert("1".into(), note);
+                        }
+                        3 => renderer.header_body = Some(body),
+                        4 => renderer.footer_body = Some(body),
+                        5 => renderer.header_body_first = Some(body),
+                        6 => renderer.footer_body_first = Some(body),
+                        7 => renderer.header_body_even = Some(body),
+                        8 => renderer.footer_body_even = Some(body),
+                        9 => section.header_body = Some(body),
+                        10 => section.footer_body = Some(body),
+                        11 => section.header_body_first = Some(body),
+                        12 => section.footer_body_first = Some(body),
+                        13 => section.header_body_even = Some(body),
+                        14 => section.footer_body_even = Some(body),
+                        _ => unreachable!(),
+                    }
+                    renderer.section_header_footers.push(section);
+                    assert!(
+                        renderer.document_has_comment_anchors(&document),
+                        "kind={kind} story={story}"
+                    );
+                }
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn comment_anchor_gate_tracks_add_remove_and_missing_metadata(
+            operations in proptest::collection::vec((0u8..4, proptest::bool::ANY), 1..32)
+        ) {
+            let (mut renderer, _) = recording_renderer();
+            let mut options = options_for_seek_tests();
+            options.render_comments = true;
+            let comments = HashMap::from([("1".into(), DocumentComment { id: "1".into(), text: "preserved".into(), ..Default::default() })]);
+            for (kind, has_metadata) in operations {
+                let document = Document {
+                    body: Some(Body { elements: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))] }),
+                    ..Default::default()
+                };
+                renderer.render_with_numbering(&document, &options, None, None, None, has_metadata.then_some(&comments)).unwrap();
+                proptest::prop_assert_eq!(renderer.document_has_comments, kind < 3);
+                proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), kind == 3);
+                proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), kind == 3);
+                if kind == 1 {
+                    proptest::prop_assert!(renderer.comment_annotations.iter().any(|annotation| annotation.id == "1"));
+                }
+                proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), has_metadata);
+            }
+        }
     }
 
     #[test]
