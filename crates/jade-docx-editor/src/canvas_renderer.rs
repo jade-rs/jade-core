@@ -4539,7 +4539,7 @@ where
                         .set(self.span_seek_rejected_visible_start.get() + 1);
                     None
                 } else if self.last_options.as_ref().is_some_and(|options| {
-                    self.is_seek_compatible_options(options)
+                    self.is_forward_window_seek_compatible_options(options)
                         && self.span_seek_snapshot_is_valid(&snapshot, options)
                 }) {
                     self.span_seek_consumed
@@ -4797,6 +4797,11 @@ where
     }
 
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
+        !(self.document_has_comments && options.render_comments)
+            && self.is_forward_window_seek_compatible_options(options)
+    }
+
+    fn is_forward_window_seek_compatible_options(&self, options: &Options) -> bool {
         // Conservative: only enable seek for the common fast path where paragraph render cache
         // replay is expected to be safe and independent of global prefix-side effects.
         //
@@ -4818,12 +4823,13 @@ where
         // is false), so the seek's forward pass never takes a cached-replay shortcut anyway.
         let notes_enabled =
             self.document_has_notes && (options.render_footnotes || options.render_endnotes);
-        let comments_enabled = self.document_has_comments && options.render_comments;
-        !comments_enabled
-            && !options.render_changes
-            && !notes_enabled
-            && !options.pageless()
-            && !self.mirror_margins
+        // Comment ranges and markers are paragraph-local. A window seek starts
+        // at a visible page top, or on an earlier non-visible page for a span,
+        // and draws every visible paragraph fresh. It therefore rebuilds both
+        // highlights and visible comment annotations without prefix replay.
+        // Keep ordinary/mid-page seeks and paragraph render-cache replay gated:
+        // their cached commands do not contain comment decoration or metadata.
+        !options.render_changes && !notes_enabled && !options.pageless() && !self.mirror_margins
     }
 
     fn record_page_start_seek_snapshot(
@@ -4973,7 +4979,7 @@ where
             self.window_seek_misses
                 .set(self.window_seek_misses.get() + 1);
         };
-        if !self.is_seek_compatible_options(options) {
+        if !self.is_forward_window_seek_compatible_options(options) {
             count_miss();
             return None;
         }
@@ -50117,6 +50123,200 @@ mod tests {
         assert_eq!(renderer.comment_store.get("orphan"), Some(&comment));
         assert!(renderer.is_seek_compatible_options(&options));
         assert!(renderer.can_use_unchecked_cache_replay(&options));
+    }
+
+    fn check_anchored_comment_window_edits(
+        visible: usize,
+        replacements: &[String],
+        spanning: bool,
+    ) {
+        use jade_painter::recording::Op;
+
+        const PAGES: usize = 30;
+        let text = if spanning {
+            "commented body ".repeat(300)
+        } else {
+            "commented body".into()
+        };
+        let mut document =
+            doc_with_paragraph_texts(&vec![text.as_str(); if spanning { 20 } else { PAGES * 3 }]);
+        for (index, element) in document
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .iter_mut()
+            .enumerate()
+        {
+            let BodyElement::Paragraph(paragraph) = element else {
+                unreachable!()
+            };
+            paragraph.properties = Some(ParagraphProperties {
+                page_break_before: Some(!spanning && index > 0 && index % 3 == 0),
+                ..Default::default()
+            });
+            paragraph.comment_ranges.push(CommentRange {
+                id: "1".into(),
+                start: 0,
+                end: if spanning { text.len() } else { 9 },
+            });
+            paragraph.comment_markers.push(CommentMarker {
+                id: "1".into(),
+                position: if spanning { text.len() } else { 9 },
+            });
+        }
+        let comments = HashMap::from([(
+            "1".into(),
+            DocumentComment {
+                id: "1".into(),
+                text: "review text".into(),
+                author: Some("reviewer".into()),
+                ..Default::default()
+            },
+        )]);
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        options.show_crop_marks = false;
+        let (host, pages) = PerPageRecordingHost::new(100);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        if spanning {
+            renderer.set_comment_colors(None, Some(Rc::from("#112233")), None);
+            // Auxiliary-story comments must also be rebuilt on every visible page.
+            renderer.header_body = Some(Body {
+                elements: vec![BodyElement::from_paragraph(comment_test_paragraph(0))],
+            });
+            renderer.footer_body = Some(Body {
+                elements: vec![BodyElement::from_paragraph(comment_test_paragraph(1))],
+            });
+        }
+        renderer
+            .render_with_numbering(&document, &options, None, None, None, Some(&comments))
+            .unwrap();
+        // The same visible page includes anchors before and after the edited paragraph.
+        let dirty = if spanning { 16 } else { (visible - 1) * 3 + 1 };
+        let visible = if spanning {
+            renderer.cached_paragraph_start_page(dirty).unwrap() + 1
+        } else {
+            visible
+        };
+        for (step, replacement) in replacements.iter().enumerate() {
+            let replacement = if spanning {
+                format!("{replacement}{text}")
+            } else {
+                replacement.clone()
+            };
+            let metadata = (step % 2 == 0).then_some(&comments);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[dirty]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].text = replacement.clone();
+            paragraph.comment_ranges[0].end = if spanning {
+                replacement.len()
+            } else {
+                replacement.len().min(9)
+            };
+            paragraph.comment_markers[0].position = if spanning {
+                replacement.len()
+            } else {
+                replacement.len().min(9)
+            };
+            for page in &pages {
+                page.clear();
+            }
+            let before = renderer.window_seek_stats();
+            let spans_before = renderer.span_seek_consumed.get();
+            renderer.set_visible_page_range(Some(visible..=visible + 1));
+            renderer.set_layout_page_limit(Some(visible + 1));
+            renderer.set_incremental_dirty_from(dirty);
+            renderer.mark_paragraph_dirty(dirty);
+            renderer.prefer_visible_window_seek_once();
+            renderer
+                .render_with_numbering(&document, &options, None, None, None, metadata)
+                .unwrap();
+            let after = renderer.window_seek_stats();
+            assert!(
+                after.0 + after.1 > before.0 + before.1
+                    || renderer.span_seek_consumed.get() > spans_before,
+                "anchored comments must keep the window seek"
+            );
+            assert!(
+                renderer.last_render_body_element_count < 12,
+                "walked {} body elements",
+                renderer.last_render_body_element_count
+            );
+
+            let (reference_host, reference_pages) = PerPageRecordingHost::new(100);
+            let mut reference = CanvasRenderer::with_host(Box::new(reference_host), false).unwrap();
+            if spanning {
+                reference.set_comment_colors(None, Some(Rc::from("#112233")), None);
+                reference.header_body = renderer.header_body.clone();
+                reference.footer_body = renderer.footer_body.clone();
+            }
+            reference.set_visible_page_range(Some(visible..=visible + 1));
+            reference.set_layout_page_limit(Some(visible + 1));
+            reference
+                .render_with_numbering(&document, &options, None, None, None, metadata)
+                .unwrap();
+            assert_eq!(
+                serde_json::to_value(renderer.comment_annotations()).unwrap(),
+                serde_json::to_value(reference.comment_annotations()).unwrap()
+            );
+            assert!(!renderer.comment_annotations().is_empty());
+            assert_eq!(renderer.comment_store.contains_key("1"), metadata.is_some());
+            let painted = |painter: &jade_painter::recording::RecordingPainter| {
+                painter
+                    .ops()
+                    .into_iter()
+                    .filter(|op| {
+                        matches!(
+                            op,
+                            Op::FillText(..)
+                                | Op::FillShapedText(..)
+                                | Op::FillRect(..)
+                                | Op::MoveTo(..)
+                                | Op::LineTo(..)
+                                | Op::Arc(..)
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            for page in visible - 1..visible + 1 {
+                assert_eq!(
+                    painted(&pages[page]),
+                    painted(&reference_pages[page]),
+                    "page {}",
+                    page + 1
+                );
+                assert!(!painted(&pages[page]).is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn anchored_comments_visible_window_seek_matches_full_render_after_edits() {
+        check_anchored_comment_window_edits(
+            26,
+            &["changed body".into(), "c".into(), "commented body".into()],
+            false,
+        );
+    }
+
+    #[test]
+    fn anchored_comments_spanning_window_seek_matches_full_render_after_edits() {
+        check_anchored_comment_window_edits(0, &["added text".into(), "a".into(), "".into()], true);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(32))]
+        #[test]
+        fn anchored_comment_window_edit_histories_match_full_render(
+            visible in 3usize..28,
+            replacements in proptest::collection::vec("[a-zA-Z0-9]{1,24}", 1..8),
+        ) {
+            check_anchored_comment_window_edits(visible, &replacements, false);
+        }
     }
 
     fn comment_test_paragraph(kind: u8) -> Paragraph {
