@@ -7334,12 +7334,12 @@ impl OffscreenDocumentView {
             } else {
                 None
             };
-            // Non-lazy composition previews still capture full pages through the
-            // destructive snapshot path below, so they cannot preserve the pixels
-            // required by a later band redraw. Lazy previews use the same
-            // non-destructive on-demand bitmap path as insertText and can safely
-            // retain the caret page between consecutive composition updates.
-            renderer.set_band_redraw_suppressed_for_composition(!lazy_mode);
+            // Replacing underlined composition text can overflow a paragraph's
+            // retained ink band. A rejected band then escalates to a full repaint
+            // that cannot use the visible-window seek, walking the whole prefix.
+            // Draw the visible page directly for previews; committed edits keep
+            // their normal band-redraw policy.
+            renderer.set_band_redraw_suppressed_for_composition(true);
             let state_ref = self.state.borrow();
             let word_doc = state_ref
                 .word_doc
@@ -7373,7 +7373,7 @@ impl OffscreenDocumentView {
         };
         // Lazy composition previews preserve the edit-rendered caret-page canvas
         // and let the worker snapshot it non-destructively on demand. This avoids
-        // both the full-page eager transfer and the full repaint on every IME
+        // both the eager page transfer and a second bitmap repaint on every IME
         // update. The runtime gives composition caret-page fetches immediate
         // priority, so the composing glyph still appears without edit debounce.
         let (snapshots, dirty_regions_js) = if lazy_mode {
