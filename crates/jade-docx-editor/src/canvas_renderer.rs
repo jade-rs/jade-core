@@ -9005,6 +9005,25 @@ where
         }
     }
 
+    /// Invalidate decoration ink without rebuilding unchanged document geometry.
+    pub(crate) fn prepare_decoration_repaint(&mut self, texts: &[String]) {
+        let outcome = self.invalidate_and_mark_dirty_rects_for_decoration_texts(texts);
+        if outcome.invalidated_paragraphs == 0 {
+            self.clear_paragraph_render_cache();
+            self.mark_full_repaint();
+        } else if !outcome.all_rects_resolved {
+            self.mark_full_repaint();
+        }
+        // Missing draw-command rectangles require full pixel invalidation, not
+        // full document layout. Preserve selection/pagination and redraw the
+        // visible window from validated layout anchors; offscreen pages remain
+        // dirty and are refreshed on demand. Unsupported/stale anchors still
+        // fall back to the conservative from-start render.
+        self.freeze_selection_for_pixel_rerender();
+        self.skip_change_detection_once();
+        self.prefer_visible_window_seek_once();
+    }
+
     /// Sets a hard layout limit in pages (1-indexed, inclusive).
     /// Pass `None` to disable layout truncation (default).
     pub fn set_layout_page_limit(&mut self, limit: Option<usize>) {
@@ -51449,6 +51468,49 @@ mod tests {
         assert!(renderer
             .try_prepare_visible_window_page_seek(&options)
             .is_none());
+    }
+
+    #[test]
+    fn decoration_repaint_without_draw_cache_preserves_geometry_for_window_seek() {
+        for indexed in [false, true] {
+            let mut renderer = test_renderer();
+            renderer.pageless_mode = false;
+            renderer.visible_page_range = Some(3..=3);
+            renderer
+                .page_start_seek_cache_by_page
+                .borrow_mut()
+                .insert(3, page_top_snapshot(&renderer, 3));
+            if indexed {
+                renderer
+                    .decoration_cache
+                    .borrow_mut()
+                    .record_paragraph_index("late paragraph", 40);
+            }
+            assert_eq!(renderer.paragraph_render_cache.borrow().entries.len(), 0);
+            renderer.prepare_decoration_repaint(&["late paragraph".into()]);
+            assert!(renderer.needs_full_repaint());
+            // Render entry snapshots pixel damage before making the seek decision.
+            renderer.render_full_repaint = renderer.needs_full_repaint();
+            assert!(renderer.preserve_pagination_for_pixel_rerender);
+            assert!(renderer.prefer_visible_window_seek_once);
+            let options = options_for_seek_tests();
+            assert_eq!(
+                renderer
+                    .try_prepare_visible_window_page_seek(&options)
+                    .expect("decoration ink does not invalidate layout anchors")
+                    .page_number,
+                3
+            );
+            renderer
+                .page_start_seek_cache_by_page
+                .borrow_mut()
+                .get_mut(&3)
+                .unwrap()
+                .page_width += 10.0;
+            assert!(renderer
+                .try_prepare_visible_window_page_seek(&options)
+                .is_none());
+        }
     }
 
     #[test]
