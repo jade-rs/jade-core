@@ -2570,6 +2570,31 @@ impl HorizontalFloatWrapCache {
     }
 }
 
+/// Counts immutable main/note surfaces for auxiliary-story indices. A weak key
+/// must be released before edits so Rc::make_mut can retain its allocation.
+#[derive(Default)]
+struct AuxiliaryStoryBaseCache {
+    document: std::rc::Weak<Document>,
+    base: usize,
+    #[cfg(test)]
+    scans: usize,
+}
+
+impl AuxiliaryStoryBaseCache {
+    fn get(&mut self, document: &Rc<Document>, count: impl FnOnce(&Document) -> usize) -> usize {
+        let identity = Rc::downgrade(document);
+        if !self.document.ptr_eq(&identity) {
+            self.base = count(document);
+            self.document = identity;
+            #[cfg(test)]
+            {
+                self.scans += 1;
+            }
+        }
+        self.base
+    }
+}
+
 fn page_border_rect(
     offset_from: PageBorderOffsetFrom,
     page_width: f64,
@@ -3262,6 +3287,7 @@ where
 {
     host: RenderHostSlot<HostPainter>,
     horizontal_float_wrap_cache: HorizontalFloatWrapCache,
+    auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
     /// Set while a keepNext group measurement lays out a group member after
@@ -8194,6 +8220,7 @@ where
         Self {
             host: RenderHostSlot::new(host),
             horizontal_float_wrap_cache: HorizontalFloatWrapCache::default(),
+            auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -12295,6 +12322,7 @@ where
     pub fn drop_document_cache(&mut self) {
         self.invalidate_page_layers_document();
         self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
+        self.auxiliary_story_base_cache = RefCell::new(AuxiliaryStoryBaseCache::default());
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
         // Joins stay: the edit that follows maps its paragraph to the first
@@ -35049,23 +35077,27 @@ where
     }
 
     fn auxiliary_story_paragraph_base(&self) -> usize {
-        let Some(document) = self.last_document.as_deref() else {
+        let Some(document) = self.last_document.as_ref() else {
             return self.paragraph_counter.saturating_add(16);
         };
-        let body = Self::body_paragraph_surface_count(document);
-        let footnotes = document
-            .footnotes
-            .values()
-            .map(|note| Self::body_element_paragraph_surface_count(&note.body))
-            .sum::<usize>();
-        let endnotes = document
-            .endnotes
-            .values()
-            .map(|note| Self::body_element_paragraph_surface_count(&note.body))
-            .sum::<usize>();
-        body.saturating_add(footnotes)
-            .saturating_add(endnotes)
-            .saturating_add(16)
+        self.auxiliary_story_base_cache
+            .borrow_mut()
+            .get(document, |document| {
+                let body = Self::body_paragraph_surface_count(document);
+                let footnotes = document
+                    .footnotes
+                    .values()
+                    .map(|note| Self::body_element_paragraph_surface_count(&note.body))
+                    .sum::<usize>();
+                let endnotes = document
+                    .endnotes
+                    .values()
+                    .map(|note| Self::body_element_paragraph_surface_count(&note.body))
+                    .sum::<usize>();
+                body.saturating_add(footnotes)
+                    .saturating_add(endnotes)
+                    .saturating_add(16)
+            })
     }
 
     fn store_numbering_part(&mut self, numbering_part: Option<&NumberingPart>) {
@@ -38342,6 +38374,192 @@ mod tests {
             }),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn auxiliary_story_base_reuses_immutable_document_without_retaining_it() {
+        let (mut renderer, _) = recording_renderer();
+        let document = Rc::new(doc_with_paragraph_texts(&["body"; 3_000]));
+        renderer.restore_document_cache(Rc::clone(&document));
+        for _ in 0..100 {
+            assert_eq!(renderer.auxiliary_story_paragraph_base(), 3_016);
+        }
+        assert_eq!(renderer.auxiliary_story_base_cache.borrow().scans, 1);
+        assert_eq!(Rc::strong_count(&document), 2);
+        renderer.drop_document_cache();
+        assert_eq!(Rc::strong_count(&document), 1);
+        assert_eq!(Rc::weak_count(&document), 0);
+    }
+
+    #[test]
+    fn auxiliary_story_base_follows_replacement_in_place_edit_and_undo() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = Rc::new(doc_with_paragraph_texts(&["one", "two"]));
+        renderer.restore_document_cache(Rc::clone(&document));
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 18);
+        renderer.drop_document_cache();
+        let pointer = Rc::as_ptr(&document);
+        Rc::make_mut(&mut document)
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .pop();
+        assert_eq!(Rc::as_ptr(&document), pointer);
+        renderer.restore_document_cache(Rc::clone(&document));
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 17);
+        let undo = Rc::clone(&document);
+        renderer.drop_document_cache();
+        Rc::make_mut(&mut document).body = None;
+        renderer.restore_document_cache(Rc::clone(&document));
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 16);
+        renderer.restore_document_cache(undo);
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 17);
+        renderer.drop_document_cache();
+        renderer.paragraph_counter = 9;
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 25);
+    }
+
+    // Each shape has an independently known number of editable surfaces:
+    // plain = 1; a host with two text-box paragraphs = 3; nested table = 4.
+    fn auxiliary_count_test_block(kind: u8) -> BodyElement {
+        use jade_docx_reader::document::{RunTextBox, TableCell, TableRow};
+        let plain = || BodyElement::from_paragraph(band_test_paragraph(vec![band_plain_run()]));
+        let boxed = || {
+            let mut run = band_plain_run();
+            run.text_box = Some(RunTextBox {
+                blocks: vec![plain(), plain()],
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(band_test_paragraph(vec![run]))
+        };
+        match kind {
+            0 => plain(),
+            1 => boxed(),
+            _ => BodyElement::Table(Box::new(Table {
+                rows: vec![TableRow {
+                    cells: vec![TableCell {
+                        blocks: vec![
+                            plain(),
+                            BodyElement::Table(Box::new(Table {
+                                rows: vec![TableRow {
+                                    cells: vec![TableCell {
+                                        blocks: vec![boxed()],
+                                        ..Default::default()
+                                    }],
+                                    ..Default::default()
+                                }],
+                                ..Default::default()
+                            })),
+                        ],
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })),
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(64))]
+        #[test]
+        fn auxiliary_story_base_operation_histories(
+            operations in proptest::collection::vec((0u8..7, 0u8..3), 1..33),
+        ) {
+            let (mut renderer, _) = recording_renderer();
+            let mut document = Rc::new(Document::default());
+            // The oracle stores only counts and a count history, never a
+            // production document or the recursive counting implementation.
+            let mut counts = [0usize; 3];
+            let mut history = Vec::new();
+            let mut model_history = Vec::new();
+            for (step, (operation, shape)) in operations.into_iter().enumerate() {
+                renderer.drop_document_cache();
+                let surfaces = [1, 3, 4][shape as usize];
+                if operation < 5 {
+                    history.push(Rc::clone(&document));
+                    model_history.push(counts);
+                    let changed = Rc::make_mut(&mut document);
+                    match operation {
+                        0 => {
+                            changed.body.get_or_insert_with(|| Body { elements: Vec::new() })
+                                .elements.push(auxiliary_count_test_block(shape));
+                            counts[0] += surfaces;
+                        }
+                        1 | 2 => {
+                            let notes = if operation == 1 { &mut changed.footnotes } else { &mut changed.endnotes };
+                            notes.insert("1".into(), crate::document::Note {
+                                id: "1".into(), note_type: None,
+                                body: vec![auxiliary_count_test_block(shape)],
+                            });
+                            counts[operation as usize] = surfaces;
+                        }
+                        3 => {
+                            changed.body = None;
+                            counts[0] = 0;
+                        }
+                        _ => {
+                            // Empty notes reserve no auxiliary-story surfaces.
+                            changed.footnotes.clear();
+                            changed.endnotes.clear();
+                            changed.footnotes.insert("empty".into(), crate::document::Note::default());
+                            counts[1] = 0;
+                            counts[2] = 0;
+                        }
+                    }
+                } else if operation == 5 {
+                    if let (Some(previous), Some(previous_counts)) = (history.pop(), model_history.pop()) {
+                        document = previous;
+                        counts = previous_counts;
+                    }
+                } else {
+                    // Replacement can reset counts even when a prior document
+                    // remains alive in the undo history.
+                    document = Rc::new(doc_with_paragraph_texts(&["replacement"]));
+                    counts = [1, 0, 0];
+                }
+                renderer.restore_document_cache(Rc::clone(&document));
+                for _ in 0..8 {
+                    proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(),
+                        counts.iter().sum::<usize>() + 16, "step {} operation {} shape {}", step, operation, shape);
+                }
+                proptest::prop_assert_eq!(renderer.auxiliary_story_base_cache.borrow().scans, 1,
+                    "repeated auxiliary-story layout must reuse the snapshot, step {}", step);
+            }
+        }
+    }
+
+    #[test]
+    fn auxiliary_story_base_is_shared_by_layout_and_paint() {
+        let (mut renderer, _) = recording_renderer();
+        let document = Rc::new(doc_with_paragraph_texts(&["body one", "body two"]));
+        renderer.header_body = Some(Body {
+            elements: vec![auxiliary_count_test_block(0)],
+        });
+        renderer.footer_body = Some(Body {
+            elements: vec![auxiliary_count_test_block(0)],
+        });
+        let options = options_for_seek_tests();
+        for _ in 0..3 {
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+            assert_eq!(renderer.auxiliary_story_paragraph_base(), 18);
+        }
+        assert_eq!(renderer.auxiliary_story_base_cache.borrow().scans, 1);
+        renderer.drop_document_cache();
+        assert_eq!(Rc::weak_count(&document), 0);
     }
 
     #[test]
