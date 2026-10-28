@@ -12,6 +12,13 @@ expand vertically by a full device pixel; real overflow, nonfinite ink and
 geometry changes retain their existing escalation. Composition uses its
 existing band policy on every page. The fix does not relax seek validation.
 
+A genuinely wrapping/shrinking preview must still repaint the full visible
+window. Its retry now carries only the seek snapshot consumed by the first
+band pass and revalidates its geometry/layout anchor, visible-start boundary
+and position at or before the edited paragraph. A failed check retains the
+from-start fallback. This exception is one-shot and scoped to band escalation;
+ordinary full-layout renders retain their policy, and pagination is not frozen.
+
 A deterministic Rust test records the measured page-300 geometry and fails on
 the old strict comparison. A property test varies absolute offsets through
 100 million CSS pixels and proves both roundoff acceptance and rejection of

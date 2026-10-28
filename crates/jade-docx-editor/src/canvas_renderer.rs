@@ -3471,6 +3471,10 @@ where
     /// Falls back to `disable_seek_replay_once` behavior when no valid page-start
     /// snapshot is available for the visible window.
     prefer_visible_window_seek_once: bool,
+    /// A band escalation may repaint the whole window from the same unchanged
+    /// prefix as its first pass. Consumed at entry and revalidated; never freezes
+    /// pagination or permits an ordinary full-layout render to skip the prefix.
+    band_retry_seek_once: Option<PageStartSeekSnapshot>,
     margin_bottom: f64,
     /// Distance from the top/bottom page edge to the corresponding auxiliary
     /// story. Defaults to Word's 0.5 inch when `w:pgMar` omits the attribute.
@@ -5012,18 +5016,19 @@ where
         &self,
         options: &Options,
     ) -> Option<PageStartSeekSnapshot> {
+        self.try_prepare_visible_window_page_seek_with_band_retry(options, None)
+    }
+
+    fn try_prepare_visible_window_page_seek_with_band_retry(
+        &self,
+        options: &Options,
+        retry: Option<&PageStartSeekSnapshot>,
+    ) -> Option<PageStartSeekSnapshot> {
         let count_miss = || {
             self.window_seek_misses
                 .set(self.window_seek_misses.get() + 1);
         };
         if !self.is_forward_window_seek_compatible_options(options) {
-            count_miss();
-            return None;
-        }
-        // Rebuilding pixels/contexts does not invalidate authoritative layout
-        // during a frozen bitmap pass. Snapshot geometry is still validated
-        // below. Ordinary full document layout must keep the from-start policy.
-        if self.render_full_repaint && !self.preserve_pagination_for_pixel_rerender {
             count_miss();
             return None;
         }
@@ -5047,6 +5052,40 @@ where
         let start_page = *visible.start();
         // Page 1 already starts at the body top, so there is no prefix to skip.
         if start_page <= 1 {
+            count_miss();
+            return None;
+        }
+
+        // A full-layout pass normally starts at the document beginning. The
+        // sole edit exception is a band retry: its first pass already consumed
+        // this snapshot before the edited paragraph. Revalidate the anchor after
+        // reflow and refuse any snapshot after the dirty boundary/visible start.
+        if self.render_full_repaint && !self.preserve_pagination_for_pixel_rerender {
+            let valid_retry = retry.filter(|snapshot| {
+                self.forced_dirty_from
+                    .is_some_and(|dirty| snapshot.paragraph_index <= dirty)
+                    && snapshot.page_number <= start_page
+                    && if snapshot.spanning {
+                        self.span_seek_enabled
+                            && span_seek_snapshot_consumable(snapshot.page_number, start_page)
+                            && self.span_seek_snapshot_is_valid(snapshot, options)
+                    } else {
+                        self.window_seek_snapshot_is_valid(snapshot, snapshot.page_number, options)
+                    }
+            });
+            if let Some(snapshot) = valid_retry {
+                if snapshot.spanning {
+                    self.span_seek_consumed
+                        .set(self.span_seek_consumed.get() + 1);
+                } else if snapshot.page_number == start_page {
+                    self.window_seek_exact_hits
+                        .set(self.window_seek_exact_hits.get() + 1);
+                } else {
+                    self.window_seek_fallback_hits
+                        .set(self.window_seek_fallback_hits.get() + 1);
+                }
+                return Some(snapshot.clone());
+            }
             count_miss();
             return None;
         }
@@ -8286,6 +8325,7 @@ where
             forced_seek_snapshot: None,
             disable_seek_replay_once: false,
             prefer_visible_window_seek_once: false,
+            band_retry_seek_once: None,
             current_y: margin,
             header_distance: points_to_px(36.0),
             footer_distance: points_to_px(36.0),
@@ -13422,6 +13462,7 @@ where
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
         self.active_keep_next_group_end = None;
+        let band_retry_seek = self.band_retry_seek_once.take();
         let render_entry_layout_page_limit = self.layout_page_limit;
         self.render_pass_arena.borrow_mut().reset();
         // A bitmap-only repaint runs with a temporary visible range/layout
@@ -13781,7 +13822,11 @@ where
             && !explicit_disable
             && !horizontal_float_wrap
         {
-            self.try_prepare_visible_window_page_seek(options)
+            if let Some(snapshot) = band_retry_seek.as_ref() {
+                self.try_prepare_visible_window_page_seek_with_band_retry(options, Some(snapshot))
+            } else {
+                self.try_prepare_visible_window_page_seek(options)
+            }
         } else {
             None
         };
@@ -14516,6 +14561,12 @@ where
             // gate.
             self.force_full_repaint_once = true;
             let edited = self.edit_render_dirty_from;
+            if window_seek_active {
+                self.band_retry_seek_once = seek_snapshot.clone().filter(|snapshot| {
+                    edited.is_some_and(|dirty| snapshot.paragraph_index <= dirty)
+                });
+            }
+            self.forced_dirty_from = edited;
             // The first pass may have proved the edited paragraph stable and
             // stopped at fast_replay_from. The escalation must repaint the
             // entire visible window, including its unchanged paragraph tail.
@@ -51397,6 +51448,44 @@ mod tests {
             .page_width += 10.0;
         assert!(renderer
             .try_prepare_visible_window_page_seek(&options)
+            .is_none());
+    }
+
+    #[test]
+    fn band_retry_seek_revalidates_the_unchanged_prefix_without_freezing_layout() {
+        let mut renderer = test_renderer();
+        renderer.pageless_mode = false;
+        renderer.render_full_repaint = true;
+        renderer.visible_page_range = Some(3..=3);
+        let snapshot = page_top_snapshot(&renderer, 3);
+        renderer.forced_dirty_from = Some(snapshot.paragraph_index);
+        let options = options_for_seek_tests();
+        assert!(renderer
+            .try_prepare_visible_window_page_seek(&options)
+            .is_none());
+        assert!(renderer
+            .try_prepare_visible_window_page_seek_with_band_retry(&options, Some(&snapshot))
+            .is_some());
+        assert!(!renderer.preserve_pagination_for_pixel_rerender);
+        // A snapshot after the edit or visible start cannot prove a safe prefix.
+        renderer.forced_dirty_from = Some(snapshot.paragraph_index - 1);
+        assert!(renderer
+            .try_prepare_visible_window_page_seek_with_band_retry(&options, Some(&snapshot))
+            .is_none());
+        renderer.forced_dirty_from = Some(snapshot.paragraph_index);
+        renderer.visible_page_range = Some(2..=3);
+        assert!(renderer
+            .try_prepare_visible_window_page_seek_with_band_retry(&options, Some(&snapshot))
+            .is_none());
+        renderer.visible_page_range = Some(3..=3);
+        let mut stale = snapshot.clone();
+        stale.page_width += 10.0;
+        assert!(renderer
+            .try_prepare_visible_window_page_seek_with_band_retry(&options, Some(&stale))
+            .is_none());
+        renderer.current_text_direction = Some(TextDirection::TbRl);
+        assert!(renderer
+            .try_prepare_visible_window_page_seek_with_band_retry(&options, Some(&snapshot))
             .is_none());
     }
 
