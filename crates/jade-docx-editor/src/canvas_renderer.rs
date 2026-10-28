@@ -4611,6 +4611,10 @@ where
             count_miss("not_extension");
             return false;
         };
+        // Layout-only extension preserves prefix geometry and paints nothing.
+        // Comment ranges/markers are paragraph-local, so they do not require
+        // replaying that prefix. Later pixel renders rebuild annotations under
+        // their existing conservative ordinary/mid-page seek guards.
         let mode_block = if !self.layout_extension_seek_enabled {
             Some("disabled")
         } else if self.pageless_mode {
@@ -4621,7 +4625,7 @@ where
             Some("window_seek_once")
         } else if self.needs_full_repaint() || self.force_full_repaint_once {
             Some("full_repaint")
-        } else if !self.is_seek_compatible_options(options) {
+        } else if !self.is_forward_window_seek_compatible_options(options) {
             Some("options")
         } else if matches!(
             self.current_text_direction,
@@ -51587,6 +51591,268 @@ mod tests {
         );
         let (exact_hits, fallback_hits, misses) = renderer.window_seek_stats();
         assert_eq!((exact_hits, fallback_hits, misses), (0, 1, 0));
+    }
+
+    fn check_anchored_comment_layout_extensions(chunks: &[usize], spanning: bool, kind: u8) {
+        use jade_painter::recording::Op;
+        let text = if spanning {
+            "commented words ".repeat(300)
+        } else {
+            "commented paragraph".into()
+        };
+        let mut document =
+            doc_with_paragraph_texts(&vec![text.as_str(); if spanning { 16 } else { 90 }]);
+        for (index, element) in document
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .iter_mut()
+            .enumerate()
+        {
+            let BodyElement::Paragraph(paragraph) = element else {
+                unreachable!()
+            };
+            paragraph.properties = Some(ParagraphProperties {
+                page_break_before: Some(!spanning && index > 0 && index % 3 == 0),
+                ..Default::default()
+            });
+            match kind {
+                0 => paragraph.comment_ranges.push(CommentRange {
+                    id: "1".into(),
+                    start: 0,
+                    end: 9,
+                }),
+                1 => paragraph.comment_markers.push(CommentMarker {
+                    id: "1".into(),
+                    position: 9,
+                }),
+                _ => paragraph.runs[0].comment_reference_ids.push("1".into()),
+            }
+        }
+        let document = Rc::new(document);
+        let comments = HashMap::from([(
+            "1".into(),
+            DocumentComment {
+                id: "1".into(),
+                text: "review".into(),
+                author: Some("reviewer".into()),
+                ..Default::default()
+            },
+        )]);
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        options.show_crop_marks = false;
+        let (host, pages) = PerPageRecordingHost::new(100);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.set_visible_page_range(Some(2..=2));
+        renderer.set_layout_page_limit(Some(2));
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(&document),
+                &options,
+                None,
+                None,
+                None,
+                Some(&comments),
+            )
+            .unwrap();
+        renderer.clear_dirty_regions();
+        let range = Some(SelectionRange::collapsed(TextPosition::new(0, 3)));
+        renderer.selection.set_selection(range);
+        let painted = |painter: &jade_painter::recording::RecordingPainter| {
+            painter
+                .ops()
+                .into_iter()
+                .filter(|op| {
+                    matches!(
+                        op,
+                        Op::FillText(..)
+                            | Op::FillShapedText(..)
+                            | Op::FillRect(..)
+                            | Op::MoveTo(..)
+                            | Op::LineTo(..)
+                            | Op::Arc(..)
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let visible_pixels = painted(&pages[1]);
+        assert!(!visible_pixels.is_empty());
+        let geometry = |selection: &SelectionManager| {
+            selection
+                .paragraphs()
+                .iter()
+                .map(|p| {
+                    // Exclude registration pass IDs and lazy bounding-box caches.
+                    (p.text.clone(), format!("{:?}", p.lines))
+                })
+                .collect::<Vec<_>>()
+        };
+        for (step, &chunk) in chunks.iter().enumerate() {
+            let previous = renderer.layout_page_limit();
+            let end_page = previous.unwrap() + chunk;
+            let metadata = (step % 2 == 0).then_some(&comments);
+            renderer.set_layout_page_limit(Some(end_page));
+            assert!(
+                renderer.prepare_layout_extension_seek(previous, end_page, &options),
+                "commented layout expansion must resume: {}",
+                renderer.layout_extension_seek_last_miss()
+            );
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    metadata,
+                )
+                .unwrap();
+            assert!(
+                renderer.last_render_body_element_count <= (chunk * 3 + 4) as u64,
+                "a {chunk}-page chunk walked {} body elements",
+                renderer.last_render_body_element_count
+            );
+            assert_eq!(renderer.selection.selection_range(), range);
+            assert_eq!(
+                painted(&pages[1]),
+                visible_pixels,
+                "layout-only pass must preserve visible pixels"
+            );
+            assert!(
+                renderer.comment_annotations().is_empty(),
+                "layout-only passes do not register paint annotations"
+            );
+
+            let (reference_host, reference_pages) = PerPageRecordingHost::new(100);
+            let mut reference = CanvasRenderer::with_host(Box::new(reference_host), false).unwrap();
+            reference.set_visible_page_range(Some(2..=2));
+            reference.set_layout_page_limit(Some(end_page));
+            reference
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    metadata,
+                )
+                .unwrap();
+            assert_eq!(renderer.page_count(), reference.page_count());
+            assert_eq!(
+                renderer.last_layout_complete(),
+                reference.last_layout_complete()
+            );
+            assert_eq!(
+                geometry(&renderer.selection),
+                geometry(&reference.selection)
+            );
+            renderer.clear_dirty_regions();
+
+            // A later visible refresh must rebuild comment geometry and paint,
+            // including markers whose definitions were absent on the prior pass.
+            pages[end_page - 1].clear();
+            renderer.set_visible_page_range(Some(end_page..=end_page));
+            renderer.prepare_rerender_for_page(end_page - 1);
+            renderer.freeze_selection_for_pixel_rerender();
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    metadata,
+                )
+                .unwrap();
+            reference.set_visible_page_range(Some(end_page..=end_page));
+            reference
+                .render_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    metadata,
+                )
+                .unwrap();
+            assert_eq!(
+                serde_json::to_value(renderer.comment_annotations()).unwrap(),
+                serde_json::to_value(reference.comment_annotations()).unwrap()
+            );
+            assert_eq!(
+                painted(&pages[end_page - 1]),
+                painted(&reference_pages[end_page - 1])
+            );
+            assert!(!painted(&pages[end_page - 1]).is_empty());
+            renderer.clear_dirty_regions();
+            // Restore a retained window before the next background extension.
+            renderer.set_visible_page_range(Some(2..=2));
+            renderer.selection.set_selection(range);
+        }
+    }
+
+    #[test]
+    fn anchored_comment_layout_extension_resumes_without_rewalking_prefix() {
+        check_anchored_comment_layout_extensions(&[2, 2, 4, 2], false, 1);
+    }
+
+    #[test]
+    fn anchored_comment_spanning_layout_extensions_match_full_render() {
+        check_anchored_comment_layout_extensions(&[2, 2, 2], true, 1);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(32))]
+        #[test]
+        fn anchored_comment_layout_chunk_histories_match_full_render(
+            chunks in proptest::collection::vec(1usize..4, 2..6),
+            kind in 0u8..3,
+        ) {
+            check_anchored_comment_layout_extensions(&chunks, false, kind);
+        }
+    }
+
+    #[test]
+    fn anchored_comment_layout_extension_keeps_unsafe_mode_fallbacks() {
+        for mode in 0..5 {
+            let mut renderer = test_renderer();
+            renderer.pageless_mode = false;
+            renderer.document_has_comments = true;
+            let mut options = options_for_seek_tests();
+            options.render_comments = true;
+            match mode {
+                0 => {
+                    renderer.document_has_notes = true;
+                    options.render_footnotes = true;
+                }
+                1 => {
+                    renderer.document_has_notes = true;
+                    options.render_endnotes = true;
+                }
+                2 => options.render_changes = true,
+                3 => renderer.mirror_margins = true,
+                _ => renderer.current_text_direction = Some(TextDirection::TbRl),
+            }
+            renderer
+                .page_start_seek_cache_by_page
+                .borrow_mut()
+                .insert(3, page_top_snapshot(&renderer, 3));
+            assert!(
+                !renderer.prepare_layout_extension_seek(Some(2), 4, &options),
+                "unsafe mode {mode} must use a full walk"
+            );
+            assert_eq!(
+                renderer.layout_extension_seek_last_miss(),
+                if mode == 4 {
+                    "vertical_text"
+                } else {
+                    "options"
+                }
+            );
+            assert!(renderer.forced_seek_snapshot.is_none());
+        }
     }
 
     #[test]
