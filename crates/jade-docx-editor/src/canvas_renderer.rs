@@ -4107,10 +4107,10 @@ where
     /// a single-paragraph band repaint.
     band_redraw_fallback_neighbor_ink: Cell<u64>,
     band_redraw_fallback_ime: Cell<u64>,
-    /// Set during composition-preview passes that will take a destructive
-    /// full-page snapshot (the non-lazy path). Lazy previews fetch their bitmap
-    /// non-destructively and leave this unset, so retained surrounding pixels
-    /// satisfy the band redraw precondition. See `band_redraw_fallback_ime`.
+    /// Set during composition previews. Replacing underlined preview text can
+    /// overflow retained ink and escalate a band repaint to a full prefix walk;
+    /// rendering the visible page directly preserves the local seek instead.
+    /// Non-lazy previews also require this for destructive page snapshots.
     band_redraw_suppressed_ime: bool,
     /// Band plans rejected because the pending render replays a structural edit
     /// (undo/redo of a paragraph split or merge). See
@@ -8570,10 +8570,9 @@ where
 
     /// Marks (or unmarks) the current render as an IME composition-preview pass.
     /// While set, band redraw is disqualified in `compute_band_redraw_plan`
-    /// (bumping `band_redraw_fallback_ime`). The non-lazy composition path sets
-    /// this because its destructive full-page snapshot leaves the offscreen page
-    /// blank between previews. Lazy composition uses non-destructive bitmap
-    /// extraction and therefore leaves it unset.
+    /// (bumping `band_redraw_fallback_ime`). Preview replacements draw the visible
+    /// page directly to avoid ink-overflow escalation and a full prefix walk.
+    /// Non-lazy previews also cannot retain pixels after destructive snapshots.
     pub fn set_band_redraw_suppressed_for_composition(&mut self, suppressed: bool) {
         self.band_redraw_suppressed_ime = suppressed;
     }
@@ -11619,10 +11618,10 @@ where
                 .set(self.band_redraw_fallback_disabled.get() + 1);
             return None;
         }
-        // Gate 1c: a composition preview followed by a destructive full-page
-        // snapshot. Its canvas will be blank before the next preview, violating
-        // band redraw's retained-pixel precondition. Lazy composition previews
-        // use non-destructive extraction and never set this flag.
+        // Gate 1c: composition preview. Replacing underlined text can overflow
+        // retained ink and escalate to a full prefix walk. Draw the visible page
+        // directly instead. Destructive non-lazy snapshots also lose retained
+        // pixels between previews.
         if self.band_redraw_suppressed_ime {
             self.band_redraw_fallback_ime
                 .set(self.band_redraw_fallback_ime.get() + 1);
