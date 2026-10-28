@@ -34,3 +34,21 @@ Two band-suppression approaches were rejected: disabling all lazy-preview
 bands doubled one-page worker time, and disabling only late-page bands lost
 cheap partial paints on a 10-page control. The numerical fix preserves bands
 instead. Physical macOS IME and GPUI/CEF transport need separate native checks.
+
+## Persistent proofreading marks
+
+The 300-page Elsa regression with persistent marks exposed a second full-prefix
+walk after each preview: `applyDecorationResults` invalidated paragraph drawing
+commands and repainted from the start. A missing draw-command cache caused full
+pixel damage even though layout anchors remained valid. Restricting the seek to
+resolved dirty rectangles therefore did not fix this path (3,900 body elements).
+
+Decoration repaint now freezes unchanged selection and pagination, retains full
+pixel invalidation when rectangles are unavailable, and requests the existing
+validated visible-window seek. It draws fresh visible content rather than replaying
+prefix commands. Unsupported or stale anchors retain the from-start fallback;
+offscreen pixels refresh on demand. The Rust regression covers both missing
+reverse-index entries and indexed paragraphs with no drawing cache, and rejects a
+stale page-width anchor. The Elsa regression checks replacement, wrapping,
+shrinking, cancellation, undo history, saved text, annotation pixels and exact
+parity with an independent from-start repaint.

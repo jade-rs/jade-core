@@ -17700,43 +17700,13 @@ impl OffscreenDocumentView {
     }
 
     fn rerender_decoration_texts(&self, changed_texts: &[String]) -> Result<JsValue, JsValue> {
-        // Targeted invalidation + per-paragraph dirty rects.
-        //
-        // `invalidate_and_mark_dirty_rects_for_decoration_texts`:
-        //   (a) wipes the DrawCommand cache for affected paragraphs so
-        //       the next render re-runs their segment-draw loop,
-        //   (b) pushes one dirty rect per affected paragraph (derived
-        //       from the still-valid cached render geometry) to the
-        //       bitmap dirty-region tracker.
-        //
-        // The bitmap update pipeline then sends partial page updates
-        // instead of full-page bitmaps for every page — the dominant
-        // wire cost when a decoration change affects a single
-        // paragraph in a long document.
-        //
-        // Fall back to a full repaint only when:
-        //   - the reverse index had no record for any changed text
-        //     (e.g. `clearDecorationCache` ran between record and
-        //     apply), OR
-        //   - some targeted paragraph had no cached rect to derive
-        //     from (it was never rendered, or the cache was cleared).
-        // In either case the dominant cost (plugin JSON parsing, wasm
-        // round-trip) has already been paid; conservatively repainting
-        // every page keeps correctness guaranteed.
+        // Decoration ink leaves layout unchanged. Keep targeted pixel damage
+        // when cached rectangles exist; otherwise invalidate all page bitmaps.
+        // Either path can redraw a validated visible window without rebuilding
+        // global selection/pagination or replaying stale prefix draw commands.
         let (snapshots, dirty_regions) = {
             let mut renderer_mut = self.renderer.borrow_mut();
-            let outcome =
-                renderer_mut.invalidate_and_mark_dirty_rects_for_decoration_texts(changed_texts);
-            if outcome.invalidated_paragraphs == 0 {
-                renderer_mut.clear_paragraph_render_cache();
-                renderer_mut.mark_full_repaint();
-            } else if !outcome.all_rects_resolved {
-                renderer_mut.mark_full_repaint();
-            }
-            // Decoration results change pixels while the document hash stays
-            // identical. Do not replay the entire unchanged body prefix: that
-            // can skip nested text boxes and the endnote drawing pass.
-            renderer_mut.skip_change_detection_once();
+            renderer_mut.prepare_decoration_repaint(changed_texts);
             renderer_mut.rerender_with_cached_state()?;
             self.capture_paged_images(&mut renderer_mut)?
         };
