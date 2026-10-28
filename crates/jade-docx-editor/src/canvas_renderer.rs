@@ -4107,10 +4107,10 @@ where
     /// a single-paragraph band repaint.
     band_redraw_fallback_neighbor_ink: Cell<u64>,
     band_redraw_fallback_ime: Cell<u64>,
-    /// Set during composition previews. Replacing underlined preview text can
-    /// overflow retained ink and escalate a band repaint to a full prefix walk;
-    /// rendering the visible page directly preserves the local seek instead.
-    /// Non-lazy previews also require this for destructive page snapshots.
+    /// Set during late-page lazy composition previews. Replacing underlined
+    /// text can escalate a band repaint to a full prefix walk; rendering the
+    /// visible page directly preserves the local seek. First-page lazy previews
+    /// retain bands. Non-lazy previews require destructive page snapshots.
     band_redraw_suppressed_ime: bool,
     /// Band plans rejected because the pending render replays a structural edit
     /// (undo/redo of a paragraph split or merge). See
@@ -8570,9 +8570,10 @@ where
 
     /// Marks (or unmarks) the current render as an IME composition-preview pass.
     /// While set, band redraw is disqualified in `compute_band_redraw_plan`
-    /// (bumping `band_redraw_fallback_ime`). Preview replacements draw the visible
-    /// page directly to avoid ink-overflow escalation and a full prefix walk.
-    /// Non-lazy previews also cannot retain pixels after destructive snapshots.
+    /// (bumping `band_redraw_fallback_ime`). Late-page replacements draw the
+    /// visible page directly to avoid ink-overflow escalation and a prefix walk.
+    /// First-page lazy previews retain bands. Non-lazy previews cannot retain
+    /// pixels after destructive snapshots.
     pub fn set_band_redraw_suppressed_for_composition(&mut self, suppressed: bool) {
         self.band_redraw_suppressed_ime = suppressed;
     }
@@ -11618,10 +11619,10 @@ where
                 .set(self.band_redraw_fallback_disabled.get() + 1);
             return None;
         }
-        // Gate 1c: composition preview. Replacing underlined text can overflow
-        // retained ink and escalate to a full prefix walk. Draw the visible page
-        // directly instead. Destructive non-lazy snapshots also lose retained
-        // pixels between previews.
+        // Gate 1c: late-page or non-lazy composition preview. Replacing
+        // underlined text can escalate to a full prefix walk on late pages.
+        // Destructive non-lazy snapshots also lose retained pixels. First-page
+        // lazy previews still use the cheaper band path.
         if self.band_redraw_suppressed_ime {
             self.band_redraw_fallback_ime
                 .set(self.band_redraw_fallback_ime.get() + 1);
