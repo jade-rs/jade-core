@@ -17737,6 +17737,14 @@ impl OffscreenDocumentView {
             // identical. Do not replay the entire unchanged body prefix: that
             // can skip nested text boxes and the endnote drawing pass.
             renderer_mut.skip_change_detection_once();
+            if outcome.invalidated_paragraphs > 0 && outcome.all_rects_resolved {
+                // Decorations only change ink. A validated visible-page seek
+                // draws every visible paragraph afresh (including text boxes),
+                // rather than replaying unchanged prefix drawing commands.
+                // Notes, unsupported geometry and missing/stale anchors retain
+                // the existing from-start fallback.
+                renderer_mut.prefer_visible_window_seek_once();
+            }
             renderer_mut.rerender_with_cached_state()?;
             self.capture_paged_images(&mut renderer_mut)?
         };
