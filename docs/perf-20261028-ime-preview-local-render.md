@@ -1,36 +1,29 @@
 # Late-page IME composition previews
 
-On SDK 0.0.60, a synthetic 300-page document with paragraphs, tables and
-header/footer stories walks 3,900 body elements for every uncommitted Japanese
-composition update on the last page. Renderer counters show ink-overflow band
-fallbacks and full-repaint escalation. The escalated repaint conservatively
-rejects the visible-window seek, so it walks the prefix again.
+On SDK 0.0.60, a synthetic 300-page document walks 3,900 body elements for
+every uncommitted Japanese replacement on its last page. The ink guard compares
+cached line boxes translated from absolute document coordinates against ink
+computed directly in page-local coordinates. A 3.8e-11 CSS-pixel difference at
+the bottom edge falsely triggers band escalation, whose conservative full
+repaint rejects the visible-window seek and walks the prefix again.
 
-`CanvasDocumentView::preview_composition_text_async` now suppresses band redraw
-for late-page lazy previews as well as eager previews. First-page lazy
-previews retain bands to avoid unnecessary full-page work. This renders the visible page
-directly with the existing validated local seek. Committed text edits retain
-band redraw, and invalid or missing seek snapshots retain their conservative
-fallback. The suppression is reset after the preview render.
+The guard now absorbs 1e-7 CSS pixels of numerical roundoff. Band clips already
+expand vertically by a full device pixel; real overflow, nonfinite ink and
+geometry changes retain their existing escalation. Composition uses its
+existing band policy on every page. The fix does not relax seek validation.
 
-The browser regression uses the real SDK worker and WASM, with only the native
-host boundary mocked. It replaces, grows, shrinks and cancels Japanese preview
-text on page 300, bounds both the edit and forced dirty-bitmap refresh to fewer
-than 100 body elements, requires local seeks, checks active bitmap generation
-convergence and nonblank pixels, compares full RGBA hashes against a from-start
-render, and verifies unchanged preview history and one saved commit. Before
-the change it fails with a 3,900-element preview walk.
+A deterministic Rust test records the measured page-300 geometry and fails on
+the old strict comparison. A property test varies absolute offsets through
+100 million CSS pixels and proves both roundoff acceptance and rejection of
+real top/bottom overflow. Existing exact-spacing and unmeasurable-ink tests
+remain mandatory.
 
-Timing and CPU tracing are separate. An exploratory same-release control with
-band redraw disabled reduced the worker median from roughly 42 ms to 9 ms for
-32 serialized preview updates, and the body walk from 3,900 to 26. This control
-motivates the scoped fix; it is not a candidate-build performance result.
-Synthetic headless composition does not measure physical macOS IME input or
-the GPUI/CEF transport.
+The companion SDK/Elsa tests cover active-generation, nonblank, exact
+from-start pixel parity, preview history, cancellation and one complete saved
+commit with zero retries. Profiling compares 1-, 10- and 300-page documents;
+CPU traces are collected separately and normalized per preview update.
 
-Validation is recorded in the companion SDK and Elsa IME profiling reports.
-The first-page lazy composition regression must continue to return inline band
-bitmaps. An initial blanket suppression doubled short-document worker time;
-the final scope deliberately preserves that path. The late-page regression
-must retain local seeks, bounded walks and exact full-render pixel parity.
-Physical macOS IME verification remains separate from these browser tests.
+Two band-suppression approaches were rejected: disabling all lazy-preview
+bands doubled one-page worker time, and disabling only late-page bands lost
+cheap partial paints on a 10-page control. The numerical fix preserves bands
+instead. Physical macOS IME and GPUI/CEF transport need separate native checks.

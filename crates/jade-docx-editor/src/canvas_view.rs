@@ -7334,20 +7334,12 @@ impl OffscreenDocumentView {
             } else {
                 None
             };
-            // Replacing underlined composition text can overflow a paragraph's
-            // retained ink band. A rejected band then escalates to a full repaint
-            // that cannot use the visible-window seek, walking the whole prefix.
-            // Draw late-page previews directly to preserve the local seek.
-            // First-page lazy previews retain the cheaper band path: there is
-            // no long prefix to avoid there. Eager snapshots still require a
-            // complete repaint because they consume the retained canvas.
-            let suppress_composition_band = !lazy_mode
-                || anchor_page > 1
-                || renderer
-                    .visible_page_range()
-                    .as_ref()
-                    .is_some_and(|range| *range.start() > 1);
-            renderer.set_band_redraw_suppressed_for_composition(suppress_composition_band);
+            // Non-lazy composition previews still capture full pages through the
+            // destructive snapshot path below, so they cannot preserve the pixels
+            // required by a later band redraw. Lazy previews use the same
+            // non-destructive on-demand bitmap path as insertText and can safely
+            // retain the caret page between consecutive composition updates.
+            renderer.set_band_redraw_suppressed_for_composition(!lazy_mode);
             let state_ref = self.state.borrow();
             let word_doc = state_ref
                 .word_doc
@@ -7381,7 +7373,7 @@ impl OffscreenDocumentView {
         };
         // Lazy composition previews preserve the edit-rendered caret-page canvas
         // and let the worker snapshot it non-destructively on demand. This avoids
-        // both the eager page transfer and a second bitmap repaint on every IME
+        // both the full-page eager transfer and the full repaint on every IME
         // update. The runtime gives composition caret-page fetches immediate
         // priority, so the composing glyph still appears without edit debounce.
         let (snapshots, dirty_regions_js) = if lazy_mode {

@@ -347,7 +347,14 @@ fn band_ink_escapes_band(band_top: f64, band_bottom: f64, ink_top: f64, ink_bott
         // Unmeasurable ink cannot be proven covered — escalate.
         return true;
     }
-    ink_bottom > band_bottom || ink_top < band_top
+    // Cached line boxes are translated from absolute document Y, while the
+    // painted ink is computed directly in page-local coordinates. Cancellation
+    // at large page offsets can put identical edges a few ULPs apart (3.8e-11
+    // CSS px on page 300). The band clip already expands by a full device pixel
+    // on both edges; this subpixel allowance only absorbs numerical roundoff.
+    // Real overflows (e.g. tight exact spacing) must still escalate.
+    const ROUNDING_EPS: f64 = 1e-7;
+    ink_bottom - band_bottom > ROUNDING_EPS || band_top - ink_top > ROUNDING_EPS
 }
 
 fn segment_text_is_whitespace(text: &str) -> bool {
@@ -4107,10 +4114,10 @@ where
     /// a single-paragraph band repaint.
     band_redraw_fallback_neighbor_ink: Cell<u64>,
     band_redraw_fallback_ime: Cell<u64>,
-    /// Set during late-page lazy composition previews. Replacing underlined
-    /// text can escalate a band repaint to a full prefix walk; rendering the
-    /// visible page directly preserves the local seek. First-page lazy previews
-    /// retain bands. Non-lazy previews require destructive page snapshots.
+    /// Set during composition-preview passes that will take a destructive
+    /// full-page snapshot (the non-lazy path). Lazy previews fetch their bitmap
+    /// non-destructively and leave this unset, so retained surrounding pixels
+    /// satisfy the band redraw precondition. See `band_redraw_fallback_ime`.
     band_redraw_suppressed_ime: bool,
     /// Band plans rejected because the pending render replays a structural edit
     /// (undo/redo of a paragraph split or merge). See
@@ -8570,10 +8577,10 @@ where
 
     /// Marks (or unmarks) the current render as an IME composition-preview pass.
     /// While set, band redraw is disqualified in `compute_band_redraw_plan`
-    /// (bumping `band_redraw_fallback_ime`). Late-page replacements draw the
-    /// visible page directly to avoid ink-overflow escalation and a prefix walk.
-    /// First-page lazy previews retain bands. Non-lazy previews cannot retain
-    /// pixels after destructive snapshots.
+    /// (bumping `band_redraw_fallback_ime`). The non-lazy composition path sets
+    /// this because its destructive full-page snapshot leaves the offscreen page
+    /// blank between previews. Lazy composition uses non-destructive bitmap
+    /// extraction and therefore leaves it unset.
     pub fn set_band_redraw_suppressed_for_composition(&mut self, suppressed: bool) {
         self.band_redraw_suppressed_ime = suppressed;
     }
@@ -11619,10 +11626,10 @@ where
                 .set(self.band_redraw_fallback_disabled.get() + 1);
             return None;
         }
-        // Gate 1c: late-page or non-lazy composition preview. Replacing
-        // underlined text can escalate to a full prefix walk on late pages.
-        // Destructive non-lazy snapshots also lose retained pixels. First-page
-        // lazy previews still use the cheaper band path.
+        // Gate 1c: a composition preview followed by a destructive full-page
+        // snapshot. Its canvas will be blank before the next preview, violating
+        // band redraw's retained-pixel precondition. Lazy composition previews
+        // use non-destructive extraction and never set this flag.
         if self.band_redraw_suppressed_ime {
             self.band_redraw_fallback_ime
                 .set(self.band_redraw_fallback_ime.get() + 1);
@@ -38166,6 +38173,43 @@ mod tests {
             renderer.should_draw_current_page_for_render(),
             "the edited paragraph's own last line must always repaint inside the band"
         );
+    }
+
+    #[test]
+    fn band_ink_guard_preserves_late_page_roundoff() {
+        // Page 300 of the IME reproduction: cached absolute coordinates lose
+        // 3.8e-11 px when translated back to page-local coordinates. The ink is
+        // covered by the device-expanded clip; it must not force a prefix walk.
+        assert!(!band_ink_escapes_band(
+            705.339_322_916_639_5,
+            732.432_656_249_962_7,
+            707.339_322_916_667_1,
+            732.432_656_250_000_5,
+        ));
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn property_band_ink_guard_tolerates_absolute_coordinate_roundoff(
+            page_offset in 0.0f64..100_000_000.0,
+            ink_top in 100.0f64..800.0,
+            height in 12.0f64..96.0,
+        ) {
+            let ink_bottom = ink_top + height;
+            let cached_top = (page_offset + ink_top) - page_offset;
+            let cached_bottom = (page_offset + ink_bottom) - page_offset;
+            proptest::prop_assert!(!band_ink_escapes_band(
+                cached_top, cached_bottom, ink_top, ink_bottom,
+            ));
+            // Genuine overflow still requires a complete repaint, including
+            // the opposite edge, regardless of the absolute page position.
+            proptest::prop_assert!(band_ink_escapes_band(
+                cached_top, cached_bottom, ink_top - 0.001, ink_bottom,
+            ));
+            proptest::prop_assert!(band_ink_escapes_band(
+                cached_top, cached_bottom, ink_top, ink_bottom + 0.001,
+            ));
+        }
     }
 
     #[test]
