@@ -4,6 +4,186 @@ use std::io::{Cursor, Read, Write};
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
+#[path = "revision_workflows/inline_authors.rs"]
+mod inline_authors;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PendingCharacter {
+    Stable(char),
+    Inserted(char),
+    Deleted(char),
+}
+
+fn pending_text(characters: &[PendingCharacter], accept: bool) -> String {
+    characters
+        .iter()
+        .filter_map(|character| match character {
+            PendingCharacter::Stable(c) => Some(*c),
+            PendingCharacter::Inserted(c) if accept => Some(*c),
+            PendingCharacter::Deleted(c) if !accept => Some(*c),
+            _ => None,
+        })
+        .collect()
+}
+
+// Model characters and review decisions, not runs, XML offsets, or revision IDs.
+fn replace_pending_text(
+    characters: &mut Vec<PendingCharacter>,
+    start: usize,
+    end: usize,
+    text: &str,
+    tracked: bool,
+) {
+    let old: Vec<char> = characters[start..end]
+        .iter()
+        .map(|character| match character {
+            PendingCharacter::Stable(c) | PendingCharacter::Inserted(c) => *c,
+            PendingCharacter::Deleted(c) => *c,
+        })
+        .collect();
+    let replacement: Vec<char> = text.chars().collect();
+    let has_deleted = characters[start..end]
+        .iter()
+        .any(|c| matches!(c, PendingCharacter::Deleted(_)));
+    let prefix = if has_deleted {
+        0
+    } else {
+        old.iter()
+            .zip(&replacement)
+            .take_while(|(a, b)| a == b)
+            .count()
+    };
+    let suffix = if has_deleted {
+        0
+    } else {
+        old[prefix..]
+            .iter()
+            .rev()
+            .zip(replacement[prefix..].iter().rev())
+            .take_while(|(a, b)| a == b)
+            .count()
+    };
+    let start = start + prefix;
+    let end = end - suffix;
+    let mut changed: Vec<_> = characters[start..end]
+        .iter()
+        .filter_map(|character| match character {
+            PendingCharacter::Deleted(c) => Some(PendingCharacter::Deleted(*c)),
+            PendingCharacter::Stable(c) if tracked => Some(PendingCharacter::Deleted(*c)),
+            _ => None,
+        })
+        .collect();
+    changed.extend(
+        replacement[prefix..replacement.len() - suffix]
+            .iter()
+            .map(|c| {
+                if tracked {
+                    PendingCharacter::Inserted(*c)
+                } else {
+                    PendingCharacter::Stable(*c)
+                }
+            }),
+    );
+    characters.splice(start..end, changed);
+}
+
+#[derive(Clone, Debug)]
+enum PendingEdit {
+    Replace {
+        start: u8,
+        end: u8,
+        text: String,
+        tracked: bool,
+        include_hidden: bool,
+    },
+    Decide(bool),
+    InvalidBoundary,
+}
+
+fn pending_edit() -> impl Strategy<Value = PendingEdit> {
+    prop_oneof![
+        7 => (any::<u8>(), any::<u8>(), prop_oneof![Just(""),Just("😀"),Just("甲乙"),Just("e\u{301}"),Just("<&>")], any::<bool>(), any::<bool>())
+            .prop_map(|(start,end,text,tracked,include_hidden)| PendingEdit::Replace { start,end,text:text.into(),tracked,include_hidden }),
+        2 => any::<bool>().prop_map(PendingEdit::Decide),
+        1 => Just(PendingEdit::InvalidBoundary),
+    ]
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::Direct(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/revision_workflows.proptest-regressions")
+        ))),
+        ..ProptestConfig::default()
+    })]
+    #[test]
+    fn pending_text_edits_and_decisions_match_character_model(actions in prop::collection::vec(pending_edit(), 1..49)) {
+        let mut bytes = fixture(r#"<w:r><w:t>甲😀é乙</w:t></w:r></w:p><w:p><w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins>"#);
+        let mut model: Vec<_> = "甲😀é乙".chars().map(PendingCharacter::Stable).collect();
+        for (step, action) in actions.into_iter().enumerate() {
+            match &action {
+                PendingEdit::Replace { start,end,text,tracked,include_hidden } => {
+                    // The headless boundary uses raw UTF-8 offsets, including hidden deletions.
+                    // Include ranges both within visible text and across pending deletions.
+                    let mut segments = Vec::new();
+                    let mut first = 0;
+                    for (index,character) in model.iter().enumerate() {
+                        if matches!(character,PendingCharacter::Deleted(_)) {
+                            if first < index { segments.push((first,index)); }
+                            first = index+1;
+                        }
+                    }
+                    if first < model.len() { segments.push((first,model.len())); }
+                    if segments.is_empty() { segments.push((model.len(),model.len())); }
+                    let (first,last) = if *include_hidden { (0,model.len()) } else { segments[*start as usize % segments.len()] };
+                    let a = first + *start as usize % (last-first+1);
+                    let b = first + *end as usize % (last-first+1);
+                    let (a,b) = (a.min(b),a.max(b));
+                    let raw_offset = |end:usize| model[..end].iter().map(|character| match character {
+                        PendingCharacter::Stable(c) | PendingCharacter::Inserted(c) | PendingCharacter::Deleted(c) => c.len_utf8(),
+                    }).sum::<usize>();
+                    let result = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![
+                        if *tracked { tracking() } else { HeadlessCommand::StopChangeTracking },
+                        HeadlessCommand::ReplaceRange { start_paragraph:0,start_offset:raw_offset(a),end_paragraph:0,end_offset:raw_offset(b),text:text.clone() },
+                    ] });
+                    prop_assert!(result.is_ok(), "step {} {:?}: {:?}",step,action,result.as_ref().err());
+                    bytes = result.unwrap();
+                    replace_pending_text(&mut model,a,b,text,*tracked);
+                }
+                PendingEdit::Decide(accept) => {
+                    bytes = edit(&bytes,vec![decide(*accept,lg_ids(&bytes))]);
+                    model = pending_text(&model,*accept).chars().map(PendingCharacter::Stable).collect();
+                }
+                PendingEdit::InvalidBoundary => {
+                    let raw: String = model.iter().map(|character| match character {
+                        PendingCharacter::Stable(c) | PendingCharacter::Inserted(c) | PendingCharacter::Deleted(c) => *c,
+                    }).collect();
+                    let offset = raw.char_indices().find(|(_,c)| c.len_utf8()>1).map(|(i,_)| i+1)
+                        .unwrap_or(raw.len()+1);
+                    let rejected = apply_headless_commands(&bytes,&HeadlessEditRequest { commands:vec![HeadlessCommand::InsertText { paragraph:0,offset,text:"bad".into() }] });
+                    let expected = if offset > raw.len() {
+                        format!("offset {offset} is past the end of paragraph 0, which is {} bytes long",raw.len())
+                    } else {
+                        format!("offset {offset} is inside a character in paragraph 0; offsets are UTF-8 byte offsets, and a search_text result gives valid ones")
+                    };
+                    let error = rejected.unwrap_err();
+                    prop_assert!(matches!(&error, jade_docx_headless_editor::HeadlessEditError::Apply(
+                        jade_docx_document_core::headless_api::HeadlessApiApplyError::Command { index:0, source:jade_docx_document_core::commands::CommandError::Custom(message) }
+                    ) if message == &expected), "step {} {:?}: {:?}",step,action,error);
+                }
+            }
+            prop_assert_eq!(final_text(&bytes),format!("{}R",pending_text(&model,true)),"step {} {:?} pending view",step,action);
+            assert_other_author(&bytes);
+            for accept in [false,true] {
+                let reviewed = edit(&bytes,vec![decide(accept,lg_ids(&bytes))]);
+                prop_assert_eq!(final_text(&reviewed),format!("{}R",pending_text(&model,accept)),"step {} {:?} accept={}",step,action,accept);
+                assert_other_author(&reviewed);
+            }
+        }
+    }
+}
+
 fn part(bytes: &[u8], name: &str) -> String {
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
     let mut xml = String::new();
@@ -2414,6 +2594,171 @@ fn saved_grid(bytes: &[u8]) -> Option<Vec<Vec<String>>> {
         })
         .collect();
     (!rows.is_empty()).then_some(rows)
+}
+
+#[derive(Clone, Debug)]
+enum GridHistoryAction {
+    Edit { kind: u8, row: u8, column: u8 },
+    Undo,
+    Redo,
+    Reload,
+    Invalid(bool),
+}
+
+fn grid_history_action() -> impl Strategy<Value = GridHistoryAction> {
+    prop_oneof![
+        7 => (0u8..8,any::<u8>(),any::<u8>()).prop_map(|(kind,row,column)| GridHistoryAction::Edit { kind,row,column }),
+        2 => Just(GridHistoryAction::Undo),
+        2 => Just(GridHistoryAction::Redo),
+        1 => Just(GridHistoryAction::Reload),
+        1 => any::<bool>().prop_map(GridHistoryAction::Invalid),
+    ]
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::Direct(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/revision_workflows.proptest-regressions")
+        ))),
+        ..ProptestConfig::default()
+    })]
+    #[test]
+    fn interleaved_grid_history_matches_independent_stacks(actions in prop::collection::vec(grid_history_action(), 1..65)) {
+        use jade_docx_document_core::{
+            commands::{CommandContext,CommandExecutor},
+            headless_api::apply_headless_commands_with_executor_to_document,
+            word_document::WordDocument,Options,
+        };
+        let input = fixture(r#"<w:ins w:id="41" w:author="Reviewer" w:date="2025-01-01T00:00:00Z"><w:r><w:t>R</w:t></w:r></w:ins>"#);
+        let mut document = futures::executor::block_on(WordDocument::load(&input,&Options::default())).unwrap();
+        let mut executor = CommandExecutor::new();
+        let mut selection = None;
+        let mut model: Option<Vec<Vec<String>>> = None;
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        let mut undo_xml = Vec::new();
+        let mut redo_xml = Vec::new();
+        for (step,action) in actions.into_iter().enumerate() {
+            match action {
+                GridHistoryAction::Undo | GridHistoryAction::Redo => {
+                    let is_undo = matches!(action,GridHistoryAction::Undo);
+                    let before = part(&document.export_docx().unwrap(),"word/document.xml");
+                    let next_xml = if is_undo { undo_xml.pop() } else { redo_xml.pop() };
+                    let next = if is_undo { undo.pop() } else { redo.pop() };
+                    let changed = if is_undo { executor.undo(&mut CommandContext::new(&mut document,&mut selection)) }
+                        else { executor.redo(&mut CommandContext::new(&mut document,&mut selection)) }.unwrap();
+                    prop_assert_eq!(changed,next.is_some(),"step {} {:?} stack availability",step,action);
+                    if let Some(next) = next {
+                        if is_undo { redo.push(model.clone()); redo_xml.push(before); } else { undo.push(model.clone()); undo_xml.push(before); }
+                        prop_assert_eq!(Some(part(&document.export_docx().unwrap(),"word/document.xml")),next_xml,"step {} {:?} exact XML history",step,action);
+                        model = next;
+                    }
+                }
+                GridHistoryAction::Reload => {
+                    let bytes = document.export_docx().unwrap();
+                    document = futures::executor::block_on(WordDocument::load(&bytes,&Options::default())).unwrap();
+                    executor = CommandExecutor::new();
+                    selection = None;
+                    undo.clear();
+                    redo.clear();
+                    undo_xml.clear();
+                    redo_xml.clear();
+                }
+                GridHistoryAction::Invalid(bulk) => {
+                    let before = part(&document.export_docx().unwrap(),"word/document.xml");
+                    let depth = executor.undo_depth();
+                    let (command, message) = if bulk {
+                        let columns = model.as_ref().map_or(0, |grid| grid[0].len());
+                        (HeadlessCommand::FillTableRow { table_order_index:0,row:0,values:vec!["bad".into();columns+1] },
+                            if model.is_some() { format!("column {columns} is out of range") } else { "table 0 was not found".into() })
+                    } else {
+                        (HeadlessCommand::DeleteTableRow { table_order_index:usize::MAX,row_index:usize::MAX },format!("table {} was not found",usize::MAX))
+                    };
+                    let result = apply_headless_commands_with_executor_to_document(&mut document,&mut executor,selection,
+                        &HeadlessEditRequest { commands:vec![command] });
+                    let error = result.unwrap_err();
+                    prop_assert!(matches!(&error,jade_docx_document_core::headless_api::HeadlessApiApplyError::Command {
+                        index:0,source:jade_docx_document_core::commands::CommandError::Custom(actual)
+                    } if actual == &message), "step {} invalid command: {:?}",step,error);
+                    prop_assert_eq!(executor.undo_depth(),depth,"step {} failed command must not enter history",step);
+                    prop_assert_eq!(part(&document.export_docx().unwrap(),"word/document.xml"),before,"step {} rejection must be atomic",step);
+                }
+                GridHistoryAction::Edit { kind,row,column } => {
+                    let before = part(&document.export_docx().unwrap(),"word/document.xml");
+                    let mut expected = model.clone();
+                    let text = format!("条😀{step}<&>");
+                    let command = match expected.as_mut() {
+                        None => {
+                            expected = Some(vec![vec![String::new();2];2]);
+                            HeadlessCommand::InsertTable { after_paragraph:0,rows:2,columns:2,column_widths:vec![],caret_offset:None }
+                        }
+                        Some(grid) => match kind {
+                            0 => { expected=None; HeadlessCommand::DeleteTable { table_order_index:0 } }
+                            1 => {
+                                let row = row as usize % (grid.len()+1);
+                                grid.insert(row,vec![String::new();grid[0].len()]);
+                                HeadlessCommand::InsertTableRow { table_order_index:0,row_index:row,template_row:None }
+                            }
+                            2 => {
+                                let row = row as usize % grid.len();
+                                grid.remove(row);
+                                if grid.is_empty() { expected=None; }
+                                HeadlessCommand::DeleteTableRow { table_order_index:0,row_index:row }
+                            }
+                            3 => {
+                                let column = column as usize % (grid[0].len()+1);
+                                for row in grid { row.insert(column,String::new()); }
+                                HeadlessCommand::InsertTableColumn { table_order_index:0,column_index:column,width:None,template_column:None }
+                            }
+                            4 => {
+                                let column = column as usize % grid[0].len();
+                                for row in grid.iter_mut() { row.remove(column); }
+                                if grid[0].is_empty() { expected=None; }
+                                HeadlessCommand::DeleteTableColumn { table_order_index:0,column_index:column }
+                            }
+                            5 => {
+                                let row = row as usize % grid.len();
+                                let column = column as usize % grid[0].len();
+                                grid[row][column]=text.clone();
+                                HeadlessCommand::SetTableCellText { table_order_index:0,row,column,text }
+                            }
+                            6 => {
+                                let row = row as usize % grid.len();
+                                let values = vec![text;grid[0].len()];
+                                grid[row]=values.clone();
+                                HeadlessCommand::FillTableRow { table_order_index:0,row,values }
+                            }
+                            _ => {
+                                let source_row = row as usize % grid.len();
+                                let target_row = column as usize % (grid.len()+1);
+                                let clear_text = row % 2 == 0;
+                                let copy = if clear_text { vec![String::new();grid[0].len()] } else { grid[source_row].clone() };
+                                grid.insert(target_row,copy);
+                                HeadlessCommand::CloneTableRow { table_order_index:0,source_row,target_row,clear_text }
+                            }
+                        }
+                    };
+                    let result = apply_headless_commands_with_executor_to_document(&mut document,&mut executor,selection,
+                        &HeadlessEditRequest { commands:vec![command.clone()] });
+                    prop_assert!(result.is_ok(),"step {} {:?}: {:?}",step,command,result.as_ref().err());
+                    selection = result.unwrap();
+                    undo.push(model);
+                    undo_xml.push(before);
+                    redo.clear();
+                    redo_xml.clear();
+                    model=expected;
+                }
+            }
+            let bytes = document.export_docx().unwrap();
+            prop_assert_eq!(saved_grid(&bytes),model.clone(),"step {} {:?}",step,action);
+            assert_other_author(&bytes);
+            prop_assert_eq!(executor.undo_depth(),undo.len(),"step {} {:?} undo depth",step,action);
+            prop_assert_eq!(executor.can_redo(),!redo.is_empty(),"step {} {:?} redo availability",step,action);
+            let reloaded = futures::executor::block_on(WordDocument::load(&bytes,&Options::default())).unwrap();
+            prop_assert_eq!(saved_grid(&reloaded.export_docx().unwrap()),model.clone(),"step {} {:?} persisted grid",step,action);
+        }
+    }
 }
 proptest! {
     #![proptest_config(ProptestConfig {
