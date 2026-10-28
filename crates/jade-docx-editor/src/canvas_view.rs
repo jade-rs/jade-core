@@ -7337,9 +7337,17 @@ impl OffscreenDocumentView {
             // Replacing underlined composition text can overflow a paragraph's
             // retained ink band. A rejected band then escalates to a full repaint
             // that cannot use the visible-window seek, walking the whole prefix.
-            // Draw the visible page directly for previews; committed edits keep
-            // their normal band-redraw policy.
-            renderer.set_band_redraw_suppressed_for_composition(true);
+            // Draw late-page previews directly to preserve the local seek.
+            // First-page lazy previews retain the cheaper band path: there is
+            // no long prefix to avoid there. Eager snapshots still require a
+            // complete repaint because they consume the retained canvas.
+            let suppress_composition_band = !lazy_mode
+                || anchor_page > 1
+                || renderer
+                    .visible_page_range()
+                    .as_ref()
+                    .is_some_and(|range| *range.start() > 1);
+            renderer.set_band_redraw_suppressed_for_composition(suppress_composition_band);
             let state_ref = self.state.borrow();
             let word_doc = state_ref
                 .word_doc

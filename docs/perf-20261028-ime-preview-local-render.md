@@ -7,7 +7,8 @@ fallbacks and full-repaint escalation. The escalated repaint conservatively
 rejects the visible-window seek, so it walks the prefix again.
 
 `CanvasDocumentView::preview_composition_text_async` now suppresses band redraw
-for lazy previews as well as eager previews. This renders the visible page
+for late-page lazy previews as well as eager previews. First-page lazy
+previews retain bands to avoid unnecessary full-page work. This renders the visible page
 directly with the existing validated local seek. Committed text edits retain
 band redraw, and invalid or missing seek snapshots retain their conservative
 fallback. The suppression is reset after the preview render.
@@ -27,18 +28,9 @@ motivates the scoped fix; it is not a candidate-build performance result.
 Synthetic headless composition does not measure physical macOS IME input or
 the GPUI/CEF transport.
 
-Validation on the code commit `9f2e45c`:
-
-- `cargo fmt --all --check` passed locally. CI passed Rust tests, clippy with
-  warnings denied, native macOS tests, XLSX native tests, Callgrind and the Word
-  layout comparison.
-- The final optimized candidate passes the Elsa 300-page correctness gate and
-  all 32 synthetic DOM composition replacements stay at 26 walked body elements.
-- The SDK focused run passed 44 of 45 tests. The remaining assertion required
-  composition to produce the same failed seek attempts as committed typing;
-  the candidate instead removes that attempt (one successful seek, zero misses,
-  51/52 walked elements on the Yokohama fixture). The companion SDK change keeps
-  successful seeks mandatory and adds a composition walk bound below 100.
-- Detailed paired timings, build hashes and CPU attribution belong to the
-  consuming application's IME profiling report, not a native-input latency
-  claim. These tests do not replace physical macOS IME verification.
+Validation is recorded in the companion SDK and Elsa IME profiling reports.
+The first-page lazy composition regression must continue to return inline band
+bitmaps. An initial blanket suppression doubled short-document worker time;
+the final scope deliberately preserves that path. The late-page regression
+must retain local seeks, bounded walks and exact full-render pixel parity.
+Physical macOS IME verification remains separate from these browser tests.
