@@ -27,5 +27,18 @@ motivates the scoped fix; it is not a candidate-build performance result.
 Synthetic headless composition does not measure physical macOS IME input or
 the GPUI/CEF transport.
 
-Validation commands and candidate results will be recorded after the focused
-browser run and paired builds complete.
+Validation on the code commit `9f2e45c`:
+
+- `cargo fmt --all --check` passed locally. CI passed Rust tests, clippy with
+  warnings denied, native macOS tests, XLSX native tests, Callgrind and the Word
+  layout comparison.
+- The final optimized candidate passes the Elsa 300-page correctness gate and
+  all 32 synthetic DOM composition replacements stay at 26 walked body elements.
+- The SDK focused run passed 44 of 45 tests. The remaining assertion required
+  composition to produce the same failed seek attempts as committed typing;
+  the candidate instead removes that attempt (one successful seek, zero misses,
+  51/52 walked elements on the Yokohama fixture). The companion SDK change keeps
+  successful seeks mandatory and adds a composition walk bound below 100.
+- Detailed paired timings, build hashes and CPU attribution belong to the
+  consuming application's IME profiling report, not a native-input latency
+  claim. These tests do not replace physical macOS IME verification.
