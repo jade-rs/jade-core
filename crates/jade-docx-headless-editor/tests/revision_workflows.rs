@@ -4,6 +4,9 @@ use std::io::{Cursor, Read, Write};
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
+#[path = "revision_workflows/inline_authors.rs"]
+mod inline_authors;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PendingCharacter {
     Stable(char),
