@@ -170,5 +170,24 @@ fn bench_docx_xml_path_updates(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_props, bench_docx_xml_path_updates);
+fn bench_word_namespaces(c: &mut Criterion) {
+    let canonical = large_docx_xml(4096, 16);
+    let aliased = canonical
+        .replace("w:", "ns0:")
+        .replace("xmlns:w=", "xmlns:ns0=");
+    for (name, xml) in [("canonical", &canonical), ("aliased", &aliased)] {
+        c.bench_function(&format!("word_namespaces_4096_paragraphs_{name}"), |b| {
+            b.iter(|| {
+                black_box(jade_docx_reader::word_namespaces::normalize(black_box(xml)).unwrap())
+            });
+        });
+    }
+}
+
+criterion_group!(
+    benches,
+    bench_props,
+    bench_docx_xml_path_updates,
+    bench_word_namespaces
+);
 criterion_main!(benches);
