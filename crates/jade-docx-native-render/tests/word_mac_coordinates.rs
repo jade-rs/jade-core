@@ -147,7 +147,7 @@ fn word_layout(reference: &Value) -> Value {
                     page["page"],
                     character["text"],
                     character["x_pt"],
-                    row["baseline_pt"]
+                    character.get("baseline_pt").unwrap_or(&row["baseline_pt"])
                 ]));
             }
         }
@@ -293,6 +293,32 @@ fn mac_probe_coordinates() {
             directory.display()
         );
     }
+}
+
+#[test]
+fn word_reference_preserves_glyph_baselines_and_legacy_row_fallback() {
+    let reference = json!({
+        "page_count": 1,
+        "pages": [{"page": 1, "rows": [{
+            "baseline_pt": 80.0,
+            "characters": [
+                {"text": "A", "x_pt": 72.0, "baseline_pt": 80.0},
+                {"text": "B", "x_pt": 80.0, "baseline_pt": 80.6},
+                {"text": "C", "x_pt": 88.0}
+            ]
+        }]}]
+    });
+    let expected = json!({"page_count": 1, "glyphs": [
+        [1, "A", 72.0, 80.0],
+        [1, "B", 80.0, 80.6],
+        [1, "C", 88.0, 80.0]
+    ]});
+    let actual = word_layout(&reference);
+    assert_eq!(actual, expected);
+
+    let mut flattened = actual.clone();
+    flattened["glyphs"][1][3] = json!(80.0);
+    assert!(compare(&actual, &flattened, WORD_TOLERANCE_PT).is_err());
 }
 
 #[test]
