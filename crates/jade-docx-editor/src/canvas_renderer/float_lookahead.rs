@@ -1,4 +1,4 @@
-//! Word for Mac's look-ahead float wrap in compatibility mode 14 and earlier.
+//! Word for Mac's look-ahead float wrap before the next anchor paragraph.
 //!
 //! Word lays a paragraph out around a square-wrapped shape anchored in the
 //! paragraph after it (`floating-square-wrap`, `floating-wrap-sides`,
@@ -9,8 +9,9 @@
 //! then wraps as if the shape sat at its own top plus the shape's offset. A
 //! shape placed on the page wraps the lines it overlaps. The shape stays where
 //! the first pass put it: when the earlier paragraph grows, the anchor
-//! paragraph moves down and the shape does not. The same documents saved in
-//! compatibility mode 15 keep the earlier paragraph at the full width.
+//! paragraph moves down and the shape does not. In compatibility mode 15,
+//! only actual overlap with the first-pass shape wraps earlier text: space
+//! after alone does not count (`mac-probes-20261019/float-lookahead`).
 
 use super::*;
 
@@ -31,6 +32,12 @@ pub(super) struct FloatLookahead {
     /// How far below the end of the current paragraph's space after the
     /// anchor paragraph starts (its collapsed space before), px.
     anchor_gap: f64,
+    /// Space after plus the anchor's collapsed space before, px.
+    anchor_spacing: f64,
+    anchor_line_height: f64,
+    section_end: usize,
+    space_after: f64,
+    modern: bool,
     objects: Vec<LookaheadObject>,
 }
 
@@ -46,6 +53,7 @@ impl FloatLookahead {
 pub(super) struct FloatLookaheadPin {
     pub(super) element: usize,
     pub(super) page_number: usize,
+    pub(super) column_index: usize,
     pub(super) shift: f64,
 }
 
@@ -53,7 +61,7 @@ pub(super) struct FloatLookaheadPin {
 /// lines are placed.
 pub(super) struct FloatLookaheadApplied {
     pub(super) anchor_element: usize,
-    pub(super) natural_lines: usize,
+    pub(super) natural_height: f64,
 }
 
 /// Square-wrapped floating objects only: the probes show nothing else.
@@ -106,7 +114,7 @@ where
         if self
             .document_east_asian_rules
             .compatibility_mode
-            .is_none_or(|mode| mode > 14)
+            .is_none_or(|mode| mode > 15)
             || jade_docx_layout::line_metrics::word_layout_platform()
                 != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             || self.measuring_keep_next
@@ -179,27 +187,99 @@ where
         if objects.is_empty() {
             return None;
         }
-        // Line heights only scale `w:beforeLines`/`w:afterLines`; any such
-        // spacing already keeps the anchor well below the paragraph.
-        const SPACING_LINE_PT: f32 = 12.0;
+        let current_line_pt = self.resolve_paragraph_line_height_points(paragraph).ok()?;
+        let anchor_line_pt = self.resolve_paragraph_line_height_points(anchor).ok()?;
+        let after = if self.contextual_suppresses_spacing_after(index) {
+            0.0
+        } else {
+            jade_docx_layout::text_extract::spacing_after_px(paragraph, current_line_pt)
+        };
         let anchor_gap = if self.contextual_suppresses_spacing_before(anchor_element) {
             0.0
         } else {
-            let after = if self.contextual_suppresses_spacing_after(index) {
-                0.0
-            } else {
-                jade_docx_layout::text_extract::spacing_after_px(paragraph, SPACING_LINE_PT)
-            };
             jade_docx_layout::line_metrics::collapsed_spacing_before(
-                jade_docx_layout::text_extract::spacing_before_px(anchor, SPACING_LINE_PT),
+                jade_docx_layout::text_extract::spacing_before_px(anchor, anchor_line_pt),
                 after,
             )
         };
         Some(FloatLookahead {
             anchor_element,
             anchor_gap,
+            anchor_spacing: after + anchor_gap,
+            anchor_line_height: points_to_px(anchor_line_pt),
+            section_end,
+            space_after: after,
+            modern: self.document_east_asian_rules.compatibility_mode == Some(15),
             objects,
         })
+    }
+
+    /// Reserve the same indivisible leading bands (and keepNext group) as
+    /// ordinary body pagination. A float whose anchor advances must not wrap
+    /// the preceding page's text, even if its paragraph offset is negative.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn lookahead_anchor_stays_in_flow(
+        &mut self,
+        lookahead: &FloatLookahead,
+        natural_height: f64,
+        bottom_border: f64,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        counter: &NumberingCounter,
+        deleted: &HashMap<String, Vec<u32>>,
+        section: usize,
+    ) -> Result<bool, JsValue> {
+        if !lookahead.modern {
+            return Ok(true);
+        }
+        let natural_end = self.current_y + natural_height + bottom_border;
+        let bottom = self.effective_body_bottom();
+        if natural_end > bottom + jade_docx_layout::paragraph_pagination::FLOW_EPSILON_PX {
+            // The earlier paragraph itself continues onto a different flow
+            // surface; these exclusions describe only its current surface.
+            return Ok(false);
+        }
+        // The body loop sets last_document before constructing lookahead.
+        // Borrow its existing elements only after geometry overlaps, avoiding
+        // a deep paragraph/image clone for every next-paragraph float.
+        let Some(document) = self.last_document.clone() else {
+            return Ok(false);
+        };
+        let Some(body) = document.body.as_ref() else {
+            return Ok(false);
+        };
+        let last = keep_next::group_end(
+            &body.elements,
+            lookahead.anchor_element,
+            lookahead.section_end,
+        )
+        .unwrap_or(lookahead.anchor_element);
+        let Some(group) = body.elements.get(lookahead.anchor_element..=last) else {
+            return Ok(false);
+        };
+        let saved_y = self.current_y;
+        let saved_spacing = self.trailing_spacing_after;
+        self.current_y = (natural_end + lookahead.space_after).min(bottom);
+        self.trailing_spacing_after = Some((
+            self.current_page_number,
+            self.column_index,
+            self.current_y,
+            lookahead.space_after,
+        ));
+        let available = bottom - self.current_y;
+        let measured = self.measure_keep_next_group(
+            group,
+            options,
+            numbering_part,
+            counter,
+            deleted,
+            lookahead.anchor_element,
+            section,
+        );
+        self.current_y = saved_y;
+        self.trailing_spacing_after = saved_spacing;
+        let required = measured?;
+        Ok(required <= available + jade_docx_layout::paragraph_pagination::FLOW_EPSILON_PX)
     }
 
     /// Wrap exclusions for the next paragraph's objects that this paragraph
@@ -215,6 +295,9 @@ where
         line_right: f64,
         paragraph_style: &ParagraphStyle,
         paragraph_top_y: f64,
+        text_top_y: f64,
+        natural_height: f64,
+        bottom_border: f64,
         line_height: f64,
     ) -> Option<Vec<FloatExclusion>> {
         let last = natural_lines.last()?;
@@ -227,7 +310,14 @@ where
                     .iter()
                     .map(|cluster| cluster.width)
                     .sum::<f64>()
-            })?;
+            });
+        // Legacy touch detection needs visible text on the final line. In
+        // mode 15 an earlier line may overlap even if a manual break leaves
+        // the final line empty.
+        if !lookahead.modern && text_width.is_none() {
+            return None;
+        }
+        let text_width = text_width.unwrap_or(0.0);
         let start = line_left
             + if natural_lines.len() == 1 {
                 paragraph_style.first_line_indent
@@ -248,26 +338,47 @@ where
             .objects
             .iter()
             .filter(|object| {
-                page_positioned(&object.layout)
+                lookahead.modern
+                    || page_positioned(&object.layout)
                     || paragraph_offset(&object.layout)
                         .is_some_and(|offset| offset + lookahead.anchor_gap <= TOUCH_EPSILON_PX)
             })
             .filter_map(|object| {
-                // Laid out as if the paragraph itself anchored the object.
+                // Modern Word uses the anchor's first-pass position; legacy
+                // Word lays it out as if this earlier paragraph anchored it.
+                let anchor_top = if lookahead.modern {
+                    text_top_y + natural_height + bottom_border + lookahead.anchor_spacing
+                } else {
+                    paragraph_top_y
+                };
+                let object_line_height = if lookahead.modern {
+                    lookahead.anchor_line_height
+                } else {
+                    line_height
+                };
                 self.floating_object_wrap_exclusion(
                     FloatingObjectTarget {
                         paragraph_index: paragraph_index + 1,
                         run_index: object.run_index,
                         kind: object.kind,
                     },
-                    object.width.unwrap_or(line_height).max(1.0),
-                    object.height.unwrap_or(line_height).max(1.0),
+                    object.width.unwrap_or(object_line_height).max(1.0),
+                    object.height.unwrap_or(object_line_height).max(1.0),
                     &object.layout,
-                    paragraph_top_y,
-                    line_height,
+                    anchor_top,
+                    object_line_height,
                 )
             })
-            .filter(|bounds| text_right > bounds.left && text_left < bounds.right)
+            .filter(|bounds| {
+                if lookahead.modern {
+                    bounds.top < text_top_y + natural_height - TOUCH_EPSILON_PX
+                        && bounds.bottom > text_top_y + TOUCH_EPSILON_PX
+                        && line_right > bounds.left
+                        && line_left < bounds.right
+                } else {
+                    text_right > bounds.left && text_left < bounds.right
+                }
+            })
             .collect::<Vec<_>>();
         (!exclusions.is_empty()).then_some(exclusions)
     }
@@ -277,7 +388,9 @@ where
     pub(super) fn float_anchor_top(&self, body_element_index: usize, paragraph_top_y: f64) -> f64 {
         self.float_lookahead_pin
             .filter(|pin| {
-                pin.element == body_element_index && pin.page_number == self.current_page_number
+                pin.element == body_element_index
+                    && pin.page_number == self.current_page_number
+                    && pin.column_index == self.column_index
             })
             .map_or(paragraph_top_y, |pin| paragraph_top_y - pin.shift)
     }
