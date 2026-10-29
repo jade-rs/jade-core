@@ -3061,6 +3061,89 @@ impl WrappedLine {
         heights
     }
 
+    /// Vertical advance of wrapped text on one page, counting the two sides
+    /// of a float once and including clearance, object boxes and list labels.
+    /// Uses the same shared font/grid plan as pagination; no text is rewrapped.
+    pub fn physical_height_px(
+        lines: &[Self],
+        style: &ParagraphStyle,
+        fallback_px: f64,
+        mark_font_box: Option<(f64, f64)>,
+        object_line_extra_px: Option<f64>,
+        label_ascent: Option<f64>,
+    ) -> f64 {
+        let heights = Self::line_heights_px_with_numbering_ascent(
+            lines,
+            style,
+            fallback_px,
+            mark_font_box,
+            label_ascent,
+        );
+        let first_band_end = (1..lines.len())
+            .find(|&index| !style.line_shares_float_band(index))
+            .unwrap_or(lines.len());
+        let mut total = 0.0;
+        let mut band_height = 0.0_f64;
+        for (index, line) in lines.iter().enumerate() {
+            let height = heights.as_ref().map_or(fallback_px, |plan| plan[index]);
+            let has_objects = line
+                .clusters
+                .iter()
+                .any(|cluster| cluster.inline_object.is_some());
+            let objects_only = has_objects
+                && line
+                    .clusters
+                    .iter()
+                    .all(|cluster| cluster.inline_object.is_some());
+            let extra = if objects_only {
+                object_line_extra_px.filter(|_| {
+                    mark_font_box.is_none_or(|(ascent, _)| {
+                        line.clusters
+                            .iter()
+                            .filter_map(|cluster| cluster.inline_object_bounds_px())
+                            .any(|(top, _)| -top > ascent)
+                    })
+                })
+            } else {
+                style
+                    .word_proportional_line_sizing
+                    .map(|sizing| sizing.multiple())
+                    .filter(|multiple| has_objects && *multiple >= 1.0)
+                    .map(|multiple| height - height / multiple)
+            };
+            let (mut ascent, mut descent) = line
+                .content_box_px_with_paragraph_mark(if extra.is_none() {
+                    mark_font_box
+                } else {
+                    None
+                })
+                .unwrap_or((height * 0.8, height * 0.2));
+            if objects_only && extra.is_some() {
+                if let Some((mark_ascent, _)) = Self::valid_mac_mark_box(mark_font_box) {
+                    ascent = ascent.max(mark_ascent);
+                }
+            }
+            if index < first_band_end {
+                (ascent, descent) = crate::line_metrics::line_font_box_with_numbering_ascent(
+                    (ascent, descent),
+                    label_ascent,
+                );
+            }
+            let content_height = (ascent + descent).max(1.0);
+            let advance = match extra {
+                Some(extra) if objects_only || content_height > height => content_height + extra,
+                _ => height.max(content_height),
+            };
+            if !style.line_shares_float_band(index) {
+                total += band_height + style.skipped_float_height_before(index, height);
+                band_height = advance;
+            } else {
+                band_height = band_height.max(advance);
+            }
+        }
+        total + band_height
+    }
+
     fn line_box_px(&self, include_objects: bool) -> Option<(f64, f64)> {
         if self.clusters.is_empty()
             && self.break_kind == LineBreakKind::Hard
@@ -11610,6 +11693,29 @@ mod tests {
         )
         .unwrap();
         assert_eq!(heights, vec![72.0, 72.0, 24.0]);
+        assert_eq!(
+            WrappedLine::physical_height_px(
+                &lines,
+                &style,
+                24.0,
+                None,
+                None,
+                Some(points_to_px(40.0)),
+            ),
+            96.0
+        );
+        style.float_line_segments[0].exact_clearance_height = 13.5;
+        assert_eq!(
+            WrappedLine::physical_height_px(
+                &lines,
+                &style,
+                24.0,
+                None,
+                None,
+                Some(points_to_px(40.0)),
+            ),
+            109.5
+        );
         assert!(
             WrappedLine::line_heights_px_with_numbering_ascent(
                 &lines,
@@ -11633,6 +11739,54 @@ mod tests {
             "a tall label must retain the paragraph's resolved constant height"
         );
         set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+        #[test]
+        fn physical_height_counts_variable_bands_and_clearance_once(
+            bands in proptest::collection::vec((4_u16..150, any::<bool>(), 0_u16..50), 1..24),
+        ) {
+            use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform, WordProportionalLineSizing};
+            set_word_layout_platform(WordLayoutPlatform::Mac);
+            let text = vec!["x"; bands.len()].join("\n");
+            let mut style = ParagraphStyle {
+                word_proportional_line_sizing: WordProportionalLineSizing::new(Some(&jade_docx_reader::Spacing {
+                    line: Some(1.0), line_rule: Some("auto".into()), ..jade_docx_reader::Spacing::default()
+                }), false, true),
+                ..ParagraphStyle::default()
+            };
+            let mut lines = wrap_text_into_lines(
+                &TestContext::new(10.0), &text, &[make_run(&text)], 0.0, &style, 0, 100.0,
+            ).unwrap();
+            prop_assert_eq!(lines.len(), bands.len());
+            let mut expected = 0.0_f64;
+            let mut band_height = 0.0_f64;
+            for (index, ((height, continuation, clearance), line)) in bands.iter().zip(&mut lines).enumerate() {
+                let height = f64::from(*height);
+                let continuation = index > 0 && *continuation;
+                for cluster in &mut line.clusters {
+                    let metrics = cluster.layout.as_mut().unwrap();
+                    metrics.font_ascent = Some(height * 0.75);
+                    metrics.font_descent = Some(height * 0.25);
+                }
+                style.float_line_segments.push(FloatLineSegment {
+                    start_x: 0.0, width: 100.0, skipped_lines_before: 0,
+                    exact_clearance_height: f64::from(*clearance),
+                    shares_band_with_previous: continuation,
+                });
+                if continuation {
+                    band_height = band_height.max(height);
+                } else {
+                    expected += band_height + f64::from(*clearance);
+                    band_height = height;
+                }
+            }
+            expected += band_height;
+            let actual = WrappedLine::physical_height_px(&lines, &style, 16.0, None, None, None);
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            prop_assert!((actual - expected).abs() < 1e-6, "actual={actual}, expected={expected}");
+        }
     }
 
     #[test]
@@ -11842,6 +11996,29 @@ mod tests {
         assert_eq!(
             line.clusters[0].inline_object_bounds_px(),
             Some((-118.8, 0.0))
+        );
+        assert_eq!(
+            WrappedLine::physical_height_px(
+                std::slice::from_ref(&line),
+                &ParagraphStyle::default(),
+                20.0,
+                Some(mark),
+                None,
+                None,
+            ),
+            118.8 + mark.1,
+        );
+        assert_eq!(
+            WrappedLine::physical_height_px(
+                std::slice::from_ref(&line),
+                &ParagraphStyle::default(),
+                20.0,
+                Some(mark),
+                Some(2.5),
+                None,
+            ),
+            118.8 + 2.5,
+            "auto-spacing extra replaces the paragraph mark's descent",
         );
         line.break_kind = LineBreakKind::Soft;
         assert_eq!(
