@@ -1313,6 +1313,12 @@ pub struct WordDocument {
     pub raw_document: Option<DocxXmlDocument>,
     #[serde(skip)]
     paragraph_surfaces: Vec<ParagraphSurface>,
+    /// Sorted surface indices of body paragraphs (including table cells).
+    /// Text boxes, equations and notes share the surface order, but are not
+    /// body paragraphs. Keep this derived index with structural surface edits
+    /// so ordinary typing/counting does not scan the entire document.
+    #[serde(skip)]
+    body_surface_indices: Vec<usize>,
     /// Text counts shown in the status bar. Ordinary typing invalidates one
     /// body paragraph; structural edits rebuild the cache with the surfaces.
     #[serde(skip)]
@@ -2341,6 +2347,7 @@ impl WordDocument {
             document_part: None,
             raw_document: None,
             paragraph_surfaces: Vec::new(),
+            body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
             protection_lifted: false,
@@ -4826,6 +4833,7 @@ impl WordDocument {
             document_part: None,
             raw_document: None,
             paragraph_surfaces: Vec::new(),
+            body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
             revision_session: None,
             protection_lifted: false,
@@ -4864,11 +4872,11 @@ impl WordDocument {
     pub(crate) fn rebuild_paragraph_surfaces(&mut self) {
         self.text_metrics_cache.get_mut().invalidate_all();
         let Some(doc) = self.document.as_ref() else {
-            self.paragraph_surfaces.clear();
+            self.set_paragraph_surfaces(Vec::new());
             return;
         };
         let Some(body) = doc.body.as_ref() else {
-            self.paragraph_surfaces.clear();
+            self.set_paragraph_surfaces(Vec::new());
             return;
         };
 
@@ -4938,8 +4946,17 @@ impl WordDocument {
                 );
             }
         }
-        self.paragraph_surfaces = paragraph_surfaces;
+        self.set_paragraph_surfaces(paragraph_surfaces);
         self.refresh_note_cross_references();
+    }
+
+    fn set_paragraph_surfaces(&mut self, surfaces: Vec<ParagraphSurface>) {
+        self.body_surface_indices.clear();
+        self.body_surface_indices
+            .extend(surfaces.iter().enumerate().filter_map(|(index, surface)| {
+                matches!(surface, ParagraphSurface::Body { .. }).then_some(index)
+            }));
+        self.paragraph_surfaces = surfaces;
     }
 
     fn enumerate_body_surfaces(
@@ -6327,34 +6344,11 @@ impl WordDocument {
     }
 
     pub(crate) fn body_index_for_surface(&self, surface_index: usize) -> Option<usize> {
-        if surface_index >= self.paragraph_surfaces.len() {
-            return None;
-        }
-
-        let mut body_count = 0usize;
-        for (idx, surface) in self.paragraph_surfaces.iter().enumerate() {
-            if idx == surface_index {
-                return match surface {
-                    ParagraphSurface::Body { .. } => Some(body_count),
-                    ParagraphSurface::Math { .. }
-                    | ParagraphSurface::TextBox { .. }
-                    | ParagraphSurface::Note { .. } => None,
-                };
-            }
-
-            if matches!(surface, ParagraphSurface::Body { .. }) {
-                body_count += 1;
-            }
-        }
-
-        None
+        self.body_surface_indices.binary_search(&surface_index).ok()
     }
 
     pub(crate) fn body_paragraph_count(&self) -> usize {
-        self.paragraph_surfaces
-            .iter()
-            .filter(|surface| matches!(surface, ParagraphSurface::Body { .. }))
-            .count()
+        self.body_surface_indices.len()
     }
 
     /// Returns Word-compatible text counts without serializing the complete
@@ -6677,16 +6671,7 @@ impl WordDocument {
     }
 
     pub(crate) fn surface_index_for_body(&self, body_index: usize) -> Option<usize> {
-        let mut current = 0usize;
-        for (idx, surface) in self.paragraph_surfaces.iter().enumerate() {
-            if let ParagraphSurface::Body { .. } = surface {
-                if current == body_index {
-                    return Some(idx);
-                }
-                current += 1;
-            }
-        }
-        None
+        self.body_surface_indices.get(body_index).copied()
     }
 
     pub(crate) fn surface_index_for_story(
@@ -30867,7 +30852,7 @@ impl WordDocument {
             updated.push(surface);
         }
 
-        self.paragraph_surfaces = updated;
+        self.set_paragraph_surfaces(updated);
         true
     }
 
@@ -38828,6 +38813,10 @@ impl HtmlBlock {
 }
 #[cfg(test)]
 mod tests {
+    mod body_index {
+        include!("word_document_body_index_tests.rs");
+    }
+
     mod resize_stateful {
         include!("word_document_resize_tests.rs");
     }
