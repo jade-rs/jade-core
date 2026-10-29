@@ -15,6 +15,7 @@ pub mod parser;
 pub mod settings;
 pub mod styles;
 pub mod theme;
+pub mod word_namespaces;
 
 pub use comments::CommentsPart;
 pub use common::{OpenXmlPackage, Relationship, RelationshipTypes};
