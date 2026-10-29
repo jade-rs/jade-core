@@ -2745,6 +2745,7 @@ where
                 // jade-docx-layout exclusion plan to flow beside/below it.
                 self.current_y = logical_floor;
                 self.active_float_exclusions.push(PageFloatExclusion {
+                    is_table: true,
                     page_number: frame.page_number,
                     bounds: floating_table_text_exclusion(table, frame),
                 });
