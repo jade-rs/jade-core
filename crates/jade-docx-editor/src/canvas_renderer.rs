@@ -3234,8 +3234,15 @@ type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
 
+#[derive(Clone, Copy)]
+struct FloatTableSpacing {
+    paragraph_bottom: f64,
+    space_after: f64,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 struct PageFloatExclusion {
+    is_table: bool,
     page_number: usize,
     bounds: FloatExclusion,
 }
@@ -18662,6 +18669,12 @@ where
         } else {
             None
         };
+        let table_space_after = self.floating_table_space_after(
+            paragraph,
+            body_element_index,
+            line_height_points,
+            paragraph_style.word_platform,
+        );
         paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
             self.current_y,
             line_height,
@@ -18672,6 +18685,7 @@ where
             paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && paragraph_style.word_grid_line_sizing.is_none(),
+            None,
         );
         // Word leaves the paragraph mark's font box below an inline image
         // even when this paragraph contains no text. Resolve it only for
@@ -18721,22 +18735,22 @@ where
         // in the next paragraph (see `float_lookahead`), judged
         // from the lines it takes without them.
         let mut float_lookahead_applied = None;
-        if let Some(lookahead) = self.float_lookahead.take().filter(|_| {
-            !layout_text.is_empty()
-                && note_resume_from == 0
-                && paragraph_style.drop_cap.is_none()
-                && !paragraph_style.bidi
-                && current_direction.is_none_or(|direction| {
-                    !matches!(
-                        direction,
-                        TextDirection::TbRl
-                            | TextDirection::TbRlV
-                            | TextDirection::BtLr
-                            | TextDirection::BtLrV
-                            | TextDirection::TbLrV
-                    )
-                })
-        }) {
+        let spacing_eligible = !layout_text.is_empty()
+            && note_resume_from == 0
+            && paragraph_style.drop_cap.is_none()
+            && !paragraph_style.bidi
+            && current_direction.is_none_or(|direction| {
+                !matches!(
+                    direction,
+                    TextDirection::TbRl
+                        | TextDirection::TbRlV
+                        | TextDirection::BtLr
+                        | TextDirection::BtLrV
+                        | TextDirection::TbLrV
+                )
+            });
+        let lookahead = self.float_lookahead.take().filter(|_| spacing_eligible);
+        if spacing_eligible && (lookahead.is_some() || table_space_after > 0.0) {
             let natural_lines = self.wrap_text_into_lines_cached(
                 &layout_text,
                 &run_styles,
@@ -18767,35 +18781,55 @@ where
                     word_paragraph_border_extent_pt(borders.bottom.as_ref())
                 })
             });
-            let lookahead_exclusions = self.float_lookahead_exclusions(
-                &lookahead,
-                paragraph_index,
-                &natural_lines,
-                x,
-                column_right - paragraph_style.right_indent,
-                &paragraph_style,
-                paragraph_top_y,
-                self.current_y,
-                natural_height,
-                bottom_border,
-                line_height,
-            );
-            // Most next-paragraph shapes never overlap this paragraph. Only
-            // measure anchor pagination when geometry could change its wrap.
-            let same_flow = lookahead_exclusions.is_some()
-                && self.lookahead_anchor_stays_in_flow(
+            let paragraph_bottom = self.current_y + natural_height + bottom_border;
+            let table_spacing = (table_space_after > 0.0
+                && self.active_float_exclusions.iter().any(|entry| {
+                    entry.is_table
+                        && entry.page_number == self.current_page_number
+                        && entry.bounds.top >= paragraph_bottom
+                        && entry.bounds.top < paragraph_bottom + table_space_after
+                }))
+            .then_some(FloatTableSpacing {
+                paragraph_bottom,
+                space_after: table_space_after,
+            });
+            let mut exclusions = current_float_exclusions.clone();
+            if let Some(lookahead) = lookahead {
+                let lookahead_exclusions = self.float_lookahead_exclusions(
                     &lookahead,
+                    paragraph_index,
+                    &natural_lines,
+                    x,
+                    column_right - paragraph_style.right_indent,
+                    &paragraph_style,
+                    paragraph_top_y,
+                    self.current_y,
                     natural_height,
                     bottom_border,
-                    options,
-                    numbering_part,
-                    numbering_counter,
-                    deleted_numbering_offsets,
-                    section_index,
-                )?;
-            if let Some(lookahead_exclusions) = lookahead_exclusions.filter(|_| same_flow) {
-                let mut exclusions = current_float_exclusions.clone();
-                exclusions.extend(lookahead_exclusions);
+                    line_height,
+                );
+                // Most next-paragraph shapes never overlap this paragraph. Only
+                // measure anchor pagination when geometry could change its wrap.
+                let same_flow = lookahead_exclusions.is_some()
+                    && self.lookahead_anchor_stays_in_flow(
+                        &lookahead,
+                        natural_height,
+                        bottom_border,
+                        options,
+                        numbering_part,
+                        numbering_counter,
+                        deleted_numbering_offsets,
+                        section_index,
+                    )?;
+                if let Some(lookahead_exclusions) = lookahead_exclusions.filter(|_| same_flow) {
+                    exclusions.extend(lookahead_exclusions);
+                    float_lookahead_applied = Some(float_lookahead::FloatLookaheadApplied {
+                        anchor_element: lookahead.anchor_element(),
+                        natural_height,
+                    });
+                }
+            }
+            if table_spacing.is_some() || float_lookahead_applied.is_some() {
                 paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
                     self.current_y,
                     line_height,
@@ -18804,11 +18838,8 @@ where
                     &exclusions,
                     contour_font_box,
                     paragraph_style.word_grid_line_sizing.is_none(),
+                    table_spacing,
                 );
-                float_lookahead_applied = Some(float_lookahead::FloatLookaheadApplied {
-                    anchor_element: lookahead.anchor_element(),
-                    natural_height,
-                });
             }
         }
         self.active_float_exclusions
@@ -18817,6 +18848,7 @@ where
                     .iter()
                     .cloned()
                     .map(|bounds| PageFloatExclusion {
+                        is_table: false,
                         page_number: self.current_page_number,
                         bounds,
                     }),
@@ -20058,6 +20090,7 @@ where
             if let Some(bounds) = paragraph_frame_wrap_exclusion(&active.frame, &rect) {
                 self.paragraph_frame_wrap_guard = Some((active.page_number, bounds.bottom));
                 self.active_float_exclusions.push(PageFloatExclusion {
+                    is_table: false,
                     page_number: active.page_number,
                     bounds,
                 });
@@ -34360,6 +34393,40 @@ where
         })
     }
 
+    /// The Mac mode-14 floating-order probe includes the paragraph's space
+    /// after when it checks a floating table above its first text row. Keep
+    /// this separate from drawing look-ahead and from the table's paint frame.
+    fn floating_table_space_after(
+        &self,
+        paragraph: &Paragraph,
+        body_element_index: usize,
+        line_height_points: f32,
+        platform: jade_docx_layout::line_metrics::WordLayoutPlatform,
+    ) -> f64 {
+        if platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            || self.document_east_asian_rules.compatibility_mode != Some(14)
+            || self.pageless_mode
+            || self.rendering_header_footer_story
+            || self.rendering_note_story
+            || !self.active_float_exclusions.iter().any(|entry| {
+                entry.is_table
+                    && entry.page_number == self.current_page_number
+                    && entry.bounds.top >= self.current_y
+                    && entry.bounds.bottom > self.current_y
+            })
+            || self.contextual_suppresses_spacing_after(body_element_index)
+            || paragraph
+                .runs
+                .iter()
+                .rev()
+                .find(|run| !run.text.is_empty())
+                .is_some_and(|run| run.text.ends_with(PAGE_BREAK_STR))
+        {
+            return 0.0;
+        }
+        jade_docx_layout::text_extract::spacing_after_px(paragraph, line_height_points)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn plan_paragraph_float_segments(
         &mut self,
@@ -34370,6 +34437,7 @@ where
         current: &[FloatExclusion],
         contour_font_box: Option<f64>,
         exact_clearance: bool,
+        table_spacing: Option<FloatTableSpacing>,
     ) -> Vec<jade_docx_layout::line_wrap::FloatLineSegment> {
         let current_page_number = self.current_page_number;
         self.active_float_exclusions.retain(|entry| {
@@ -34381,7 +34449,17 @@ where
             .active_float_exclusions
             .iter()
             .filter(|entry| entry.page_number == self.current_page_number)
-            .map(|entry| entry.bounds.clone())
+            .map(|entry| {
+                let mut bounds = entry.bounds.clone();
+                if let Some(spacing) = table_spacing.filter(|spacing| {
+                    entry.is_table
+                        && bounds.top >= spacing.paragraph_bottom
+                        && bounds.top < spacing.paragraph_bottom + spacing.space_after
+                }) {
+                    bounds.top -= spacing.space_after.max(0.0);
+                }
+                bounds
+            })
             .filter(|bounds| bounds.bottom > first_line_top)
             .collect::<Vec<_>>();
         exclusions.extend_from_slice(current);
@@ -61668,6 +61746,7 @@ mod tests {
     fn paragraph_float_plan_includes_prior_same_page_exclusions() {
         let mut renderer = test_renderer();
         renderer.active_float_exclusions.push(PageFloatExclusion {
+            is_table: false,
             page_number: 1,
             bounds: FloatExclusion {
                 top: 0.0,
@@ -61679,6 +61758,7 @@ mod tests {
             },
         });
         renderer.active_float_exclusions.push(PageFloatExclusion {
+            is_table: false,
             page_number: 0,
             bounds: FloatExclusion {
                 top: 0.0,
@@ -61690,6 +61770,7 @@ mod tests {
             },
         });
         renderer.active_float_exclusions.push(PageFloatExclusion {
+            is_table: false,
             page_number: 1,
             bounds: FloatExclusion {
                 top: -40.0,
@@ -61701,13 +61782,193 @@ mod tests {
             },
         });
         let plan =
-            renderer.plan_paragraph_float_segments(0.0, 20.0, 100.0, 500.0, &[], None, false);
+            renderer.plan_paragraph_float_segments(0.0, 20.0, 100.0, 500.0, &[], None, false, None);
         assert_eq!(renderer.active_float_exclusions.len(), 1);
         assert_eq!(plan[0].start_x, 250.0);
         assert_eq!(plan[0].width, 250.0);
         assert_eq!(plan[1].start_x, 250.0);
         assert_eq!(plan[2].start_x, 100.0);
         assert_eq!(plan[2].width, 400.0);
+    }
+
+    /// Word for Mac 16.114, mode 14, floating-order: the last line
+    /// clears the table, but its paragraph's space after reaches the frame.
+    #[test]
+    fn table_wrap_includes_paragraph_space_after_without_moving_its_frame() {
+        let (mut renderer, _) = recording_renderer();
+        renderer.current_page_number = 1;
+        let bounds = FloatExclusion {
+            top: 125.0,
+            bottom: 160.0,
+            left: 400.0,
+            right: 500.0,
+            wrap_text: WrapTextSide::BothSides,
+            polygon: None,
+        };
+        renderer.active_float_exclusions.push(PageFloatExclusion {
+            is_table: true,
+            page_number: 1,
+            bounds: bounds.clone(),
+        });
+        let plain = renderer.plan_paragraph_float_segments(
+            100.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            true,
+            None,
+        );
+        assert_eq!(plain[0].width, 400.0);
+        let spaced = renderer.plan_paragraph_float_segments(
+            100.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            true,
+            Some(FloatTableSpacing {
+                paragraph_bottom: 120.0,
+                space_after: 10.0,
+            }),
+        );
+        assert_eq!(spaced[0].width, 300.0, "space after overlaps the table");
+        assert_eq!(spaced[3].width, 400.0, "table bottom does not move");
+        assert_eq!(renderer.active_float_exclusions[0].bounds, bounds);
+        let continued = renderer.plan_paragraph_float_segments(
+            100.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            true,
+            Some(FloatTableSpacing {
+                paragraph_bottom: 150.0,
+                space_after: 10.0,
+            }),
+        );
+        assert_eq!(
+            continued[0].width, 400.0,
+            "space after belongs to the final line"
+        );
+        let gap = renderer.plan_paragraph_float_segments(
+            100.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            true,
+            Some(FloatTableSpacing {
+                paragraph_bottom: 120.0,
+                space_after: 4.0,
+            }),
+        );
+        assert_eq!(gap[0].width, 400.0, "space after still clears the table");
+        renderer.active_float_exclusions[0].is_table = false;
+        let drawing = renderer.plan_paragraph_float_segments(
+            100.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            true,
+            Some(FloatTableSpacing {
+                paragraph_bottom: 120.0,
+                space_after: 10.0,
+            }),
+        );
+        assert_eq!(
+            drawing[0].width, 400.0,
+            "drawing spacing rules are separate"
+        );
+    }
+
+    #[test]
+    fn table_wrap_space_after_is_limited_to_the_observed_body_policy() {
+        use jade_docx_layout::line_metrics::WordLayoutPlatform::{Mac, Windows};
+        let (mut renderer, _) = recording_renderer();
+        renderer.pageless_mode = false;
+        renderer.document_east_asian_rules.compatibility_mode = Some(14);
+        renderer.active_float_exclusions.push(PageFloatExclusion {
+            is_table: true,
+            page_number: renderer.current_page_number,
+            bounds: FloatExclusion {
+                top: 500.0,
+                bottom: 600.0,
+                left: 400.0,
+                right: 500.0,
+                wrap_text: WrapTextSide::BothSides,
+                polygon: None,
+            },
+        });
+        let mut paragraph = note_test_paragraph("body", None);
+        paragraph.properties = Some(ParagraphProperties {
+            spacing: Some(Spacing {
+                after: Some(10.0),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        let expected = jade_docx_layout::text_extract::spacing_after_px(&paragraph, 11.0);
+        assert!(expected > 0.0);
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            expected
+        );
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Windows),
+            0.0
+        );
+        for mode in [None, Some(13), Some(15), Some(16)] {
+            renderer.document_east_asian_rules.compatibility_mode = mode;
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+                0.0
+            );
+        }
+        renderer.document_east_asian_rules.compatibility_mode = Some(14);
+        renderer.pageless_mode = true;
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
+        renderer.pageless_mode = false;
+        renderer.rendering_header_footer_story = true;
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
+        renderer.rendering_header_footer_story = false;
+        renderer.rendering_note_story = true;
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
+        renderer.rendering_note_story = false;
+        renderer.spacing_scan_from_story = true;
+        renderer.contextual_suppress_after.insert(0);
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
+        renderer.contextual_suppress_after = ElementIndexSet::default();
+        renderer.spacing_scan_from_story = false;
+        paragraph.runs[0].text.push_str(PAGE_BREAK_STR);
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
+        paragraph.runs[0].text = "body".into();
+        renderer.active_float_exclusions[0].is_table = false;
+        assert_eq!(
+            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+            0.0
+        );
     }
 
     #[test]
