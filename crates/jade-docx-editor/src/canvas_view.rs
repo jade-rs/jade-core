@@ -8693,6 +8693,14 @@ impl OffscreenDocumentView {
         &self,
         renderer: &mut CanvasRenderer,
     ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
+        self.capture_paged_images_with_policy(renderer, false)
+    }
+
+    fn capture_paged_images_with_policy(
+        &self,
+        renderer: &mut CanvasRenderer,
+        defer_snapshots: bool,
+    ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
         // Keep table resize metadata in sync for all render paths, including
         // non-lazy snapshot capture. Frontend hit-testing fetches this state
         // asynchronously, so stale values can cause handler-coordinate drift.
@@ -8710,6 +8718,38 @@ impl OffscreenDocumentView {
 
         if renderer.needs_full_repaint() {
             let lazy_mode = self.state.borrow().lazy_mode;
+            if defer_snapshots {
+                // Keep the same visible, actually painted pages as the eager
+                // fallback. Full-page damage makes lazy consumers refresh all
+                // affected ink without consuming the validated backing pixels.
+                let pages = Self::pages_with_rendered_pixels(
+                    renderer,
+                    filter_pages_by_visible_range(
+                        (0..renderer.page_count()).collect(),
+                        if lazy_mode {
+                            renderer.visible_page_range()
+                        } else {
+                            None
+                        },
+                    ),
+                );
+                let dirty: Vec<DirtyRect> = pages
+                    .into_iter()
+                    .filter_map(|page| {
+                        renderer
+                            .page_dimensions(page)
+                            .map(|(width, height)| DirtyRect {
+                                page,
+                                x: 0.0,
+                                y: renderer.page_top_y(page),
+                                width,
+                                height,
+                            })
+                    })
+                    .collect();
+                renderer.clear_dirty_regions();
+                return Ok((None, Self::dirty_regions_to_js(&dirty)));
+            }
             let pages = if lazy_mode {
                 let pages_to_snapshot = Self::pages_with_rendered_pixels(
                     renderer,
@@ -8785,7 +8825,14 @@ impl OffscreenDocumentView {
             return Ok((None, dirty_regions_js));
         }
 
-        let pages = renderer.take_paged_snapshots_for_pages(Some(&pages_to_snapshot))?;
+        // Lazy decoration consumers fetch current pixels with create_page_bitmap.
+        // Keeping the backing canvas avoids a destructive transfer followed by
+        // another render, and preserves the next composition's band-repaint path.
+        let pages = if defer_snapshots {
+            None
+        } else {
+            renderer.take_paged_snapshots_for_pages(Some(&pages_to_snapshot))?
+        };
         renderer.clear_dirty_regions();
         Ok((pages, dirty_regions_js))
     }
@@ -17664,6 +17711,22 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen(js_name = applyDecorationResults)]
     pub fn apply_decoration_results(&self, json: &str) -> Result<JsValue, JsValue> {
+        self.apply_decoration_results_with_policy(json, false)
+    }
+
+    /// Applies decoration ink while retaining rendered canvas pixels.
+    /// Lazy consumers must present the dirty pages via create_page_bitmap.
+    /// Full-repaint fallbacks report full-page damage for every painted page.
+    #[wasm_bindgen(js_name = applyDecorationResultsLazy)]
+    pub fn apply_decoration_results_lazy(&self, json: &str) -> Result<JsValue, JsValue> {
+        self.apply_decoration_results_with_policy(json, true)
+    }
+
+    fn apply_decoration_results_with_policy(
+        &self,
+        json: &str,
+        defer_snapshots: bool,
+    ) -> Result<JsValue, JsValue> {
         #[derive(serde::Deserialize)]
         struct ResultEntry {
             text: String,
@@ -17696,10 +17759,18 @@ impl OffscreenDocumentView {
             return Ok(JsValue::NULL);
         }
 
-        self.rerender_decoration_texts(&changed_texts)
+        self.rerender_decoration_texts_with_policy(&changed_texts, defer_snapshots)
     }
 
     fn rerender_decoration_texts(&self, changed_texts: &[String]) -> Result<JsValue, JsValue> {
+        self.rerender_decoration_texts_with_policy(changed_texts, false)
+    }
+
+    fn rerender_decoration_texts_with_policy(
+        &self,
+        changed_texts: &[String],
+        defer_snapshots: bool,
+    ) -> Result<JsValue, JsValue> {
         // Decoration ink leaves layout unchanged. Keep targeted pixel damage
         // when cached rectangles exist; otherwise invalidate all page bitmaps.
         // Either path can redraw a validated visible window without rebuilding
@@ -17708,7 +17779,7 @@ impl OffscreenDocumentView {
             let mut renderer_mut = self.renderer.borrow_mut();
             renderer_mut.prepare_decoration_repaint(changed_texts);
             renderer_mut.rerender_with_cached_state()?;
-            self.capture_paged_images(&mut renderer_mut)?
+            self.capture_paged_images_with_policy(&mut renderer_mut, defer_snapshots)?
         };
 
         if let Some(ref pages) = snapshots {
