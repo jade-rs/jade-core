@@ -220,11 +220,14 @@ impl DocumentParser {
     /// The implementation purposefully extracts only the subset of tags that
     /// influence layout in the current renderer: paragraphs, runs, spacing,
     /// indentation, numbering, and page settings.
+    /// WordprocessingML aliases and default namespaces are resolved before
+    /// parsing; the internal model uses the conventional `w:` names.
     pub fn parse_document_xml(
         &self,
         xml_content: &str,
     ) -> Result<Document, Box<dyn std::error::Error>> {
-        let mut reader = Reader::from_str(xml_content);
+        let xml_content = crate::word_namespaces::normalize(xml_content)?;
+        let mut reader = Reader::from_str(&xml_content);
         reader.config_mut().trim_text(false);
         self.parse_document_events(&mut reader)
     }
@@ -232,9 +235,9 @@ impl DocumentParser {
     /// Parses `word/document.xml` once for both consumers: the layout
     /// [`Document`] this parser builds and the lossless [`DocxXmlDocument`]
     /// the editor patches on save. Every quick-xml event the semantic parser
-    /// consumes is mirrored into a [`DocxXmlTreeBuilder`], so the raw tree is
-    /// identical to `DocxXmlDocument::parse(xml_content)` (same element ids
-    /// and node paths) without tokenizing the part a second time.
+    /// consumes is mirrored into a [`DocxXmlTreeBuilder`], so the raw tree has
+    /// the same element ids and node paths as parsing the namespace-normalized
+    /// XML separately, without tokenizing the part a second time.
     ///
     /// A malformed raw tree is reported alongside the semantic document
     /// instead of failing the load: rendering does not need it, only save and
@@ -243,7 +246,8 @@ impl DocumentParser {
         &self,
         xml_content: &str,
     ) -> Result<(Document, Result<DocxXmlDocument, DocxXmlError>), Box<dyn std::error::Error>> {
-        let mut reader = RawTreeTeeReader::new(xml_content);
+        let xml_content = crate::word_namespaces::normalize(xml_content)?;
+        let mut reader = RawTreeTeeReader::new(&xml_content);
         let document = self.parse_document_events(&mut reader)?;
         Ok((document, reader.finish()))
     }
@@ -14706,7 +14710,7 @@ mod tests {
     #[test]
     fn math_block_retains_its_wrapper_paragraph_formatting() {
         let document = parse_document_from_body(
-            r#"<w:p w14:paraId="ABCD1234"><w:pPr><w:pStyle w:val="Equation"/><w:ind w:left="1000" w:right="200"/><w:spacing w:before="120" w:after="60"/><w:keepNext/><w:rPr><w:sz w:val="16"/></w:rPr></w:pPr><m:oMathPara xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#,
+            r#"<w:p xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" w14:paraId="ABCD1234"><w:pPr><w:pStyle w:val="Equation"/><w:ind w:left="1000" w:right="200"/><w:spacing w:before="120" w:after="60"/><w:keepNext/><w:rPr><w:sz w:val="16"/></w:rPr></w:pPr><m:oMathPara xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#,
         );
         let body = document.body.unwrap();
         assert_eq!(body.elements.len(), 2);

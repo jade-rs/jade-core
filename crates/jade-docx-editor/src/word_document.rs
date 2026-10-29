@@ -6812,6 +6812,12 @@ impl WordDocument {
                 let content = String::from_utf8(data.to_vec()).unwrap_or_else(|invalid| {
                     String::from_utf8_lossy(invalid.as_bytes()).into_owned()
                 });
+                // Normalize only parts the editor reads. Keep unrelated OPC
+                // parts byte-for-byte in the original package for export.
+                let content = match jade_docx_reader::word_namespaces::normalize(&content)? {
+                    std::borrow::Cow::Owned(normalized) => normalized,
+                    std::borrow::Cow::Borrowed(_) => content,
+                };
 
                 // Parse relationships for this part
                 let rels_path = self.get_relationships_path(path);
@@ -40132,7 +40138,17 @@ mod tests {
             &Options::default(),
         ))
         .expect("load alternate-prefix DOCX");
-        assert!(word_doc.accept_revisions(None, None, None, None).is_err());
+        assert_eq!(word_doc.accept_revisions(None, None, None, None), Ok(2));
+        let exported = word_doc
+            .export_docx()
+            .expect("export alternate-prefix revisions");
+        let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload alternate-prefix revisions");
+        assert_eq!(reloaded.paragraph_count(), 1);
+        assert_eq!(reloaded.paragraph(0).map(paragraph_text_len), Some(7));
+        let xml = exported_document_xml(&reloaded);
+        assert!(!xml.contains("w:id=\"7\""));
+        assert!(!xml.contains("w:id=\"8\""));
     }
 
     #[test]
@@ -40312,8 +40328,17 @@ mod tests {
             executor::block_on(WordDocument::load(&exported, &Options::default()))
                 .expect("reload alternate prefix");
         let xml = exported_document_xml(&alternate_prefix);
-        assert!(!xml.contains("m:id=\"11\""));
-        assert!(xml.contains("m:id=\"12\""));
+        assert!(!xml.contains("w:id=\"11\""));
+        assert!(xml.contains("w:id=\"12\""));
+        assert_eq!(alternate_prefix.paragraph_count(), 2);
+        assert_eq!(
+            alternate_prefix.paragraph(0).map(paragraph_text_len),
+            Some(5)
+        );
+        assert_eq!(
+            alternate_prefix.paragraph(1).map(paragraph_text_len),
+            Some(6)
+        );
     }
 
     #[test]
