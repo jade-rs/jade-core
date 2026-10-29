@@ -24,3 +24,29 @@ those probes captured again here are identical to the originals.
 | `object-lines` | A line that an inline picture makes taller than its auto-spaced text is the picture, the text's descent and the spacing multiple's extra over single spacing, set below: a 20pt picture after `x ` in 10.5pt Arial takes 22.2pt at single spacing, 24.0pt at 1.15 lines and 28.2pt at 1.5. A line of nothing but a picture taller than the mark leaves out the descent: 20.1, 21.9 and 26.1pt. An inline VML text box's line also holds its outline below the box, 0.96pt for the default 0.75pt stroke (2.88pt for a 3pt one in a capture not committed here). |
 | `object-spaces` | With `w:balanceSingleByteDoubleByteWidth` (image-inline's Japanese template), an ASCII space right before or right after an inline picture is half an em, in Yu Mincho and Century alike (5.25pt at 10.5pt, 10pt at 20pt). The other spaces in the line keep their advance, as do spaces beside a floating picture and every space without the setting. A run of spaces before the picture widens as a whole; jade widens the one next to it, so the probe leaves that case out. |
 | `partial-grid` | An autofit table whose `w:tblGrid` lists fewer columns than its three cells is sized from its content: each column gets its widest content plus a share of the rest in proportion to it. A 50% table is 253.8pt on a 496.8pt text width in compatibility mode 14 (the cell margins hang outside the text). |
+
+## Consecutive-space capture inputs
+
+The original `object-spaces` observation above omits consecutive spaces.
+Generate separate inputs before measuring those cases in Word:
+
+```sh
+python3 tests/word-oracle/mac-probes-20261019/generators/make-object-spaces-probe.py public/fixtures/image-inline.docx /tmp/word-space-runs --space-runs
+python3 -m unittest discover -s tests/word-oracle/mac-probes-20261019/generators -p test_object_spaces_probe.py
+```
+
+This writes `word-mac-probe-object-space-runs-balanced.docx`,
+`word-mac-probe-object-space-runs-unbalanced.docx`, and a JSON paragraph
+manifest. The pair has identical document XML; only the compatibility setting
+`balanceSingleByteDoubleByteWidth` differs. It retains the original six
+paragraphs and adds two/three spaces before or after the picture, three spaces
+split across runs, a floating-picture control, and a text-only control. Drawing
+IDs are unique and all pictures are 20pt. Without the flag, the original
+six-paragraph probe and output name remain unchanged.
+
+These generated files have **not** been measured in Word. Export each as PDF
+in Word, then capture every glyph with the SDK's
+`scripts/word-pdf-glyph-reference.py`. Retain both source/PDF hashes, Word
+version/build, OS, and matching paragraph manifest with the fresh references.
+Do not replace the existing `object-spaces` oracle or assert a new space-width
+rule from these unmeasured inputs.

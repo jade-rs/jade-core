@@ -89,6 +89,9 @@ jobs:
       - name: Verify native macOS workflow contract
         run: ruby tests/ci/native_macos_workflow_test.rb
 
+      - name: Verify Word inline-space probe inputs
+        run: python3 -m unittest discover -s tests/word-oracle/mac-probes-20261019/generators -p test_object_spaces_probe.py
+
       - name: Audit edited DOCX fixture corpus
         run: |
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
