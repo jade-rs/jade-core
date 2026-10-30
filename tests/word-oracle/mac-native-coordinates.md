@@ -6,7 +6,7 @@ Mac layout platform, and the repository's Noto Sans JP Regular/Bold faces as
 stand-ins for the named document fonts. Other unregistered families fall back
 to the first registered face; system fonts are not registered by this test.
 
-Two separate assertions run:
+The existing body-coordinate assertions run unchanged:
 
 - All 34 probes in `mac-probes-16114`, `mac-probes-20261019` and
   `mac-floating-horizontal-20261030` must preserve the
@@ -30,9 +30,21 @@ those glyphs, and glyphs are sorted by page/text/Y/X to ignore paint order.
 The snapshot comparison includes whitespace and preserves capture order.
 DOCX, Word-reference and bundled-font SHA-256 hashes must also match.
 
-This is not full Word compatibility coverage. `layout_debug_lines()` omits
-some painted content (including numbering labels and ruby annotations), and
-these 34 probes do not cover the full corpus or browser rendering. A native
+An additional native gate uses `NativeDocument::capture_full_layout_debug()`
+for the two numbering-label probes and four ruby probes. It freezes every
+captured auxiliary glyph's page, text, order, X and painted baseline at the same
+**0.01 pt** snapshot tolerance, including whitespace. It also checks explicit
+label/guide counts (9/5 numbering labels and 15/15/20/20 ruby guides), complete
+layout and source inventories, absence of reported uncaptured stories, repeated
+capture stability, and unchanged editable-body coordinates. Source DOCX,
+Word-reference and bundled-font hashes are pinned. These auxiliary snapshots
+preserve the behavior of `3a0c5b2` with the native diagnostic entry point;
+they do not assert agreement with Word.
+
+This is not full Word compatibility coverage. The original
+`layout_debug_lines()` capture omits some painted content; the additional
+full-capture gate covers numbering and ruby only in these six probes. These
+34 probes do not cover the full corpus or browser rendering. A native
 snapshot guards against changes to current behavior, including current bugs;
 it does not prove that the other 25 probes match Word. Relevant follow-ups:
 
@@ -84,3 +96,13 @@ and document the reason. Do not automatically accept new output, increase
 tolerances, remove a probe or disable the gate to make CI green. The workflow
 contract test also requires the coordinate step to remain unconditional and
 failure-blocking on pull requests.
+
+
+The additional auxiliary snapshot lives in
+`mac-native-auxiliary-coordinates.json`. Its initial capture uses the same
+bundled-font aliases as the existing gate. Review all coordinate and identity
+changes before explicitly updating it with
+`JADE_UPDATE_WORD_MAC_AUXILIARY_SNAPSHOT=1` and the command above. This separate
+maintenance switch is also forbidden in CI and does not update or relax the
+34-probe body snapshot or the nine direct Word comparisons. The complete test
+command must pass after either kind of snapshot maintenance.
