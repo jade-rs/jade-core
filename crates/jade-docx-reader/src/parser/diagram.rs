@@ -222,7 +222,7 @@ impl DocumentParser {
                 Event::Text(text) => {
                     if in_text {
                         if let (Some(shape), Some(value)) =
-                            (current.as_mut(), text_event_to_string(text))
+                            (current.as_mut(), text_event_to_cow(text))
                         {
                             shape.text.push_str(&value);
                         }

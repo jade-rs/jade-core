@@ -9,6 +9,7 @@ use crate::parser::DocumentParser;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -106,32 +107,93 @@ impl StylesPart {
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
-        let mut buf = Vec::new();
         let mut current_style: Option<StyleDefinition> = None;
         let mut state = StyleParseState::default();
+        let mut current_table_margins = None;
+        let mut in_cell_margins = false;
+        let mut table_cell_margin_styles = HashMap::new();
+        let mut table_state = TableStyleParseState::default();
+        let mut table_styles = HashMap::new();
+        let mut table_style_order = Vec::new();
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
                     self.handle_start_event(e, &mut current_style, &mut state);
+                    if e.name().as_ref() == b"w:style" {
+                        initialize_table_style_metadata(
+                            current_style.as_ref().filter(|_| state.in_table_style),
+                            &mut current_table_margins,
+                            &mut in_cell_margins,
+                            &mut table_state,
+                        );
+                    }
+                    handle_table_cell_margin_style_start(
+                        e,
+                        &mut current_table_margins,
+                        &mut in_cell_margins,
+                    );
+                    handle_table_style_start(e, &mut table_state);
+                    table_state
+                        .path
+                        .push(TableStyleAncestor::from_name(e.name().as_ref()));
                 }
                 Ok(Event::Empty(ref e)) => {
                     self.handle_start_event(e, &mut current_style, &mut state);
+                    if e.name().as_ref() == b"w:style" {
+                        initialize_table_style_metadata(
+                            current_style.as_ref().filter(|_| state.in_table_style),
+                            &mut current_table_margins,
+                            &mut in_cell_margins,
+                            &mut table_state,
+                        );
+                    }
                     self.handle_end_event(e.name().as_ref(), &mut current_style, &mut state);
+                    handle_table_cell_margin_style_start(
+                        e,
+                        &mut current_table_margins,
+                        &mut in_cell_margins,
+                    );
+                    handle_table_style_start(e, &mut table_state);
+                    finish_table_style_element(
+                        e.name().as_ref(),
+                        &mut table_state,
+                        &mut table_styles,
+                        &mut table_style_order,
+                    );
                 }
                 Ok(Event::End(ref e)) => {
                     self.handle_end_event(e.name().as_ref(), &mut current_style, &mut state);
+                    match e.name().as_ref() {
+                        b"w:tblCellMar" => in_cell_margins = false,
+                        b"w:style" => {
+                            if let Some((style_id, definition)) = current_table_margins.take() {
+                                table_cell_margin_styles.insert(style_id, definition);
+                            }
+                            in_cell_margins = false;
+                        }
+                        _ => {}
+                    }
+                    finish_table_style_element(
+                        e.name().as_ref(),
+                        &mut table_state,
+                        &mut table_styles,
+                        &mut table_style_order,
+                    );
+                    table_state.path.pop();
                 }
                 Ok(Event::Eof) => break,
                 Err(err) => return Err(format!("Styles XML parsing error: {err}").into()),
                 _ => {}
             }
-            buf.clear();
         }
 
         self.merge_duplicate_normal_styles();
-        self.parse_table_cell_margin_styles(xml)?;
-        self.parse_table_styles(xml)?;
+        // Previously the table passes only ran after the main parse succeeded.
+        // Keep their old values on XML errors, including when reusing this part.
+        self.table_cell_margin_styles = table_cell_margin_styles;
+        self.table_styles = table_styles;
+        self.table_style_order = table_style_order;
         Ok(())
     }
 
@@ -182,50 +244,6 @@ impl StylesPart {
             (Some(parent), Some(child)) => Some(merge_table_cell_margins(parent, child)),
             (parent, child) => child.or(parent),
         }
-    }
-
-    fn parse_table_cell_margin_styles(&mut self, xml: &str) -> ParseResult<()> {
-        self.table_cell_margin_styles.clear();
-        let mut reader = Reader::from_str(xml);
-        reader.config_mut().trim_text(true);
-        let mut current: Option<(String, TableCellMarginStyleDefinition)> = None;
-        let mut in_cell_margins = false;
-        let mut buf = Vec::new();
-
-        loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref element)) => {
-                    handle_table_cell_margin_style_start(
-                        element,
-                        &mut current,
-                        &mut in_cell_margins,
-                    );
-                }
-                Ok(Event::Empty(ref element)) => {
-                    handle_table_cell_margin_style_start(
-                        element,
-                        &mut current,
-                        &mut in_cell_margins,
-                    );
-                }
-                Ok(Event::End(ref element)) => match element.name().as_ref() {
-                    b"w:tblCellMar" => in_cell_margins = false,
-                    b"w:style" => {
-                        if let Some((style_id, definition)) = current.take() {
-                            self.table_cell_margin_styles.insert(style_id, definition);
-                        }
-                        in_cell_margins = false;
-                    }
-                    _ => {}
-                },
-                Ok(Event::Eof) => break,
-                Err(err) => return Err(format!("Styles XML parsing error: {err}").into()),
-                _ => {}
-            }
-            buf.clear();
-        }
-
-        Ok(())
     }
 
     /// Resolves a table style token by exact id and then normalized display
@@ -459,34 +477,76 @@ impl StylesPart {
         style_id: &str,
     ) -> Option<ParagraphProperties> {
         let mut current = Some(style_id);
-        let mut visited = HashSet::new();
-        let mut chain: Vec<&StyleDefinition> = Vec::new();
+        // Most styles have only a few ancestors. Keep those chains on the
+        // stack, and retain hash-based cycle detection for longer chains.
+        let mut inline_chain: [Option<&StyleDefinition>; 8] = [None; 8];
+        let mut inline_len = 0;
 
         while let Some(id) = current {
-            if !visited.insert(id) {
+            if inline_len == inline_chain.len() {
+                return Self::resolve_long_style_paragraph_properties(styles, id, &inline_chain);
+            }
+            let Some(style) = styles.get(id) else {
+                break;
+            };
+            // Map entries have stable, distinct addresses while borrowed,
+            // regardless of their `style_id` metadata or the lookup key's owner.
+            if inline_chain[..inline_len]
+                .iter()
+                .flatten()
+                .any(|seen| std::ptr::eq(*seen, style))
+            {
                 break;
             }
-            if let Some(style) = styles.get(id) {
-                chain.push(style);
-                current = style.based_on.as_deref();
-            } else {
+            inline_chain[inline_len] = Some(style);
+            inline_len += 1;
+            current = style.based_on.as_deref();
+        }
+
+        Self::merge_paragraph_style_chain(
+            inline_chain[..inline_len].iter().rev().flatten().copied(),
+        )
+    }
+
+    fn resolve_long_style_paragraph_properties<'a>(
+        styles: &'a HashMap<String, StyleDefinition>,
+        style_id: &'a str,
+        prefix: &[Option<&'a StyleDefinition>],
+    ) -> Option<ParagraphProperties> {
+        // Hash entry identities rather than style names, using the same
+        // stable-entry invariant as the inline cycle check. Never dereference
+        // these pointers; the borrowed map owns every entry for the whole call.
+        let mut visited: HashSet<*const StyleDefinition> = prefix
+            .iter()
+            .flatten()
+            .map(|style| *style as *const StyleDefinition)
+            .collect();
+        let mut chain: Vec<&StyleDefinition> = prefix.iter().flatten().copied().collect();
+        let mut current = Some(style_id);
+        while let Some(id) = current {
+            let Some(style) = styles.get(id) else {
+                break;
+            };
+            if !visited.insert(style as *const StyleDefinition) {
                 break;
             }
+            chain.push(style);
+            current = style.based_on.as_deref();
         }
+        Self::merge_paragraph_style_chain(chain.into_iter().rev())
+    }
 
-        if chain.is_empty() {
-            return None;
-        }
-
+    fn merge_paragraph_style_chain<'a>(
+        chain: impl Iterator<Item = &'a StyleDefinition>,
+    ) -> Option<ParagraphProperties> {
         let mut resolved = ParagraphProperties::default();
         let mut has_any = false;
-        for style in chain.iter().rev() {
+        for style in chain {
             if let Some(paragraph_props) = style.paragraph_properties.as_ref() {
                 merge_paragraph_properties_override(&mut resolved, paragraph_props);
                 has_any = true;
             }
         }
-
         if has_any {
             Some(resolved)
         } else {
@@ -682,46 +742,6 @@ impl StylesPart {
         })
     }
 
-    fn parse_table_styles(&mut self, xml: &str) -> ParseResult<()> {
-        self.table_styles.clear();
-        self.table_style_order.clear();
-        let mut reader = Reader::from_str(xml);
-        reader.config_mut().trim_text(true);
-        let mut state = TableStyleParseState::default();
-        let mut buf = Vec::new();
-        loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref element)) => {
-                    handle_table_style_start(element, &mut state);
-                    state.path.push(element.name().as_ref().to_vec());
-                }
-                Ok(Event::Empty(ref element)) => {
-                    handle_table_style_start(element, &mut state);
-                    finish_table_style_element(
-                        element.name().as_ref(),
-                        &mut state,
-                        &mut self.table_styles,
-                        &mut self.table_style_order,
-                    );
-                }
-                Ok(Event::End(ref element)) => {
-                    finish_table_style_element(
-                        element.name().as_ref(),
-                        &mut state,
-                        &mut self.table_styles,
-                        &mut self.table_style_order,
-                    );
-                    state.path.pop();
-                }
-                Ok(Event::Eof) => break,
-                Err(err) => return Err(format!("Table styles XML parsing error: {err}").into()),
-                _ => {}
-            }
-            buf.clear();
-        }
-        Ok(())
-    }
-
     /// Merges numbering information exposed via `numbering.xml` (`w:pStyle`
     /// entries on numbering levels) into the cached style definitions. This
     /// mirrors docxjs の `prodessNumberings` と同じ役割で、スタイル定義に
@@ -779,12 +799,9 @@ impl StylesPart {
     ) {
         match element.name().as_ref() {
             b"w:style" => {
-                let style_type = attr_value(element, b"w:type");
-                let style_id = attr_value(element, b"w:styleId");
-                let is_default = attr_value(element, b"w:default")
-                    .as_deref()
-                    .map(parse_on_off_value)
-                    .unwrap_or(false);
+                let [style_type, style_id, default] =
+                    attr_values(element, [b"w:type", b"w:styleId", b"w:default"]);
+                let is_default = default.as_deref().map(parse_on_off_value).unwrap_or(false);
                 state.in_supported_style = matches!(
                     style_type.as_deref(),
                     Some("paragraph") | Some("character") | Some("table")
@@ -802,7 +819,7 @@ impl StylesPart {
                 if state.in_supported_style {
                     if let Some(id) = style_id {
                         *current_style = Some(StyleDefinition {
-                            style_id: id,
+                            style_id: id.into_owned(),
                             name: None,
                             based_on: None,
                             next_style: None,
@@ -830,21 +847,21 @@ impl StylesPart {
             b"w:basedOn" => {
                 if state.in_supported_style {
                     if let Some(style) = current_style.as_mut() {
-                        style.based_on = attr_value(element, b"w:val");
+                        style.based_on = attr_value(element, b"w:val").map(Cow::into_owned);
                     }
                 }
             }
             b"w:link" => {
                 if state.in_supported_style {
                     if let Some(style) = current_style.as_mut() {
-                        style.linked_style = attr_value(element, b"w:val");
+                        style.linked_style = attr_value(element, b"w:val").map(Cow::into_owned);
                     }
                 }
             }
             b"w:next" => {
                 if state.in_supported_style {
                     if let Some(style) = current_style.as_mut() {
-                        style.next_style = attr_value(element, b"w:val");
+                        style.next_style = attr_value(element, b"w:val").map(Cow::into_owned);
                     }
                 }
             }
@@ -858,7 +875,7 @@ impl StylesPart {
             b"w:name" => {
                 if state.in_supported_style {
                     if let Some(style) = current_style.as_mut() {
-                        style.name = attr_value(element, b"w:val");
+                        style.name = attr_value(element, b"w:val").map(Cow::into_owned);
                     }
                 }
             }
@@ -904,7 +921,7 @@ impl StylesPart {
                 if state.in_numbering_properties {
                     if let Some(style) = current_style.as_mut() {
                         if let Some(numbering) = style.numbering.as_mut() {
-                            numbering.id = attr_value(element, b"w:val");
+                            numbering.id = attr_value(element, b"w:val").map(Cow::into_owned);
                         }
                     }
                 }
@@ -1395,9 +1412,9 @@ impl StylesPart {
                 let theme = attr_value(element, b"w:themeColor")
                     .filter(|name| !name.is_empty())
                     .map(|name| crate::document::RunThemeColor {
-                        name: name.as_str().into(),
-                        tint: attr_value(element, b"w:themeTint").map(|v| v.as_str().into()),
-                        shade: attr_value(element, b"w:themeShade").map(|v| v.as_str().into()),
+                        name: name.as_ref().into(),
+                        tint: attr_value(element, b"w:themeTint").map(|v| v.as_ref().into()),
+                        shade: attr_value(element, b"w:themeShade").map(|v| v.as_ref().into()),
                     });
                 apply_to_active_run_properties(self, current_style, state, |props| {
                     props.color = color.map(Into::into);
@@ -1583,22 +1600,49 @@ impl StylesPart {
 struct TableStyleParseState {
     current: Option<TableStyleDefinition>,
     condition: Option<String>,
-    path: Vec<Vec<u8>>,
+    path: Vec<TableStyleAncestor>,
 }
 
-fn table_style_path_contains(path: &[Vec<u8>], name: &[u8]) -> bool {
-    path.iter().any(|entry| entry.as_slice() == name)
+// Only these ancestors affect table styles. Keep an entry for every start tag
+// so closing unrelated or repeated containers preserves the XML path depth.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TableStyleAncestor {
+    Other,
+    CellProperties,
+    RunProperties,
+    CellBorders,
+    TableBorders,
+    TableCellMargins,
 }
 
-fn normalize_ooxml_color(value: String) -> Option<String> {
+impl TableStyleAncestor {
+    fn from_name(name: &[u8]) -> Self {
+        match name {
+            b"w:tcPr" => Self::CellProperties,
+            b"w:rPr" => Self::RunProperties,
+            b"w:tcBorders" => Self::CellBorders,
+            b"w:tblBorders" => Self::TableBorders,
+            b"w:tblCellMar" => Self::TableCellMargins,
+            _ => Self::Other,
+        }
+    }
+}
+
+fn normalize_ooxml_color(value: Cow<'_, str>) -> Option<String> {
     if value.eq_ignore_ascii_case("auto") || value.is_empty() {
         None
     } else if value.starts_with('#') {
-        Some(value.to_ascii_uppercase())
-    } else if value.len() == 6 && value.chars().all(|ch| ch.is_ascii_hexdigit()) {
-        Some(format!("#{}", value.to_ascii_uppercase()))
+        let mut color = value.into_owned();
+        color.make_ascii_uppercase();
+        Some(color)
+    } else if value.len() == 6 && value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        let mut color = String::with_capacity(7);
+        color.push('#');
+        color.push_str(&value);
+        color.make_ascii_uppercase();
+        Some(color)
     } else {
-        Some(value)
+        Some(value.into_owned())
     }
 }
 
@@ -1625,7 +1669,7 @@ fn active_conditional_format(
     )
 }
 
-fn set_table_style_fill(state: &mut TableStyleParseState, fill: String) {
+fn set_table_style_fill(state: &mut TableStyleParseState, fill: Cow<'_, str>) {
     let Some(fill) = normalize_ooxml_color(fill) else {
         return;
     };
@@ -1652,11 +1696,13 @@ fn set_table_style_border(display: &mut TableStyleDisplay, element: &BytesStart)
 }
 
 fn set_table_borders_edge(borders: &mut TableBorders, element: &BytesStart) {
+    let [val, size, space, color] =
+        attr_values(element, [b"w:val", b"w:sz", b"w:space", b"w:color"]);
     let edge = BorderEdge {
-        val: attr_value(element, b"w:val").map(|value| value.to_ascii_lowercase()),
-        size_eighths: attr_value(element, b"w:sz").and_then(|value| value.parse().ok()),
-        space: attr_value(element, b"w:space").and_then(|value| value.parse().ok()),
-        color: attr_value(element, b"w:color").and_then(normalize_ooxml_color),
+        val: val.map(|value| value.to_ascii_lowercase()),
+        size_eighths: size.and_then(|value| value.parse().ok()),
+        space: space.and_then(|value| value.parse().ok()),
+        color: color.and_then(normalize_ooxml_color),
     };
     match element.name().as_ref() {
         b"w:top" => borders.top = Some(edge),
@@ -1672,7 +1718,7 @@ fn set_table_borders_edge(borders: &mut TableBorders, element: &BytesStart) {
 }
 
 fn set_table_style_margin(display: &mut TableStyleDisplay, element: &BytesStart) {
-    let width_type = attr_value(element, b"w:type").unwrap_or_else(|| "dxa".to_string());
+    let width_type = attr_value(element, b"w:type").unwrap_or(Cow::Borrowed("dxa"));
     if width_type != "dxa" {
         return;
     }
@@ -1696,45 +1742,55 @@ fn set_table_style_margin(display: &mut TableStyleDisplay, element: &BytesStart)
     }
 }
 
+// The main style handler already parsed the header. Initialize both table
+// views from it before an empty style's end handler consumes the definition.
+fn initialize_table_style_metadata(
+    style: Option<&StyleDefinition>,
+    current_margins: &mut Option<(String, TableCellMarginStyleDefinition)>,
+    in_cell_margins: &mut bool,
+    state: &mut TableStyleParseState,
+) {
+    *in_cell_margins = false;
+    *current_margins = style.map(|style| {
+        (
+            style.style_id.clone(),
+            TableCellMarginStyleDefinition::default(),
+        )
+    });
+    state.condition = None;
+    state.current = style.map(|style| TableStyleDefinition {
+        style_id: style.style_id.clone(),
+        is_default: style.is_default,
+        ..TableStyleDefinition::default()
+    });
+}
+
 fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseState) {
     match element.name().as_ref() {
-        b"w:style" => {
-            state.condition = None;
-            state.current = if attr_value(element, b"w:type").as_deref() == Some("table") {
-                let is_default = attr_value(element, b"w:default")
-                    .as_deref()
-                    .map(parse_on_off_value)
-                    .unwrap_or(false);
-                attr_value(element, b"w:styleId").map(|style_id| TableStyleDefinition {
-                    style_id,
-                    is_default,
-                    ..TableStyleDefinition::default()
-                })
-            } else {
-                None
-            };
-        }
         b"w:name" => {
             if let Some(style) = state.current.as_mut() {
-                style.name = attr_value(element, b"w:val");
+                style.name = attr_value(element, b"w:val").map(Cow::into_owned);
             }
         }
         b"w:basedOn" => {
             if let Some(style) = state.current.as_mut() {
-                style.based_on = attr_value(element, b"w:val");
+                style.based_on = attr_value(element, b"w:val").map(Cow::into_owned);
             }
         }
         b"w:tblStylePr" => {
             if state.current.is_some() {
-                state.condition = attr_value(element, b"w:type");
+                state.condition = attr_value(element, b"w:type").map(Cow::into_owned);
             }
         }
-        b"w:shd" if table_style_path_contains(&state.path, b"w:tcPr") => {
+        b"w:shd" if state.path.contains(&TableStyleAncestor::CellProperties) => {
             if let Some(fill) = attr_value(element, b"w:fill") {
                 set_table_style_fill(state, fill);
             }
         }
-        b"w:b" if state.condition.is_some() && table_style_path_contains(&state.path, b"w:rPr") => {
+        b"w:b"
+            if state.condition.is_some()
+                && state.path.contains(&TableStyleAncestor::RunProperties) =>
+        {
             let bold = parse_on_off_attr(element, b"w:val");
             if let Some(format) = active_conditional_format(state) {
                 format.bold = Some(bold);
@@ -1745,14 +1801,18 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
                 }
             }
         }
-        b"w:i" if state.condition.is_some() && table_style_path_contains(&state.path, b"w:rPr") => {
+        b"w:i"
+            if state.condition.is_some()
+                && state.path.contains(&TableStyleAncestor::RunProperties) =>
+        {
             let italic = parse_on_off_attr(element, b"w:val");
             if let Some(format) = active_conditional_format(state) {
                 format.italic = Some(italic);
             }
         }
         b"w:color"
-            if state.condition.is_some() && table_style_path_contains(&state.path, b"w:rPr") =>
+            if state.condition.is_some()
+                && state.path.contains(&TableStyleAncestor::RunProperties) =>
         {
             if let Some(color) = attr_value(element, b"w:val").and_then(normalize_ooxml_color) {
                 if let Some(format) = active_conditional_format(state) {
@@ -1768,7 +1828,7 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
         b"w:top" | b"w:bottom" | b"w:left" | b"w:right" | b"w:start" | b"w:end" | b"w:insideH"
         | b"w:insideV"
             if state.condition.is_some()
-                && table_style_path_contains(&state.path, b"w:tcBorders") =>
+                && state.path.contains(&TableStyleAncestor::CellBorders) =>
         {
             if let Some(format) = active_conditional_format(state) {
                 set_table_borders_edge(
@@ -1790,7 +1850,7 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
         b"w:top" | b"w:bottom" | b"w:left" | b"w:right" | b"w:start" | b"w:end" | b"w:insideH"
         | b"w:insideV"
             if state.condition.is_none()
-                && table_style_path_contains(&state.path, b"w:tblBorders") =>
+                && state.path.contains(&TableStyleAncestor::TableBorders) =>
         {
             if let Some(style) = state.current.as_mut() {
                 set_table_style_border(&mut style.display, element);
@@ -1798,7 +1858,7 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
         }
         b"w:top" | b"w:bottom" | b"w:left" | b"w:right" | b"w:start" | b"w:end"
             if state.condition.is_none()
-                && table_style_path_contains(&state.path, b"w:tblCellMar") =>
+                && state.path.contains(&TableStyleAncestor::TableCellMargins) =>
         {
             if let Some(style) = state.current.as_mut() {
                 set_table_style_margin(&mut style.display, element);
@@ -1935,25 +1995,16 @@ fn handle_table_cell_margin_style_start(
     in_cell_margins: &mut bool,
 ) {
     match element.name().as_ref() {
-        b"w:style" => {
-            *in_cell_margins = false;
-            *current = if attr_value(element, b"w:type").as_deref() == Some("table") {
-                attr_value(element, b"w:styleId")
-                    .map(|style_id| (style_id, TableCellMarginStyleDefinition::default()))
-            } else {
-                None
-            };
-        }
         b"w:basedOn" => {
             if let Some((_, definition)) = current.as_mut() {
-                definition.based_on = attr_value(element, b"w:val");
+                definition.based_on = attr_value(element, b"w:val").map(Cow::into_owned);
             }
         }
         b"w:tblCellMar" if current.is_some() => *in_cell_margins = true,
         b"w:top" | b"w:bottom" | b"w:left" | b"w:right" | b"w:start" | b"w:end"
             if *in_cell_margins =>
         {
-            let width_type = attr_value(element, b"w:type").unwrap_or_else(|| "dxa".to_string());
+            let width_type = attr_value(element, b"w:type").unwrap_or(Cow::Borrowed("dxa"));
             if width_type != "dxa" {
                 return;
             }
@@ -1994,13 +2045,94 @@ fn merge_table_cell_margins(parent: TableCellMargins, child: TableCellMargins) -
     }
 }
 
-fn attr_value(element: &BytesStart, key: &[u8]) -> Option<String> {
-    for attr in element.attributes().flatten() {
-        if attr.key.as_ref() == key {
-            return Some(String::from_utf8_lossy(&attr.value).to_string());
+// Attribute values are usually valid UTF-8 borrowed from the event. Keep them
+// borrowed while inspecting tokens or numbers, and own only retained values.
+fn attr_value<'a>(element: &'a BytesStart<'_>, key: &[u8]) -> Option<Cow<'a, str>> {
+    // Keep short attribute lists on the stack and spill longer ones to the heap.
+    // Replay duplicates and invalid syntax with the original checks to preserve
+    // quick-xml's error recovery before the requested key.
+    let mut seen = [b"".as_slice(); 8];
+    let mut seen_len = 0;
+    let mut overflow = Vec::new();
+    let mut attributes = element.attributes();
+    attributes.with_checks(false);
+    let attr = loop {
+        match attributes.next() {
+            Some(Ok(attr))
+                if !seen[..seen_len].contains(&attr.key.into_inner())
+                    && !overflow.contains(&attr.key.into_inner()) =>
+            {
+                if attr.key.as_ref() == key {
+                    break attr;
+                }
+                if seen_len < seen.len() {
+                    seen[seen_len] = attr.key.into_inner();
+                    seen_len += 1;
+                } else {
+                    overflow.push(attr.key.into_inner());
+                }
+            }
+            Some(_) => {
+                break element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == key)?;
+            }
+            None => return None,
+        }
+    };
+    Some(match attr.value {
+        Cow::Borrowed(value) => String::from_utf8_lossy(value),
+        Cow::Owned(value) => Cow::Owned(String::from_utf8_lossy(&value).into_owned()),
+    })
+}
+
+// Read several first-match values together. Any duplicate or invalid attribute
+// replays the original per-key lookup, including quick-xml's recovery rules.
+fn attr_values<'a, const N: usize>(
+    element: &'a BytesStart<'_>,
+    keys: [&[u8]; N],
+) -> [Option<Cow<'a, str>>; N] {
+    let mut values: [Option<Cow<'a, [u8]>>; N] = std::array::from_fn(|_| None);
+    let mut remaining = N;
+    let mut seen = [b"".as_slice(); 8];
+    let mut seen_len = 0;
+    let mut overflow = Vec::new();
+    let mut attributes = element.attributes();
+    attributes.with_checks(false);
+    while remaining > 0 {
+        let attr = match attributes.next() {
+            Some(Ok(attr))
+                if !seen[..seen_len].contains(&attr.key.into_inner())
+                    && !overflow.contains(&attr.key.into_inner()) =>
+            {
+                attr
+            }
+            Some(_) => return keys.map(|key| attr_value(element, key)),
+            None => break,
+        };
+        for (value, key) in values.iter_mut().zip(keys) {
+            if value.is_none() && attr.key.as_ref() == key {
+                *value = Some(attr.value.clone());
+                remaining -= 1;
+            }
+        }
+        if remaining == 0 {
+            break;
+        }
+        if seen_len < seen.len() {
+            seen[seen_len] = attr.key.into_inner();
+            seen_len += 1;
+        } else {
+            overflow.push(attr.key.into_inner());
         }
     }
-    None
+    values.map(|value| {
+        value.map(|value| match value {
+            Cow::Borrowed(value) => String::from_utf8_lossy(value),
+            Cow::Owned(value) => Cow::Owned(String::from_utf8_lossy(&value).into_owned()),
+        })
+    })
 }
 
 fn normalize_style_lookup_key(value: &str) -> String {
@@ -2018,10 +2150,8 @@ fn normalize_style_lookup_key(value: &str) -> String {
 }
 
 fn parse_on_off_value(raw: &str) -> bool {
-    !matches!(
-        raw.trim().to_ascii_lowercase().as_str(),
-        "0" | "false" | "off"
-    )
+    let raw = raw.trim();
+    raw != "0" && !raw.eq_ignore_ascii_case("false") && !raw.eq_ignore_ascii_case("off")
 }
 
 /// Parses `ST_Underline` as an effective on/off value.
@@ -2174,10 +2304,10 @@ fn parse_spacing_definition(element: &BytesStart) -> Option<Spacing> {
                 }
             }
             b"w:lineRule" => {
-                let rule = String::from_utf8_lossy(&attr.value).to_string();
-                spacing.line_rule = Some(match rule.as_str() {
+                let rule = String::from_utf8_lossy(&attr.value);
+                spacing.line_rule = Some(match rule.as_ref() {
                     "exactly" => "exact".to_string(),
-                    other => other.to_string(),
+                    _ => rule.into_owned(),
                 });
                 updated = true;
             }
@@ -2257,52 +2387,34 @@ fn parse_fit_text(element: &BytesStart) -> Option<RunFitText> {
 }
 
 fn apply_run_fonts(props: &mut RunProperties, element: &BytesStart) {
-    props.authored_east_asia_font_hint = Some(element.attributes().flatten().any(|attr| {
-        attr.key.as_ref() == b"w:hint"
-            && FontHint::from_xml_hint(&String::from_utf8_lossy(&attr.value))
-                == Some(FontHint::EastAsia)
-    }));
-    props.authored_east_asia_font_name = Some(
-        element
-            .attributes()
-            .flatten()
-            .any(|attr| matches!(attr.key.as_ref(), b"w:eastAsia" | b"w:eastAsiaTheme")),
-    );
     let fonts = props.fonts.get_or_insert_with(RunFonts::default);
+    let mut authored_hint = false;
+    let mut authored_name = false;
+    // Inspect checked attributes once, and copy only values retained in font slots.
     for attr in element.attributes().flatten() {
         let key = attr.key.as_ref();
-        let value = String::from_utf8_lossy(&attr.value).to_string();
-        match key {
-            b"w:ascii" => {
-                fonts.ascii = Some(Rc::from(value));
-            }
-            b"w:hAnsi" => {
-                fonts.h_ansi = Some(Rc::from(value));
-            }
-            b"w:eastAsia" => {
-                fonts.east_asia = Some(Rc::from(value));
-            }
-            b"w:cs" => {
-                fonts.complex = Some(Rc::from(value));
-            }
-            b"w:asciiTheme" => {
-                fonts.ascii_theme = Some(Rc::from(value));
-            }
-            b"w:hAnsiTheme" => {
-                fonts.h_ansi_theme = Some(Rc::from(value));
-            }
-            b"w:eastAsiaTheme" => {
-                fonts.east_asia_theme = Some(Rc::from(value));
-            }
-            b"w:cstheme" => {
-                fonts.complex_theme = Some(Rc::from(value));
-            }
+        authored_name |= matches!(key, b"w:eastAsia" | b"w:eastAsiaTheme");
+        let slot = match key {
+            b"w:ascii" => &mut fonts.ascii,
+            b"w:hAnsi" => &mut fonts.h_ansi,
+            b"w:eastAsia" => &mut fonts.east_asia,
+            b"w:cs" => &mut fonts.complex,
+            b"w:asciiTheme" => &mut fonts.ascii_theme,
+            b"w:hAnsiTheme" => &mut fonts.h_ansi_theme,
+            b"w:eastAsiaTheme" => &mut fonts.east_asia_theme,
+            b"w:cstheme" => &mut fonts.complex_theme,
             b"w:hint" => {
-                fonts.hint = FontHint::from_xml_hint(&value);
+                let hint = FontHint::from_xml_hint(&String::from_utf8_lossy(&attr.value));
+                authored_hint |= hint == Some(FontHint::EastAsia);
+                fonts.hint = hint;
+                continue;
             }
-            _ => {}
-        }
+            _ => continue,
+        };
+        *slot = Some(Rc::from(String::from_utf8_lossy(&attr.value).as_ref()));
     }
+    props.authored_east_asia_font_hint = Some(authored_hint);
+    props.authored_east_asia_font_name = Some(authored_name);
     fonts.drop_names_shadowed_by_themes();
     if props.font_family.is_none() {
         if let Some(family) = fonts.preferred_latin() {
@@ -2673,18 +2785,15 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
     for attr in element.attributes().flatten() {
         match attr.key.as_ref() {
             b"w:val" => {
-                stop.kind = Some(String::from_utf8_lossy(&attr.value).to_string());
+                stop.kind = Some(String::from_utf8_lossy(&attr.value).into_owned());
             }
             b"w:pos" => {
-                if let Ok(value) = String::from_utf8_lossy(&attr.value)
-                    .to_string()
-                    .parse::<f32>()
-                {
+                if let Ok(value) = String::from_utf8_lossy(&attr.value).parse::<f32>() {
                     stop.position = Some(value / 20.0);
                 }
             }
             b"w:leader" => {
-                stop.leader = Some(String::from_utf8_lossy(&attr.value).to_string());
+                stop.leader = Some(String::from_utf8_lossy(&attr.value).into_owned());
             }
             _ => {}
         }
@@ -2735,6 +2844,512 @@ mod tests {
             .unwrap();
         assert_eq!(spacing.before, Some(14.0));
         assert_eq!(spacing.after, Some(5.0));
+    }
+
+    #[test]
+    fn styles_ignore_xml_markup_and_keep_raw_attribute_values() {
+        let xml = concat!(
+            "\u{feff}<?xml version=\"1.0\"?>",
+            "<!DOCTYPE w:styles [<!ENTITY ignored \"unused\">]>",
+            "<w:styles><!-- <w:style w:styleId=\"Comment\"/> -->",
+            "<![CDATA[<w:style w:styleId=\"Cdata\"/>]]>",
+            "<?ignored data?>text &ignored; &#x41;",
+            "<w:style w:type=\"paragraph\" w:styleId=\"日本語\">",
+            "<w:name w:val=\"A&amp;B > C\"/>",
+            "<w:rPr><!-- ignored --><w:b/><![CDATA[</w:rPr>]]></w:rPr>",
+            "</w:style></w:styles>",
+        );
+        let styles = StylesPart::from_xml(xml).unwrap();
+        assert_eq!(styles.paragraph_styles.len(), 1);
+        let style = styles.get_style("日本語").unwrap();
+        assert_eq!(style.name.as_deref(), Some("A&amp;B > C"));
+        assert_eq!(style.run_properties.as_ref().unwrap().bold, Some(true));
+        assert!(styles.table_styles.is_empty());
+    }
+    use proptest::prelude::*;
+
+    fn checked_style_attribute_value(element: &BytesStart<'_>, key: &[u8]) -> Option<String> {
+        element.attributes().flatten().find_map(|attr| {
+            (attr.key.as_ref() == key).then(|| String::from_utf8_lossy(&attr.value).into_owned())
+        })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 1024, ..ProptestConfig::default() })]
+
+        #[test]
+        fn style_scalar_value_conversions_match_previous_results(
+            raw in prop_oneof![
+                "[a-fA-F0-9]{6}",
+                "#[a-zA-Z0-9]{0,12}",
+                "[ \\t]*(0|false|FALSE|off|OFF|auto|AUTO)[ \\t]*",
+                prop::collection::vec(any::<char>(), 0..40)
+                    .prop_map(|chars| chars.into_iter().collect::<String>()),
+            ],
+        ) {
+            let expected_color = if raw.eq_ignore_ascii_case("auto") || raw.is_empty() {
+                None
+            } else if raw.starts_with('#') {
+                Some(raw.to_ascii_uppercase())
+            } else if raw.len() == 6 && raw.chars().all(|ch| ch.is_ascii_hexdigit()) {
+                Some(format!("#{}", raw.to_ascii_uppercase()))
+            } else {
+                Some(raw.clone())
+            };
+            prop_assert_eq!(normalize_ooxml_color(Cow::Borrowed(&raw)), expected_color.clone());
+            prop_assert_eq!(normalize_ooxml_color(Cow::Owned(raw.clone())), expected_color);
+            let expected_on_off = !matches!(raw.trim().to_ascii_lowercase().as_str(), "0" | "false" | "off");
+            prop_assert_eq!(parse_on_off_value(&raw), expected_on_off);
+        }
+    }
+
+    #[test]
+    fn style_spacing_and_tabs_preserve_raw_and_lossy_values() {
+        for (raw, rule, line) in [
+            (b"exactly".as_slice(), "exact", 24.0),
+            (b"atLeast", "atLeast", 24.0),
+            (b"auto", "auto", 2.0),
+            (b"EXACTLY", "EXACTLY", 2.0),
+            (b"", "", 2.0),
+            (b"A&amp;B", "A&amp;B", 2.0),
+            (b"exac\xfftly", "exac\u{fffd}tly", 2.0),
+        ] {
+            let mut event = BytesStart::new("w:spacing");
+            event.push_attribute((b"w:lineRule".as_slice(), raw));
+            event.push_attribute((b"w:line".as_slice(), b"480".as_slice()));
+            let spacing = parse_spacing_definition(&event).unwrap();
+            assert_eq!(spacing.line_rule.as_deref(), Some(rule));
+            assert_eq!(spacing.line, Some(line));
+        }
+        for raw in [
+            b"720".as_slice(),
+            b"NaN",
+            b"inf",
+            b"-40",
+            b" 720 ",
+            b"720\xff",
+        ] {
+            let mut event = BytesStart::new("w:tab");
+            event.push_attribute((b"w:val".as_slice(), b"left\xff".as_slice()));
+            event.push_attribute((b"w:pos".as_slice(), raw));
+            event.push_attribute((b"w:leader".as_slice(), b"A&amp;\xffB".as_slice()));
+            let stop = parse_tab_definition(&event).unwrap();
+            let expected = String::from_utf8_lossy(raw)
+                .to_string()
+                .parse::<f32>()
+                .ok()
+                .map(|value| value / 20.0);
+            assert_eq!(stop.position.map(f32::to_bits), expected.map(f32::to_bits));
+            assert_eq!(stop.kind.as_deref(), Some("left\u{fffd}"));
+            assert_eq!(stop.leader.as_deref(), Some("A&amp;\u{fffd}B"));
+        }
+    }
+
+    #[test]
+    fn style_header_metadata_initializes_all_table_views() {
+        for empty in [false, true] {
+            for (attributes, id, is_default) in [
+                (r#"w:type="table" w:styleId="T" w:default="1""#, "T", true),
+                (
+                    r#"w:default=" OFF " w:styleId="A&amp;B" w:type="table""#,
+                    "A&amp;B",
+                    false,
+                ),
+                (
+                    r#"w:type="table" w:type="paragraph" w:default="ON" w:default="0" w:styleId="First" w:styleId="Second""#,
+                    "First",
+                    true,
+                ),
+            ] {
+                let ending = if empty { "/>" } else { "></w:style>" };
+                let xml = format!("<w:styles><w:style {attributes}{ending}</w:styles>");
+                let part = StylesPart::from_xml(&xml).unwrap();
+                let paragraph = &part.table_paragraph_styles[id];
+                let table = &part.table_styles[id];
+                assert_eq!(paragraph.style_id, id);
+                assert_eq!(table.style_id, id);
+                assert_eq!(paragraph.is_default, is_default);
+                assert_eq!(table.is_default, is_default);
+                assert_eq!(part.default_table_style_id(), is_default.then_some(id));
+                // Empty styles never received the separate margin pass's End event.
+                assert_eq!(part.table_cell_margin_styles.contains_key(id), !empty);
+            }
+        }
+    }
+
+    #[test]
+    fn style_attribute_batch_preserves_raw_values_and_early_matches() {
+        let mut event = BytesStart::new("w:style");
+        event.push_attribute((b"w:type".as_slice(), b"table\xff".as_slice()));
+        event.push_attribute((b"w:styleId".as_slice(), b"A&amp;B".as_slice()));
+        event.push_attribute((b"w:default".as_slice(), b"1".as_slice()));
+        let keys = [b"w:type".as_slice(), b"w:styleId", b"w:default"];
+        assert_eq!(
+            attr_values(&event, keys).map(|v| v.map(Cow::into_owned)),
+            keys.map(|key| checked_style_attribute_value(&event, key))
+        );
+        let early = BytesStart::from_content(
+            r#"w:style w:type="table" w:styleId="T" w:default="1" broken"#,
+            7,
+        );
+        assert_eq!(
+            attr_values(&early, keys).map(|v| v.map(Cow::into_owned)),
+            keys.map(|key| checked_style_attribute_value(&early, key))
+        );
+        assert_eq!(attr_values::<0>(&early, []), []);
+    }
+
+    #[test]
+    fn style_attribute_lookup_preserves_checked_recovery() {
+        for attributes in [
+            "",
+            r#"w:val="first" w:val="second""#,
+            r#"w:val=invalid w:val="second" w:type="paragraph""#,
+            r#"w:unused="first" w:unused="two words" w:val="last""#,
+            r#"w:unused="first" w:unused="two w:val='inside'" w:val="outside""#,
+            r#"broken w:val="value""#,
+            r#"w:unused=invalid w:val="value""#,
+            r#"w:unused="unterminated w:val='value'"#,
+            r#"a="0" b="1" c="2" d="3" e="4" f="5" g="6" h="7" w:val="last""#,
+            r#"a="0" b="1" c="2" d="3" e="4" f="5" g="6" h="7" a="two words" w:val="last""#,
+            r#"a="0" b="1" c="2" d="3" e="4" f="5" g="6" h="7" i="8" i="two w:val='inside'" w:val="outside""#,
+        ] {
+            let event = BytesStart::from_content(format!("w:style {attributes}"), 7);
+            let keys = [
+                b"w:val".as_slice(),
+                b"w:type",
+                b"w:unused",
+                b"missing",
+                b"w:val",
+            ];
+            assert_eq!(
+                attr_values(&event, keys).map(|v| v.map(Cow::into_owned)),
+                keys.map(|key| checked_style_attribute_value(&event, key))
+            );
+            for key in keys {
+                assert_eq!(
+                    attr_value(&event, key).as_deref(),
+                    checked_style_attribute_value(&event, key).as_deref(),
+                    "{attributes}, key {key:?}",
+                );
+            }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 1024, ..ProptestConfig::default() })]
+
+        #[test]
+        fn style_attribute_lookup_matches_checked_iterator(
+            fragments in prop::collection::vec(
+                prop_oneof![
+                    Just(r#"w:val="value""#.to_owned()),
+                    Just(r#"w:val='second'"#.to_owned()),
+                    Just(r#"w:type="paragraph""#.to_owned()),
+                    Just(r#"x="one w:val='inside'""#.to_owned()),
+                    Just("w:val=unquoted".to_owned()),
+                    Just("broken".to_owned()),
+                    "[a-zA-Z0-9:=\"' &;\t]{0,24}",
+                ],
+                0..18,
+            ),
+        ) {
+            let event = BytesStart::from_content(format!("w:style {}", fragments.join(" ")), 7);
+            let keys = [b"w:val".as_slice(), b"w:type", b"x", b"missing", b"w:val"];
+            prop_assert_eq!(attr_values(&event, keys).map(|v| v.map(Cow::into_owned)), keys.map(|key| checked_style_attribute_value(&event, key)));
+            for key in keys {
+                prop_assert_eq!(
+                    attr_value(&event, key).map(Cow::into_owned),
+                    checked_style_attribute_value(&event, key),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn run_font_attributes_keep_existing_slots_and_raw_values() {
+        let mut props = RunProperties {
+            font_family: Some("keep family".into()),
+            fonts: Some(RunFonts {
+                h_ansi: Some("keep hAnsi".into()),
+                complex: Some("shadowed".into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        let mut event = BytesStart::new("w:rFonts");
+        for (key, value) in [
+            ("w:ascii", "A&B"),
+            ("w:eastAsia", "East Asian face"),
+            ("w:eastAsiaTheme", "minorEastAsia"),
+            ("w:cstheme", "minorBidi"),
+            ("w:hint", " EASTASIA "),
+            ("w:unused", "ignored"),
+        ] {
+            event.push_attribute((key, value));
+        }
+        apply_run_fonts(&mut props, &event);
+        let fonts = props.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("A&amp;B"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("keep hAnsi"));
+        assert_eq!(fonts.east_asia, None);
+        assert_eq!(fonts.complex, None);
+        assert_eq!(fonts.east_asia_theme.as_deref(), Some("minorEastAsia"));
+        assert_eq!(fonts.complex_theme.as_deref(), Some("minorBidi"));
+        assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+        assert_eq!(props.font_family.as_deref(), Some("keep family"));
+        assert_eq!(props.authored_east_asia_font_hint, Some(true));
+        assert_eq!(props.authored_east_asia_font_name, Some(true));
+
+        let previous_fonts = props.fonts.clone();
+        apply_run_fonts(&mut props, &BytesStart::new("w:rFonts"));
+        assert_eq!(props.fonts, previous_fonts);
+        assert_eq!(props.authored_east_asia_font_hint, Some(false));
+        assert_eq!(props.authored_east_asia_font_name, Some(false));
+    }
+
+    #[test]
+    fn run_font_attributes_keep_duplicate_checks_and_lossy_decoding() {
+        let mut event = BytesStart::new("w:rFonts");
+        for (key, value) in [
+            (b"w:ascii".as_slice(), b"A\xffB".as_slice()),
+            (b"w:ascii".as_slice(), b"duplicate".as_slice()),
+            (b"w:hAnsi".as_slice(), b"Latin".as_slice()),
+            (b"w:hint".as_slice(), b"eastAsia".as_slice()),
+            (b"w:hint".as_slice(), b"default".as_slice()),
+        ] {
+            event.push_attribute((key, value));
+        }
+        let mut props = RunProperties::default();
+        apply_run_fonts(&mut props, &event);
+        let fonts = props.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("A\u{fffd}B"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("Latin"));
+        assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+        assert_eq!(props.font_family.as_deref(), Some("A\u{fffd}B"));
+        assert_eq!(props.authored_east_asia_font_hint, Some(true));
+        assert_eq!(props.authored_east_asia_font_name, Some(false));
+    }
+
+    #[test]
+    fn style_attribute_values_keep_raw_entities_and_duplicate_handling() {
+        let mut event = BytesStart::new("w:style");
+        for (key, value) in [
+            ("w:val", "A&B"),
+            ("w:val", "ignored duplicate"),
+            ("w:type", "paragraph"),
+            ("w:empty", ""),
+        ] {
+            event.push_attribute((key, value));
+        }
+        assert_eq!(attr_value(&event, b"w:val").as_deref(), Some("A&amp;B"));
+        assert_eq!(attr_value(&event, b"w:type").as_deref(), Some("paragraph"));
+        assert_eq!(attr_value(&event, b"w:empty").as_deref(), Some(""));
+        assert_eq!(attr_value(&event, b"w:missing"), None);
+    }
+
+    #[test]
+    fn style_attribute_values_keep_lossy_decoding_and_color_fallback() {
+        let mut event = BytesStart::new("w:color");
+        event.push_attribute((b"w:val".as_slice(), b"A\xffB".as_slice()));
+        let value = attr_value(&event, b"w:val").unwrap();
+        assert_eq!(value, "A\u{fffd}B");
+        assert_eq!(value.parse::<u32>().ok(), None);
+        assert_eq!(normalize_ooxml_color(value).as_deref(), Some("A\u{fffd}B"));
+    }
+
+    #[test]
+    fn reused_styles_keep_table_data_on_xml_error_and_replace_it_on_success() {
+        let mut styles = StylesPart::from_xml(
+            r#"<w:styles><w:style w:type="table" w:styleId="Seed" w:default="1"><w:name w:val="Seed Table"/><w:tblPr><w:tblCellMar><w:left w:w="108"/></w:tblCellMar></w:tblPr></w:style></w:styles>"#,
+        )
+        .unwrap();
+        let old_gallery = serde_json::to_value(styles.table_style_infos()).unwrap();
+        let old_margins = styles.resolve_table_cell_margins("Seed").unwrap();
+        let new_xml = r#"<w:styles><w:style w:type="paragraph" w:styleId="NewParagraph"><w:pPr><w:jc w:val="center"/></w:pPr></w:style><w:style w:type="table" w:styleId="NewTable"><w:tblPr><w:tblCellMar><w:left w:w="200"/></w:tblCellMar></w:tblPr></w:style>"#;
+
+        assert!(styles.parse(&format!("{new_xml}</wrong>")).is_err());
+        assert!(styles.get_style("NewParagraph").is_some());
+        assert_eq!(
+            serde_json::to_value(styles.table_style_infos()).unwrap(),
+            old_gallery
+        );
+        assert_eq!(
+            styles.resolve_table_cell_margins("Seed").unwrap().left,
+            old_margins.left
+        );
+        assert!(styles.resolve_table_cell_margins("NewTable").is_none());
+        assert!(styles.resolve_table_style("NewTable").is_none());
+        assert_eq!(styles.default_table_style_id(), Some("Seed"));
+
+        styles.parse(&format!("{new_xml}</w:styles>")).unwrap();
+        assert!(styles.get_style("NewParagraph").is_some());
+        assert!(styles.resolve_table_style("Seed").is_none());
+        assert!(styles.resolve_table_cell_margins("Seed").is_none());
+        assert_eq!(styles.default_table_style_id(), None);
+        assert_eq!(styles.table_style_infos()[0].style_id, "NewTable");
+        assert_eq!(
+            styles.resolve_table_cell_margins("NewTable").unwrap().left,
+            Some(10.0)
+        );
+    }
+
+    #[test]
+    fn empty_table_elements_keep_the_existing_margin_and_display_rules() {
+        let styles = StylesPart::from_xml(
+            r#"<w:styles><w:style w:type="table" w:styleId="Empty"/><w:style w:type="table" w:styleId="Margins"><w:tblPr><w:tblCellMar/><w:left w:w="100"/></w:tblPr></w:style></w:styles>"#,
+        )
+        .unwrap();
+        assert!(styles.resolve_table_style("Empty").is_some());
+        assert!(styles.resolve_table_cell_margins("Empty").is_none());
+        assert_eq!(
+            styles.resolve_table_cell_margins("Margins").unwrap().left,
+            Some(5.0)
+        );
+        assert!(styles
+            .resolve_table_style("Margins")
+            .unwrap()
+            .cell_margins
+            .is_none());
+    }
+
+    // The original resolver is the oracle for traversal order, missing parents,
+    // and cycles, independently of the inline/overflow chain representation.
+    fn resolve_paragraph_properties_reference(
+        styles: &HashMap<String, StyleDefinition>,
+        style_id: &str,
+    ) -> Option<ParagraphProperties> {
+        let mut current = Some(style_id);
+        let mut visited = HashSet::new();
+        let mut chain = Vec::new();
+        while let Some(id) = current {
+            if !visited.insert(id) {
+                break;
+            }
+            let Some(style) = styles.get(id) else {
+                break;
+            };
+            chain.push(style);
+            current = style.based_on.as_deref();
+        }
+        let mut resolved = ParagraphProperties::default();
+        let mut has_any = false;
+        for style in chain.iter().rev() {
+            if let Some(props) = &style.paragraph_properties {
+                merge_paragraph_properties_override(&mut resolved, props);
+                has_any = true;
+            }
+        }
+        has_any.then_some(resolved)
+    }
+
+    #[test]
+    fn paragraph_style_chains_preserve_precedence_and_cycles_across_inline_boundary() {
+        for depth in [1, 7, 8, 9, 16, 64] {
+            for cycle in [None, Some(0), Some(depth / 2), Some(depth - 1)] {
+                let definitions: HashMap<_, _> = (0..depth)
+                    .map(|index| {
+                        let parent = if index + 1 < depth {
+                            Some(index + 1)
+                        } else {
+                            cycle
+                        };
+                        (
+                            format!("Style{index}"),
+                            StyleDefinition {
+                                // Lookup keys, rather than metadata IDs, identify cycles.
+                                style_id: "shared metadata ID".into(),
+                                based_on: parent.map(|index| format!("Style{index}")),
+                                paragraph_properties: Some(ParagraphProperties {
+                                    alignment: Some(Rc::from(if index == 0 {
+                                        "left"
+                                    } else {
+                                        "right"
+                                    })),
+                                    spacing: (index == depth - 1).then_some(Spacing {
+                                        after: Some(12.0),
+                                        ..Default::default()
+                                    }),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            },
+                        )
+                    })
+                    .collect();
+                let styles = StylesPart {
+                    paragraph_styles: definitions.clone(),
+                    table_paragraph_styles: definitions,
+                    ..Default::default()
+                };
+                let expected = styles.resolve_paragraph_properties("Style0").unwrap();
+                assert_eq!(expected.alignment.as_deref(), Some("left"));
+                assert_eq!(expected.spacing.as_ref().unwrap().after, Some(12.0));
+                let reference =
+                    resolve_paragraph_properties_reference(&styles.paragraph_styles, "Style0");
+                assert_eq!(
+                    serde_json::to_value(&expected).unwrap(),
+                    serde_json::to_value(reference).unwrap()
+                );
+                assert_eq!(
+                    serde_json::to_value(styles.resolve_table_paragraph_properties("Style0"))
+                        .unwrap(),
+                    serde_json::to_value(expected).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn paragraph_style_resolution_distinguishes_absent_and_empty_properties() {
+        let mut styles = StylesPart::new();
+        assert!(styles.resolve_paragraph_properties("missing").is_none());
+        styles.paragraph_styles.insert(
+            "Leaf".into(),
+            StyleDefinition {
+                based_on: Some("missing".into()),
+                ..Default::default()
+            },
+        );
+        assert!(styles.resolve_paragraph_properties("Leaf").is_none());
+        styles
+            .paragraph_styles
+            .get_mut("Leaf")
+            .unwrap()
+            .paragraph_properties = Some(ParagraphProperties::default());
+        assert!(styles.resolve_paragraph_properties("Leaf").is_some());
+        assert!(styles.resolve_paragraph_properties("leaf").is_none());
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+
+        #[test]
+        fn paragraph_style_resolution_matches_original_for_arbitrary_graphs(
+            nodes in prop::collection::vec(
+                (prop::option::of(0usize..42), any::<bool>(), prop::option::of(any::<bool>())),
+                0..40,
+            ),
+        ) {
+            let styles: HashMap<_, _> = nodes.iter().enumerate().map(|(index, (parent, has_props, bidi))| {
+                (format!("Style{index}"), StyleDefinition {
+                    style_id: "same ID in every definition".into(),
+                    based_on: parent.map(|index| format!("Style{index}")),
+                    paragraph_properties: has_props.then(|| ParagraphProperties {
+                        alignment: Some(Rc::from(format!("alignment{index}"))),
+                        bidi: *bidi,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+            }).collect();
+            for index in 0..=nodes.len() {
+                let id = format!("Style{index}");
+                let expected = resolve_paragraph_properties_reference(&styles, &id);
+                let actual = StylesPart::resolve_style_paragraph_properties(&styles, &id);
+                prop_assert_eq!(serde_json::to_value(actual).unwrap(), serde_json::to_value(expected).unwrap());
+            }
+        }
     }
 
     #[test]
@@ -3592,6 +4207,54 @@ mod tests {
         assert!(styles
             .resolve_table_paragraph_properties("TableNormal")
             .is_none());
+    }
+
+    #[test]
+    fn table_style_ancestors_survive_nested_and_unknown_containers() {
+        let xml = r#"
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:x="other">
+  <w:style w:type="table" w:styleId="T">
+    <w:tblBorders><x:wrapper><w:tblBorders></w:tblBorders>
+      <w:top w:val="single"/>
+    </x:wrapper></w:tblBorders>
+    <w:top w:val="double"/>
+    <w:tblCellMar><w:tblCellMar/><x:wrapper/><w:left w:w="120"/></w:tblCellMar>
+    <w:left w:w="240"/>
+    <w:tcPr><w:tcPr></w:tcPr><x:wrapper><w:shd w:fill="112233"/></x:wrapper></w:tcPr>
+    <w:shd w:fill="FFFFFF"/>
+    <w:tblStylePr w:type="firstRow">
+      <w:rPr><w:rPr></w:rPr><x:wrapper><w:b/><w:i/><w:color w:val="445566"/></x:wrapper></w:rPr>
+      <x:rPr><w:b w:val="0"/><w:i w:val="0"/><w:color w:val="FFFFFF"/></x:rPr>
+      <w:rPr/><w:color w:val="FFFFFF"/>
+      <w:tcBorders><w:tcBorders></w:tcBorders><x:wrapper><w:top w:val="dashed"/></x:wrapper></w:tcBorders>
+      <w:tcBorders/><w:top w:val="double"/>
+    </w:tblStylePr>
+  </w:style>
+</w:styles>"#;
+        let part = StylesPart::from_xml(xml).expect("parse nested table style");
+        let style = part.resolve_table_style("T").expect("table style");
+        assert_eq!(style.fill.as_deref(), Some("#112233"));
+        assert_eq!(style.cell_margins.unwrap().left, Some(6.0));
+        assert_eq!(
+            style.borders.unwrap().top.unwrap().val.as_deref(),
+            Some("single")
+        );
+        let first_row = &style.conditional[&TableStyleCondition::FirstRow];
+        assert_eq!(first_row.bold, Some(true));
+        assert_eq!(first_row.italic, Some(true));
+        assert_eq!(first_row.color.as_deref(), Some("#445566"));
+        assert_eq!(
+            first_row
+                .borders
+                .as_ref()
+                .unwrap()
+                .top
+                .as_ref()
+                .unwrap()
+                .val
+                .as_deref(),
+            Some("dashed")
+        );
     }
 
     #[test]
