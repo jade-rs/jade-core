@@ -2577,6 +2577,49 @@ impl HorizontalFloatWrapCache {
     }
 }
 
+/// Evidence that this exact immutable Document has no comment anchors.
+/// Weak ownership invalidates the evidence on any Rc::make_mut edit without
+/// keeping a second strong owner (and forcing a deep clone of the body).
+#[derive(Clone)]
+pub(crate) struct DocumentCommentAnchorAbsence {
+    document: std::rc::Weak<Document>,
+}
+
+impl DocumentCommentAnchorAbsence {
+    pub(crate) fn matches(&self, document: &Rc<Document>) -> bool {
+        self.document
+            .upgrade()
+            .is_some_and(|known| Rc::ptr_eq(&known, document))
+    }
+
+    pub(crate) fn composition_permission(
+        &self,
+        document: &Rc<Document>,
+    ) -> Option<CommentFreeCompositionPermission> {
+        self.matches(document)
+            .then_some(CommentFreeCompositionPermission(()))
+    }
+}
+
+/// Synchronous permission acquired before undoing/editing a verified preview.
+/// It owns no Weak: all weak snapshot keys must be released before Rc::make_mut
+/// so normal caret input can keep the document's allocation.
+pub(crate) struct CommentFreeCompositionPermission(());
+
+impl CommentFreeCompositionPermission {
+    /// Only the audited single-paragraph composition pipeline may renew this
+    /// evidence: retain evidence from the original base and validate the edited
+    /// paragraph AFTER the edit. Arbitrary edits cannot use this operation.
+    pub(crate) fn after_composition_edit(
+        self,
+        document: &Rc<Document>,
+    ) -> DocumentCommentAnchorAbsence {
+        DocumentCommentAnchorAbsence {
+            document: Rc::downgrade(document),
+        }
+    }
+}
+
 /// Counts immutable main/note surfaces for auxiliary-story indices. A weak key
 /// must be released before edits so Rc::make_mut can retain its allocation.
 #[derive(Default)]
@@ -3475,6 +3518,7 @@ where
     /// before falling back to the complete scan. Safe across edits, document
     /// replacement and cache drops; it retains neither a document nor an address.
     comment_anchor_body_witness: std::cell::Cell<Option<usize>>,
+    composition_comment_anchor_absence: Option<DocumentCommentAnchorAbsence>,
     #[cfg(test)]
     comment_anchor_document_scans: std::cell::Cell<usize>,
     #[cfg(test)]
@@ -8052,17 +8096,42 @@ where
         next
     }
 
+    fn paragraph_contains_comment_anchors(paragraph: &Paragraph) -> bool {
+        !paragraph.comment_ranges.is_empty()
+            || !paragraph.comment_markers.is_empty()
+            || paragraph.runs.iter().any(|run| {
+                !run.comment_reference_ids.is_empty()
+                    || run.text_box.as_ref().is_some_and(|text_box| {
+                        Self::blocks_contain_comment_anchors(&text_box.blocks)
+                    })
+            })
+    }
+
+    pub(crate) fn comment_anchor_absence_for(
+        &self,
+        document: &Rc<Document>,
+    ) -> Option<DocumentCommentAnchorAbsence> {
+        (self.last_document_comment_anchors == Some(false)
+            && self
+                .last_document
+                .as_ref()
+                .is_some_and(|cached| Rc::ptr_eq(cached, document)))
+        .then(|| DocumentCommentAnchorAbsence {
+            document: Rc::downgrade(document),
+        })
+    }
+
+    pub(crate) fn use_composition_comment_anchor_absence(
+        &mut self,
+        absence: Option<DocumentCommentAnchorAbsence>,
+    ) {
+        self.composition_comment_anchor_absence = absence;
+    }
+
     fn blocks_contain_comment_anchors(elements: &[BodyElement]) -> bool {
         elements.iter().any(|element| match element {
             BodyElement::Paragraph(paragraph) => {
-                !paragraph.comment_ranges.is_empty()
-                    || !paragraph.comment_markers.is_empty()
-                    || paragraph.runs.iter().any(|run| {
-                        !run.comment_reference_ids.is_empty()
-                            || run.text_box.as_ref().is_some_and(|text_box| {
-                                Self::blocks_contain_comment_anchors(&text_box.blocks)
-                            })
-                    })
+                Self::paragraph_contains_comment_anchors(paragraph)
             }
             BodyElement::Table(table) => table.rows.iter().any(|row| {
                 row.cells
@@ -8084,7 +8153,6 @@ where
         #[cfg(test)]
         self.comment_anchor_document_scans
             .set(self.comment_anchor_document_scans.get() + 1);
-        let has_anchors = |body: &Body| Self::blocks_contain_comment_anchors(&body.elements);
         if let Some(block) = self.comment_anchor_body_witness.get().and_then(|index| {
             document
                 .body
@@ -8107,17 +8175,22 @@ where
                 .values()
                 .chain(document.endnotes.values())
                 .any(|note| Self::blocks_contain_comment_anchors(&note.body))
-            || [
-                self.header_body.as_ref(),
-                self.footer_body.as_ref(),
-                self.header_body_first.as_ref(),
-                self.footer_body_first.as_ref(),
-                self.header_body_even.as_ref(),
-                self.footer_body_even.as_ref(),
-            ]
-            .into_iter()
-            .flatten()
-            .any(has_anchors)
+            || self.auxiliary_stories_have_comment_anchors()
+    }
+
+    fn auxiliary_stories_have_comment_anchors(&self) -> bool {
+        let has_anchors = |body: &Body| Self::blocks_contain_comment_anchors(&body.elements);
+        [
+            self.header_body.as_ref(),
+            self.footer_body.as_ref(),
+            self.header_body_first.as_ref(),
+            self.footer_body_first.as_ref(),
+            self.header_body_even.as_ref(),
+            self.footer_body_even.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .any(has_anchors)
             || self.section_header_footers.iter().any(|section| {
                 [
                     section.header_body.as_ref(),
@@ -8368,6 +8441,7 @@ where
             document_has_comments: false,
             last_document_comment_anchors: None,
             comment_anchor_body_witness: std::cell::Cell::new(None),
+            composition_comment_anchor_absence: None,
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
             #[cfg(test)]
@@ -12446,6 +12520,7 @@ where
         // member through them (`set_incremental_dirty_from`).
         self.last_document = None;
         self.last_document_comment_anchors = None;
+        self.composition_comment_anchor_absence = None;
         self.invalidate_paragraph_content_hash_cache();
     }
 
@@ -12464,6 +12539,7 @@ where
     /// failure, so this is normally the document the renderer last laid out.
     pub fn restore_document_cache(&mut self, document: Rc<Document>) {
         self.last_document_comment_anchors = None;
+        self.composition_comment_anchor_absence = None;
         self.last_document = Some(document);
     }
 
@@ -13582,10 +13658,17 @@ where
         // snapshot, but leave an unscanned snapshot unknown so enabling comments
         // after hidden edits still performs the required detection.
         self.last_document_comment_anchors = if options.render_comments {
-            Some(
-                cached_comment_anchors
-                    .unwrap_or_else(|| self.document_has_comment_anchors(document)),
-            )
+            Some(cached_comment_anchors.unwrap_or_else(|| {
+                if self
+                    .composition_comment_anchor_absence
+                    .as_ref()
+                    .is_some_and(|absence| absence.matches(&document_rc))
+                {
+                    self.auxiliary_stories_have_comment_anchors()
+                } else {
+                    self.document_has_comment_anchors(document)
+                }
+            }))
         } else {
             cached_comment_anchors
         };
@@ -34795,6 +34878,7 @@ where
         footer_body_even: Option<Body>,
     ) {
         self.last_document_comment_anchors = None;
+        self.composition_comment_anchor_absence = None;
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -34815,6 +34899,7 @@ where
     /// to fall back to the document-wide fields.
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
         self.last_document_comment_anchors = None;
+        self.composition_comment_anchor_absence = None;
         self.section_header_footers = sections;
     }
 
@@ -51177,6 +51262,412 @@ mod tests {
                     proptest::prop_assert!(renderer.comment_annotations.iter().any(|annotation| annotation.id == "1"));
                 }
                 proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), has_metadata);
+            }
+        }
+    }
+
+    #[test]
+    fn composition_previews_do_not_rescan_a_comment_free_body() {
+        use crate::canvas_view::CompositionPreviewState;
+        use crate::word_document::WordDocument;
+        let (mut renderer, _) = recording_renderer();
+        renderer.set_layout_page_limit(Some(1));
+        let mut word_doc =
+            WordDocument::from_document(doc_with_paragraph_texts(&vec!["body"; 3900]));
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(word_doc.document.as_ref().unwrap()),
+                &options,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(renderer.comment_anchor_body_block_probes.get(), 3900);
+        let retained_text = word_doc.paragraph(3899).unwrap().runs[0].text.as_ptr();
+        let retained_document = Rc::as_ptr(word_doc.document.as_ref().unwrap());
+        let base = SelectionRange::collapsed(TextPosition::new(0, 2));
+        let mut selection = Some(base);
+        let mut preview: Option<CompositionPreviewState> = None;
+        for update in 1..=32 {
+            let comment_free_edit = CompositionPreviewState::prepare_comment_anchor_absence(
+                preview.as_ref(),
+                &word_doc,
+                base,
+                &"あ".repeat(update),
+                |document| renderer.comment_anchor_absence_for(document),
+            );
+            renderer.drop_document_cache();
+            if let Some(mut previous) = preview.take() {
+                previous.undo(&mut word_doc, &mut selection).unwrap();
+            }
+            let text = "あ".repeat(update);
+            preview = Some(
+                CompositionPreviewState::apply(
+                    &mut word_doc,
+                    &mut selection,
+                    base,
+                    &text,
+                    None,
+                    comment_free_edit,
+                )
+                .unwrap(),
+            );
+            assert_eq!(
+                word_doc
+                    .paragraph(0)
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect::<String>(),
+                format!("bo{text}dy")
+            );
+            assert_eq!(
+                word_doc.paragraph(3899).unwrap().runs[0].text.as_ptr(),
+                retained_text,
+                "must not deep-clone the untouched body"
+            );
+            assert_eq!(
+                Rc::as_ptr(word_doc.document.as_ref().unwrap()),
+                retained_document,
+                "validated preedit must not force a new document allocation"
+            );
+            renderer.use_composition_comment_anchor_absence(
+                preview.as_ref().unwrap().comment_anchor_absence.clone(),
+            );
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(word_doc.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            assert!(!renderer.document_has_comments);
+            assert_eq!(
+                renderer.comment_anchor_body_block_probes.get(),
+                3900,
+                "preedit update {update} must not walk the entire body again"
+            );
+        }
+        renderer.drop_document_cache();
+        preview
+            .unwrap()
+            .undo(&mut word_doc, &mut selection)
+            .unwrap();
+        assert_eq!(
+            word_doc
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "body"
+        );
+        assert_eq!(selection, Some(base));
+    }
+
+    fn render_composition_test_document(
+        renderer: &mut CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        document: &crate::word_document::WordDocument,
+        preview: Option<&crate::canvas_view::CompositionPreviewState>,
+        visible: bool,
+    ) {
+        let mut options = options_for_seek_tests();
+        options.render_comments = visible;
+        renderer.use_composition_comment_anchor_absence(
+            preview.and_then(|preview| preview.comment_anchor_absence.clone()),
+        );
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(document.document.as_ref().unwrap()),
+                &options,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn composition_absence_evidence_rejects_external_edits_and_new_documents() {
+        use crate::canvas_view::CompositionPreviewState;
+        use crate::word_document::WordDocument;
+        let (mut renderer, _) = recording_renderer();
+        let mut document =
+            WordDocument::from_document(doc_with_paragraph_texts(&["body", "other"]));
+        let base = SelectionRange::collapsed(TextPosition::new(0, 2));
+        render_composition_test_document(&mut renderer, &document, None, true);
+        let absence = renderer
+            .comment_anchor_absence_for(document.document.as_ref().unwrap())
+            .unwrap();
+        assert!(absence.matches(document.document.as_ref().unwrap()));
+        let replacement = Rc::new(doc_with_paragraph_texts(&["body", "other"]));
+        assert!(!absence.matches(&replacement));
+        renderer.drop_document_cache();
+        *document.paragraph_mut(1).unwrap() = comment_test_paragraph(2);
+        assert!(!absence.matches(document.document.as_ref().unwrap()));
+        assert!(CompositionPreviewState::prepare_comment_anchor_absence(
+            None,
+            &document,
+            base,
+            "あ",
+            |_| Some(absence.clone()),
+        )
+        .is_none());
+        render_composition_test_document(&mut renderer, &document, None, true);
+        assert!(renderer.document_has_comments);
+    }
+
+    #[test]
+    fn composition_cannot_acquire_base_evidence_from_an_intermediate_preview() {
+        use crate::canvas_view::CompositionPreviewState;
+        use crate::word_document::WordDocument;
+        let (mut renderer, _) = recording_renderer();
+        let mut document = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
+        let base = SelectionRange::collapsed(TextPosition::new(0, 2));
+        let mut selection = Some(base);
+        // No evidence was available for the original base. A later negative
+        // render must never grant evidence for what preview undo can restore.
+        let preview =
+            CompositionPreviewState::apply(&mut document, &mut selection, base, "あ", None, None)
+                .unwrap();
+        render_composition_test_document(&mut renderer, &document, Some(&preview), true);
+        assert!(renderer
+            .comment_anchor_absence_for(document.document.as_ref().unwrap())
+            .is_some());
+        assert!(CompositionPreviewState::prepare_comment_anchor_absence(
+            Some(&preview),
+            &document,
+            base,
+            "い",
+            |document| renderer.comment_anchor_absence_for(document),
+        )
+        .is_none());
+        for text in ["", "a\nb", "a\rb", "a\u{2028}b", "a\u{2029}b"] {
+            assert!(CompositionPreviewState::prepare_comment_anchor_absence(
+                None,
+                &document,
+                base,
+                text,
+                |document| renderer.comment_anchor_absence_for(document),
+            )
+            .is_none());
+        }
+        assert!(CompositionPreviewState::prepare_comment_anchor_absence(
+            None,
+            &document,
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 1)),
+            "あ",
+            |document| renderer.comment_anchor_absence_for(document),
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn composition_absence_still_checks_all_header_footer_variants() {
+        use crate::canvas_view::CompositionPreviewState;
+        use crate::word_document::WordDocument;
+        let (mut renderer, _) = recording_renderer();
+        let mut document = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
+        let base = SelectionRange::collapsed(TextPosition::new(0, 2));
+        let mut selection = Some(base);
+        render_composition_test_document(&mut renderer, &document, None, true);
+        let edit = CompositionPreviewState::prepare_comment_anchor_absence(
+            None,
+            &document,
+            base,
+            "あ",
+            |document| renderer.comment_anchor_absence_for(document),
+        )
+        .unwrap();
+        renderer.drop_document_cache();
+        let preview = CompositionPreviewState::apply(
+            &mut document,
+            &mut selection,
+            base,
+            "あ",
+            None,
+            Some(edit),
+        )
+        .unwrap();
+        assert!(preview.comment_anchor_absence.is_some());
+        let body_probes = renderer.comment_anchor_body_block_probes.get();
+        for story in 0..12 {
+            for kind in 0..4 {
+                let mut stories: [Option<Body>; 12] = Default::default();
+                stories[story] = Some(Body {
+                    elements: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))],
+                });
+                renderer.set_header_footer_bodies(
+                    stories[0].clone(),
+                    stories[1].clone(),
+                    stories[2].clone(),
+                    stories[3].clone(),
+                    stories[4].clone(),
+                    stories[5].clone(),
+                );
+                renderer.set_section_header_footers(vec![SectionHeaderFooters {
+                    header_body: stories[6].clone(),
+                    footer_body: stories[7].clone(),
+                    header_body_first: stories[8].clone(),
+                    footer_body_first: stories[9].clone(),
+                    header_body_even: stories[10].clone(),
+                    footer_body_even: stories[11].clone(),
+                    ..Default::default()
+                }]);
+                render_composition_test_document(&mut renderer, &document, Some(&preview), true);
+                assert_eq!(
+                    renderer.document_has_comments,
+                    kind < 3,
+                    "story={story}, kind={kind}"
+                );
+                assert_eq!(renderer.comment_anchor_body_block_probes.get(), body_probes);
+            }
+        }
+    }
+
+    #[test]
+    fn composition_absence_excludes_table_and_textbox_surfaces_and_unknown_snapshots() {
+        use crate::canvas_view::CompositionPreviewState;
+        use crate::word_document::WordDocument;
+        let (mut renderer, _) = recording_renderer();
+        let base = SelectionRange::collapsed(TextPosition::new(0, 0));
+        let plain = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
+        render_composition_test_document(&mut renderer, &plain, None, false);
+        assert!(renderer
+            .comment_anchor_absence_for(plain.document.as_ref().unwrap())
+            .is_none());
+        let mut run = build_run(None);
+        run.text_box = Some(page_anchored_text_box(None, Vec::new()));
+        let with_textbox = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(band_test_paragraph(vec![run]))],
+            }),
+            ..Default::default()
+        };
+        let in_table = Document {
+            body: Some(Body {
+                elements: vec![BodyElement::Table(Box::new(Table {
+                    rows: vec![jade_docx_reader::document::TableRow {
+                        cells: vec![single_text_cell("body")],
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }))],
+            }),
+            ..Default::default()
+        };
+        for document in [with_textbox, in_table] {
+            let document = WordDocument::from_document(document);
+            render_composition_test_document(&mut renderer, &document, None, true);
+            assert!(renderer
+                .comment_anchor_absence_for(document.document.as_ref().unwrap())
+                .is_some());
+            assert!(CompositionPreviewState::prepare_comment_anchor_absence(
+                None,
+                &document,
+                base,
+                "あ",
+                |document| renderer.comment_anchor_absence_for(document),
+            )
+            .is_none());
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn composition_comment_evidence_tracks_preview_history_and_other_stories(
+            operations in proptest::collection::vec((0u8..9, 0u8..4, 1usize..9), 1..48)
+        ) {
+            use crate::canvas_view::CompositionPreviewState;
+            use crate::word_document::WordDocument;
+            let (mut renderer, _) = recording_renderer();
+            let mut document = WordDocument::from_document(doc_with_paragraph_texts(&["body", "other"]));
+            let base = SelectionRange::collapsed(TextPosition::new(0, 2));
+            let mut selection = Some(base);
+            let mut preview: Option<CompositionPreviewState> = None;
+            // Independent model: base/preedit text and three anchor-presence
+            // bits. It never scans production document state to predict flags.
+            let mut base_text = "body".to_owned();
+            let mut current_text = base_text.clone();
+            let mut anchors = [false; 3];
+            render_composition_test_document(&mut renderer, &document, None, true);
+            for (step, (operation, kind, length)) in operations.into_iter().enumerate() {
+                match operation {
+                    0 => {
+                        let text = "あ".repeat(length);
+                        let edit = CompositionPreviewState::prepare_comment_anchor_absence(
+                            preview.as_ref(), &document, base, &text,
+                            |document| renderer.comment_anchor_absence_for(document),
+                        );
+                        renderer.drop_document_cache();
+                        if let Some(mut previous) = preview.take() {
+                            previous.undo(&mut document, &mut selection).unwrap();
+                        }
+                        preview = Some(CompositionPreviewState::apply(
+                            &mut document, &mut selection, base, &text, None, edit,
+                        ).unwrap());
+                        current_text = format!("{}{}{}", &base_text[..2], text, &base_text[2..]);
+                    }
+                    1 => {
+                        renderer.drop_document_cache();
+                        if let Some(mut previous) = preview.take() {
+                            previous.undo(&mut document, &mut selection).unwrap();
+                        }
+                        current_text = base_text.clone();
+                    }
+                    2 => { preview = None; base_text = current_text.clone(); }
+                    3 => {
+                        renderer.drop_document_cache();
+                        *document.paragraph_mut(1).unwrap() = comment_test_paragraph(kind);
+                        anchors[0] = kind < 3;
+                    }
+                    4 => {
+                        renderer.drop_document_cache();
+                        document.document_mut().unwrap().footnotes.insert("1".into(), crate::document::Note {
+                            id: "1".into(), body: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))],
+                            ..Default::default()
+                        });
+                        anchors[1] = kind < 3;
+                    }
+                    5 => {
+                        renderer.set_header_footer_bodies(
+                            Some(Body { elements: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))] }),
+                            None, None, None, None, None,
+                        );
+                        anchors[2] = kind < 3;
+                    }
+                    6 => {
+                        preview = None;
+                        document = WordDocument::from_document(doc_with_paragraph_texts(&["body", "other"]));
+                        base_text = "body".to_owned(); current_text = base_text.clone();
+                        anchors[0] = false; anchors[1] = false;
+                        selection = Some(base);
+                    }
+                    7 => renderer.restore_document_cache(Rc::clone(document.document.as_ref().unwrap())),
+                    _ => (), // Hide comments for this render, then revisit.
+                }
+                let visible = operation != 8;
+                render_composition_test_document(&mut renderer, &document, preview.as_ref(), visible);
+                let actual_text: String = document.paragraph(0).unwrap().runs.iter().map(|run| run.text.as_str()).collect();
+                proptest::prop_assert_eq!(&actual_text, &current_text, "step={}, operation={}", step, operation);
+                let expected_comments = anchors.into_iter().any(|anchor| anchor);
+                if visible {
+                    proptest::prop_assert_eq!(renderer.document_has_comments, expected_comments, "step={}, operation={}", step, operation);
+                }
+                let mut options = options_for_seek_tests();
+                options.render_comments = visible;
+                proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), !(visible && expected_comments), "step={}, operation={}", step, operation);
             }
         }
     }

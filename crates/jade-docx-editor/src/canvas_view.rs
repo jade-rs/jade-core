@@ -16,8 +16,8 @@ use wasm_bindgen_futures::{future_to_promise, JsFuture};
 use web_sys::{self, ImageBitmap, OffscreenCanvas, WorkerGlobalScope};
 
 use crate::canvas_renderer::{
-    CanvasRenderer, FieldDateTime, TableResizeHandleKind, TableResizeMetadata,
-    TableRowResizeHandleKind,
+    CanvasRenderer, CommentFreeCompositionPermission, DocumentCommentAnchorAbsence, FieldDateTime,
+    TableResizeHandleKind, TableResizeMetadata, TableRowResizeHandleKind,
 };
 use crate::commands::apply_underline::ApplyUnderlineCommand;
 use crate::commands::bookmark::{
@@ -302,9 +302,162 @@ struct HfHistoryEntry {
     variant: HfVariant,
 }
 
-struct CompositionPreviewState {
+pub(crate) struct CompositionPreviewState {
     base_selection: Option<SelectionRange>,
     commands: Vec<Box<dyn Command>>,
+    pub(crate) comment_anchor_absence: Option<DocumentCommentAnchorAbsence>,
+}
+
+/// A synchronous edit permission, validated against the current document
+/// before its previous preview is undone. Never acquire this from an
+/// intermediate preview when its original base lacked evidence.
+pub(crate) struct CommentFreeCompositionEdit {
+    permission: CommentFreeCompositionPermission,
+    paragraph: usize,
+    paragraph_count: usize,
+}
+
+impl CompositionPreviewState {
+    pub(crate) fn prepare_comment_anchor_absence(
+        previous: Option<&Self>,
+        word_doc: &WordDocument,
+        base_selection: SelectionRange,
+        text: &str,
+        known_absence: impl FnOnce(
+            &Rc<crate::document::Document>,
+        ) -> Option<DocumentCommentAnchorAbsence>,
+    ) -> Option<CommentFreeCompositionEdit> {
+        // The fast path is an ordinary caret preedit in one top-level body
+        // paragraph. Structural replacements keep the complete anchor scan.
+        if !base_selection.is_collapsed()
+            || text.is_empty()
+            || text.contains(['\r', '\n', '\u{2028}', '\u{2029}'])
+            || !word_doc.is_top_level_body_paragraph_surface(base_selection.focus.paragraph)
+            || word_doc
+                .paragraph(base_selection.focus.paragraph)?
+                .runs
+                .iter()
+                .any(|run| run.text_box.is_some())
+        {
+            return None;
+        }
+        let document = word_doc.document.as_ref()?;
+        let absence = match previous {
+            Some(previous) => previous.comment_anchor_absence.clone(),
+            None => known_absence(document),
+        }?;
+        let permission = absence.composition_permission(document)?;
+        Some(CommentFreeCompositionEdit {
+            permission,
+            paragraph: base_selection.focus.paragraph,
+            paragraph_count: word_doc.paragraph_count(),
+        })
+    }
+
+    pub(crate) fn apply(
+        word_doc: &mut WordDocument,
+        selection: &mut Option<SelectionRange>,
+        base_selection: SelectionRange,
+        text: &str,
+        inline_properties: Option<RunProperties>,
+        comment_free_edit: Option<CommentFreeCompositionEdit>,
+    ) -> Result<Self, String> {
+        let mut applied_commands: Vec<Box<dyn Command>> = Vec::new();
+        let revision_session = word_doc.revision_session().cloned();
+        word_doc.set_revision_session(None);
+        let apply_result = (|| -> Result<Option<SelectionRange>, String> {
+            let mut insert_command: Box<dyn Command> = Box::new(InsertTextCommand::new(
+                base_selection,
+                text.to_owned(),
+                inline_properties,
+            ));
+            {
+                let mut ctx = CommandContext::new(word_doc, selection);
+                insert_command
+                    .apply(&mut ctx)
+                    .map_err(|err| err.to_string())?;
+            }
+            applied_commands.push(insert_command);
+
+            let selection_after_insert = *selection;
+            let (selection_start, _) = base_selection.normalized();
+            let insert_end = selection_start.offset.saturating_add(text.len());
+            if insert_end > selection_start.offset {
+                let underline_range = SelectionRange::new(
+                    selection_start,
+                    TextPosition::new(selection_start.paragraph, insert_end),
+                );
+                let mut underline_command: Box<dyn Command> =
+                    Box::new(ApplyUnderlineCommand::new(underline_range));
+                {
+                    let mut ctx = CommandContext::new(word_doc, selection);
+                    underline_command
+                        .apply(&mut ctx)
+                        .map_err(|err| err.to_string())?;
+                }
+                applied_commands.push(underline_command);
+                *selection = selection_after_insert;
+            }
+
+            Ok(*selection)
+        })();
+        word_doc.set_revision_session(revision_session);
+        *selection = match apply_result {
+            Ok(next_selection) => next_selection,
+            Err(err) => {
+                let mut rollback_error = None;
+                {
+                    let mut ctx = CommandContext::new(word_doc, selection);
+                    for command in applied_commands.iter_mut().rev() {
+                        if let Err(undo_err) = command.undo(&mut ctx) {
+                            rollback_error = Some(undo_err.to_string());
+                            break;
+                        }
+                    }
+                }
+                return match rollback_error {
+                    Some(rollback_error) => Err(format!(
+                        "{err}; composition rollback failed: {rollback_error}"
+                    )),
+                    None => Err(err),
+                };
+            }
+        };
+        let comment_anchor_absence = comment_free_edit.and_then(|edit| {
+            let single_paragraph = matches!(applied_commands[0].history_render_footprint(),
+                crate::commands::HistoryRenderFootprint::SingleParagraph { index } if index == edit.paragraph);
+            let paragraph = word_doc.paragraph(edit.paragraph)?;
+            // Syncing raw XML must not introduce an anchor into the normalized
+            // edited paragraph. No nested textbox is admitted on this path.
+            let still_clear = paragraph.comment_ranges.is_empty()
+                && paragraph.comment_markers.is_empty()
+                && paragraph.runs.iter().all(|run| run.comment_reference_ids.is_empty() && run.text_box.is_none());
+            (single_paragraph && still_clear && word_doc.paragraph_count() == edit.paragraph_count
+                && word_doc.is_top_level_body_paragraph_surface(edit.paragraph))
+                .then(|| edit.permission.after_composition_edit(word_doc.document.as_ref().unwrap()))
+        });
+        Ok(Self {
+            base_selection: Some(base_selection),
+            commands: applied_commands,
+            comment_anchor_absence,
+        })
+    }
+
+    pub(crate) fn undo(
+        &mut self,
+        word_doc: &mut WordDocument,
+        selection: &mut Option<SelectionRange>,
+    ) -> Result<(), String> {
+        // The next synchronous preview already validated its permission. Drop
+        // the old weak key before the first mutation, including cancellation.
+        self.comment_anchor_absence = None;
+        let mut ctx = CommandContext::new(word_doc, selection);
+        for command in self.commands.iter_mut().rev() {
+            command.undo(&mut ctx).map_err(|error| error.to_string())?;
+        }
+        *selection = self.base_selection;
+        Ok(())
+    }
 }
 
 /// Stores revision metadata extracted from the JavaScript payload.
@@ -1559,17 +1712,7 @@ impl OffscreenDocumentView {
             .take()
             .ok_or_else(|| JsValue::from_str("No document loaded"))?;
         let mut selection = state.selection;
-        let mut clear_error = None;
-        {
-            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-            for command in preview.commands.iter_mut().rev() {
-                if let Err(err) = command.undo(&mut ctx) {
-                    clear_error = Some(err.to_string());
-                    break;
-                }
-            }
-        }
-        if let Some(error) = clear_error {
+        if let Err(error) = preview.undo(&mut word_doc, &mut selection) {
             // A command that was successfully applied must be undoable. If an
             // invariant violation still makes undo fail, keep the best-effort
             // restored document instead of cloning the entire DOCX before every
@@ -7185,6 +7328,23 @@ impl OffscreenDocumentView {
             })
         };
         let had_preview = self.state.borrow().composition_preview.is_some();
+        let comment_free_edit = {
+            let state = self.state.borrow();
+            let base_selection = state
+                .composition_preview
+                .as_ref()
+                .and_then(|preview| preview.base_selection)
+                .unwrap_or(fallback_selection);
+            state.word_doc.as_ref().and_then(|word_doc| {
+                CompositionPreviewState::prepare_comment_anchor_absence(
+                    state.composition_preview.as_ref(),
+                    word_doc,
+                    base_selection,
+                    &text,
+                    |document| self.renderer.borrow().comment_anchor_absence_for(document),
+                )
+            })
+        };
         let _document_cache =
             (had_preview || !text.is_empty()).then(|| self.drop_renderer_document_cache());
         let (
@@ -7209,75 +7369,25 @@ impl OffscreenDocumentView {
                     .take()
                     .ok_or_else(|| JsValue::from_str("No document loaded"))?;
                 let mut selection = Some(base_selection);
-                let mut applied_commands: Vec<Box<dyn Command>> = Vec::new();
-                let revision_session = word_doc.revision_session().cloned();
-                word_doc.set_revision_session(None);
-                let apply_result =
-                    (|| -> Result<Option<SelectionRange>, JsValue> {
-                        let mut insert_command: Box<dyn Command> = Box::new(
-                            InsertTextCommand::new(base_selection, text.clone(), inline_properties),
-                        );
-                        {
-                            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-                            insert_command
-                                .apply(&mut ctx)
-                                .map_err(|err| JsValue::from_str(&err.to_string()))?;
-                        }
-                        applied_commands.push(insert_command);
-
-                        let selection_after_insert = selection;
-                        let (selection_start, _) = base_selection.normalized();
-                        let insert_end = selection_start.offset.saturating_add(text.len());
-                        if insert_end > selection_start.offset {
-                            let underline_range = SelectionRange::new(
-                                selection_start,
-                                TextPosition::new(selection_start.paragraph, insert_end),
-                            );
-                            let mut underline_command: Box<dyn Command> =
-                                Box::new(ApplyUnderlineCommand::new(underline_range));
-                            {
-                                let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-                                underline_command
-                                    .apply(&mut ctx)
-                                    .map_err(|err| JsValue::from_str(&err.to_string()))?;
-                            }
-                            applied_commands.push(underline_command);
-                            selection = selection_after_insert;
-                        }
-
-                        Ok(selection)
-                    })();
-                word_doc.set_revision_session(revision_session);
-                selection = match apply_result {
-                    Ok(selection) => selection,
-                    Err(err) => {
-                        let mut rollback_error = None;
-                        {
-                            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-                            for command in applied_commands.iter_mut().rev() {
-                                if let Err(undo_err) = command.undo(&mut ctx) {
-                                    rollback_error = Some(undo_err.to_string());
-                                    break;
-                                }
-                            }
-                        }
+                match CompositionPreviewState::apply(
+                    &mut word_doc,
+                    &mut selection,
+                    base_selection,
+                    &text,
+                    inline_properties,
+                    comment_free_edit,
+                ) {
+                    Ok(preview) => {
+                        state.selection = selection;
+                        state.composition_preview = Some(preview);
+                        state.word_doc = Some(word_doc);
+                    }
+                    Err(error) => {
                         state.selection = Some(base_selection);
                         state.word_doc = Some(word_doc);
-                        return match rollback_error {
-                            Some(rollback_error) => Err(JsValue::from_str(&format!(
-                                "{err:?}; composition rollback failed: {rollback_error}"
-                            ))),
-                            None => Err(err),
-                        };
+                        return Err(JsValue::from_str(&error));
                     }
-                };
-
-                state.selection = selection;
-                state.composition_preview = Some(CompositionPreviewState {
-                    base_selection: Some(base_selection),
-                    commands: applied_commands,
-                });
-                state.word_doc = Some(word_doc);
+                }
             } else {
                 state.selection = Some(base_selection);
             }
@@ -7345,6 +7455,12 @@ impl OffscreenDocumentView {
                 .word_doc
                 .as_ref()
                 .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+            renderer.use_composition_comment_anchor_absence(
+                state_ref
+                    .composition_preview
+                    .as_ref()
+                    .and_then(|preview| preview.comment_anchor_absence.clone()),
+            );
             let render_result = if let Some(document) = word_doc.document.as_ref() {
                 renderer.render_with_numbering_rc(
                     Rc::clone(document),
