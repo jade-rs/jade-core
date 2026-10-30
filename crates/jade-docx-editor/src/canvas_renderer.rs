@@ -3471,8 +3471,14 @@ where
     /// document is unchanged; dropping/restoring it or replacing auxiliary
     /// stories invalidates this result. Never retain a raw document address.
     last_document_comment_anchors: Option<bool>,
+    /// A positive witness, not a cached answer: recheck this current body block
+    /// before falling back to the complete scan. Safe across edits, document
+    /// replacement and cache drops; it retains neither a document nor an address.
+    comment_anchor_body_witness: std::cell::Cell<Option<usize>>,
     #[cfg(test)]
     comment_anchor_document_scans: std::cell::Cell<usize>,
+    #[cfg(test)]
+    comment_anchor_body_block_probes: std::cell::Cell<usize>,
     /// Overridable colors for comment range/marker decoration.
     comment_colors: CommentDecorationColors,
     /// Optional forced seek snapshot (used for page-bitmap rerender).
@@ -8067,12 +8073,35 @@ where
         })
     }
 
+    fn body_block_contains_comment_anchors(&self, block: &BodyElement) -> bool {
+        #[cfg(test)]
+        self.comment_anchor_body_block_probes
+            .set(self.comment_anchor_body_block_probes.get() + 1);
+        Self::blocks_contain_comment_anchors(std::slice::from_ref(block))
+    }
+
     fn document_has_comment_anchors(&self, document: &Document) -> bool {
         #[cfg(test)]
         self.comment_anchor_document_scans
             .set(self.comment_anchor_document_scans.get() + 1);
         let has_anchors = |body: &Body| Self::blocks_contain_comment_anchors(&body.elements);
-        document.body.as_ref().is_some_and(has_anchors)
+        if let Some(block) = self.comment_anchor_body_witness.get().and_then(|index| {
+            document
+                .body
+                .as_ref()
+                .and_then(|body| body.elements.get(index))
+        }) {
+            if self.body_block_contains_comment_anchors(block) {
+                return true;
+            }
+        }
+        let witness = document.body.as_ref().and_then(|body| {
+            body.elements
+                .iter()
+                .position(|block| self.body_block_contains_comment_anchors(block))
+        });
+        self.comment_anchor_body_witness.set(witness);
+        witness.is_some()
             || document
                 .footnotes
                 .values()
@@ -8338,8 +8367,11 @@ where
             document_has_notes: false,
             document_has_comments: false,
             last_document_comment_anchors: None,
+            comment_anchor_body_witness: std::cell::Cell::new(None),
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
+            #[cfg(test)]
+            comment_anchor_body_block_probes: std::cell::Cell::new(0),
             comment_colors: CommentDecorationColors::default(),
             forced_seek_snapshot: None,
             disable_seek_replay_once: false,
@@ -50931,6 +50963,132 @@ mod tests {
             _ => (),
         }
         paragraph
+    }
+
+    #[test]
+    fn validated_comment_body_witness_avoids_repeated_prefix_scans_after_edits() {
+        for kind in 0..3 {
+            let mut renderer = test_renderer();
+            let mut document = doc_with_paragraph_texts(&vec!["body"; 3900]);
+            document
+                .body
+                .as_mut()
+                .unwrap()
+                .elements
+                .push(BodyElement::from_paragraph(comment_test_paragraph(kind)));
+            assert!(renderer.document_has_comment_anchors(&document));
+            assert_eq!(renderer.comment_anchor_body_block_probes.get(), 3901);
+            for update in 0..32 {
+                renderer.drop_document_cache();
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    unreachable!();
+                };
+                paragraph.runs[0].text.push('x');
+                let before = renderer.comment_anchor_body_block_probes.get();
+                assert!(renderer.document_has_comment_anchors(&document));
+                assert_eq!(
+                    renderer.comment_anchor_body_block_probes.get() - before,
+                    1,
+                    "kind={kind} update={update}"
+                );
+            }
+            document.body.as_mut().unwrap().elements.pop();
+            assert!(
+                !renderer.document_has_comment_anchors(&document),
+                "removed kind={kind}"
+            );
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(128))]
+        #[test]
+        fn comment_witness_tracks_structural_edits_and_replaced_stories(
+            operations in proptest::collection::vec((0u8..13, 0usize..32, 0u8..4, 0u8..3), 1..65)
+        ) {
+            let mut renderer = test_renderer();
+            let mut document = doc_with_paragraph_texts(&[]);
+            // The model is a sequence of anchor-presence bits plus independent
+            // auxiliary-story bits, never a scan of the production document.
+            let mut model = Vec::<bool>::new();
+            let mut auxiliary = [false; 3];
+            for (step, (operation, position, kind, shape)) in operations.into_iter().enumerate() {
+                let mut block = BodyElement::from_paragraph(comment_test_paragraph(kind));
+                if shape >= 1 {
+                    let mut text_box_run = build_run(None);
+                    let mut text_box = page_anchored_text_box(None, Vec::new());
+                    text_box.blocks = vec![block];
+                    text_box_run.text_box = Some(text_box);
+                    block = BodyElement::from_paragraph(band_test_paragraph(vec![text_box_run]));
+                }
+                if shape == 2 {
+                    let mut cell = single_text_cell("plain");
+                    cell.blocks = vec![block];
+                    block = BodyElement::Table(Box::new(Table {
+                        rows: vec![jade_docx_reader::document::TableRow {
+                            cells: vec![cell], ..Default::default()
+                        }], ..Default::default()
+                    }));
+                }
+                match operation {
+                    0 => {
+                        let index = position % (model.len() + 1);
+                        document.body.get_or_insert_with(|| Body { elements: Vec::new() }).elements.insert(index, block);
+                        model.insert(index, kind < 3);
+                    }
+                    1 | 2 if !model.is_empty() => {
+                        let index = position % model.len();
+                        let elements = &mut document.body.as_mut().unwrap().elements;
+                        if operation == 1 { elements.remove(index); model.remove(index); }
+                        else { elements[index] = block; model[index] = kind < 3; }
+                    }
+                    3 if !model.is_empty() => {
+                        let amount = position % model.len();
+                        document.body.as_mut().unwrap().elements.rotate_left(amount);
+                        model.rotate_left(amount);
+                    }
+                    4 => {
+                        let len = position % (model.len() + 1);
+                        if let Some(body) = document.body.as_mut() { body.elements.truncate(len); }
+                        model.truncate(len);
+                    }
+                    5 => {
+                        if let Some(body) = document.body.as_mut() { body.elements.reverse(); }
+                        model.reverse();
+                    }
+                    6 => {
+                        document = Document { body: Some(Body { elements: vec![block] }), ..Default::default() };
+                        model = vec![kind < 3];
+                        auxiliary[0] = false; // Only the note belongs to the document.
+                    }
+                    7 => { document.body = None; model.clear(); }
+                    8 => renderer.drop_document_cache(),
+                    9 => renderer.restore_document_cache(Rc::new(document.clone())),
+                    10 => {
+                        document.footnotes.insert("1".into(), crate::document::Note {
+                            id: "1".into(), body: vec![block], ..Default::default()
+                        });
+                        auxiliary[0] = kind < 3;
+                    }
+                    11 => {
+                        renderer.set_header_footer_bodies(Some(Body { elements: vec![block] }), None, None, None, None, None);
+                        auxiliary[1] = kind < 3;
+                    }
+                    12 => {
+                        renderer.set_section_header_footers(vec![SectionHeaderFooters {
+                            footer_body_even: Some(Body { elements: vec![block] }), ..Default::default()
+                        }]);
+                        auxiliary[2] = kind < 3;
+                    }
+                    _ => (), // Removing/replacing/rotating an empty body is a no-op.
+                }
+                proptest::prop_assert_eq!(renderer.document_has_comment_anchors(&document),
+                    model.iter().copied().chain(auxiliary).any(|present| present),
+                    "step={}, operation={}, position={}, kind={}, shape={}", step, operation, position, kind, shape);
+            }
+        }
     }
 
     #[test]
