@@ -41,6 +41,15 @@ Word-reference and bundled-font hashes are pinned. These auxiliary snapshots
 preserve the behavior of `3a0c5b2` with the native diagnostic entry point;
 they do not assert agreement with Word.
 
+The same required test target also checks the unchanged `header-footer-sections`
+fixture against its frozen Mac Word reference: its title page has no footer,
+while page two inherits `SHARED FOOTER`. Complete native capture must preserve
+that blank first-page footer, the page-two footer, both header texts and the
+two-page count. This assertion concerns story selection and painted text; it
+does not claim Office-font coordinate agreement. A separate exhaustive unit
+test covers all variant-presence and flag combinations, including blank even
+stories and first-page precedence on an even-numbered section start.
+
 This is not full Word compatibility coverage. The original
 `layout_debug_lines()` capture omits some painted content; the additional
 full-capture gate covers numbering and ruby only in these six probes. These

@@ -82,6 +82,59 @@ fn sha256(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+#[test]
+fn mac_missing_first_footer_stays_blank() {
+    let bytes = std::fs::read(repo_path("public/fixtures/header-footer-sections.docx")).unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(
+            "tests/word-oracle/mac-glyph-corpus-20261019/header-footer-sections.json",
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    let word_pages = reference["pages"].as_array().unwrap();
+    let word_has_footer = |page: usize| {
+        word_pages[page]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["text"] == "SHAREDFOOTER")
+    };
+    assert!(!word_has_footer(0));
+    assert!(word_has_footer(1));
+
+    let mut doc = open_with_bundled_faces(&bytes);
+    let snapshot = doc.capture_full_layout_debug().unwrap();
+    assert!(snapshot.complete);
+    assert_eq!(snapshot.page_count, 2);
+    assert!(snapshot.source_surface_indices_complete);
+    assert!(snapshot.text_box_source_inventory_complete);
+    assert!(snapshot.known_uncaptured_stories.is_empty());
+    let story_text = |page: usize, story: &str| {
+        snapshot
+            .auxiliary_lines
+            .iter()
+            .filter(|entry| entry.page == page && entry.story == story)
+            .flat_map(|entry| &entry.line.fragments)
+            .flat_map(|fragment| &fragment.glyphs)
+            .map(|glyph| glyph.text.as_str())
+            .collect::<String>()
+    };
+    assert_eq!(
+        story_text(0, "footer"),
+        "",
+        "titlePg must not use the default footer"
+    );
+    assert_eq!(
+        story_text(1, "footer"),
+        "SHARED FOOTER",
+        "default footer still inherits into section two"
+    );
+    assert_eq!(story_text(0, "header"), "TITLE PAGE HEADER");
+    assert_eq!(story_text(1, "header"), "SECTION TWO HEADER");
+}
+
 fn compare(expected: &Value, actual: &Value, tolerance: f64) -> Result<(), String> {
     if expected["page_count"] != actual["page_count"] {
         return Err(format!(
