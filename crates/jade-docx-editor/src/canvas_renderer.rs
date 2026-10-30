@@ -3519,6 +3519,9 @@ where
     /// replacement and cache drops; it retains neither a document nor an address.
     comment_anchor_body_witness: std::cell::Cell<Option<usize>>,
     composition_comment_anchor_absence: Option<DocumentCommentAnchorAbsence>,
+    /// Cumulative renders which used validated composition evidence instead of
+    /// scanning the document body and notes. Auxiliary stories are still checked.
+    composition_comment_anchor_scan_bypasses: u64,
     #[cfg(test)]
     comment_anchor_document_scans: std::cell::Cell<usize>,
     #[cfg(test)]
@@ -8442,6 +8445,7 @@ where
             last_document_comment_anchors: None,
             comment_anchor_body_witness: std::cell::Cell::new(None),
             composition_comment_anchor_absence: None,
+            composition_comment_anchor_scan_bypasses: 0,
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
             #[cfg(test)]
@@ -13664,6 +13668,9 @@ where
                     .as_ref()
                     .is_some_and(|absence| absence.matches(&document_rc))
                 {
+                    self.composition_comment_anchor_scan_bypasses = self
+                        .composition_comment_anchor_scan_bypasses
+                        .saturating_add(1);
                     self.auxiliary_stories_have_comment_anchors()
                 } else {
                     self.document_has_comment_anchors(document)
@@ -34323,6 +34330,11 @@ where
         self.last_render_body_element_count
     }
 
+    /// Validated composition renders which avoided a document anchor scan.
+    pub fn composition_comment_anchor_scan_bypasses(&self) -> u64 {
+        self.composition_comment_anchor_scan_bypasses
+    }
+
     /// Non-visible prefix paragraphs skipped via the cached-layout fast path in
     /// the most recent render (diagnostic).
     pub fn last_render_prefix_skips(&self) -> u64 {
@@ -51287,6 +51299,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(renderer.comment_anchor_body_block_probes.get(), 3900);
+        assert_eq!(renderer.composition_comment_anchor_scan_bypasses(), 0);
         let retained_text = word_doc.paragraph(3899).unwrap().runs[0].text.as_ptr();
         let retained_document = Rc::as_ptr(word_doc.document.as_ref().unwrap());
         let base = SelectionRange::collapsed(TextPosition::new(0, 2));
@@ -51350,6 +51363,10 @@ mod tests {
                 )
                 .unwrap();
             assert!(!renderer.document_has_comments);
+            assert_eq!(
+                renderer.composition_comment_anchor_scan_bypasses(),
+                update as u64
+            );
             assert_eq!(
                 renderer.comment_anchor_body_block_probes.get(),
                 3900,

@@ -56,3 +56,36 @@ all-target/all-feature Clippy passes with warnings denied. No Word coordinate
 fixture, tolerance or compatibility gate is changed. The scan-count reduction
 is deterministic; an end-to-end native IME latency improvement has not yet
 been measured.
+
+## Optimized browser comparison
+
+Both versions were built with Rust 1.93.1, wasm-bindgen 0.2.114 and Binaryen
+126 (`-O3`), with identical published SDK 0.0.73 application JavaScript.
+The baseline is #259 (`ba2d0905`); the first candidate is `2cfee283`.
+Headless Chromium 156.0.8078.4 performed 32 growing Japanese preedits in the
+300-page decorated fixture per run, without CPU tracing, renderer diagnostics
+or retries. All 16 runs preserved the entire saved source plus exactly one
+accepted composition. These are synthetic browser results, not native IME.
+
+An initial fixed alternating batch (three runs per version) was inconclusive.
+A preregistered confirmation added five runs per version, retaining all results.
+The combined values below are medians of eight run-level medians/p95s, not a
+pooled percentile:
+
+| Measurement (ms) | Baseline median / p95 | Candidate median / p95 |
+| --- | --- | --- |
+| Worker | 9.7125 / 24.6200 | 9.6350 / 25.9875 |
+| Bitmap presentation | 10.3900 / 25.5250 | 10.2650 / 27.4600 |
+| Next animation frame | 16.5500 / 28.5025 | 14.9250 / 33.1975 |
+
+The tail worsened in both batches; these results do not establish a latency
+improvement. A cumulative `composition_comment_anchor_scan_bypasses` renderer
+statistic now distinguishes actual worker use of the optimization from the
+native helper regression. It increments only when validated composition
+proof replaces the body/note scan, never for ordinary immutable-cache hits.
+The earlier timings belong to the candidate before this diagnostic was added.
+
+Separately, all 12 browser IME correctness regressions passed with zero retries,
+and the existing local-walk budget passed all 32 previews (26 body layout calls
+per update with a local seek). Frozen Word coordinate tests and the Office
+Arial floating-table case passed without fixture or tolerance changes.
