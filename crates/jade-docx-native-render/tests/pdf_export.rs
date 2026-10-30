@@ -427,21 +427,25 @@ fn pdf_keeps_first_page_and_section_specific_header_footer_stories() {
     let texts = (1..=pages.len() as u32)
         .map(|page| pdf.extract_text(&[page]).unwrap().replace('\n', ""))
         .collect::<Vec<_>>();
+    assert_eq!(texts.len(), 2, "section pages changed: {texts:?}");
     assert!(
         texts[0].replace(' ', "").contains("TITLEPAGEHEADER"),
         "first-page header missing: {texts:?}"
     );
     assert!(
-        texts
-            .iter()
-            .any(|text| text.replace(' ', "").contains("SECTIONTWOHEADER")),
+        texts[1].replace(' ', "").contains("SECTIONTWOHEADER"),
         "section header missing: {texts:?}"
     );
-    assert!(
+    // The unchanged Word capture checked by mac_missing_first_footer_stays_blank
+    // has no first footer: titlePg does not fall back to the default footer.
+    // The second section still inherits that default footer.
+    assert_eq!(
         texts
             .iter()
-            .all(|text| text.replace(' ', "").contains("SHAREDFOOTER")),
-        "inherited footer missing: {texts:?}"
+            .map(|text| text.replace(' ', "").matches("SHAREDFOOTER").count())
+            .collect::<Vec<_>>(),
+        vec![0, 1],
+        "first/default footer selection changed: {texts:?}"
     );
 }
 

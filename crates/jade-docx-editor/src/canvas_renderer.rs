@@ -34888,10 +34888,12 @@ where
 
     /// Chooses the header variant for the page currently being rendered,
     /// honoring Word's `titlePg` / `evenAndOddHeaders` semantics:
-    /// - first page + `title_page` + first variant present → first
-    /// - even page (2, 4, ...) + `even_and_odd_headers` + even variant present → even
-    /// - otherwise → default (falls back to first/even when default is absent
-    ///   so renderers still produce output for single-variant documents)
+    /// - first page + `title_page` → first
+    /// - even page (2, 4, ...) + `even_and_odd_headers` → even
+    /// - otherwise → default
+    ///
+    /// Missing variants remain blank after same-type section inheritance;
+    /// a different story type must not be used in their place.
     ///
     /// With per-section stories installed, the owning section's stories are
     /// used and "first page" means the first page of that section.
@@ -37538,14 +37540,10 @@ fn select_header_footer_variant_for_page<'a, T: ?Sized>(
     even_lines: Option<&'a T>,
 ) -> Option<&'a T> {
     if title_page && first_page_of_section {
-        if let Some(lines) = first_lines {
-            return Some(lines);
-        }
+        return first_lines;
     }
     if even_and_odd_headers && page.max(1).is_multiple_of(2) {
-        if let Some(lines) = even_lines {
-            return Some(lines);
-        }
+        return even_lines;
     }
     default_lines
 }
@@ -37559,17 +37557,15 @@ fn select_header_footer_variant<'a, T: ?Sized>(
     even_lines: Option<&'a T>,
 ) -> Option<&'a T> {
     let page = current_page.max(1);
-    if title_page && page == 1 {
-        if let Some(lines) = first_lines {
-            return Some(lines);
-        }
-    }
-    if even_and_odd_headers && page.is_multiple_of(2) {
-        if let Some(lines) = even_lines {
-            return Some(lines);
-        }
-    }
-    default_lines
+    select_header_footer_variant_for_page(
+        page,
+        page == 1,
+        title_page,
+        even_and_odd_headers,
+        default_lines,
+        first_lines,
+        even_lines,
+    )
 }
 
 #[cfg(test)]
@@ -61187,10 +61183,9 @@ mod tests {
         };
         assert_eq!(header(&mut renderer, 1).as_deref(), Some("one-first"));
         assert_eq!(header(&mut renderer, 2).as_deref(), Some("one"));
-        // Section 2 has no first-page story of its own; Word would show the
-        // inherited one, which the model already folded in, so an absent
-        // `header_first` simply falls back to the default variant here.
-        assert_eq!(header(&mut renderer, 3).as_deref(), Some("two"));
+        // Same-type inheritance is folded in by the model before these
+        // stories are installed. An absent first-page story stays blank.
+        assert_eq!(header(&mut renderer, 3), None);
         assert_eq!(header(&mut renderer, 4).as_deref(), Some("two"));
     }
 
@@ -61226,6 +61221,61 @@ mod tests {
             )
             .expect("default present");
             assert_eq!(got, default_lines.as_slice(), "page {page}");
+        }
+    }
+
+    #[test]
+    fn missing_header_footer_variants_stay_blank_for_every_selection_combination() {
+        // Each story type inherits independently. The caller has already
+        // resolved same-type inheritance; None therefore means a blank story,
+        // never permission to use a different type as a fallback.
+        for presence in 0..8 {
+            let default = (presence & 1 != 0).then_some("default");
+            let first = (presence & 2 != 0).then_some("first");
+            let even = (presence & 4 != 0).then_some("even");
+            for title in [false, true] {
+                for separate_even in [false, true] {
+                    for page in 0usize..=5 {
+                        for section_first in [false, true] {
+                            let expected = match (
+                                title && section_first,
+                                separate_even && page.max(1).is_multiple_of(2),
+                            ) {
+                                (true, _) => first,
+                                (false, true) => even,
+                                (false, false) => default,
+                            };
+                            assert_eq!(
+                                select_header_footer_variant_for_page(
+                                    page, section_first, title, separate_even, default, first, even,
+                                ),
+                                expected,
+                                "presence={presence}, title={title}, even={separate_even}, page={page}, section_first={section_first}",
+                            );
+                        }
+                        assert_eq!(
+                            select_header_footer_variant(
+                                page,
+                                title,
+                                separate_even,
+                                default,
+                                first,
+                                even,
+                            ),
+                            select_header_footer_variant_for_page(
+                                page,
+                                page.max(1) == 1,
+                                title,
+                                separate_even,
+                                default,
+                                first,
+                                even,
+                            ),
+                            "document-wide and section-aware selection must agree",
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -61319,18 +61369,16 @@ mod tests {
     }
 
     #[test]
-    fn variant_selection_falls_back_when_requested_variant_is_missing() {
+    fn variant_selection_leaves_requested_missing_variant_blank() {
         let default_lines = vec![hl("default")];
 
-        // title_page set but no first variant -> default
-        let got =
-            select_header_footer_variant(1, true, false, Some(&default_lines), None, None).unwrap();
-        assert_eq!(got, default_lines.as_slice());
+        // title_page set but no first variant -> blank
+        let got = select_header_footer_variant(1, true, false, Some(&default_lines), None, None);
+        assert_eq!(got, None);
 
-        // even flag set but no even variant -> default
-        let got =
-            select_header_footer_variant(2, false, true, Some(&default_lines), None, None).unwrap();
-        assert_eq!(got, default_lines.as_slice());
+        // even flag set but no even variant -> blank
+        let got = select_header_footer_variant(2, false, true, Some(&default_lines), None, None);
+        assert_eq!(got, None);
     }
 
     #[test]
