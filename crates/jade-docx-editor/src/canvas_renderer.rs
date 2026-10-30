@@ -49153,11 +49153,14 @@ mod tests {
         use jade_docx_reader::document::{TableCell, TableColumn, TableRow};
         use jade_painter::recording::{Op, RecordingPainter};
         let _platform = RestoreWordPlatform::mac();
+        // Word for Mac's MS Mincho offsets use the original 10.5pt size:
+        // 0.40em up / 0.11em down, converted from points to pixels (4/3).
+        // Keep these independent of the helper used by paint and selection.
         for (alignment, position, expected_shift) in [
-            (Some("superscript"), None, -4.9),
-            (Some("subscript"), None, 2.1),
+            (Some("superscript"), None, -5.6),
+            (Some("subscript"), None, 1.54),
             (None, Some(2.0), -8.0 / 3.0),
-            (Some("superscript"), Some(2.0), -4.9 - 8.0 / 3.0),
+            (Some("superscript"), Some(2.0), -5.6 - 8.0 / 3.0),
         ] {
             let properties = RunProperties {
                 font_size: Some(10.5),
