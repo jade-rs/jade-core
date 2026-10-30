@@ -234,10 +234,13 @@ fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribut
 
 impl WordDocument {
     fn settings_element(&self, local: &str) -> Option<XmlElement> {
-        let xml = self.settings_xml_str()?;
         // Every edit asks for `w:documentProtection` (`restriction_allows`):
         // a document without one is answered without parsing its settings.
-        if !xml.contains(local) {
+        if local == "documentProtection" && !self.settings_mention_document_protection() {
+            return None;
+        }
+        let xml = self.settings_xml_str()?;
+        if local != "documentProtection" && !xml.contains(local) {
             return None;
         }
         let parsed = DocxXmlDocument::parse(&xml).ok()?;
@@ -742,6 +745,79 @@ mod tests {
         }
         let bytes = zip.finish().unwrap().into_inner();
         executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap()
+    }
+
+    fn assert_forms_guards(document: &WordDocument, protected: bool) {
+        assert_eq!(
+            document
+                .editing_restriction()
+                .map(|restriction| restriction.kind),
+            protected.then_some(Some(EditingKind::Forms)),
+        );
+        assert_eq!(
+            document
+                .restriction_allows("insert_text", Some((0, 0)))
+                .is_err(),
+            protected,
+        );
+        let command = jade_docx_headless_api::HeadlessCommand::InsertText {
+            paragraph: 0,
+            offset: 0,
+            text: "あ".into(),
+        };
+        assert_eq!(
+            document.headless_edit_refusal(&command).is_some(),
+            protected
+        );
+    }
+
+    #[test]
+    fn editing_guards_follow_settings_overrides_and_removal() {
+        const SETTINGS_PATH: &str = "word/settings.xml";
+        let body = "<w:p><w:r><w:t>text</w:t></w:r></w:p>";
+        let plain = document(body, "");
+        let protected = document(
+            body,
+            r#"<w:documentProtection w:edit="forms" w:enforcement="1"/>"#,
+        );
+        let plain_settings = plain.settings_xml_content().unwrap();
+        let protected_settings = protected.settings_xml_content().unwrap();
+        for (mut document, source_protected) in [(plain, false), (protected, true)] {
+            // Exercise both the loaded part and the source ZIP fallback.
+            assert_forms_guards(&document, source_protected);
+            document.parts.remove(SETTINGS_PATH);
+            assert_forms_guards(&document, source_protected);
+            for _ in 0..2 {
+                document.restore_settings_xml(protected_settings.clone());
+                assert_forms_guards(&document, true);
+                // The public part can also be changed without a setter.
+                document.parts.get_mut(SETTINGS_PATH).unwrap().content = plain_settings.clone();
+                assert_forms_guards(&document, false);
+                document.parts.remove(SETTINGS_PATH);
+                assert_forms_guards(&document, source_protected);
+            }
+        }
+    }
+
+    #[test]
+    fn editing_guards_follow_replacement_snapshots() {
+        let body = "<w:p><w:r><w:t>text</w:t></w:r></w:p>";
+        let mut plain = document(body, "");
+        let mut protected = document(
+            body,
+            r#"<w:documentProtection w:edit="forms" w:enforcement="1"/>"#,
+        );
+        for document in [&mut plain, &mut protected] {
+            document.parts.remove("word/settings.xml");
+        }
+        assert_forms_guards(&plain, false);
+        assert_forms_guards(&protected, true);
+        let plain_snapshot = plain.snapshot_for_replacement().unwrap();
+        let protected_snapshot = protected.snapshot_for_replacement().unwrap();
+        plain.restore_snapshot(protected_snapshot);
+        assert_forms_guards(&plain, true);
+        protected.restore_snapshot(plain_snapshot);
+        assert_forms_guards(&protected, false);
     }
 
     #[test]

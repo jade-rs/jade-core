@@ -622,15 +622,11 @@ impl WordDocument {
     /// Whether settings.xml may protect the document for forms: a cheap
     /// look at the text before the settings are parsed.
     fn settings_mention_forms_protection(&self) -> bool {
-        const SETTINGS_PATH: &str = "word/settings.xml";
-        let mentions = |text: &str| text.contains("documentProtection") && text.contains("forms");
-        if let Some(part) = self.parts.get(SETTINGS_PATH) {
-            return mentions(&part.content) && self.protected_for_forms();
+        if !self.settings_mention_document_protection() {
+            return false;
         }
-        self.package
-            .as_ref()
-            .and_then(|package| package.files.get(SETTINGS_PATH))
-            .is_some_and(|bytes| mentions(&String::from_utf8_lossy(bytes)))
+        self.settings_xml_str()
+            .is_some_and(|text| text.contains("forms"))
             && self.protected_for_forms()
     }
 
