@@ -6804,6 +6804,12 @@ impl WordDocument {
                     std::borrow::Cow::Owned(normalized) => normalized,
                     std::borrow::Cow::Borrowed(_) => content,
                 };
+                // The deferred raw tree must use the same run boundaries as
+                // the semantic parser, including headers and note stories.
+                let content = match jade_docx_reader::field_runs::normalize(&content)? {
+                    std::borrow::Cow::Owned(normalized) => normalized,
+                    std::borrow::Cow::Borrowed(_) => content,
+                };
 
                 // Parse relationships for this part
                 let rels_path = self.get_relationships_path(path);
