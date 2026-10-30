@@ -608,6 +608,49 @@ fn split_formatting_revisions_keep_unique_ids_before_and_after_reload() {
 }
 
 #[test]
+fn note_formatting_fragment_ids_do_not_collide_with_other_stories() {
+    let mut word = note_fixture();
+    let footnote = (0..word.paragraph_count())
+        .find(|&p| {
+            matches!(
+                word.paragraph_story(p),
+                Some(ParagraphStory::Footnote { .. })
+            )
+        })
+        .unwrap();
+    let endnote = (0..word.paragraph_count())
+        .find(|&p| {
+            matches!(
+                word.paragraph_story(p),
+                Some(ParagraphStory::Endnote { .. })
+            )
+        })
+        .unwrap();
+    let original = snapshot(&word);
+    track(&mut word);
+    let render = |offset| {
+        word.model_to_rendered_text_position(TextPosition::new(footnote, offset))
+            .offset
+    };
+    let commands = [
+        json!({"type": "set_bold", "start_paragraph": footnote, "end_paragraph": footnote,
+            "start_offset": render(1), "end_offset": render(10), "value": true}),
+        json!({"type": "set_paragraph_line_spacing", "start_paragraph": endnote, "end_paragraph": endnote,
+            "line": 1.0, "before": 3.0, "line_rule": "auto"}),
+        json!({"type": "set_character_style", "start_paragraph": footnote, "end_paragraph": footnote,
+            "start_offset": render(2), "end_offset": render(5), "style_id": null}),
+    ];
+    for command in commands {
+        apply(&mut word, vec![command]);
+        assert_revision_structure(&word);
+    }
+    assert_revision_structure(&reload(&word));
+    decide(&mut word, false, None);
+    assert_eq!(snapshot(&word), original);
+    assert_eq!(snapshot(&reload(&word)), original);
+}
+
+#[test]
 fn note_reference_empty_runs_preserve_rejection_baselines() {
     let mut word = note_fixture();
     let original = snapshot(&word);
