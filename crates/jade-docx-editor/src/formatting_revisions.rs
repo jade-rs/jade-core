@@ -65,32 +65,6 @@ fn signature(element: Option<&XmlElement>) -> String {
 
 type RunChanges = HashMap<XmlNodeId, (Box<crate::document::RunPropertiesChange>, XmlElement)>;
 
-#[cfg(test)]
-mod signature_tests {
-    use super::*;
-
-    fn from_xml(xml: &str) -> String {
-        signature(Some(DocxXmlDocument::parse(xml).unwrap().root()))
-    }
-
-    #[test]
-    fn property_signature_ignores_top_level_property_order() {
-        assert_eq!(
-            from_xml("<w:rPr><w:sz w:val=\"24\"/><w:szCs w:val=\"24\"/></w:rPr>"),
-            from_xml("<w:rPr><w:szCs w:val=\"24\"/><w:sz w:val=\"24\"/></w:rPr>"),
-        );
-    }
-
-    #[test]
-    fn property_signature_preserves_alternate_content_choice_precedence() {
-        // The first supported Choice wins. Changing its place changes the
-        // selected formatting, even though the same child elements remain.
-        let before = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
-        let after = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
-        assert_ne!(from_xml(before), from_xml(after));
-    }
-}
-
 /// Note XML is reparsed on each edit. Bind only a temporary paragraph clone:
 /// storing these part-local IDs on the live model would alias body IDs.
 fn bind_note_paragraph(paragraph: &Paragraph, raw: &DocxXmlDocument, id: XmlNodeId) -> Paragraph {
@@ -686,5 +660,31 @@ impl WordDocument {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod signature_tests {
+    use super::*;
+
+    fn from_xml(xml: &str) -> String {
+        signature(Some(DocxXmlDocument::parse(xml).unwrap().root()))
+    }
+
+    #[test]
+    fn property_signature_ignores_top_level_property_order() {
+        assert_eq!(
+            from_xml("<w:rPr><w:sz w:val=\"24\"/><w:szCs w:val=\"24\"/></w:rPr>"),
+            from_xml("<w:rPr><w:szCs w:val=\"24\"/><w:sz w:val=\"24\"/></w:rPr>"),
+        );
+    }
+
+    #[test]
+    fn property_signature_preserves_alternate_content_choice_precedence() {
+        // The first supported Choice wins. Changing its place changes the
+        // selected formatting, even though the same child elements remain.
+        let before = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
+        let after = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
+        assert_ne!(from_xml(before), from_xml(after));
     }
 }
