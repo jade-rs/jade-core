@@ -2,13 +2,14 @@
 //! 53 KB contract .docx to measure parse/load and a full load → insert → export
 //! cycle, plus synthetic bookmark ranges spanning different paragraph counts.
 //!
-//! Note: this does NOT capture the editor's per-keystroke *relayout* latency
-//! (that path runs in the canvas/wasm stack and is not benchmarkable natively).
-//! It captures load/style-resolution cost and bookmark extraction natively.
+//! This captures load/style-resolution cost, text edits with undo, and bookmark
+//! extraction. Per-keystroke relayout is measured separately by jade-docx-perf.
 //!
 //! Run: `cargo bench -p jade-docx-headless-editor`
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use jade_docx_document_core::commands::{CommandContext, CommandExecutor};
+use jade_docx_document_core::headless_api::apply_headless_commands_with_executor_to_document;
 use jade_docx_document_core::parser::DocumentParser;
 use jade_docx_document_core::word_document::WordDocument;
 use jade_docx_document_core::Options;
@@ -18,6 +19,50 @@ use std::io::{Cursor, Write};
 use zip::write::SimpleFileOptions;
 
 static CONTRACT: &[u8] = include_bytes!("../../../contract.docx");
+
+// Keep loading and exporting outside the measurement. Undo restores the same
+// paragraph each iteration, so the document and undo history do not grow.
+fn bench_text_edits(c: &mut Criterion) {
+    let mut group = c.benchmark_group("edit_insert_undo");
+    for (name, data) in [
+        ("contract", CONTRACT),
+        (
+            "yokohama",
+            include_bytes!("../../../public/fixtures/yokohama.docx").as_slice(),
+        ),
+    ] {
+        let mut doc =
+            futures::executor::block_on(WordDocument::load(data, &Options::default())).unwrap();
+        let paragraph = (6..doc.paragraph_count())
+            .chain(0..doc.paragraph_count().min(6))
+            .find(|&index| doc.paragraph(index).is_some_and(|p| !p.runs.is_empty()))
+            .expect("editable paragraph");
+        let request = HeadlessEditRequest {
+            commands: vec![HeadlessCommand::InsertText {
+                paragraph,
+                offset: 0,
+                text: "あ".into(),
+            }],
+        };
+        let mut executor = CommandExecutor::new();
+        let mut selection = None;
+        group.bench_function(name, |b| {
+            b.iter(|| {
+                selection = apply_headless_commands_with_executor_to_document(
+                    &mut doc,
+                    &mut executor,
+                    selection,
+                    black_box(&request),
+                )
+                .expect("insert text");
+                let mut ctx = CommandContext::new(&mut doc, &mut selection);
+                assert!(executor.undo(&mut ctx).expect("undo insertion"));
+                black_box(&doc);
+            });
+        });
+    }
+    group.finish();
+}
 
 fn bench_realworld(c: &mut Criterion) {
     // (a) Parse/load only — isolates style resolution (merge + property clones).
@@ -123,6 +168,7 @@ fn bench_text_document(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_realworld,
+    bench_text_edits,
     bench_bookmark_text,
     bench_text_document
 );

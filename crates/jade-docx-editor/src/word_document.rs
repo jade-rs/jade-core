@@ -1293,6 +1293,10 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
 pub struct WordDocument {
     #[serde(skip)]
     package: Option<OpenXmlPackage>,
+    /// Key the lexical protection check by the full settings bytes, since
+    /// callers can change `parts` directly as well as through editing commands.
+    #[serde(skip)]
+    settings_protection_mention_cache: RefCell<Option<(Vec<u8>, bool)>>,
     /// Retain one compressed source archive to copy untouched members during
     /// export. Clones and undo snapshots share these bytes rather than copying
     /// large embedded media or recompressing it on every save.
@@ -2339,6 +2343,7 @@ impl WordDocument {
 
         let mut document = WordDocument {
             package: Some(package),
+            settings_protection_mention_cache: RefCell::new(None),
             source_archive: Some(Rc::from(data)),
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -4068,11 +4073,11 @@ impl WordDocument {
             .or_else(|| styles.default_paragraph_style_id());
         let style_run_props =
             paragraph_style_id.and_then(|style_id| styles.resolve_run_properties(style_id));
-        let doc_default_run_props = styles.doc_default_run_properties().cloned();
+        let doc_default_run_props = styles.doc_default_run_properties();
 
         let mut fallback_props = RunProperties::default();
         let mut has_fallback = false;
-        if let Some(defaults) = doc_default_run_props.as_ref() {
+        if let Some(defaults) = doc_default_run_props {
             Self::merge_run_props_override(&mut fallback_props, defaults);
             has_fallback = true;
         }
@@ -4080,6 +4085,9 @@ impl WordDocument {
             Self::merge_run_props_override(&mut fallback_props, style_props);
             has_fallback = true;
         }
+        // Most runs use the same paragraph defaults. Borrow their font-only
+        // fallback, and build a separate value only for a character style.
+        let fallback_font_props = Self::clone_font_fallback_props(&fallback_props);
 
         for run in &mut paragraph.runs {
             if let Some(text_box) = run.text_box.as_mut() {
@@ -4090,31 +4098,28 @@ impl WordDocument {
                 continue;
             }
 
-            let mut run_fallback_props = fallback_props.clone();
-            if let Some(style_id) = run
+            let character_style_props = run
                 .properties
                 .as_ref()
                 .and_then(|props| props.style.as_deref())
-            {
-                if let Some(character_style_props) =
-                    styles.resolve_character_run_properties(style_id)
-                {
-                    Self::merge_run_props_override(&mut run_fallback_props, &character_style_props);
-                }
-            }
-
-            let fallback_font_props = Self::clone_font_fallback_props(&run_fallback_props);
-            if fallback_font_props.is_none() {
+                .and_then(|style_id| styles.resolve_character_run_properties(style_id));
+            let run_fallback_props = if let Some(character_style_props) = character_style_props {
+                let mut props = fallback_props.clone();
+                Self::merge_run_props_override(&mut props, &character_style_props);
+                Self::clone_font_fallback_props(&props).map(std::borrow::Cow::Owned)
+            } else {
+                fallback_font_props.as_ref().map(std::borrow::Cow::Borrowed)
+            };
+            let Some(run_fallback_props) = run_fallback_props else {
                 continue;
-            }
-            let fallback_font_props = fallback_font_props.unwrap();
+            };
 
             match run.properties.as_mut() {
                 Some(props) => {
-                    Self::fill_missing_font_props(props, &fallback_font_props);
+                    Self::fill_missing_font_props(props, &run_fallback_props);
                 }
                 None => {
-                    let mut fallback_font_props = fallback_font_props;
+                    let mut fallback_font_props = run_fallback_props.into_owned();
                     fallback_font_props.direct_font_properties.known = true;
                     run.properties = Some(fallback_font_props);
                 }
@@ -4825,6 +4830,7 @@ impl WordDocument {
         Self::give_textless_shapes_an_inner_paragraph(&mut document);
         let mut doc = Self {
             package: None,
+            settings_protection_mention_cache: RefCell::new(None),
             source_archive: None,
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -8221,6 +8227,32 @@ impl WordDocument {
         }
         let bytes = self.package.as_ref()?.files.get(SETTINGS_PATH)?;
         Some(String::from_utf8_lossy(bytes))
+    }
+
+    /// A lexical guard shared by the editing restriction checks. Comparing
+    /// unchanged bytes avoids searching settings twice on every keystroke.
+    fn settings_mention_document_protection(&self) -> bool {
+        const SETTINGS_PATH: &str = "word/settings.xml";
+        let bytes = if let Some(part) = self.parts.get(SETTINGS_PATH) {
+            Some(part.content.as_bytes())
+        } else {
+            self.package
+                .as_ref()
+                .and_then(|package| package.files.get(SETTINGS_PATH))
+                .map(Vec::as_slice)
+        };
+        let Some(bytes) = bytes else {
+            return false;
+        };
+        let mut cache = self.settings_protection_mention_cache.borrow_mut();
+        if let Some((cached, mentions)) = cache.as_ref() {
+            if cached.as_slice() == bytes {
+                return *mentions;
+            }
+        }
+        let mentions = String::from_utf8_lossy(bytes).contains("documentProtection");
+        *cache = Some((bytes.to_vec(), mentions));
+        mentions
     }
 
     /// Reads Word's editing restriction from `word/settings.xml`.
@@ -35604,75 +35636,56 @@ impl WordDocument {
             return;
         }
 
-        let mut attributes = Vec::new();
-
-        if let Some(value) = fonts.ascii.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:ascii".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.h_ansi.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:hAnsi".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.east_asia.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:eastAsia".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.complex.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:cs".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.ascii_theme.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:asciiTheme".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.h_ansi_theme.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:hAnsiTheme".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.east_asia_theme.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:eastAsiaTheme".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(value) = fonts.complex_theme.as_ref() {
-            attributes.push(XmlAttribute {
-                name: "w:cstheme".to_string(),
-                value: value.to_string(),
-            });
-        }
-        if let Some(hint) = fonts.hint.as_ref() {
-            let hint_value = match hint {
-                FontHint::Default => "default",
-                FontHint::EastAsia => "eastAsia",
-                FontHint::Complex => "cs",
-            };
-            attributes.push(XmlAttribute {
-                name: "w:hint".to_string(),
-                value: hint_value.to_string(),
-            });
-        }
-
-        if attributes.is_empty() {
+        let hint = fonts.hint.as_ref().map(|hint| match hint {
+            FontHint::Default => "default",
+            FontHint::EastAsia => "eastAsia",
+            FontHint::Complex => "cs",
+        });
+        let values = [
+            ("w:ascii", fonts.ascii.as_deref()),
+            ("w:hAnsi", fonts.h_ansi.as_deref()),
+            ("w:eastAsia", fonts.east_asia.as_deref()),
+            ("w:cs", fonts.complex.as_deref()),
+            ("w:asciiTheme", fonts.ascii_theme.as_deref()),
+            ("w:hAnsiTheme", fonts.h_ansi_theme.as_deref()),
+            ("w:eastAsiaTheme", fonts.east_asia_theme.as_deref()),
+            ("w:cstheme", fonts.complex_theme.as_deref()),
+            ("w:hint", hint),
+        ];
+        let attribute_count = values.iter().filter(|(_, value)| value.is_some()).count();
+        if attribute_count == 0 {
             Self::remove_run_property_child(element, "w:rFonts");
             return;
         }
 
-        Self::remove_run_property_child(element, "w:rFonts");
-        let rfonts = doc.create_element("w:rFonts", attributes, Vec::new());
+        // Reuse the old attribute buffers while still replacing the element:
+        // callers rely on a fresh node id and the canonical attribute order.
+        let existing = element
+            .children
+            .iter()
+            .position(|child| matches!(child, XmlNode::Element(child) if child.name == "w:rFonts"));
+        let (name, mut attributes) = match existing.map(|index| element.children.remove(index)) {
+            Some(XmlNode::Element(child)) => (child.name, child.attributes),
+            _ => ("w:rFonts".to_string(), Vec::with_capacity(attribute_count)),
+        };
+        for (index, (name, value)) in values
+            .into_iter()
+            .filter_map(|(name, value)| value.map(|value| (name, value)))
+            .enumerate()
+        {
+            if let Some(attribute) = attributes.get_mut(index) {
+                name.clone_into(&mut attribute.name);
+                value.clone_into(&mut attribute.value);
+            } else {
+                attributes.push(XmlAttribute {
+                    name: name.to_string(),
+                    value: value.to_string(),
+                });
+            }
+        }
+        attributes.truncate(attribute_count);
+
+        let rfonts = doc.create_element(name, attributes, Vec::new());
         element.children.insert(0, XmlNode::Element(rfonts));
     }
 
@@ -35833,6 +35846,25 @@ impl WordDocument {
             Some(RevisionKind::Deleted) => "w:delText",
             _ => "w:t",
         };
+
+        // Most edits contain only text. Copy it directly into one node rather
+        // than growing a temporary buffer one character at a time. Inline
+        // markers and Word's special characters still use the templated path.
+        if preserved_inline_children.is_none_or(|children| children.is_empty())
+            && !text.chars().any(|ch| {
+                matches!(
+                    ch,
+                    '\n' | '\t'
+                        | PAGE_BREAK_CHAR
+                        | crate::document::COLUMN_BREAK_CHAR
+                        | '\u{00AD}'
+                        | '\u{2011}'
+                )
+            })
+        {
+            let (element, id) = Self::create_text_element(doc, text, tag_name);
+            return (vec![XmlNode::Element(element)], Some(id));
+        }
 
         let mut nodes = Vec::new();
         let mut first_text_id = None;
@@ -38906,6 +38938,100 @@ mod tests {
     use std::time::{Duration, Instant};
     use zip::write::SimpleFileOptions;
     use zip::ZipArchive;
+
+    #[test]
+    fn upsert_run_fonts_preserves_replacement_ids_and_canonical_attributes() {
+        let mut doc = DocxXmlDocument::parse(concat!(
+            r#"<w:rPr><w:b/><w:rFonts w:hint="cs" extra="drop" w:ascii="old">"#,
+            r#"<w:unknown/></w:rFonts><w:rFonts w:ascii="duplicate"/><w:i/></w:rPr>"#,
+        ))
+        .unwrap();
+        let mut element = doc.root().clone();
+        let original_ids: Vec<_> = element
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                XmlNode::Element(child) => Some(child.id),
+                _ => None,
+            })
+            .collect();
+        let mut next_id = doc.create_element("probe", Vec::new(), Vec::new()).id.raw() + 1;
+        let full = RunFonts {
+            ascii: Some("Arial".into()),
+            h_ansi: Some("Arial".into()),
+            east_asia: Some("日本語フォント".into()),
+            complex: Some("Complex".into()),
+            ascii_theme: Some("minorHAnsi".into()),
+            h_ansi_theme: Some("majorHAnsi".into()),
+            east_asia_theme: Some("minorEastAsia".into()),
+            complex_theme: Some("minorBidi".into()),
+            hint: Some(FontHint::EastAsia),
+        };
+        let sparse = RunFonts {
+            ascii: Some(String::new().into()),
+            hint: Some(FontHint::Default),
+            ..RunFonts::default()
+        };
+        let full_attributes = vec![
+            ("w:ascii", "Arial"),
+            ("w:hAnsi", "Arial"),
+            ("w:eastAsia", "日本語フォント"),
+            ("w:cs", "Complex"),
+            ("w:asciiTheme", "minorHAnsi"),
+            ("w:hAnsiTheme", "majorHAnsi"),
+            ("w:eastAsiaTheme", "minorEastAsia"),
+            ("w:cstheme", "minorBidi"),
+            ("w:hint", "eastAsia"),
+        ];
+        for (fonts, expected) in [
+            (&full, full_attributes.clone()),
+            (&sparse, vec![("w:ascii", ""), ("w:hint", "default")]),
+            (&full, full_attributes.clone()),
+        ] {
+            WordDocument::upsert_run_fonts_child(&mut doc, &mut element, fonts);
+            let XmlNode::Element(child) = &element.children[0] else {
+                panic!("font element must come first");
+            };
+            assert_eq!(child.id.raw(), next_id);
+            next_id += 1;
+            assert_eq!(child.name, "w:rFonts");
+            assert!(child.children.is_empty());
+            let attributes: Vec<_> = child
+                .attributes
+                .iter()
+                .map(|attr| (attr.name.as_str(), attr.value.as_str()))
+                .collect();
+            assert_eq!(attributes, expected);
+            let remaining_ids: Vec<_> = element.children[1..]
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Element(child) => Some(child.id),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                remaining_ids,
+                [original_ids[0], original_ids[2], original_ids[3]]
+            );
+        }
+        // Empty fonts remove only the first matching child without allocating
+        // a replacement. A duplicate remains until the next call removes it.
+        WordDocument::upsert_run_fonts_child(&mut doc, &mut element, &RunFonts::default());
+        assert_eq!(element.children.len(), 3);
+        let XmlNode::Element(duplicate) = &element.children[1] else {
+            panic!("duplicate font element must survive");
+        };
+        assert_eq!(duplicate.id, original_ids[2]);
+        assert_eq!(duplicate.attributes[0].value, "duplicate");
+        WordDocument::upsert_run_fonts_child(&mut doc, &mut element, &RunFonts::default());
+        assert_eq!(element.children.len(), 2);
+        WordDocument::upsert_run_fonts_child(&mut doc, &mut element, &full);
+        let XmlNode::Element(created) = &element.children[0] else {
+            panic!("missing font element must be created");
+        };
+        assert_eq!(created.id.raw(), next_id);
+        assert_eq!(created.attributes.len(), full_attributes.len());
+    }
 
     /// A complex PAGE field. The model holds its result as the field's run,
     /// and its characters and instruction as empty runs.
@@ -49847,6 +49973,133 @@ mod tests {
     }
 
     #[test]
+    fn font_defaults_keep_mixed_run_overrides_independent() {
+        let document_xml = r#"
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p>
+    <w:pPr><w:pStyle w:val="Paragraph"/></w:pPr>
+    <w:r><w:t>Default before</w:t></w:r>
+    <w:r><w:rPr><w:rStyle w:val="Character"/></w:rPr><w:t>Character</w:t></w:r>
+    <w:r><w:rPr><w:rFonts w:ascii="Direct"/><w:sz w:val="40"/><w:i/></w:rPr><w:t>Direct</w:t></w:r>
+    <w:r><w:t>Default after</w:t></w:r>
+    <w:r><w:rPr><w:rStyle w:val="Missing"/></w:rPr><w:t>Missing style</w:t></w:r>
+  </w:p></w:body>
+</w:document>
+"#;
+        let styles_xml = r#"
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults><w:rPrDefault><w:rPr>
+    <w:rFonts w:ascii="Default" w:hAnsi="Default"/><w:sz w:val="22"/>
+    <w:lang w:val="en-US"/>
+  </w:rPr></w:rPrDefault></w:docDefaults>
+  <w:style w:type="paragraph" w:styleId="Paragraph"><w:rPr>
+    <w:rFonts w:eastAsia="Paragraph"/><w:sz w:val="24"/>
+  </w:rPr></w:style>
+  <w:style w:type="character" w:styleId="Character"><w:rPr>
+    <w:rFonts w:ascii="Character"/><w:sz w:val="28"/><w:lang w:val="ja-JP"/><w:b/>
+  </w:rPr></w:style>
+</w:styles>
+"#;
+        let mut document = DocumentParser::new()
+            .parse_document_xml(document_xml)
+            .expect("parse document");
+        let styles = StylesPart::from_xml(styles_xml).expect("parse styles");
+        WordDocument::capture_direct_run_fonts(&mut document.body.as_mut().expect("body").elements);
+        let paragraph = document
+            .body
+            .as_mut()
+            .and_then(|body| body.elements.first_mut())
+            .and_then(|element| element.as_paragraph_mut())
+            .expect("paragraph");
+
+        paragraph.runs[0].properties = None;
+        WordDocument::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+
+        for (index, (ascii, size, language)) in [
+            ("Default", 12.0, "en-US"),
+            ("Character", 14.0, "ja-JP"),
+            ("Direct", 20.0, "en-US"),
+            ("Default", 12.0, "en-US"),
+            ("Default", 12.0, "en-US"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let props = paragraph.runs[index]
+                .properties
+                .as_ref()
+                .expect("properties");
+            let fonts = props.fonts.as_ref().expect("fonts");
+            assert_eq!(fonts.ascii.as_deref(), Some(ascii), "run {index}");
+            assert_eq!(fonts.h_ansi.as_deref(), Some("Default"), "run {index}");
+            assert_eq!(fonts.east_asia.as_deref(), Some("Paragraph"), "run {index}");
+            assert_eq!(props.font_size, Some(size), "run {index}");
+            assert_eq!(props.language.as_deref(), Some(language), "run {index}");
+            assert_eq!(props.bold, None, "only font defaults are inherited");
+            assert!(props.direct_font_properties.known);
+            assert_eq!(
+                props.direct_font_properties.font_size,
+                (index == 2).then_some(20.0)
+            );
+        }
+        assert_eq!(
+            paragraph.runs[2].properties.as_ref().unwrap().italic,
+            Some(true)
+        );
+        let properties: Vec<_> = paragraph
+            .runs
+            .iter()
+            .map(|run| run.properties.clone())
+            .collect();
+        WordDocument::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|run| run.properties.clone())
+                .collect::<Vec<_>>(),
+            properties,
+            "reapplying defaults must preserve the resolved properties"
+        );
+    }
+
+    #[test]
+    fn font_defaults_leave_non_font_fallback_unset() {
+        let mut document = DocumentParser::new()
+            .parse_document_xml(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                  <w:body><w:p><w:r><w:t>Empty defaults</w:t></w:r></w:p></w:body>
+                </w:document>"#,
+            )
+            .expect("parse document");
+        let paragraph = document
+            .body
+            .as_mut()
+            .and_then(|body| body.elements.first_mut())
+            .and_then(|element| element.as_paragraph_mut())
+            .expect("paragraph");
+        let styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:docDefaults><w:rPrDefault><w:rPr><w:b/></w:rPr></w:rPrDefault></w:docDefaults>
+            </w:styles>"#,
+        )
+        .expect("parse styles");
+        let before = paragraph.runs[0].properties.clone();
+        WordDocument::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        assert_eq!(paragraph.runs[0].properties, before);
+        assert!(paragraph.runs[0]
+            .properties
+            .as_ref()
+            .unwrap()
+            .fonts
+            .is_none());
+
+        paragraph.runs[0].properties = None;
+        WordDocument::apply_run_font_defaults_to_paragraph(paragraph, &styles);
+        assert!(paragraph.runs[0].properties.is_none());
+    }
+
+    #[test]
     fn seq_text_format_uses_character_style_language_after_package_load() {
         let data = build_seq_character_style_language_docx();
         let doc = executor::block_on(WordDocument::load(&data, &Options::default()))
@@ -50856,6 +51109,73 @@ mod tests {
             raw.contains(r#"<w:br w:type="textWrapping"/>"#),
             "soft break should be serialized as w:br"
         );
+    }
+
+    #[test]
+    fn plain_run_text_nodes_keep_unicode_whitespace_and_revision_tags() {
+        for (text, preserve) in [
+            ("", false),
+            ("plain <&> text", false),
+            ("契約書🙂é", false),
+            (" leading", true),
+            ("trailing ", true),
+            ("\u{00a0}nonbreaking\u{3000}", true),
+            ("line\u{2028}separator", false),
+        ] {
+            for deleted in [false, true] {
+                for cached in [false, true] {
+                    let mut raw = DocxXmlDocument::parse("<root/>").unwrap();
+                    let mut run = blank_run(if cached { "" } else { text });
+                    if cached {
+                        run.field = Some(RunField {
+                            kind: RunFieldKind::PageNumber,
+                            cached_text: Some(text.to_string()),
+                            source_field_id: None,
+                            resolved_value: None,
+                            word_mac_body_result: None,
+                        });
+                    }
+                    if deleted {
+                        run.revision = Some(RevisionMark {
+                            kind: RevisionKind::Deleted,
+                            id: None,
+                            author: None,
+                            date: None,
+                            date_utc: None,
+                            insertion: None,
+                        });
+                    }
+                    let (nodes, first_id) =
+                        WordDocument::build_run_text_nodes(&mut raw, &run, None, None, None, None);
+                    if text.is_empty() {
+                        assert!(nodes.is_empty());
+                        assert!(first_id.is_none());
+                        continue;
+                    }
+                    assert_eq!(nodes.len(), 1);
+                    let XmlNode::Element(element) = &nodes[0] else {
+                        panic!("expected a text element");
+                    };
+                    assert_eq!(element.name, if deleted { "w:delText" } else { "w:t" });
+                    assert_eq!(first_id, Some(element.id));
+                    assert_eq!(element.children.len(), 1);
+                    assert!(matches!(&element.children[0], XmlNode::Text(value) if value == text));
+                    let expected_attributes = if preserve {
+                        vec![("xml:space", "preserve")]
+                    } else {
+                        Vec::new()
+                    };
+                    assert_eq!(
+                        element
+                            .attributes
+                            .iter()
+                            .map(|attr| (attr.name.as_str(), attr.value.as_str()))
+                            .collect::<Vec<_>>(),
+                        expected_attributes
+                    );
+                }
+            }
+        }
     }
 
     #[test]
