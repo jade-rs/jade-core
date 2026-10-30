@@ -19,6 +19,10 @@ fn without_changes(mut element: XmlElement) -> XmlElement {
     element.children.retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange" || e.name == "w:pPrChange"));
     element
 }
+/// What a `w:rPr` or `w:pPr` says, for telling whether an edit changed it.
+/// Its properties are a set, so each child is compared whatever its place:
+/// the half of a split run that an edit left alone has its `w:rPr` written
+/// again, and `w:szCs` coming back before `w:sz` is no formatting change.
 fn signature(element: Option<&XmlElement>) -> String {
     fn visit(element: &XmlElement, out: &mut String) {
         out.push_str(&element.name);
@@ -28,6 +32,7 @@ fn signature(element: Option<&XmlElement>) -> String {
             out.push_str(&attribute.value);
             out.push(';');
         }
+        let mut children = Vec::new();
         for node in &element.children {
             match node {
                 XmlNode::Element(e)
@@ -36,13 +41,16 @@ fn signature(element: Option<&XmlElement>) -> String {
                         || element.name == "w:pPr"
                             && matches!(e.name.as_str(), "w:rPr" | "w:sectPr") => {}
                 XmlNode::Element(e) => {
-                    out.push('[');
-                    visit(e, out);
-                    out.push(']');
+                    let mut child = String::from("[");
+                    visit(e, &mut child);
+                    child.push(']');
+                    children.push(child);
                 }
-                other => out.push_str(&format!("{other:?}")),
+                other => children.push(format!("{other:?}")),
             }
         }
+        children.sort_unstable();
+        children.into_iter().for_each(|child| out.push_str(&child));
     }
     let mut result = String::new();
     if let Some(element) = element {
