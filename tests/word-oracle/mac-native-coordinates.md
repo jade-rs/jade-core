@@ -8,7 +8,8 @@ to the first registered face; system fonts are not registered by this test.
 
 Two separate assertions run:
 
-- All 32 probes in `mac-probes-16114` and `mac-probes-20261019` must preserve the
+- All 34 probes in `mac-probes-16114`, `mac-probes-20261019` and
+  `mac-floating-horizontal-20261030` must preserve the
   captured layout: page count, nonempty glyph count, page/text/order, X and
   painted baseline. Coordinate tolerance is **0.01 pt**. The initial snapshot
   records the behavior of `468c2d3` with this test harness; existing mismatches
@@ -31,9 +32,9 @@ DOCX, Word-reference and bundled-font SHA-256 hashes must also match.
 
 This is not full Word compatibility coverage. `layout_debug_lines()` omits
 some painted content (including numbering labels and ruby annotations), and
-these 32 probes do not cover the full corpus or browser rendering. A native
+these 34 probes do not cover the full corpus or browser rendering. A native
 snapshot guards against changes to current behavior, including current bugs;
-it does not prove that the other 23 probes match Word. Relevant follow-ups:
+it does not prove that the other 25 probes match Word. Relevant follow-ups:
 
 - [#220: unresolved Mac layout rules](https://github.com/jade-rs/jade-core/issues/220)
 - [#221: reproducible Office/cloud fonts](https://github.com/jade-rs/jade-core/issues/221)
@@ -59,3 +60,27 @@ Updating is forbidden when `CI` is set, and still requires all nine direct Word
 comparisons to pass. Commit the reviewed snapshot diff together with the fix;
 do not regenerate it merely to silence a failure. Add a direct Word probe to
 the allowlist only after all its captured visible glyphs match the reference.
+
+
+## Freezing newly established compatibility
+
+Every Word-backed layout fix must add its unchanged DOCX and measured Word
+reference to a mandatory CI regression test in the same change. Include source,
+reference and font identities; assert complete page/text identity and the
+relevant layout, rather than checking only that the document opens. Test the
+previous implementation first to establish that the new assertion detects the
+regression. Add edit/undo/save/reopen coverage in the consuming editor when the
+fix affects editing or serialization.
+
+The mode-14/15 horizontal floating-table pair is included in all 34 required
+bundled-font snapshots. The captured Office-Arial face remains an additional
+local whole-probe comparison; requiring a proprietary font is not a substitute
+for the mandatory CI gate. The paired snapshots protect both the corrected
+legacy placement and the unchanged modern placement.
+
+A snapshot update is an intentional compatibility decision: review the Word
+evidence and each changed glyph/page/hash, commit it with the implementation,
+and document the reason. Do not automatically accept new output, increase
+tolerances, remove a probe or disable the gate to make CI green. The workflow
+contract test also requires the coordinate step to remain unconditional and
+failure-blocking on pull requests.
