@@ -5,7 +5,7 @@ use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatfor
 use jade_docx_native_render::{FaceSpec, NativeDocument};
 use serde_json::{json, Value};
 
-fn capture(bytes: &[u8]) -> Value {
+fn open_with_bundled_faces(bytes: &[u8]) -> NativeDocument {
     set_word_layout_platform(WordLayoutPlatform::Mac);
     let regular = repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
     let bold = repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf");
@@ -33,8 +33,11 @@ fn capture(bytes: &[u8]) -> Value {
             path: &bold,
         });
     }
-    let doc = NativeDocument::open(bytes, 816.0, 1056.0, &faces).unwrap();
-    capture_coordinates(&doc)
+    NativeDocument::open(bytes, 816.0, 1056.0, &faces).unwrap()
+}
+
+fn capture(bytes: &[u8]) -> Value {
+    capture_coordinates(&open_with_bundled_faces(bytes))
 }
 
 fn capture_coordinates(doc: &NativeDocument) -> Value {
@@ -410,6 +413,138 @@ fn floating_tables_match_word_with_office_arial() {
             &word_layout(&reference),
             &spatial_order(&capture_coordinates(&doc)),
             WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
+/// Freeze the painted stories that the legacy body-selection capture omits.
+/// These bundled-font coordinates are regression evidence, not Word agreement.
+#[test]
+fn mac_numbering_and_ruby_coordinates() {
+    const SNAPSHOT: &str = "tests/word-oracle/mac-native-auxiliary-coordinates.json";
+    const PROBES: &[(&str, &str, usize)] = &[
+        ("word-mac-probe-numbering-label", "numbering", 9),
+        ("word-mac-probe-numbering-label-faces", "numbering", 5),
+        ("word-mac-probe-ruby-grid", "ruby", 15),
+        ("word-mac-probe-ruby-nogrid", "ruby", 15),
+        ("word-mac-probe-ruby-wide-grid", "ruby", 20),
+        ("word-mac-probe-ruby-wide-nogrid", "ruby", 20),
+    ];
+    let mut fixtures = serde_json::Map::new();
+    for &(name, story, count) in PROBES {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference_bytes = std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-probes-16114/{name}.json"
+        )))
+        .unwrap();
+        let reference: Value = serde_json::from_slice(&reference_bytes).unwrap();
+        assert_eq!(
+            reference["docx_sha256"],
+            sha256(&bytes),
+            "{name}: source/reference mismatch"
+        );
+        let mut doc = open_with_bundled_faces(&bytes);
+        let before = capture_coordinates(&doc);
+        let snapshot = doc.capture_full_layout_debug().unwrap();
+        assert!(snapshot.complete, "{name}: incomplete layout");
+        assert!(
+            snapshot.known_uncaptured_stories.is_empty(),
+            "{name}: uncaptured stories {:?}",
+            snapshot.known_uncaptured_stories
+        );
+        assert!(
+            snapshot.source_surface_indices_complete,
+            "{name}: incomplete source indices"
+        );
+        assert!(
+            snapshot.text_box_source_inventory_complete,
+            "{name}: incomplete text-box inventory"
+        );
+        assert_eq!(
+            snapshot.auxiliary_lines.len(),
+            count,
+            "{name}: painted label/guide count"
+        );
+        let mut glyphs = Vec::new();
+        for entry in &snapshot.auxiliary_lines {
+            assert_eq!(entry.story, story, "{name}: unexpected story");
+            let line = &entry.line;
+            assert_eq!(entry.page, line.page, "{name}: inconsistent page");
+            assert!(!line.text.is_empty(), "{name}: empty label/guide");
+            for fragment in &line.fragments {
+                for glyph in &fragment.glyphs {
+                    if glyph.text.is_empty() || glyph.text.chars().all(char::is_control) {
+                        continue;
+                    }
+                    let x = (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75;
+                    let y = fragment.baseline * 0.75;
+                    assert!(
+                        x.is_finite() && y.is_finite(),
+                        "{name}: non-finite coordinate"
+                    );
+                    glyphs.push(json!([entry.page + 1, glyph.text, x, y]));
+                }
+            }
+        }
+        assert!(!glyphs.is_empty(), "{name}: empty painted capture");
+        // Diagnostics must preserve the editable body's coordinates and repeat
+        // every guide/label even after warming the renderer's paragraph cache.
+        assert!(
+            compare(&before, &capture_coordinates(&doc), SNAPSHOT_TOLERANCE_PT).is_ok(),
+            "{name}: diagnostic capture changed body coordinates"
+        );
+        let repeated = doc.capture_full_layout_debug().unwrap();
+        assert_eq!(
+            serde_json::to_value(&snapshot).unwrap(),
+            serde_json::to_value(&repeated).unwrap(),
+            "{name}: repeated full capture differs"
+        );
+        fixtures.insert(name.to_owned(), json!({
+            "docx_sha256": sha256(&bytes), "word_reference_sha256": sha256(&reference_bytes), "story": story,
+            "layout": {"page_count": snapshot.page_count, "glyphs": glyphs}
+        }));
+    }
+    let mut fonts = serde_json::Map::new();
+    for weight in ["Regular", "Bold"] {
+        let path = format!("fonts/Noto_Sans_JP/static/NotoSansJP-{weight}.ttf");
+        fonts.insert(
+            path.clone(),
+            json!(sha256(&std::fs::read(repo_path(&path)).unwrap())),
+        );
+    }
+    let actual = json!({"schema": 1, "fonts": fonts, "fixtures": fixtures});
+    if std::env::var("JADE_UPDATE_WORD_MAC_AUXILIARY_SNAPSHOT").as_deref() == Ok("1") {
+        assert!(
+            std::env::var_os("CI").is_none(),
+            "snapshot updates forbidden in CI"
+        );
+        std::fs::write(
+            repo_path(SNAPSHOT),
+            serde_json::to_string(&actual).unwrap() + "\n",
+        )
+        .unwrap();
+        return;
+    }
+    let expected: Value =
+        serde_json::from_slice(&std::fs::read(repo_path(SNAPSHOT)).unwrap()).unwrap();
+    assert_eq!(expected["schema"], actual["schema"]);
+    assert_eq!(expected["fonts"], actual["fonts"], "font identity changed");
+    let expected_fixtures = expected["fixtures"].as_object().unwrap();
+    let actual_fixtures = actual["fixtures"].as_object().unwrap();
+    assert_eq!(
+        expected_fixtures.keys().collect::<Vec<_>>(),
+        actual_fixtures.keys().collect::<Vec<_>>()
+    );
+    for (name, actual) in actual_fixtures {
+        let expected = &expected_fixtures[name];
+        for key in ["docx_sha256", "word_reference_sha256", "story"] {
+            assert_eq!(expected[key], actual[key], "{name}: {key} changed");
+        }
+        compare(
+            &expected["layout"],
+            &actual["layout"],
+            SNAPSHOT_TOLERANCE_PT,
         )
         .unwrap_or_else(|error| panic!("{name}: {error}"));
     }
