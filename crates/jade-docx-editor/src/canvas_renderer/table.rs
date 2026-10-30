@@ -2053,13 +2053,14 @@ where
             self.current_y += mt;
         }
 
-        let table_x = compute_floating_table_x(
+        let table_x = compute_floating_body_table_x(
             self.margin_left,
             available_width,
             self.page_width,
             table_width,
             table,
             self.current_page_number,
+            self.document_east_asian_rules.compatibility_mode,
         )
         .unwrap_or_else(|| {
             compute_table_x(
@@ -6971,6 +6972,73 @@ fn compute_table_x(
     // positive OOXML value moves in opposite canvas directions.
     let directed_indent = if table.bidi_visual { -indent } else { indent };
     base_left + directed_indent + align_offset
+}
+
+/// Body-only wrapper: nested floating tables retain their containing-cell
+/// frame policy until a Word capture establishes their legacy text-edge behavior.
+#[allow(clippy::too_many_arguments)]
+fn compute_floating_body_table_x(
+    margin_left: f64,
+    margin_width: f64,
+    page_width: f64,
+    table_width: f64,
+    table: &Table,
+    page_number: usize,
+    compatibility_mode: Option<u32>,
+) -> Option<f64> {
+    let x = compute_floating_table_x(
+        margin_left,
+        margin_width,
+        page_width,
+        table_width,
+        table,
+        page_number,
+    )?;
+    if compatibility_mode.is_none_or(|mode| mode >= 15)
+        || jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || table.bidi_visual
+        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+        || table
+            .style
+            .get("table-position-horizontal-anchor")
+            .is_some_and(|anchor| {
+                !anchor.trim().eq_ignore_ascii_case("page")
+                    && !anchor.trim().eq_ignore_ascii_case("margin")
+            })
+    {
+        return Some(x);
+    }
+    // Word Mac mode 14 aligns the first/last cell's text edge for left/right
+    // placement, while mode 15 aligns the table frame. The paired horizontal
+    // probes also establish absolute tblpX and asymmetric trailing padding.
+    // Center stays frame-centered. Other stories/anchors/bidi/spacing retain
+    // their policy until a Word capture establishes their text-edge behavior.
+    let alignment = table.style.get("table-position-x-align");
+    if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("right")) {
+        return Some(x + pre_2013_table_trailing_text_inset_px(table));
+    }
+    if alignment.is_some_and(|align| !align.trim().eq_ignore_ascii_case("left")) {
+        return Some(x);
+    }
+    let Some(row) = table.rows.first() else {
+        return Some(x);
+    };
+    let Some(cell) = row.cells.first() else {
+        return Some(x);
+    };
+    let padding = resolve_cell_padding(
+        cell.margins.as_ref(),
+        row.cell_margins.as_ref(),
+        table.effective_cell_margins(),
+        false,
+        table_default_horizontal_padding_px(
+            table,
+            jade_docx_layout::line_metrics::word_layout_platform(),
+        ),
+        0.0,
+    );
+    Some(x - padding.left)
 }
 
 /// Resolves the horizontal component of `w:tblpPr` floating-table placement.
@@ -19067,6 +19135,112 @@ mod tests {
             .style
             .insert("margin-left".to_string(), "24pt".to_string());
         assert!((compute_table_x(100.0, 400.0, 240.0, &table, 0.0) - 228.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn mac_legacy_floating_body_tables_align_cell_text_edges() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut table = Table {
+            cell_margins: Some(TableCellMargins {
+                left: Some(5.4),
+                right: Some(5.4),
+                ..Default::default()
+            }),
+            rows: vec![TableRow {
+                cells: vec![TableCell::default()],
+                ..Default::default()
+            }],
+            style: [("table-position".into(), "floating".into())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        // Word 16.114.2, same 108pt table in mode-14/mode-15 documents:
+        // ML text x=57.6/63.36pt; MR=457.2/451.44pt. Allow PDF grid
+        // quantization separately in the native coordinate comparison.
+        for (anchor, left, right) in [("margin", 100.0, 260.0), ("page", 0.0, 360.0)] {
+            table
+                .style
+                .insert("table-position-horizontal-anchor".into(), anchor.into());
+            for (align, base, shift) in [
+                ("left", left, -5.4),
+                ("center", (left + right) / 2.0, 0.0),
+                ("right", right, 5.4),
+            ] {
+                table
+                    .style
+                    .insert("table-position-x-align".into(), align.into());
+                let actual =
+                    compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14))
+                        .unwrap();
+                assert!(
+                    (actual - base - points_to_px(shift)).abs() < 1e-6,
+                    "{anchor} {align}: {actual}"
+                );
+                for mode in [None, Some(15)] {
+                    assert_eq!(
+                        compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, mode),
+                        Some(base)
+                    );
+                }
+            }
+        }
+        table
+            .style
+            .insert("table-position-horizontal-anchor".into(), "margin".into());
+        table.style.remove("table-position-x-align");
+        table.style.insert("table-position-x".into(), "0pt".into());
+        assert!(
+            (compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14))
+                .unwrap()
+                - (100.0 - points_to_px(5.4)))
+            .abs()
+                < 1e-6
+        );
+        table
+            .style
+            .insert("table-position-x-align".into(), "right".into());
+        table.cell_margins.as_mut().unwrap().left = Some(3.0);
+        table.cell_margins.as_mut().unwrap().right = Some(12.0);
+        // MRPAD changes only trailing padding: Word's shift follows 12pt,
+        // rather than the leading 3pt or the default 5.4pt.
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
+            Some(260.0 + points_to_px(12.0))
+        );
+        // Policies without Word captures must keep their original frame.
+        table.bidi_visual = true;
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
+            Some(260.0)
+        );
+        table.bidi_visual = false;
+        table.cell_spacing = Some(2.0);
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
+            Some(260.0)
+        );
+        table.cell_spacing = None;
+        table
+            .style
+            .insert("table-position-horizontal-anchor".into(), "text".into());
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
+            Some(260.0)
+        );
+        table
+            .style
+            .insert("table-position-horizontal-anchor".into(), "margin".into());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
+            Some(260.0)
+        );
+        set_word_layout_platform(previous);
     }
 
     #[test]
