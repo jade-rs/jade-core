@@ -76,6 +76,7 @@ impl OffscreenDocumentView {
     /// Repaints with the field codes `view` asks for shown in place of
     /// their results.
     fn show_field_code_view(&self, view: FieldCodeView) -> Result<JsValue, JsValue> {
+        self.prepare_field_xml()?;
         let display = {
             let mut state = self.state.borrow_mut();
             state.field_code_view = view;
@@ -122,7 +123,8 @@ impl OffscreenDocumentView {
 
     /// The document's tables of contents and figures, in order.
     #[wasm_bindgen(js_name = tablesOfContents)]
-    pub fn tables_of_contents(&self) -> JsValue {
+    pub fn tables_of_contents(&self) -> Result<JsValue, JsValue> {
+        self.prepare_field_xml()?;
         let state = self.state.borrow();
         let tables: Vec<TableOfContentsJs> = state
             .word_doc
@@ -138,7 +140,7 @@ impl OffscreenDocumentView {
                 instruction: block.instruction,
             })
             .collect();
-        json_js(&tables)
+        Ok(json_js(&tables))
     }
 
     /// Rebuilds table of contents `index` with new options (目次 ▸ 変更).
@@ -300,6 +302,7 @@ impl OffscreenDocumentView {
     /// result.
     #[wasm_bindgen(js_name = toggleFieldCodesAtSelection)]
     pub fn toggle_field_codes_at_selection(&self) -> Result<JsValue, JsValue> {
+        self.prepare_field_xml()?;
         let selection = self.current_selection();
         let view = {
             let state = self.state.borrow();

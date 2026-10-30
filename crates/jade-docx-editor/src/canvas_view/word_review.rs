@@ -123,6 +123,30 @@ fn editing_kind(kind: Option<String>) -> Result<Option<EditingKind>, JsValue> {
 }
 
 impl OffscreenDocumentView {
+    // Field discovery needs the raw XML and its model bindings, which
+    // initial-render loading defers until the first operation that needs them.
+    pub(super) fn prepare_field_xml(&self) -> Result<(), JsValue> {
+        let prepared = {
+            let mut state = self.state.borrow_mut();
+            if let Some(document) = state.word_doc.as_mut() {
+                let changed = document
+                    .ensure_roundtrip_xml()
+                    .map_err(|error| JsValue::from_str(&error.to_string()))?;
+                changed.then(|| document.document.clone()).flatten()
+            } else {
+                None
+            }
+        };
+        if let Some(document) = prepared {
+            // XML binding replaces the model Rc. Code display must render
+            // the bound runs rather than the initial unbound model.
+            let mut renderer = self.renderer.borrow_mut();
+            renderer.drop_document_cache();
+            renderer.restore_document_cache(document);
+        }
+        Ok(())
+    }
+
     /// What field evaluation needs from the browser: the clock, the author
     /// name the editor records revisions under, and the laid-out pages.
     fn field_environment(&self, answers: HashMap<String, String>) -> FieldEnvironment {
@@ -199,11 +223,12 @@ impl OffscreenDocumentView {
     /// The fields the selection touches (the one at a caret), as フィールドの
     ///編集 shows them.
     #[wasm_bindgen(js_name = fieldsAtSelection)]
-    pub fn fields_at_selection(&self) -> JsValue {
+    pub fn fields_at_selection(&self) -> Result<JsValue, JsValue> {
+        self.prepare_field_xml()?;
         let selection = self.current_selection();
         let state = self.state.borrow();
         let Some(document) = state.word_doc.as_ref() else {
-            return JsValue::NULL;
+            return Ok(JsValue::NULL);
         };
         let fields: Vec<FieldInfoJs> = fields::fields_at(document, selection)
             .into_iter()
@@ -214,7 +239,7 @@ impl OffscreenDocumentView {
                 locked: field.locked,
             })
             .collect();
-        json_js(&fields)
+        Ok(json_js(&fields))
     }
 
     /// The ASK / FILLIN prompts an update of `scope` (`selection` or
@@ -222,6 +247,7 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = fieldPrompts)]
     pub fn field_prompts(&self, scope: String) -> Result<JsValue, JsValue> {
         let scope = field_scope(&scope, self.current_selection())?;
+        self.prepare_field_xml()?;
         let state = self.state.borrow();
         let Some(document) = state.word_doc.as_ref() else {
             return Ok(JsValue::NULL);
