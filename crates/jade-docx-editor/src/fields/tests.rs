@@ -285,7 +285,7 @@ fn deferred_grouped_fields_keep_raw_bindings_and_code_display_outside_text() {
     assert_eq!(
         display
             .values()
-            .map(|(_, code)| code.as_str())
+            .map(|(_, code)| &**code)
             .collect::<HashSet<_>>(),
         HashSet::from(["{ NUMPAGES }"])
     );
