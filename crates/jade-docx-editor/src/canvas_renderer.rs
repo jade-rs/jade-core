@@ -3467,6 +3467,12 @@ where
     /// definitions have no geometry and must not disable paged seek/replay.
     /// Anchors without definitions still require the conservative path.
     document_has_comments: bool,
+    /// Anchor scan for `last_document`. A shared immutable Rc proves the
+    /// document is unchanged; dropping/restoring it or replacing auxiliary
+    /// stories invalidates this result. Never retain a raw document address.
+    last_document_comment_anchors: Option<bool>,
+    #[cfg(test)]
+    comment_anchor_document_scans: std::cell::Cell<usize>,
     /// Overridable colors for comment range/marker decoration.
     comment_colors: CommentDecorationColors,
     /// Optional forced seek snapshot (used for page-bitmap rerender).
@@ -8062,6 +8068,9 @@ where
     }
 
     fn document_has_comment_anchors(&self, document: &Document) -> bool {
+        #[cfg(test)]
+        self.comment_anchor_document_scans
+            .set(self.comment_anchor_document_scans.get() + 1);
         let has_anchors = |body: &Body| Self::blocks_contain_comment_anchors(&body.elements);
         document.body.as_ref().is_some_and(has_anchors)
             || document
@@ -8328,6 +8337,9 @@ where
             force_prefix_replay_all: false,
             document_has_notes: false,
             document_has_comments: false,
+            last_document_comment_anchors: None,
+            #[cfg(test)]
+            comment_anchor_document_scans: std::cell::Cell::new(0),
             comment_colors: CommentDecorationColors::default(),
             forced_seek_snapshot: None,
             disable_seek_replay_once: false,
@@ -12401,6 +12413,7 @@ where
         // Joins stay: the edit that follows maps its paragraph to the first
         // member through them (`set_incremental_dirty_from`).
         self.last_document = None;
+        self.last_document_comment_anchors = None;
         self.invalidate_paragraph_content_hash_cache();
     }
 
@@ -12418,6 +12431,7 @@ where
     /// re-established it. Commands validate before mutating and roll back on
     /// failure, so this is normally the document the renderer last laid out.
     pub fn restore_document_cache(&mut self, document: Rc<Document>) {
+        self.last_document_comment_anchors = None;
         self.last_document = Some(document);
     }
 
@@ -13526,7 +13540,14 @@ where
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
         self.document_has_notes = !document.footnotes.is_empty() || !document.endnotes.is_empty();
-        self.document_has_comments = self.document_has_comment_anchors(document);
+        let cached_comment_anchors = self
+            .last_document
+            .as_ref()
+            .filter(|cached| Rc::ptr_eq(cached, &document_rc))
+            .and(self.last_document_comment_anchors);
+        self.document_has_comments =
+            cached_comment_anchors.unwrap_or_else(|| self.document_has_comment_anchors(document));
+        self.last_document_comment_anchors = Some(self.document_has_comments);
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
         // Edit-pixel-reuse: reset the one-shot signal at every render entry so a
@@ -34734,6 +34755,7 @@ where
         header_body_even: Option<Body>,
         footer_body_even: Option<Body>,
     ) {
+        self.last_document_comment_anchors = None;
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -34753,6 +34775,7 @@ where
     /// Installs the per-section header/footer stories. Pass an empty vector
     /// to fall back to the document-wide fields.
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
+        self.last_document_comment_anchors = None;
         self.section_header_footers = sections;
     }
 
@@ -50882,6 +50905,90 @@ mod tests {
                     proptest::prop_assert!(renderer.comment_annotations.iter().any(|annotation| annotation.id == "1"));
                 }
                 proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), has_metadata);
+            }
+        }
+    }
+
+    #[test]
+    fn unchanged_rc_rerenders_scan_comment_anchors_only_once() {
+        let (mut renderer, _) = recording_renderer();
+        let document = Rc::new(doc_with_paragraph_texts(&["unchanged body"]));
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        for _ in 0..3 {
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+            assert!(!renderer.document_has_comments);
+        }
+        assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn cached_comment_gate_tracks_story_edits_and_document_lifetimes(
+            operations in proptest::collection::vec((0u8..8, 0u8..15, 0u8..4, proptest::bool::ANY), 1..32)
+        ) {
+            let (mut renderer, _) = recording_renderer();
+            let mut options = options_for_seek_tests();
+            options.render_comments = true;
+            let mut document = Rc::new(doc_with_paragraph_texts(&["plain body"]));
+            // The model records only whether each of the 15 stories has an
+            // anchor. It does not scan or clone production document state.
+            let mut anchored = [false; 15];
+            let mut headers: [Option<Body>; 6] = Default::default();
+            let mut section_headers: [Option<Body>; 6] = Default::default();
+            let comments = HashMap::from([("1".into(), DocumentComment {
+                id: "1".into(), text: "preserved".into(), ..Default::default()
+            })]);
+            let mut has_rendered = false;
+            for (step, (operation, story, kind, metadata)) in operations.into_iter().enumerate() {
+                let scans_before = renderer.comment_anchor_document_scans.get();
+                let body = Body { elements: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))] };
+                match operation {
+                    0 | 7 => {
+                        if operation == 7 { renderer.drop_document_cache(); }
+                        let story = usize::from(story % 3);
+                        let edited = Rc::make_mut(&mut document);
+                        match story {
+                            0 => edited.body = Some(body),
+                            1 => { edited.footnotes.insert("1".into(), crate::document::Note { id: "1".into(), body: body.elements, ..Default::default() }); }
+                            _ => { edited.endnotes.insert("1".into(), crate::document::Note { id: "1".into(), body: body.elements, ..Default::default() }); }
+                        }
+                        anchored[story] = kind < 3;
+                    }
+                    1 => {
+                        let index = usize::from(story % 6);
+                        headers[index] = Some(body);
+                        anchored[index + 3] = kind < 3;
+                        renderer.set_header_footer_bodies(headers[0].clone(), headers[1].clone(), headers[2].clone(), headers[3].clone(), headers[4].clone(), headers[5].clone());
+                    }
+                    2 => {
+                        let index = usize::from(story % 6);
+                        section_headers[index] = Some(body);
+                        anchored[index + 9] = kind < 3;
+                        renderer.set_section_header_footers(vec![SectionHeaderFooters {
+                            header_body: section_headers[0].clone(), footer_body: section_headers[1].clone(),
+                            header_body_first: section_headers[2].clone(), footer_body_first: section_headers[3].clone(),
+                            header_body_even: section_headers[4].clone(), footer_body_even: section_headers[5].clone(),
+                            ..Default::default()
+                        }]);
+                    }
+                    3 => document = Rc::new((*document).clone()),
+                    4 => renderer.drop_document_cache(),
+                    5 => renderer.restore_document_cache(Rc::clone(&document)),
+                    _ => (), // Same immutable Rc, with optional metadata changes.
+                }
+                renderer.render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, metadata.then_some(&comments)).unwrap();
+                let expected_comments = anchored.into_iter().any(|present| present);
+                proptest::prop_assert_eq!(renderer.document_has_comments, expected_comments, "step={}, operation={}, story={}, kind={}", step, operation, story, kind);
+                proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), !expected_comments);
+                proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), !expected_comments);
+                proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), metadata);
+                let expected_new_scan = !has_rendered || operation != 6;
+                proptest::prop_assert_eq!(renderer.comment_anchor_document_scans.get() - scans_before, usize::from(expected_new_scan), "step={}, operation={}", step, operation);
+                has_rendered = true;
             }
         }
     }
