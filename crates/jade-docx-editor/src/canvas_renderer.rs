@@ -32501,13 +32501,10 @@ where
         // Each mark in the font of the run it marks, found through the
         // segment the glyph belongs to.
         let mut marks: Vec<(&'static str, f64, f64, Option<Rc<RunProperties>>)> = Vec::new();
+        let mut segment_lookup = WhitespaceSegmentLookup::new(segments);
         for fragment in line.fragments.iter() {
             for glyph in fragment.glyphs.iter() {
-                let Some(segment) = segments.iter().find(|segment| {
-                    segment.end.saturating_sub(segment.start) == segment.text.len()
-                        && glyph.start >= segment.start
-                        && glyph.start < segment.end
-                }) else {
+                let Some(segment) = segment_lookup.get(glyph.start) else {
                     continue;
                 };
                 let ch = segment
@@ -37258,6 +37255,61 @@ pub struct ViewGeometry {
     pub hide_page_chrome: bool,
 }
 
+/// Reuse a run while walking its glyphs. Binary search is safe only when source
+/// ranges are ordered and disjoint; unusual ranges retain first-match semantics.
+struct WhitespaceSegmentLookup<'slice, 'segment> {
+    segments: &'slice [&'segment TextSegment],
+    ordered: bool,
+    last: Option<usize>,
+    #[cfg(test)]
+    searches: usize,
+}
+
+impl<'slice, 'segment> WhitespaceSegmentLookup<'slice, 'segment> {
+    fn new(segments: &'slice [&'segment TextSegment]) -> Self {
+        Self {
+            segments,
+            ordered: segments.iter().all(|segment| segment.start <= segment.end)
+                && segments.windows(2).all(|pair| pair[0].end <= pair[1].start),
+            last: None,
+            #[cfg(test)]
+            searches: 0,
+        }
+    }
+
+    fn get(&mut self, offset: usize) -> Option<&'segment TextSegment> {
+        let matches = |segment: &&TextSegment| {
+            segment.end.saturating_sub(segment.start) == segment.text.len()
+                && offset >= segment.start
+                && offset < segment.end
+        };
+        if !self.ordered {
+            return self
+                .segments
+                .iter()
+                .find(|segment| matches(segment))
+                .copied();
+        }
+        if let Some(segment) = self.last.and_then(|index| self.segments.get(index)) {
+            if matches(segment) {
+                return Some(segment);
+            }
+        }
+        #[cfg(test)]
+        {
+            self.searches += 1;
+        }
+        let index = self
+            .segments
+            .partition_point(|segment| segment.end <= offset);
+        self.last = Some(index);
+        self.segments
+            .get(index)
+            .filter(|segment| matches(segment))
+            .copied()
+    }
+}
+
 fn formatting_mark_symbol(kind: LineBreakKind) -> Option<&'static str> {
     match kind {
         LineBreakKind::Hard => Some("\u{2193}"),
@@ -38422,6 +38474,62 @@ mod tests {
             proptest::prop_assert!(band_ink_escapes_band(
                 cached_top, cached_bottom, ink_top, ink_bottom + 0.001,
             ));
+        }
+    }
+
+    fn mark_lookup_segment(start: usize, end: usize, text: String) -> TextSegment {
+        TextSegment {
+            text,
+            start,
+            end,
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            leading_width: 0.0,
+        }
+    }
+
+    #[test]
+    fn whitespace_segment_lookup_reuses_a_run_for_consecutive_glyphs() {
+        let segments = (0..200)
+            .map(|i| mark_lookup_segment(i * 20, i * 20 + 20, "x".repeat(20)))
+            .collect::<Vec<_>>();
+        let refs = segments.iter().collect::<Vec<_>>();
+        let mut lookup = WhitespaceSegmentLookup::new(&refs);
+        for offset in 0..4000 {
+            assert!(std::ptr::eq(
+                lookup.get(offset).unwrap(),
+                &segments[offset / 20]
+            ));
+        }
+        assert_eq!(lookup.searches, 200, "one search per run, not per glyph");
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(384))]
+        #[test]
+        fn whitespace_segment_lookup_preserves_first_valid_source_match(
+            raw in proptest::collection::vec((0usize..256, 0usize..16, proptest::bool::ANY, proptest::bool::ANY), 0..64),
+            ordered in proptest::bool::ANY,
+            offsets in proptest::collection::vec(0usize..320, 0..100),
+        ) {
+            let mut cursor = 0;
+            let segments = raw.into_iter().map(|(raw_start, len, mismatch, reverse)| {
+                let start = if ordered { cursor } else { raw_start };
+                let end = if !ordered && reverse { start.saturating_sub(len) } else { start + len };
+                cursor = start + len + 1;
+                let text = "x".repeat(len) + if mismatch { "あ" } else { "" };
+                mark_lookup_segment(start, end, text)
+            }).collect::<Vec<_>>();
+            let refs = segments.iter().collect::<Vec<_>>();
+            let mut lookup = WhitespaceSegmentLookup::new(&refs);
+            let boundary_offsets = segments.iter().flat_map(|s| [s.start, s.end, s.end.saturating_sub(1)]);
+            for offset in offsets.into_iter().chain(boundary_offsets) {
+                let expected = segments.iter().position(|s|
+                    s.end.saturating_sub(s.start) == s.text.len() && offset >= s.start && offset < s.end);
+                let actual = lookup.get(offset).and_then(|found| segments.iter().position(|s| std::ptr::eq(s, found)));
+                proptest::prop_assert_eq!(actual, expected, "offset {}", offset);
+            }
         }
     }
 
