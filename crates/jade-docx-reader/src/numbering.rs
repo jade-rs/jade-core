@@ -4,6 +4,7 @@ use crate::document::{FontHint, ParagraphProperties, RunFonts, RunProperties};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -169,16 +170,16 @@ impl NumberingPart {
                 Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => match e.name().as_ref() {
                     b"w:numPicBullet" => {
                         current = attr_value(e, b"w:numPicBulletId")
-                            .map(|id| (id, PictureBullet::default()));
+                            .map(|id| (id.into_owned(), PictureBullet::default()));
                     }
                     b"v:imagedata" => {
                         if let Some((_, bullet)) = current.as_mut() {
-                            bullet.relationship_id = attr_value(e, b"r:id");
+                            bullet.relationship_id = attr_value(e, b"r:id").map(Cow::into_owned);
                         }
                     }
                     b"a:blip" => {
                         if let Some((_, bullet)) = current.as_mut() {
-                            bullet.relationship_id = attr_value(e, b"r:embed");
+                            bullet.relationship_id = attr_value(e, b"r:embed").map(Cow::into_owned);
                         }
                     }
                     b"v:shape" => {
@@ -236,8 +237,6 @@ impl NumberingPart {
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
-        let mut buf = Vec::new();
-
         let mut current_abstract: Option<AbstractNum> = None;
         let mut current_level: Option<NumberingLevel> = None;
         let mut current_num: Option<NumberingInstance> = None;
@@ -246,7 +245,9 @@ impl NumberingPart {
         let mut in_level_run_props = false;
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            // The input already lives in memory; borrow events directly from it
+            // instead of copying each tag into a temporary buffer.
+            match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
                     self.handle_start_event(
                         e,
@@ -295,8 +296,6 @@ impl NumberingPart {
                 }
                 _ => {}
             }
-
-            buf.clear();
         }
 
         Ok(())
@@ -317,7 +316,7 @@ impl NumberingPart {
             b"w:abstractNum" => {
                 if let Some(id) = attr_value(e, b"w:abstractNumId") {
                     *current_abstract = Some(AbstractNum {
-                        id,
+                        id: id.into_owned(),
                         levels: Vec::new(),
                         preset: None,
                     });
@@ -373,7 +372,7 @@ impl NumberingPart {
                         {
                             // A custom format's mc:Fallback decimal does not
                             // replace the custom format read before it.
-                            level.num_fmt = Some(val);
+                            level.num_fmt = Some(val.into_owned());
                         }
                     }
                 }
@@ -381,39 +380,39 @@ impl NumberingPart {
             b"w:lvlText" => {
                 if let Some(level) = current_level.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        level.lvl_text = Some(val);
+                        level.lvl_text = Some(val.into_owned());
                     }
                 }
             }
             b"w:lvlJc" => {
                 if let Some(level) = current_level.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        level.lvl_jc = Some(val);
+                        level.lvl_jc = Some(val.into_owned());
                     }
                 }
             }
             b"w:lvlPicBulletId" => {
                 if let Some(level) = current_level.as_mut() {
-                    level.picture_bullet = attr_value(e, b"w:val");
+                    level.picture_bullet = attr_value(e, b"w:val").map(Cow::into_owned);
                 }
             }
             b"w:isLgl" => {
                 if let Some(level) = current_level.as_mut() {
                     level.is_legal = attr_value(e, b"w:val")
-                        .is_none_or(|value| !matches!(value.as_str(), "0" | "false" | "off"));
+                        .is_none_or(|value| !matches!(value.as_ref(), "0" | "false" | "off"));
                 }
             }
             b"w:suff" => {
                 if let Some(level) = current_level.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        level.suffix = Some(val);
+                        level.suffix = Some(val.into_owned());
                     }
                 }
             }
             b"w:pStyle" => {
                 if let Some(level) = current_level.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        level.paragraph_style = Some(val);
+                        level.paragraph_style = Some(val.into_owned());
                     }
                 }
             }
@@ -517,34 +516,31 @@ impl NumberingPart {
                             let key = attr.key.as_ref();
                             let value = attr
                                 .normalized_value(quick_xml::XmlVersion::Implicit1_0)
-                                .map(|value| value.into_owned())
-                                .unwrap_or_else(|_| {
-                                    String::from_utf8_lossy(&attr.value).to_string()
-                                });
+                                .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value));
                             match key {
                                 b"w:ascii" => {
-                                    fonts.ascii = Some(Rc::from(value));
+                                    fonts.ascii = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:hAnsi" => {
-                                    fonts.h_ansi = Some(Rc::from(value));
+                                    fonts.h_ansi = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:eastAsia" => {
-                                    fonts.east_asia = Some(Rc::from(value));
+                                    fonts.east_asia = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:cs" => {
-                                    fonts.complex = Some(Rc::from(value));
+                                    fonts.complex = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:asciiTheme" => {
-                                    fonts.ascii_theme = Some(Rc::from(value));
+                                    fonts.ascii_theme = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:hAnsiTheme" => {
-                                    fonts.h_ansi_theme = Some(Rc::from(value));
+                                    fonts.h_ansi_theme = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:eastAsiaTheme" => {
-                                    fonts.east_asia_theme = Some(Rc::from(value));
+                                    fonts.east_asia_theme = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:cstheme" => {
-                                    fonts.complex_theme = Some(Rc::from(value));
+                                    fonts.complex_theme = Some(Rc::from(value.as_ref()));
                                 }
                                 b"w:hint" => {
                                     fonts.hint = FontHint::from_xml_hint(&value);
@@ -566,14 +562,14 @@ impl NumberingPart {
                     if let (Some(level), Some(language)) =
                         (current_level.as_mut(), attr_value(e, b"w:val"))
                     {
-                        level.language = Some(language);
+                        level.language = Some(language.into_owned());
                     }
                 }
             }
             b"w:num" => {
                 if let Some(id) = attr_value(e, b"w:numId") {
                     *current_num = Some(NumberingInstance {
-                        id,
+                        id: id.into_owned(),
                         abstract_num_id: String::new(),
                         overrides: HashMap::new(),
                     });
@@ -582,7 +578,7 @@ impl NumberingPart {
             b"w:abstractNumId" => {
                 if let Some(num) = current_num.as_mut() {
                     if let Some(val) = attr_value(e, b"w:val") {
-                        num.abstract_num_id = val;
+                        num.abstract_num_id = val.into_owned();
                     }
                 }
             }
@@ -1547,13 +1543,17 @@ fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel>
         .collect()
 }
 
-fn attr_value(e: &BytesStart, key: &[u8]) -> Option<String> {
+// Numeric attributes can be parsed while borrowed. Only values retained in the
+// numbering model need an owned String; escaped or invalid values retain the
+// same unescaping and lossy fallback behavior as before.
+fn attr_value<'a>(e: &'a BytesStart<'_>, key: &[u8]) -> Option<Cow<'a, str>> {
     for attr in e.attributes().flatten() {
         if attr.key.as_ref() == key {
             return Some(
                 attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
-                    .map(|value| value.into_owned())
-                    .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).to_string()),
+                    .unwrap_or_else(|_| {
+                        Cow::Owned(String::from_utf8_lossy(&attr.value).into_owned())
+                    }),
             );
         }
     }
@@ -2830,6 +2830,42 @@ mod tests {
         assert_eq!(number("22", 0), "第2章");
         assert_eq!(number("21", 1), "第3条");
         assert_eq!(number("21", 2), "1");
+    }
+
+    #[test]
+    fn parses_escaped_numeric_attributes_and_preserves_invalid_values() {
+        let xml = r#"<w:numbering xmlns:w="urn:w">
+          <w:abstractNum w:abstractNumId="&#49;">
+            <w:lvl w:ilvl="&#48;">
+              <w:start w:val="&#x32;"/><w:lvlRestart w:val="invalid"/>
+              <w:lvlText w:val="&unknown;"/>
+              <w:pPr><w:ind w:left="&#55;20" w:hanging="invalid"/></w:pPr>
+              <w:rPr><w:sz w:val="&#50;2"/><w:spacing w:val="NaN"/>
+                <w:lang w:val="ja&#45;JP"/>
+                <w:rFonts w:ascii="A&amp;B" w:eastAsia="&unknown;"/>
+              </w:rPr>
+            </w:lvl>
+          </w:abstractNum>
+          <w:num w:numId="&#49;"><w:abstractNumId w:val="&#49;"/>
+            <w:lvlOverride w:ilvl="&#48;"><w:startOverride w:val="&#48;"/></w:lvlOverride>
+          </w:num>
+        </w:numbering>"#;
+        let part = NumberingPart::from_xml(xml).expect("parse escaped attributes");
+        let level = part.get_level_info("1", 0).unwrap();
+        assert_eq!(level.start, Some(2));
+        assert_eq!(level.restart, None);
+        assert_eq!(level.lvl_text.as_deref(), Some("&unknown;"));
+        assert_eq!(level.language.as_deref(), Some("ja-JP"));
+        let indent = level.indent.as_ref().unwrap();
+        assert_eq!(indent.left, Some(36.0));
+        assert_eq!(indent.hanging, None);
+        let props = level.run_props.as_ref().unwrap();
+        assert_eq!(props.font_size, Some(11.0));
+        assert_eq!(props.char_spacing, None);
+        let fonts = props.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("A&B"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("&unknown;"));
+        assert_eq!(part.numbering_instances["1"].overrides[&0].start, Some(0));
     }
 
     #[test]

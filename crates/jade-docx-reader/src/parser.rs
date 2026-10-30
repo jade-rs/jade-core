@@ -4,6 +4,7 @@ use quick_xml::escape::unescape;
 use quick_xml::events::{attributes::Attributes, BytesStart, BytesText, Event};
 use quick_xml::Reader;
 use quick_xml::Writer;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{BufRead, Cursor};
 use std::rc::Rc;
@@ -201,11 +202,11 @@ impl DocumentParser {
 
     /// Word sets a line feed written inside `w:t` as a space; only `w:br`
     /// and `w:cr` break the line, and those become `\n` in run text.
-    fn line_feeds_as_spaces(text: &str) -> String {
+    fn line_feeds_as_spaces(text: &str) -> Cow<'_, str> {
         if !text.contains(['\n', '\r']) {
-            return text.to_string();
+            return Cow::Borrowed(text);
         }
-        text.replace("\r\n", " ").replace(['\n', '\r'], " ")
+        Cow::Owned(text.replace("\r\n", " ").replace(['\n', '\r'], " "))
     }
 
     /// Creates a new parser instance. The parser has no internal state so this
@@ -1747,80 +1748,11 @@ impl DocumentParser {
                         }
                         b"w:rFonts" => {
                             if parsing_run_props {
-                                let attrs: Vec<(Vec<u8>, String)> = e
-                                    .attributes()
-                                    .flatten()
-                                    .map(|attr| {
-                                        (
-                                            attr.key.as_ref().to_vec(),
-                                            String::from_utf8_lossy(&attr.value).to_string(),
-                                        )
-                                    })
-                                    .collect();
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
                                     &mut current_run_props,
-                                    |props| {
-                                        props.authored_east_asia_font_hint =
-                                            Some(attrs.iter().any(|(key, value)| {
-                                                key.as_slice() == b"w:hint"
-                                                    && FontHint::from_xml_hint(value)
-                                                        == Some(FontHint::EastAsia)
-                                            }));
-                                        props.authored_east_asia_font_name =
-                                            Some(attrs.iter().any(|(key, _)| {
-                                                matches!(
-                                                    key.as_slice(),
-                                                    b"w:eastAsia" | b"w:eastAsiaTheme"
-                                                )
-                                            }));
-                                        let fonts =
-                                            props.fonts.get_or_insert_with(RunFonts::default);
-                                        for (key, value) in &attrs {
-                                            match key.as_slice() {
-                                                b"w:ascii" => {
-                                                    fonts.ascii = Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:hAnsi" => {
-                                                    fonts.h_ansi = Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:eastAsia" => {
-                                                    fonts.east_asia =
-                                                        Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:cs" => {
-                                                    fonts.complex = Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:asciiTheme" => {
-                                                    fonts.ascii_theme =
-                                                        Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:hAnsiTheme" => {
-                                                    fonts.h_ansi_theme =
-                                                        Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:eastAsiaTheme" => {
-                                                    fonts.east_asia_theme =
-                                                        Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:cstheme" => {
-                                                    fonts.complex_theme =
-                                                        Some(Rc::from(value.as_str()));
-                                                }
-                                                b"w:hint" => {
-                                                    fonts.hint = FontHint::from_xml_hint(value);
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                        fonts.drop_names_shadowed_by_themes();
-                                        if props.font_family.is_none() {
-                                            if let Some(family) = fonts.preferred_latin() {
-                                                props.font_family = Some(Rc::from(family));
-                                            }
-                                        }
-                                    },
+                                    |props| Self::apply_run_fonts(e.attributes(), props),
                                 );
                             }
                         }
@@ -3536,76 +3468,11 @@ impl DocumentParser {
                     }
                     b"w:rFonts" => {
                         if parsing_run_props {
-                            let attrs: Vec<(Vec<u8>, String)> = e
-                                .attributes()
-                                .flatten()
-                                .map(|attr| {
-                                    (
-                                        attr.key.as_ref().to_vec(),
-                                        String::from_utf8_lossy(&attr.value).to_string(),
-                                    )
-                                })
-                                .collect();
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
                                 &mut current_run_props,
-                                |props| {
-                                    props.authored_east_asia_font_hint =
-                                        Some(attrs.iter().any(|(key, value)| {
-                                            key.as_slice() == b"w:hint"
-                                                && FontHint::from_xml_hint(value)
-                                                    == Some(FontHint::EastAsia)
-                                        }));
-                                    props.authored_east_asia_font_name =
-                                        Some(attrs.iter().any(|(key, _)| {
-                                            matches!(
-                                                key.as_slice(),
-                                                b"w:eastAsia" | b"w:eastAsiaTheme"
-                                            )
-                                        }));
-                                    let fonts = props.fonts.get_or_insert_with(RunFonts::default);
-                                    for (key, value) in &attrs {
-                                        match key.as_slice() {
-                                            b"w:ascii" => {
-                                                fonts.ascii = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:hAnsi" => {
-                                                fonts.h_ansi = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:eastAsia" => {
-                                                fonts.east_asia = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:cs" => {
-                                                fonts.complex = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:asciiTheme" => {
-                                                fonts.ascii_theme = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:hAnsiTheme" => {
-                                                fonts.h_ansi_theme = Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:eastAsiaTheme" => {
-                                                fonts.east_asia_theme =
-                                                    Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:cstheme" => {
-                                                fonts.complex_theme =
-                                                    Some(Rc::from(value.as_str()));
-                                            }
-                                            b"w:hint" => {
-                                                fonts.hint = FontHint::from_xml_hint(value);
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    fonts.drop_names_shadowed_by_themes();
-                                    if props.font_family.is_none() {
-                                        if let Some(family) = fonts.preferred_latin() {
-                                            props.font_family = Some(Rc::from(family));
-                                        }
-                                    }
-                                },
+                                |props| Self::apply_run_fonts(e.attributes(), props),
                             );
                         }
                     }
@@ -3619,7 +3486,6 @@ impl DocumentParser {
                         } else {
                             Self::trim_xml_whitespace(&current_text)
                         });
-                        current_text.clear();
                         current_text_preserve = false;
                         if let Some(ref mut run) = current_run {
                             if Self::keeps_field_result_in_run_text(
@@ -3649,6 +3515,7 @@ impl DocumentParser {
                                 current_run_field_text.push_str(&text_to_push);
                             }
                         }
+                        current_text.clear();
                     }
                     b"w:instrText" => {
                         in_instr_text = false;
@@ -3939,9 +3806,9 @@ impl DocumentParser {
                     _ => {}
                 },
                 Ok(Event::Text(e)) => {
-                    if let Some(text_owned) = text_event_to_string(&e) {
+                    if let Some(text) = text_event_to_cow(&e) {
                         if in_text {
-                            current_text.push_str(&text_owned);
+                            current_text.push_str(&text);
                         }
                         if in_instr_text {
                             // Accumulate the raw instruction text WITHOUT trimming.
@@ -3953,7 +3820,7 @@ impl DocumentParser {
                             // field name / argument boundaries. `xml:space="preserve"`
                             // keeps the surrounding spaces; the field-instruction
                             // parser normalizes whitespace via `split_whitespace`.
-                            current_instr_text.push_str(&text_owned);
+                            current_instr_text.push_str(&text);
                         }
                     }
                 }
@@ -4760,8 +4627,8 @@ impl DocumentParser {
                 },
                 Ok(Event::Text(ref t)) => {
                     if in_text {
-                        if let Some(text_owned) = text_event_to_string(t) {
-                            text.push_str(&text_owned);
+                        if let Some(value) = text_event_to_cow(t) {
+                            text.push_str(&value);
                         }
                     }
                 }
@@ -5827,7 +5694,7 @@ impl DocumentParser {
                 }
                 Ok(Event::Text(ref t)) => {
                     if let Some(target) = pending_offset.take() {
-                        if let Some(value) = text_event_to_string(t) {
+                        if let Some(value) = text_event_to_cow(t) {
                             if let Ok(raw) = value.trim().parse::<f64>() {
                                 let px = Self::emu_to_px(raw);
                                 match target {
@@ -5848,7 +5715,7 @@ impl DocumentParser {
                             }
                         }
                     } else if let Some(target) = pending_align.take() {
-                        if let Some(value) = text_event_to_string(t) {
+                        if let Some(value) = text_event_to_cow(t) {
                             let keyword = value.trim().to_lowercase();
                             if !keyword.is_empty() {
                                 match target {
@@ -8363,6 +8230,44 @@ impl DocumentParser {
             "end" | "right" => "right".to_string(),
             "both" => "justify".to_string(),
             _ => value.to_string(),
+        }
+    }
+
+    fn apply_run_fonts(attributes: Attributes<'_>, props: &mut RunProperties) {
+        let fonts = props.fonts.get_or_insert_with(RunFonts::default);
+        let mut authored_hint = false;
+        let mut authored_name = false;
+        // Attribute names and values are only needed while updating the slots;
+        // avoid collecting and copying every attribute before applying them.
+        for attr in attributes.flatten() {
+            let key = attr.key.as_ref();
+            authored_name |= matches!(key, b"w:eastAsia" | b"w:eastAsiaTheme");
+            let slot = match key {
+                b"w:ascii" => &mut fonts.ascii,
+                b"w:hAnsi" => &mut fonts.h_ansi,
+                b"w:eastAsia" => &mut fonts.east_asia,
+                b"w:cs" => &mut fonts.complex,
+                b"w:asciiTheme" => &mut fonts.ascii_theme,
+                b"w:hAnsiTheme" => &mut fonts.h_ansi_theme,
+                b"w:eastAsiaTheme" => &mut fonts.east_asia_theme,
+                b"w:cstheme" => &mut fonts.complex_theme,
+                b"w:hint" => {
+                    let hint = FontHint::from_xml_hint(&String::from_utf8_lossy(&attr.value));
+                    authored_hint |= hint == Some(FontHint::EastAsia);
+                    fonts.hint = hint;
+                    continue;
+                }
+                _ => continue,
+            };
+            *slot = Some(Rc::from(String::from_utf8_lossy(&attr.value).as_ref()));
+        }
+        props.authored_east_asia_font_hint = Some(authored_hint);
+        props.authored_east_asia_font_name = Some(authored_name);
+        fonts.drop_names_shadowed_by_themes();
+        if props.font_family.is_none() {
+            if let Some(family) = fonts.preferred_latin() {
+                props.font_family = Some(Rc::from(family));
+            }
         }
     }
 
@@ -11349,10 +11254,14 @@ fn parse_fit_text(attributes: Attributes<'_>) -> Option<RunFitText> {
     val.map(|val| RunFitText { val, id })
 }
 
-fn text_event_to_string(event: &quick_xml::events::BytesText<'_>) -> Option<String> {
+fn text_event_to_cow<'a>(event: &BytesText<'a>) -> Option<Cow<'a, str>> {
     let decoded = event.decode().ok()?;
-    let unescaped = unescape(decoded.as_ref()).ok()?;
-    Some(unescaped.into_owned())
+    // Retain the decoded buffer when unescaping does not change it. Callers
+    // append or inspect the text and do not need an intermediate owned String.
+    match unescape(decoded.as_ref()).ok()? {
+        Cow::Borrowed(_) => Some(decoded),
+        Cow::Owned(text) => Some(Cow::Owned(text)),
+    }
 }
 
 fn reference_event_to_string(event: &quick_xml::events::BytesRef<'_>) -> Option<String> {
@@ -11374,6 +11283,7 @@ type NoteProperties = (
 mod tests {
     use super::*;
     use crate::document::MathElementKind;
+    use proptest::strategy::Strategy;
     use std::io::Cursor;
     use std::io::Read;
     use std::path::PathBuf;
@@ -11435,6 +11345,45 @@ mod tests {
             .read_to_string(&mut xml)
             .ok()?;
         Some(xml)
+    }
+
+    #[test]
+    fn adjacent_text_nodes_keep_their_own_whitespace_and_clear_the_buffer() {
+        let document = parse_document_from_body(
+            "<w:p><w:r><w:t> \r\n A \t</w:t><w:t xml:space=\"preserve\"> B </w:t>\
+             <w:t><![CDATA[　C　]]></w:t><w:t> &amp;&#32; D </w:t></w:r>\
+             <w:r><w:t> \t\r\n </w:t><w:t/></w:r>\
+             <w:r><w:t>next</w:t></w:r></w:p>",
+        );
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let text: Vec<_> = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(text, ["A B 　C　&  D", "", "next"]);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn borrowed_text_decoding_matches_owned_decoding(
+            chunks in proptest::collection::vec(
+                proptest::prop_oneof![
+                    proptest::strategy::Just("&amp;&#32;&#x3000;&quot;&apos;&lt;&gt;".to_string()),
+                    proptest::strategy::Just("&unknown;&#x110000;&unfinished".to_string()),
+                    proptest::collection::vec(proptest::char::any(), 0..32)
+                        .prop_map(|chars| chars.into_iter().collect::<String>()),
+                ], 0..16
+            ),
+        ) {
+            let text = chunks.concat();
+            // Both borrowed and owned event contents must retain the original
+            // decoder's success/error and entity replacement behavior.
+            for event in [BytesText::from_escaped(text.as_str()), BytesText::from_escaped(text.clone())] {
+                let expected = event.decode().ok().and_then(|decoded| {
+                    unescape(decoded.as_ref()).ok().map(|text| text.into_owned())
+                });
+                proptest::prop_assert_eq!(text_event_to_cow(&event).map(Cow::into_owned), expected);
+            }
+        }
     }
 
     #[test]
@@ -12232,6 +12181,71 @@ mod tests {
         assert_eq!(paragraph.runs[0].text, "Hello");
         assert_eq!(paragraph.runs[1].text, PAGE_BREAK_STR);
         assert_eq!(paragraph.runs[2].text, "world");
+    }
+
+    #[test]
+    fn run_font_attributes_keep_existing_slots_and_raw_values() {
+        let mut props = RunProperties {
+            font_family: Some("keep family".into()),
+            fonts: Some(RunFonts {
+                h_ansi: Some("keep hAnsi".into()),
+                complex: Some("shadowed".into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        let mut event = BytesStart::new("w:rFonts");
+        for (key, value) in [
+            ("w:ascii", "A&B"),
+            ("w:eastAsia", "East Asian face"),
+            ("w:eastAsiaTheme", "minorEastAsia"),
+            ("w:cstheme", "minorBidi"),
+            ("w:hint", " EASTASIA "),
+            ("w:unused", "ignored"),
+        ] {
+            event.push_attribute((key, value));
+        }
+        DocumentParser::apply_run_fonts(event.attributes(), &mut props);
+        let fonts = props.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("A&amp;B"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("keep hAnsi"));
+        assert_eq!(fonts.east_asia, None);
+        assert_eq!(fonts.complex, None);
+        assert_eq!(fonts.east_asia_theme.as_deref(), Some("minorEastAsia"));
+        assert_eq!(fonts.complex_theme.as_deref(), Some("minorBidi"));
+        assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+        assert_eq!(props.font_family.as_deref(), Some("keep family"));
+        assert_eq!(props.authored_east_asia_font_hint, Some(true));
+        assert_eq!(props.authored_east_asia_font_name, Some(true));
+
+        let previous_fonts = props.fonts.clone();
+        DocumentParser::apply_run_fonts(BytesStart::new("w:rFonts").attributes(), &mut props);
+        assert_eq!(props.fonts, previous_fonts);
+        assert_eq!(props.authored_east_asia_font_hint, Some(false));
+        assert_eq!(props.authored_east_asia_font_name, Some(false));
+    }
+
+    #[test]
+    fn run_font_attributes_keep_duplicate_checks_and_lossy_decoding() {
+        let mut event = BytesStart::new("w:rFonts");
+        for (key, value) in [
+            (b"w:ascii".as_slice(), b"A\xffB".as_slice()),
+            (b"w:ascii".as_slice(), b"duplicate".as_slice()),
+            (b"w:hAnsi".as_slice(), b"Latin".as_slice()),
+            (b"w:hint".as_slice(), b"eastAsia".as_slice()),
+            (b"w:hint".as_slice(), b"default".as_slice()),
+        ] {
+            event.push_attribute((key, value));
+        }
+        let mut props = RunProperties::default();
+        DocumentParser::apply_run_fonts(event.attributes(), &mut props);
+        let fonts = props.fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("A\u{fffd}B"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("Latin"));
+        assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+        assert_eq!(props.font_family.as_deref(), Some("A\u{fffd}B"));
+        assert_eq!(props.authored_east_asia_font_hint, Some(true));
+        assert_eq!(props.authored_east_asia_font_name, Some(false));
     }
 
     #[test]
@@ -23093,6 +23107,60 @@ mod tests {
         assert_eq!(doc.bookmarks.len(), 1);
         assert_eq!(doc.bookmarks[0].id, "5");
         assert_eq!(doc.bookmarks[0].name, "", "missing name becomes empty");
+    }
+
+    #[test]
+    fn bookmark_display_text_preserves_empty_paragraphs_and_skips_tables() {
+        let doc = parse_document_from_body(
+            r#"
+            <w:p><w:r><w:t>prefix</w:t></w:r>
+              <w:bookmarkStart w:id="0" w:name="span"/>
+              <w:r><w:t>契約😀</w:t></w:r></w:p>
+            <w:p></w:p>
+            <w:tbl><w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+            <w:p><w:r><w:t>tail</w:t></w:r></w:p>
+            <w:p><w:bookmarkEnd w:id="0"/></w:p>
+            "#,
+        );
+        let mut bookmark = doc.bookmarks[0].clone();
+        assert_eq!(
+            doc.bookmark_display_text(&bookmark).as_deref(),
+            Some("契約😀\n\ntail\n")
+        );
+
+        bookmark.start_paragraph = 1;
+        bookmark.end_paragraph = 1;
+        bookmark.start_offset = 0;
+        bookmark.end_offset = 0;
+        assert_eq!(doc.bookmark_display_text(&bookmark).as_deref(), Some(""));
+
+        bookmark.start_paragraph = 2;
+        bookmark.end_paragraph = 2;
+        assert_eq!(doc.bookmark_display_text(&bookmark), None);
+    }
+
+    #[test]
+    fn bookmark_display_text_checks_utf8_boundaries_and_clamps_offsets() {
+        let doc = parse_document_from_body(
+            r#"<w:p><w:bookmarkStart w:id="0" w:name="text"/>
+              <w:r><w:t>契約😀</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>"#,
+        );
+        let mut bookmark = doc.bookmarks[0].clone();
+        bookmark.start_offset = 3;
+        bookmark.end_offset = usize::MAX;
+        assert_eq!(
+            doc.bookmark_display_text(&bookmark).as_deref(),
+            Some("約😀")
+        );
+        bookmark.start_offset = 1;
+        assert_eq!(doc.bookmark_display_text(&bookmark), None);
+        bookmark.start_offset = 0;
+        bookmark.end_offset = 7;
+        assert_eq!(doc.bookmark_display_text(&bookmark), None);
+        bookmark.start_offset = usize::MAX;
+        assert_eq!(doc.bookmark_display_text(&bookmark).as_deref(), Some(""));
+        bookmark.end_paragraph = 1;
+        assert_eq!(doc.bookmark_display_text(&bookmark), None);
     }
 
     #[test]
