@@ -7,8 +7,8 @@
 
 use crate::SkiaRenderHost;
 use futures::executor::block_on;
-use jade_docx_editor::canvas_renderer::CanvasRenderer;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
+use jade_docx_editor::canvas_renderer::{CanvasRenderer, FullLayoutDebugSnapshot};
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{Command, CommandContext, CommandExecutor};
 use jade_docx_editor::field_datetime::FieldDateTime;
@@ -2473,6 +2473,16 @@ impl NativeDocument {
     /// paragraph was laid out in.
     pub fn renderer(&self) -> &CanvasRenderer<SkiaPainter> {
         &self.renderer
+    }
+
+    /// Capture a from-start layout pass, including painted auxiliary stories
+    /// such as numbering labels and ruby guides. This deliberately expensive
+    /// diagnostic bypasses lazy layout; callers must inspect the snapshot's
+    /// completeness and uncaptured-story fields before treating it as coverage.
+    pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, String> {
+        self.renderer
+            .capture_full_layout_debug()
+            .map_err(|_| "full layout capture failed".to_owned())
     }
 
     /// The clock `DATE` and `TIME` fields show from the next repaint, as
