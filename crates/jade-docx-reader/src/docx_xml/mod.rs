@@ -166,6 +166,12 @@ impl DocxXmlDocument {
         Ok(document)
     }
 
+    /// Records a capacity hint after building the tree from a shared event
+    /// stream, so serialization can reserve as it does for a standalone parse.
+    pub(crate) fn set_source_len(&mut self, source_len: usize) {
+        self.source_len = source_len;
+    }
+
     /// Allocates a document-unique DrawingML object id for `wp:docPr@id` /
     /// `pic:cNvPr@id` (ECMA-376 Part 1 §20.4.2.5 requires uniqueness within
     /// the document part). The first call scans the tree for the current
@@ -240,8 +246,7 @@ impl DocxXmlDocument {
         // The walk that checks the index's path finds the element too; going
         // through `path` walked it twice. Loading asks this of every run.
         if let Some(element) = self
-            .indexed_path(id)
-            .and_then(|path| Self::element_by_path(&self.root, path.as_slice()))
+            .with_indexed_path(id, |path| Self::element_by_path(&self.root, path))
             .filter(|element| element.id == id)
         {
             return Some(element);
@@ -382,16 +387,67 @@ impl DocxXmlDocument {
 
     /// 親要素の ID を返す。ルートの場合は `None`。
     pub fn parent_id(&self, id: XmlNodeId) -> Option<XmlNodeId> {
-        let path = self.path(id)?;
-        let parent_path = path.parent()?;
-        let parent = Self::element_by_path(&self.root, parent_path.as_slice())?;
-        Some(parent.id)
+        // Validate the final child while looking up its parent. Going through
+        // `path` walked that same prefix once already, then cloned it.
+        let parent_at_path = |path: &[usize]| {
+            let (&position, parent_path) = path.split_last()?;
+            let parent = Self::element_by_path(&self.root, parent_path)?;
+            match parent.children.get(position)? {
+                XmlNode::Element(child) if child.id == id => Some(parent.id),
+                _ => None,
+            }
+        };
+        if let Some(parent) = self.with_indexed_path(id, parent_at_path) {
+            return Some(parent);
+        }
+        // Public child vectors can be changed without rebuilding the index.
+        let mut path = Vec::new();
+        Self::find_path(&self.root, id, &mut path)
+            .then(|| parent_at_path(&path))
+            .flatten()
+    }
+
+    /// Borrow a short indexed path without allocating. Longer paths keep the
+    /// collected positions and continue with the owned-path implementation.
+    fn with_indexed_path<T>(
+        &self,
+        id: XmlNodeId,
+        lookup: impl FnOnce(&[usize]) -> Option<T>,
+    ) -> Option<T> {
+        let mut positions = [0; 8];
+        let mut start = positions.len();
+        let mut current = id;
+        loop {
+            let entry = self.index.get(&current)?;
+            let Some(parent) = entry.parent else {
+                return if current == self.root.id {
+                    lookup(&positions[start..])
+                } else {
+                    None
+                };
+            };
+            if start == 0 {
+                let mut overflow = Vec::with_capacity(positions.len() * 2);
+                overflow.extend(positions.into_iter().rev());
+                let path = self.indexed_path_from(overflow, current)?;
+                return lookup(path.as_slice());
+            }
+            start -= 1;
+            positions[start] = entry.position;
+            current = parent;
+        }
     }
 
     /// The path recorded by the index, without checking it against the tree.
     fn indexed_path(&self, id: XmlNodeId) -> Option<XmlNodePath> {
-        let mut positions = Vec::new();
-        let mut current = id;
+        self.indexed_path_from(Vec::new(), id)
+    }
+
+    fn indexed_path_from(
+        &self,
+        mut positions: Vec<usize>,
+        mut current: XmlNodeId,
+    ) -> Option<XmlNodePath> {
         loop {
             let entry = self.index.get(&current)?;
             let Some(parent) = entry.parent else {
@@ -677,14 +733,12 @@ impl DocxXmlDocument {
 
     /// インデックスを再構築する。挿入 / 削除後に呼び出す。
     pub fn rebuild_index(&mut self) {
-        let mut next_id = self
-            .root
-            .max_node_id()
+        let max_before = self.root.max_node_id();
+        let first_placeholder_id = max_before
             .map(|id| id.raw().saturating_add(1))
             .unwrap_or(self.next_id)
             .max(self.next_id);
-        Self::assign_placeholder_ids_in_children(&mut self.root.children, &mut next_id);
-        self.next_id = next_id;
+        let mut next_id = first_placeholder_id;
         self.index.clear();
         self.index.insert(
             self.root.id,
@@ -693,12 +747,22 @@ impl DocxXmlDocument {
                 position: 0,
             },
         );
-        Self::index_descendants(&self.root, &mut self.index);
-        self.next_id = self
-            .root
-            .max_node_id()
-            .map(|id| id.raw() + 1)
-            .unwrap_or(self.next_id);
+        Self::assign_and_index_descendants(&mut self.root, &mut self.index, &mut next_id);
+        self.next_id = next_id;
+        if next_id == u32::MAX {
+            // Saturation loses whether the last assigned ID was MAX or MAX-1.
+            // Keep the original scan and overflow behavior in that case.
+            self.next_id = self
+                .root
+                .max_node_id()
+                .map(|id| id.raw() + 1)
+                .unwrap_or(self.next_id);
+        } else if next_id == first_placeholder_id {
+            // No placeholder was assigned. Detached allocations must not keep
+            // next_id above the live tree's maximum after a full rebuild.
+            self.next_id = max_before.map(|id| id.raw() + 1).unwrap_or(self.next_id);
+        }
+        // Otherwise placeholders ended at next_id - 1, above all existing IDs.
     }
 
     /// 指定した要素のサブツリーのみインデックスを再構築する。
@@ -719,18 +783,35 @@ impl DocxXmlDocument {
             next_id = next_id.max(max_id.raw().saturating_add(1));
         }
         if let Some(element) = Self::element_by_path_mut(&mut self.root, element_path.as_slice()) {
-            Self::assign_placeholder_ids_in_children(&mut element.children, &mut next_id);
+            Self::assign_and_index_descendants(element, &mut self.index, &mut next_id);
         }
         self.next_id = next_id;
-        let Some(element) = Self::element_by_path(&self.root, element_path.as_slice()) else {
-            return;
-        };
+    }
 
-        // サブツリーの古いエントリを削除（element自体は残す）
-        Self::remove_subtree_from_index_recursive(element, &mut self.index);
-
-        // 新しいエントリを追加
-        Self::index_descendants(element, &mut self.index);
+    /// Assign placeholder ids in preorder and record each child's final id
+    /// and position. Inserting replaces its previous entry, so removing those
+    /// same entries first would only add another tree walk and hash lookup.
+    fn assign_and_index_descendants(
+        element: &mut XmlElement,
+        index: &mut NodeIndex,
+        next_id: &mut u32,
+    ) {
+        for (position, child) in element.children.iter_mut().enumerate() {
+            if let XmlNode::Element(child) = child {
+                if child.id.raw() == 0 {
+                    child.id = XmlNodeId::new(*next_id);
+                    *next_id = (*next_id).saturating_add(1);
+                }
+                index.insert(
+                    child.id,
+                    IndexEntry {
+                        parent: Some(element.id),
+                        position,
+                    },
+                );
+                Self::assign_and_index_descendants(child, index, next_id);
+            }
+        }
     }
 
     fn remove_subtree_from_index_recursive(element: &XmlElement, index: &mut NodeIndex) {
@@ -822,18 +903,6 @@ impl DocxXmlDocument {
         for child in children.iter_mut() {
             if let XmlNode::Element(element) = child {
                 self.reassign_ids(element);
-            }
-        }
-    }
-
-    fn assign_placeholder_ids_in_children(children: &mut [XmlNode], next_id: &mut u32) {
-        for child in children {
-            if let XmlNode::Element(element) = child {
-                if element.id.raw() == 0 {
-                    element.id = XmlNodeId::new(*next_id);
-                    *next_id = (*next_id).saturating_add(1);
-                }
-                Self::assign_placeholder_ids_in_children(&mut element.children, next_id);
             }
         }
     }
@@ -937,10 +1006,18 @@ impl DocxXmlTreeBuilder {
                     let name = e
                         .decode()
                         .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
-                    let reference = format!("&{name};");
-                    let text = unescape(&reference)
-                        .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
-                    Self::push_text(current, &text);
+                    if let Some(text) = quick_xml::escape::resolve_predefined_entity(&name) {
+                        Self::push_text(current, text);
+                    } else if let Ok(Some(character)) = e.resolve_char_ref() {
+                        Self::push_text(current, character.encode_utf8(&mut [0; 4]));
+                    } else {
+                        // Keep the original error and partial builder state for
+                        // malformed/unknown references, including manual events.
+                        let reference = format!("&{name};");
+                        let text = unescape(&reference)
+                            .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
+                        Self::push_text(current, &text);
+                    }
                 }
             }
             Event::CData(e) => {
@@ -1027,9 +1104,24 @@ impl DocxXmlTreeBuilder {
             existing.push_str(text);
             return;
         }
-        parent.children.push(XmlNode::Text(text.to_string()));
+        let node = XmlNode::Text(text.to_string());
+        if parent.children.is_empty()
+            && matches!(
+                parent.name.as_str(),
+                "w:t" | "w:delText" | "w:instrText" | "w:delInstrText" | "m:t"
+            )
+        {
+            // DOCX text elements usually have just one child. Avoid allocating
+            // four large XmlNodes, while retaining normal growth for mixed XML.
+            parent.children = vec![node];
+        } else {
+            parent.children.push(node);
+        }
     }
 
+    // Keep the large element variant from moving through another call frame
+    // before it reaches the parent's child vector.
+    #[inline(always)]
     fn attach_child(&mut self, child: XmlNode) -> Result<(), DocxXmlError> {
         if let Some(parent) = self.stack.last_mut() {
             parent.children.push(child);
@@ -1267,7 +1359,15 @@ impl XmlAttribute {
         // Attribute names already live in the result. Reuse them for duplicate
         // detection instead of allocating quick-xml's separate key-range vector
         // for every element with attributes.
-        let mut attributes = Vec::<Self>::new();
+        // Each attribute has an '='. Values may contain it too, so this is
+        // only a bounded capacity hint; parsing and validation stay below.
+        let capacity = e
+            .attributes_raw()
+            .iter()
+            .filter(|&&byte| byte == b'=')
+            .count()
+            .min(8);
+        let mut attributes = Vec::<Self>::with_capacity(capacity);
         let mut iter = e.attributes();
         iter.with_checks(false);
         for attr in iter {
@@ -1491,6 +1591,9 @@ pub(crate) mod tests {
         for content in [
             "r",
             r#"r a="x" b='日本語' xmlns:w="urn:word" w:id="&#49;&amp;""#,
+            r#"r a="a=b=c=d=e=f=g=h=i=j" b="" c='日本語=値'"#,
+            r#"r a="1" b="2" c="3" d="4" e="5" f="6" g="7" h="8" i="9" j="10""#,
+            r#"r a="1" b="2" c="3" d="4" e="5" f="6" g="7" h="8" a=unquoted"#,
             r#"r a="1" a="2""#,
             r#"r a="1" a="&unknown;""#,
             r#"r a="1" a=unquoted"#,
@@ -1755,6 +1858,84 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn reference_events_preserve_text_and_error_recovery() {
+        use quick_xml::events::{BytesEnd, BytesRef, BytesStart, BytesText};
+
+        // Compare against the previous unescape path, including manually
+        // supplied events whose payload contains more than one reference.
+        for name in [
+            "amp",
+            "lt",
+            "gt",
+            "quot",
+            "apos",
+            "AMP",
+            "nbsp",
+            "#1",
+            "#38",
+            "#x41",
+            "#xD7FF",
+            "#xE000",
+            "#xFFFF",
+            "#x10000",
+            "#x1F600",
+            "#x10FFFF",
+            "#0",
+            "#xD800",
+            "#xDFFF",
+            "#1114112",
+            "#4294967296",
+            "#99999999999999999999999",
+            "#X41",
+            "#-1",
+            "#+1",
+            "#x+41",
+            "#",
+            "#x",
+            "",
+            "unknown",
+            "amp;tail",
+            "#38;tail",
+            "amp;&lt",
+            "日本語",
+        ] {
+            let mut builder = DocxXmlTreeBuilder::new();
+            builder
+                .observe(&Event::Start(BytesStart::new("root")))
+                .unwrap();
+            builder
+                .observe(&Event::Text(BytesText::new("prefix")))
+                .unwrap();
+            let reference = format!("&{name};");
+            let expected = unescape(&reference);
+            let actual = builder.observe(&Event::GeneralRef(BytesRef::new(name)));
+            assert_eq!(
+                actual.map_err(|error| error.to_string()),
+                expected
+                    .as_ref()
+                    .map(|_| ())
+                    .map_err(|error| { DocxXmlError::Malformed(error.to_string()).to_string() }),
+                "{name}",
+            );
+            // An invalid reference must leave the preceding text intact, and
+            // subsequent valid events must still merge into the same node.
+            builder
+                .observe(&Event::GeneralRef(BytesRef::new("amp")))
+                .unwrap();
+            builder.observe(&Event::End(BytesEnd::new("root"))).unwrap();
+            let document = builder.finish().unwrap();
+            let [XmlNode::Text(text)] = document.root().children.as_slice() else {
+                panic!("expected one text node for {name}");
+            };
+            assert_eq!(
+                text,
+                &format!("prefix{}&", expected.unwrap_or_default()),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
     fn handles_comments_and_cdata() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -1902,6 +2083,7 @@ pub(crate) mod tests {
             document: &DocxXmlDocument,
             element: &XmlElement,
             path: &mut Vec<usize>,
+            parent: Option<XmlNodeId>,
             live: &mut usize,
         ) {
             assert_eq!(
@@ -1910,18 +2092,110 @@ pub(crate) mod tests {
                 "indexed path of element {}",
                 element.id.raw()
             );
+            assert!(std::ptr::eq(document.element(element.id).unwrap(), element));
+            assert_eq!(document.parent_id(element.id), parent);
             *live += 1;
             for (position, child) in element.children.iter().enumerate() {
                 if let XmlNode::Element(child) = child {
                     path.push(position);
-                    walk(document, child, path, live);
+                    walk(document, child, path, Some(element.id), live);
                     path.pop();
                 }
             }
         }
         let mut live = 0;
-        walk(document, document.root(), &mut Vec::new(), &mut live);
+        walk(document, document.root(), &mut Vec::new(), None, &mut live);
         assert_eq!(live, document.index.len(), "index holds only live elements");
+    }
+
+    #[test]
+    fn parent_lookup_follows_direct_child_edits_when_index_is_stale() {
+        let mut document =
+            DocxXmlDocument::parse("<root><a><target/>text<other/></a><b><end/></b></root>")
+                .unwrap();
+        let root = document.root.id;
+        fn id(node: &XmlNode) -> XmlNodeId {
+            match node {
+                XmlNode::Element(element) => element.id,
+                _ => panic!("expected element"),
+            }
+        }
+        let a = id(&document.root.children[0]);
+        let b = id(&document.root.children[1]);
+        let target = id(&document.element(a).unwrap().children[0]);
+        assert_index_matches_tree(&document);
+        assert_eq!(document.parent_id(root), None);
+        assert_eq!(document.parent_id(XmlNodeId::new(u32::MAX)), None);
+
+        // Leave text at the indexed position, then move the element to another
+        // parent without updating the index, as public child vectors allow.
+        let moved = document.element_mut(a).unwrap().children.remove(0);
+        document.element_mut(b).unwrap().children.push(moved);
+        assert_eq!(document.parent_id(target), Some(b));
+        assert_eq!(document.parent_id(a), Some(root));
+
+        // The indexed position can also contain a different element.
+        document.element_mut(a).unwrap().children.swap(0, 1);
+        assert_eq!(document.parent_id(target), Some(b));
+        document.root.children.swap(0, 1);
+        assert_eq!(document.parent_id(target), Some(b));
+        assert_eq!(document.parent_id(a), Some(root));
+        assert_eq!(document.parent_id(b), Some(root));
+
+        document.element_mut(b).unwrap().children.pop();
+        assert_eq!(document.parent_id(target), None);
+    }
+
+    #[test]
+    fn lookups_preserve_deep_paths_and_stale_index_fallbacks() {
+        fn check(
+            document: &DocxXmlDocument,
+            element: &XmlElement,
+            parent: Option<XmlNodeId>,
+            path: &mut Vec<usize>,
+        ) {
+            assert!(std::ptr::eq(document.element(element.id).unwrap(), element));
+            assert_eq!(document.parent_id(element.id), parent);
+            assert_eq!(
+                document.path(element.id).unwrap().as_slice(),
+                path.as_slice()
+            );
+            for (position, child) in element.children.iter().enumerate() {
+                if let XmlNode::Element(child) = child {
+                    path.push(position);
+                    check(document, child, Some(element.id), path);
+                    path.pop();
+                }
+            }
+        }
+        for depth in [0, 7, 8, 9, 16, 64] {
+            let mut xml = "<leaf/>".to_string();
+            for _ in 0..depth {
+                xml = format!("<node>text<!--gap-->{xml}tail</node>");
+            }
+            let mut document = DocxXmlDocument::parse(&xml).unwrap();
+            assert_index_matches_tree(&document);
+            check(&document, document.root(), None, &mut Vec::new());
+
+            // Shift every descendant's path and attach an unindexed element.
+            document
+                .root
+                .children
+                .insert(0, XmlNode::Text("new".into()));
+            let added = document.create_element("added", Vec::new(), Vec::new());
+            document.root.children.push(XmlNode::Element(added));
+            check(&document, document.root(), None, &mut Vec::new());
+            assert!(document.element(XmlNodeId::new(u32::MAX)).is_none());
+            assert!(document.parent_id(XmlNodeId::new(u32::MAX)).is_none());
+
+            // A corrupt chain must terminate and use the tree search, including
+            // when the cycle crosses the stack-buffer boundary.
+            let mut ids = Vec::new();
+            element_ids(document.root(), &mut ids);
+            let leaf = ids[depth];
+            document.index.get_mut(&leaf).unwrap().parent = Some(leaf);
+            check(&document, document.root(), None, &mut Vec::new());
+        }
     }
 
     fn body_id(document: &DocxXmlDocument) -> XmlNodeId {
@@ -2580,6 +2854,58 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn subtree_rebuild_assigns_ids_in_preorder_and_preserves_rollback() {
+        let mut document =
+            DocxXmlDocument::parse(r#"<root><p><a/>text<b/></p><p><untouched/></p></root>"#)
+                .unwrap();
+        let original = document.to_string().unwrap();
+        let root = document.root().id;
+        let paragraph = match &document.root().children[0] {
+            XmlNode::Element(element) => element.id,
+            _ => unreachable!(),
+        };
+        document.begin_edit_journal();
+        let element = document.element_mut(paragraph).unwrap();
+        element.children.reverse();
+        element.children.push(XmlNode::Element(XmlElement {
+            id: XmlNodeId::new(0),
+            name: "new".into(),
+            attributes: Vec::new(),
+            children: vec![XmlNode::Element(XmlElement {
+                id: XmlNodeId::new(5000),
+                name: "explicit".into(),
+                attributes: Vec::new(),
+                children: vec![XmlNode::Element(XmlElement {
+                    id: XmlNodeId::new(0),
+                    name: "nested".into(),
+                    attributes: Vec::new(),
+                    children: Vec::new(),
+                })],
+            })],
+        }));
+
+        document.rebuild_index_for_subtree(paragraph);
+        assert_index_matches_tree(&document);
+        assert_eq!(document.parent_id(paragraph), Some(root));
+        assert_eq!(document.parent_id(XmlNodeId::new(5001)), Some(paragraph));
+        assert_eq!(
+            document.parent_id(XmlNodeId::new(5000)),
+            Some(XmlNodeId::new(5001))
+        );
+        assert_eq!(
+            document.parent_id(XmlNodeId::new(5002)),
+            Some(XmlNodeId::new(5000))
+        );
+        assert_eq!(document.allocate_node_id().raw(), 5003);
+
+        let journal = document.finish_edit_journal().unwrap();
+        document.roll_back(journal).unwrap();
+        assert_eq!(document.to_string().unwrap(), original);
+        assert_index_matches_tree(&document);
+        assert_eq!(document.allocate_node_id().raw(), 5004);
+    }
+
+    #[test]
     fn rebuild_index_for_subtree_handles_replaced_children() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -2700,6 +3026,99 @@ pub(crate) mod tests {
             "next_id should be updated to be greater than max id in subtree, got: {}",
             next_element.id.raw()
         );
+    }
+
+    #[test]
+    fn full_rebuild_keeps_next_id_at_saturation_boundaries() {
+        for (existing_id, seed, placeholder, expected_next) in [
+            (u32::MAX - 2, 0, true, u32::MAX),
+            (10, u32::MAX - 1, true, u32::MAX),
+            (10, u32::MAX, false, 11),
+            (10, u32::MAX - 2, true, u32::MAX - 1),
+            (u32::MAX - 1, 0, false, u32::MAX),
+            (10, u32::MAX - 1, false, 11),
+        ] {
+            let mut document = DocxXmlDocument::parse("<root><existing/></root>").unwrap();
+            let XmlNode::Element(existing) = &mut document.root.children[0] else {
+                unreachable!();
+            };
+            existing.id = XmlNodeId::new(existing_id);
+            document.next_id = seed;
+            if placeholder {
+                document.root.children.push(XmlNode::Element(XmlElement {
+                    id: XmlNodeId::new(0),
+                    name: "new".into(),
+                    attributes: Vec::new(),
+                    children: Vec::new(),
+                }));
+            }
+
+            document.rebuild_index();
+
+            assert_eq!(document.next_id, expected_next);
+            assert_index_matches_tree(&document);
+            if placeholder {
+                let XmlNode::Element(assigned) = &document.root.children[1] else {
+                    unreachable!();
+                };
+                assert_eq!(assigned.id.raw(), expected_next - 1);
+            }
+        }
+    }
+
+    #[test]
+    fn full_rebuild_preserves_preorder_ids_and_resets_next_id() {
+        let mut document = DocxXmlDocument::parse("<root><a/>text<b/></root>").unwrap();
+        let root = document.root().id;
+        let old_max = document.root().max_node_id().unwrap().raw();
+        for _ in 0..10 {
+            document.allocate_node_id();
+        }
+        document.rebuild_index();
+        assert_eq!(document.allocate_node_id().raw(), old_max + 1);
+
+        let removed_id = match &document.root().children[0] {
+            XmlNode::Element(element) => element.id,
+            _ => unreachable!(),
+        };
+        let element = document.element_mut(root).unwrap();
+        element.children.remove(0);
+        element.children.reverse();
+        element.children.push(XmlNode::Element(XmlElement {
+            id: XmlNodeId::new(0),
+            name: "new".into(),
+            attributes: Vec::new(),
+            children: vec![XmlNode::Element(XmlElement {
+                id: XmlNodeId::new(5000),
+                name: "explicit".into(),
+                attributes: Vec::new(),
+                children: vec![XmlNode::Element(XmlElement {
+                    id: XmlNodeId::new(0),
+                    name: "nested".into(),
+                    attributes: Vec::new(),
+                    children: Vec::new(),
+                })],
+            })],
+        }));
+
+        document.rebuild_index();
+        assert_index_matches_tree(&document);
+        assert!(!document.index.contains_key(&removed_id));
+        assert_eq!(document.parent_id(XmlNodeId::new(5001)), Some(root));
+        assert_eq!(
+            document.parent_id(XmlNodeId::new(5000)),
+            Some(XmlNodeId::new(5001))
+        );
+        assert_eq!(
+            document.parent_id(XmlNodeId::new(5002)),
+            Some(XmlNodeId::new(5000))
+        );
+        assert_eq!(document.allocate_node_id().raw(), 5003);
+        let xml = document.to_string().unwrap();
+        document.rebuild_index();
+        assert_eq!(document.allocate_node_id().raw(), 5003);
+        assert_eq!(document.to_string().unwrap(), xml);
+        assert_index_matches_tree(&document);
     }
 
     #[test]

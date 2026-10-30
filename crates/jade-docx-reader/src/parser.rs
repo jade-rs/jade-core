@@ -1,7 +1,10 @@
 use crate::document::*;
 use crate::docx_xml::{DocxXmlDocument, DocxXmlError, DocxXmlTreeBuilder};
 use quick_xml::escape::unescape;
-use quick_xml::events::{attributes::Attributes, BytesStart, BytesText, Event};
+use quick_xml::events::{
+    attributes::{AttrError, Attribute, Attributes},
+    BytesStart, BytesText, Event,
+};
 use quick_xml::Reader;
 use quick_xml::Writer;
 use std::borrow::Cow;
@@ -115,16 +118,49 @@ use table::ContainerContext;
 /// A plain [`Reader`] is the usual source. [`RawTreeTeeReader`] additionally
 /// mirrors every event into a [`DocxXmlTreeBuilder`] so that the semantic
 /// parse and the round-trip XML tree share one tokenization of
-/// `word/document.xml`. Every helper that walks a subtree takes `&mut R`
-/// rather than `&mut Reader<R>` so that whichever source drives the top-level
-/// loop also sees the events those helpers consume.
+/// `word/document.xml`. Subtree helpers use the same source as the top-level
+/// loop so that it also sees the events those helpers consume.
 pub trait XmlEventSource {
     fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>>;
+
+    /// Reads an event, borrowing retained input when the source supports it.
+    ///
+    /// The default uses [`Self::read_event_into`], so buffer-backed sources
+    /// need only implement that method. Retained input must outlive the event.
+    fn next_event<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>>
+    where
+        Self: 'b,
+    {
+        self.read_event_into(buf)
+    }
 }
 
 impl<R: BufRead> XmlEventSource for Reader<R> {
     fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {
         Reader::read_event_into(self, buf)
+    }
+}
+
+struct SliceXmlReader<'a>(Reader<&'a [u8]>);
+
+impl<'a> SliceXmlReader<'a> {
+    fn new(xml: &'a str) -> Self {
+        let mut reader = Reader::from_str(xml);
+        reader.config_mut().trim_text(false);
+        Self(reader)
+    }
+}
+
+impl XmlEventSource for SliceXmlReader<'_> {
+    fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {
+        self.0.read_event_into(buf)
+    }
+
+    fn next_event<'b>(&mut self, _buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>>
+    where
+        Self: 'b,
+    {
+        self.0.read_event()
     }
 }
 
@@ -135,17 +171,15 @@ impl<R: BufRead> XmlEventSource for Reader<R> {
 /// parse keeps going (rendering does not need the raw tree) and
 /// [`Self::finish`] reports the error to the caller.
 pub struct RawTreeTeeReader<'a> {
-    reader: Reader<&'a [u8]>,
+    reader: SliceXmlReader<'a>,
     builder: Option<DocxXmlTreeBuilder>,
     error: Option<DocxXmlError>,
 }
 
 impl<'a> RawTreeTeeReader<'a> {
     pub fn new(xml: &'a str) -> Self {
-        let mut reader = Reader::from_str(xml);
-        reader.config_mut().trim_text(false);
         Self {
-            reader,
+            reader: SliceXmlReader::new(xml),
             builder: Some(DocxXmlTreeBuilder::new()),
             error: None,
         }
@@ -157,7 +191,7 @@ impl<'a> RawTreeTeeReader<'a> {
         let mut buf = Vec::new();
         loop {
             buf.clear();
-            match XmlEventSource::read_event_into(&mut self, &mut buf) {
+            match XmlEventSource::next_event(&mut self, &mut buf) {
                 Ok(Event::Eof) => break,
                 Ok(_) => {}
                 Err(err) => return Err(DocxXmlError::Malformed(err.to_string())),
@@ -167,10 +201,22 @@ impl<'a> RawTreeTeeReader<'a> {
             return Err(err);
         }
         match self.builder {
-            Some(builder) => builder.finish(),
+            Some(builder) => builder.finish().map(|mut document| {
+                document.set_source_len(self.reader.0.buffer_position() as usize);
+                document
+            }),
             None => Err(DocxXmlError::Malformed(
                 "raw tree builder was dropped after an earlier error".into(),
             )),
+        }
+    }
+
+    fn observe_event(&mut self, event: &Event<'_>) {
+        if let Some(builder) = self.builder.as_mut() {
+            if let Err(err) = builder.observe(event) {
+                self.error = Some(err);
+                self.builder = None;
+            }
         }
     }
 }
@@ -178,12 +224,16 @@ impl<'a> RawTreeTeeReader<'a> {
 impl XmlEventSource for RawTreeTeeReader<'_> {
     fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {
         let event = self.reader.read_event_into(buf)?;
-        if let Some(builder) = self.builder.as_mut() {
-            if let Err(err) = builder.observe(&event) {
-                self.error = Some(err);
-                self.builder = None;
-            }
-        }
+        self.observe_event(&event);
+        Ok(event)
+    }
+
+    fn next_event<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>>
+    where
+        Self: 'b,
+    {
+        let event = self.reader.next_event(buf)?;
+        self.observe_event(&event);
         Ok(event)
     }
 }
@@ -228,8 +278,7 @@ impl DocumentParser {
         xml_content: &str,
     ) -> Result<Document, Box<dyn std::error::Error>> {
         let xml_content = crate::word_namespaces::normalize(xml_content)?;
-        let mut reader = Reader::from_str(&xml_content);
-        reader.config_mut().trim_text(false);
+        let mut reader = SliceXmlReader::new(&xml_content);
         self.parse_document_events(&mut reader)
     }
 
@@ -323,7 +372,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     match e.name().as_ref() {
                         b"w:body" | b"w:hdr" | b"w:ftr" => {
@@ -1189,12 +1238,7 @@ impl DocumentParser {
                         }
                         b"w:b" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1207,12 +1251,7 @@ impl DocumentParser {
                         }
                         b"w:bCs" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1276,12 +1315,7 @@ impl DocumentParser {
                         }
                         b"w:i" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1294,12 +1328,7 @@ impl DocumentParser {
                         }
                         b"w:iCs" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1312,12 +1341,7 @@ impl DocumentParser {
                         }
                         b"w:strike" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1330,12 +1354,7 @@ impl DocumentParser {
                         }
                         b"w:dstrike" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1348,12 +1367,7 @@ impl DocumentParser {
                         }
                         b"w:caps" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1366,12 +1380,7 @@ impl DocumentParser {
                         }
                         b"w:smallCaps" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1384,12 +1393,7 @@ impl DocumentParser {
                         }
                         b"w:vanish" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1402,12 +1406,7 @@ impl DocumentParser {
                         }
                         b"w:specVanish" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1420,12 +1419,7 @@ impl DocumentParser {
                         }
                         b"w:shadow" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1438,12 +1432,7 @@ impl DocumentParser {
                         }
                         b"w:outline" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1456,12 +1445,7 @@ impl DocumentParser {
                         }
                         b"w:emboss" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1474,12 +1458,7 @@ impl DocumentParser {
                         }
                         b"w:imprint" => {
                             if parsing_run_props {
-                                let value = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|attr| attr.key.as_ref() == b"w:val")
-                                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                                let flag = parse_on_off(value, true);
+                                let flag = parse_run_on_off(e.attributes());
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1639,7 +1618,7 @@ impl DocumentParser {
                         }
                         b"w:kern" => {
                             if parsing_run_props {
-                                if let Some(points) = parse_kerning_points(e.attributes()) {
+                                if let Some(points) = parse_kerning_points(e) {
                                     Self::apply_to_active_run_props(
                                         parsing_paragraph_run_props,
                                         &mut current_paragraph_run_props,
@@ -1752,7 +1731,7 @@ impl DocumentParser {
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
                                     &mut current_run_props,
-                                    |props| Self::apply_run_fonts(e.attributes(), props),
+                                    |props| Self::apply_run_fonts(e, props),
                                 );
                             }
                         }
@@ -2603,12 +2582,7 @@ impl DocumentParser {
                     }
                     b"w:strike" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2621,12 +2595,7 @@ impl DocumentParser {
                     }
                     b"w:dstrike" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2639,12 +2608,7 @@ impl DocumentParser {
                     }
                     b"w:b" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2657,12 +2621,7 @@ impl DocumentParser {
                     }
                     b"w:bCs" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2675,12 +2634,7 @@ impl DocumentParser {
                     }
                     b"w:iCs" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2693,12 +2647,7 @@ impl DocumentParser {
                     }
                     b"w:caps" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2711,12 +2660,7 @@ impl DocumentParser {
                     }
                     b"w:smallCaps" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2729,12 +2673,7 @@ impl DocumentParser {
                     }
                     b"w:vanish" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2747,12 +2686,7 @@ impl DocumentParser {
                     }
                     b"w:specVanish" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2765,12 +2699,7 @@ impl DocumentParser {
                     }
                     b"w:shadow" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2783,12 +2712,7 @@ impl DocumentParser {
                     }
                     b"w:outline" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2801,12 +2725,7 @@ impl DocumentParser {
                     }
                     b"w:emboss" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2819,12 +2738,7 @@ impl DocumentParser {
                     }
                     b"w:imprint" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -2992,12 +2906,7 @@ impl DocumentParser {
                     }
                     b"w:i" => {
                         if parsing_run_props {
-                            let value = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| attr.key.as_ref() == b"w:val")
-                                .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
-                            let flag = parse_on_off(value, true);
+                            let flag = parse_run_on_off(e.attributes());
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -3093,7 +3002,7 @@ impl DocumentParser {
                     }
                     b"w:kern" => {
                         if parsing_run_props {
-                            if let Some(points) = parse_kerning_points(e.attributes()) {
+                            if let Some(points) = parse_kerning_points(e) {
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -3472,7 +3381,7 @@ impl DocumentParser {
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
                                 &mut current_run_props,
-                                |props| Self::apply_run_fonts(e.attributes(), props),
+                                |props| Self::apply_run_fonts(e, props),
                             );
                         }
                     }
@@ -3934,7 +3843,7 @@ impl DocumentParser {
         let mut notes = Vec::new();
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     let is_note = e.name().as_ref() == note_tag;
                     if namespace_attrs.is_none() && !is_note {
@@ -4047,7 +3956,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     depth += 1;
                     if matches!(e.name().as_ref(), b"w:t" | b"w:delText") {
@@ -4123,7 +4032,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     depth = depth.saturating_add(1);
                     writer.write_event(Event::Start(e.to_owned()))?;
@@ -4191,7 +4100,7 @@ impl DocumentParser {
         let mut reader = Reader::from_str(xml);
         let mut buf = Vec::new();
         let (mut id, mut author, mut date) = (None, None, None);
-        if let Ok(Event::Start(start)) = reader.read_event_into(&mut buf) {
+        if let Ok(Event::Start(start)) = reader.next_event(&mut buf) {
             for attr in start.attributes().flatten() {
                 let value = attr
                     .normalized_value(quick_xml::XmlVersion::Implicit1_0)
@@ -4285,10 +4194,10 @@ impl DocumentParser {
                     }
                 }
                 b"w:equalWidth" => {
-                    columns.equal_width = Some(parse_on_off(Some(value.clone()), true));
+                    columns.equal_width = Some(parse_on_off(Some(&value), true));
                 }
                 b"w:sep" => {
-                    columns.separator = Some(parse_on_off(Some(value), false));
+                    columns.separator = Some(parse_on_off(Some(&value), false));
                 }
                 _ => {}
             }
@@ -4455,7 +4364,7 @@ impl DocumentParser {
         };
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -4530,7 +4439,7 @@ impl DocumentParser {
         };
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"w:rubyPr" => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -4600,7 +4509,7 @@ impl DocumentParser {
         };
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) => match e.name().as_ref() {
                     b"w:rt" => break,
                     b"w:t" => in_text = false,
@@ -4946,7 +4855,7 @@ impl DocumentParser {
         let mut extras = drawing_extras::DrawingExtras::default();
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     extras.start(e, false);
                     match e.name().as_ref() {
@@ -4964,7 +4873,7 @@ impl DocumentParser {
                             image.layout.behind_doc = e.attributes().flatten().any(|attribute| {
                                 attribute.key.as_ref() == b"behindDoc"
                                     && parse_on_off(
-                                        Some(String::from_utf8_lossy(&attribute.value).to_string()),
+                                        Some(&String::from_utf8_lossy(&attribute.value)),
                                         false,
                                     )
                             });
@@ -6051,7 +5960,7 @@ impl DocumentParser {
         let mut next_z_order = 0usize;
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref element)) => {
                     if extension_depth > 0 {
                         extension_depth += 1;
@@ -7020,7 +6929,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     depth += 1;
                     writer.write_event(Event::Start(e.to_owned()))?;
@@ -7204,7 +7113,7 @@ impl DocumentParser {
         let mut dist_right = None;
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     Self::apply_vml_imagedata_attributes(&mut image, e);
                     if e.name().as_ref() == b"o:OLEObject" {
@@ -7640,7 +7549,7 @@ impl DocumentParser {
         image.height_px = height_hint_px;
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     Self::apply_vml_shape_style_to_image(&mut image, e);
                     Self::apply_vml_imagedata_attributes(&mut image, e);
@@ -8144,10 +8053,7 @@ impl DocumentParser {
     fn wrap_polygon_from_element(element: &BytesStart<'_>) -> WrapPolygon {
         let edited = element.attributes().flatten().any(|attribute| {
             attribute.key.as_ref() == b"edited"
-                && parse_on_off(
-                    Some(String::from_utf8_lossy(&attribute.value).to_string()),
-                    false,
-                )
+                && parse_on_off(Some(&String::from_utf8_lossy(&attribute.value)), false)
         });
         WrapPolygon {
             edited,
@@ -8233,13 +8139,13 @@ impl DocumentParser {
         }
     }
 
-    fn apply_run_fonts(attributes: Attributes<'_>, props: &mut RunProperties) {
+    fn apply_run_fonts(element: &BytesStart<'_>, props: &mut RunProperties) {
         let fonts = props.fonts.get_or_insert_with(RunFonts::default);
         let mut authored_hint = false;
         let mut authored_name = false;
         // Attribute names and values are only needed while updating the slots;
         // avoid collecting and copying every attribute before applying them.
-        for attr in attributes.flatten() {
+        for attr in inline_attributes(element).flatten() {
             let key = attr.key.as_ref();
             authored_name |= matches!(key, b"w:eastAsia" | b"w:eastAsiaTheme");
             let slot = match key {
@@ -8600,10 +8506,9 @@ impl DocumentParser {
             let mut value = true;
             for attr in attributes.flatten() {
                 if attr.key.as_ref() == b"w:val" {
-                    let raw = String::from_utf8_lossy(&attr.value)
-                        .trim()
-                        .to_ascii_lowercase();
-                    value = !matches!(raw.as_str(), "0" | "false");
+                    let raw = String::from_utf8_lossy(&attr.value);
+                    let raw = raw.trim();
+                    value = raw != "0" && !raw.eq_ignore_ascii_case("false");
                     break;
                 }
             }
@@ -8615,16 +8520,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         props
             .get_or_insert_with(ParagraphProperties::default)
             .adjust_right_indent = Some(value);
@@ -8634,16 +8530,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.widow_control = Some(value);
     }
@@ -8655,16 +8542,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.suppress_auto_hyphens = Some(value);
     }
@@ -8675,16 +8553,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.contextual_spacing = Some(value);
     }
@@ -8696,16 +8565,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.page_break_before = Some(value);
     }
@@ -8773,16 +8633,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.suppress_line_numbers = Some(value);
     }
@@ -8794,16 +8645,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.keep_lines = Some(value);
     }
@@ -8815,16 +8657,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.keep_next = Some(value);
     }
@@ -8860,16 +8693,7 @@ impl DocumentParser {
         attributes: Attributes<'_>,
         props: &mut Option<ParagraphProperties>,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         paragraph_props.mirror_indents = Some(value);
     }
@@ -8907,16 +8731,7 @@ impl DocumentParser {
         props: &mut Option<ParagraphProperties>,
         is_numeric: bool,
     ) {
-        let mut value = true;
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                value = !matches!(raw.as_str(), "0" | "false" | "off");
-                break;
-            }
-        }
+        let value = Self::parse_on_off_attr(attributes);
 
         let paragraph_props = props.get_or_insert_with(ParagraphProperties::default);
         let east_asian = paragraph_props
@@ -8933,10 +8748,11 @@ impl DocumentParser {
     fn parse_on_off_attr(attributes: Attributes<'_>) -> bool {
         for attr in attributes.flatten() {
             if attr.key.as_ref() == b"w:val" {
-                let raw = String::from_utf8_lossy(&attr.value)
-                    .trim()
-                    .to_ascii_lowercase();
-                return !matches!(raw.as_str(), "0" | "false" | "off");
+                let raw = String::from_utf8_lossy(&attr.value);
+                let raw = raw.trim();
+                return raw != "0"
+                    && !raw.eq_ignore_ascii_case("false")
+                    && !raw.eq_ignore_ascii_case("off");
             }
         }
         true
@@ -8969,7 +8785,7 @@ impl DocumentParser {
         let mut buf = Vec::new();
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"w:tabs" => break,
                 Ok(Event::Empty(ref e)) if e.name().as_ref() == b"w:tab" => {
                     if let Some(tab) = Self::build_tab_stop(e.attributes()) {
@@ -9016,7 +8832,7 @@ impl DocumentParser {
                     _ => {}
                 }
             };
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"w:pBdr" => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -9059,7 +8875,7 @@ impl DocumentParser {
                     _ => {}
                 }
             };
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"w:pgBorders" => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -9093,7 +8909,7 @@ impl DocumentParser {
         let mut depth = 1usize;
         let mut buf = Vec::new();
         loop {
-            let event = reader.read_event_into(&mut buf);
+            let event = reader.next_event(&mut buf);
             match event {
                 Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
                     let is_start = matches!(event, Ok(Event::Start(_)));
@@ -9142,16 +8958,23 @@ impl DocumentParser {
         let mut theme: Option<RunThemeColor> = None;
         let (mut tint, mut shade) = (None, None);
         for attr in attributes.flatten() {
-            let value = String::from_utf8_lossy(&attr.value).trim().to_string();
+            if !matches!(
+                attr.key.as_ref(),
+                b"w:themeColor" | b"w:themeTint" | b"w:themeShade"
+            ) {
+                continue;
+            }
+            let decoded = String::from_utf8_lossy(&attr.value);
+            let value = decoded.trim();
             match attr.key.as_ref() {
                 b"w:themeColor" if !value.is_empty() => {
                     theme = Some(RunThemeColor {
-                        name: Rc::from(value.as_str()),
+                        name: Rc::from(value),
                         ..Default::default()
                     })
                 }
-                b"w:themeTint" if !value.is_empty() => tint = Some(Rc::from(value.as_str())),
-                b"w:themeShade" if !value.is_empty() => shade = Some(Rc::from(value.as_str())),
+                b"w:themeTint" if !value.is_empty() => tint = Some(Rc::from(value)),
+                b"w:themeShade" if !value.is_empty() => shade = Some(Rc::from(value)),
                 _ => {}
             }
         }
@@ -9228,7 +9051,7 @@ impl DocumentParser {
         let mut buf = Vec::new();
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) if e.name().as_ref() == tag => depth += 1,
                 Ok(Event::End(ref e)) if e.name().as_ref() == tag => {
                     depth -= 1;
@@ -9310,10 +9133,7 @@ impl DocumentParser {
             if attr.key.as_ref() == b"w:fldCharType" {
                 fld_char_type = Some(String::from_utf8_lossy(&attr.value).to_string());
             } else if attr.key.as_ref() == b"w:fldLock" {
-                locked = parse_on_off(
-                    Some(String::from_utf8_lossy(&attr.value).to_string()),
-                    false,
-                );
+                locked = parse_on_off(Some(&String::from_utf8_lossy(&attr.value)), false);
             }
         }
         match fld_char_type.as_deref() {
@@ -9412,12 +9232,8 @@ impl DocumentParser {
             .clone()
             .flatten()
             .find_map(|attr| {
-                (attr.key.as_ref() == b"w:fldLock").then(|| {
-                    parse_on_off(
-                        Some(String::from_utf8_lossy(&attr.value).to_string()),
-                        false,
-                    )
-                })
+                (attr.key.as_ref() == b"w:fldLock")
+                    .then(|| parse_on_off(Some(&String::from_utf8_lossy(&attr.value)), false))
             })
             .unwrap_or(false);
         for attr in attributes.flatten() {
@@ -11106,13 +10922,27 @@ fn extract_field_format_switch(instr: &str) -> Option<String> {
     None
 }
 
-fn parse_on_off(value: Option<String>, default: bool) -> bool {
-    match value.as_deref().map(|v| v.to_ascii_lowercase()).as_deref() {
-        None => default,
-        Some("1") | Some("true") | Some("on") | Some("single") => true,
-        Some("0") | Some("false") | Some("off") | Some("none") => false,
-        Some(other) => !other.is_empty(),
+fn parse_run_on_off(attributes: Attributes<'_>) -> bool {
+    for attr in attributes.flatten() {
+        if attr.key.as_ref() == b"w:val" {
+            return parse_on_off(Some(&String::from_utf8_lossy(&attr.value)), true);
+        }
     }
+    true
+}
+
+fn parse_on_off(value: Option<impl AsRef<str>>, default: bool) -> bool {
+    let Some(value) = value else {
+        return default;
+    };
+    let value = value.as_ref();
+    // Run and field values historically accept unknown nonempty tokens and
+    // retain surrounding whitespace. Paragraph toggles trim their values separately.
+    !value.is_empty()
+        && value != "0"
+        && !value.eq_ignore_ascii_case("false")
+        && !value.eq_ignore_ascii_case("off")
+        && !value.eq_ignore_ascii_case("none")
 }
 
 /// Normalizes a `w:em` (emphasis mark, ECMA-376 Part 1 §17.3.2.12) `w:val`
@@ -11171,7 +11001,7 @@ fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
 
     let (on_off, kind) = match value {
         Some(value) => {
-            let on = parse_on_off(Some(value.clone()), true) && value != "none";
+            let on = parse_on_off(Some(&value), true) && value != "none";
             let kind =
                 if on && value != "single" && value != "1" && value != "true" && value != "on" {
                     Some(value)
@@ -11189,8 +11019,41 @@ fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
     }
 }
 
-fn parse_kerning_points(attributes: Attributes<'_>) -> Option<f32> {
-    for attr in attributes.flatten() {
+/// Checks short attribute lists without allocating quick-xml's key vector.
+/// Replay through its checked iterator for errors, duplicates or longer lists
+/// so error offsets, recovery and duplicate handling remain identical.
+fn inline_attributes<'a>(
+    element: &'a BytesStart<'_>,
+) -> impl Iterator<Item = Result<Attribute<'a>, AttrError>> {
+    let mut checked = element.attributes();
+    let mut unchecked = element.attributes();
+    unchecked.with_checks(false);
+    let mut keys: [Option<&[u8]>; 8] = [None; 8];
+    let mut consumed = 0;
+    let mut fallback = false;
+    std::iter::from_fn(move || {
+        if fallback {
+            return checked.next();
+        }
+        match unchecked.next()? {
+            Ok(attr)
+                if consumed < keys.len()
+                    && !keys[..consumed].contains(&Some(attr.key.as_ref())) =>
+            {
+                keys[consumed] = Some(attr.key.0);
+                consumed += 1;
+                Some(Ok(attr))
+            }
+            _ => {
+                fallback = true;
+                checked.nth(consumed)
+            }
+        }
+    })
+}
+
+fn parse_kerning_points(element: &BytesStart<'_>) -> Option<f32> {
+    for attr in inline_attributes(element).flatten() {
         if attr.key.as_ref() == b"w:val" {
             if let Ok(value) = String::from_utf8_lossy(&attr.value).parse::<f32>() {
                 let points = value / 2.0;
@@ -11433,6 +11296,93 @@ mod tests {
         }
     }
 
+    fn assert_slice_events_match_buffered(xml: &str) {
+        let mut source = SliceXmlReader::new(xml);
+        let mut reference = Reader::from_str(xml);
+        reference.config_mut().trim_text(false);
+        let (mut source_buf, mut reference_buf) = (Vec::new(), Vec::new());
+        loop {
+            source_buf.clear();
+            reference_buf.clear();
+            let actual = source
+                .next_event(&mut source_buf)
+                .map_err(|err| err.to_string());
+            let expected = reference
+                .read_event_into(&mut reference_buf)
+                .map_err(|err| err.to_string());
+            assert_eq!(actual, expected, "{xml:?}");
+            assert_eq!(source.0.buffer_position(), reference.buffer_position());
+            assert_eq!(source.0.error_position(), reference.error_position());
+            if matches!(actual, Err(_) | Ok(Event::Eof)) {
+                break;
+            }
+        }
+    }
+
+    #[test]
+    fn slice_events_preserve_buffered_events_and_errors() {
+        for xml in [
+            "\u{feff}<?xml version=\"1.0\"?><r a=\"x&amp;y\">\r\n日本語&amp;&#x1F600;<![CDATA[<&>]]><!--comment--><?pi x?><e/></r>",
+            "<!DOCTYPE r [<!ENTITY custom 'value'>]><r>&custom;</r>",
+            "<r a=\"value\" a=\"other\"/>",
+            "<r a=\"unfinished></r>",
+            "<r><x></r>",
+            "<r>unterminated &reference",
+            "<r><![CDATA[unfinished",
+            "<!--unfinished",
+            "<r>\r\n\0\u{85}\u{2028}</r>",
+            "<r>truncated",
+            "",
+        ] {
+            assert_slice_events_match_buffered(xml);
+        }
+        assert_slice_events_match_buffered(&format!(
+            "<r a=\"{}\">{}</r>",
+            "value".repeat(2048),
+            "日本語\r\n&amp;".repeat(2048),
+        ));
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn slice_events_match_buffered_for_xml_fragments(
+            chunks in proptest::collection::vec(
+                proptest::prop_oneof![
+                    proptest::strategy::Just("<r a=\"value\"><x/>&amp;&#32;</r>".to_owned()),
+                    proptest::strategy::Just("<!--c--><![CDATA[<&>]]><?pi x?>".to_owned()),
+                    proptest::strategy::Just("<r a=\"bad\" a=\"duplicate\"></x>&unfinished".to_owned()),
+                    proptest::collection::vec(proptest::char::any(), 0..32)
+                        .prop_map(|chars| chars.into_iter().collect::<String>()),
+                ],
+                0..16,
+            ),
+        ) {
+            assert_slice_events_match_buffered(&chunks.concat());
+        }
+    }
+
+    #[test]
+    fn raw_tree_can_mix_buffered_and_borrowed_events_then_drain() {
+        let xml = "<?xml version=\"1.0\"?><root><!--c--><p a=\"1\">&amp;<![CDATA[x]]><empty/></p><other/></root>";
+        let mut source = RawTreeTeeReader::new(xml);
+        let mut buf = Vec::new();
+        for index in 0..5 {
+            buf.clear();
+            if index % 2 == 0 {
+                source.read_event_into(&mut buf).unwrap();
+            } else {
+                source.next_event(&mut buf).unwrap();
+            }
+        }
+        let actual = source.finish().unwrap();
+        let expected = DocxXmlDocument::parse(xml).unwrap();
+        assert_eq!(actual.to_string().unwrap(), expected.to_string().unwrap());
+        assert_eq!(
+            crate::docx_xml::tests::index_snapshot(&actual),
+            crate::docx_xml::tests::index_snapshot(&expected),
+        );
+    }
+
     /// The one-pass entry must hand back exactly the tree a standalone
     /// `DocxXmlDocument::parse` builds: the editor's node ids, paths and the
     /// re-serialized XML all have to agree, for every fixture we ship.
@@ -11530,6 +11480,157 @@ mod tests {
         match &body.elements[0] {
             BodyElement::Paragraph(p) => p.properties.as_ref().expect("pPr"),
             other => panic!("expected paragraph, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn on_off_properties_preserve_their_distinct_token_rules() {
+        for (token, run, paragraph, snap) in [
+            (None, true, true, true),
+            (Some(""), false, true, true),
+            (Some("0"), false, false, false),
+            (Some("FaLsE"), false, false, false),
+            (Some("OFF"), false, false, true),
+            (Some("NoNe"), false, true, true),
+            (Some(" false "), true, false, false),
+            (Some("\u{2003}Off\u{3000}"), true, false, true),
+            (Some("true"), true, true, true),
+            (Some("unknown"), true, true, true),
+            (Some("false\u{fffd}"), true, true, true),
+            (Some("&#48;"), true, true, true),
+        ] {
+            for expanded in [false, true] {
+                let element = |name: &str| {
+                    let attr = token.map(|v| format!(" w:val=\"{v}\"")).unwrap_or_default();
+                    if expanded {
+                        format!("<w:{name}{attr}></w:{name}>")
+                    } else {
+                        format!("<w:{name}{attr}/>")
+                    }
+                };
+                let run_xml: String = [
+                    "b",
+                    "i",
+                    "bCs",
+                    "iCs",
+                    "caps",
+                    "smallCaps",
+                    "strike",
+                    "dstrike",
+                    "vanish",
+                    "specVanish",
+                    "shadow",
+                    "outline",
+                    "emboss",
+                    "imprint",
+                ]
+                .into_iter()
+                .map(element)
+                .collect();
+                let paragraph_xml: String = [
+                    "snapToGrid",
+                    "adjustRightInd",
+                    "widowControl",
+                    "suppressAutoHyphens",
+                    "contextualSpacing",
+                    "pageBreakBefore",
+                    "suppressLineNumbers",
+                    "keepLines",
+                    "keepNext",
+                    "mirrorIndents",
+                    "autoSpaceDE",
+                    "autoSpaceDN",
+                    "kinsoku",
+                    "wordWrap",
+                    "overflowPunct",
+                    "topLinePunct",
+                ]
+                .into_iter()
+                .map(element)
+                .collect();
+                let body = format!("<w:p><w:pPr><w:jc w:val=\"left\"/>{paragraph_xml}<w:rPr>{run_xml}</w:rPr></w:pPr><w:r><w:rPr>{run_xml}</w:rPr><w:t>text</w:t></w:r></w:p>");
+                let doc = parse_document_from_body(&body);
+                let p = doc.body.as_ref().unwrap().elements[0]
+                    .as_paragraph()
+                    .unwrap();
+                let expected = RunProperties {
+                    bold: Some(run),
+                    italic: Some(run),
+                    bold_complex: Some(run),
+                    italic_complex: Some(run),
+                    caps: Some(run),
+                    small_caps: Some(run),
+                    strike: Some(run),
+                    double_strike: Some(run),
+                    vanish: Some(run),
+                    spec_vanish: Some(run),
+                    shadow: Some(run),
+                    outline: Some(run),
+                    emboss: Some(run),
+                    imprint: Some(run),
+                    ..RunProperties::default()
+                };
+                assert_eq!(
+                    p.runs[0].properties.as_ref(),
+                    Some(&expected),
+                    "token={token:?}, expanded={expanded}"
+                );
+                let props = p.properties.as_ref().unwrap();
+                assert_eq!(props.mark_run_properties.as_ref(), Some(&expected));
+                // The parser currently handles snapToGrid only as an empty element.
+                assert_eq!(props.snap_to_grid, (!expanded).then_some(snap));
+                for actual in [
+                    props.adjust_right_indent,
+                    props.widow_control,
+                    props.suppress_auto_hyphens,
+                    props.contextual_spacing,
+                    props.page_break_before,
+                    props.suppress_line_numbers,
+                    props.keep_lines,
+                    props.keep_next,
+                    props.mirror_indents,
+                ] {
+                    assert_eq!(
+                        actual,
+                        Some(paragraph),
+                        "token={token:?}, expanded={expanded}"
+                    );
+                }
+                let east_asian = props.east_asian_settings.as_ref().unwrap();
+                for actual in [
+                    east_asian.auto_space_de,
+                    east_asian.auto_space_dn,
+                    east_asian.kinsoku,
+                    east_asian.word_wrap,
+                    east_asian.overflow_punctuation,
+                    east_asian.top_line_punctuation,
+                ] {
+                    assert_eq!(actual, Some(paragraph));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn on_off_attributes_preserve_duplicate_error_and_lossy_utf8_handling() {
+        for (attrs, expected_run, expected_paragraph) in [
+            (&b"w:val=\"false\" w:val=\"true\""[..], false, false),
+            (&b"broken w:val=\"off\""[..], false, false),
+            (&b"w:val=\"\xfffalse\""[..], true, true),
+            (&b"w:val=\"false\xff\""[..], true, true),
+        ] {
+            let mut xml = b"<w:b ".to_vec();
+            xml.extend_from_slice(attrs);
+            xml.extend_from_slice(b"/>");
+            let mut reader = Reader::from_reader(xml.as_slice());
+            let Event::Empty(element) = reader.read_event().unwrap() else {
+                panic!("empty element");
+            };
+            assert_eq!(parse_run_on_off(element.attributes()), expected_run);
+            assert_eq!(
+                DocumentParser::parse_on_off_attr(element.attributes()),
+                expected_paragraph
+            );
         }
     }
 
@@ -12205,7 +12306,7 @@ mod tests {
         ] {
             event.push_attribute((key, value));
         }
-        DocumentParser::apply_run_fonts(event.attributes(), &mut props);
+        DocumentParser::apply_run_fonts(&event, &mut props);
         let fonts = props.fonts.as_ref().unwrap();
         assert_eq!(fonts.ascii.as_deref(), Some("A&amp;B"));
         assert_eq!(fonts.h_ansi.as_deref(), Some("keep hAnsi"));
@@ -12219,10 +12320,78 @@ mod tests {
         assert_eq!(props.authored_east_asia_font_name, Some(true));
 
         let previous_fonts = props.fonts.clone();
-        DocumentParser::apply_run_fonts(BytesStart::new("w:rFonts").attributes(), &mut props);
+        DocumentParser::apply_run_fonts(&BytesStart::new("w:rFonts"), &mut props);
         assert_eq!(props.fonts, previous_fonts);
         assert_eq!(props.authored_east_asia_font_hint, Some(false));
         assert_eq!(props.authored_east_asia_font_name, Some(false));
+    }
+
+    fn assert_inline_attributes_match_checked(element: &BytesStart<'_>) {
+        let capture = |attribute: Result<Attribute<'_>, AttrError>| {
+            attribute
+                .map(|attribute| {
+                    (
+                        attribute.key.as_ref().to_vec(),
+                        attribute.value.into_owned(),
+                    )
+                })
+                .map_err(|error| error.to_string())
+        };
+        assert_eq!(
+            inline_attributes(element).map(capture).collect::<Vec<_>>(),
+            element.attributes().map(capture).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn inline_attributes_preserve_errors_duplicates_and_long_lists() {
+        for attributes in [
+            "",
+            " w:val='1'",
+            " a='1' a='2' b='3' a='4'",
+            " a=invalid a='valid' b='3'",
+            " a='1' a=invalid b='3'",
+            " a='1' missing b='3' a='4'",
+            " a='1' b= c='3'",
+            " a='1' b=",
+            " a='1' b='unterminated",
+            " a='1' b='2' c='3' d='4' e='5' f='6' g='7' h='8' i='9' a='10' j='11'",
+            " a='1' b='2' c='3' d='4' e='5' f='6' g='7' h='8' a=invalid i='9'",
+        ] {
+            assert_inline_attributes_match_checked(&BytesStart::from_content(
+                format!("tag{attributes}"),
+                3,
+            ));
+        }
+        let mut element = BytesStart::new("tag");
+        for (key, value) in [
+            (b"a\xff".as_slice(), b"\xff\xfe".as_slice()),
+            (b"a\xff".as_slice(), b"duplicate".as_slice()),
+            (b"other".as_slice(), b"&amp;\r\n".as_slice()),
+        ] {
+            element.push_attribute((key, value));
+        }
+        assert_inline_attributes_match_checked(&element);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn inline_attributes_match_checked_iterator(
+            fragments in proptest::collection::vec(
+                proptest::prop_oneof![
+                    "[a-z:]{1,12}=['\"][a-z0-9 &;]{0,16}['\"]",
+                    proptest::strategy::Just("w:ascii='Face'".to_string()),
+                    proptest::strategy::Just("w:ascii=invalid".to_string()),
+                    proptest::strategy::Just("w:val='1'".to_string()),
+                    proptest::strategy::Just("missing".to_string()),
+                    proptest::collection::vec(proptest::char::any(), 0..32)
+                        .prop_map(|chars| chars.into_iter().collect::<String>()),
+                ], 0..24,
+            ),
+        ) {
+            let element = BytesStart::from_content(format!("tag {}", fragments.join(" ")), 3);
+            assert_inline_attributes_match_checked(&element);
+        }
     }
 
     #[test]
@@ -12238,7 +12407,7 @@ mod tests {
             event.push_attribute((key, value));
         }
         let mut props = RunProperties::default();
-        DocumentParser::apply_run_fonts(event.attributes(), &mut props);
+        DocumentParser::apply_run_fonts(&event, &mut props);
         let fonts = props.fonts.as_ref().unwrap();
         assert_eq!(fonts.ascii.as_deref(), Some("A\u{fffd}B"));
         assert_eq!(fonts.h_ansi.as_deref(), Some("Latin"));
