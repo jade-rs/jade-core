@@ -11636,6 +11636,46 @@ mod tests {
         }
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 96, ..ProptestConfig::default() })]
+        #[test]
+        fn mac_object_space_runs_ignore_equivalent_run_boundaries(
+            before in 1usize..=3, after in 1usize..=3,
+            balance in any::<bool>(), split in any::<bool>(),
+        ) {
+            // Word 16.114.2 captures: object-space-runs, 20261030. All spaces
+            // in these internal runs are half an em when balancing is on,
+            // including spaces stored in separate otherwise identical runs.
+            use crate::line_metrics::WordLayoutPlatform;
+            let text = format!("Hello{}\u{fffc}{}World", " ".repeat(before), " ".repeat(after));
+            let object = text.find('\u{fffc}').unwrap();
+            let object_end = object + '\u{fffc}'.len_utf8();
+            let run = |start, end| RunStyle {
+                start, end, properties: None, revision: None, hyperlink: None,
+                inline_object: (start == object).then_some(InlineObject {
+                    width: 20.0, height: 20.0, descent: 0.0,
+                }),
+            };
+            let whole = vec![run(0, object), run(object, object_end), run(object_end, text.len())];
+            let fragments = text.char_indices().map(|(offset, ch)| run(offset, offset + ch.len_utf8())).collect::<Vec<_>>();
+            let mut paragraph = ParagraphStyle {
+                word_platform: WordLayoutPlatform::Mac, ..ParagraphStyle::default()
+            };
+            paragraph.east_asian_rules.balance_single_byte_double_byte_width = balance;
+            let ctx = TestContext::new(10.0);
+            let expected = wrap_text_into_lines(&ctx, &text, &whole, 0.0, &paragraph, 0, 500.0).unwrap();
+            let actual = wrap_text_into_lines(&ctx, &text, if split { &fragments } else { &whole }, 0.0, &paragraph, 0, 500.0).unwrap();
+            prop_assert_eq!(actual.len(), 1);
+            let widths = |lines: &[WrappedLine]| lines[0].clusters.iter().map(|c| c.width).collect::<Vec<_>>();
+            prop_assert_eq!(widths(&actual), widths(&expected));
+            let spaces = actual[0].clusters.iter().filter(|c| c.text.as_str() == " ").collect::<Vec<_>>();
+            prop_assert_eq!(spaces.len(), before + after);
+            for space in spaces {
+                prop_assert_eq!((space.width - 8.0).abs() < 1e-6, balance);
+            }
+        }
+    }
+
     #[test]
     fn numbering_ascent_covers_both_segments_of_first_float_band_only() {
         use crate::line_metrics::{
