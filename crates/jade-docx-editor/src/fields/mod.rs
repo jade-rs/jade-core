@@ -310,27 +310,61 @@ fn ordered(range: SelectionRange) -> (TextPosition, TextPosition) {
 /// The fields (outermost, not nested operands) the selection touches.
 fn selected_fields(doc: &WordDocument, story: &Story, range: SelectionRange) -> Vec<usize> {
     let (runs, paragraphs) = selected_ids(doc, range);
+    let (start, end) = ordered(range);
+    let start = doc.rendered_to_model_text_position(start);
+    let end = doc.rendered_to_model_text_position(end);
+    let surfaces: HashMap<_, _> = (0..doc.paragraph_count())
+        .filter(|&index| !doc.is_note_paragraph_surface(index))
+        .filter_map(|index| {
+            let paragraph = doc.paragraph(index)?;
+            let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+            paragraph.node_id.map(|id| (id, (index, text)))
+        })
+        .collect();
+    let position = |paragraph: usize, offset: usize| {
+        story
+            .paragraphs
+            .get(paragraph)
+            .and_then(|paragraph| {
+                surfaces
+                    .get(&paragraph.id)
+                    .filter(|(_, text)| *text == paragraph.text)
+            })
+            .map(|(surface, _)| (*surface, offset))
+    };
     let mut selected = Vec::new();
     for (index, field) in story.fields.iter().enumerate() {
-        let touched = field.span_runs.iter().any(|run| runs.contains(run))
-            || story
-                .paragraphs
-                .get(field.paragraph)
-                .is_some_and(|paragraph| paragraphs.contains(&paragraph.id))
-            || field.simple.is_some_and(|simple| {
-                write::find_element(
-                    doc.raw_document
-                        .as_ref()
-                        .map(|raw| raw.root())
-                        .expect("raw"),
-                    simple,
-                )
-                .is_some_and(|element| {
-                    element.children.iter().any(
+        // Offsets distinguish fields sharing a run. Keep the XML-id path for
+        // paragraphs whose model text includes objects the story scanner omits.
+        let touched = position(field.paragraph, field.start_offset)
+            .zip(position(field.end_paragraph, field.end_offset))
+            .filter(|_| field.simple.is_some() || field.end.is_some())
+            .map_or_else(
+                || {
+                    field.span_runs.iter().any(|run| runs.contains(run))
+                        || story
+                            .paragraphs
+                            .get(field.paragraph)
+                            .is_some_and(|paragraph| paragraphs.contains(&paragraph.id))
+                        || field.simple.is_some_and(|simple| {
+                            write::find_element(
+                                doc.raw_document
+                                    .as_ref()
+                                    .map(|raw| raw.root())
+                                    .expect("raw"),
+                                simple,
+                            )
+                            .is_some_and(|element| {
+                                element.children.iter().any(
                         |child| matches!(child, XmlNode::Element(run) if runs.contains(&run.id)),
                     )
-                })
-            });
+                            })
+                        })
+                },
+                |(from, to)| {
+                    from <= (end.paragraph, end.offset) && to >= (start.paragraph, start.offset)
+                },
+            );
         if !touched {
             continue;
         }
@@ -682,13 +716,27 @@ pub fn update_fields(
             Some(with_operands(&story, &top))
         }
     };
-    let toc_selected = story.fields.iter().enumerate().any(|(index, field)| {
-        selected
-            .as_ref()
-            .is_none_or(|selected| selected.contains(&index))
-            && FieldCode::parse(&field.instruction_with(|_| String::new()))
-                .is_some_and(|code| code.name == "TOC")
-    });
+    let toc_targets: Vec<usize> = doc
+        .tables_of_contents()
+        .iter()
+        .enumerate()
+        .filter(|(_, block)| {
+            story.fields.iter().enumerate().any(|(index, field)| {
+                field.parent.is_none()
+                    && !field.locked
+                    && selected
+                        .as_ref()
+                        .is_none_or(|selected| selected.contains(&index))
+                    && story
+                        .paragraphs
+                        .get(field.paragraph)
+                        .and_then(|paragraph| surfaces.get(&paragraph.id))
+                        == Some(&block.start)
+                    && field.instruction_with(|_| String::new()).trim() == block.instruction
+            })
+        })
+        .map(|(index, _)| index)
+        .collect();
     let (mut written, mut changes) = update_story(
         root_mut(&mut body),
         &story,
@@ -748,19 +796,16 @@ pub fn update_fields(
         }
         properties.write(&mut files)?;
     }
-    if written == 0 && changes.is_empty() && !toc_selected {
+    if written == 0 && changes.is_empty() && toc_targets.is_empty() {
         return Ok(0);
     }
     if written > 0 || !changes.is_empty() {
         replace_with(doc, &files)?;
     }
-    if toc_selected {
-        let mut selection = None;
-        let mut ctx = CommandContext::new(doc, &mut selection);
-        let mut toc = crate::commands::insert_toc::UpdateTableOfContentsCommand::new();
-        if toc.apply(&mut ctx).is_ok() {
-            written += 1;
-        }
+    // Updating the last table first keeps earlier table indices stable.
+    for index in toc_targets.into_iter().rev() {
+        doc.update_table_of_contents_at(index)?;
+        written += 1;
     }
     Ok(written)
 }

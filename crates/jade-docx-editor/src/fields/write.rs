@@ -160,18 +160,57 @@ fn is_anchor(node: &XmlNode) -> bool {
     ))
 }
 
-fn is_marker_type(element: &XmlElement, kind: &str) -> bool {
-    element.name == "w:fldChar"
-        && element
-            .attributes
-            .iter()
-            .any(|attribute| attribute.name == "w:fldCharType" && attribute.value == kind)
+/// Find the current run of a marker, including after another field split it.
+fn marker_path(root: &XmlElement, marker: Marker) -> Option<Vec<usize>> {
+    let mut path = find_path(root, marker.child)?;
+    path.pop()?;
+    Some(path)
 }
 
-/// The path of a marker's run, re-found by the marker's type in case the
-/// run's children moved.
-fn marker_path(root: &XmlElement, marker: Marker) -> Option<Vec<usize>> {
-    find_path(root, marker.run)
+/// Field markers may share a run with text or other fields. Isolate only
+/// the marker being edited, preserving all neighbouring children and formatting.
+fn isolate_marker(root: &mut XmlElement, marker: Marker) -> Result<(), String> {
+    let path = marker_path(root, marker).ok_or("field marker not found")?;
+    let run = at_path_mut(root, &path).ok_or("field run lost")?;
+    let at = run
+        .children
+        .iter()
+        .position(|child| matches!(child, XmlNode::Element(e) if e.id == marker.child))
+        .ok_or("field marker lost")?;
+    let properties = run_properties(run).cloned();
+    let mut suffix = run.clone();
+    suffix.id = XmlNodeId::new(0);
+    suffix.children = run.children.split_off(at + 1);
+    let marker_node = run.children.pop().ok_or("field marker lost")?;
+    let has_prefix = !run_is_empty(run);
+    let mut isolated = run.clone();
+    isolated.id = XmlNodeId::new(0);
+    isolated.children.clear();
+    if let Some(properties) = &properties {
+        isolated
+            .children
+            .push(XmlNode::Element(fresh_copy(properties)));
+        suffix
+            .children
+            .insert(0, XmlNode::Element(fresh_copy(properties)));
+    }
+    isolated.children.push(marker_node);
+    let mut replacement = Vec::new();
+    if has_prefix {
+        replacement.push(XmlNode::Element(run.clone()));
+    } else {
+        isolated.id = run.id;
+    }
+    replacement.push(XmlNode::Element(isolated));
+    if !run_is_empty(&suffix) {
+        replacement.push(XmlNode::Element(suffix));
+    }
+    let (parent_path, index) = path.split_at(path.len() - 1);
+    at_path_mut(root, parent_path)
+        .ok_or("field run parent lost")?
+        .children
+        .splice(index[0]..=index[0], replacement);
+    Ok(())
 }
 
 /// Removes everything between the separate and end markers of a complex
@@ -184,21 +223,6 @@ fn clear_complex_result(
 ) -> Option<Vec<usize>> {
     let start = marker_path(root, separate)?;
     let finish = marker_path(root, end)?;
-    if start == finish {
-        // Both markers in one run: drop the run children between them.
-        let run = at_path_mut(root, &start)?;
-        let separate_at = run.children.iter().position(
-            |child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "separate")),
-        )?;
-        let end_at = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "end")))?;
-        if end_at > separate_at + 1 {
-            run.children.drain(separate_at + 1..end_at);
-        }
-        return Some(start);
-    }
     let common = start
         .iter()
         .zip(&finish)
@@ -213,10 +237,15 @@ fn clear_complex_result(
         let parent = at_path_mut(root, &finish[..depth])?;
         let keep_from = finish[depth];
         let removed: Vec<XmlNode> = parent.children.drain(..keep_from).collect();
-        let anchors: Vec<XmlNode> = removed.into_iter().filter(is_anchor).collect();
-        let count = anchors.len();
-        parent.children.splice(0..0, anchors);
-        let _ = count;
+        let retained: Vec<XmlNode> = removed
+            .into_iter()
+            .filter(|node| {
+                is_anchor(node)
+                    || (parent.name == "w:p"
+                        && matches!(node, XmlNode::Element(e) if e.name == "w:pPr"))
+            })
+            .collect();
+        parent.children.splice(0..0, retained);
     }
     // Inside the separate's branch, everything after the separate run.
     for depth in (common + 1..start.len()).rev() {
@@ -278,6 +307,11 @@ fn clear_complex_result(
                         |node| !matches!(node, XmlNode::Element(e) if e.name == "w:sectPr"),
                     );
                     pr.children.push(section);
+                } else {
+                    first.children.insert(
+                        0,
+                        XmlNode::Element(new_element("w:pPr", &[], vec![section])),
+                    );
                 }
             }
         }
@@ -301,7 +335,7 @@ pub(crate) fn result_properties(
     field
         .result_runs
         .first()
-        .and_then(|&id| from(id))
+        .and_then(|run| from(run.id))
         .or_else(|| field.instruction_runs.first().and_then(|&id| from(id)))
         .or_else(|| field.begin.and_then(|marker| from(marker.run)))
         .or_else(|| {
@@ -326,27 +360,9 @@ pub(crate) fn merge_format_runs(
     let old: Vec<(usize, Option<XmlElement>)> = field
         .result_runs
         .iter()
-        .filter_map(|&id| find_element(root, id))
-        .map(|run| {
-            let length = run
-                .children
-                .iter()
-                .map(|child| match child {
-                    XmlNode::Element(e) if e.name == "w:t" => e
-                        .children
-                        .iter()
-                        .map(|node| match node {
-                            XmlNode::Text(text) => text.chars().count(),
-                            _ => 0,
-                        })
-                        .sum(),
-                    XmlNode::Element(e) if matches!(e.name.as_str(), "w:tab" | "w:br" | "w:cr") => {
-                        1
-                    }
-                    _ => 0,
-                })
-                .sum::<usize>();
-            (length, run_properties(run).cloned())
+        .filter_map(|result| {
+            find_element(root, result.id)
+                .map(|run| (result.characters, run_properties(run).cloned()))
         })
         .collect();
     let chars: Vec<char> = text.chars().collect();
@@ -394,25 +410,14 @@ fn next_bookmark_id(root: &XmlElement) -> u32 {
 /// Clears `dirty` from a field's begin marker or simple field: an updated
 /// field is current.
 fn clear_dirty(root: &mut XmlElement, field: &ScannedField) {
-    let target = field
+    if let Some(target) = field
         .simple
-        .or(field.begin.map(|marker| marker.run))
-        .and_then(|id| find_element_mut(root, id));
-    let Some(target) = target else { return };
-    if target.name == "w:fldSimple" {
+        .or(field.begin.map(|marker| marker.child))
+        .and_then(|id| find_element_mut(root, id))
+    {
         target
             .attributes
             .retain(|attribute| attribute.name != "w:dirty");
-        return;
-    }
-    for child in &mut target.children {
-        if let XmlNode::Element(child) = child {
-            if is_marker_type(child, "begin") {
-                child
-                    .attributes
-                    .retain(|attribute| attribute.name != "w:dirty");
-            }
-        }
     }
 }
 
@@ -426,7 +431,7 @@ pub(crate) fn write_result(
     prepared_runs: Option<Vec<XmlElement>>,
 ) -> Result<(), String> {
     clear_dirty(root, field);
-    let mut nodes: Vec<XmlElement> = match &result {
+    let nodes: Vec<XmlElement> = match &result {
         NewResult::Text(text) => prepared_runs.unwrap_or_else(|| text_runs(text, rpr)),
         NewResult::Paragraphs(paragraphs) => text_runs(
             paragraphs.first().map(String::as_str).unwrap_or_default(),
@@ -461,6 +466,10 @@ pub(crate) fn write_result(
     let (Some(begin), Some(end)) = (field.begin, field.end) else {
         return Err("field has no end".to_string());
     };
+    isolate_marker(root, end)?;
+    if let Some(separate) = field.separate {
+        isolate_marker(root, separate)?;
+    }
     let separate_path = match field.separate {
         Some(separate) => {
             clear_complex_result(root, separate, end).ok_or("field result could not be cleared")?
@@ -496,29 +505,6 @@ pub(crate) fn write_result(
     let _ = begin;
     let (parent_path, index) = separate_path.split_at(separate_path.len() - 1);
     let separate_index = index[0];
-    let same_run_end = at_path(root, &separate_path).is_some_and(|run| {
-        run.children
-            .iter()
-            .any(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "end")))
-    });
-    if same_run_end {
-        // Split the run: separate stays, the end moves to a run after the
-        // result.
-        let run = at_path_mut(root, &separate_path).ok_or("separate run lost")?;
-        let end_at = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "end")))
-            .ok_or("end marker lost")?;
-        let tail: Vec<XmlNode> = run.children.drain(end_at..).collect();
-        let mut end_run = new_element("w:r", &[], Vec::new());
-        if let Some(rpr) = run_properties(run) {
-            end_run.children.push(XmlNode::Element(fresh_copy(rpr)));
-        }
-        end_run.children.extend(tail);
-        nodes.push(end_run);
-    }
-
     let paragraphs = match result {
         NewResult::Paragraphs(paragraphs) if paragraphs.len() > 1 => paragraphs,
         _ => {
@@ -620,18 +606,11 @@ pub(crate) fn set_locked(root: &mut XmlElement, field: &ScannedField, locked: bo
     let Some(begin) = field.begin else {
         return false;
     };
-    let Some(run) = find_element_mut(root, begin.run) else {
+    let Some(marker) = find_element_mut(root, begin.child) else {
         return false;
     };
-    for child in &mut run.children {
-        if let XmlNode::Element(child) = child {
-            if is_marker_type(child, "begin") {
-                apply(&mut child.attributes);
-                return true;
-            }
-        }
-    }
-    false
+    apply(&mut marker.attributes);
+    true
 }
 
 /// Whether a run has nothing left but its properties.
@@ -661,116 +640,29 @@ pub(crate) fn unlink(root: &mut XmlElement, field: &ScannedField) -> Result<(), 
     // Everything from the begin marker to the separate marker (or to the end
     // when there is no result) is code; the end marker goes too.
     let code_end = field.separate.unwrap_or(end);
+    isolate_marker(root, begin)?;
+    isolate_marker(root, code_end)?;
     remove_between(root, begin, code_end)?;
-    remove_marker(root, end)?;
+    if field.separate.is_some() {
+        remove_marker(root, end)?;
+    }
     Ok(())
 }
 
 /// Removes the markers `from` and `to` and everything between them.
 fn remove_between(root: &mut XmlElement, from: Marker, to: Marker) -> Result<(), String> {
-    let start = find_path(root, from.run).ok_or("begin run not found")?;
-    let finish = find_path(root, to.run).ok_or("separate run not found")?;
-    if start == finish {
-        let run = at_path_mut(root, &start).ok_or("run lost")?;
-        let first = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "begin")))
-            .unwrap_or(0);
-        let last = run
-            .children
-            .iter()
-            .rposition(|child| {
-                matches!(child, XmlNode::Element(e) if is_marker_type(e, "separate") || is_marker_type(e, "end"))
-            })
-            .unwrap_or(run.children.len() - 1);
-        run.children.drain(first..=last);
-        if run_is_empty(run) {
-            let (parent_path, index) = start.split_at(start.len() - 1);
-            at_path_mut(root, parent_path)
-                .ok_or("run parent lost")?
-                .children
-                .remove(index[0]);
-        }
-        return Ok(());
-    }
-    let common = start
-        .iter()
-        .zip(&finish)
-        .take_while(|(a, b)| a == b)
-        .count();
-    if common >= start.len() || common >= finish.len() {
-        return Err("field markers are nested in one another".to_string());
-    }
-    // The finishing run: drop children up to and including the marker.
-    {
-        let run = at_path_mut(root, &finish).ok_or("run lost")?;
-        let marker_at = run
-            .children
-            .iter()
-            .position(|child| {
-                matches!(child, XmlNode::Element(e) if is_marker_type(e, "separate") || is_marker_type(e, "end"))
-            })
-            .unwrap_or(run.children.len().saturating_sub(1));
-        let rpr_kept: Vec<XmlNode> = run
-            .children
-            .drain(..=marker_at)
-            .filter(|node| matches!(node, XmlNode::Element(e) if e.name == "w:rPr"))
-            .collect();
-        run.children.splice(0..0, rpr_kept);
-    }
-    for depth in (common + 1..finish.len()).rev() {
-        let parent = at_path_mut(root, &finish[..depth]).ok_or("path lost")?;
-        let keep_from = finish[depth];
-        let removed: Vec<XmlNode> = parent.children.drain(..keep_from).collect();
-        let anchors: Vec<XmlNode> = removed.into_iter().filter(is_anchor).collect();
-        parent.children.splice(0..0, anchors);
-    }
-    {
-        let run = at_path_mut(root, &start).ok_or("run lost")?;
-        let marker_at = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "begin")))
-            .unwrap_or(0);
-        run.children.truncate(marker_at);
-    }
-    for depth in (common + 1..start.len()).rev() {
-        let parent = at_path_mut(root, &start[..depth]).ok_or("path lost")?;
-        let keep_to = start[depth] + 1;
-        let removed: Vec<XmlNode> = parent.children.drain(keep_to..).collect();
-        parent
-            .children
-            .extend(removed.into_iter().filter(is_anchor));
-    }
-    let container = at_path_mut(root, &start[..common]).ok_or("container lost")?;
-    let (from_index, to_index) = (start[common] + 1, finish[common]);
-    if to_index > from_index {
-        let removed: Vec<XmlNode> = container.children.drain(from_index..to_index).collect();
-        let anchors: Vec<XmlNode> = removed.into_iter().filter(is_anchor).collect();
-        container.children.splice(from_index..from_index, anchors);
-    }
-    // Runs emptied by the removal go.
-    for id in [from.run, to.run] {
-        if let Some(path) = find_path(root, id) {
-            if at_path(root, &path).is_some_and(run_is_empty) {
-                let (parent_path, index) = path.split_at(path.len() - 1);
-                if let Some(parent) = at_path_mut(root, parent_path) {
-                    parent.children.remove(index[0]);
-                }
-            }
-        }
-    }
-    Ok(())
+    clear_complex_result(root, from, to).ok_or("field code could not be cleared")?;
+    remove_marker(root, to)?;
+    remove_marker(root, from)
 }
 
 fn remove_marker(root: &mut XmlElement, marker: Marker) -> Result<(), String> {
-    let path = find_path(root, marker.run).ok_or("end run not found")?;
+    let path = marker_path(root, marker).ok_or("end run not found")?;
     let run = at_path_mut(root, &path).ok_or("end run lost")?;
     if let Some(at) = run
         .children
         .iter()
-        .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "end")))
+        .position(|child| matches!(child, XmlNode::Element(e) if e.id == marker.child))
     {
         run.children.remove(at);
     }
@@ -830,61 +722,10 @@ pub(crate) fn replace_code(
     };
     let code_end = field.separate.unwrap_or(end);
     // Clear the old code: keep the begin and separate (or end) markers.
-    let begin_path = find_path(root, begin.run).ok_or("begin run not found")?;
-    let separate_path = find_path(root, code_end.run).ok_or("separate run not found")?;
-    if begin_path == separate_path {
-        let run = at_path_mut(root, &begin_path).ok_or("run lost")?;
-        let begin_at = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "begin")))
-            .ok_or("begin marker lost")?;
-        let tail: Vec<XmlNode> = run.children.drain(begin_at + 1..).collect();
-        let keep: Vec<XmlNode> = tail
-            .into_iter()
-            .skip_while(|node| {
-                !matches!(node, XmlNode::Element(e) if is_marker_type(e, "separate") || is_marker_type(e, "end"))
-            })
-            .collect();
-        let mut split = new_element("w:r", &[], Vec::new());
-        if let Some(rpr) = run_properties(run) {
-            split.children.push(XmlNode::Element(fresh_copy(rpr)));
-        }
-        split.children.extend(keep);
-        let (parent_path, index) = begin_path.split_at(begin_path.len() - 1);
-        let parent = at_path_mut(root, parent_path).ok_or("run parent lost")?;
-        let mut inserted: Vec<XmlNode> = code_runs(code, rpr.as_ref(), false)
-            .into_iter()
-            .map(XmlNode::Element)
-            .collect();
-        inserted.push(XmlNode::Element(split));
-        parent.children.splice(index[0] + 1..index[0] + 1, inserted);
-        return Ok(());
-    }
-    // Remove what lies between the begin run and the separate run.
-    {
-        let run = at_path_mut(root, &begin_path).ok_or("run lost")?;
-        if let Some(at) = run
-            .children
-            .iter()
-            .position(|child| matches!(child, XmlNode::Element(e) if is_marker_type(e, "begin")))
-        {
-            run.children.truncate(at + 1);
-        }
-    }
-    {
-        let run = at_path_mut(root, &separate_path).ok_or("run lost")?;
-        if let Some(at) = run.children.iter().position(|child| {
-            matches!(child, XmlNode::Element(e) if is_marker_type(e, "separate") || is_marker_type(e, "end"))
-        }) {
-            let rpr: Vec<XmlNode> = run
-                .children
-                .drain(..at)
-                .filter(|node| matches!(node, XmlNode::Element(e) if e.name == "w:rPr"))
-                .collect();
-            run.children.splice(0..0, rpr);
-        }
-    }
+    isolate_marker(root, begin)?;
+    isolate_marker(root, code_end)?;
+    let begin_path = marker_path(root, begin).ok_or("begin run not found")?;
+    let separate_path = marker_path(root, code_end).ok_or("separate run not found")?;
     let common = begin_path
         .iter()
         .zip(&separate_path)

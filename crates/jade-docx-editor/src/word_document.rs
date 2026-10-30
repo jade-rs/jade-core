@@ -20875,7 +20875,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, "dot")
+        self.generate_and_insert_toc_at(body_insert_index, options, "dot", None)
     }
 
     /// Updates the first table of contents in the document (Word's References ▸
@@ -20913,8 +20913,9 @@ impl WordDocument {
             },
             _ => return Err("the table of contents is not in the body".to_string()),
         };
+        let location = self.field_block_xml_location(block.start, block.end)?;
         self.remove_body_elements(start, end)?;
-        self.generate_and_insert_toc_at(start, &options, &leader)
+        self.generate_and_insert_toc_at(start, &options, &leader, Some(location))
     }
 
     /// Replaces the `index`-th table of contents with one built from new
@@ -20942,8 +20943,9 @@ impl WordDocument {
             .ok_or_else(|| "the table of contents is not in the body".to_string())?;
         let end = element(self, block.end)
             .ok_or_else(|| "the table of contents is not in the body".to_string())?;
+        let location = self.field_block_xml_location(block.start, block.end)?;
         self.remove_body_elements(start, end)?;
-        self.generate_and_insert_toc_at(start, options, leader)
+        self.generate_and_insert_toc_at(start, options, leader, Some(location))
     }
 
     /// Inserts a table of contents whose entries' tabs have `leader`
@@ -20971,7 +20973,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, leader)
+        self.generate_and_insert_toc_at(body_insert_index, options, leader, None)
     }
 
     /// The document's tables of contents and of figures, in order.
@@ -20994,6 +20996,34 @@ impl WordDocument {
             .unwrap_or_else(|| "dot".to_string())
     }
 
+    fn field_block_xml_location(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Result<(XmlNodeId, usize), String> {
+        let raw = self
+            .raw_document
+            .as_ref()
+            .ok_or("document XML is unavailable")?;
+        let node = |surface| {
+            self.paragraph(surface)
+                .and_then(|paragraph| paragraph.node_id)
+                .ok_or_else(|| "field-block paragraph XML is unavailable".to_string())
+        };
+        let first = node(start)?;
+        let last = node(end)?;
+        let parent = raw.parent_id(first).ok_or("missing paragraph parent")?;
+        if raw.parent_id(last) != Some(parent)
+            || (start..=end)
+                .any(|surface| node(surface).ok().and_then(|id| raw.parent_id(id)) != Some(parent))
+        {
+            return Err("field-block paragraphs have different containers".to_string());
+        }
+        let path = raw.path(first).ok_or("missing paragraph XML")?;
+        let index = path.as_slice().last().ok_or("missing paragraph position")?;
+        Ok((parent, *index))
+    }
+
     /// Generates TOC entry paragraphs from the current headings and inserts them
     /// (model + raw XML) at `body_insert_index`. Shared by insert and update.
     fn generate_and_insert_toc_at(
@@ -21001,6 +21031,7 @@ impl WordDocument {
         body_insert_index: usize,
         options: &TocOptions,
         leader: &str,
+        location: Option<(XmlNodeId, usize)>,
     ) -> Result<usize, String> {
         let mut entries = self
             .document
@@ -21089,7 +21120,7 @@ impl WordDocument {
         // headings are not Word heading styles — e.g. the contract fixtures —
         // otherwise returned an error that the UI swallowed, looking like a no-op.)
         if entries.is_empty() {
-            return self.insert_toc_placeholder_at(body_insert_index, &toc_instruction);
+            return self.insert_toc_placeholder_at(body_insert_index, &toc_instruction, location);
         }
 
         // Ensure every entry has a bookmark anchor, creating `_Toc…` bookmarks on
@@ -21205,7 +21236,7 @@ impl WordDocument {
 
         // Insert into the raw XML body and copy the assigned <w:p> ids back onto
         // the model paragraphs so later edits map correctly.
-        let inserted_ids = self.insert_toc_xml(body_insert_index, raw_paragraphs)?;
+        let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
         if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
             for (offset, node_id) in inserted_ids.into_iter().enumerate() {
                 if let Some(BodyElement::Paragraph(paragraph)) =
@@ -21231,6 +21262,7 @@ impl WordDocument {
         &mut self,
         body_insert_index: usize,
         toc_instruction: &str,
+        location: Option<(XmlNodeId, usize)>,
     ) -> Result<usize, String> {
         // Word JP's "No table of contents entries found." placeholder.
         let placeholder = "目次項目が見つかりません。";
@@ -21284,7 +21316,7 @@ impl WordDocument {
         }
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
-        let inserted_ids = self.insert_toc_xml(body_insert_index, raw_paragraphs)?;
+        let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
         if let Some(node_id) = inserted_ids.into_iter().next() {
             if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
                 if let Some(BodyElement::Paragraph(paragraph)) =
@@ -21515,15 +21547,29 @@ impl WordDocument {
         body_insert_index: usize,
         paragraphs: Vec<XmlNode>,
     ) -> Result<Vec<Option<XmlNodeId>>, String> {
+        self.insert_toc_xml_at(body_insert_index, paragraphs, None)
+    }
+
+    fn insert_toc_xml_at(
+        &mut self,
+        body_insert_index: usize,
+        paragraphs: Vec<XmlNode>,
+        location: Option<(XmlNodeId, usize)>,
+    ) -> Result<Vec<Option<XmlNodeId>>, String> {
         let Some(mut raw) = self.raw_document.take() else {
             return Ok(vec![None; paragraphs.len()]);
         };
         let result = (|| {
-            let body_id = Self::find_body_element_id(&raw)
-                .ok_or_else(|| "failed to find w:body in raw xml".to_string())?;
-            let mut insert_child_index =
-                Self::body_child_insert_index(&raw, body_id, body_insert_index)
-                    .ok_or_else(|| "failed to resolve body insertion point".to_string())?;
+            let (body_id, mut insert_child_index) = match location {
+                Some(location) => location,
+                None => {
+                    let body_id = Self::find_body_element_id(&raw)
+                        .ok_or_else(|| "failed to find w:body in raw xml".to_string())?;
+                    let index = Self::body_child_insert_index(&raw, body_id, body_insert_index)
+                        .ok_or_else(|| "failed to resolve body insertion point".to_string())?;
+                    (body_id, index)
+                }
+            };
             let mut ids = Vec::with_capacity(paragraphs.len());
             for node in paragraphs {
                 let inserted = raw
