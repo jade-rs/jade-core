@@ -30433,9 +30433,15 @@ where
             if let Some(alignment) = props.baseline.as_deref() {
                 match alignment {
                     "superscript" | "super" => {
-                        baseline_shift_px = -points_to_px(font_size_pt * 0.35);
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
+                        baseline_shift_px = -points_to_px(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                                font_size_pt,
+                                stack,
+                                true,
+                            ),
+                        );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
                             font_size_pt,
                             stack,
@@ -30445,9 +30451,15 @@ where
                         });
                     }
                     "subscript" | "sub" => {
-                        baseline_shift_px = points_to_px(font_size_pt * 0.15);
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
+                        baseline_shift_px = points_to_px(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                                font_size_pt,
+                                stack,
+                                false,
+                            ),
+                        );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
                             font_size_pt,
                             stack,
