@@ -13545,9 +13545,19 @@ where
             .as_ref()
             .filter(|cached| Rc::ptr_eq(cached, &document_rc))
             .and(self.last_document_comment_anchors);
-        self.document_has_comments =
-            cached_comment_anchors.unwrap_or_else(|| self.document_has_comment_anchors(document));
-        self.last_document_comment_anchors = Some(self.document_has_comments);
+        // Anchor presence only affects layout/cache eligibility while comment
+        // decorations are enabled. Keep an existing result for this immutable
+        // snapshot, but leave an unscanned snapshot unknown so enabling comments
+        // after hidden edits still performs the required detection.
+        self.last_document_comment_anchors = if options.render_comments {
+            Some(
+                cached_comment_anchors
+                    .unwrap_or_else(|| self.document_has_comment_anchors(document)),
+            )
+        } else {
+            cached_comment_anchors
+        };
+        self.document_has_comments = self.last_document_comment_anchors.unwrap_or(false);
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
         // Edit-pixel-reuse: reset the one-shot signal at every render entry so a
@@ -51032,11 +51042,61 @@ mod tests {
         assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
     }
 
+    #[test]
+    fn hidden_comments_do_not_scan_large_documents_and_reenable_after_edits() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = doc_with_paragraph_texts(&vec!["body"; 3900]);
+        document
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .push(BodyElement::from_paragraph(comment_test_paragraph(1)));
+        let mut document = Rc::new(document);
+        let mut options = options_for_seek_tests();
+        options.render_comments = false;
+        for _ in 0..3 {
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        }
+        assert_eq!(renderer.comment_anchor_document_scans.get(), 0);
+        options.render_comments = true;
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        assert!(renderer.document_has_comments);
+        assert!(renderer
+            .comment_annotations
+            .iter()
+            .any(|annotation| annotation.id == "1"));
+        assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
+        options.render_comments = false;
+        renderer.drop_document_cache();
+        Rc::make_mut(&mut document)
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .pop();
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
+        options.render_comments = true;
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        assert!(!renderer.document_has_comments);
+        assert!(renderer.comment_annotations.is_empty());
+        assert_eq!(renderer.comment_anchor_document_scans.get(), 2);
+    }
+
     proptest::proptest! {
         #![proptest_config(proptest::test_runner::Config::with_cases(96))]
         #[test]
         fn cached_comment_gate_tracks_story_edits_and_document_lifetimes(
-            operations in proptest::collection::vec((0u8..8, 0u8..15, 0u8..4, proptest::bool::ANY), 1..32)
+            operations in proptest::collection::vec((0u8..8, 0u8..15, 0u8..4, proptest::bool::ANY, proptest::bool::ANY), 1..32)
         ) {
             let (mut renderer, _) = recording_renderer();
             let mut options = options_for_seek_tests();
@@ -51050,8 +51110,8 @@ mod tests {
             let comments = HashMap::from([("1".into(), DocumentComment {
                 id: "1".into(), text: "preserved".into(), ..Default::default()
             })]);
-            let mut has_rendered = false;
-            for (step, (operation, story, kind, metadata)) in operations.into_iter().enumerate() {
+            let mut known_anchor_state = false;
+            for (step, (operation, story, kind, metadata, visible)) in operations.into_iter().enumerate() {
                 let scans_before = renderer.comment_anchor_document_scans.get();
                 let body = Body { elements: vec![BodyElement::from_paragraph(comment_test_paragraph(kind))] };
                 match operation {
@@ -51088,15 +51148,17 @@ mod tests {
                     5 => renderer.restore_document_cache(Rc::clone(&document)),
                     _ => (), // Same immutable Rc, with optional metadata changes.
                 }
+                options.render_comments = visible;
+                if operation != 6 { known_anchor_state = false; }
                 renderer.render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, metadata.then_some(&comments)).unwrap();
                 let expected_comments = anchored.into_iter().any(|present| present);
-                proptest::prop_assert_eq!(renderer.document_has_comments, expected_comments, "step={}, operation={}, story={}, kind={}", step, operation, story, kind);
-                proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), !expected_comments);
-                proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), !expected_comments);
-                proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), metadata);
-                let expected_new_scan = !has_rendered || operation != 6;
+                if visible { proptest::prop_assert_eq!(renderer.document_has_comments, expected_comments, "step={}, operation={}, story={}, kind={}", step, operation, story, kind); }
+                proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), !(visible && expected_comments));
+                proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), !(visible && expected_comments));
+                proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), visible && metadata);
+                let expected_new_scan = visible && !known_anchor_state;
                 proptest::prop_assert_eq!(renderer.comment_anchor_document_scans.get() - scans_before, usize::from(expected_new_scan), "step={}, operation={}", step, operation);
-                has_rendered = true;
+                known_anchor_state |= expected_new_scan;
             }
         }
     }
