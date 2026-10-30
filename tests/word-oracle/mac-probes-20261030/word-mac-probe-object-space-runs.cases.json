@@ -1,0 +1,60 @@
+{
+  "paragraphs": [
+    {
+      "id": "split-single-before",
+      "text": "Hello ￼World"
+    },
+    {
+      "id": "single-both",
+      "text": "Hello ￼ World"
+    },
+    {
+      "id": "paragraph-end",
+      "text": "Hello World ￼"
+    },
+    {
+      "id": "paragraph-start",
+      "text": "￼ Aa bb cc dd ee gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz"
+    },
+    {
+      "id": "long-line",
+      "text": "Aa bb cc dd ee gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz ￼ end"
+    },
+    {
+      "id": "floating-single",
+      "text": "Hello World ￼x y"
+    },
+    {
+      "id": "two-before",
+      "text": "Hello  ￼World"
+    },
+    {
+      "id": "three-before",
+      "text": "Hello   ￼World"
+    },
+    {
+      "id": "two-after",
+      "text": "Hello￼  World"
+    },
+    {
+      "id": "three-after",
+      "text": "Hello￼   World"
+    },
+    {
+      "id": "split-three-before",
+      "text": "Hello   ￼World"
+    },
+    {
+      "id": "split-three-after",
+      "text": "Hello￼   World"
+    },
+    {
+      "id": "floating-three",
+      "text": "Hello   ￼World"
+    },
+    {
+      "id": "text-three",
+      "text": "Hello   World"
+    }
+  ]
+}
