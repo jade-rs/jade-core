@@ -162,7 +162,11 @@ fn word_layout(reference: &Value) -> Value {
 #[test]
 fn mac_probe_coordinates() {
     let mut paths = Vec::new();
-    for directory in ["mac-probes-16114", "mac-probes-20261019"] {
+    for directory in [
+        "mac-probes-16114",
+        "mac-probes-20261019",
+        "mac-floating-horizontal-20261030",
+    ] {
         for entry in
             std::fs::read_dir(repo_path(&format!("tests/word-oracle/{directory}"))).unwrap()
         {
@@ -175,7 +179,7 @@ fn mac_probe_coordinates() {
     paths.sort();
     assert_eq!(
         paths.len(),
-        32,
+        34,
         "review coverage when adding/removing Mac probes"
     );
     let mut fonts = serde_json::Map::new();

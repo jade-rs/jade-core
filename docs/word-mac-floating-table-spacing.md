@@ -91,9 +91,12 @@ visible glyph without coordinate fitting:
 
 All are within the existing 0.375pt threshold. The bundled-font snapshot changes
 only ORDERED's seven X positions by +5.4pt; all other coordinates, source hashes,
-reference hashes and fonts remain unchanged. These probes now have an opt-in
-whole-probe Office-font oracle; the nine redistributable-font strict probes stay
-unchanged. Office fonts are not redistributed or required by CI.
+reference hashes and fonts remain unchanged. Both new probes are also part of
+the mandatory 34-probe bundled-font coordinate gate in every PR CI, with the
+existing 0.01pt snapshot tolerance. The opt-in whole-probe Office-font oracle
+provides an additional check; the nine redistributable-font strict probes stay
+unchanged. Office fonts are not redistributed or required by CI. See the
+[compatibility freeze policy](../tests/word-oracle/mac-native-coordinates.md#freezing-newly-established-compatibility).
 
 ```sh
 JADE_OFFICE_ARIAL='/Applications/Microsoft Word.app/Contents/Resources/DFonts/arial.ttf' \
@@ -104,3 +107,17 @@ JADE_OFFICE_ARIAL='/Applications/Microsoft Word.app/Contents/Resources/DFonts/ar
 The font SHA-256 must match the captured face. The new alignment unit test first
 failed against the previous implementation; it also checks modern/default modes,
 Windows, bidi, nonzero cell spacing and text-anchor gates.
+
+
+CI gate validation for the horizontal-placement follow-up:
+
+- Adding both captures before extending the snapshot failed on the missing
+  fixture identities; the reviewed 34-probe snapshot then passed.
+- Intentionally shifting the mode-14 probe's first glyph by 0.02pt made the
+  ordinary coordinate test fail at its unchanged 0.01pt tolerance. The snapshot
+  was restored after the check.
+- All 32 prior probes remain identical to the reviewed placement-fix snapshot,
+  including source/reference/font hashes. Compared with the pre-fix snapshot,
+  only ORDERED's seven X coordinates change by +5.4pt.
+- Setting both `CI=true` and `JADE_UPDATE_WORD_MAC_SNAPSHOT=1` failed with
+  `snapshot updates forbidden in CI`; the committed snapshot remained unchanged.
