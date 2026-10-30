@@ -36867,9 +36867,9 @@ impl AppliedRunStyle {
             .descriptor_for_grapheme(grapheme, script, self.font_hint.as_ref())
     }
 
-    fn descriptor_with_size(&self, script: ScriptCategory, size_pt: f32) -> String {
+    fn descriptor_with_size(&self, script: ScriptCategory, size_pt: f32) -> Rc<str> {
         let family = self.families.for_script(script);
-        format!("{}{:0.2}pt {}", self.font_style_prefix, size_pt, family)
+        crate::draw_command::control_mark_font::descriptor(size_pt, &self.font_style_prefix, family)
     }
 }
 
@@ -43595,6 +43595,42 @@ mod tests {
             ops.contains(&Op::SetFillStyle(CONTROL_MARK_COLOR.to_string())),
             "mark should use its own colour, not the run's: {ops:?}"
         );
+    }
+
+    #[test]
+    fn control_mark_font_reuse_preserves_styled_descriptors_and_painter_operations() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        for (size, prefix) in [
+            (12.0, "bold "),
+            (7.0, "italic "),
+            (0.5, ""),
+            (12.0, "bold "),
+        ] {
+            let mut style = test_applied_style(1.0);
+            style.font_size_pt = size;
+            style.font_style_prefix = prefix.into();
+            let expected = format!(
+                "{}{:0.2}pt {}",
+                prefix,
+                (size as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32,
+                style.families.for_script(ScriptCategory::Latin)
+            );
+            let mut first_ops = None;
+            for _ in 0..3 {
+                let renderer = renderer_measuring(&[("¶", 8.0)]);
+                let painter = RecordingPainter::new();
+                renderer
+                    .draw_control_mark(&painter, "¶", 10.0, 100.0, &style)
+                    .unwrap();
+                let ops = painter.ops();
+                assert!(ops.contains(&Op::SetFont(expected.clone())), "{ops:?}");
+                if let Some(first) = &first_ops {
+                    assert_eq!(&ops, first);
+                } else {
+                    first_ops = Some(ops);
+                }
+            }
+        }
     }
 
     #[test]

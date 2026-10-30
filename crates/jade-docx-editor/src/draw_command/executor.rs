@@ -1888,10 +1888,10 @@ fn execute_control_mark_with_font_state<P: Painter>(
     font_state.set_fill_style_if_changed(context, &style.fill_color);
 
     let scaled_font_size_pt = (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
-    let scaled_descriptor = format!(
-        "{:0.2}pt {}",
+    let scaled_descriptor = super::control_mark_font::descriptor(
         scaled_font_size_pt,
-        extract_font_family(&style.font_descriptor_latin_ascii)
+        "",
+        extract_font_family(&style.font_descriptor_latin_ascii),
     );
     font_state.set_font_if_changed(context, &scaled_descriptor);
 
@@ -1949,6 +1949,38 @@ mod tests {
             "'Times New Roman', serif"
         );
         assert_eq!(extract_font_family("10.5pt Arial"), "Arial");
+    }
+
+    #[test]
+    fn control_mark_font_reuse_preserves_standalone_replay_operations() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        for (size, source, expected) in [
+            (12.0, "bold italic 12pt 'Arial'", "9.00pt 'Arial'"),
+            (7.0, "7pt 'MS Mincho', serif", "5.25pt 'MS Mincho', serif"),
+            (0.5, "unparsed family", "1.00pt unparsed family"),
+            (12.0, "bold italic 12pt 'Arial'", "9.00pt 'Arial'"),
+        ] {
+            let style = TextStyle {
+                font_size_pt: size,
+                font_descriptor_latin_ascii: Rc::from(source),
+                ..TextStyle::default()
+            };
+            let mut first_ops = None;
+            for _ in 0..3 {
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                assert_eq!(
+                    execute_control_mark(&painter, "¶", 10.0, 100.0, &style).unwrap(),
+                    7.0
+                );
+                let ops = painter.ops();
+                assert!(ops.contains(&Op::SetFont(expected.into())), "{ops:?}");
+                if let Some(first) = &first_ops {
+                    assert_eq!(&ops, first);
+                } else {
+                    first_ops = Some(ops);
+                }
+            }
+        }
     }
 
     #[test]
