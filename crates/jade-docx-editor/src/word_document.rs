@@ -56602,6 +56602,60 @@ mod tests {
         &document_xml[run_start..content]
     }
 
+    /// Bold on the first word of a run, typed into it, with changes tracked
+    /// splits the run; only the word whose formatting changed gets a
+    /// `w:rPrChange`, as Word records it. The rest of the run (`w:sz` and
+    /// `w:szCs` in contract.docx, written back in another order) is
+    /// formatted as it was.
+    #[test]
+    fn tracked_bold_on_part_of_a_run_marks_only_that_part() {
+        use crate::headless_api::apply_headless_commands_with_executor_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+
+        let data = std::fs::read(fixture_path("contract.docx")).expect("read contract fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        for command in [
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 0,
+                text: "Bold words ".into(),
+            },
+            HeadlessCommand::StartChangeTracking {
+                author: Some("Ann".into()),
+                initials: None,
+                date: None,
+                date_utc: None,
+            },
+            HeadlessCommand::ApplyBold {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 4,
+                enabled: true,
+            },
+        ] {
+            selection = apply_headless_commands_with_executor_to_document(
+                &mut word_doc,
+                &mut commands,
+                selection,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("command");
+        }
+        let xml = exported_document_xml(&word_doc);
+        assert_eq!(xml.matches("<w:rPrChange").count(), 1, "{xml}");
+        let rest = xml
+            .find("> words 秘密保持契約書<")
+            .expect("rest of the run");
+        let rest_run = &xml[xml[..rest].rfind("<w:r>").expect("its run")..rest];
+        assert!(!rest_run.contains("w:rPrChange"), "{rest_run}");
+    }
+
     /// Formatting a range that covers a text box keeps the text box's XML and
     /// changes only the host run's `w:rPr`. Clearing the formatting, and
     /// undoing either edit, must remove the property from that `w:rPr` too:
