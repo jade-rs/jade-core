@@ -534,6 +534,14 @@
       "docx_sha256": "c467a0189eda20dbf17ab2b8d95704beecb7341322031333f8877383c03bad50"
     },
     {
+      "fixture": "word-mac-probe-floating-horizontal-14",
+      "docx_sha256": "a325e0ac1ee3c724a242367e6d067d73641b20ee0c821788f0ca6fb42d2d7f96"
+    },
+    {
+      "fixture": "word-mac-probe-floating-horizontal-15",
+      "docx_sha256": "3f89f455ba8b8367be54e71d7403fb7786a884324b501bfdc1e789e2c5e91404"
+    },
+    {
       "fixture": "word-mac-probe-floating-order",
       "docx_sha256": "eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7"
     },
@@ -572,6 +580,14 @@
     {
       "fixture": "word-mac-probe-object-lines",
       "docx_sha256": "7231dec77b5b82e01ab393eab9b3b2f791b695b7fd590f9ba343a47b801e28e8"
+    },
+    {
+      "fixture": "word-mac-probe-object-space-runs-balanced",
+      "docx_sha256": "a22390a97a499897f87afa5f203dbd675e2a9a2deee010661231e2f2c9293eba"
+    },
+    {
+      "fixture": "word-mac-probe-object-space-runs-unbalanced",
+      "docx_sha256": "1ce5d91137b3375fb14e601af4ecc380dc9a9ed28bc2d5769de48bca5a515804"
     },
     {
       "fixture": "word-mac-probe-object-spaces",
