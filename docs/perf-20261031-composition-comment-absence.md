@@ -89,3 +89,12 @@ Separately, all 12 browser IME correctness regressions passed with zero retries,
 and the existing local-walk budget passed all 32 previews (26 body layout calls
 per update with a local seek). Frozen Word coordinate tests and the Office
 Arial floating-table case passed without fixture or tolerance changes.
+
+The diagnostic build (`c50037a`, optimized WASM SHA-256
+`4adeff5bf82d63e10932acf5503b8873186a5129ff200ac40cf6085df1beabf0`)
+passed a separate actual-worker gate with renderer diagnostics enabled:
+all 32 previews incremented the bypass counter by exactly one, walked 26 body
+layout elements and consumed two local seeks. Saved text matched the complete
+source plus one accepted composition, with zero retries. This establishes
+that the browser uses the proof path, but is not a matched latency comparison.
+The PR remains draft pending resolution of the tail-latency result.
