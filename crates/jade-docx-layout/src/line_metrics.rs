@@ -335,6 +335,65 @@ pub fn word_mac_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) ->
     ((size_pt * scale * 2.0).round() / 2.0).max(0.5)
 }
 
+/// How far Word for Mac moves a superscript run up, or a subscript run down,
+/// as a share of the run's own (unshifted) size. Word for Mac 16.114.2
+/// (`mac-probes-20261030/word-mac-probe-vert-align`, 8–20pt) follows the
+/// face's OS/2 `ySuperscriptYOffset` and `ySubscriptYOffset`, kept to where
+/// the reduced glyphs still end inside the face's own ascent and descent:
+/// Century 0.257 and 0.066 and Yu Mincho 0.350 and 0.075, as their tables
+/// say; Calibri, whose table asks for 0.477 and 0.140, 0.333 and 0.094 (its
+/// 0.952 ascent and 0.269 descent less the 0.65 script). MS Mincho's table
+/// repeats its ascent and descent, and Word draws it 0.40 up and 0.11 down;
+/// MS PMincho shares its vertical metrics.
+/// Another face keeps Word for Windows' shares. `latin_ascii_stack` is the
+/// run's CSS family stack; its first family decides.
+pub fn word_mac_script_baseline_offset_em(latin_ascii_stack: &str, superscript: bool) -> f32 {
+    let family = latin_ascii_stack
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(|ch| ch == '"' || ch == '\'')
+        .to_ascii_lowercase();
+    let (raise, lower) = match family.as_str() {
+        "century" => (0.257, 0.066),
+        "calibri" => (0.333, 0.094),
+        "yu mincho" | "yumincho" | "游明朝" => (0.350, 0.075),
+        "ms mincho" | "ms pmincho" | "ＭＳ 明朝" | "ＭＳ明朝" | "ms 明朝" | "ＭＳ Ｐ明朝"
+        | "ＭＳＰ明朝" | "ms p明朝" => (0.40, 0.11),
+        _ => (WINDOWS_SUPERSCRIPT_RAISE_EM, WINDOWS_SUBSCRIPT_LOWER_EM),
+    };
+    if superscript {
+        raise
+    } else {
+        lower
+    }
+}
+
+/// Word for Windows' superscript raise and subscript drop, as shares of the
+/// run's own size: what jade has always drawn.
+const WINDOWS_SUPERSCRIPT_RAISE_EM: f32 = 0.35;
+const WINDOWS_SUBSCRIPT_LOWER_EM: f32 = 0.15;
+
+/// How far a superscript (`superscript`) or subscript run moves off the
+/// baseline, in points: up for a superscript, down for a subscript.
+/// `size_pt` is the run's size before [`word_shifted_script_size_pt`]
+/// reduces it.
+pub fn word_script_baseline_offset_pt(
+    size_pt: f32,
+    latin_ascii_stack: &str,
+    superscript: bool,
+) -> f32 {
+    let share = match word_layout_platform() {
+        WordLayoutPlatform::Mac => {
+            word_mac_script_baseline_offset_em(latin_ascii_stack, superscript)
+        }
+        _ if superscript => WINDOWS_SUPERSCRIPT_RAISE_EM,
+        _ => WINDOWS_SUBSCRIPT_LOWER_EM,
+    };
+    size_pt * share
+}
+
 /// The size a superscript or subscript run of `size_pt` is drawn at: two
 /// thirds on Word for Windows (0.66, as jade has always drawn it) and the
 /// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
@@ -2953,6 +3012,44 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Word for Mac 16.114.2's raises and drops in `word-mac-probe-vert-align`
+    /// (20pt, where a PDF's 0.24pt grid matters least): Century 5.04 and
+    /// 1.44pt, Calibri 6.96 and 1.92pt, Yu Mincho 6.96 and 1.44pt, MS Mincho
+    /// 7.92 and 2.40pt.
+    #[test]
+    fn mac_script_offsets_follow_the_face() {
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (stack, raise, lower) in [
+            ("\"Century\", serif", 5.04, 1.44),
+            ("Calibri, sans-serif", 6.96, 1.92),
+            ("\"Yu Mincho\", \"YuMincho\"", 6.96, 1.44),
+            ("游明朝", 6.96, 1.44),
+            ("\"MS Mincho\", serif", 7.92, 2.40),
+            ("'ＭＳ 明朝', \"MS Mincho\"", 7.92, 2.40),
+        ] {
+            let up = word_script_baseline_offset_pt(20.0, stack, true);
+            let down = word_script_baseline_offset_pt(20.0, stack, false);
+            assert!((up - raise).abs() <= 0.375, "{stack}: raise {up}");
+            assert!((down - lower).abs() <= 0.375, "{stack}: drop {down}");
+        }
+        let near = |value: f32, expected: f32| (value - expected).abs() < 1e-4;
+        assert!(near(
+            word_script_baseline_offset_pt(20.0, "Arial", true),
+            7.0
+        ));
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(near(
+            word_script_baseline_offset_pt(20.0, "Century", true),
+            7.0
+        ));
+        assert!(near(
+            word_script_baseline_offset_pt(20.0, "Century", false),
+            3.0
+        ));
+        set_word_layout_platform(previous);
     }
 
     #[test]
