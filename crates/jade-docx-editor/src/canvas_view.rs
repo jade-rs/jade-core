@@ -17012,6 +17012,7 @@ impl OffscreenDocumentView {
             layout_extension_seek: LayoutExtensionSeekStatsView,
             glyph_batch: GlyphBatchStatsView,
             last_render_body_element_count: u64,
+            composition_comment_anchor_scan_bypasses: u64,
             last_render_prefix_skips: u64,
         }
 
@@ -17190,6 +17191,8 @@ impl OffscreenDocumentView {
                 replay_text_glyphs,
             },
             last_render_body_element_count: renderer.last_render_body_element_count(),
+            composition_comment_anchor_scan_bypasses: renderer
+                .composition_comment_anchor_scan_bypasses(),
             last_render_prefix_skips: renderer.last_render_prefix_skips(),
         };
 
