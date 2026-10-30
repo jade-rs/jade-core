@@ -20,9 +20,11 @@ fn without_changes(mut element: XmlElement) -> XmlElement {
     element
 }
 /// What a `w:rPr` or `w:pPr` says, for telling whether an edit changed it.
-/// Its properties are a set, so each child is compared whatever its place:
+/// Its direct properties are a set, so each is compared whatever its place:
 /// the half of a split run that an edit left alone has its `w:rPr` written
 /// again, and `w:szCs` coming back before `w:sz` is no formatting change.
+/// Preserve order inside properties, including AlternateContent choices:
+/// the first supported choice determines the effective formatting.
 fn signature(element: Option<&XmlElement>) -> String {
     fn visit(element: &XmlElement, out: &mut String) {
         out.push_str(&element.name);
@@ -49,7 +51,9 @@ fn signature(element: Option<&XmlElement>) -> String {
                 other => children.push(format!("{other:?}")),
             }
         }
-        children.sort_unstable();
+        if matches!(element.name.as_str(), "w:rPr" | "w:pPr") {
+            children.sort_unstable();
+        }
         children.into_iter().for_each(|child| out.push_str(&child));
     }
     let mut result = String::new();
@@ -60,6 +64,32 @@ fn signature(element: Option<&XmlElement>) -> String {
 }
 
 type RunChanges = HashMap<XmlNodeId, (Box<crate::document::RunPropertiesChange>, XmlElement)>;
+
+#[cfg(test)]
+mod signature_tests {
+    use super::*;
+
+    fn from_xml(xml: &str) -> String {
+        signature(Some(DocxXmlDocument::parse(xml).unwrap().root()))
+    }
+
+    #[test]
+    fn property_signature_ignores_top_level_property_order() {
+        assert_eq!(
+            from_xml("<w:rPr><w:sz w:val=\"24\"/><w:szCs w:val=\"24\"/></w:rPr>"),
+            from_xml("<w:rPr><w:szCs w:val=\"24\"/><w:sz w:val=\"24\"/></w:rPr>"),
+        );
+    }
+
+    #[test]
+    fn property_signature_preserves_alternate_content_choice_precedence() {
+        // The first supported Choice wins. Changing its place changes the
+        // selected formatting, even though the same child elements remain.
+        let before = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
+        let after = "<w:rPr><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:i/></mc:Choice><mc:Choice Requires=\"w14\"><w:b/></mc:Choice><mc:Fallback/></mc:AlternateContent></w:rPr>";
+        assert_ne!(from_xml(before), from_xml(after));
+    }
+}
 
 /// Note XML is reparsed on each edit. Bind only a temporary paragraph clone:
 /// storing these part-local IDs on the live model would alias body IDs.
