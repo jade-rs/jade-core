@@ -206,7 +206,7 @@ fn field_updates_and_unlinks_are_independent_of_run_boundaries() {
         let mut doc = load(&bytes);
         edit_field_code(
             &mut doc,
-            SelectionRange::collapsed(TextPosition::new(0, 2)),
+            SelectionRange::collapsed(TextPosition::new(0, 1)),
             "USERNAME",
             &environment(),
         )
@@ -228,6 +228,75 @@ fn saved_text(doc: &WordDocument) -> String {
         .map(|paragraph| paragraph.text.as_str())
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[test]
+fn changing_an_editable_field_to_a_computed_field_updates_the_original_target() {
+    let body = paragraph(&format!(
+        "<w:r><w:t>A</w:t></w:r>{}<w:r><w:t>:</w:t></w:r>{}<w:r><w:t>Z</w:t></w:r>",
+        field("MERGEFIELD name", "old value"),
+        field("USERNAME", "untouched")
+    ));
+    let mut doc = load(&package(&body, &[]));
+    edit_field_code(
+        &mut doc,
+        SelectionRange::collapsed(TextPosition::new(0, 5)),
+        "NUMPAGES",
+        &environment(),
+    )
+    .unwrap();
+    assert_eq!(saved_text(&doc), "A3:untouchedZ");
+    assert_eq!(
+        saved_fields(&doc),
+        [
+            ("NUMPAGES".into(), "3".into()),
+            ("USERNAME".into(), "untouched".into())
+        ]
+    );
+}
+
+#[test]
+fn deferred_grouped_fields_keep_raw_bindings_and_code_display_outside_text() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>A</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>old</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    let mut doc = futures::executor::block_on(WordDocument::load_for_initial_render(
+        &bytes,
+        &Options::default(),
+    ))
+    .unwrap();
+    assert!(doc.ensure_roundtrip_xml().unwrap());
+    let display = field_code_display(
+        &doc,
+        &FieldCodeView {
+            all: true,
+            toggled: HashSet::new(),
+        },
+    );
+    let paragraph = doc.paragraph(0).unwrap();
+    for run in &paragraph.runs {
+        if !run.text.is_empty() {
+            assert!(!display.contains_key(&run.node_id.unwrap()));
+        }
+    }
+    assert_eq!(
+        display
+            .values()
+            .map(|(_, code)| code.as_str())
+            .collect::<HashSet<_>>(),
+        HashSet::from(["{ NUMPAGES }"])
+    );
+    edit_field_code(
+        &mut doc,
+        SelectionRange::collapsed(TextPosition::new(0, 1)),
+        "USERNAME",
+        &environment(),
+    )
+    .unwrap();
+    assert_eq!(saved_text(&doc), "AJade UserZ");
 }
 
 #[test]
@@ -280,7 +349,8 @@ fn selection_distinguishes_fields_and_surrounding_text_in_one_run() {
         "<w:fldChar w:fldCharType=\"end\"/><w:t>後</w:t></w:r>"
     ));
     let bytes = package(&body, &[]);
-    let caret = SelectionRange::collapsed(TextPosition::new(0, "前one:t".len()));
+    // Computed results occupy no model text; the second field follows 前:.
+    let caret = SelectionRange::collapsed(TextPosition::new(0, "前:".len()));
     let mut doc = load(&bytes);
     assert_eq!(
         fields_at(&doc, caret)

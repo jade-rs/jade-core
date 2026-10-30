@@ -689,6 +689,15 @@ pub fn update_fields(
     scope: FieldScope,
     env: &FieldEnvironment,
 ) -> Result<usize, String> {
+    update_fields_in_scope(doc, scope, env, None)
+}
+
+fn update_fields_in_scope(
+    doc: &mut WordDocument,
+    scope: FieldScope,
+    env: &FieldEnvironment,
+    edited_field: Option<usize>,
+) -> Result<usize, String> {
     let mut files = unpack(doc)?;
     let mut body = match doc.raw_document.clone() {
         Some(raw) => raw,
@@ -712,7 +721,9 @@ pub fn update_fields(
     let selected = match scope {
         FieldScope::Document => None,
         FieldScope::Selection(range) => {
-            let top = selected_fields(doc, &story, range);
+            let top = edited_field
+                .map(|index| vec![index])
+                .unwrap_or_else(|| selected_fields(doc, &story, range));
             Some(with_operands(&story, &top))
         }
     };
@@ -879,7 +890,7 @@ pub fn field_prompts(doc: &WordDocument, scope: FieldScope) -> Vec<FieldPrompt> 
 fn edit_fields(
     doc: &mut WordDocument,
     scope: FieldScope,
-    mut edit: impl FnMut(&mut XmlElement, &scan::ScannedField) -> Result<bool, String>,
+    mut edit: impl FnMut(&mut XmlElement, &scan::ScannedField, usize) -> Result<bool, String>,
 ) -> Result<usize, String> {
     let mut files = unpack(doc)?;
     let mut body = doc
@@ -910,7 +921,7 @@ fn edit_fields(
             if matches!(story.fields[index].parent, Some((_, Role::Operand))) {
                 continue;
             }
-            if edit(root, &story.fields[index])? {
+            if edit(root, &story.fields[index], index)? {
                 changed += 1;
             }
         }
@@ -928,11 +939,11 @@ fn edit_fields(
             let mut part_changed = 0;
             {
                 let root = root_mut(&mut part_doc);
-                for field in part_story.fields.iter().rev() {
+                for (index, field) in part_story.fields.iter().enumerate().rev() {
                     if matches!(field.parent, Some((_, Role::Operand))) {
                         continue;
                     }
-                    if edit(root, field)? {
+                    if edit(root, field, index)? {
                         part_changed += 1;
                     }
                 }
@@ -956,7 +967,7 @@ pub fn set_fields_locked(
     scope: FieldScope,
     locked: bool,
 ) -> Result<usize, String> {
-    edit_fields(doc, scope, |root, field| {
+    edit_fields(doc, scope, |root, field, _| {
         if field.locked == locked {
             return Ok(false);
         }
@@ -966,7 +977,7 @@ pub fn set_fields_locked(
 
 /// Replaces the fields in scope with their results (⌘⇧F9).
 pub fn unlink_fields(doc: &mut WordDocument, scope: FieldScope) -> Result<usize, String> {
-    edit_fields(doc, scope, |root, field| {
+    edit_fields(doc, scope, |root, field, _| {
         write::unlink(root, field)?;
         Ok(true)
     })
@@ -987,19 +998,22 @@ pub fn edit_field_code(
     if code.is_empty() {
         return Err("the field code is empty".to_string());
     }
-    let mut done = false;
-    let changed = edit_fields(doc, FieldScope::Selection(range), |root, field| {
-        if done {
+    let mut edited_field = None;
+    let changed = edit_fields(doc, FieldScope::Selection(range), |root, field, index| {
+        if edited_field.is_some() {
             return Ok(false);
         }
-        done = true;
         write::replace_code(root, field, code)?;
+        edited_field = Some(index);
         Ok(true)
     })?;
     if changed == 0 {
         return Err("there is no field at the selection".to_string());
     }
-    update_fields(doc, FieldScope::Selection(range), env)?;
+    // Changing from an editable result to a computed field can change model
+    // offsets. Its preorder index survives replacing its own instruction and
+    // operands, so update that field rather than reinterpreting the old caret.
+    update_fields_in_scope(doc, FieldScope::Selection(range), env, edited_field)?;
     Ok(())
 }
 
