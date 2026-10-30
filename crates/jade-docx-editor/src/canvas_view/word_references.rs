@@ -122,8 +122,15 @@ impl OffscreenDocumentView {
 
     /// The document's tables of contents and figures, in order.
     #[wasm_bindgen(js_name = tablesOfContents)]
-    pub fn tables_of_contents(&self) -> JsValue {
-        let state = self.state.borrow();
+    pub fn tables_of_contents(&self) -> Result<JsValue, JsValue> {
+        let mut state = self.state.borrow_mut();
+        // Initial-render loading defers the raw XML that field discovery uses.
+        // Prepare it here so the first read sees the same TOCs as later reads.
+        if let Some(document) = state.word_doc.as_mut() {
+            document
+                .ensure_roundtrip_xml()
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+        }
         let tables: Vec<TableOfContentsJs> = state
             .word_doc
             .as_ref()
@@ -138,7 +145,7 @@ impl OffscreenDocumentView {
                 instruction: block.instruction,
             })
             .collect();
-        json_js(&tables)
+        Ok(json_js(&tables))
     }
 
     /// Rebuilds table of contents `index` with new options (目次 ▸ 変更).
