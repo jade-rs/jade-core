@@ -519,7 +519,10 @@ impl CanvasRenderHost for SkiaRenderHost {
     }
 
     fn page_count(&self) -> usize {
-        self.pages.borrow().len().max(self.page_count_hint)
+        // Surfaces are retained for reuse when a full render shrinks the
+        // document. They are not additional pages in the current layout.
+        // Bounded repaints preserve this count in reset_pages.
+        self.rendered_pages.get().max(self.page_count_hint)
     }
 
     fn page_dimensions(&self, page_index: usize) -> Option<(f64, f64)> {
