@@ -1135,13 +1135,7 @@ impl XmlElement {
     fn from_bytes_start(e: &quick_xml::events::BytesStart<'_>) -> Result<Self, DocxXmlError> {
         let name = String::from_utf8(e.name().as_ref().to_vec())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
-        let attributes = e
-            .attributes()
-            .map(|attr| {
-                attr.map_err(DocxXmlError::from)
-                    .and_then(XmlAttribute::from_attribute)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let attributes = XmlAttribute::parse_attributes(e)?;
         Ok(Self {
             id: XmlNodeId::new(0),
             name,
@@ -1269,6 +1263,40 @@ pub struct XmlAttribute {
 }
 
 impl XmlAttribute {
+    fn parse_attributes(e: &quick_xml::events::BytesStart<'_>) -> Result<Vec<Self>, DocxXmlError> {
+        // Attribute names already live in the result. Reuse them for duplicate
+        // detection instead of allocating quick-xml's separate key-range vector
+        // for every element with attributes.
+        let mut attributes = Vec::<Self>::new();
+        let mut iter = e.attributes();
+        iter.with_checks(false);
+        for attr in iter {
+            let attr = match attr {
+                Ok(attr)
+                    if !attributes
+                        .iter()
+                        .any(|previous| previous.name.as_bytes() == attr.key.as_ref()) =>
+                {
+                    attr
+                }
+                _ => {
+                    // Replay invalid input with the original checks to retain
+                    // error offsets and precedence (a duplicate key can take
+                    // precedence over a malformed value on that attribute).
+                    return e
+                        .attributes()
+                        .map(|attr| {
+                            attr.map_err(DocxXmlError::from)
+                                .and_then(Self::from_attribute)
+                        })
+                        .collect();
+                }
+            };
+            attributes.push(Self::from_attribute(attr)?);
+        }
+        Ok(attributes)
+    }
+
     fn from_attribute(attr: Attribute<'_>) -> Result<Self, DocxXmlError> {
         let name = String::from_utf8(attr.key.as_ref().to_vec())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
@@ -1437,6 +1465,105 @@ pub(crate) mod tests {
     }
 
     use proptest::prelude::*;
+
+    fn checked_attributes(
+        element: &quick_xml::events::BytesStart<'_>,
+    ) -> Result<Vec<XmlAttribute>, DocxXmlError> {
+        element
+            .attributes()
+            .map(|attr| {
+                attr.map_err(DocxXmlError::from)
+                    .and_then(XmlAttribute::from_attribute)
+            })
+            .collect()
+    }
+
+    fn attribute_result(
+        result: Result<Vec<XmlAttribute>, DocxXmlError>,
+    ) -> Result<Vec<(String, String)>, String> {
+        result
+            .map(|attrs| attrs.into_iter().map(|a| (a.name, a.value)).collect())
+            .map_err(|error| format!("{error:?}"))
+    }
+
+    #[test]
+    fn attribute_errors_keep_checked_iterator_precedence_and_offsets() {
+        for content in [
+            "r",
+            r#"r a="x" b='日本語' xmlns:w="urn:word" w:id="&#49;&amp;""#,
+            r#"r a="1" a="2""#,
+            r#"r a="1" a="&unknown;""#,
+            r#"r a="1" a=unquoted"#,
+            r#"r a="1" a="unterminated"#,
+            r#"r a="1" a="#,
+            r#"r a="1" a"#,
+            r#"r a="&unknown;" a=unquoted"#,
+            r#"r a="&#x110000;" b="&unknown;""#,
+            r#"r a="1" 日本語="値" a="2""#,
+        ] {
+            let element = quick_xml::events::BytesStart::from_content(content, 1);
+            assert_eq!(
+                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(checked_attributes(&element)),
+                "{content}",
+            );
+        }
+        for xml in [
+            b"<r a=\"\xff\"/>".as_slice(),
+            b"<r \xff=\"value\"/>",
+            b"<r a=\"x\" a=\"\xff\"/>",
+            b"<r a=\"\xff\" a=unquoted/>",
+        ] {
+            let mut reader = Reader::from_reader(xml);
+            let Event::Empty(element) = reader.read_event().unwrap() else {
+                panic!("expected an empty element");
+            };
+            assert_eq!(
+                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(checked_attributes(&element)),
+                "{xml:?}",
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn attribute_parsing_matches_checked_iterator(
+            fragments in proptest::collection::vec(
+                prop_oneof![
+                    ("[a-c:]{1,4}|日本語", "[a-z&;#0-9]{0,12}").prop_map(|(key, value)| format!(" {key}=\"{value}\"")),
+                    prop::sample::select(vec![
+                        " a='x'", " a=plain", " a=\"", " a=", " a", " =\"x\"",
+                        " a=\"&unknown;\"", " a=\"&#0;\"", " a=\"&#x1F600;\"", "\t", "\n",
+                    ]).prop_map(str::to_owned),
+                ],
+                0..32,
+            ),
+        ) {
+            let content = format!("r{}", fragments.concat());
+            let element = quick_xml::events::BytesStart::from_content(content, 1);
+            prop_assert_eq!(
+                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(checked_attributes(&element)),
+            );
+        }
+
+        #[test]
+        fn attribute_parsing_matches_checked_iterator_for_non_utf8_input(
+            bytes in proptest::collection::vec(any::<u8>(), 0..128),
+        ) {
+            let mut xml = b"<r a=\"valid\" ".to_vec();
+            xml.extend(bytes);
+            xml.extend_from_slice(b"/>");
+            let mut reader = Reader::from_reader(xml.as_slice());
+            if let Ok(Event::Start(element) | Event::Empty(element)) = reader.read_event() {
+                prop_assert_eq!(
+                    attribute_result(XmlAttribute::parse_attributes(&element)),
+                    attribute_result(checked_attributes(&element)),
+                );
+            }
+        }
+    }
 
     /// The character-at-a-time escaping the writer used before it escaped
     /// into the output buffer; kept as the reference for byte equality.
