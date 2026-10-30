@@ -137,21 +137,12 @@ pub struct FontStateTracker {
 }
 
 impl FontStateTracker {
-    /// Creates a new font state tracker with no current font.
+    /// Creates a tracker without allocating a grapheme-width table.
+    /// Single-command replays (including whitespace marks) often measure at
+    /// most one symbol. Grow on demand instead of reserving the full limit
+    /// for each of those short-lived trackers.
     pub fn new() -> Self {
-        Self {
-            current_font: None,
-            current_font_hash: None,
-            current_fill_style: None,
-            current_line_width: None,
-            baseline_is_alphabetic: false,
-            grapheme_cache: FxHashMap::with_capacity_and_hasher(
-                GRAPHEME_CACHE_CAPACITY,
-                Default::default(),
-            ),
-            segment_buf: String::new(),
-            pair_buf: String::new(),
-        }
+        Self::default()
     }
 
     /// Sets the font on the context only if it differs from the current font.
@@ -2158,6 +2149,90 @@ mod tests {
     fn test_font_state_tracker_new() {
         let tracker = FontStateTracker::new();
         assert!(tracker.current().is_none());
+    }
+
+    #[test]
+    fn font_state_tracker_allocates_only_for_measured_graphemes() {
+        use jade_painter::recording::RecordingPainter;
+
+        let mut tracker = FontStateTracker::new();
+        assert_eq!(tracker.grapheme_cache.capacity(), 0);
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        assert_eq!(
+            tracker.measure_text_cached(&painter, "long string", "12pt Arial"),
+            Ok(77.0)
+        );
+        assert_eq!(tracker.grapheme_cache.capacity(), 0);
+        assert_eq!(
+            tracker.measure_text_cached(&painter, "·", "12pt Arial"),
+            Ok(7.0)
+        );
+        assert_eq!(tracker.grapheme_cache.len(), 1);
+        assert!(tracker.grapheme_cache.capacity() < 16);
+    }
+
+    #[test]
+    fn font_state_tracker_keeps_cache_bounded_after_lazy_growth() {
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let mut tracker = FontStateTracker::new();
+        for index in 0..GRAPHEME_CACHE_CAPACITY * 2 {
+            let text = format!("{index:04}");
+            assert_eq!(
+                tracker.measure_text_cached(&painter, &text, "12pt Arial"),
+                Ok(28.0)
+            );
+            assert!(tracker.grapheme_cache.len() <= GRAPHEME_CACHE_CAPACITY);
+        }
+        assert_eq!(tracker.grapheme_cache.len(), GRAPHEME_CACHE_CAPACITY);
+        let before = painter.count(|op| matches!(op, Op::MeasureText(_)));
+        assert_eq!(
+            tracker.measure_text_cached(&painter, "4095", "12pt Arial"),
+            Ok(28.0)
+        );
+        assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), before);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn font_state_tracker_lifecycle_preserves_measurements(
+            operations in proptest::collection::vec((0u8..5, 0usize..3, 0usize..5), 1..100)
+        ) {
+            use jade_painter::recording::{Op, RecordingPainter};
+            use std::collections::HashSet;
+
+            let mut tracker = FontStateTracker::new();
+            let mut measured = HashSet::new();
+            let fonts = ["10pt Arial", "12pt Arial", "14pt Arial"];
+            let texts = ["A", "·", "日本", "", "long uncached text"];
+            for (operation, font_index, text_index) in operations {
+                match operation {
+                    0..=1 => {
+                        let painter = RecordingPainter::with_width_per_char((font_index + 1) as f64);
+                        let text = texts[text_index];
+                        let font = fonts[font_index];
+                        tracker.set_font_if_changed(&painter, font);
+                        let expected = text.chars().count() as f64 * (font_index + 1) as f64;
+                        proptest::prop_assert_eq!(tracker.measure_text_cached(&painter, text, font), Ok(expected));
+                        let should_measure = text.len() > 8 || measured.insert((font_index, text_index));
+                        proptest::prop_assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), usize::from(should_measure));
+                    }
+                    2 => tracker.invalidate(),
+                    3 => {
+                        tracker.clear_cache();
+                        measured.clear();
+                    }
+                    _ => {
+                        tracker = FontStateTracker::new();
+                        measured.clear();
+                        proptest::prop_assert_eq!(tracker.grapheme_cache.capacity(), 0);
+                    }
+                }
+                proptest::prop_assert_eq!(tracker.grapheme_cache.len(), measured.len());
+            }
+        }
     }
 
     #[test]
