@@ -1,4 +1,4 @@
-//! Unadjusted Mac layout coordinates, using only redistributable bundled faces.
+//! Unadjusted Mac layout coordinates using bundled faces, plus opt-in Office-font probes.
 mod common;
 use common::repo_path;
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
@@ -34,6 +34,10 @@ fn capture(bytes: &[u8]) -> Value {
         });
     }
     let doc = NativeDocument::open(bytes, 816.0, 1056.0, &faces).unwrap();
+    capture_coordinates(&doc)
+}
+
+fn capture_coordinates(doc: &NativeDocument) -> Value {
     let mut glyphs = Vec::new();
     for line in doc.renderer().layout_debug_lines() {
         for fragment in line.fragments {
@@ -354,4 +358,55 @@ fn comparator_rejects_shifted_missing_reordered_or_repaginated_glyphs() {
     let mut shifted = expected.clone();
     shifted["glyphs"][0][2] = json!(72.5);
     assert!(compare(&expected, &shifted, WORD_TOLERANCE_PT).is_err());
+}
+
+/// Local opt-in parity check; CI cannot redistribute the Office Arial face.
+#[test]
+#[ignore = "requires JADE_OFFICE_ARIAL pointing to the captured Office font"]
+fn floating_tables_match_word_with_office_arial() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = std::env::var("JADE_OFFICE_ARIAL")
+        .expect("set JADE_OFFICE_ARIAL to Office Arial arial.ttf");
+    assert_eq!(
+        sha256(&std::fs::read(&font).unwrap()),
+        "15663c7e8495594c6136eb51b11983eb8f5bbcdd07bb2c327e0d1e83415b0f06",
+        "font differs from the Word capture; remeasure rather than fitting coordinates"
+    );
+    let faces = [FaceSpec {
+        family: "Arial",
+        weight: 400,
+        path: std::path::Path::new(&font),
+    }];
+    for (directory, name) in [
+        ("mac-probes-20261019", "word-mac-probe-floating-order"),
+        (
+            "mac-floating-horizontal-20261030",
+            "word-mac-probe-floating-horizontal-14",
+        ),
+        (
+            "mac-floating-horizontal-20261030",
+            "word-mac-probe-floating-horizontal-15",
+        ),
+    ] {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference: Value = serde_json::from_slice(
+            &std::fs::read(repo_path(&format!(
+                "tests/word-oracle/{directory}/{name}.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            reference["docx_sha256"],
+            sha256(&bytes),
+            "changed source {name}"
+        );
+        let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&capture_coordinates(&doc)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
 }
