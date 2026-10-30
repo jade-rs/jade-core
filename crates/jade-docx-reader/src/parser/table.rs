@@ -137,7 +137,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:gridCol" => {
                         let width = Self::parse_grid_column_width(e.attributes());
@@ -177,7 +177,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:tblStyle" => {
                         table.style_name = Self::read_val_attribute(e.attributes());
@@ -416,7 +416,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:cnfStyle" => {
                         row.class_name = Self::read_val_attribute(e.attributes());
@@ -578,7 +578,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:tblCellSpacing" => {
                         row.cell_spacing_exception = Self::table_cell_spacing_value(e.attributes());
@@ -634,7 +634,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:gridSpan" => {
                         cell.span =
@@ -882,7 +882,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:top" | b"w:right" | b"w:bottom" | b"w:left" | b"w:start" | b"w:end"
                     | b"w:tl2br" | b"w:tr2bl" => {
@@ -948,7 +948,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"w:tblBorders" => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -964,7 +964,7 @@ impl DocumentParser {
                     let mut inner = Vec::new();
                     loop {
                         inner.clear();
-                        match reader.read_event_into(&mut inner) {
+                        match reader.next_event(&mut inner) {
                             Ok(Event::Start(ref s)) if s.name().as_ref() == name.as_slice() => {
                                 depth += 1
                             }
@@ -1075,7 +1075,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
                 Ok(Event::Empty(ref e)) => {
                     let name = e.name();
@@ -1091,7 +1091,7 @@ impl DocumentParser {
                     let mut inner = Vec::new();
                     loop {
                         inner.clear();
-                        match reader.read_event_into(&mut inner) {
+                        match reader.next_event(&mut inner) {
                             Ok(Event::Start(ref s)) if s.name().as_ref() == name.as_slice() => {
                                 depth += 1
                             }
@@ -1481,7 +1481,7 @@ impl DocumentParser {
 
         loop {
             buf.clear();
-            match reader.read_event_into(&mut buf) {
+            match reader.next_event(&mut buf) {
                 Ok(Event::Start(_)) => depth += 1,
                 Ok(Event::End(_)) => {
                     depth -= 1;

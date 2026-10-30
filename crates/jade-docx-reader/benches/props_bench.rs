@@ -134,11 +134,66 @@ fn bench_docx_xml_path_updates(c: &mut Criterion) {
     let xml = large_docx_xml(512, 16);
     let source = DocxXmlDocument::parse(&xml).expect("parse large xml");
 
+    fn collect_ids(
+        element: &jade_docx_reader::XmlElement,
+        ids: &mut Vec<jade_docx_reader::XmlNodeId>,
+    ) {
+        ids.push(element.id);
+        for child in &element.children {
+            if let XmlNode::Element(child) = child {
+                collect_ids(child, ids);
+            }
+        }
+    }
+    let mut ids = Vec::new();
+    collect_ids(source.root(), &mut ids);
+    c.bench_function("docx_xml_element_lookup", |b| {
+        b.iter(|| {
+            for id in &ids {
+                black_box(source.element(black_box(*id)));
+            }
+        });
+    });
+    c.bench_function("docx_xml_parent_lookup", |b| {
+        b.iter(|| {
+            for id in &ids {
+                black_box(source.parent_id(black_box(*id)));
+            }
+        });
+    });
+    // Field mapping repeatedly follows ancestors from a run to its paragraph.
+    let run = first_run_id(&source);
+    c.bench_function("docx_xml_parent_ancestors", |b| {
+        b.iter(|| {
+            let mut current = black_box(run);
+            while let Some(parent) = source.parent_id(current) {
+                current = black_box(parent);
+            }
+        });
+    });
+
     c.bench_function("docx_xml_rebuild_paragraph_index", |b| {
         let mut doc = source.clone();
         let paragraph = first_paragraph_id(&doc);
         b.iter(|| {
             doc.rebuild_index_for_subtree(black_box(paragraph));
+            black_box(&doc);
+        });
+    });
+
+    c.bench_function("docx_xml_rebuild_body_index", |b| {
+        let mut doc = source.clone();
+        let body = body_id(&doc);
+        b.iter(|| {
+            doc.rebuild_index_for_subtree(black_box(body));
+            black_box(&doc);
+        });
+    });
+
+    c.bench_function("docx_xml_rebuild_full_index", |b| {
+        let mut doc = source.clone();
+        b.iter(|| {
+            doc.rebuild_index();
             black_box(&doc);
         });
     });
@@ -331,18 +386,28 @@ fn bench_numbering_parse(c: &mut Criterion) {
 }
 
 fn bench_docx_xml_parse(c: &mut Criterion) {
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(include_bytes!(
-        "../../../contract.docx"
-    )))
-    .expect("open contract");
-    let mut contract_xml = String::new();
-    archive
-        .by_name("word/document.xml")
-        .expect("document part")
-        .read_to_string(&mut contract_xml)
-        .expect("read document XML");
-    let mut fixtures = vec![("contract".to_owned(), contract_xml)];
-    for count in [0, 1, 4, 16] {
+    let mut fixtures = Vec::new();
+    for (name, bytes) in [
+        (
+            "contract",
+            include_bytes!("../../../contract.docx").as_slice(),
+        ),
+        (
+            "yokohama",
+            include_bytes!("../../../public/fixtures/yokohama.docx").as_slice(),
+        ),
+    ] {
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("open document fixture");
+        let mut xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .expect("document part")
+            .read_to_string(&mut xml)
+            .expect("read document XML");
+        fixtures.push((name.to_owned(), xml));
+    }
+    for count in [0, 1, 4, 5, 6, 8, 16] {
         let mut xml = String::from("<root>");
         for _ in 0..1000 {
             xml.push_str("<element");
@@ -354,14 +419,58 @@ fn bench_docx_xml_parse(c: &mut Criterion) {
         xml.push_str("</root>");
         fixtures.push((format!("attributes={count}"), xml));
     }
+    for (name, text) in [
+        ("plain", "Ordinary text"),
+        ("named", "A &amp; B &lt; C &gt; D &quot; E &apos; F"),
+        (
+            "numeric",
+            "A &#38; B &#60; C &#62; D &#34; E &#39; F &#128512;",
+        ),
+        ("mixed", "A &amp; B &#x1F600; C &lt; D &#10; E"),
+    ] {
+        let mut xml = String::from("<w:document><w:body>");
+        for _ in 0..512 {
+            xml.push_str("<w:p>");
+            for _ in 0..8 {
+                xml.push_str("<w:r><w:t>");
+                xml.push_str(text);
+                xml.push_str("</w:t></w:r>");
+            }
+            xml.push_str("</w:p>");
+        }
+        xml.push_str("</w:body></w:document>");
+        fixtures.push((format!("entities={name}"), xml));
+    }
     let mut group = c.benchmark_group("docx_xml_parse");
     for (name, xml) in fixtures {
         DocxXmlDocument::parse(&xml).expect("validate XML fixture");
         group.bench_function(name.as_str(), |b| {
             b.iter(|| black_box(DocxXmlDocument::parse(black_box(&xml)).expect("parse XML")));
         });
-        if name == "contract" {
-            group.bench_function("contract_with_model", |b| {
+        if name == "contract" || name == "yokohama" {
+            {
+                let (_, raw) = DocumentParser::new()
+                    .parse_document_xml_with_raw_tree(&xml)
+                    .expect("parse document");
+                let raw = raw.expect("build raw XML tree");
+                group.bench_function(format!("{name}_write_from_model"), |b| {
+                    b.iter(|| black_box(black_box(&raw).to_string().expect("write XML")));
+                });
+            }
+            group.bench_function(format!("{name}_with_model_and_write"), |b| {
+                b.iter(|| {
+                    let (model, raw) = DocumentParser::new()
+                        .parse_document_xml_with_raw_tree(black_box(&xml))
+                        .expect("parse document");
+                    black_box((
+                        model,
+                        raw.expect("build raw XML tree")
+                            .to_string()
+                            .expect("write XML"),
+                    ))
+                });
+            });
+            group.bench_function(format!("{name}_with_model"), |b| {
                 b.iter(|| {
                     black_box(
                         DocumentParser::new()
@@ -371,6 +480,106 @@ fn bench_docx_xml_parse(c: &mut Criterion) {
                 });
             });
         }
+    }
+    group.finish();
+}
+
+fn bench_on_off_parse(c: &mut Criterion) {
+    let mut fixtures = Vec::new();
+    for kind in ["run", "paragraph"] {
+        let mut xml = String::from(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>"#,
+        );
+        for index in 0..100 {
+            let value = ["1", "FaLsE", "OFF", " true ", "", "unknown"][index % 6];
+            xml.push_str("<w:p>");
+            if kind == "paragraph" {
+                xml.push_str("<w:pPr>");
+                for name in [
+                    "snapToGrid",
+                    "adjustRightInd",
+                    "widowControl",
+                    "suppressAutoHyphens",
+                    "contextualSpacing",
+                    "pageBreakBefore",
+                    "suppressLineNumbers",
+                    "keepLines",
+                    "keepNext",
+                    "mirrorIndents",
+                    "autoSpaceDE",
+                    "autoSpaceDN",
+                    "kinsoku",
+                    "wordWrap",
+                    "overflowPunct",
+                    "topLinePunct",
+                ] {
+                    xml.push_str(&format!("<w:{name} w:val=\"{value}\"/>"));
+                }
+                xml.push_str("</w:pPr>");
+            }
+            xml.push_str("<w:r>");
+            if kind == "run" {
+                xml.push_str("<w:rPr>");
+                for name in [
+                    "b",
+                    "i",
+                    "bCs",
+                    "iCs",
+                    "caps",
+                    "smallCaps",
+                    "strike",
+                    "dstrike",
+                    "vanish",
+                    "specVanish",
+                    "shadow",
+                    "outline",
+                    "emboss",
+                    "imprint",
+                ] {
+                    xml.push_str(&format!("<w:{name} w:val=\"{value}\"/>"));
+                }
+                xml.push_str("</w:rPr>");
+            }
+            xml.push_str("<w:t>Text</w:t></w:r></w:p>");
+        }
+        xml.push_str("</w:body></w:document>");
+        fixtures.push((format!("{kind}=100"), xml));
+    }
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(include_bytes!(
+        "../../../public/fixtures/yokohama_page6.docx"
+    )))
+    .expect("open formatting fixture");
+    let mut xml = String::new();
+    archive
+        .by_name("word/document.xml")
+        .expect("document part")
+        .read_to_string(&mut xml)
+        .expect("read document XML");
+    fixtures.push(("yokohama_page6".to_owned(), xml));
+
+    let mut group = c.benchmark_group("on_off_parse");
+    for (name, xml) in fixtures {
+        DocumentParser::new()
+            .parse_document_xml(&xml)
+            .expect("validate fixture");
+        group.bench_function(name.as_str(), |b| {
+            b.iter(|| {
+                black_box(
+                    DocumentParser::new()
+                        .parse_document_xml(black_box(&xml))
+                        .expect("parse document"),
+                )
+            });
+        });
+        group.bench_function(format!("{name}_with_raw_tree"), |b| {
+            b.iter(|| {
+                black_box(
+                    DocumentParser::new()
+                        .parse_document_xml_with_raw_tree(black_box(&xml))
+                        .expect("parse document and XML"),
+                )
+            });
+        });
     }
     group.finish();
 }
@@ -477,6 +686,7 @@ criterion_group!(
     bench_paragraph_style_resolution,
     bench_numbering_parse,
     bench_docx_xml_parse,
+    bench_on_off_parse,
     bench_styles_parse
 );
 criterion_main!(benches);
