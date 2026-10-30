@@ -278,6 +278,7 @@ impl DocumentParser {
         xml_content: &str,
     ) -> Result<Document, Box<dyn std::error::Error>> {
         let xml_content = crate::word_namespaces::normalize(xml_content)?;
+        let xml_content = crate::field_runs::normalize(&xml_content)?;
         let mut reader = SliceXmlReader::new(&xml_content);
         self.parse_document_events(&mut reader)
     }
@@ -297,6 +298,7 @@ impl DocumentParser {
         xml_content: &str,
     ) -> Result<(Document, Result<DocxXmlDocument, DocxXmlError>), Box<dyn std::error::Error>> {
         let xml_content = crate::word_namespaces::normalize(xml_content)?;
+        let xml_content = crate::field_runs::normalize(&xml_content)?;
         let mut reader = RawTreeTeeReader::new(&xml_content);
         let document = self.parse_document_events(&mut reader)?;
         Ok((document, reader.finish()))

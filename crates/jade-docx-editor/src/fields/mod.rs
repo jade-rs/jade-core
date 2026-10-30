@@ -310,27 +310,61 @@ fn ordered(range: SelectionRange) -> (TextPosition, TextPosition) {
 /// The fields (outermost, not nested operands) the selection touches.
 fn selected_fields(doc: &WordDocument, story: &Story, range: SelectionRange) -> Vec<usize> {
     let (runs, paragraphs) = selected_ids(doc, range);
+    let (start, end) = ordered(range);
+    let start = doc.rendered_to_model_text_position(start);
+    let end = doc.rendered_to_model_text_position(end);
+    let surfaces: HashMap<_, _> = (0..doc.paragraph_count())
+        .filter(|&index| !doc.is_note_paragraph_surface(index))
+        .filter_map(|index| {
+            let paragraph = doc.paragraph(index)?;
+            let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+            paragraph.node_id.map(|id| (id, (index, text)))
+        })
+        .collect();
+    let position = |paragraph: usize, offset: usize| {
+        story
+            .paragraphs
+            .get(paragraph)
+            .and_then(|paragraph| {
+                surfaces
+                    .get(&paragraph.id)
+                    .filter(|(_, text)| *text == paragraph.text)
+            })
+            .map(|(surface, _)| (*surface, offset))
+    };
     let mut selected = Vec::new();
     for (index, field) in story.fields.iter().enumerate() {
-        let touched = field.span_runs.iter().any(|run| runs.contains(run))
-            || story
-                .paragraphs
-                .get(field.paragraph)
-                .is_some_and(|paragraph| paragraphs.contains(&paragraph.id))
-            || field.simple.is_some_and(|simple| {
-                write::find_element(
-                    doc.raw_document
-                        .as_ref()
-                        .map(|raw| raw.root())
-                        .expect("raw"),
-                    simple,
-                )
-                .is_some_and(|element| {
-                    element.children.iter().any(
+        // Offsets distinguish fields sharing a run. Keep the XML-id path for
+        // paragraphs whose model text includes objects the story scanner omits.
+        let touched = position(field.paragraph, field.start_offset)
+            .zip(position(field.end_paragraph, field.end_offset))
+            .filter(|_| field.simple.is_some() || field.end.is_some())
+            .map_or_else(
+                || {
+                    field.span_runs.iter().any(|run| runs.contains(run))
+                        || story
+                            .paragraphs
+                            .get(field.paragraph)
+                            .is_some_and(|paragraph| paragraphs.contains(&paragraph.id))
+                        || field.simple.is_some_and(|simple| {
+                            write::find_element(
+                                doc.raw_document
+                                    .as_ref()
+                                    .map(|raw| raw.root())
+                                    .expect("raw"),
+                                simple,
+                            )
+                            .is_some_and(|element| {
+                                element.children.iter().any(
                         |child| matches!(child, XmlNode::Element(run) if runs.contains(&run.id)),
                     )
-                })
-            });
+                            })
+                        })
+                },
+                |(from, to)| {
+                    from <= (end.paragraph, end.offset) && to >= (start.paragraph, start.offset)
+                },
+            );
         if !touched {
             continue;
         }
@@ -655,6 +689,15 @@ pub fn update_fields(
     scope: FieldScope,
     env: &FieldEnvironment,
 ) -> Result<usize, String> {
+    update_fields_in_scope(doc, scope, env, None)
+}
+
+fn update_fields_in_scope(
+    doc: &mut WordDocument,
+    scope: FieldScope,
+    env: &FieldEnvironment,
+    edited_field: Option<usize>,
+) -> Result<usize, String> {
     let mut files = unpack(doc)?;
     let mut body = match doc.raw_document.clone() {
         Some(raw) => raw,
@@ -678,17 +721,33 @@ pub fn update_fields(
     let selected = match scope {
         FieldScope::Document => None,
         FieldScope::Selection(range) => {
-            let top = selected_fields(doc, &story, range);
+            let top = edited_field
+                .map(|index| vec![index])
+                .unwrap_or_else(|| selected_fields(doc, &story, range));
             Some(with_operands(&story, &top))
         }
     };
-    let toc_selected = story.fields.iter().enumerate().any(|(index, field)| {
-        selected
-            .as_ref()
-            .is_none_or(|selected| selected.contains(&index))
-            && FieldCode::parse(&field.instruction_with(|_| String::new()))
-                .is_some_and(|code| code.name == "TOC")
-    });
+    let toc_targets: Vec<usize> = doc
+        .tables_of_contents()
+        .iter()
+        .enumerate()
+        .filter(|(_, block)| {
+            story.fields.iter().enumerate().any(|(index, field)| {
+                field.parent.is_none()
+                    && !field.locked
+                    && selected
+                        .as_ref()
+                        .is_none_or(|selected| selected.contains(&index))
+                    && story
+                        .paragraphs
+                        .get(field.paragraph)
+                        .and_then(|paragraph| surfaces.get(&paragraph.id))
+                        == Some(&block.start)
+                    && field.instruction_with(|_| String::new()).trim() == block.instruction
+            })
+        })
+        .map(|(index, _)| index)
+        .collect();
     let (mut written, mut changes) = update_story(
         root_mut(&mut body),
         &story,
@@ -748,19 +807,16 @@ pub fn update_fields(
         }
         properties.write(&mut files)?;
     }
-    if written == 0 && changes.is_empty() && !toc_selected {
+    if written == 0 && changes.is_empty() && toc_targets.is_empty() {
         return Ok(0);
     }
     if written > 0 || !changes.is_empty() {
         replace_with(doc, &files)?;
     }
-    if toc_selected {
-        let mut selection = None;
-        let mut ctx = CommandContext::new(doc, &mut selection);
-        let mut toc = crate::commands::insert_toc::UpdateTableOfContentsCommand::new();
-        if toc.apply(&mut ctx).is_ok() {
-            written += 1;
-        }
+    // Updating the last table first keeps earlier table indices stable.
+    for index in toc_targets.into_iter().rev() {
+        doc.update_table_of_contents_at(index)?;
+        written += 1;
     }
     Ok(written)
 }
@@ -834,7 +890,7 @@ pub fn field_prompts(doc: &WordDocument, scope: FieldScope) -> Vec<FieldPrompt> 
 fn edit_fields(
     doc: &mut WordDocument,
     scope: FieldScope,
-    mut edit: impl FnMut(&mut XmlElement, &scan::ScannedField) -> Result<bool, String>,
+    mut edit: impl FnMut(&mut XmlElement, &scan::ScannedField, usize) -> Result<bool, String>,
 ) -> Result<usize, String> {
     let mut files = unpack(doc)?;
     let mut body = doc
@@ -865,7 +921,7 @@ fn edit_fields(
             if matches!(story.fields[index].parent, Some((_, Role::Operand))) {
                 continue;
             }
-            if edit(root, &story.fields[index])? {
+            if edit(root, &story.fields[index], index)? {
                 changed += 1;
             }
         }
@@ -883,11 +939,11 @@ fn edit_fields(
             let mut part_changed = 0;
             {
                 let root = root_mut(&mut part_doc);
-                for field in part_story.fields.iter().rev() {
+                for (index, field) in part_story.fields.iter().enumerate().rev() {
                     if matches!(field.parent, Some((_, Role::Operand))) {
                         continue;
                     }
-                    if edit(root, field)? {
+                    if edit(root, field, index)? {
                         part_changed += 1;
                     }
                 }
@@ -911,7 +967,7 @@ pub fn set_fields_locked(
     scope: FieldScope,
     locked: bool,
 ) -> Result<usize, String> {
-    edit_fields(doc, scope, |root, field| {
+    edit_fields(doc, scope, |root, field, _| {
         if field.locked == locked {
             return Ok(false);
         }
@@ -921,7 +977,7 @@ pub fn set_fields_locked(
 
 /// Replaces the fields in scope with their results (⌘⇧F9).
 pub fn unlink_fields(doc: &mut WordDocument, scope: FieldScope) -> Result<usize, String> {
-    edit_fields(doc, scope, |root, field| {
+    edit_fields(doc, scope, |root, field, _| {
         write::unlink(root, field)?;
         Ok(true)
     })
@@ -942,19 +998,22 @@ pub fn edit_field_code(
     if code.is_empty() {
         return Err("the field code is empty".to_string());
     }
-    let mut done = false;
-    let changed = edit_fields(doc, FieldScope::Selection(range), |root, field| {
-        if done {
+    let mut edited_field = None;
+    let changed = edit_fields(doc, FieldScope::Selection(range), |root, field, index| {
+        if edited_field.is_some() {
             return Ok(false);
         }
-        done = true;
         write::replace_code(root, field, code)?;
+        edited_field = Some(index);
         Ok(true)
     })?;
     if changed == 0 {
         return Err("there is no field at the selection".to_string());
     }
-    update_fields(doc, FieldScope::Selection(range), env)?;
+    // Changing from an editable result to a computed field can change model
+    // offsets. Its preorder index survives replacing its own instruction and
+    // operands, so update that field rather than reinterpreting the old caret.
+    update_fields_in_scope(doc, FieldScope::Selection(range), env, edited_field)?;
     Ok(())
 }
 
