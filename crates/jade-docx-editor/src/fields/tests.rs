@@ -551,6 +551,12 @@ fn content_control(block: &str) -> String {
 }
 
 fn assert_content_control(doc: &WordDocument, expected_result: &str) {
+    let document = doc.document.as_ref().unwrap();
+    assert_eq!(
+        document.sections.last().unwrap().end,
+        document.body.as_ref().unwrap().elements.len(),
+        "section ranges must cover the regenerated field and following content"
+    );
     let files = unpack(doc).unwrap();
     let xml = parse_part(&files, "word/document.xml")
         .unwrap()

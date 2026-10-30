@@ -21253,6 +21253,9 @@ impl WordDocument {
             }
         }
 
+        if let Some(document) = self.document_mut() {
+            Self::rebuild_section_ranges(document);
+        }
         self.rebuild_paragraph_surfaces();
         Ok(entry_count)
     }
@@ -21333,6 +21336,9 @@ impl WordDocument {
             }
         }
 
+        if let Some(document) = self.document_mut() {
+            Self::rebuild_section_ranges(document);
+        }
         self.rebuild_paragraph_surfaces();
         Ok(0)
     }
