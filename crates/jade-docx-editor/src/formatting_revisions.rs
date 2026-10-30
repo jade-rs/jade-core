@@ -245,6 +245,13 @@ fn record_paragraph_changes(
         let Some(id) = attr(change, "w:id") else {
             continue;
         };
+        // Serializing a note part may already have assigned fresh IDs to
+        // split fragments. Those part-local repairs do not advance the
+        // document allocator, so reserve every observed ID before allocating
+        // a replacement for a collision with another story.
+        if let Ok(value) = id.parse::<u32>() {
+            *next_revision_id = (*next_revision_id).max(value.saturating_add(1));
+        }
         if seen_ids.insert(id) {
             continue;
         }
