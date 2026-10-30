@@ -30433,9 +30433,15 @@ where
             if let Some(alignment) = props.baseline.as_deref() {
                 match alignment {
                     "superscript" | "super" => {
-                        baseline_shift_px = -points_to_px(font_size_pt * 0.35);
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
+                        baseline_shift_px = -points_to_px(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                                font_size_pt,
+                                stack,
+                                true,
+                            ),
+                        );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
                             font_size_pt,
                             stack,
@@ -30445,9 +30451,15 @@ where
                         });
                     }
                     "subscript" | "sub" => {
-                        baseline_shift_px = points_to_px(font_size_pt * 0.15);
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
+                        baseline_shift_px = points_to_px(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                                font_size_pt,
+                                stack,
+                                false,
+                            ),
+                        );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
                             font_size_pt,
                             stack,
@@ -49141,11 +49153,14 @@ mod tests {
         use jade_docx_reader::document::{TableCell, TableColumn, TableRow};
         use jade_painter::recording::{Op, RecordingPainter};
         let _platform = RestoreWordPlatform::mac();
+        // Word for Mac's MS Mincho offsets use the original 10.5pt size:
+        // 0.40em up / 0.11em down, converted from points to pixels (4/3).
+        // Keep these independent of the helper used by paint and selection.
         for (alignment, position, expected_shift) in [
-            (Some("superscript"), None, -4.9),
-            (Some("subscript"), None, 2.1),
+            (Some("superscript"), None, -5.6),
+            (Some("subscript"), None, 1.54),
             (None, Some(2.0), -8.0 / 3.0),
-            (Some("superscript"), Some(2.0), -4.9 - 8.0 / 3.0),
+            (Some("superscript"), Some(2.0), -5.6 - 8.0 / 3.0),
         ] {
             let properties = RunProperties {
                 font_size: Some(10.5),
