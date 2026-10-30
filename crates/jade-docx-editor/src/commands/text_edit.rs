@@ -517,11 +517,8 @@ fn insert_into_runs(
                 return;
             }
         }
-        let len = run.text.len();
-        let local = position.saturating_sub(run_start).min(len);
-        let left = slice_by_byte_range(&run.text, 0, local);
-        let right = slice_by_byte_range(&run.text, local, len);
-        run.text = left + insert + &right;
+        let local = clamp_to_char_boundary(&run.text, position.saturating_sub(run_start));
+        run.text.insert_str(local, insert);
         return;
     }
 
@@ -623,7 +620,19 @@ pub fn apply_text_edit(
         }
     }
 
-    let template = template_run_for_edit(runs, start);
+    let inserts_into_existing_text = start == end
+        && !insert.is_empty()
+        && matches!(
+            insertion_point(runs, start),
+            Some(InsertionPoint::Run { index, .. }) if !runs[index].text.is_empty()
+        );
+    // Caret insertion into existing text retains its run's formatting. Other
+    // paths may need a template saved before the selected runs are removed.
+    let template = if inserts_into_existing_text {
+        None
+    } else {
+        template_run_for_edit(runs, start)
+    };
     let outside_ruby_base = !insert.is_empty()
         && runs.iter().any(|run| ruby_of(run).is_some())
         && !insertion_joins_ruby_base(runs, start);
@@ -1621,6 +1630,78 @@ mod tests {
         apply_text_edit(&mut runs, 3, 9, "X", &ZeroWidthRuns::default());
         let flat: String = runs.iter().map(|r| r.text.as_str()).collect();
         assert_eq!(flat, "あXえ");
+    }
+
+    #[test]
+    fn apply_text_edit_caret_insertion_preserves_run_styles_and_source_nodes() {
+        for (position, left, right) in [
+            (0, "界Aあ", "😀Z"),
+            (2, "A界あ", "😀Z"),
+            (4, "Aあ界", "😀Z"),
+            (6, "Aあ", "界😀Z"),
+            (8, "Aあ", "😀界Z"),
+            (9, "Aあ", "😀Z界"),
+            (10, "Aあ", "😀Z界"),
+        ] {
+            let mut original = vec![styled_run("Aあ", 0), styled_run("😀Z", 1)];
+            for (index, run) in original.iter_mut().enumerate() {
+                run.node_id = Some(XmlNodeId::new(10 + index as u32));
+                run.text_node_id = Some(XmlNodeId::new(20 + index as u32));
+                run.hyperlink = Some(jade_docx_reader::document::RunHyperlink {
+                    anchor: Some(format!("link-{index}")),
+                    ..Default::default()
+                });
+            }
+            let mut runs = original.clone();
+
+            apply_text_edit(
+                &mut runs,
+                position,
+                position,
+                "界",
+                &ZeroWidthRuns::default(),
+            );
+
+            assert_eq!(runs.len(), 2);
+            assert_eq!(runs[0].text, left, "inserting at byte {position}");
+            assert_eq!(runs[1].text, right, "inserting at byte {position}");
+            for (run, source) in runs.iter().zip(&original) {
+                assert_eq!(run.properties, source.properties);
+                assert_eq!(run.hyperlink, source.hyperlink);
+                assert_eq!(run.node_id, source.node_id);
+                assert_eq!(run.text_node_id, source.text_node_id);
+            }
+        }
+    }
+
+    #[test]
+    fn insert_into_runs_clamps_multibyte_offsets_and_preserves_run_metadata() {
+        for (position, expected) in [
+            (0, "界Aあ😀Z"),
+            (1, "A界あ😀Z"),
+            (2, "A界あ😀Z"),
+            (3, "A界あ😀Z"),
+            (4, "Aあ界😀Z"),
+            (5, "Aあ界😀Z"),
+            (6, "Aあ界😀Z"),
+            (7, "Aあ界😀Z"),
+            (8, "Aあ😀界Z"),
+            (9, "Aあ😀Z界"),
+            (usize::MAX, "Aあ😀Z界"),
+        ] {
+            let mut original = styled_run("Aあ😀Z", 1);
+            original.node_id = Some(XmlNodeId::new(10));
+            original.text_node_id = Some(XmlNodeId::new(11));
+            let mut runs = vec![original.clone()];
+
+            insert_into_runs(&mut runs, position, "界", None, &ZeroWidthRuns::default());
+
+            assert_eq!(runs.len(), 1);
+            assert_eq!(runs[0].text, expected, "inserting at byte {position}");
+            assert_eq!(runs[0].properties, original.properties);
+            assert_eq!(runs[0].node_id, original.node_id);
+            assert_eq!(runs[0].text_node_id, original.text_node_id);
+        }
     }
 
     proptest! {
