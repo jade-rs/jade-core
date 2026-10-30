@@ -772,17 +772,14 @@ impl WordDocument {
 
     // ---- field blocks ------------------------------------------------------
 
-    /// Every field spanning whole top-level body paragraphs, in document
+    /// Every field spanning whole body paragraphs, including content controls, in document
     /// order: tables of contents and of figures, indexes, tables of
     /// authorities, bibliographies.
     pub fn field_blocks(&self) -> Vec<FieldBlock> {
         let Some(raw) = self.raw_document.as_ref() else {
             return Vec::new();
         };
-        let Some(body) = raw.root().children.iter().find_map(|child| match child {
-            XmlNode::Element(element) if element.name == "w:body" => Some(element),
-            _ => None,
-        }) else {
+        let Some(body) = self.document.as_ref().and_then(|doc| doc.body.as_ref()) else {
             return Vec::new();
         };
         struct Frame {
@@ -792,19 +789,14 @@ impl WordDocument {
         }
         let mut stack: Vec<Frame> = Vec::new();
         let mut ranges: Vec<(usize, usize, String)> = Vec::new();
-        let mut block = 0usize;
-        for child in &body.children {
-            let XmlNode::Element(element) = child else {
+        for (current, block) in body.elements.iter().enumerate() {
+            let Some(element) = block
+                .as_paragraph()
+                .and_then(|paragraph| paragraph.node_id)
+                .and_then(|id| raw.element(id))
+            else {
                 continue;
             };
-            if element.name != "w:p" && element.name != "w:tbl" {
-                continue;
-            }
-            let current = block;
-            block += 1;
-            if element.name != "w:p" {
-                continue;
-            }
             Self::visit_field_markers(element, &mut |marker| match marker {
                 FieldMarker::Begin => stack.push(Frame {
                     instruction: String::new(),
@@ -869,7 +861,7 @@ impl WordDocument {
             None if self.paragraph_count() == 0 => 0,
             _ => return Err("blocks go after top-level body paragraphs".to_string()),
         };
-        self.insert_field_block_at(body_index, instruction, lines)
+        self.insert_field_block_at(body_index, instruction, lines, None)
     }
 
     /// Replaces a field block's paragraphs with new ones under a new
@@ -892,8 +884,9 @@ impl WordDocument {
             .ok_or_else(|| "the field's first paragraph is unavailable".to_string())?;
         let end = body_element(self, block.end)
             .ok_or_else(|| "the field's last paragraph is unavailable".to_string())?;
+        let location = self.field_block_xml_location(block.start, block.end)?;
         self.remove_body_elements(start, end)?;
-        self.insert_field_block_at(start, instruction, lines)
+        self.insert_field_block_at(start, instruction, lines, Some(location))
     }
 
     /// Removes top-level body elements `start..=end` from the model and the
@@ -915,7 +908,24 @@ impl WordDocument {
                 .collect()
         };
         if let Some(raw) = self.raw_document.as_mut() {
-            if let Some(body_id) = Self::find_body_element_id(raw) {
+            let sibling_range = (|| {
+                let first_id = (*node_ids.first()?)?;
+                let last_id = (*node_ids.last()?)?;
+                let parent = raw.parent_id(first_id)?;
+                if !node_ids
+                    .iter()
+                    .all(|id| id.and_then(|id| raw.parent_id(id)) == Some(parent))
+                {
+                    return None;
+                }
+                let first = *raw.path(first_id)?.as_slice().last()?;
+                let last = *raw.path(last_id)?.as_slice().last()?;
+                Some((parent, first, last))
+            })();
+            if let Some((parent, first, last)) = sibling_range {
+                raw.remove_child_nodes(parent, &(first..=last).collect::<Vec<_>>())
+                    .map_err(|error| error.to_string())?;
+            } else if let Some(body_id) = Self::find_body_element_id(raw) {
                 let first = Self::body_child_insert_index(raw, body_id, start);
                 let last = Self::body_child_insert_index(raw, body_id, end);
                 if let (Some(first), Some(last)) = (first, last) {
@@ -962,6 +972,7 @@ impl WordDocument {
         body_index: usize,
         instruction: &str,
         lines: &[FieldBlockLine],
+        location: Option<(XmlNodeId, usize)>,
     ) -> Result<SelectionRange, String> {
         let instruction = instruction.trim();
         if instruction.is_empty() || instruction.chars().any(char::is_control) {
@@ -1120,7 +1131,7 @@ impl WordDocument {
             }
             Self::rebuild_section_ranges(document);
         }
-        let inserted = self.insert_toc_xml(body_index, raw_paragraphs)?;
+        let inserted = self.insert_toc_xml_at(body_index, raw_paragraphs, location)?;
         if let Some(body) = self
             .document_mut()
             .and_then(|document| document.body.as_mut())

@@ -6,11 +6,11 @@
 use crate::docx_xml::{XmlElement, XmlNode, XmlNodeId};
 use std::collections::HashMap;
 
-/// Where a `w:fldChar` sits: its run and its index among the run's children.
+/// A `w:fldChar` and its original run; the marker id survives run splitting.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Marker {
     pub run: XmlNodeId,
-    pub child: usize,
+    pub child: XmlNodeId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,6 +36,12 @@ pub(crate) struct CellRef {
     pub column: usize,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct ResultRun {
+    pub id: XmlNodeId,
+    pub characters: usize,
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ScannedField {
     pub begin: Option<Marker>,
@@ -50,7 +56,7 @@ pub(crate) struct ScannedField {
     pub result_text: String,
     /// The runs directly in the result, in order (not those of fields nested
     /// in it).
-    pub result_runs: Vec<XmlNodeId>,
+    pub result_runs: Vec<ResultRun>,
     /// The runs holding instruction text.
     pub instruction_runs: Vec<XmlNodeId>,
     /// Every run from the begin marker to the end marker, nested ones too.
@@ -61,6 +67,9 @@ pub(crate) struct ScannedField {
     pub paragraph: usize,
     /// The paragraph it ends in.
     pub end_paragraph: usize,
+    /// Byte offsets in the visible text of the first and last paragraphs.
+    pub start_offset: usize,
+    pub end_offset: usize,
     pub cell: Option<CellRef>,
     /// Whether the field still reads its instruction.
     pub(crate) in_instruction: bool,
@@ -437,6 +446,8 @@ impl Scanner {
             parent,
             paragraph: self.current_paragraph(),
             end_paragraph: self.current_paragraph(),
+            start_offset: self.visible_offset(),
+            end_offset: self.visible_offset(),
             cell: self.tables.last().and_then(|table| {
                 table.cell.map(|cell| CellRef {
                     table: table.index,
@@ -450,9 +461,16 @@ impl Scanner {
         index
     }
 
+    fn visible_offset(&self) -> usize {
+        self.paragraph
+            .and_then(|index| self.story.paragraphs.get(index))
+            .map_or(0, |paragraph| paragraph.text.len())
+    }
+
     fn close_field(&mut self) {
         if let Some(index) = self.open_fields.pop() {
             self.story.fields[index].end_paragraph = self.current_paragraph();
+            self.story.fields[index].end_offset = self.visible_offset();
             self.story.fields[index].in_instruction = false;
         }
     }
@@ -514,8 +532,7 @@ impl Scanner {
         for &field in &self.open_fields {
             self.story.fields[field].span_runs.push(element.id);
         }
-        let mut result_run_recorded = false;
-        for (child_index, child) in element.children.iter().enumerate() {
+        for child in &element.children {
             let XmlNode::Element(child) = child else {
                 continue;
             };
@@ -525,7 +542,7 @@ impl Scanner {
                         let index = self.open_field(ScannedField {
                             begin: Some(Marker {
                                 run: element.id,
-                                child: child_index,
+                                child: child.id,
                             }),
                             locked: on_off(child, "w:fldLock"),
                             in_instruction: true,
@@ -540,7 +557,7 @@ impl Scanner {
                                 field.in_instruction = false;
                                 field.separate = Some(Marker {
                                     run: element.id,
-                                    child: child_index,
+                                    child: child.id,
                                 });
                             }
                         }
@@ -549,7 +566,7 @@ impl Scanner {
                         if let Some(&field) = self.open_fields.last() {
                             self.story.fields[field].end = Some(Marker {
                                 run: element.id,
-                                child: child_index,
+                                child: child.id,
                             });
                         }
                         self.close_field();
@@ -566,25 +583,25 @@ impl Scanner {
                     if self.reading_instruction() {
                         self.instruction(&text, element.id);
                     } else {
-                        self.record_result_run(element.id, &mut result_run_recorded);
+                        self.record_result_run(element.id, text.chars().count());
                         self.visible(&text);
                     }
                 }
                 "w:tab" | "w:ptab" => {
                     if !self.reading_instruction() {
-                        self.record_result_run(element.id, &mut result_run_recorded);
+                        self.record_result_run(element.id, 1);
                         self.visible("\t");
                     }
                 }
                 "w:br" | "w:cr" => {
                     if !self.reading_instruction() {
-                        self.record_result_run(element.id, &mut result_run_recorded);
+                        self.record_result_run(element.id, 1);
                         self.visible("\n");
                     }
                 }
                 "w:noBreakHyphen" => {
                     if !self.reading_instruction() {
-                        self.record_result_run(element.id, &mut result_run_recorded);
+                        self.record_result_run(element.id, 1);
                         self.visible("\u{2011}");
                     }
                 }
@@ -601,7 +618,7 @@ impl Scanner {
                             })
                             .and_then(char::from_u32);
                         if let Some(character) = character {
-                            self.record_result_run(element.id, &mut result_run_recorded);
+                            self.record_result_run(element.id, 1);
                             self.visible(&character.to_string());
                         }
                     }
@@ -618,15 +635,15 @@ impl Scanner {
                             }
                         }
                     }
-                    self.record_result_run(element.id, &mut result_run_recorded);
+                    self.record_result_run(element.id, 0);
                 }
                 "w:drawing" | "w:pict" | "w:object" => {
-                    self.record_result_run(element.id, &mut result_run_recorded);
+                    self.record_result_run(element.id, 0);
                     // Text boxes carry paragraphs of their own.
                     self.walk(child);
                 }
                 "mc:AlternateContent" => {
-                    self.record_result_run(element.id, &mut result_run_recorded);
+                    self.record_result_run(element.id, 0);
                     if let Some(choice) = child_element(child, "mc:Choice") {
                         self.walk(choice);
                     }
@@ -636,15 +653,18 @@ impl Scanner {
         }
     }
 
-    fn record_result_run(&mut self, run: XmlNodeId, recorded: &mut bool) {
-        if *recorded {
-            return;
-        }
+    fn record_result_run(&mut self, run: XmlNodeId, characters: usize) {
         if let Some(&field) = self.open_fields.last() {
             let field = &mut self.story.fields[field];
             if !field.in_instruction {
-                field.result_runs.push(run);
-                *recorded = true;
+                if let Some(last) = field.result_runs.last_mut().filter(|last| last.id == run) {
+                    last.characters += characters;
+                } else {
+                    field.result_runs.push(ResultRun {
+                        id: run,
+                        characters,
+                    });
+                }
             }
         }
     }

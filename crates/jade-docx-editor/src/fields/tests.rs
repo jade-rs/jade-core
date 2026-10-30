@@ -155,6 +155,530 @@ fn environment() -> FieldEnvironment {
 }
 
 #[test]
+fn field_updates_and_unlinks_are_independent_of_run_boundaries() {
+    let children = [
+        "<w:t>A</w:t>",
+        "<w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText>",
+        "<w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>old</w:t>",
+        "<w:fldChar w:fldCharType=\"end\"/>",
+        "<w:t>Z</w:t>",
+    ];
+    for boundaries in 0..1 << (children.len() - 1) {
+        let mut runs = String::from("<w:r><w:rPr><w:b/></w:rPr>");
+        for (index, child) in children.iter().enumerate() {
+            runs.push_str(child);
+            if boundaries & (1 << index) != 0 {
+                runs.push_str("</w:r><w:r><w:rPr><w:b/></w:rPr>");
+            }
+        }
+        runs.push_str("</w:r>");
+        let bytes = package(&paragraph(&runs), &[]);
+        let mut doc = load(&bytes);
+        update_fields(&mut doc, FieldScope::Document, &environment())
+            .unwrap_or_else(|error| panic!("boundaries {boundaries}: {error}"));
+        assert_eq!(
+            saved_fields(&doc),
+            [("NUMPAGES".into(), "3".into())],
+            "boundaries {boundaries}"
+        );
+        let files = unpack(&doc).unwrap();
+        let xml = parse_part(&files, "word/document.xml").unwrap();
+        assert_eq!(
+            scan::scan_document(xml.root()).paragraphs[0].text,
+            "A3Z",
+            "boundaries {boundaries}"
+        );
+
+        let mut doc = load(&bytes);
+        unlink_fields(&mut doc, FieldScope::Document)
+            .unwrap_or_else(|error| panic!("boundaries {boundaries}: {error}"));
+        assert!(saved_fields(&doc).is_empty(), "boundaries {boundaries}");
+        let files = unpack(&doc).unwrap();
+        let xml = parse_part(&files, "word/document.xml").unwrap();
+        assert_eq!(
+            scan::scan_document(xml.root()).paragraphs[0].text,
+            "AoldZ",
+            "boundaries {boundaries}"
+        );
+
+        let mut doc = load(&bytes);
+        edit_field_code(
+            &mut doc,
+            SelectionRange::collapsed(TextPosition::new(0, 1)),
+            "USERNAME",
+            &environment(),
+        )
+        .unwrap_or_else(|error| panic!("boundaries {boundaries}: {error}"));
+        assert_eq!(saved_text(&doc), "AJade UserZ", "boundaries {boundaries}");
+        assert_eq!(
+            saved_fields(&doc),
+            [("USERNAME".into(), "Jade User".into())]
+        );
+    }
+}
+
+fn saved_text(doc: &WordDocument) -> String {
+    let files = unpack(doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml").unwrap();
+    scan::scan_document(xml.root())
+        .paragraphs
+        .iter()
+        .map(|paragraph| paragraph.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[test]
+fn changing_an_editable_field_to_a_computed_field_updates_the_original_target() {
+    let body = paragraph(&format!(
+        "<w:r><w:t>A</w:t></w:r>{}<w:r><w:t>:</w:t></w:r>{}<w:r><w:t>Z</w:t></w:r>",
+        field("MERGEFIELD name", "old value"),
+        field("USERNAME", "untouched")
+    ));
+    let mut doc = load(&package(&body, &[]));
+    edit_field_code(
+        &mut doc,
+        SelectionRange::collapsed(TextPosition::new(0, 5)),
+        "NUMPAGES",
+        &environment(),
+    )
+    .unwrap();
+    assert_eq!(saved_text(&doc), "A3:untouchedZ");
+    assert_eq!(
+        saved_fields(&doc),
+        [
+            ("NUMPAGES".into(), "3".into()),
+            ("USERNAME".into(), "untouched".into())
+        ]
+    );
+}
+
+#[test]
+fn deferred_grouped_fields_keep_raw_bindings_and_code_display_outside_text() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>A</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>old</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    let mut doc = futures::executor::block_on(WordDocument::load_for_initial_render(
+        &bytes,
+        &Options::default(),
+    ))
+    .unwrap();
+    assert!(doc.ensure_roundtrip_xml().unwrap());
+    let display = field_code_display(
+        &doc,
+        &FieldCodeView {
+            all: true,
+            toggled: HashSet::new(),
+        },
+    );
+    let paragraph = doc.paragraph(0).unwrap();
+    for run in &paragraph.runs {
+        if !run.text.is_empty() {
+            assert!(!display.contains_key(&run.node_id.unwrap()));
+        }
+    }
+    assert_eq!(
+        display
+            .values()
+            .map(|(_, code)| &**code)
+            .collect::<HashSet<_>>(),
+        HashSet::from(["{ NUMPAGES }"])
+    );
+    edit_field_code(
+        &mut doc,
+        SelectionRange::collapsed(TextPosition::new(0, 1)),
+        "USERNAME",
+        &environment(),
+    )
+    .unwrap();
+    assert_eq!(saved_text(&doc), "AJade UserZ");
+}
+
+#[test]
+fn grouped_fields_keep_adjacent_results_locks_and_dirty_flags() {
+    let body = paragraph(concat!(
+        "<w:r><w:rPr><w:b/></w:rPr><w:t>A</w:t>",
+        "<w:fldChar w:fldCharType=\"begin\" w:fldLock=\"true\" w:dirty=\"true\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>locked</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>:</w:t>",
+        "<w:fldChar w:fldCharType=\"begin\" w:dirty=\"true\"/>",
+        "<w:instrText> USERNAME </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>old</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    let mut doc = load(&bytes);
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "Alocked:Jade UserZ");
+    let files = unpack(&doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml").unwrap();
+    let fields = scan::scan_document(xml.root()).fields;
+    assert!(fields[0].locked);
+    assert!(!fields[1].locked);
+    assert_eq!(xml.to_string().unwrap().matches("w:dirty=").count(), 1);
+
+    let mut doc = load(&bytes);
+    assert_eq!(
+        set_fields_locked(&mut doc, FieldScope::Document, true).unwrap(),
+        1
+    );
+    let files = unpack(&doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml").unwrap();
+    assert!(scan::scan_document(xml.root())
+        .fields
+        .iter()
+        .all(|field| field.locked));
+    assert_eq!(saved_text(&doc), "Alocked:oldZ");
+    assert_eq!(unlink_fields(&mut doc, FieldScope::Document).unwrap(), 2);
+    assert!(saved_fields(&doc).is_empty());
+    assert_eq!(saved_text(&doc), "Alocked:oldZ");
+}
+
+#[test]
+fn selection_distinguishes_fields_and_surrounding_text_in_one_run() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>前</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>one</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>:</w:t>",
+        "<w:fldChar w:fldCharType=\"begin\"/><w:instrText> USERNAME </w:instrText>",
+        "<w:fldChar w:fldCharType=\"separate\"/><w:t>two</w:t>",
+        "<w:fldChar w:fldCharType=\"end\"/><w:t>後</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    // Computed results occupy no model text; the second field follows 前:.
+    let caret = SelectionRange::collapsed(TextPosition::new(0, "前:".len()));
+    let mut doc = load(&bytes);
+    assert_eq!(
+        fields_at(&doc, caret)
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["USERNAME"]
+    );
+    assert!(fields_at(&doc, SelectionRange::collapsed(TextPosition::new(0, 0))).is_empty());
+    update_fields(&mut doc, FieldScope::Selection(caret), &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "前one:Jade User後");
+    let mut doc = load(&bytes);
+    assert_eq!(
+        set_fields_locked(&mut doc, FieldScope::Selection(caret), true).unwrap(),
+        1
+    );
+    let files = unpack(&doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml").unwrap();
+    let story = scan::scan_document(xml.root());
+    assert!(!story.fields[0].locked);
+    assert!(story.fields[1].locked);
+    let mut doc = load(&bytes);
+    unlink_fields(&mut doc, FieldScope::Selection(caret)).unwrap();
+    assert_eq!(saved_text(&doc), "前one:two後");
+    assert_eq!(saved_fields(&doc), [("NUMPAGES".into(), "one".into())]);
+    let mut doc = load(&bytes);
+    edit_field_code(&mut doc, caret, "NUMPAGES", &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "前one:3後");
+}
+
+#[test]
+fn merge_format_counts_only_the_field_result_in_shared_runs() {
+    let body = paragraph(concat!(
+        "<w:r><w:rPr><w:b/></w:rPr><w:t>outside</w:t>",
+        "<w:fldChar w:fldCharType=\"begin\"/><w:instrText> USERNAME \\* MERGEFORMAT </w:instrText>",
+        "<w:fldChar w:fldCharType=\"separate\"/><w:t>a</w:t></w:r>",
+        "<w:r><w:rPr><w:i/></w:rPr><w:t>bc</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r>"
+    ));
+    let mut doc = load(&package(&body, &[]));
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "outsideJade UserZ");
+    let files = unpack(&doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml").unwrap();
+    let field = &scan::scan_document(xml.root()).fields[0];
+    assert_eq!(
+        field
+            .result_runs
+            .iter()
+            .map(|run| run.characters)
+            .collect::<Vec<_>>(),
+        [1, 8]
+    );
+    for (result, property) in field.result_runs.iter().zip(["w:b", "w:i"]) {
+        let run = write::find_element(xml.root(), result.id).unwrap();
+        assert!(write::run_properties(run)
+            .unwrap()
+            .children
+            .iter()
+            .any(|child| matches!(child, XmlNode::Element(element) if element.name == property)));
+    }
+}
+
+#[test]
+fn grouped_nested_field_operands_update_without_losing_surrounding_text() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>A</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> IF </w:instrText><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>1</w:t><w:fldChar w:fldCharType=\"end\"/>",
+        "<w:instrText> &gt; 2 yes no </w:instrText><w:fldChar w:fldCharType=\"separate\"/>",
+        "<w:t>old</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    let mut doc = load(&bytes);
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "AyesZ");
+    assert_eq!(result_of(&doc, "NUMPAGES"), "3");
+    assert_eq!(saved_fields(&doc).len(), 2);
+    unlink_fields(&mut doc, FieldScope::Document).unwrap();
+    assert!(saved_fields(&doc).is_empty());
+    assert_eq!(saved_text(&doc), "AyesZ");
+}
+
+#[test]
+fn grouped_instruction_only_fields_can_be_unlinked_or_given_results() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>A</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+        "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"end\"/>",
+        "<w:t>Z</w:t></w:r>"
+    ));
+    let bytes = package(&body, &[]);
+    let mut doc = load(&bytes);
+    unlink_fields(&mut doc, FieldScope::Document).unwrap();
+    assert_eq!(saved_text(&doc), "AZ");
+    assert!(saved_fields(&doc).is_empty());
+    let mut doc = load(&bytes);
+    update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+    assert_eq!(saved_text(&doc), "A3Z");
+    assert_eq!(saved_fields(&doc), [("NUMPAGES".into(), "3".into())]);
+}
+
+#[test]
+fn field_updates_refresh_each_selected_unlocked_table_of_contents() {
+    let heading = "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>Heading</w:t></w:r></w:p>";
+    for locked in [false, true] {
+        let first = field("TOC \\o \"1-1\"", "first");
+        let first = if locked {
+            first.replace(
+                "w:fldCharType=\"begin\"",
+                "w:fldCharType=\"begin\" w:fldLock=\"true\"",
+            )
+        } else {
+            first
+        };
+        let body = [
+            paragraph(&first),
+            heading.into(),
+            heading.replace("Heading", "Second heading"),
+            paragraph(&field("TOC \\o \"1-1\" \\n", "second")),
+        ]
+        .concat();
+        let bytes = package(&body, &[]);
+        for (scope, first_selected, second_selected) in [
+            (FieldScope::Document, true, true),
+            (
+                FieldScope::Selection(SelectionRange::collapsed(TextPosition::new(0, 1))),
+                true,
+                false,
+            ),
+            (
+                FieldScope::Selection(SelectionRange::collapsed(TextPosition::new(3, 1))),
+                false,
+                true,
+            ),
+        ] {
+            let mut doc = load(&bytes);
+            update_fields(&mut doc, scope, &environment()).unwrap();
+            let tocs: Vec<_> = saved_fields(&doc)
+                .into_iter()
+                .filter(|(code, _)| code.starts_with("TOC"))
+                .collect();
+            assert_eq!(tocs.len(), 2);
+            if first_selected && !locked {
+                assert!(
+                    tocs[0].1.contains("Second heading") && tocs[0].1.contains('\t'),
+                    "{locked} {scope:?}: {tocs:?}"
+                );
+            } else {
+                assert_eq!(tocs[0].1, "first", "{locked} {scope:?}");
+            }
+            if second_selected {
+                assert!(
+                    tocs[1].1.contains("Second heading") && !tocs[1].1.contains('\t'),
+                    "{locked} {scope:?}: {tocs:?}"
+                );
+            } else {
+                assert_eq!(tocs[1].1, "second", "{locked} {scope:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn updating_a_multiline_field_preserves_the_ending_section_break() {
+    for first_properties in ["", "<w:pPr><w:keepNext/></w:pPr>"] {
+        let body = format!(concat!(
+            "<w:p>{}<w:r><w:t>A</w:t><w:fldChar w:fldCharType=\"begin\"/>",
+            "<w:instrText> NUMPAGES </w:instrText><w:fldChar w:fldCharType=\"separate\"/><w:t>old</w:t></w:r></w:p>",
+            "<w:p><w:pPr><w:sectPr><w:type w:val=\"continuous\"/><w:pgSz w:w=\"15840\" w:h=\"12240\" w:orient=\"landscape\"/></w:sectPr></w:pPr>",
+            "<w:r><w:t>more</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>Z</w:t></w:r></w:p>"
+        ), first_properties);
+        let mut doc = load(&package(&body, &[]));
+        update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+        assert_eq!(saved_text(&doc), "A3Z");
+        let files = unpack(&doc).unwrap();
+        let xml = parse_part(&files, "word/document.xml")
+            .unwrap()
+            .to_string()
+            .unwrap();
+        assert!(xml.contains("<w:type w:val=\"continuous\"/>"));
+        assert!(xml.contains("w:orient=\"landscape\""));
+        assert_eq!(xml.matches("<w:sectPr>").count(), 2);
+        if !first_properties.is_empty() {
+            assert!(xml.contains("<w:keepNext/>"));
+        }
+        let doc = load(&doc.export_docx().unwrap());
+        assert_eq!(saved_text(&doc), "A3Z");
+    }
+}
+
+fn content_control(block: &str) -> String {
+    format!(concat!(
+        "<w:sdt w:rsidR=\"00112233\"><w:sdtPr><w:alias w:val=\"Contents control\"/>",
+        "<w:tag w:val=\"keep-me\"/><w:id w:val=\"42\"/>",
+        "<w:docPartObj><w:docPartGallery w:val=\"Table of Contents\"/><w:docPartUnique/></w:docPartObj>",
+        "</w:sdtPr><w:sdtContent><w:p><w:r><w:t>Contents title</w:t></w:r></w:p>{}</w:sdtContent></w:sdt>"
+    ), block)
+}
+
+fn assert_content_control(doc: &WordDocument, expected_result: &str) {
+    let document = doc.document.as_ref().unwrap();
+    assert_eq!(
+        document.sections.last().unwrap().end,
+        document.body.as_ref().unwrap().elements.len(),
+        "section ranges must cover the regenerated field and following content"
+    );
+    let files = unpack(doc).unwrap();
+    let xml = parse_part(&files, "word/document.xml")
+        .unwrap()
+        .to_string()
+        .unwrap();
+    for retained in [
+        "<w:sdt w:rsidR=\"00112233\">",
+        "<w:alias w:val=\"Contents control\"/>",
+        "<w:tag w:val=\"keep-me\"/>",
+        "<w:id w:val=\"42\"/>",
+        "<w:docPartGallery w:val=\"Table of Contents\"/>",
+        "<w:docPartUnique/>",
+    ] {
+        assert!(xml.contains(retained), "missing {retained}: {xml}");
+    }
+    let content = xml
+        .split_once("<w:sdtContent>")
+        .unwrap()
+        .1
+        .split_once("</w:sdtContent>")
+        .unwrap()
+        .0;
+    assert!(content.contains("Contents title"));
+    assert!(content.contains(expected_result));
+    assert!(!content.contains("Before"));
+    assert!(!content.contains("After"));
+    assert_eq!(xml.matches("<w:sdt ").count(), 1);
+    assert!(saved_text(doc).starts_with("Before\nContents title\n"));
+    assert!(saved_text(doc).ends_with("After"));
+}
+
+#[test]
+fn updates_and_replaces_toc_inside_content_control_without_losing_metadata() {
+    for headings in [false, true] {
+        let heading = if headings {
+            "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>First heading</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>Second heading</w:t></w:r></w:p>"
+        } else {
+            ""
+        };
+        let body = format!(
+            "{}{}{}{}",
+            paragraph("<w:r><w:t>Before</w:t></w:r>"),
+            content_control(&paragraph(&field("TOC \\o \"1-1\" \\n", "cached"))),
+            heading,
+            paragraph("<w:r><w:t>After</w:t></w:r>")
+        );
+        let mut doc = load(&package(&body, &[]));
+        assert_eq!(doc.tables_of_contents().len(), 1);
+        for _ in 0..2 {
+            update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+            assert_eq!(doc.tables_of_contents().len(), 1);
+            assert_eq!(
+                saved_fields(&doc)
+                    .iter()
+                    .filter(|(code, _)| code.starts_with("TOC"))
+                    .count(),
+                1
+            );
+            assert_content_control(
+                &doc,
+                if headings {
+                    "Second heading"
+                } else {
+                    "w:fldCharType=\"begin\""
+                },
+            );
+            assert!(!saved_text(&doc).contains("cached"));
+            doc = load(&doc.export_docx().unwrap());
+        }
+        let options = crate::document::parse_toc_switches("TOC \\o \"1-1\" \\n");
+        doc.replace_table_of_contents(0, &options, "hyphen")
+            .unwrap();
+        assert_content_control(
+            &doc,
+            if headings {
+                "Second heading"
+            } else {
+                "w:fldCharType=\"begin\""
+            },
+        );
+    }
+}
+
+#[test]
+fn replacing_other_field_blocks_keeps_content_control() {
+    use crate::word_document::FieldBlockLine;
+    let body = format!(
+        "{}{}{}",
+        paragraph("<w:r><w:t>Before</w:t></w:r>"),
+        content_control(&paragraph(&field("INDEX", "cached"))),
+        paragraph("<w:r><w:t>After</w:t></w:r>")
+    );
+    let mut doc = load(&package(&body, &[]));
+    let block = doc.field_blocks().pop().unwrap();
+    doc.replace_field_block(
+        &block,
+        "INDEX \\h A",
+        &[
+            FieldBlockLine {
+                text: "Alpha".into(),
+                ..FieldBlockLine::default()
+            },
+            FieldBlockLine {
+                text: "Beta".into(),
+                ..FieldBlockLine::default()
+            },
+        ],
+    )
+    .unwrap();
+    assert_content_control(&doc, "Beta");
+    assert_eq!(
+        saved_text(&doc),
+        "Before\nContents title\nAlpha\nBeta\nAfter"
+    );
+    let mut doc = load(&doc.export_docx().unwrap());
+    let block = doc.field_blocks().pop().unwrap();
+    doc.replace_field_block(&block, "INDEX", &[]).unwrap();
+    assert_content_control(&doc, "w:fldCharType=\"begin\"");
+    assert_eq!(doc.field_blocks().len(), 1);
+}
+
+#[test]
 fn update_evaluates_merge_fields_for_the_previewed_recipient() {
     use crate::word_document::mail_merge::{MergeData, MergeRequest};
     let body = [
