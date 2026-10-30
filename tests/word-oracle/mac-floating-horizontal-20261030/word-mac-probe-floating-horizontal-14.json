@@ -1,0 +1,448 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114.2",
+ "word_build": "16.114.26102345",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "a325e0ac1ee3c724a242367e6d067d73641b20ee0c821788f0ca6fb42d2d7f96",
+ "pdf_sha256": "47c9aa1da4d9866f03cf621fd312e2a109361b5457665f7a033c1bb87c52c7b1",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 612.0,
+   "height_pt": 792.0,
+   "rows": [
+    {
+     "baseline_pt": 60.72,
+     "characters": [
+      {
+       "text": "H",
+       "x_pt": 57.6,
+       "advance_pt": 7.971,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 65.544,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 71.667,
+       "advance_pt": 3.676,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 75.328,
+       "advance_pt": 2.451,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "z",
+       "x_pt": 77.775,
+       "advance_pt": 5.52,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 83.279,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 89.402,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 95.525,
+       "advance_pt": 3.069,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 98.578,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 104.701,
+       "advance_pt": 2.451,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "f",
+       "x_pt": 110.201,
+       "advance_pt": 3.069,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 113.255,
+       "advance_pt": 2.451,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 115.701,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 121.824,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 127.947,
+       "advance_pt": 3.069,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "i",
+       "x_pt": 131.001,
+       "advance_pt": 2.451,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "n",
+       "x_pt": 133.447,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "g",
+       "x_pt": 139.57,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "t",
+       "x_pt": 148.746,
+       "advance_pt": 3.069,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "a",
+       "x_pt": 151.8,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "b",
+       "x_pt": 157.923,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "l",
+       "x_pt": 164.046,
+       "advance_pt": 2.451,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 166.492,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "p",
+       "x_pt": 175.669,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "r",
+       "x_pt": 181.791,
+       "advance_pt": 3.676,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "o",
+       "x_pt": 185.452,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "b",
+       "x_pt": 191.575,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "e",
+       "x_pt": 197.698,
+       "advance_pt": 6.138,
+       "baseline_pt": 60.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "Horizontalfloatingtableprobe"
+    },
+    {
+     "baseline_pt": 90.72,
+     "characters": [
+      {
+       "text": "M",
+       "x_pt": 57.6,
+       "advance_pt": 9.196,
+       "baseline_pt": 90.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 66.763,
+       "advance_pt": 6.138,
+       "baseline_pt": 90.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "ML"
+    },
+    {
+     "baseline_pt": 160.8,
+     "characters": [
+      {
+       "text": "M",
+       "x_pt": 257.28,
+       "advance_pt": 9.196,
+       "baseline_pt": 160.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 266.443,
+       "advance_pt": 7.971,
+       "baseline_pt": 160.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "MC"
+    },
+    {
+     "baseline_pt": 230.64,
+     "characters": [
+      {
+       "text": "M",
+       "x_pt": 457.2,
+       "advance_pt": 9.196,
+       "baseline_pt": 230.64,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 466.363,
+       "advance_pt": 7.971,
+       "baseline_pt": 230.64,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "MR"
+    },
+    {
+     "baseline_pt": 300.72,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 0.0,
+       "advance_pt": 7.364,
+       "baseline_pt": 300.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "L",
+       "x_pt": 7.337,
+       "advance_pt": 6.138,
+       "baseline_pt": 300.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "PL"
+    },
+    {
+     "baseline_pt": 370.8,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 257.28,
+       "advance_pt": 7.364,
+       "baseline_pt": 370.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "C",
+       "x_pt": 264.617,
+       "advance_pt": 7.971,
+       "baseline_pt": 370.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "PC"
+    },
+    {
+     "baseline_pt": 440.64,
+     "characters": [
+      {
+       "text": "P",
+       "x_pt": 514.8,
+       "advance_pt": 7.364,
+       "baseline_pt": 440.64,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 522.137,
+       "advance_pt": 7.971,
+       "baseline_pt": 440.64,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "PR"
+    },
+    {
+     "baseline_pt": 510.72,
+     "characters": [
+      {
+       "text": "M",
+       "x_pt": 57.6,
+       "advance_pt": 9.196,
+       "baseline_pt": 510.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "X",
+       "x_pt": 66.763,
+       "advance_pt": 7.364,
+       "baseline_pt": 510.72,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "MX"
+    },
+    {
+     "baseline_pt": 580.8,
+     "characters": [
+      {
+       "text": "M",
+       "x_pt": 461.28,
+       "advance_pt": 9.196,
+       "baseline_pt": 580.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "R",
+       "x_pt": 470.443,
+       "advance_pt": 7.971,
+       "baseline_pt": 580.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "P",
+       "x_pt": 478.392,
+       "advance_pt": 7.364,
+       "baseline_pt": 580.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "A",
+       "x_pt": 485.734,
+       "advance_pt": 7.364,
+       "baseline_pt": 580.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      },
+      {
+       "text": "D",
+       "x_pt": 493.075,
+       "advance_pt": 7.971,
+       "baseline_pt": 580.8,
+       "font": "ArialMT",
+       "size_pt": 11.04
+      }
+     ],
+     "text": "MRPAD"
+    }
+   ]
+  }
+ ]
+}
