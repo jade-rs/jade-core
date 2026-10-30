@@ -11,3 +11,4 @@ cc a408a8cb6b4b61b998926f9607ae9630911bb9f00d46f5ea063d4af228168f8c # shrinks to
 cc 9f06de7c53584d3850bc9fd37cc0e9897cea2fd022a8d44a167f5e2ff6167485 # shrinks to edits = [Edit { paragraph: 1, kind: 12, value: 0, from: 0, to: 1, reload: false }, Edit { paragraph: 1, kind: 18, value: 0, from: 0, to: 1, reload: false }]
 cc 7e369ee36340b318212789af14b46a6e1612d5e3efeacbcf07737a93b2aef606 # shrinks to paragraph = 1, first = 12, second = 0, value = 0, roundtrip = false
 cc 908a968d349385d1a3063830ec624850e33299a3a2bc0f8080002f788e2a3820 # shrinks to edits = [Edit { paragraph: 0, kind: 27, value: 0, from: 0, to: 1, reload: false }], tracked = true, abort = false
+cc 90442b1bd474b4dd2e77081fbddf12d39c495b20154a2575ce8b936d4dc50c61 # upstream PR 243 duplicate live revision ID reproduction
