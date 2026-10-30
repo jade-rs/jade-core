@@ -6792,11 +6792,12 @@ impl WordDocument {
     fn load_part(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(package) = &self.package {
             if let Some(data) = package.get(path) {
-                // `from_utf8` validates far faster than `from_utf8_lossy`,
-                // which a multi-megabyte `document.xml` felt on every load.
-                let content = String::from_utf8(data.to_vec()).unwrap_or_else(|invalid| {
-                    String::from_utf8_lossy(invalid.as_bytes()).into_owned()
-                });
+                // Validate normal XML without walking the lossy decoder's
+                // chunks. Keep its replacement behavior for malformed UTF-8.
+                let content = match std::str::from_utf8(data) {
+                    Ok(content) => content.to_owned(),
+                    Err(_) => String::from_utf8_lossy(data).into_owned(),
+                };
                 // Normalize only parts the editor reads. Keep unrelated OPC
                 // parts byte-for-byte in the original package for export.
                 let content = match jade_docx_reader::word_namespaces::normalize(&content)? {
@@ -38943,6 +38944,60 @@ mod tests {
         );
         let data = build_document_docx(&document_xml);
         executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx")
+    }
+
+    fn assert_loaded_part_matches_lossy_utf8(bytes: Vec<u8>) {
+        let mut doc = load_single_paragraph_document("<w:p/>");
+        let path = "word/document.xml";
+        let decoded = String::from_utf8_lossy(&bytes);
+        let expected = jade_docx_reader::word_namespaces::normalize(&decoded);
+        doc.package
+            .as_mut()
+            .unwrap()
+            .files
+            .insert(path.to_string(), bytes.clone());
+        let result = doc.load_part(path);
+        match expected {
+            Ok(expected) => {
+                result.expect("load normalized part bytes");
+                assert_eq!(doc.parts[path].content, expected);
+                assert_eq!(doc.document_part.as_ref().unwrap().content, expected);
+            }
+            Err(expected) => assert_eq!(result.unwrap_err().to_string(), expected.to_string()),
+        }
+        assert_eq!(doc.package.as_ref().unwrap().get(path).unwrap(), &bytes);
+    }
+
+    #[test]
+    fn load_part_preserves_utf8_replacement_boundaries_and_bom() {
+        for bytes in [
+            b"".as_slice(),
+            b"ascii\0text\r\n",
+            "契約書🙂é".as_bytes(),
+            b"\xef\xbb\xbf<document/>",
+            b"\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80",
+            b"\xe3\x81",
+            b"valid prefix \xf0\x9f\x99 suffix \xff\xfe",
+            b"\xe3\x81\x82\x80\x80\xe3\x81\x84",
+        ] {
+            assert_loaded_part_matches_lossy_utf8(bytes.to_vec());
+        }
+        for byte in 0..=255u8 {
+            assert_loaded_part_matches_lossy_utf8(vec![byte]);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn load_part_matches_lossy_utf8_for_generated_bytes(
+            bytes in prop_oneof![
+                proptest::collection::vec(any::<u8>(), 0..4096),
+                proptest::collection::vec(any::<char>(), 0..1024)
+                    .prop_map(|chars| chars.into_iter().collect::<String>().into_bytes()),
+            ],
+        ) {
+            assert_loaded_part_matches_lossy_utf8(bytes);
+        }
     }
 
     /// Applies a forward delete of each `(start, end)` offset range of the

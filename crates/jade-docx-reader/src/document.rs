@@ -1315,13 +1315,33 @@ fn custom_toc_style_level(paragraph: &Paragraph, options: &TocOptions) -> Option
 /// an internal space like `Heading 3`) to its 1-based level. Returns `None` for
 /// non-heading style ids.
 fn heading_style_level(style_id: &str) -> Option<u8> {
-    let normalized: String = style_id
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .flat_map(|c| c.to_lowercase())
-        .collect();
-    let suffix = normalized.strip_prefix("heading")?;
-    let level = suffix.parse::<u8>().ok()?;
+    let normalized = style_id.chars().filter(|c| !c.is_whitespace());
+    if style_id.is_ascii() {
+        normalized_heading_style_level(normalized.map(|c| c.to_ascii_lowercase()))
+    } else {
+        normalized_heading_style_level(normalized.flat_map(|c| c.to_lowercase()))
+    }
+}
+
+fn normalized_heading_style_level(mut normalized: impl Iterator<Item = char>) -> Option<u8> {
+    for expected in "heading".chars() {
+        if normalized.next()? != expected {
+            return None;
+        }
+    }
+    // Match u8 parsing, including an optional '+' and leading zeroes.
+    let first = normalized.next()?;
+    let first = if first == '+' {
+        normalized.next()?
+    } else {
+        first
+    };
+    let mut level = first.to_digit(10)? as u8;
+    for digit in normalized {
+        level = level
+            .checked_mul(10)?
+            .checked_add(digit.to_digit(10)? as u8)?;
+    }
     (1..=9).contains(&level).then_some(level)
 }
 
@@ -1416,16 +1436,16 @@ pub(crate) fn slice_byte_range(text: &str, start: usize, end: usize) -> Option<S
     Some(text[start..end].to_string())
 }
 
-/// Slices plain-text offsets while retaining zero-width computed fields
+/// Appends sliced plain text while retaining zero-width computed fields
 /// enclosed by the bookmark's run boundaries.
-fn bookmark_paragraph_text(
+fn append_bookmark_paragraph_text(
     paragraph: &Paragraph,
     start: usize,
     end: usize,
     start_run: usize,
     end_run: usize,
-) -> Option<String> {
-    let mut result = String::new();
+    result: &mut String,
+) -> Option<()> {
     let mut offset = 0;
     for (index, run) in paragraph.runs.iter().enumerate() {
         let run_end = offset + run.text.len();
@@ -1444,11 +1464,11 @@ fn bookmark_paragraph_text(
         let slice_start = start.saturating_sub(offset).min(run.text.len());
         let slice_end = end.saturating_sub(offset).min(run.text.len());
         if slice_start < slice_end {
-            result.push_str(&slice_byte_range(&run.text, slice_start, slice_end)?);
+            result.push_str(run.text.get(slice_start..slice_end)?);
         }
         offset = run_end;
     }
-    Some(result)
+    Some(())
 }
 
 /// Extracts bookmark display text; multi-paragraph ranges retain paragraph breaks.
@@ -1458,12 +1478,17 @@ fn extract_bookmark_text(body: &Body, bookmark: &Bookmark) -> Option<String> {
     {
         return None;
     }
-    let mut parts = Vec::new();
+    let mut result = String::new();
+    let mut has_paragraph = false;
     for index in bookmark.start_paragraph..=bookmark.end_paragraph {
         let Some(paragraph) = body.elements.get(index).and_then(BodyElement::as_paragraph) else {
             continue;
         };
-        parts.push(bookmark_paragraph_text(
+        if has_paragraph {
+            result.push('\n');
+        }
+        has_paragraph = true;
+        append_bookmark_paragraph_text(
             paragraph,
             if index == bookmark.start_paragraph {
                 bookmark.start_offset
@@ -1485,9 +1510,10 @@ fn extract_bookmark_text(body: &Body, bookmark: &Bookmark) -> Option<String> {
             } else {
                 paragraph.runs.len()
             },
-        )?);
+            &mut result,
+        )?;
     }
-    (!parts.is_empty()).then(|| parts.join("\n"))
+    has_paragraph.then_some(result)
 }
 
 #[derive(Default)]
@@ -4206,8 +4232,21 @@ mod tests {
         assert_eq!(heading_style_level("Heading1"), Some(1));
         assert_eq!(heading_style_level("heading 3"), Some(3));
         assert_eq!(heading_style_level("HEADING9"), Some(9));
+        assert_eq!(
+            heading_style_level("\u{2003}H e A d I n G\t+0003\n"),
+            Some(3)
+        );
+        assert_eq!(
+            heading_style_level("Heading+00000000000000000000000000000001"),
+            Some(1)
+        );
         assert_eq!(heading_style_level("Heading10"), None);
         assert_eq!(heading_style_level("Heading0"), None);
+        assert_eq!(heading_style_level("Heading256"), None);
+        assert_eq!(heading_style_level("Heading+"), None);
+        assert_eq!(heading_style_level("Heading-1"), None);
+        assert_eq!(heading_style_level("Heading\u{ff11}"), None);
+        assert_eq!(heading_style_level("Head\u{0130}ng1"), None);
         assert_eq!(heading_style_level("Normal"), None);
         assert_eq!(heading_style_level("a9"), None);
     }
@@ -4251,6 +4290,31 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+
+        #[test]
+        fn heading_style_level_matches_normalized_parse(
+            style in prop_oneof![
+                any::<String>(),
+                "[hH][eE][aA][dD][iI][nN][gG][+0-9 \\t\\r\\n]{0,64}",
+                (0u8..=12, any::<bool>(), 0..32usize).prop_map(|(level, plus, zeros)| {
+                    format!("Heading{}{}{level}", if plus { "+" } else { "" }, "0".repeat(zeros))
+                }),
+            ],
+            whitespace in prop::sample::select(vec![' ', '\t', '\n', '\u{a0}', '\u{2003}', '\u{3000}']),
+        ) {
+            // Also exercise whitespace inside the prefix and numeric suffix.
+            let style: String = style.chars().flat_map(|c| [c, whitespace]).collect();
+            let normalized: String = style
+                .chars()
+                .filter(|c| !c.is_whitespace())
+                .flat_map(|c| c.to_lowercase())
+                .collect();
+            let expected = normalized
+                .strip_prefix("heading")
+                .and_then(|suffix| suffix.parse::<u8>().ok())
+                .filter(|level| (1..=9).contains(level));
+            prop_assert_eq!(heading_style_level(&style), expected);
+        }
 
         #[test]
         fn logical_indent_resolution_is_direction_symmetric(
