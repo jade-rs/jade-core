@@ -36832,6 +36832,26 @@ impl WordDocument {
                                 updated += 1;
                                 run_index += 1;
                             }
+                            // The walk left the container at a run that does
+                            // not belong in it (a note reference or a field
+                            // put inside a link) while later runs still sit
+                            // in it. Written whole, the container carried
+                            // those runs here and they were written again
+                            // after the stop: a footnote in a TOC entry
+                            // doubled its page number. Their part of the
+                            // container goes back to the queue as a copy of
+                            // it, met when the walk reaches them.
+                            if let Some(rest) = previous_run_id.and_then(|previous| {
+                                Self::split_container_after_run(
+                                    doc,
+                                    &mut container,
+                                    previous,
+                                    runs,
+                                    run_index,
+                                )
+                            }) {
+                                tokens.push_front(ChildToken::NonRun(XmlNode::Element(rest)));
+                            }
                             if updated > 0 {
                                 // The surviving runs were updated in place; the
                                 // ones the edit deleted are still children here.
@@ -37712,6 +37732,41 @@ impl WordDocument {
     /// empty `<w:r/>`, which the parser never models, has no model run to
     /// begin with, and stays. A nested container left without runs goes, like
     /// an emptied top-level wrapper.
+    /// Moves the children of the hyperlink `container` that follow the one
+    /// holding run `after` into a new hyperlink with the same attributes,
+    /// when one of `runs[start_index..]` is among them. Returns that new
+    /// hyperlink.
+    fn split_container_after_run(
+        doc: &mut DocxXmlDocument,
+        container: &mut XmlElement,
+        after: XmlNodeId,
+        runs: &[Run],
+        start_index: usize,
+    ) -> Option<XmlElement> {
+        if container.name != "w:hyperlink" || start_index >= runs.len() {
+            return None;
+        }
+        let holder = container.children.iter().position(|child| {
+            matches!(child, XmlNode::Element(element)
+                if element.id == after || Self::element_contains_run_id(element, after))
+        })?;
+        let rest_holds_remaining_run = container.children[holder + 1..].iter().any(|child| {
+            matches!(child, XmlNode::Element(element)
+                if (element.name == "w:r"
+                    && runs[start_index..].iter().any(|run| run.node_id == Some(element.id)))
+                    || Self::element_contains_any_remaining_run(element, runs, start_index))
+        });
+        if !rest_holds_remaining_run {
+            return None;
+        }
+        let rest = container.children.split_off(holder + 1);
+        Some(doc.create_element_preserving_child_ids(
+            container.name.clone(),
+            container.attributes.clone(),
+            rest,
+        ))
+    }
+
     fn remove_deleted_runs_in_container(container: &mut XmlElement, runs: &[Run]) {
         container.children.retain_mut(|child| {
             let XmlNode::Element(element) = child else {
