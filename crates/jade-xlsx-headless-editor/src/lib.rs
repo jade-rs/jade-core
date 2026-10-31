@@ -1949,6 +1949,44 @@ impl HeadlessWorkbook {
         })
     }
 
+    /// Excel's Clear ▸ Clear Formats on the cells of `range`: each cell there
+    /// that wears a style goes back to the default one, its value, formula
+    /// and cache kept. Row and column defaults stay as they are. Returns how
+    /// many cells changed; none, and nothing is written. One undo step.
+    pub fn clear_formats(&mut self, sheet: &str, range: &str) -> Result<usize> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(index, "formatting cells is not allowed", |p| p.format_cells)?;
+        let range = parse_range(range)?;
+        let model = &self.workbook.sheets[index];
+        let mut edits = Vec::new();
+        for row in &model.rows {
+            if row.index < range.start.row || row.index > range.end.row {
+                continue;
+            }
+            for cell in &row.cells {
+                let column = cell.reference.column;
+                if column < range.start.column || column > range.end.column {
+                    continue;
+                }
+                if effective_style(model, cell.reference) != 0 {
+                    edits.push((
+                        index,
+                        CellEdit {
+                            reference: cell.reference,
+                            value: NewValue::Unchanged,
+                            style_index: Some(0),
+                        },
+                    ));
+                }
+            }
+        }
+        let count = edits.len();
+        if count > 0 {
+            self.write_edits(edits)?;
+        }
+        Ok(count)
+    }
+
     /// Base formatting at the merged-cell anchor, independent of conditional styles
     /// and the display theme. Unresolved colors/number formats remain unspecified.
     pub fn format_at(&self, sheet_name: &str, reference: &str) -> Result<FormatChange> {
