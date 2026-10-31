@@ -13435,6 +13435,47 @@ mod tests {
     }
 
     #[test]
+    fn a_package_without_styles_takes_words_built_in_normal() {
+        // underline-kinds.docx has no styles part. Word for Mac sets its text
+        // in 游明朝 10.5 pt (Japanese Word's built-in Normal); the editor fell
+        // back to the spec's Times New Roman and measured every line wider.
+        // The package gains no styles part until an edit writes one.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/underline-kinds.docx"),
+        )
+        .expect("read fixture");
+        let word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let paragraph = word_doc.paragraph(0).expect("paragraph");
+        let run = paragraph
+            .runs
+            .first()
+            .and_then(|run| run.properties.as_ref());
+        let fonts = run.and_then(|props| props.fonts.as_ref());
+        assert_eq!(
+            fonts.and_then(|fonts| fonts.ascii.as_deref()),
+            Some("游明朝")
+        );
+        assert_eq!(
+            fonts.and_then(|fonts| fonts.east_asia.as_deref()),
+            Some("游明朝")
+        );
+        assert_eq!(run.and_then(|props| props.font_size), Some(10.5));
+        assert_eq!(
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|props| props.alignment.as_deref()),
+            Some("both")
+        );
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+        assert!(archive.by_name("word/styles.xml").is_err());
+    }
+
+    #[test]
     fn a_document_without_section_properties_lays_out_on_words_default_page() {
         // underline-kinds.docx has no `w:sectPr`. Word for Mac lays it out on
         // Japanese Word's default page: A4, a 35 mm top and 30 mm side margin,

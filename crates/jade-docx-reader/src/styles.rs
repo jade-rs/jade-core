@@ -87,6 +87,9 @@ struct TableStyleDefinition {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// See [`StylesPart::word_default`].
+const WORD_DEFAULT_STYLES_XML: &str = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/><w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style><w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style><w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>"#;
+
 impl StylesPart {
     /// Creates an empty `StylesPart`. Useful when the package omits
     /// `word/styles.xml` but we still want a neutral default to avoid
@@ -96,6 +99,16 @@ impl StylesPart {
     }
 
     /// Parses a style definition part from raw XML text.
+    /// The styles Word uses for a package without `styles.xml`: Japanese
+    /// Word's built-in Normal. Every script runs in 游明朝 10.5 pt with
+    /// kerning, and the Normal paragraph is justified without widow control.
+    /// Word for Mac sets the text of underline-kinds.docx and
+    /// header-footer-sections.docx, which have no styles part, this way; the
+    /// spec's Times New Roman 10 pt fallback measured every line wider.
+    pub fn word_default() -> Self {
+        Self::from_xml(WORD_DEFAULT_STYLES_XML).expect("built-in styles parse")
+    }
+
     pub fn from_xml(xml: &str) -> ParseResult<Self> {
         let mut part = Self::new();
         part.parse(xml)?;
