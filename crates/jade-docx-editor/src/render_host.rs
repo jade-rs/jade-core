@@ -320,6 +320,17 @@ pub trait CanvasRenderHost {
     fn truncate_pages(&mut self, _total_pages: usize) -> Result<(), JsValue> {
         Ok(())
     }
+    /// Publishes pagination at the end of a render pass. `layout_complete`
+    /// means the count is authoritative, including when a bounded pass reaches
+    /// the document end or reuses valid, completed pagination. Hosts retaining
+    /// off-window pages can preserve their unseen tail for incomplete layouts.
+    fn finish_pagination(
+        &mut self,
+        total_pages: usize,
+        _layout_complete: bool,
+    ) -> Result<(), JsValue> {
+        self.truncate_pages(total_pages)
+    }
     /// Creates an ImageBitmap for a specific page without destroying the canvas.
     /// This is non-destructive unlike `take_paged_snapshots`.
     fn create_page_bitmap(&self, page_index: usize) -> Result<Promise, JsValue>;
