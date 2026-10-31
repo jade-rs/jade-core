@@ -83,6 +83,86 @@ fn sha256(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn mac_noto_circle_title_matches_original_word_coordinates() {
+    let evidence: Value = serde_json::from_slice(
+        &std::fs::read(repo_path("tests/word-oracle/mac-noto-circle-advance.json")).unwrap(),
+    )
+    .unwrap();
+    let fixture = "noto-yokohama_page6";
+    let bytes = std::fs::read(repo_path(&format!("public/fixtures/{fixture}.docx"))).unwrap();
+    assert_eq!(evidence["docx_sha256"], sha256(&bytes));
+    for (extension, hash) in [("json", "reference_sha256"), ("pdf", "pdf_sha256")] {
+        let path = if extension == "pdf" {
+            format!("tests/word-oracle/mac-glyph-corpus-20261019/pdf/{fixture}.pdf")
+        } else {
+            format!("tests/word-oracle/mac-glyph-corpus-20261019/{fixture}.json")
+        };
+        assert_eq!(
+            evidence[hash],
+            sha256(&std::fs::read(repo_path(&path)).unwrap())
+        );
+    }
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-glyph-corpus-20261019/{fixture}.json"
+        )))
+        .unwrap(),
+    )
+    .unwrap();
+    let title = "○横浜市市税条例";
+    let rows: Vec<_> = reference["pages"][0]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["text"] == title)
+        .collect();
+    assert_eq!(rows.len(), 1);
+    let expected_glyphs: Vec<_> = rows[0]["characters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            json!([
+                1,
+                g["text"],
+                g["x_pt"],
+                g.get("baseline_pt").unwrap_or(&rows[0]["baseline_pt"])
+            ])
+        })
+        .collect();
+    assert_eq!(expected_glyphs.len(), 8);
+    let doc = open_with_bundled_faces(&bytes);
+    let lines: Vec<_> = doc
+        .renderer()
+        .layout_debug_lines()
+        .into_iter()
+        .filter(|l| l.text == title)
+        .collect();
+    assert_eq!(lines.len(), 1);
+    let line = &lines[0];
+    let actual_glyphs: Vec<_> = line
+        .fragments
+        .iter()
+        .flat_map(|f| {
+            f.glyphs.iter().map(|g| {
+                json!([
+                    line.page + 1,
+                    g.text,
+                    (f.x + g.x - 2.0 * line.report_x_offset) * 0.75,
+                    f.baseline * 0.75
+                ])
+            })
+        })
+        .collect();
+    compare(
+        &json!({"page_count": reference["page_count"], "glyphs": expected_glyphs}),
+        &json!({"page_count": doc.page_count(), "glyphs": actual_glyphs}),
+        WORD_TOLERANCE_PT,
+    )
+    .unwrap_or_else(|error| panic!("original Word Noto circle title: {error}"));
+}
+
+#[test]
 fn mac_missing_first_footer_stays_blank() {
     let bytes = std::fs::read(repo_path("public/fixtures/header-footer-sections.docx")).unwrap();
     let reference: Value = serde_json::from_slice(

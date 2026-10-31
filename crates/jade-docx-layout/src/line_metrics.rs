@@ -1926,11 +1926,12 @@ pub(crate) fn word_fixed_east_asian_em_px(font_descriptor: &str) -> Option<f64> 
 /// The regular MS Mincho and Yu Gothic Light U+2026 glyphs both have a 1em
 /// hmtx advance, despite selecting the HAnsi slot (General Punctuation).
 /// Calibri Bold's U+2014 has 1854/2048em in both original section headings.
+/// Regular Noto Sans U+25CB has 1237/2048em in the original Yokohama title.
 /// This is an observed face metric, not a Unicode-wide width assumption.
 /// Unknown characters/faces/styles retain the host measurement.
 #[inline]
 pub fn word_observed_unicode_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
-    if !matches!(grapheme, "…" | "—") {
+    if !matches!(grapheme, "…" | "—" | "○") {
         return None;
     }
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
@@ -1944,6 +1945,10 @@ pub fn word_observed_unicode_advance_px(font_descriptor: &str, grapheme: &str) -
     }
     if bold || italic {
         return None;
+    }
+    if grapheme == "○" {
+        return (family.trim_matches(|ch| ch == '\'' || ch == '"') == "Noto Sans")
+            .then_some(f64::from(size_pt) * 96.0 / 72.0 * 1237.0 / 2048.0);
     }
     match family.trim_matches(|ch| ch == '\'' || ch == '"') {
         "ＭＳ 明朝"
@@ -3431,6 +3436,39 @@ mod tests {
             )),
             0.0
         );
+    }
+
+    #[test]
+    fn noto_sans_circle_keeps_original_word_pdf_advance() {
+        let evidence: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/word-oracle/mac-noto-circle-advance.json"
+        ))
+        .unwrap();
+        assert_eq!(evidence["units_per_em"], 2048);
+        assert_eq!(evidence["advance_units"], 1237);
+        for size in [6.0, 10.5, 12.0, 24.0, 72.0] {
+            let descriptor = format!("{size}pt 'Noto Sans', sans-serif");
+            let expected = size * 96.0 / 72.0 * 1237.0 / 2048.0;
+            assert_eq!(
+                word_observed_unicode_advance_px(&descriptor, "○"),
+                Some(expected)
+            );
+        }
+        for descriptor in [
+            "bold 10.5pt 'Noto Sans'",
+            "italic 10.5pt 'Noto Sans'",
+            "10.5pt 'Noto Sans JP'",
+            "10.5pt 'MS Mincho'",
+            "10.5pt 'Unknown Sans'",
+        ] {
+            assert_eq!(word_observed_unicode_advance_px(descriptor, "○"), None);
+        }
+        for glyph in ["●", "◯", "〇", "○○"] {
+            assert_eq!(
+                word_observed_unicode_advance_px("10.5pt 'Noto Sans'", glyph),
+                None
+            );
+        }
     }
 
     #[test]
