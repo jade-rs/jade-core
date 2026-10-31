@@ -6,6 +6,7 @@ pub mod canvas_renderer;
 pub mod canvas_view;
 pub(crate) mod chart;
 pub mod commands;
+pub(crate) mod decoration_results;
 pub mod draw_command;
 pub mod format_convert;
 pub mod headless_api;
