@@ -1164,7 +1164,17 @@ fn layout_sheet_on_axes(
                 .as_deref()
                 .or_else(|| format.and_then(|format| styles.number_format_code(format)));
             let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
-            alignment.horizontal = resolve_horizontal(alignment.horizontal, &cell.value);
+            // Show Formulas: a formula shows as typed, as text does, left.
+            let shown_formula = sheet
+                .show_formulas
+                .then_some(cell.formula.as_deref())
+                .flatten()
+                .map(formula_as_typed);
+            alignment.horizontal = if shown_formula.is_some() {
+                resolve_horizontal(alignment.horizontal, &CellValue::Text(String::new()))
+            } else {
+                resolve_horizontal(alignment.horizontal, &cell.value)
+            };
             // Justified and distributed text wraps in Excel whether or not
             // Wrap Text is ticked; layout and painting see it as wrapped.
             if matches!(
@@ -1188,8 +1198,18 @@ fn layout_sheet_on_axes(
                 (Some(_), HorizontalAlignment::Left) => icon_size_px(&font, f64::INFINITY) + 1.0,
                 _ => 0.0,
             };
-            let formatted =
-                number_format::format_value(&cell.value, number_format_code, options.date_system);
+            let formatted = match &shown_formula {
+                Some(formula) => number_format::format_value(
+                    &CellValue::Text(formula.clone()),
+                    Some("@"),
+                    options.date_system,
+                ),
+                None => number_format::format_value(
+                    &cell.value,
+                    number_format_code,
+                    options.date_system,
+                ),
+            };
             let fill_at = formatted.fill;
             let text = formatted.text;
             // Without wrap text Excel keeps the cell on one line and shows
@@ -1219,7 +1239,7 @@ fn layout_sheet_on_axes(
                 filter_button::text_reserve(&filter_definitions, cell.reference, merge, &columns);
             let text_width = span_width(&columns, cell.reference, merge.as_ref()) - filter_reserve;
             let overflow = if filter_reserve == 0.0
-                && matches!(cell.value, CellValue::Text(_))
+                && (matches!(cell.value, CellValue::Text(_)) || shown_formula.is_some())
                 && merge.is_none()
                 && !alignment.wrap_text
                 && !alignment.shrink_to_fit
@@ -1724,6 +1744,7 @@ pub fn relayout_rows(
         default_row_custom_height: sheet.default_row_custom_height,
         default_rows_hidden: sheet.default_rows_hidden,
         show_grid_lines: sheet.show_grid_lines,
+        show_formulas: sheet.show_formulas,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
         header_footer: None,
@@ -1838,6 +1859,15 @@ fn splice_rows(
         cells.splice(run, new);
     }
     true
+}
+
+/// A stored formula as Excel shows it with Show Formulas on: with its `=`,
+/// and without the file's `_xlfn.` and `_xlws.` prefixes.
+fn formula_as_typed(formula: &str) -> String {
+    format!(
+        "={}",
+        formula.replace("_xlfn._xlws.", "").replace("_xlfn.", "")
+    )
 }
 
 fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {

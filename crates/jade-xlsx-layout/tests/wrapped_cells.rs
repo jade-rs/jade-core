@@ -94,6 +94,7 @@ fn sheet_with(text: &str, style_index: Option<u32>, width_chars: f32) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,

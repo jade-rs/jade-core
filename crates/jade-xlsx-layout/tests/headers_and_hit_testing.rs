@@ -43,6 +43,7 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,

@@ -1651,6 +1651,25 @@ impl HeadlessWorkbook {
         self.replace_parts(vec![(part_name, patched)])
     }
 
+    /// Formulas ▸ Show Formulas (⌃`): the sheet's cells show their formulas,
+    /// or (`on` false) what they work out to again. One undo step; `false`
+    /// when it is already so.
+    pub fn set_show_formulas(&mut self, sheet: &str, on: bool) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        if self.workbook.sheets[index].show_formulas == on {
+            return Ok(false);
+        }
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let xml = jade_opc::read_part_str(&self.source, &part_name)?
+            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
+        let patched = jade_xlsx_writer::sheet_view::set_show_formulas(&xml, on)?;
+        if patched == xml {
+            return Ok(false);
+        }
+        self.replace_parts(vec![(part_name, patched)])?;
+        Ok(true)
+    }
+
     /// Page Layout ▸ Breaks: the sheet's manual page breaks on `axis`
     /// replaced by `breaks`, each the zero-based row (or column) it sits
     /// above (or left of); the breaks pagination placed stay. One undo step;
