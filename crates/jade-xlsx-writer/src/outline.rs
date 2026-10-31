@@ -38,6 +38,11 @@ pub enum OutlineChange {
     /// Show Detail: that group expanded, groups inside it that are
     /// collapsed staying so.
     ShowDetail,
+    /// One of the outline's level buttons: the rows (or columns) above that
+    /// level shown and every group at it or deeper collapsed — `1` collapses
+    /// everything, one past the deepest level shows everything. The rows or
+    /// columns given are not looked at.
+    ShowLevel(u8),
 }
 
 /// What one row or column of the outline becomes.
@@ -194,6 +199,38 @@ pub fn plan_outline(
                 let mut mark = view.mark(summary);
                 mark.collapsed = true;
                 marks.insert(summary, mark);
+            }
+        }
+        OutlineChange::ShowLevel(shown) => {
+            let levels = match axis {
+                Axis::Rows => &sheet.outline.row_levels,
+                Axis::Columns => &sheet.outline.column_levels,
+            };
+            let deepest = levels.values().copied().max().unwrap_or(0);
+            for (&index, &level) in levels {
+                let mut mark = view.mark(index);
+                mark.hidden = level >= shown;
+                marks.insert(index, mark);
+            }
+            // Each group's summary says whether the group is collapsed.
+            for level in 1..=deepest {
+                let mut runs: Vec<(u32, u32)> = Vec::new();
+                for (&index, _) in levels.iter().filter(|(_, l)| **l >= level) {
+                    match runs.last_mut() {
+                        Some(run) if run.1 + 1 == index => run.1 = index,
+                        _ => runs.push((index, index)),
+                    }
+                }
+                for run in runs {
+                    if let Some(summary) = view.summary(run) {
+                        let mut mark = marks
+                            .get(&summary)
+                            .copied()
+                            .unwrap_or_else(|| view.mark(summary));
+                        mark.collapsed = level >= shown;
+                        marks.insert(summary, mark);
+                    }
+                }
             }
         }
         OutlineChange::ShowDetail => {
