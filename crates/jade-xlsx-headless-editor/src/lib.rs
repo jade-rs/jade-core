@@ -230,6 +230,10 @@ pub struct HeadlessWorkbook {
     /// fingerprint; an export deflates them properly. Kept across undo, so
     /// that an entry brought back is still known.
     fast_entries: HashSet<jade_opc::EntryFingerprint>,
+    /// Sheet entries typing wrote in order, by fingerprint: another write of
+    /// the sheet gives it another, so a sheet still matching one needs no
+    /// reading through to its end to be sure of its order.
+    ordered_sheets: HashSet<jade_opc::EntryFingerprint>,
     calculation_time_zone: String,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
@@ -275,6 +279,7 @@ impl HeadlessWorkbook {
                 source: self.source.clone(),
                 automatic_height_base: self.automatic_height_base.clone(),
                 fast_entries: self.fast_entries.clone(),
+                ordered_sheets: self.ordered_sheets.clone(),
                 calculation_time_zone: self.calculation_time_zone.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
@@ -697,6 +702,7 @@ impl HeadlessWorkbook {
             source: bytes.to_vec(),
             automatic_height_base: None,
             fast_entries: HashSet::new(),
+            ordered_sheets: HashSet::new(),
             calculation_time_zone: time_zone.to_string(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
@@ -1377,6 +1383,13 @@ impl HeadlessWorkbook {
             .collect();
         // Packed quickly: typing writes the edited sheets on every entry, and
         // an export packs them properly.
+        let edited: Vec<String> = sheets.iter().map(|edits| edits.part_name.clone()).collect();
+        let known: Vec<String> = jade_opc::entry_fingerprints(&self.source, &edited)?
+            .into_iter()
+            .filter(|entry| self.ordered_sheets.contains(entry))
+            .map(|(name, _, _)| name)
+            .collect();
+        let ordered = |part: &str| known.iter().any(|name| name == part);
         let (written, fast) = jade_opc::with_fast_compression(|| {
             jade_xlsx_writer::write_edits_with_cached_values(
                 &self.source,
@@ -1384,12 +1397,15 @@ impl HeadlessWorkbook {
                 &cached,
                 complete,
                 &verified,
+                &ordered,
             )
         });
         let written = match written {
-            Ok(written) => {
+            Ok((written, in_order)) => {
                 self.fast_entries
                     .extend(jade_opc::entry_fingerprints(&written, &fast)?);
+                self.ordered_sheets
+                    .extend(jade_opc::entry_fingerprints(&written, &in_order)?);
                 written
             }
             Err(error) => {

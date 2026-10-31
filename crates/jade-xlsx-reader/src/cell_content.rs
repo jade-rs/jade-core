@@ -111,19 +111,25 @@ enum Frame {
 }
 
 pub(crate) fn worksheet(xml: &str) -> Result<String> {
-    Ok(project(xml, "worksheet", false, false, None, false)?.0)
+    Ok(project(xml, "worksheet", false, false, None, false, None)?.0)
 }
 pub(crate) fn comments(xml: &str) -> Result<String> {
-    Ok(project(xml, "comments", false, false, None, false)?.0)
+    Ok(project(xml, "comments", false, false, None, false, None)?.0)
 }
 pub(crate) fn shared_strings(xml: &str) -> Result<String> {
-    Ok(project(xml, "sst", false, false, None, false)?.0)
+    Ok(project(xml, "sst", false, false, None, false, None)?.0)
 }
 /// Original byte offsets of the selected standard worksheet structure and
 /// formulas. Namespace aliases and supported MCE branches use the same policy
 /// as cell values, rich runs and phonetic readings.
 pub fn worksheet_source(xml: &str) -> Result<WorksheetSource> {
-    Ok(project(xml, "worksheet", true, false, None, false)?.1)
+    Ok(project(xml, "worksheet", true, false, None, false, None)?.1)
+}
+/// [`worksheet_source`] read only through the first row after `last_row`:
+/// enough for a writer placing cells no further down, in a sheet already
+/// known to be in order. What it says about order covers what it read.
+pub fn worksheet_source_through(xml: &str, last_row: u32) -> Result<WorksheetSource> {
+    Ok(project(xml, "worksheet", true, false, None, false, Some(last_row))?.1)
 }
 /// Relationship-only projection skips grid subtrees and builds no cell/span view.
 pub(crate) fn worksheet_drawing_relationship(xml: &str, legacy: bool) -> Result<Option<String>> {
@@ -152,7 +158,7 @@ pub(crate) fn worksheet_drawing_relationship(xml: &str, legacy: bool) -> Result<
     if !xml.contains("rawing") {
         return Ok(None);
     }
-    project(xml, &root, true, false, None, true)?
+    project(xml, &root, true, false, None, true, None)?
         .1
         .drawing_relationship(legacy)
 }
@@ -161,7 +167,7 @@ pub(crate) fn worksheet_drawing_relationship(xml: &str, legacy: bool) -> Result<
 /// resume from the selected representation, rather than counting alternatives.
 pub fn compatible_cells(xml: &str, references: &HashSet<CellRef>) -> Result<Vec<CellSource>> {
     Ok(
-        project(xml, "worksheet", true, true, Some(references), false)?
+        project(xml, "worksheet", true, true, Some(references), false, None)?
             .1
             .cells,
     )
@@ -341,6 +347,7 @@ fn project(
     all_known: bool,
     references: Option<&HashSet<CellRef>>,
     metadata_only: bool,
+    stop_after_row: Option<u32>,
 ) -> Result<(String, WorksheetSource)> {
     let mut reader = NsReader::from_str(xml);
     let mut writer = Writer::new(Vec::new());
@@ -695,6 +702,16 @@ fn project(
                     }
                     // Element frames and path entries are pushed together.
                     let name = path.pop().unwrap_or_default();
+                    // A row past the last one asked about closes the read.
+                    if name == "row"
+                        && path.last().is_some_and(|parent| parent == "sheetData")
+                        && stop_after_row.is_some_and(|last| coordinates.1 > last)
+                        && !frames
+                            .iter()
+                            .any(|frame| matches!(frame, Frame::Alternate { .. }))
+                    {
+                        break;
+                    }
                     emit(
                         &mut writer,
                         Event::End(BytesEnd::new(name)),
