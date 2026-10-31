@@ -285,6 +285,7 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -675,4 +676,24 @@ fn clear_formats_puts_the_default_style_back_and_keeps_values() {
     assert_eq!(workbook.clear_formats(SHEET, "G1:G3").expect("clear"), 0);
     assert!(workbook.undo().expect("undo"));
     assert_eq!(workbook.cell(SHEET, "G2").expect("cell").display, "¥200");
+}
+
+#[test]
+fn show_formulas_is_written_to_the_sheet_and_undoes() {
+    let mut workbook = open();
+    let index = workbook
+        .workbook()
+        .sheets
+        .iter()
+        .position(|sheet| sheet.name == SHEET)
+        .expect("sheet");
+    assert!(!workbook.workbook().sheets[index].show_formulas);
+    assert!(workbook.set_show_formulas(SHEET, true).expect("show"));
+    assert!(workbook.workbook().sheets[index].show_formulas);
+    assert!(!workbook.set_show_formulas(SHEET, true).expect("again"));
+    // It survives a save and reopen.
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().expect("export")).expect("open");
+    assert!(reopened.workbook().sheets[index].show_formulas);
+    assert!(workbook.undo().expect("undo"));
+    assert!(!workbook.workbook().sheets[index].show_formulas);
 }

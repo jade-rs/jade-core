@@ -65,6 +65,7 @@ pub mod protected_ranges;
 pub mod protection;
 mod refresh;
 pub mod sheet_protection;
+pub mod sheet_view;
 pub mod sheets;
 pub mod shift;
 pub mod sort;
