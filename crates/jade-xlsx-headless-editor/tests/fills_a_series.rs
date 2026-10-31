@@ -697,3 +697,66 @@ fn show_formulas_is_written_to_the_sheet_and_undoes() {
     assert!(workbook.undo().expect("undo"));
     assert!(!workbook.workbook().sheets[index].show_formulas);
 }
+
+#[test]
+fn a_sheet_copies_next_to_itself_with_its_cells() {
+    let mut workbook = open();
+    let source = SHEET.to_string();
+    let count = workbook.workbook().sheets.len();
+    let first = workbook
+        .workbook()
+        .sheets
+        .iter()
+        .position(|sheet| sheet.name == SHEET)
+        .expect("sheet");
+    workbook
+        .set_cells(&source, &[("H40".into(), CellInput::Text("copied".into()))])
+        .expect("set");
+    let at = workbook.copy_sheet(&source, "Copy of it").expect("copy");
+    assert_eq!(at, first + 1);
+    assert_eq!(workbook.workbook().sheets[at].name, "Copy of it");
+    assert_eq!(
+        workbook.cell("Copy of it", "H40").expect("cell").display,
+        "copied"
+    );
+    assert_eq!(
+        workbook.cell("Copy of it", "B2").expect("cell").display,
+        workbook.cell(&source, "B2").expect("cell").display
+    );
+    // Editing the copy leaves the source alone.
+    workbook
+        .set_cells(
+            "Copy of it",
+            &[("H40".into(), CellInput::Text("changed".into()))],
+        )
+        .expect("set");
+    assert_eq!(
+        workbook.cell(&source, "H40").expect("cell").display,
+        "copied"
+    );
+    // Saved and reopened, both are there.
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().expect("export")).expect("open");
+    assert_eq!(
+        reopened.cell("Copy of it", "H40").expect("cell").display,
+        "changed"
+    );
+    assert!(
+        workbook.copy_sheet(&source, "Copy of it").is_err(),
+        "names stay unique"
+    );
+    assert!(workbook.undo().expect("undo"));
+    assert!(workbook.undo().expect("undo"));
+    assert_eq!(workbook.workbook().sheets.len(), count);
+}
+
+#[test]
+fn a_sheet_with_a_table_is_not_copied_in_part() {
+    let mut workbook =
+        HeadlessWorkbook::open(&fixture("grid-operations-workbook.xlsx")).expect("open");
+    let name = workbook.workbook().sheets[0].name.clone();
+    assert!(!workbook.workbook().sheets[0].tables.is_empty());
+    let count = workbook.workbook().sheets.len();
+    let refused = workbook.copy_sheet(&name, "Table copy").unwrap_err();
+    assert!(refused.to_string().contains("cannot be copied"));
+    assert_eq!(workbook.workbook().sheets.len(), count);
+}
