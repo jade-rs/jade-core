@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 78c4b694b7e3c3c53ccbe092da12ab3b4d795a5c3b4ccf9ac89713a4ae204d42 # shrinks to operations = [Delete(7, 0)]
+cc 280d099d00c935766288b2854d521d1567d4d934629130b6b0f4104098019496 # shrinks to operations = [Replace(8, 22, "e\u{301}")]

@@ -5708,17 +5708,31 @@ fn trimmed_replacement<'a>(
     let Some(paragraph) = word_doc.paragraph(start_paragraph) else {
         return (start, end, replacement);
     };
+    let model_start = word_doc
+        .rendered_to_model_text_position(TextPosition::new(start_paragraph, start))
+        .offset;
+    let model_end = word_doc
+        .rendered_to_model_text_position(TextPosition::new(end_paragraph, end))
+        .offset;
+    // Note numbers and inline objects occupy rendered coordinates that the
+    // run text does not. Trim only a contiguous span of actual model text;
+    // a selection containing a reference/object still needs the full edit.
+    if model_end.checked_sub(model_start) != Some(end - start) {
+        return (start, end, replacement);
+    }
     let mut at = 0;
     for run in &paragraph.runs {
         let next = at + run.text.len();
-        if at < end && next > start && run.revision.as_ref().is_some_and(|mark| mark.is_deletion())
+        if at < model_end
+            && next > model_start
+            && run.revision.as_ref().is_some_and(|mark| mark.is_deletion())
         {
             return (start, end, replacement);
         }
         at = next;
     }
     let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
-    let Some(selected) = text.get(start..end) else {
+    let Some(selected) = text.get(model_start..model_end) else {
         return (start, end, replacement);
     };
     let prefix = selected
