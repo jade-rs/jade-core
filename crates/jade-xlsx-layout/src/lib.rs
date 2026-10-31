@@ -996,6 +996,23 @@ fn layout_sheet_with_workbook(
     options: &LayoutOptions,
     workbook: Option<&jade_xlsx_reader::Workbook>,
 ) -> SheetLayout {
+    layout_sheet_on_axes(sheet, styles, options, workbook, None).0
+}
+
+/// What a layout's axes would have been, when it was placed on another
+/// layout's instead.
+type ComputedAxes = (Vec<AxisEntry>, Vec<AxisEntry>);
+
+/// The layout, its cells placed on `kept`'s columns and rows when given —
+/// with the axes this sheet would have had returned beside it, for the
+/// caller to check against them.
+fn layout_sheet_on_axes(
+    sheet: &Sheet,
+    styles: &StyleTable,
+    options: &LayoutOptions,
+    workbook: Option<&jade_xlsx_reader::Workbook>,
+    kept: Option<&SheetLayout>,
+) -> (SheetLayout, Option<ComputedAxes>) {
     let filter_definitions = filter_button::definitions(sheet);
     let column_count = sheet
         .used_column_count()
@@ -1420,6 +1437,12 @@ fn layout_sheet_with_workbook(
     }
 
     let mut rows = row_axis(sheet, row_count, &auto_heights);
+    let computed = kept.map(|kept| {
+        let computed = (columns.clone(), rows.clone());
+        columns = kept.columns.clone();
+        rows = kept.rows.clone();
+        computed
+    });
 
     // One-cell and absolute anchors can extend beyond the used cells. Include
     // their transformed bounds in both the scroll surface and the grid axes.
@@ -1604,7 +1627,7 @@ fn layout_sheet_with_workbook(
         })
         .collect();
     let sparklines = sparkline::place(sheet, workbook, &columns, &rows);
-    SheetLayout {
+    let layout = SheetLayout {
         columns,
         rows,
         cells,
@@ -1625,7 +1648,153 @@ fn layout_sheet_with_workbook(
         frozen_rows,
         cell_padding_px: options.cell_padding_px,
         outline: sheet.outline.clone(),
+    };
+    (layout, computed)
+}
+
+/// Lays out again only `rows` of `layout`, after values changed in them and
+/// nothing else on the sheet did — what typing into a sheet does, a cell and
+/// the formulas reading it. The rows' cells are placed afresh, from a sheet
+/// holding only those rows, on the layout's own columns and rows, and take
+/// the place of theirs; the rest stays. `false`, leaving `layout` alone,
+/// when that would not give what a full layout gives — a row's height
+/// changing, or a sheet with what reads values across rows (conditional
+/// formats, sparklines, tables, pivots, drawings) or a merge through those
+/// rows — and the caller lays the sheet out in full.
+pub fn relayout_rows(
+    layout: &mut SheetLayout,
+    workbook: &jade_xlsx_reader::Workbook,
+    index: usize,
+    options: &LayoutOptions,
+    rows: &std::collections::BTreeSet<u32>,
+) -> bool {
+    let Some(sheet) = workbook.sheets.get(index) else {
+        return false;
+    };
+    if rows.is_empty() {
+        return true;
     }
+    if !sheet.conditional_formats.is_empty()
+        || !sheet.sparkline_groups.is_empty()
+        || !sheet.tables.is_empty()
+        || !sheet.shapes.is_empty()
+        || !workbook.pivots.is_empty()
+        || rows.iter().any(|row| *row as usize >= layout.rows.len())
+        || sheet
+            .merges
+            .iter()
+            .any(|merge| rows.range(merge.start.row..=merge.end.row).next().is_some())
+    {
+        return false;
+    }
+    let in_rows = |at: &CellRef| rows.contains(&at.row);
+    let reduced = Sheet {
+        rows: sheet
+            .rows
+            .iter()
+            .filter(|row| rows.contains(&row.index))
+            .cloned()
+            .collect(),
+        rich_text: sheet
+            .rich_text
+            .iter()
+            .filter(|(at, _)| in_rows(at))
+            .map(|(at, runs)| (*at, runs.clone()))
+            .collect(),
+        phonetic_readings: sheet
+            .phonetic_readings
+            .iter()
+            .filter(|(at, _)| in_rows(at))
+            .map(|(at, reading)| (*at, reading.clone()))
+            .collect(),
+        auto_filter: sheet.auto_filter.clone(),
+        filter_mode: sheet.filter_mode,
+        filter_row_state: sheet.filter_row_state.clone(),
+        name: sheet.name.clone(),
+        part_name: sheet.part_name.clone(),
+        visibility: sheet.visibility,
+        columns: sheet.columns.clone(),
+        merges: sheet.merges.clone(),
+        hyperlinks: Vec::new(),
+        comments: Vec::new(),
+        data_validations: sheet.data_validations.clone(),
+        conditional_formats: Vec::new(),
+        default_column_width_chars: sheet.default_column_width_chars,
+        default_row_height_points: sheet.default_row_height_points,
+        default_row_custom_height: sheet.default_row_custom_height,
+        default_rows_hidden: sheet.default_rows_hidden,
+        show_grid_lines: sheet.show_grid_lines,
+        freeze_pane: sheet.freeze_pane.clone(),
+        tables: Vec::new(),
+        header_footer: None,
+        row_breaks: Vec::new(),
+        column_breaks: Vec::new(),
+        page_setup: sheet.page_setup.clone(),
+        shapes: Vec::new(),
+        array_formulas: sheet.array_formulas.clone(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
+        protection: sheet.protection,
+        outline: sheet.outline.clone(),
+    };
+    let options = LayoutOptions {
+        min_row_count: layout.rows.len() as u32,
+        min_column_count: layout.columns.len() as u32,
+        ..options.clone()
+    };
+    let (fresh, computed) = layout_sheet_on_axes(
+        &reduced,
+        &workbook.styles,
+        &options,
+        Some(workbook),
+        Some(layout),
+    );
+    let Some((columns, row_axis)) = computed else {
+        return false;
+    };
+    if columns != layout.columns
+        || rows.iter().any(|&row| {
+            let (now, was) = (&row_axis[row as usize], &layout.rows[row as usize]);
+            now.size != was.size || now.hidden != was.hidden
+        })
+    {
+        return false;
+    }
+    // The rows' new cells go where theirs were: the cells of a layout run in
+    // row order, then (after the first step back) its blank merged ranges.
+    let mut fresh: Vec<PlacedCell> = fresh
+        .cells
+        .into_iter()
+        .filter(|cell| rows.contains(&cell.reference.row))
+        .collect();
+    fresh.sort_by_key(|cell| (cell.reference.row, cell.reference.column));
+    let kept: Vec<PlacedCell> = std::mem::take(&mut layout.cells)
+        .into_iter()
+        .filter(|cell| !(rows.contains(&cell.reference.row) && cell.merge.is_none()))
+        .collect();
+    let mut cells = Vec::with_capacity(kept.len() + fresh.len());
+    let mut fresh = fresh.into_iter().peekable();
+    let mut in_row_order = true;
+    let mut previous_row = 0;
+    for cell in kept {
+        if in_row_order && cell.reference.row < previous_row {
+            in_row_order = false;
+            cells.extend(fresh.by_ref());
+        }
+        if in_row_order {
+            while fresh
+                .peek()
+                .is_some_and(|next| next.reference.row < cell.reference.row)
+            {
+                cells.extend(fresh.next());
+            }
+            previous_row = cell.reference.row;
+        }
+        cells.push(cell);
+    }
+    cells.extend(fresh);
+    layout.cells = cells;
+    true
 }
 
 fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {
