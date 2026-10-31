@@ -497,12 +497,14 @@ pub fn write_cached_values_verified(
 /// what [`write_xlsx_with_parts`] and then [`write_cached_values_verified`]
 /// would write, with each changed sheet deflated once. `complete` says every
 /// formula's cache is current, so the full calculation the edits ask for is
-/// withdrawn again.
+/// withdrawn again; `verified` names the unchanged formula cells the
+/// calculator answered too, which charts may refresh their caches from.
 pub fn write_edits_with_cached_values(
     original: &[u8],
     sheets: &[SheetEdits],
     cached: &[SheetCachedValues],
     complete: bool,
+    verified: &VerifiedChartCells,
 ) -> Result<Vec<u8>> {
     let mut package = OpcPackage::open_preserving(original)?;
     let mut parts: Vec<(String, String)> = Vec::new();
@@ -512,7 +514,7 @@ pub fn write_edits_with_cached_values(
             .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
         parts.push((sheet.part_name.clone(), patch_sheet(&xml, &sheet.cells)?));
     }
-    let mut fresh = VerifiedChartCells::new();
+    let mut fresh = verified.clone();
     for sheet in cached.iter().filter(|sheet| !sheet.cells.is_empty()) {
         let position = match parts.iter().position(|(name, _)| *name == sheet.part_name) {
             Some(position) => position,
