@@ -326,3 +326,760 @@ fn editing_a_code_reevaluates_the_field() {
     session.whole_paragraph();
     assert_eq!(session.selected_fields()[0].result, "四十二");
 }
+
+mod stateful {
+    use super::*;
+    use jade_docx_editor::fields::FieldInfo;
+    use proptest::prelude::*;
+
+    #[derive(Clone, Copy, Debug)]
+    enum Code {
+        Name,
+        Address,
+        Number,
+        Date,
+        Fill,
+    }
+
+    impl Code {
+        fn instruction(self) -> &'static str {
+            match self {
+                Self::Name => "USERNAME",
+                Self::Address => "USERADDRESS",
+                Self::Number => "= 6 * 7",
+                Self::Date => "DATE \\@ \"yyyy-MM-dd\"",
+                Self::Fill => "FILLIN \"宛先\" \\d \"初期値\"",
+            }
+        }
+
+        // An independent oracle: no production field parser or evaluator.
+        fn result(self, version: u8) -> String {
+            match self {
+                Self::Name => names(version).into(),
+                Self::Address => addresses(version).into(),
+                Self::Number => "42".into(),
+                Self::Date => format!("2026-10-{:02}", 21 + version % 3),
+                Self::Fill => "初期値".into(),
+            }
+        }
+
+        fn name(self) -> &'static str {
+            match self {
+                Self::Name => "USERNAME",
+                Self::Address => "USERADDRESS",
+                Self::Number => "=",
+                Self::Date => "DATE",
+                Self::Fill => "FILLIN",
+            }
+        }
+    }
+
+    fn names(version: u8) -> &'static str {
+        ["", "A", "山田 花子", "é🦀<&>\""][usize::from(version % 4)]
+    }
+
+    fn addresses(version: u8) -> &'static str {
+        ["", "東京都", "一行目\n二行目", "a\tb<&>"][usize::from(version % 4)]
+    }
+
+    fn environment(version: u8) -> FieldHost {
+        let mut host = host();
+        host.user_name = names(version).into();
+        host.user_address = addresses(version).into();
+        host.now.day = 21 + u32::from(version % 3);
+        host
+    }
+
+    #[derive(Clone, Debug)]
+    enum Op {
+        Insert(Code, u8),
+        Edit(Code, u8),
+        EmptyCode,
+        MalformedCode(u8),
+        Update(u8),
+        Lock(bool),
+        Unlink,
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    const MALFORMED_CODES: &[&str] = &[
+        "{",
+        "}",
+        "= { = 1",
+        "= 1 }",
+        "= } { 1",
+        "QUOTE \"a\u{0}b\"",
+        "QUOTE \"a\u{1}b\"",
+        "QUOTE \"a\u{b}b\"",
+        "QUOTE \"a\u{c}b\"",
+        "QUOTE \"a\u{1f}b\"",
+        "QUOTE \"a\u{fffe}b\"",
+        "QUOTE \"a\u{ffff}b\"",
+    ];
+
+    fn operations() -> impl Strategy<Value = Vec<Op>> {
+        let code = prop_oneof![
+            Just(Code::Name),
+            Just(Code::Address),
+            Just(Code::Number),
+            Just(Code::Date),
+            Just(Code::Fill),
+        ];
+        prop::collection::vec(
+            prop_oneof![
+                3 => (code.clone(), 0u8..4).prop_map(|(c, v)| Op::Insert(c, v)),
+                3 => (code, 0u8..4).prop_map(|(c, v)| Op::Edit(c, v)),
+                1 => Just(Op::EmptyCode),
+                2 => (0u8..MALFORMED_CODES.len() as u8).prop_map(Op::MalformedCode),
+                3 => (0u8..4).prop_map(Op::Update),
+                2 => any::<bool>().prop_map(Op::Lock),
+                2 => Just(Op::Unlink),
+                3 => Just(Op::Undo),
+                2 => Just(Op::Redo),
+                2 => Just(Op::Reload),
+            ],
+            1..49,
+        )
+    }
+
+    #[derive(Clone, Debug, Default, PartialEq, Eq)]
+    struct State {
+        field: Option<FieldInfo>,
+        plain: String,
+    }
+
+    fn observe(session: &mut Session) -> State {
+        session.whole_paragraph();
+        let fields = session.selected_fields();
+        assert!(fields.len() <= 1, "unexpected extra fields: {fields:?}");
+        State {
+            field: fields.into_iter().next(),
+            plain: session
+                .document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect(),
+        }
+    }
+
+    // Opt-in corpus for the external Open XML SDK gate. This does no IO in
+    // ordinary test runs and adds nothing to the editor/export path.
+    fn capture(bytes: &[u8], context: &str) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        if let Some(directory) = std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR") {
+            let directory = std::path::PathBuf::from(directory);
+            std::fs::create_dir_all(&directory).unwrap();
+            let index = NEXT.fetch_add(1, Ordering::Relaxed);
+            std::fs::write(
+                directory.join(format!("field-sequence-{index:06}.docx")),
+                bytes,
+            )
+            .unwrap();
+            std::fs::write(
+                directory.join(format!("field-sequence-{index:06}.txt")),
+                context,
+            )
+            .unwrap();
+        }
+    }
+
+    fn toc_source(
+        suffixes: &std::collections::BTreeSet<u32>,
+        headings: usize,
+        high_ids: bool,
+    ) -> Vec<u8> {
+        use std::io::Write as _;
+        let mut body = String::from("<w:p>");
+        for (id, suffix) in suffixes.iter().enumerate() {
+            let id = if high_ids { i32::MAX as usize - id } else { id };
+            body.push_str(&format!(
+                "<w:bookmarkStart w:id=\"{id}\" w:name=\"_Toc{suffix}\"/><w:bookmarkEnd w:id=\"{id}\"/>"
+            ));
+        }
+        body.push_str("<w:r><w:t>Existing</w:t></w:r></w:p>");
+        for index in 0..headings {
+            body.push_str(&format!("<w:p><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr><w:r><w:t>Heading {index}</w:t></w:r></w:p>"));
+        }
+        let xml = format!("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>{body}</w:body></w:document>");
+        let mut source =
+            zip::ZipArchive::new(std::io::Cursor::new(blank_document(Blank::Japanese))).unwrap();
+        let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..source.len() {
+            let mut part = source.by_index(index).unwrap();
+            let name = part.name().unwrap().into_owned();
+            output
+                .start_file(&name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            if name == "word/document.xml" {
+                output.write_all(xml.as_bytes()).unwrap();
+            } else {
+                std::io::copy(&mut part, &mut output).unwrap();
+            }
+        }
+        output.finish().unwrap().into_inner()
+    }
+
+    fn toc_sequence(
+        suffixes: &std::collections::BTreeSet<u32>,
+        headings: usize,
+        high_ids: bool,
+        ops: &[u8],
+    ) {
+        let source = toc_source(suffixes, headings, high_ids);
+        let context =
+            format!("suffixes={suffixes:?}, headings={headings}, high_ids={high_ids}, ops={ops:?}");
+        capture(&source, &context);
+        let mut document = block_on(WordDocument::load(&source, &Options::default())).unwrap();
+        let options = jade_docx_editor::document::TocOptions {
+            use_applied_outline_levels: true,
+            hide_page_numbers: true,
+            hyperlinks: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            document.insert_table_of_contents(0, &options).unwrap(),
+            headings
+        );
+        for operation in std::iter::once(&2).chain(ops) {
+            match operation {
+                0 => assert_eq!(document.update_table_of_contents_at(0).unwrap(), headings),
+                1 => assert_eq!(
+                    document
+                        .replace_table_of_contents(0, &options, "hyphen")
+                        .unwrap(),
+                    headings
+                ),
+                _ => {}
+            }
+            for persisted in [false, true] {
+                if persisted {
+                    let bytes = document.export_docx().unwrap();
+                    capture(&bytes, &context);
+                    document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+                let bookmarks = &document.document.as_ref().unwrap().bookmarks;
+                let names: std::collections::HashSet<_> = bookmarks
+                    .iter()
+                    .map(|bookmark| bookmark.name.as_str())
+                    .collect();
+                assert_eq!(names.len(), bookmarks.len(), "duplicate names: {context}");
+                assert_eq!(names.len(), suffixes.len() + headings, "{context}");
+                let ids: std::collections::HashSet<_> = bookmarks
+                    .iter()
+                    .map(|bookmark| {
+                        bookmark
+                            .id
+                            .parse::<i32>()
+                            .expect("OOXML bookmark ID must fit i32")
+                    })
+                    .collect();
+                assert_eq!(ids.len(), bookmarks.len(), "duplicate IDs: {context}");
+                for (id, suffix) in suffixes.iter().enumerate() {
+                    let original = bookmarks
+                        .iter()
+                        .find(|bookmark| bookmark.name == format!("_Toc{suffix}"))
+                        .unwrap();
+                    let expected_id = if high_ids { i32::MAX as usize - id } else { id };
+                    assert_eq!(original.id, expected_id.to_string(), "{context}");
+                }
+                let tables = document.tables_of_contents();
+                assert_eq!(tables.len(), 1, "{context}");
+                let table = &tables[0];
+                let mut targets = std::collections::HashSet::new();
+                for (heading, index) in (table.start..=table.end).enumerate() {
+                    let paragraph = document.paragraph(index).unwrap();
+                    let anchor = paragraph
+                        .runs
+                        .iter()
+                        .find_map(|run| run.hyperlink.as_ref()?.anchor.as_deref())
+                        .unwrap();
+                    assert!(
+                        targets.insert(anchor.to_string()),
+                        "reused heading target: {context}"
+                    );
+                    let bookmark = bookmarks
+                        .iter()
+                        .find(|bookmark| bookmark.name == anchor)
+                        .unwrap();
+                    let target_text: String = document
+                        .paragraph(bookmark.start_paragraph)
+                        .unwrap()
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect();
+                    assert_eq!(target_text, format!("Heading {heading}"), "{context}");
+                }
+                let entries: Vec<String> = (table.start..=table.end)
+                    .map(|index| {
+                        document
+                            .paragraph(index)
+                            .unwrap()
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect()
+                    })
+                    .collect();
+                assert_eq!(
+                    entries,
+                    (0..headings)
+                        .map(|index| format!("Heading {index}"))
+                        .collect::<Vec<_>>(),
+                    "{context}"
+                );
+            }
+        }
+    }
+
+    fn run(ops: &[Op]) {
+        let mut session = Session::blank();
+        let mut state = State::default();
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for (step, op) in ops.iter().enumerate() {
+            session.whole_paragraph();
+            let before = state.clone();
+            let mut records_history = true;
+            let mut expected_success = true;
+            let result = match *op {
+                Op::Insert(code, version) => {
+                    // Insertion without a caret must be atomic, including history.
+                    if state.field.is_some() {
+                        session.selection = None;
+                        expected_success = false;
+                    } else {
+                        state.field = Some(FieldInfo {
+                            code: code.instruction().into(),
+                            name: code.name().into(),
+                            result: code.result(version),
+                            locked: false,
+                        });
+                        state.plain = if matches!(code, Code::Fill) {
+                            code.result(version)
+                        } else {
+                            String::new()
+                        };
+                    }
+                    session.insert_field_code(code.instruction(), &environment(version))
+                }
+                Op::Edit(code, version) => {
+                    if let Some(field) = &mut state.field {
+                        field.code = code.instruction().into();
+                        field.name = code.name().into();
+                        // Without a prompt answer, FILLIN preserves a previous
+                        // nonempty answer; its default only fills an empty one.
+                        if !field.locked && (!matches!(code, Code::Fill) || field.result.is_empty())
+                        {
+                            field.result = code.result(version);
+                        }
+                        state.plain = if matches!(code, Code::Fill) {
+                            field.result.clone()
+                        } else {
+                            String::new()
+                        };
+                    } else {
+                        expected_success = false;
+                    }
+                    session.edit_field_code(code.instruction(), &environment(version))
+                }
+                Op::EmptyCode => {
+                    expected_success = false;
+                    session.edit_field_code("  {}  ", &environment(0))
+                }
+                Op::MalformedCode(index) => {
+                    expected_success = false;
+                    let code = MALFORMED_CODES[usize::from(index)];
+                    if state.field.is_some() {
+                        session.edit_field_code(code, &environment(0))
+                    } else {
+                        session.insert_field_code(code, &environment(0))
+                    }
+                }
+                Op::Update(version) => {
+                    if let Some(field) = &mut state.field {
+                        if !field.locked {
+                            let code = match field.name.as_str() {
+                                "USERNAME" => Code::Name,
+                                "USERADDRESS" => Code::Address,
+                                "=" => Code::Number,
+                                "DATE" => Code::Date,
+                                "FILLIN" => Code::Fill,
+                                _ => unreachable!(),
+                            };
+                            if !matches!(code, Code::Fill) || field.result.is_empty() {
+                                field.result = code.result(version);
+                            }
+                        }
+                        if field.name == "FILLIN" {
+                            state.plain = field.result.clone();
+                        }
+                    }
+                    session.update_fields(
+                        session.field_scope(),
+                        &environment(version),
+                        HashMap::new(),
+                    )
+                }
+                Op::Lock(locked) => {
+                    if let Some(field) = &mut state.field {
+                        field.locked = locked;
+                    }
+                    session.lock_fields(locked)
+                }
+                Op::Unlink => {
+                    if let Some(field) = state.field.take() {
+                        state.plain = field.result;
+                    }
+                    session.unlink_fields()
+                }
+                Op::Undo | Op::Redo => {
+                    records_history = false;
+                    let (from, to) = if matches!(op, Op::Undo) {
+                        (&mut undo, &mut redo)
+                    } else {
+                        (&mut redo, &mut undo)
+                    };
+                    let expected_changed = if let Some(previous) = from.pop() {
+                        to.push(std::mem::replace(&mut state, previous));
+                        true
+                    } else {
+                        false
+                    };
+                    let mut ctx =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let changed = if matches!(op, Op::Undo) {
+                        session.executor.undo(&mut ctx)
+                    } else {
+                        session.executor.redo(&mut ctx)
+                    }
+                    .unwrap();
+                    assert_eq!(
+                        changed, expected_changed,
+                        "step {step}: {op:?}, ops={ops:?}"
+                    );
+                    Ok(())
+                }
+                Op::Reload => {
+                    records_history = false;
+                    session.document = block_on(WordDocument::load(
+                        &session.document.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                    Ok(())
+                }
+            };
+            assert_eq!(
+                result.is_ok(),
+                expected_success,
+                "step {step}: {op:?}: {result:?}, before={before:?}, ops={ops:?}"
+            );
+            if records_history && expected_success {
+                undo.push(before);
+                redo.clear();
+            }
+            assert_eq!(
+                observe(&mut session),
+                state,
+                "step {step}: {op:?}, ops={ops:?}"
+            );
+            assert_eq!(
+                session.executor.undo_depth(),
+                undo.len(),
+                "step {step}: {op:?}"
+            );
+            // Cross the actual DOCX persistence boundary after every operation.
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("step {step}: {op:?}, ops={ops:?}"));
+            let mut reloaded = Session {
+                document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+                selection: None,
+                executor: CommandExecutor::new(),
+            };
+            assert_eq!(
+                observe(&mut reloaded),
+                state,
+                "reloaded at step {step}: {op:?}, ops={ops:?}"
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::with_cases(64)
+        })]
+        #[test]
+        fn field_operation_sequences_match_model(ops in operations()) {
+            run(&ops);
+        }
+
+        #[test]
+        fn trailing_nested_formula_is_preserved(value in -100i32..101, depth in 1usize..5, wrapped in any::<bool>()) {
+            let mut code = format!("= {value}");
+            for _ in 0..depth {
+                code = format!("= {{ {code} }}");
+            }
+            let supplied = if wrapped { format!("{{ {code} }}") } else { code };
+            let mut session = Session::blank();
+            session.insert_field_code(&supplied, &host()).unwrap();
+            session.whole_paragraph();
+            prop_assert_eq!(&session.selected_fields()[0].result, &value.to_string(), "code={}", supplied);
+            capture(&session.document.export_docx().unwrap(), &supplied);
+            // Editing the same instruction and adding/removing an outer
+            // format must also preserve the nested operand.
+            let formatted = jade_docx_editor::word::fields::toggle_switch(&supplied, "\\*", Some("Arabic"));
+            session.edit_field_code(&formatted, &host()).unwrap();
+            session.whole_paragraph();
+            prop_assert_eq!(&session.selected_fields()[0].result, &value.to_string());
+            let restored = jade_docx_editor::word::fields::toggle_switch(&formatted, "\\*", Some("Arabic"));
+            session.edit_field_code(&restored, &host()).unwrap();
+            capture(&session.document.export_docx().unwrap(), &restored);
+            session.document = block_on(WordDocument::load(
+                &session.document.export_docx().unwrap(), &Options::default(),
+            )).unwrap();
+            session.whole_paragraph();
+            prop_assert_eq!(&session.selected_fields()[0].result, &value.to_string());
+        }
+
+        #[test]
+        fn outer_switches_preserve_nested_switches(value in 0u32..100, depth in 1usize..5) {
+            use jade_docx_editor::word::fields::{code_has_switch, toggle_switch};
+            let mut code = format!("= {value} \\* Roman");
+            for _ in 0..depth {
+                code = format!("= {{ {code} }}");
+            }
+            prop_assert!(!code_has_switch(&code, "\\*", Some("Roman")));
+            let added = toggle_switch(&code, "\\*", Some("Arabic"));
+            prop_assert_eq!(&added, &format!("{code} \\* Arabic"));
+            prop_assert_eq!(toggle_switch(&added, "\\*", Some("Arabic")), code);
+        }
+
+        #[test]
+        fn quoted_braces_and_escaped_quotes_are_literal(
+            value in prop::collection::vec(prop::sample::select(vec!['a', ' ', '"', '{', '}', '山', '🦀']), 0..20),
+        ) {
+            let value: String = value.into_iter().collect();
+            let code = format!("QUOTE \"{}\"", value.replace('"', "\\\""));
+            let mut session = Session::blank();
+            session.insert_field_code(&code, &host()).unwrap();
+            session.whole_paragraph();
+            prop_assert_eq!(&session.selected_fields()[0].result, &value, "code={}", code);
+            // Replace a different instruction too, to cover code replacement
+            // rather than just a newly constructed field.
+            session.edit_field_code("= 42", &host()).unwrap();
+            session.edit_field_code(&code, &host()).unwrap();
+            session.whole_paragraph();
+            prop_assert_eq!(&session.selected_fields()[0].result, &value);
+            capture(&session.document.export_docx().unwrap(), &code);
+        }
+
+        #[test]
+        fn host_values_omit_characters_xml_cannot_carry(
+            value in prop::collection::vec(prop::sample::select(vec![
+                'a', '山', '🦀', '&', '<', '>', '\t', '\n', '\r',
+                '\u{0}', '\u{1}', '\u{b}', '\u{c}', '\u{1f}', '\u{fffe}', '\u{ffff}',
+            ]), 0..20),
+        ) {
+            let value: String = value.into_iter().collect();
+            let expected: String = value.chars().filter(|ch| !matches!(
+                ch, '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}' | '\u{fffe}' | '\u{ffff}'
+            )).collect();
+            let mut environment = host();
+            environment.user_name = value.clone();
+            let mut session = Session::blank();
+            session.insert_field_code("USERNAME", &environment).unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("user_name={value:?}"));
+            prop_assert_eq!(&observe(&mut session).field.unwrap().result, &expected);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            prop_assert_eq!(&observe(&mut session).field.unwrap().result, &expected);
+        }
+
+        #[test]
+        fn toc_bookmark_boundaries_survive_update_and_reload(
+            suffixes in prop::collection::btree_set(prop_oneof![
+                0u32..8,
+                Just(u32::MAX - 2), Just(u32::MAX - 1), Just(u32::MAX),
+            ], 1..7),
+            headings in 1usize..5,
+            high_ids in any::<bool>(),
+            ops in prop::collection::vec(0u8..3, 1..13),
+        ) {
+            toc_sequence(&suffixes, headings, high_ids, &ops);
+        }
+
+        #[test]
+        fn set_assignments_replace_named_ranges_after_each_operation(
+            high_ids in any::<bool>(),
+            ops in prop::collection::vec((0u8..3, 0u16..1000), 1..17),
+        ) {
+            set_sequence(high_ids, &ops);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::with_cases(64)
+        })]
+        #[test]
+        fn insertion_and_unlink_preserve_surrounding_text(
+            before in prop::collection::vec(prop::sample::select(vec!['a', '山', '🦀', '\t', '\n']), 0..12),
+            after in prop::collection::vec(prop::sample::select(vec!['b', '川', '🦀', '\t', '\n']), 0..12),
+        ) {
+            let before: String = before.into_iter().collect();
+            let after: String = after.into_iter().collect();
+            let text = format!("{before}{after}");
+            let mut session = Session::blank();
+            session.type_text(&text);
+            prop_assert_eq!(&observe(&mut session).plain, &text);
+            session.selection = Some(SelectionRange::collapsed(TextPosition::new(0, before.len())));
+            session.insert_field_code("= 42", &host()).unwrap();
+            prop_assert_eq!(&observe(&mut session).plain, &text);
+            session.unlink_fields().unwrap();
+            let expected = format!("{before}42{after}");
+            prop_assert_eq!(&observe(&mut session).plain, &expected);
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("before={before:?}, after={after:?}"));
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            prop_assert_eq!(&observe(&mut session).plain, &expected);
+        }
+    }
+
+    #[test]
+    fn malformed_codes_preserve_document_and_history() {
+        for index in 0..MALFORMED_CODES.len() as u8 {
+            run(&[
+                Op::MalformedCode(index),
+                Op::Insert(Code::Number, 0),
+                Op::MalformedCode(index),
+                Op::Undo,
+                Op::Redo,
+            ]);
+        }
+    }
+
+    #[test]
+    fn set_results_keep_valid_bookmark_ids_after_edits_and_reload() {
+        set_sequence(true, &[(0, 42), (1, 0), (0, 84), (2, 0), (0, 42)]);
+    }
+
+    fn set_sequence(high_ids: bool, ops: &[(u8, u16)]) {
+        let source = toc_source(&[0, 1].into(), 0, high_ids);
+        capture(&source, &format!("SET source, high_ids={high_ids}"));
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: Some(SelectionRange::collapsed(TextPosition::new(
+                0,
+                "Existing".len(),
+            ))),
+            executor: CommandExecutor::new(),
+        };
+        session.insert_field_code("SET Answer 42", &host()).unwrap();
+        let mut value = 42;
+        for &(operation, supplied) in ops {
+            session.whole_paragraph();
+            match operation {
+                0 => {
+                    value = supplied;
+                    let name = if value % 2 == 0 { "Answer" } else { "answer" };
+                    session
+                        .edit_field_code(&format!("SET {name} {value}"), &host())
+                        .unwrap();
+                }
+                1 => session
+                    .update_fields(session.field_scope(), &host(), HashMap::new())
+                    .unwrap(),
+                _ => {}
+            }
+            let bytes = session.document.export_docx().unwrap();
+            capture(
+                &bytes,
+                &format!("SET Answer {value}, high_ids={high_ids}, ops={ops:?}"),
+            );
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            session.whole_paragraph();
+            assert_eq!(session.selected_fields()[0].result, value.to_string());
+            let bookmarks = &session.document.document.as_ref().unwrap().bookmarks;
+            assert_eq!(bookmarks.len(), 3, "{bookmarks:?}");
+            let ids: std::collections::HashSet<_> = bookmarks
+                .iter()
+                .map(|bookmark| bookmark.id.parse::<i32>().unwrap())
+                .collect();
+            assert_eq!(ids.len(), 3, "{bookmarks:?}");
+            for (index, suffix) in [0, 1].iter().enumerate() {
+                let original = bookmarks
+                    .iter()
+                    .find(|bookmark| bookmark.name == format!("_Toc{suffix}"))
+                    .unwrap();
+                let expected_id = if high_ids {
+                    i32::MAX as usize - index
+                } else {
+                    index
+                };
+                assert_eq!(original.id, expected_id.to_string());
+            }
+            assert_eq!(
+                bookmarks
+                    .iter()
+                    .filter(|bookmark| bookmark.name.eq_ignore_ascii_case("Answer"))
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn toc_bookmark_suffix_wrap_preserves_existing_names() {
+        for high_ids in [false, true] {
+            toc_sequence(
+                &[0, 1, u32::MAX - 1, u32::MAX].into(),
+                3,
+                high_ids,
+                &[0, 1, 2, 0],
+            );
+        }
+    }
+
+    #[test]
+    fn insertion_preserves_adjacent_tabs_and_breaks() {
+        for text in ["\t", "\n", "山\t\n🦀"] {
+            for offset in [0, text.len()] {
+                let mut session = Session::blank();
+                session.type_text(text);
+                session.caret(offset);
+                session.insert_field_code("= 42", &host()).unwrap();
+                assert_eq!(observe(&mut session).plain, text);
+                session.unlink_fields().unwrap();
+                assert_eq!(
+                    observe(&mut session).plain,
+                    format!("{}42{}", &text[..offset], &text[offset..])
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn insertion_preserves_text_matching_the_internal_placeholder() {
+        let mut session = Session::blank();
+        let text = "before\u{E000}jade-field\u{E001}after\u{E000}jade-field\u{E001}0";
+        session.type_text(text);
+        session.insert_field_code("= 42", &host()).unwrap();
+        session.whole_paragraph();
+        assert_eq!(observe(&mut session).plain, text);
+        capture(&session.document.export_docx().unwrap(), text);
+        session.unlink_fields().unwrap();
+        assert_eq!(observe(&mut session).plain, format!("{text}42"));
+    }
+}
