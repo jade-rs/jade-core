@@ -386,7 +386,7 @@ pub(crate) fn merge_format_runs(
 }
 
 fn next_bookmark_id(root: &XmlElement) -> u32 {
-    fn walk(element: &XmlElement, max: &mut u32) {
+    fn walk(element: &XmlElement, visit: &mut impl FnMut(u32)) {
         if element.name == "w:bookmarkStart" {
             if let Some(id) = element
                 .attributes
@@ -394,18 +394,29 @@ fn next_bookmark_id(root: &XmlElement) -> u32 {
                 .find(|attribute| attribute.name == "w:id")
                 .and_then(|attribute| attribute.value.parse::<u32>().ok())
             {
-                *max = (*max).max(id + 1);
+                visit(id);
             }
         }
         for child in &element.children {
             if let XmlNode::Element(child) = child {
-                walk(child, max);
+                walk(child, visit);
             }
         }
     }
-    let mut max = 0;
-    walk(root, &mut max);
-    max
+    let mut next = 0;
+    walk(root, &mut |id| next = next.max(id.saturating_add(1)));
+    if next <= i32::MAX as u32 {
+        return next;
+    }
+    // ASK/SET bookmarks obey the same signed 32-bit ID limit as TOC anchors.
+    // Search holes only when incrementing the maximum would exceed that limit.
+    let mut occupied = std::collections::HashSet::new();
+    walk(root, &mut |id| {
+        occupied.insert(id);
+    });
+    (0..=i32::MAX as u32)
+        .find(|id| !occupied.contains(id))
+        .expect("a DOCX cannot exhaust signed 32-bit bookmark IDs")
 }
 
 /// Clears `dirty` from a field's begin marker or simple field: an updated
@@ -865,6 +876,33 @@ mod tests {
         "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>",
         "<w:r><w:t xml:space=\"preserve\"> B</w:t></w:r></w:p>"
     );
+
+    #[test]
+    fn bookmarked_results_reuse_free_ids_at_the_signed_boundary() {
+        for maximum in [i32::MAX as u32, u32::MAX] {
+            let mut doc = doc(&format!(
+                "<w:p><w:bookmarkStart w:id=\"0\" w:name=\"existing\"/><w:bookmarkEnd w:id=\"0\"/><w:bookmarkStart w:id=\"{maximum}\" w:name=\"maximum\"/><w:bookmarkEnd w:id=\"{maximum}\"/><w:fldSimple w:instr=\"SET Answer 42\"><w:r><w:t>old</w:t></w:r></w:fldSimple></w:p>"
+            ));
+            let field = scan_document(doc.root()).fields[0].clone();
+            write_result(
+                root_mut(&mut doc),
+                &field,
+                NewResult::Bookmarked {
+                    name: "Answer".into(),
+                    text: "42".into(),
+                },
+                None,
+                None,
+            )
+            .unwrap();
+            let xml = body_xml(&doc);
+            assert!(
+                xml.contains("<w:bookmarkStart w:id=\"1\" w:name=\"Answer\"/>"),
+                "{xml}"
+            );
+            assert_eq!(scan_document(doc.root()).fields[0].result_text, "42");
+        }
+    }
 
     #[test]
     fn writes_a_result_with_the_first_result_runs_formatting() {
