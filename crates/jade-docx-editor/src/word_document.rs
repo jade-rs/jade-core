@@ -18905,7 +18905,7 @@ impl WordDocument {
         paragraph_index: usize,
     ) -> Result<(XmlNodeId, Vec<XmlNodeId>), String> {
         let mut paragraph_ids = Vec::new();
-        Self::collect_element_ids_by_name(xml_doc.root(), "w:p", &mut paragraph_ids);
+        Self::collect_story_paragraph_ids(xml_doc.root(), &mut paragraph_ids);
         let paragraph_id = paragraph_ids
             .get(paragraph_index)
             .copied()
@@ -28083,7 +28083,7 @@ impl WordDocument {
             .ok_or_else(|| format!("missing {part_path}"))?;
         let mut xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
         let mut paragraph_ids = Vec::new();
-        Self::collect_element_ids_by_name(xml_doc.root(), "w:p", &mut paragraph_ids);
+        Self::collect_story_paragraph_ids(xml_doc.root(), &mut paragraph_ids);
         let paragraph_id = paragraph_ids
             .get(paragraph_index)
             .copied()
@@ -28476,7 +28476,7 @@ impl WordDocument {
             .ok_or_else(|| format!("missing {part_path}"))?;
         let mut xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
         let mut paragraph_ids = Vec::new();
-        Self::collect_element_ids_by_name(xml_doc.root(), "w:p", &mut paragraph_ids);
+        Self::collect_story_paragraph_ids(xml_doc.root(), &mut paragraph_ids);
         let paragraph_id = paragraph_ids
             .get(paragraph_index)
             .copied()
@@ -28596,7 +28596,7 @@ impl WordDocument {
             .ok_or_else(|| format!("missing {part_path}"))?;
         let mut xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
         let mut paragraph_ids = Vec::new();
-        Self::collect_element_ids_by_name(xml_doc.root(), "w:p", &mut paragraph_ids);
+        Self::collect_story_paragraph_ids(xml_doc.root(), &mut paragraph_ids);
         if paragraph_index == 0 {
             return Ok(());
         }
@@ -29067,6 +29067,29 @@ impl WordDocument {
             }
         }
         Ok(())
+    }
+
+    /// The `w:p` elements of a story (a note, a header) in the order its
+    /// model paragraphs are numbered: table cells included, the paragraphs of
+    /// a shape's text box (inside a run, twice with its VML fallback) not.
+    /// Counting those as well, an edit to a later paragraph of a note or
+    /// header holding a shape went to the wrong element: a header's text
+    /// replaced its text box's instead, and a note's paragraph break was
+    /// lost.
+    fn collect_story_paragraph_ids(element: &XmlElement, out: &mut Vec<XmlNodeId>) {
+        for child in &element.children {
+            let XmlNode::Element(child) = child else {
+                continue;
+            };
+            match child.name.as_str() {
+                "w:p" => {
+                    out.push(child.id);
+                    // A paragraph holds runs, never another story paragraph.
+                }
+                "w:r" => {}
+                _ => Self::collect_story_paragraph_ids(child, out),
+            }
+        }
     }
 
     fn collect_element_ids_by_name(element: &XmlElement, name: &str, out: &mut Vec<XmlNodeId>) {
@@ -29708,7 +29731,7 @@ impl WordDocument {
             _ => None,
         })?;
         let mut ids = Vec::new();
-        Self::collect_element_ids_by_name(note, "w:p", &mut ids);
+        Self::collect_story_paragraph_ids(note, &mut ids);
         let id = *ids.get(ordinal)?;
         Some((part, raw, id))
     }
@@ -32798,7 +32821,7 @@ impl WordDocument {
             })
             .ok_or("note is missing")?;
         let mut paragraphs = Vec::new();
-        Self::collect_element_ids_by_name(note, "w:p", &mut paragraphs);
+        Self::collect_story_paragraph_ids(note, &mut paragraphs);
         let id = *paragraphs.get(ordinal).ok_or("note paragraph is missing")?;
         let path = raw.path(id).ok_or("note paragraph path is missing")?;
         if let Some(offset) = split_offset {
@@ -32867,7 +32890,7 @@ impl WordDocument {
 
         let mut paragraph_ids = Vec::new();
         if let Some(note_element) = notes_doc.element(note_element_id) {
-            Self::collect_element_ids_by_name(note_element, "w:p", &mut paragraph_ids);
+            Self::collect_story_paragraph_ids(note_element, &mut paragraph_ids);
         }
         let paragraph_id = paragraph_ids
             .get(paragraph_ordinal)
