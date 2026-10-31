@@ -13485,6 +13485,80 @@ mod tests {
     }
 
     #[test]
+    fn text_typed_into_a_new_shape_takes_the_theme_east_asian_face() {
+        // A new shape's empty paragraph takes the font defaults, which name
+        // the theme's East Asian face. That name was resolved for the anchor
+        // run but not for the runs inside the shape, so text typed into the
+        // shape had no East Asian face until the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-hide-mark.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertShape {
+                    paragraph: 4,
+                    offset: 0,
+                    shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                    width_px: 40.0,
+                    height_px: 20.0,
+                    fill_color: None,
+                    border_color: None,
+                    border_width_px: 1.0,
+                    text: String::new(),
+                }],
+            },
+        )
+        .expect("shape inserted");
+        let shape_paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| word_doc.is_text_box_paragraph_surface(index))
+            .expect("shape paragraph");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph: shape_paragraph,
+                    offset: 0,
+                    text: "x".to_string(),
+                }],
+            },
+        )
+        .expect("typed");
+        let fonts = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(shape_paragraph)
+                .expect("shape paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    run.properties
+                        .as_ref()
+                        .and_then(|props| props.fonts.as_ref())
+                        .map(|fonts| (fonts.ascii.clone(), fonts.east_asia.clone()))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let typed = fonts(&word_doc);
+        assert!(
+            typed.iter().all(|fonts| fonts
+                .as_ref()
+                .is_some_and(|(_, east_asia)| east_asia.is_some())),
+            "{typed:?}"
+        );
+        assert_eq!(typed, fonts(&reloaded));
+    }
+
+    #[test]
     fn an_inserted_note_reference_or_shape_takes_its_styles_defaults() {
         // A load gives every run the font and size its styles give it, and a
         // shape's paragraphs their style's properties. A footnote reference
