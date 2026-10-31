@@ -17267,7 +17267,7 @@ impl WordDocument {
                 );
             }
         };
-        let tab_pos_twips = self.toc_tab_position_twips();
+        let tab_pos_twips = self.field_tab_position_twips_at(body_insert_index);
         let tab_pos_pt = tab_pos_twips as f32 / 20.0;
         let entry_count = entries.len();
         let model_paragraphs = entries
@@ -20913,7 +20913,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, "dot", None, None)
+        self.generate_and_insert_toc_at(body_insert_index, options, "dot", None, None, None)
     }
 
     /// Updates the first table of contents in the document (Word's References ▸
@@ -20940,13 +20940,14 @@ impl WordDocument {
         }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
-        self.replace_field_block_content(&block, |document, start, location| {
+        self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
                 &options,
                 &leader,
                 Some(location),
                 Some(&block.instruction),
+                Some(tab_twips),
             )
         })
     }
@@ -20964,8 +20965,15 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
-        self.replace_field_block_content(&block, |document, start, location| {
-            document.generate_and_insert_toc_at(start, options, leader, Some(location), None)
+        self.replace_field_block_content(&block, |document, start, location, tab_twips| {
+            document.generate_and_insert_toc_at(
+                start,
+                options,
+                leader,
+                Some(location),
+                None,
+                Some(tab_twips),
+            )
         })
     }
 
@@ -20994,7 +21002,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, leader, None, None)
+        self.generate_and_insert_toc_at(body_insert_index, options, leader, None, None, None)
     }
 
     /// The document's tables of contents and of figures, in order.
@@ -21054,6 +21062,7 @@ impl WordDocument {
         leader: &str,
         location: Option<(XmlNodeId, usize)>,
         original_instruction: Option<&str>,
+        tab_twips: Option<i64>,
     ) -> Result<usize, String> {
         let mut entries = self
             .document
@@ -21163,7 +21172,8 @@ impl WordDocument {
             entry.bookmark = Some(name);
         }
 
-        let tab_pos_twips = self.toc_tab_position_twips();
+        let tab_pos_twips =
+            tab_twips.unwrap_or_else(|| self.field_tab_position_twips_at(body_insert_index));
         let tab_pos_pt = tab_pos_twips as f32 / 20.0;
 
         // Build the model paragraphs and the matching raw <w:p> XML fragment.
@@ -21740,6 +21750,24 @@ impl WordDocument {
             }
         }
         max + 1
+    }
+
+    /// Resolve field tabs against the section that owns the insertion point.
+    fn field_tab_position_twips_at(&self, body_index: usize) -> i64 {
+        let section = self.document.as_ref().and_then(|document| {
+            let last = document.body.as_ref()?.elements.len().saturating_sub(1);
+            let index = body_index.min(last);
+            document
+                .sections
+                .iter()
+                .position(|section| section.start <= index && index < section.end)
+        });
+        let width = self.section_page_setup(section).content_width;
+        if width.is_finite() && width > 0.0 {
+            (width * 20.0).round() as i64
+        } else {
+            9350
+        }
     }
 
     /// Right-tab position (twips) for TOC entries, derived from the page content
