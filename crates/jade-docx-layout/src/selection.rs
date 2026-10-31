@@ -1791,10 +1791,17 @@ impl SelectionManager {
 
     pub fn set_selection(&mut self, range: Option<SelectionRange>) -> bool {
         let clamped = range.map(|r| self.clamp_range(r));
-        if self.selection == clamped {
+        self.set_selection_for_render(clamped)
+    }
+
+    /// Installs a selection validated against the document about to be rendered.
+    /// The registered paragraph layouts may still describe the previous edit,
+    /// so clamping against them would truncate positions in newly inserted text.
+    pub fn set_selection_for_render(&mut self, range: Option<SelectionRange>) -> bool {
+        if self.selection == range {
             return false;
         }
-        self.selection = clamped;
+        self.selection = range;
         if let Some(range) = self.selection {
             if let Some(state) = self.cell_selection.as_ref() {
                 if !self.is_cell_fully_selected(state.anchor_cell, &range)
@@ -6972,6 +6979,34 @@ mod tests {
             changed,
             "set_selection should return true when selection changes"
         );
+    }
+
+    #[test]
+    fn selection_for_next_render_preserves_positions_beyond_old_layout() {
+        let mut manager = SelectionManager::new();
+        manager.append_paragraph_text(0, "a");
+        let caret = Some(SelectionRange::collapsed(TextPosition::new(0, 7)));
+
+        manager.set_selection(caret);
+        assert_eq!(manager.selection_range().unwrap().focus.offset, 1);
+        assert!(manager.set_selection_for_render(caret));
+        assert!(!manager.set_selection_for_render(caret));
+        manager.begin_render_incremental(Some(0));
+        manager.append_paragraph_text(0, "a日本");
+        assert_eq!(manager.selection_range(), caret);
+        assert_eq!(manager.selection_text(), None);
+
+        // A structural edit can also select a paragraph not yet registered.
+        let range = Some(SelectionRange::new(
+            TextPosition::new(0, 1),
+            TextPosition::new(1, 4),
+        ));
+        manager.set_selection_for_render(range);
+        manager.append_paragraph_text(1, "😀");
+        assert_eq!(manager.selection_range(), range);
+        assert_eq!(manager.selection_text().as_deref(), Some("日本\n😀"));
+        assert!(manager.set_selection_for_render(None));
+        assert!(!manager.set_selection_for_render(None));
     }
 
     /// Tests that selection changes don't modify the underlying paragraph layout data.

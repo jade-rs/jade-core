@@ -3968,6 +3968,8 @@ where
     /// When true, skip drawing selection highlight on the main canvas
     /// (used when JS-side selection overlay is active to avoid double rendering).
     use_selection_overlay: bool,
+    /// Inline highlights changed since the last paint and can affect retained pages.
+    inline_selection_paint_dirty: bool,
     /// Cache for paragraph render results (DrawCommand + selection layout).
     paragraph_render_cache: RefCell<ParagraphRenderCache>,
     /// Seek snapshots captured at page-start paragraphs to allow O(1) fast-forward
@@ -5999,6 +6001,9 @@ where
     ) -> bool {
         if !self.last_layout_complete
             || self.document_has_notes
+            // Inline selection highlights belong to the page pixels. A
+            // selection change can invalidate pages beyond the edited one.
+            || self.inline_selection_paint_dirty
             // Comment annotations are rebuilt by the regular paragraph walk.
             || self.document_has_comments
             || self.pageless_mode
@@ -8605,6 +8610,7 @@ where
             dirty_region_tracker: RefCell::new(DirtyRegionTracker::new()),
             selection_overlay: RefCell::new(SelectionOverlay::new()),
             use_selection_overlay: true, // Default to using JS-side overlay
+            inline_selection_paint_dirty: false,
             paragraph_render_cache: RefCell::new(ParagraphRenderCache::default()),
             decoration_registry: crate::plugins::DecorationRegistry::new(),
             decoration_cache: RefCell::new(crate::plugins::DecorationCache::new()),
@@ -9644,51 +9650,49 @@ where
                 .inline_object
                 .map(|object| (object.width.to_bits(), object.height.to_bits()))
                 .hash(&mut hasher);
+            style.properties.is_some().hash(&mut hasher);
             // Hash relevant run properties that affect text measurement
             if let Some(props) = &style.properties {
-                if let Some(size) = props.font_size {
-                    ((size * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(ref family) = props.font_family {
-                    family.hash(&mut hasher);
-                }
-                if let Some(bold) = props.bold {
-                    bold.hash(&mut hasher);
-                }
-                if let Some(italic) = props.italic {
-                    italic.hash(&mut hasher);
-                }
-                if let Some(bold_complex) = props.bold_complex {
-                    bold_complex.hash(&mut hasher);
-                }
-                if let Some(italic_complex) = props.italic_complex {
-                    italic_complex.hash(&mut hasher);
-                }
-                if let Some(spacing) = props.char_spacing {
-                    ((spacing * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(kerning) = props.kerning {
-                    ((kerning * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(scale) = props.text_scale {
-                    ((scale * 100.0) as i32).hash(&mut hasher);
-                }
+                // Hash the Options themselves: skipping absent fields aliases
+                // e.g. bold-only and italic-only runs with identical boundaries.
+                // Keep exact float bits, too: the cached lines retain the original
+                // properties and their measured advances, not rounded values.
+                props.font_size.map(f32::to_bits).hash(&mut hasher);
+                props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
+                props.font_family.hash(&mut hasher);
+                props.bold.hash(&mut hasher);
+                props.italic.hash(&mut hasher);
+                props.bold_complex.hash(&mut hasher);
+                props.italic_complex.hash(&mut hasher);
+                props.char_spacing.map(f32::to_bits).hash(&mut hasher);
+                props.kerning.map(f32::to_bits).hash(&mut hasher);
+                props.text_scale.map(f32::to_bits).hash(&mut hasher);
                 props
                     .fit_text
                     .as_ref()
                     .map(|fit| (fit.val, fit.id))
                     .hash(&mut hasher);
-                if let Some(ref fonts) = props.fonts {
-                    if let Some(ascii) = &fonts.ascii {
-                        ascii.hash(&mut hasher);
-                    }
-                    if let Some(east_asia) = &fonts.east_asia {
-                        east_asia.hash(&mut hasher);
-                    }
-                    if let Some(complex) = &fonts.complex {
-                        complex.hash(&mut hasher);
-                    }
-                }
+                props
+                    .fonts
+                    .as_ref()
+                    .map(|fonts| {
+                        (
+                            &fonts.ascii,
+                            &fonts.h_ansi,
+                            &fonts.east_asia,
+                            &fonts.complex,
+                            &fonts.ascii_theme,
+                            &fonts.h_ansi_theme,
+                            &fonts.east_asia_theme,
+                            &fonts.complex_theme,
+                            fonts.hint.as_ref().map(|hint| match hint {
+                                FontHint::Default => 0_u8,
+                                FontHint::EastAsia => 1,
+                                FontHint::Complex => 2,
+                            }),
+                        )
+                    })
+                    .hash(&mut hasher);
                 // Draw-only properties carried verbatim into TextSegment.properties.
                 // These do not affect measurement, but stale values here cause
                 // full-paragraph style changes (color/highlight/underline/strike/
@@ -9720,22 +9724,27 @@ where
                     .map(|effects| format!("{effects:?}"))
                     .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
-                if let Some(ruby) = props.ruby.as_ref() {
-                    ruby.text.hash(&mut hasher);
-                    ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
-                    ruby.align.hash(&mut hasher);
-                    ruby.raise_half_points.hash(&mut hasher);
-                    ruby.fonts
-                        .as_ref()
-                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
-                        .hash(&mut hasher);
-                    ruby.continuation.hash(&mut hasher);
-                }
-                if let Some(border) = props.border.as_ref() {
-                    border.val.hash(&mut hasher);
-                    border.size_eighths.hash(&mut hasher);
-                    border.color.hash(&mut hasher);
-                }
+                props
+                    .ruby
+                    .as_ref()
+                    .map(|ruby| {
+                        (
+                            &ruby.text,
+                            ruby.size_pt.map(f32::to_bits),
+                            &ruby.align,
+                            ruby.raise_half_points,
+                            ruby.fonts
+                                .as_ref()
+                                .map(|fonts| (&fonts.ascii, &fonts.east_asia)),
+                            ruby.continuation,
+                        )
+                    })
+                    .hash(&mut hasher);
+                props
+                    .border
+                    .as_ref()
+                    .map(|border| (&border.val, border.size_eighths, &border.color))
+                    .hash(&mut hasher);
                 props.baseline.as_deref().hash(&mut hasher);
                 props.text_position.map(|v| v.to_bits()).hash(&mut hasher);
             }
@@ -13556,10 +13565,18 @@ where
                 )
             })
         };
+        // A text edit can change the total used height of a centered/bottom
+        // aligned page. Its previous offset is then stale even when the
+        // edited paragraph itself still fits on that page.
+        let remeasure_alignment = has_vertical_alignment && self.forced_dirty_from.is_some();
+        if remeasure_alignment {
+            self.clear_fast_replay();
+            self.preserve_completed_pagination_on_stable_edit = false;
+        }
         let measure_first = !self.render_skip_draw
             && !self.pageless_mode
             && has_vertical_alignment
-            && (self.needs_full_repaint() || self.force_full_repaint_once);
+            && (self.needs_full_repaint() || self.force_full_repaint_once || remeasure_alignment);
 
         if measure_first {
             let saved_skip_draw = self.render_skip_draw;
@@ -13750,6 +13767,11 @@ where
         }
 
         let _ = self.host.update_device_pixel_ratio()?;
+        // Page settings initialize current_y from the page's header and vAlign
+        // offset. Resolve those for page one, not where the previous (possibly
+        // bounded) pass stopped.
+        self.current_page_number = 1;
+        self.active_section_index = 0;
         self.apply_document_page_settings(document)?;
         self.apply_columns(document.default_section.as_ref(), document);
         self.column_index = 0;
@@ -13956,8 +13978,6 @@ where
             self.paragraph_wrap_cache.borrow_mut().clear();
         }
         self.document_east_asian_rules = new_east_asian_rules;
-        self.current_page_number = 1;
-        self.active_section_index = 0;
         self.record_page_section(self.current_page_number);
         // Reset the margin line-number run at the start of each full render pass.
         self.line_number_counter = 0;
@@ -14555,8 +14575,11 @@ where
             // on a page/document when no later cache miss forces a flush.
             // Deferred off-window entries belong to a canvas that was not
             // activated in this pass. Never flush them into the visible canvas.
+            // A stable edit also defers the first paragraph beyond its page
+            // cap. That page retained its pixels, so replaying would overpaint
+            // its antialiased text without clearing it first.
             if !self.render_skip_draw
-                && self.should_draw_current_page()
+                && self.should_draw_page_for_current_render(self.current_page_number)
                 && self.deferred_cached_draw_page == self.current_page_number
                 && !self.deferred_cached_draw_commands.is_empty()
             {
@@ -14586,7 +14609,8 @@ where
                 // slots. Remove only speculative tail slots allocated while
                 // repainting; never shrink below the authoritative count when
                 // the partial walk stopped early.
-                self.host.truncate_pages(authoritative_page_count)?;
+                self.host
+                    .finish_pagination(authoritative_page_count, authoritative_layout_complete)?;
                 self.last_layout_complete = authoritative_layout_complete;
                 if let Some(page_sections) = authoritative_page_sections.as_ref() {
                     self.page_section_indices.clone_from(page_sections);
@@ -14595,7 +14619,8 @@ where
                 self.last_completed_pagination_edit_preserved =
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
             } else {
-                self.host.truncate_pages(self.current_page_number)?;
+                self.host
+                    .finish_pagination(self.current_page_number, self.last_layout_complete)?;
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
                     self.page_section_indices.truncate(self.current_page_number);
@@ -14823,6 +14848,7 @@ where
         // Clear per-render dirty state.
         self.render_dirty_pages = None;
         self.render_full_repaint = false;
+        self.inline_selection_paint_dirty = false;
         // Fast and shift replay cap the walk to stop this render early. The
         // cap is not the caller's limit: a non-lazy caller that leaves the
         // limit alone between edits would otherwise stop its next walk there
@@ -32992,11 +33018,43 @@ where
     }
 
     pub fn set_selection_range(&mut self, range: Option<SelectionRange>) -> bool {
-        self.selection.set_selection(range)
+        let previous = self.selection.selection_range();
+        let changed = self.selection.set_selection(range);
+        self.invalidate_inline_selection_paint(previous, changed);
+        changed
+    }
+
+    /// Sets a selection validated against the next document snapshot, without
+    /// clamping it against paragraph layouts left over from the previous render.
+    pub fn set_selection_range_for_render(&mut self, range: Option<SelectionRange>) -> bool {
+        let previous = self.selection.selection_range();
+        let changed = self.selection.set_selection_for_render(range);
+        self.invalidate_inline_selection_paint(previous, changed);
+        changed
     }
 
     pub fn clear_selection(&mut self) -> bool {
-        self.selection.clear_selection()
+        self.set_selection_range(None)
+    }
+
+    fn invalidate_inline_selection_paint(
+        &mut self,
+        previous: Option<SelectionRange>,
+        changed: bool,
+    ) {
+        if !self.use_selection_overlay
+            && changed
+            && [previous, self.selection.selection_range()]
+                .into_iter()
+                .flatten()
+                .any(|range| !range.is_collapsed())
+        {
+            // The old highlight may be on a retained page outside the edit's
+            // dirty range, including when selection is cleared before typing.
+            self.inline_selection_paint_dirty = true;
+            self.mark_full_repaint();
+            self.clear_fast_replay();
+        }
     }
 
     pub fn selection_text(&self) -> Option<String> {
@@ -48163,6 +48221,112 @@ mod tests {
             assert_eq!((planned.top_offset, planned.bottom_offset), bounds);
         }
         assert!(renderer.font_vertical_metrics_cache.borrow().is_empty());
+    }
+
+    #[test]
+    fn wrap_cache_preserves_each_optional_bold_and_italic_combination() {
+        let mut variants = vec![None];
+        for bold in [None, Some(false), Some(true)] {
+            for italic in [None, Some(false), Some(true)] {
+                for bold_complex in [None, Some(false), Some(true)] {
+                    for italic_complex in [None, Some(false), Some(true)] {
+                        variants.push(Some(RunProperties {
+                            bold,
+                            italic,
+                            bold_complex,
+                            italic_complex,
+                            ..RunProperties::default()
+                        }));
+                    }
+                }
+            }
+        }
+        assert_wrap_cache_preserves_properties(variants);
+    }
+
+    #[test]
+    fn wrap_cache_preserves_font_slots_and_exact_measurement_properties() {
+        let mut variants = vec![Some(RunProperties::default())];
+        for value in [12.0, 12.001] {
+            for field in 0..6 {
+                let mut properties = RunProperties::default();
+                *match field {
+                    0 => &mut properties.font_size,
+                    1 => &mut properties.font_size_complex,
+                    2 => &mut properties.char_spacing,
+                    3 => &mut properties.kerning,
+                    4 => &mut properties.text_scale,
+                    _ => &mut properties.text_position,
+                } = Some(value);
+                variants.push(Some(properties));
+            }
+        }
+        for field in 0..8 {
+            let mut fonts = RunFonts::default();
+            *match field {
+                0 => &mut fonts.ascii,
+                1 => &mut fonts.h_ansi,
+                2 => &mut fonts.east_asia,
+                3 => &mut fonts.complex,
+                4 => &mut fonts.ascii_theme,
+                5 => &mut fonts.h_ansi_theme,
+                6 => &mut fonts.east_asia_theme,
+                _ => &mut fonts.complex_theme,
+            } = Some(Rc::from("Arial"));
+            variants.push(Some(RunProperties {
+                fonts: Some(fonts),
+                ..RunProperties::default()
+            }));
+        }
+        for hint in [
+            None,
+            Some(FontHint::Default),
+            Some(FontHint::EastAsia),
+            Some(FontHint::Complex),
+        ] {
+            variants.push(Some(RunProperties {
+                fonts: Some(RunFonts {
+                    hint,
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            }));
+        }
+        assert_wrap_cache_preserves_properties(variants);
+    }
+
+    fn assert_wrap_cache_preserves_properties(variants: Vec<Option<RunProperties>>) {
+        let renderer = recording_table_renderer(jade_painter::recording::RecordingPainter::new());
+        let text = "Latin 日本語 العربية";
+        let paragraph = ParagraphStyle::default();
+        for properties in variants {
+            let runs = [RunStyle {
+                start: 0,
+                end: text.len(),
+                properties: properties.clone().map(Rc::new),
+                revision: None,
+                hyperlink: None,
+                inline_object: None,
+            }];
+            let wrap = || {
+                renderer
+                    .wrap_text_into_lines_cached(text, &runs, 0.0, &paragraph, 0, 400.0)
+                    .unwrap()
+            };
+            let lines = wrap();
+            assert!(!lines.is_empty());
+            for segment in lines.iter().flat_map(|line| &line.segments) {
+                assert_eq!(
+                    segment.properties.as_deref(),
+                    properties.as_ref(),
+                    "cached run must retain its own properties"
+                );
+            }
+            assert!(
+                Rc::ptr_eq(&lines, &wrap()),
+                "identical inputs must still reuse wrapping"
+            );
+        }
     }
 
     #[test]
