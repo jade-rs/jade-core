@@ -33505,6 +33505,21 @@ impl WordDocument {
         Some((run_element, text_id))
     }
 
+    fn create_paragraph_run_element(
+        doc: &mut DocxXmlDocument,
+        run: &Run,
+        preserve_empty_text: bool,
+    ) -> Option<(XmlElement, Option<XmlNodeId>)> {
+        Self::create_run_element(doc, run).or_else(|| {
+            if !preserve_empty_text || crate::commands::text_edit::run_carries_content(run) {
+                return None;
+            }
+            let (text, text_id) = Self::create_text_element(doc, "", "w:t");
+            let element = doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text)]);
+            Some((element, Some(text_id)))
+        })
+    }
+
     /// Writes the `w:drawing` of a picture, chart, group or SmartArt from the
     /// model. With `existing` — the drawing the package had for it — that
     /// drawing is patched instead (see [`Self::patch_image_drawing_element`]),
@@ -36661,6 +36676,14 @@ impl WordDocument {
     ) -> Vec<XmlNode> {
         use std::collections::VecDeque;
 
+        // A deletion can leave only a note reference and an empty text run.
+        // Keep that run in XML at its original side of the reference: otherwise
+        // the next input loses its insertion point, moving the note marker.
+        let preserve_empty_text = runs.iter().all(|run| run.text.is_empty())
+            && runs.iter().any(|run| {
+                !run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty()
+            });
+
         enum ChildToken {
             NonRun(XmlNode),
             RunElement(XmlElement),
@@ -37014,7 +37037,11 @@ impl WordDocument {
                                     break;
                                 }
                                 let Some((run_element, text_id)) =
-                                    Self::create_run_element(doc, &runs[run_index])
+                                    Self::create_paragraph_run_element(
+                                        doc,
+                                        &runs[run_index],
+                                        preserve_empty_text,
+                                    )
                                 else {
                                     runs[run_index].text_node_id = None;
                                     runs[run_index].revision_node_id = None;
@@ -37190,9 +37217,11 @@ impl WordDocument {
                         && runs[run_index].node_id.is_none()
                         && runs[run_index].field == field
                     {
-                        let Some((run_element, text_id)) =
-                            Self::create_run_element(doc, &runs[run_index])
-                        else {
+                        let Some((run_element, text_id)) = Self::create_paragraph_run_element(
+                            doc,
+                            &runs[run_index],
+                            preserve_empty_text,
+                        ) else {
                             runs[run_index].text_node_id = None;
                             runs[run_index].revision_node_id = None;
                             run_index += 1;
@@ -37251,7 +37280,8 @@ impl WordDocument {
                         && runs[run_index].hyperlink.as_ref() == Some(&hyperlink)
                     {
                         let run = &mut runs[run_index];
-                        let Some((run_element, text_id)) = Self::create_run_element(doc, run)
+                        let Some((run_element, text_id)) =
+                            Self::create_paragraph_run_element(doc, run, preserve_empty_text)
                         else {
                             run.text_node_id = None;
                             run.revision_node_id = None;
@@ -37299,7 +37329,7 @@ impl WordDocument {
                 .and_then(|element| {
                     Self::update_run_element(doc, element, run, preserve_drawings, in_instruction)
                 })
-                .or_else(|| Self::create_run_element(doc, run));
+                .or_else(|| Self::create_paragraph_run_element(doc, run, preserve_empty_text));
 
             let Some((run_element, text_id)) = element_result else {
                 run.node_id = None;
