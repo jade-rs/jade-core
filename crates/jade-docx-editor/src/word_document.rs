@@ -21269,12 +21269,26 @@ impl WordDocument {
         // Ensure every entry has a bookmark anchor, creating `_Toc…` bookmarks on
         // headings that lack one (model + raw XML).
         let mut next_bookmark_suffix = self.next_toc_bookmark_suffix();
+        let mut wrapped = next_bookmark_suffix == 0;
         for entry in &mut entries {
             if entry.bookmark.is_some() {
                 continue;
             }
-            let name = format!("_Toc{next_bookmark_suffix}");
-            next_bookmark_suffix += 1;
+            let name = loop {
+                let name = format!("_Toc{next_bookmark_suffix}");
+                let check_collision = wrapped;
+                next_bookmark_suffix = next_bookmark_suffix.wrapping_add(1);
+                wrapped |= next_bookmark_suffix == 0;
+                // Until wrapping, every suffix exceeds the previous maximum.
+                // Only the boundary case needs to search occupied names.
+                if !check_collision
+                    || !self.document.as_ref().is_some_and(|doc| {
+                        doc.bookmarks.iter().any(|bookmark| bookmark.name == name)
+                    })
+                {
+                    break name;
+                }
+            };
             self.create_heading_bookmark(entry.paragraph, &name)?;
             entry.bookmark = Some(name);
         }
@@ -21831,7 +21845,7 @@ impl WordDocument {
             .ok_or_else(|| "fragment produced no element".to_string())
     }
 
-    /// Smallest unused `_TocN` numeric suffix across existing bookmark names.
+    /// Suffix after the largest existing `_TocN`, wrapping at the u32 boundary.
     fn next_toc_bookmark_suffix(&self) -> u32 {
         let mut max = 0u32;
         if let Some(doc) = self.document.as_ref() {
@@ -21843,10 +21857,10 @@ impl WordDocument {
                 }
             }
         }
-        max + 1
+        max.wrapping_add(1)
     }
 
-    /// Smallest unused integer `w:id` across existing bookmarks.
+    /// Next unused nonnegative `w:id`, within Word's signed 32-bit range.
     fn next_bookmark_id(&self) -> u32 {
         let mut max = 0u32;
         if let Some(doc) = self.document.as_ref() {
@@ -21856,7 +21870,20 @@ impl WordDocument {
                 }
             }
         }
-        max + 1
+        if max < i32::MAX as u32 {
+            return max + 1;
+        }
+        // Only exhausted high IDs need a hole search. Preserve the usual
+        // allocation path without another scan or a collection allocation.
+        let occupied: HashSet<u32> = self
+            .document
+            .iter()
+            .flat_map(|doc| &doc.bookmarks)
+            .filter_map(|bookmark| bookmark.id.parse().ok())
+            .collect();
+        (0..=i32::MAX as u32)
+            .find(|id| !occupied.contains(id))
+            .expect("a DOCX cannot exhaust signed 32-bit bookmark IDs")
     }
 
     /// Resolve field tabs against the section that owns the insertion point.
