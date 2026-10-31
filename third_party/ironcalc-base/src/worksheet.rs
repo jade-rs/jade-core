@@ -4,7 +4,6 @@ use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::model::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
-use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct WorksheetDimension {
@@ -64,7 +63,7 @@ impl Worksheet {
                 }
             },
             None => {
-                let mut column_data = HashMap::new();
+                let mut column_data = crate::types::SheetRow::default();
                 column_data.insert(column, new_cell);
                 self.sheet_data.insert(row, column_data);
             }
