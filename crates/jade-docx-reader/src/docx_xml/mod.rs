@@ -757,12 +757,13 @@ impl DocxXmlDocument {
                 .max_node_id()
                 .map(|id| id.raw() + 1)
                 .unwrap_or(self.next_id);
-        } else if next_id == first_placeholder_id {
-            // No placeholder was assigned. Detached allocations must not keep
-            // next_id above the live tree's maximum after a full rebuild.
-            self.next_id = max_before.map(|id| id.raw() + 1).unwrap_or(self.next_id);
         }
         // Otherwise placeholders ended at next_id - 1, above all existing IDs.
+        // `next_id` never goes down, as on a removal: a subtree detached from
+        // the tree during the rebuild (a split table's rows, about to be put
+        // back under a new table with their ids) still holds ids above the
+        // live maximum, and handing those out again gave two elements one id,
+        // whose parent links then looped.
     }
 
     /// 指定した要素のサブツリーのみインデックスを再構築する。
@@ -3036,7 +3037,7 @@ pub(crate) mod tests {
             (10, u32::MAX, false, 11),
             (10, u32::MAX - 2, true, u32::MAX - 1),
             (u32::MAX - 1, 0, false, u32::MAX),
-            (10, u32::MAX - 1, false, 11),
+            (10, u32::MAX - 1, false, u32::MAX - 1),
         ] {
             let mut document = DocxXmlDocument::parse("<root><existing/></root>").unwrap();
             let XmlNode::Element(existing) = &mut document.root.children[0] else {
@@ -3067,7 +3068,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn full_rebuild_preserves_preorder_ids_and_resets_next_id() {
+    fn full_rebuild_preserves_preorder_ids_and_never_reuses_ids() {
         let mut document = DocxXmlDocument::parse("<root><a/>text<b/></root>").unwrap();
         let root = document.root().id;
         let old_max = document.root().max_node_id().unwrap().raw();
@@ -3075,7 +3076,7 @@ pub(crate) mod tests {
             document.allocate_node_id();
         }
         document.rebuild_index();
-        assert_eq!(document.allocate_node_id().raw(), old_max + 1);
+        assert_eq!(document.allocate_node_id().raw(), old_max + 11);
 
         let removed_id = match &document.root().children[0] {
             XmlNode::Element(element) => element.id,
@@ -3116,8 +3117,53 @@ pub(crate) mod tests {
         assert_eq!(document.allocate_node_id().raw(), 5003);
         let xml = document.to_string().unwrap();
         document.rebuild_index();
-        assert_eq!(document.allocate_node_id().raw(), 5003);
+        assert_eq!(document.allocate_node_id().raw(), 5004);
         assert_eq!(document.to_string().unwrap(), xml);
+    }
+
+    #[test]
+    fn a_rebuild_does_not_hand_out_the_ids_of_a_detached_subtree() {
+        // Splitting a table detaches its later rows, rebuilds the index and
+        // puts the rows back under a new table with their ids. The rebuild
+        // lowered the next id to the live tree's maximum, so the new table's
+        // properties took ids the detached rows still held.
+        let mut document =
+            DocxXmlDocument::parse("<root><tbl><tblPr/><tr><tc/></tr></tbl></root>").unwrap();
+        let root = document.root().id;
+        for _ in 0..3 {
+            document.allocate_node_id();
+        }
+        let added = document.create_element("tr", Vec::new(), Vec::new());
+        let table = document.root().children[0].clone();
+        let XmlNode::Element(mut table) = table else {
+            unreachable!();
+        };
+        table.children.push(XmlNode::Element(added));
+        document.element_mut(root).unwrap().children = vec![XmlNode::Element(table)];
+        document.rebuild_index();
+        let detached = {
+            let XmlNode::Element(table) = &mut document.element_mut(root).unwrap().children[0]
+            else {
+                unreachable!();
+            };
+            table.children.split_off(1)
+        };
+        document.rebuild_index();
+        let copy = document.create_element("tblPr", Vec::new(), Vec::new());
+        let mut held = Vec::new();
+        for node in &detached {
+            if let XmlNode::Element(element) = node {
+                held.push(element.id);
+                if let Some(max) = element.max_node_id() {
+                    held.push(max);
+                }
+            }
+        }
+        assert!(
+            !held.contains(&copy.id),
+            "{:?} reused from {held:?}",
+            copy.id
+        );
         assert_index_matches_tree(&document);
     }
 
