@@ -13832,7 +13832,11 @@ where
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
-        self.object_debug_regions.borrow_mut().clear();
+        // Pixel-only walks skip other pages without changing their geometry.
+        // Move the authoritative regions aside rather than cloning every
+        // object in a long document for each bitmap request.
+        let preserved_object_regions = preserve_pixel_pagination
+            .then(|| std::mem::take(&mut *self.object_debug_regions.borrow_mut()));
         self.revision_debug_regions.borrow_mut().clear();
         self.numbering_debug_regions.borrow_mut().clear();
         self.line_overflow_debug_regions.borrow_mut().clear();
@@ -14050,6 +14054,16 @@ where
                     .and_then(|dirty_from| self.try_prepare_seek_start(dirty_from, options))
             })
         };
+        if !preserve_pixel_pagination {
+            let mut regions = self.object_debug_regions.borrow_mut();
+            if let Some(seek) = seek_snapshot.as_ref() {
+                // Keep only the prefix this walk actually skips. A prepared
+                // seek may have been rejected or moved before the dirty point.
+                regions.retain(|region| region.paragraph_index < seek.paragraph_index);
+            } else {
+                regions.clear();
+            }
+        }
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
@@ -14811,6 +14825,10 @@ where
                 };
                 self.last_edit_full_page_valid = Some((page_1based.saturating_sub(1), kind));
             }
+        }
+
+        if let Some(regions) = preserved_object_regions {
+            *self.object_debug_regions.borrow_mut() = regions;
         }
 
         if preserve_pixel_pagination {
@@ -38244,6 +38262,18 @@ mod tests {
         fn create_page_bitmap(&self, _page_index: usize) -> Result<js_sys::Promise, JsValue> {
             unreachable!("recording host: bitmap snapshots are browser-side")
         }
+        fn draw_image_data_uri(
+            &self,
+            _data_uri: &str,
+            x: f64,
+            y: f64,
+            width: f64,
+            height: f64,
+            _crop: Option<ImageCropMapping>,
+        ) -> bool {
+            self.pages[self.cursor].fill_rect(x, y, width, height);
+            true
+        }
         fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
             Ok(text.chars().count() as f64 * 10.0)
         }
@@ -53247,6 +53277,158 @@ mod tests {
                 .as_ref()
                 .map(|s| s.page_number),
             Some(30)
+        );
+    }
+
+    fn object_region_test_document() -> Document {
+        let mut document = doc_with_paragraph_texts(&["image"; 10]);
+        for (index, element) in document
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .iter_mut()
+            .enumerate()
+        {
+            let BodyElement::Paragraph(paragraph) = element else {
+                unreachable!()
+            };
+            paragraph.properties = Some(ParagraphProperties {
+                page_break_before: Some(index > 0),
+                ..Default::default()
+            });
+            paragraph.runs[0].text.clear();
+            paragraph.runs[0].image = Some(RunImage {
+                data_uri: Some("data:image/png;base64,eA==".into()),
+                width_px: Some(40.0),
+                height_px: Some(20.0),
+                ..Default::default()
+            });
+        }
+        document
+    }
+
+    #[test]
+    fn page_bitmap_rerenders_preserve_object_selection_and_hit_testing() {
+        let document = object_region_test_document();
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.render(&document, &options).unwrap();
+        let before = renderer.object_debug_regions.borrow().clone();
+        assert_eq!(before.len(), 10);
+        for page_index in [8, 0, 5, 8] {
+            renderer.set_layout_page_limit(Some(page_index + 1));
+            renderer.set_visible_page_range(Some(page_index + 1..=page_index + 1));
+            renderer.prepare_rerender_for_page(page_index);
+            renderer.freeze_selection_for_pixel_rerender();
+            renderer.render(&document, &options).unwrap();
+            assert_eq!(
+                serde_json::to_value(&*renderer.object_debug_regions.borrow()).unwrap(),
+                serde_json::to_value(&before).unwrap(),
+                "bitmap page {page_index}"
+            );
+            for object in &before {
+                let target = FloatingObjectTarget {
+                    kind: object.kind,
+                    paragraph_index: object.paragraph_index,
+                    run_index: object.run_index,
+                };
+                assert!(renderer.object_region(target).is_some());
+                let global_y = renderer.page_top_y(object.page - 1) + object.y;
+                assert!(renderer
+                    .hit_test_object(object.x + 1.0, global_y + 1.0)
+                    .is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn layout_extension_keeps_prefix_object_regions_and_full_relayout_removes_deleted_images() {
+        let document = Rc::new(object_region_test_document());
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.set_layout_page_limit(Some(2));
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        let first = renderer
+            .object_region(FloatingObjectTarget {
+                kind: FloatingObjectKind::Image,
+                paragraph_index: 0,
+                run_index: 0,
+            })
+            .expect("first page image");
+        for (previous, next) in [(2, 5), (5, 10)] {
+            renderer.clear_dirty_regions();
+            renderer.set_layout_page_limit(Some(next));
+            assert!(renderer.prepare_layout_extension_seek(Some(previous), next, &options));
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            assert_eq!(
+                serde_json::to_value(renderer.object_region(FloatingObjectTarget {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 0,
+                    run_index: 0,
+                }))
+                .unwrap(),
+                serde_json::to_value(&first).unwrap()
+            );
+        }
+        assert_eq!(renderer.object_debug_regions.borrow().len(), 10);
+        let mut changed = (*document).clone();
+        let BodyElement::Paragraph(paragraph) = &mut changed.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.runs[0].image = None;
+        renderer.set_layout_page_limit(None);
+        renderer.render(&changed, &options).unwrap();
+        assert!(
+            renderer
+                .object_region(FloatingObjectTarget {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 0,
+                    run_index: 0,
+                })
+                .is_none(),
+            "deleted objects must never survive a content relayout"
+        );
+        assert_eq!(renderer.object_debug_regions.borrow().len(), 9);
+    }
+
+    #[test]
+    fn object_regions_are_not_duplicated_when_a_prepared_seek_falls_back() {
+        let document = Rc::new(object_region_test_document());
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        let before = renderer.object_debug_regions.borrow().clone();
+        renderer.clear_dirty_regions();
+        renderer.set_layout_page_limit(Some(5));
+        assert!(renderer.prepare_layout_extension_seek(Some(2), 5, &options));
+        // The conservative render policy can reject a previously seeded seek.
+        renderer.disable_seek_replay_once = true;
+        renderer.set_layout_page_limit(None);
+        renderer
+            .render_layout_with_numbering_rc(document, &options, None, None, None, None)
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(&*renderer.object_debug_regions.borrow()).unwrap(),
+            serde_json::to_value(&before).unwrap(),
+            "a from-start walk must rebuild, rather than append to, its prefix"
         );
     }
 
