@@ -314,6 +314,7 @@ pub(crate) fn style_from_regions<'a>(
         pattern: "solid".into(),
         foreground: Some(color),
         background: None,
+        gradient: None,
     });
     style.text_color = text_color;
     style.left = left.flatten();

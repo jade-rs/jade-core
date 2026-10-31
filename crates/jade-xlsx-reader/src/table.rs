@@ -213,6 +213,9 @@ pub fn referenced_table_parts(
     rels: &jade_opc::Relationships,
     source: &str,
 ) -> Result<Vec<String>> {
+    if !xml.contains("tablePart") {
+        return Ok(Vec::new());
+    }
     let mut reader = NsReader::from_str(xml);
     let mut depth = 0usize;
     let mut root = None;

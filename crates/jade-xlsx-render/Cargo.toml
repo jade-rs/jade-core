@@ -8,6 +8,7 @@ license = "MIT"
 jade-painter = { path = "../jade-painter" }
 jade-xlsx-layout = { path = "../jade-xlsx-layout" }
 jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+unicode-segmentation = "1.10"
 
 [dev-dependencies]
 zip = { version = "8.0", default-features = false, features = ["deflate"] }

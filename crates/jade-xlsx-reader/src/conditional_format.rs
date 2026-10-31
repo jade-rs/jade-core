@@ -206,6 +206,9 @@ fn enabled(value: Option<String>) -> bool {
 }
 
 pub fn parse_conditional_formats(xml: &str) -> Result<Vec<ConditionalFormatting>> {
+    if !xml.contains("conditionalFormatting") {
+        return Ok(Vec::new());
+    }
     let mut reader = NsReader::from_str(xml);
     let mut formats = Vec::new();
     let mut format: Option<ConditionalFormatting> = None;

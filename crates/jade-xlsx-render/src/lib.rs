@@ -24,6 +24,7 @@ use jade_xlsx_reader::{
     VerticalAlignment,
 };
 use std::cell::RefCell;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
 pub struct RenderOptions {
@@ -766,6 +767,10 @@ fn render_cell_fill<P: Painter>(
     fallback: &str,
     options: &RenderOptions,
 ) {
+    if let Some(gradient) = &fill.gradient {
+        render_gradient_fill(painter, gradient, rect, fallback);
+        return;
+    }
     if fill.pattern == "solid" {
         let color = fill
             .foreground
@@ -856,6 +861,113 @@ fn render_stipple<P: Painter>(
         y += y_spacing;
         row += 1;
     }
+}
+
+/// The colour a gradient has at `t` (0–1), between the stops either side.
+fn gradient_color(stops: &[(f64, [u8; 4])], t: f64) -> [u8; 4] {
+    let Some(&(first_at, first)) = stops.first() else {
+        return [0; 4];
+    };
+    if t <= first_at {
+        return first;
+    }
+    for pair in stops.windows(2) {
+        let ((from_at, from), (to_at, to)) = (pair[0], pair[1]);
+        if t <= to_at {
+            let span = to_at - from_at;
+            let k = if span > 0.0 {
+                (t - from_at) / span
+            } else {
+                1.0
+            };
+            return std::array::from_fn(|channel| {
+                (f64::from(from[channel]) * (1.0 - k) + f64::from(to[channel]) * k).round() as u8
+            });
+        }
+    }
+    stops.last().map_or(first, |&(_, color)| color)
+}
+
+fn css_rgba([r, g, b, a]: [u8; 4]) -> String {
+    format!("rgba({r}, {g}, {b}, {})", f64::from(a) / 255.0)
+}
+
+/// Excel's gradient fills: a linear one in bands across its angle, a path
+/// one in rectangles shrinking from the cell's edges to its inner box.
+fn render_gradient_fill<P: Painter>(
+    painter: &P,
+    gradient: &jade_xlsx_reader::GradientFill,
+    rect: Rect,
+    fallback: &str,
+) {
+    if rect.width <= 0.0 || rect.height <= 0.0 {
+        return;
+    }
+    let mut stops: Vec<(f64, [u8; 4])> = gradient
+        .stops
+        .iter()
+        .map(|&(at, color)| {
+            let rgba = jade_xlsx_layout::color::rgba(color).unwrap_or([255, 255, 255, 255]);
+            (at, rgba)
+        })
+        .collect();
+    stops.sort_by(|a, b| a.0.total_cmp(&b.0));
+    if stops.is_empty() {
+        painter.set_fill_style_str(fallback);
+        painter.fill_rect(rect.x, rect.y, rect.width, rect.height);
+        return;
+    }
+    painter.save();
+    painter.begin_path();
+    painter.rect(rect.x, rect.y, rect.width, rect.height);
+    painter.clip();
+    if let Some([left, right, top, bottom]) = gradient.path {
+        // Inner box: where the first stop's colour sits; the cell's edges
+        // take the last one.
+        let inner = Rect {
+            x: rect.x + rect.width * left,
+            y: rect.y + rect.height * top,
+            width: (rect.width * (1.0 - left - right)).max(0.0),
+            height: (rect.height * (1.0 - top - bottom)).max(0.0),
+        };
+        let steps = (rect.width.max(rect.height) / 2.0).ceil().clamp(1.0, 128.0) as u32;
+        for index in (0..=steps).rev() {
+            let t = f64::from(index) / f64::from(steps);
+            let lerp = |a: f64, b: f64| a + (b - a) * t;
+            painter.set_fill_style_str(&css_rgba(gradient_color(&stops, t)));
+            let x = lerp(inner.x, rect.x);
+            let y = lerp(inner.y, rect.y);
+            painter.fill_rect(
+                x,
+                y,
+                lerp(inner.x + inner.width, rect.right()) - x,
+                lerp(inner.y + inner.height, rect.bottom()) - y,
+            );
+        }
+    } else {
+        let angle = gradient.degree.to_radians();
+        let (sin, cos) = angle.sin_cos();
+        // The cell's extent along the gradient's direction and across it.
+        let along = (rect.width * cos).abs() + (rect.height * sin).abs();
+        let across = (rect.width * sin).abs() + (rect.height * cos).abs();
+        let steps = along.ceil().clamp(1.0, 256.0) as u32;
+        let band = along / f64::from(steps);
+        let centre = (rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+        if painter.translate(centre.0, centre.1).is_ok() && painter.rotate(angle).is_ok() {
+            for index in 0..steps {
+                let t = (f64::from(index) + 0.5) / f64::from(steps);
+                painter.set_fill_style_str(&css_rgba(gradient_color(&stops, t)));
+                // A hair of overlap so the bands leave no seams.
+                painter.fill_rect(
+                    -along / 2.0 + band * f64::from(index),
+                    -across / 2.0,
+                    band + 0.5,
+                    across,
+                );
+            }
+        }
+    }
+    painter.restore();
 }
 
 fn pattern_horizontal<P: Painter>(painter: &P, rect: Rect, spacing: f64) {
@@ -1166,8 +1278,10 @@ fn render_text_body<P: Painter>(
     let line_height = points_to_px(line_height_points(cell.font.size_points));
     let block_height = line_height * cell.lines.len() as f64;
     let block_top = match cell.alignment.vertical {
-        VerticalAlignment::Top => cell.rect.y + padding,
-        VerticalAlignment::Center => cell.rect.y + (cell.rect.height - block_height) / 2.0,
+        VerticalAlignment::Top | VerticalAlignment::Justify => cell.rect.y + padding,
+        VerticalAlignment::Center | VerticalAlignment::Distributed => {
+            cell.rect.y + (cell.rect.height - block_height) / 2.0
+        }
         VerticalAlignment::Bottom => cell.rect.bottom() - padding - block_height,
     };
     // An auto-fitted row is exactly as tall as its lines, so the padding has
@@ -1178,6 +1292,21 @@ fn render_text_body<P: Painter>(
         cell.rect.y,
         (cell.rect.bottom() - block_height).max(cell.rect.y),
     );
+    // Vertically justified or distributed lines share out the height the
+    // block leaves: justified from the top edge to the bottom one,
+    // distributed with half a share above the first and below the last.
+    let slack = || (cell.rect.height - 2.0 * padding - block_height).max(0.0);
+    let lines = cell.lines.len() as f64;
+    let (block_top, line_height) = match cell.alignment.vertical {
+        VerticalAlignment::Justify if cell.lines.len() > 1 => {
+            (block_top, line_height + slack() / (lines - 1.0))
+        }
+        VerticalAlignment::Distributed if cell.lines.len() > 1 => (
+            cell.rect.y + padding + slack() / lines / 2.0,
+            line_height + slack() / lines,
+        ),
+        _ => (block_top, line_height),
+    };
     // Dark view's automatic foreground can cross a light bar/explicit fill.
     // Preserve its color with a thin outline; authored RGB colors stay intact.
     let outline = options.dark
@@ -1189,7 +1318,8 @@ fn render_text_body<P: Painter>(
     let inner_left = cell.rect.x + padding + cell.text_inset_px;
     let content_right = cell.rect.right().min(cell.text_rect().right());
     let inner_right = content_right - padding - cell.text_inset_px;
-    if !cell.runs.is_empty() && text_rotation_radians(cell.alignment.text_rotation).is_none() {
+    let rotation = text_rotation_radians(cell.alignment.text_rotation);
+    if !cell.runs.is_empty() && rotation.is_none() {
         let mut cursor = 0;
         let mut ranges = Vec::new();
         for line in &cell.lines {
@@ -1230,11 +1360,30 @@ fn render_text_body<P: Painter>(
             HorizontalAlignment::Center => {
                 cell.rect.x + (content_right - cell.rect.x - width) / 2.0
             }
+            HorizontalAlignment::CenterContinuous => clip.x + (clip.width - width) / 2.0,
             // `General` is resolved during layout, so anything left is left.
             _ => inner_left,
         };
         let y = block_top + line_height * index as f64 + ascent;
-        if let Some(angle) = text_rotation_radians(cell.alignment.text_rotation) {
+        let spread = match cell.alignment.horizontal {
+            // Justify leaves the paragraph's last line as it is.
+            HorizontalAlignment::Justify => index + 1 < cell.lines.len(),
+            HorizontalAlignment::Distributed => true,
+            _ => false,
+        };
+        if spread && rotation.is_none() && width < inner_right - inner_left {
+            paint_spread_line(
+                painter,
+                cell,
+                line,
+                (inner_left, inner_right),
+                y,
+                outline,
+                ascent,
+            )?;
+            continue;
+        }
+        if let Some(angle) = rotation {
             painter.save();
             let result = (|| {
                 painter.translate(x, y)?;
@@ -1295,6 +1444,10 @@ fn render_rich_line<P: Painter>(
     let mut x = match cell.alignment.horizontal {
         HorizontalAlignment::Right => inner_right - width,
         HorizontalAlignment::Center => cell.rect.x + (content_right - cell.rect.x - width) / 2.0,
+        HorizontalAlignment::CenterContinuous => {
+            let clip = cell.text_rect();
+            clip.x + (clip.width - width) / 2.0
+        }
         _ => inner_left,
     };
     for (text, font, shift, color, advance) in pieces {
@@ -1325,6 +1478,53 @@ fn render_rich_line<P: Painter>(
         }
         x += advance;
     }
+    Ok(())
+}
+
+/// A line spread across `left..right`: between its words when it has
+/// spaces, else between its characters (Japanese 均等割り付け). A single
+/// character is centred.
+fn paint_spread_line<P: Painter>(
+    painter: &P,
+    cell: &PlacedCell,
+    line: &str,
+    (left, right): (f64, f64),
+    y: f64,
+    outline: bool,
+    ascent: f64,
+) -> Result<(), P::Error> {
+    let trimmed = line.trim();
+    let pieces: Vec<&str> = if trimmed.contains(' ') {
+        trimmed.split(' ').filter(|word| !word.is_empty()).collect()
+    } else {
+        trimmed.graphemes(true).collect()
+    };
+    let widths = pieces
+        .iter()
+        .map(|piece| painter.measure_text_width(piece))
+        .collect::<Result<Vec<_>, _>>()?;
+    let total: f64 = widths.iter().sum();
+    let available = right - left;
+    let (mut x, gap) = if pieces.len() < 2 {
+        (left + (available - total) / 2.0, 0.0)
+    } else {
+        (left, (available - total) / (pieces.len() - 1) as f64)
+    };
+    for (piece, width) in pieces.iter().zip(&widths) {
+        paint_cell_text(painter, piece, x, y, outline)?;
+        x += width + gap;
+    }
+    let start = if pieces.len() < 2 {
+        left + (available - total) / 2.0
+    } else {
+        left
+    };
+    let end = if pieces.len() < 2 {
+        start + total
+    } else {
+        right
+    };
+    render_text_decorations(painter, cell, start, y, end - start, ascent);
     Ok(())
 }
 
@@ -1398,26 +1598,39 @@ fn text_rotation_radians(rotation: u16) -> Option<f64> {
 /// anyway.
 pub struct PainterMeasure<P: Painter> {
     painter: P,
-    /// The font descriptor last pushed to the painter. Setting it per call is
-    /// the expensive part of measuring a grapheme at a time.
-    last_font: RefCell<String>,
+    /// The font last pushed to the painter — bold, italic, size bits and
+    /// family. Setting it per call is the expensive part of measuring a
+    /// grapheme at a time, and so is spelling its descriptor out per cell.
+    last_font: RefCell<Option<(bool, bool, u32, String)>>,
 }
 
 impl<P: Painter> PainterMeasure<P> {
     pub fn new(painter: P) -> Self {
         Self {
             painter,
-            last_font: RefCell::new(String::new()),
+            last_font: RefCell::new(None),
         }
     }
 }
 
 impl<P: Painter> TextMeasure for PainterMeasure<P> {
     fn measure(&self, text: &str, font: &ResolvedFont) -> f64 {
-        let shorthand = font_shorthand(font);
-        if *self.last_font.borrow() != shorthand {
-            self.painter.set_font(&shorthand);
-            *self.last_font.borrow_mut() = shorthand;
+        let current = matches!(
+            &*self.last_font.borrow(),
+            Some((bold, italic, size, family))
+                if *bold == font.bold
+                    && *italic == font.italic
+                    && *size == font.size_points.to_bits()
+                    && *family == font.family
+        );
+        if !current {
+            self.painter.set_font(&font_shorthand(font));
+            *self.last_font.borrow_mut() = Some((
+                font.bold,
+                font.italic,
+                font.size_points.to_bits(),
+                font.family.clone(),
+            ));
         }
         self.painter
             .measure_text_width(text)
@@ -1869,7 +2082,67 @@ pub fn font_shorthand(font: &ResolvedFont) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::text_rotation_radians;
+    use super::{gradient_color, render_gradient_fill, text_rotation_radians, Rect};
+    use jade_painter::recording::{Op, RecordingPainter};
+    use jade_xlsx_reader::{Color, GradientFill};
+
+    #[test]
+    fn a_gradient_blends_between_its_stops() {
+        let stops = [(0.0, [255, 255, 255, 255]), (1.0, [0, 0, 255, 255])];
+        assert_eq!(gradient_color(&stops, 0.0), [255, 255, 255, 255]);
+        assert_eq!(gradient_color(&stops, 1.0), [0, 0, 255, 255]);
+        assert_eq!(gradient_color(&stops, 0.5), [128, 128, 255, 255]);
+        // Past the last stop it keeps the last colour.
+        let middle = [(0.25, [0, 0, 0, 255]), (0.75, [255, 0, 0, 255])];
+        assert_eq!(gradient_color(&middle, 0.0), [0, 0, 0, 255]);
+        assert_eq!(gradient_color(&middle, 1.0), [255, 0, 0, 255]);
+    }
+
+    #[test]
+    fn linear_and_path_gradients_paint_from_one_stop_to_the_other() {
+        let rect = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 64.0,
+            height: 20.0,
+        };
+        let stops = vec![
+            (0.0, Color::Argb([255, 255, 255, 255])),
+            (1.0, Color::Argb([255, 0, 0, 255])),
+        ];
+        for path in [None, Some([0.5, 0.5, 0.5, 0.5])] {
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let gradient = GradientFill {
+                degree: 0.0,
+                path,
+                stops: stops.clone(),
+            };
+            render_gradient_fill(&painter, &gradient, rect, "#ffffff");
+            let ops = painter.ops();
+            let colours: Vec<&str> = ops
+                .iter()
+                .filter_map(|op| match op {
+                    Op::SetFillStyle(colour) => Some(colour.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert!(colours.len() > 8, "{path:?}: drawn in bands");
+            // Linear: white at the left, blue at the right. Path: the edges
+            // (drawn first) blue, the centre white.
+            let (first, last) = if path.is_some() {
+                ("rgba(0, 0, 255", "rgba(255, 255, 255")
+            } else {
+                ("rgba(253, 253, 255", "rgba(2, 2, 255")
+            };
+            assert!(colours[0].starts_with(first), "{path:?}: {}", colours[0]);
+            assert!(
+                colours.last().unwrap().starts_with(last),
+                "{path:?}: {}",
+                colours.last().unwrap()
+            );
+            assert!(ops.iter().any(|op| matches!(op, Op::FillRect(..))));
+        }
+    }
 
     #[test]
     fn spreadsheetml_rotation_ranges_map_above_and_below_the_horizon() {

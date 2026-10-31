@@ -345,6 +345,7 @@ impl<'a> ConditionalStyles<'a> {
                         pattern: Some("solid".into()),
                         foreground: Some(color),
                         background: None,
+                        gradient: None,
                     });
                 }
                 if visuals.bar.is_none() {
@@ -487,6 +488,7 @@ pub fn conditional_fill(style: &DifferentialStyle) -> Option<Option<ResolvedFill
                 pattern: pattern.to_string(),
                 foreground: fill.foreground.or(fill.background),
                 background: fill.background,
+                gradient: None,
             })
         }
     })
