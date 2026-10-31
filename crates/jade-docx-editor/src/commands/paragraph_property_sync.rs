@@ -909,14 +909,19 @@ pub(crate) fn sync_paragraph_numbering_xml(
     num_id: Option<&str>,
     level: Option<u32>,
 ) {
-    let mut direct_indent = false;
+    let mut direct_indent = None;
     let mut synced = false;
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
         synced = true;
-        direct_indent |= paragraph_properties
+        direct_indent = paragraph_properties
             .children
             .iter()
-            .any(|child| matches!(child, XmlNode::Element(element) if element.name == "w:ind"));
+            .find_map(|child| match child {
+                XmlNode::Element(element) if element.name == "w:ind" => {
+                    Some(indent_from_xml(element))
+                }
+                _ => None,
+            });
         match num_id {
             Some(id) => {
                 upsert_paragraph_numbering_child(raw, paragraph_properties, id, level);
@@ -935,6 +940,38 @@ pub(crate) fn sync_paragraph_numbering_xml(
             direct_indent,
         );
     }
+}
+
+/// The indent a `w:ind` sets, read as the reader reads it: twips to points,
+/// character units as written.
+fn indent_from_xml(element: &XmlElement) -> Indent {
+    let mut indent = Indent::default();
+    for attribute in &element.attributes {
+        let points = || {
+            attribute
+                .value
+                .parse::<f32>()
+                .ok()
+                .map(|twips| twips / 20.0)
+        };
+        let chars = || attribute.value.parse::<i32>().ok();
+        match attribute.name.as_str() {
+            "w:left" => indent.left = points(),
+            "w:right" => indent.right = points(),
+            "w:start" => indent.start = points(),
+            "w:end" => indent.end = points(),
+            "w:firstLine" => indent.first_line = points(),
+            "w:hanging" => indent.hanging = points(),
+            "w:leftChars" => indent.left_chars = chars(),
+            "w:rightChars" => indent.right_chars = chars(),
+            "w:startChars" => indent.start_chars = chars(),
+            "w:endChars" => indent.end_chars = chars(),
+            "w:firstLineChars" => indent.first_line_chars = chars(),
+            "w:hangingChars" => indent.hanging_chars = chars(),
+            _ => {}
+        }
+    }
+    indent
 }
 
 fn upsert_paragraph_numbering_child(
