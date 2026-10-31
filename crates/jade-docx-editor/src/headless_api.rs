@@ -13798,6 +13798,50 @@ mod tests {
     }
 
     #[test]
+    fn a_paragraph_style_the_document_lacks_reloads_as_the_default() {
+        // A `w:pStyle` naming a style the document does not define formats
+        // the paragraph with the default paragraph style (ECMA-376
+        // §17.3.1.27). The editor applies it so (#308), but a load resolved
+        // it as no style: underline-kinds.docx's justified Normal was gone
+        // once such a paragraph was saved and reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/underline-kinds.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 8,
+                    end_paragraph: 10,
+                    style_id: Some("1".to_string()),
+                }],
+            },
+        )
+        .expect("style applied");
+        let alignments = |word_doc: &WordDocument| {
+            (8..=10)
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .and_then(|paragraph| paragraph.properties.as_ref())
+                        .and_then(|props| props.alignment.as_deref().map(str::to_string))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(alignments(&word_doc), vec![Some("both".to_string()); 3]);
+        assert_eq!(alignments(&reloaded), alignments(&word_doc));
+    }
+
+    #[test]
     fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
         // table-complex-indented-recursive.docx defines no style "2". Its
         // `w:pStyle` reads as the default paragraph style, as Word and a
