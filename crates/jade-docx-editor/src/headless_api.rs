@@ -12119,6 +12119,82 @@ mod tests {
     }
 
     #[test]
+    fn an_inline_object_put_inside_a_toc_link_keeps_its_page_number_once() {
+        // toc.docx's fourth entry is a link holding the heading text, a tab
+        // and a PAGEREF field. A footnote (or an equation, a shape) put inside
+        // the heading text is not link content, so the link is left at it:
+        // the link was written whole with the tab and field, and those runs
+        // were written again after the object, so the saved entry showed its
+        // page number twice.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures/toc.docx"),
+        )
+        .expect("read fixture");
+        let commands = [
+            HeadlessCommand::InsertFootnote {
+                paragraph: 4,
+                offset: 2,
+                text: "note".to_string(),
+            },
+            HeadlessCommand::InsertEndnote {
+                paragraph: 4,
+                offset: 2,
+                text: "note".to_string(),
+            },
+            HeadlessCommand::InsertEquation {
+                paragraph: 4,
+                offset: 2,
+                omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+            },
+        ];
+        let entry = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(4)
+                .expect("toc entry")
+                .runs
+                .iter()
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.field.is_some(),
+                        run.math.is_some(),
+                        run.footnote_reference_ids.len() + run.endnote_reference_ids.len(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        for command in commands {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command.clone()],
+                },
+            )
+            .expect("inserted");
+            let xml = toc_document_xml(&word_doc);
+            let saved = xml
+                .split("</w:p>")
+                .find(|paragraph| paragraph.contains("w14:paraId=\"7391849E\""))
+                .expect("saved toc entry");
+            assert_eq!(
+                saved.matches("PAGEREF _Toc214570706").count(),
+                1,
+                "{command:?}: {saved}"
+            );
+            assert_eq!(saved.matches("<w:tab/>").count(), 1, "{command:?}: {saved}");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(entry(&reloaded), entry(&word_doc), "{command:?}");
+        }
+    }
+
+    #[test]
     fn a_heading_keeps_its_style_colour_out_of_the_runs() {
         // toc.docx's heading 1 is the theme colour accent1. Applying it left
         // that colour in the runs' model properties, and the next edit to the
