@@ -550,6 +550,206 @@ fn content_control(block: &str) -> String {
     ), block)
 }
 
+#[test]
+fn regenerated_field_blocks_preserve_their_section_break() {
+    use crate::word_document::FieldBlockLine;
+    let section = concat!(
+        "<w:sectPr w:rsidSect=\"00AABBCC\"><w:type w:val=\"nextPage\"/>",
+        "<w:pgSz w:w=\"15840\" w:h=\"12240\" w:orient=\"landscape\"/>",
+        "<w:pgNumType w:fmt=\"lowerRoman\" w:start=\"1\"/></w:sectPr>"
+    );
+    for wrapped in [false, true] {
+        for headings in 0..=2 {
+            for operation in [
+                "TOC-update",
+                "TOC-replace",
+                "TOC-fields",
+                "INDEX",
+                "INDEX-empty",
+            ] {
+                let kind = if operation.starts_with("TOC") {
+                    "TOC"
+                } else {
+                    "INDEX"
+                };
+                let heading = (0..headings).map(|index| format!(
+                "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>Heading {index}</w:t></w:r></w:p>"
+            )).collect::<String>();
+                let block = paragraph(&format!(
+                    "<w:pPr>{section}</w:pPr>{}",
+                    field(kind, "cached")
+                ));
+                let body = format!(
+                    "{}{}{}",
+                    if wrapped {
+                        content_control(&block)
+                    } else {
+                        block
+                    },
+                    heading,
+                    paragraph("<w:r><w:t>After</w:t></w:r>")
+                );
+                let mut doc = load(&package(&body, &[]));
+                assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                for _ in 0..2 {
+                    match operation {
+                        "TOC-update" => {
+                            doc.update_table_of_contents_at(0).unwrap();
+                        }
+                        "TOC-replace" => {
+                            doc.replace_table_of_contents(
+                                0,
+                                &crate::document::TocOptions::default(),
+                                "dot",
+                            )
+                            .unwrap();
+                        }
+                        "TOC-fields" => {
+                            update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+                        }
+                        _ => {
+                            let block = doc.field_blocks().pop().unwrap();
+                            let lines = [
+                                FieldBlockLine {
+                                    text: "Alpha".into(),
+                                    page: Some("1".into()),
+                                    ..FieldBlockLine::default()
+                                },
+                                FieldBlockLine {
+                                    text: "Beta".into(),
+                                    ..FieldBlockLine::default()
+                                },
+                            ];
+                            doc.replace_field_block(
+                                &block,
+                                kind,
+                                if operation == "INDEX-empty" {
+                                    &[]
+                                } else {
+                                    &lines
+                                },
+                            )
+                            .unwrap();
+                        }
+                    }
+                    let files = unpack(&doc).unwrap();
+                    let xml = parse_part(&files, "word/document.xml")
+                        .unwrap()
+                        .to_string()
+                        .unwrap();
+                    assert!(xml.contains(section), "{operation} lost section properties");
+                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                    assert_eq!(
+                        doc.document
+                            .as_ref()
+                            .unwrap()
+                            .page_settings
+                            .as_ref()
+                            .unwrap()
+                            .width,
+                        Some(792.0)
+                    );
+                    let block = doc.field_blocks().pop().unwrap();
+                    for index in block.start..=block.end {
+                        for tab in doc
+                            .paragraph(index)
+                            .unwrap()
+                            .properties
+                            .iter()
+                            .flat_map(|p| &p.tabs)
+                        {
+                            assert_eq!(
+                                tab.position,
+                                Some(792.0),
+                                "{operation}: tab width changed during regeneration"
+                            );
+                        }
+                    }
+                    assert_eq!(
+                        doc.document.as_ref().unwrap().sections[0].end,
+                        block.end + 1
+                    );
+                    doc = load(&doc.export_docx().unwrap());
+                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn updating_a_toc_preserves_its_original_instruction() {
+    for headings in [false, true] {
+        let code = "TOC \\o \"1-1\" \\h \\* MERGEFORMAT \\z";
+        let heading = if headings {
+            "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>Heading</w:t></w:r></w:p>"
+        } else {
+            ""
+        };
+        let mut doc = load(&package(
+            &format!("{}{heading}", paragraph(&field(code, "cached"))),
+            &[],
+        ));
+        for _ in 0..2 {
+            update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+            assert_eq!(doc.tables_of_contents()[0].instruction, code);
+            doc = load(&doc.export_docx().unwrap());
+        }
+    }
+}
+
+#[test]
+fn invalid_field_block_replacement_keeps_the_original_document() {
+    let mut doc = load(&package(&paragraph(&field("INDEX", "cached")), &[]));
+    let before = saved_text(&doc);
+    for instruction in ["", "  ", "INDEX\ninvalid"] {
+        let block = doc.field_blocks().pop().unwrap();
+        assert!(doc.replace_field_block(&block, instruction, &[]).is_err());
+        assert_eq!(saved_text(&doc), before);
+        assert_eq!(doc.field_blocks().len(), 1);
+    }
+}
+
+#[test]
+fn block_regeneration_rejects_destructive_ranges_and_keeps_other_fields_updatable() {
+    let section = "<w:pPr><w:sectPr><w:type w:val=\"continuous\"/></w:sectPr></w:pPr>";
+    let toc = field("TOC", "cached");
+    for block in [
+        paragraph(&format!("<w:r><w:t>前</w:t></w:r>{toc}<w:r><w:t>後</w:t></w:r>")),
+        paragraph(&format!("{toc}{}", field("NUMPAGES", "old"))),
+        format!("<w:p>{section}<w:r><w:fldChar w:fldCharType=\"begin\"/><w:instrText> TOC </w:instrText><w:fldChar w:fldCharType=\"separate\"/><w:t>cached</w:t></w:r></w:p><w:p><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"),
+        paragraph(&format!("<w:bookmarkStart w:id=\"9\" w:name=\"Around\"/>{toc}<w:bookmarkEnd w:id=\"9\"/>")),
+    ] {
+        let mut doc = load(&package(&format!("{block}{}", paragraph(&field("NUMPAGES", "old"))), &[]));
+        let xml = || parse_part(&unpack(&doc).unwrap(), "word/document.xml").unwrap().to_string().unwrap();
+        let before = xml();
+        assert!(doc.update_table_of_contents_at(0).is_err());
+        assert!(doc.replace_table_of_contents(0, &crate::document::TocOptions::default(), "dot").is_err());
+        let block = doc.field_blocks()[0].clone();
+        assert!(doc.replace_field_block(&block, "INDEX", &[]).is_err());
+        let after = parse_part(&unpack(&doc).unwrap(), "word/document.xml").unwrap().to_string().unwrap();
+        assert_eq!(after, before);
+        update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+        assert_eq!(saved_fields(&doc)[0], ("TOC".into(), "cached".into()));
+        assert_eq!(saved_fields(&doc).last().unwrap().1, environment().page_count.unwrap().to_string());
+    }
+}
+
+#[test]
+fn direct_toc_update_respects_the_field_lock() {
+    let toc = field("TOC", "cached").replace(
+        "w:fldCharType=\"begin\"",
+        "w:fldCharType=\"begin\" w:fldLock=\"true\"",
+    );
+    let mut doc = load(&package(&paragraph(&toc), &[]));
+    assert!(doc
+        .update_table_of_contents_at(0)
+        .unwrap_err()
+        .contains("locked"));
+    assert_eq!(saved_fields(&doc), vec![("TOC".into(), "cached".into())]);
+    assert!(fields_at(&doc, SelectionRange::collapsed(TextPosition::new(0, 0)))[0].locked);
+}
+
 fn assert_content_control(doc: &WordDocument, expected_result: &str) {
     let document = doc.document.as_ref().unwrap();
     assert_eq!(

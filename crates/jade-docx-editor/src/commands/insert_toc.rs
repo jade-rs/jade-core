@@ -388,6 +388,7 @@ mod tests {
             .expect("read TC field fixture");
         let mut loaded = executor::block_on(WordDocument::load(&data, &Options::default()))
             .expect("load TC field fixture");
+        let original_instruction = loaded.tables_of_contents()[0].instruction.clone();
         loaded
             .update_table_of_contents()
             .expect("update TC-backed TOC");
@@ -397,7 +398,11 @@ mod tests {
             .expect("raw document")
             .to_string()
             .expect("serialize raw document XML");
-        assert!(xml.contains(r#"TOC \h \z \f i \l "2-3""#), "{xml}");
+        assert_eq!(
+            loaded.tables_of_contents()[0].instruction,
+            original_instruction
+        );
+        assert!(xml.contains(&original_instruction), "{xml}");
     }
 
     #[test]
@@ -763,6 +768,7 @@ mod tests {
             .expect("read sequence-prefixed TOC fixture");
         let mut doc = executor::block_on(WordDocument::load(&data, &Options::default()))
             .expect("load sequence-prefixed TOC fixture");
+        let original_instruction = doc.tables_of_contents()[0].instruction.clone();
 
         doc.update_table_of_contents()
             .expect("regenerate sequence-prefixed TOC");
@@ -779,7 +785,11 @@ mod tests {
         // Preserve the switches themselves for another Word update. Prefixes
         // are separate text runs immediately before PAGEREF, never baked into
         // that field's cached page result.
-        assert!(document_xml.contains(r#"\s "Chapter" \d ":""#));
+        assert_eq!(
+            doc.tables_of_contents()[0].instruction,
+            original_instruction
+        );
+        assert!(document_xml.contains(&original_instruction));
         assert!(document_xml.contains(r#"<w:t xml:space="preserve">1:</w:t>"#));
         assert!(document_xml.contains(r#"<w:t xml:space="preserve">2:</w:t>"#));
         assert!(document_xml.contains("PAGEREF _Toc"));
