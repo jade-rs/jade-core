@@ -1546,9 +1546,11 @@ impl HeadlessWorkbook {
     /// `false` when the outline is already so.
     pub fn auto_outline(&mut self, sheet: &str) -> Result<bool> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, "the outline of a protected sheet cannot change", |_| {
-            false
-        })?;
+        self.guard(
+            index,
+            "the outline of a protected sheet cannot change",
+            |_| false,
+        )?;
         let (rows, columns) =
             jade_xlsx_writer::outline::plan_auto_outline(&self.workbook.sheets[index])?;
         self.write_outline_marks(index, vec![(Axis::Rows, rows), (Axis::Columns, columns)])
@@ -1559,9 +1561,11 @@ impl HeadlessWorkbook {
     /// none.
     pub fn clear_outline(&mut self, sheet: &str, axis: Axis) -> Result<bool> {
         let index = self.sheet_index(sheet)?;
-        self.guard(index, "the outline of a protected sheet cannot change", |_| {
-            false
-        })?;
+        self.guard(
+            index,
+            "the outline of a protected sheet cannot change",
+            |_| false,
+        )?;
         let marks =
             jade_xlsx_writer::outline::plan_clear_outline(&self.workbook.sheets[index], axis)?;
         self.write_outline_marks(index, vec![(axis, marks)])
