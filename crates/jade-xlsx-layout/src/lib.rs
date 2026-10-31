@@ -19,6 +19,7 @@ pub mod filter_button;
 pub mod measure;
 pub mod navigation;
 pub mod number_format;
+pub mod outline_gutter;
 pub mod pivot_fit;
 pub mod pivot_style;
 pub mod resize;
@@ -369,6 +370,9 @@ pub struct SheetLayout {
     /// against it, so the renderer has to place text against the same value —
     /// hence it lives on the result rather than in both option structs.
     pub cell_padding_px: f64,
+    /// Rows and columns grouped, for the outline gutter.
+    #[serde(default)]
+    pub outline: jade_xlsx_reader::Outline,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -725,7 +729,10 @@ impl SheetLayout {
 
     /// The size of the row and column header bands for this sheet.
     pub fn header_metrics(&self) -> HeaderMetrics {
-        HeaderMetrics::for_rows(self.rows.len() as u32)
+        HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
+            self.outline_levels(jade_xlsx_reader::Axis::Rows),
+            self.outline_levels(jade_xlsx_reader::Axis::Columns),
+        )
     }
 
     /// The cells that overlap `viewport`.
@@ -782,10 +789,17 @@ impl SheetLayout {
 /// stops a sheet used down to row 10000 from clipping its own numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HeaderMetrics {
-    /// Width of the row-number band, in px.
+    /// Width of the row-number band, in px, the outline gutter included.
     pub row_width: f64,
-    /// Height of the column-letter band, in px.
+    /// Height of the column-letter band, in px, the outline gutter included.
     pub column_height: f64,
+    /// Width of the rows' outline gutter at the band's left, in px; 0 when
+    /// no rows are grouped.
+    #[serde(default)]
+    pub outline_width: f64,
+    /// Height of the columns' outline gutter at the band's top, in px.
+    #[serde(default)]
+    pub outline_height: f64,
 }
 
 impl HeaderMetrics {
@@ -796,7 +810,19 @@ impl HeaderMetrics {
             // Two digits fit in Excel's own band; each further digit widens it.
             row_width: 24.0 + (digits - 2.0) * 8.0,
             column_height: units::points_to_px(units::DEFAULT_ROW_HEIGHT_POINTS),
+            outline_width: 0.0,
+            outline_height: 0.0,
         }
+    }
+
+    /// With the outline gutters rows grouped `row_levels` deep and columns
+    /// `column_levels` deep grow.
+    pub fn with_outline(mut self, row_levels: u8, column_levels: u8) -> Self {
+        self.outline_width = outline_gutter::gutter_size(row_levels);
+        self.outline_height = outline_gutter::gutter_size(column_levels);
+        self.row_width += self.outline_width;
+        self.column_height += self.outline_height;
+        self
     }
 }
 
@@ -1599,6 +1625,7 @@ fn layout_sheet_with_workbook(
         frozen_columns,
         frozen_rows,
         cell_padding_px: options.cell_padding_px,
+        outline: sheet.outline.clone(),
     }
 }
 

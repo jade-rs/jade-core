@@ -20,7 +20,7 @@ use jade_xlsx_layout::{
 };
 use jade_xlsx_layout::{HeuristicMeasure, TextMeasure};
 use jade_xlsx_reader::{
-    Border, BorderEdge, CellRange, CellRef, Color, HorizontalAlignment, ShapeKind,
+    Axis, Border, BorderEdge, CellRange, CellRef, Color, HorizontalAlignment, ShapeKind,
     VerticalAlignment,
 };
 use std::cell::RefCell;
@@ -2000,7 +2000,12 @@ fn render_headers<P: Painter>(
             let x = metrics.row_width + regions.frozen_width + entry.offset - regions.main.x;
             if selected.is_some_and(|selection| selection.contains_column(layout, index)) {
                 painter.set_fill_style_str(&style.highlight);
-                painter.fill_rect(x, 0.0, entry.size, metrics.column_height);
+                painter.fill_rect(
+                    x,
+                    metrics.outline_height,
+                    entry.size,
+                    metrics.column_height - metrics.outline_height,
+                );
             }
             let label = column_label(index);
             painter.set_fill_style_str(&style.text_color);
@@ -2008,7 +2013,8 @@ fn render_headers<P: Painter>(
             painter.fill_text(
                 &label,
                 x + (entry.size - width) / 2.0,
-                (metrics.column_height + em * 0.7) / 2.0,
+                metrics.outline_height
+                    + (metrics.column_height - metrics.outline_height + em * 0.7) / 2.0,
             )?;
         }
 
@@ -2023,14 +2029,19 @@ fn render_headers<P: Painter>(
             let y = metrics.column_height + regions.frozen_height + entry.offset - regions.main.y;
             if selected.is_some_and(|selection| selection.contains_row(layout, index)) {
                 painter.set_fill_style_str(&style.highlight);
-                painter.fill_rect(0.0, y, metrics.row_width, entry.size);
+                painter.fill_rect(
+                    metrics.outline_width,
+                    y,
+                    metrics.row_width - metrics.outline_width,
+                    entry.size,
+                );
             }
             let label = (index + 1).to_string();
             painter.set_fill_style_str(&style.text_color);
             let width = painter.measure_text_width(&label)?;
             painter.fill_text(
                 &label,
-                (metrics.row_width - width - 4.0).max(2.0),
+                (metrics.row_width - width - 4.0).max(metrics.outline_width + 2.0),
                 y + (entry.size + em * 0.7) / 2.0,
             )?;
         }
@@ -2049,7 +2060,12 @@ fn render_headers<P: Painter>(
         let x = metrics.row_width + entry.offset;
         if selected.is_some_and(|selection| selection.contains_column(layout, entry.index)) {
             painter.set_fill_style_str(&style.highlight);
-            painter.fill_rect(x, 0.0, entry.size, metrics.column_height);
+            painter.fill_rect(
+                x,
+                metrics.outline_height,
+                entry.size,
+                metrics.column_height - metrics.outline_height,
+            );
         }
         let label = column_label(entry.index);
         painter.set_fill_style_str(&style.text_color);
@@ -2057,7 +2073,8 @@ fn render_headers<P: Painter>(
         painter.fill_text(
             &label,
             x + (entry.size - width) / 2.0,
-            (metrics.column_height + em * 0.7) / 2.0,
+            metrics.outline_height
+                + (metrics.column_height - metrics.outline_height + em * 0.7) / 2.0,
         )?;
     }
     for entry in layout
@@ -2072,17 +2089,24 @@ fn render_headers<P: Painter>(
         let y = metrics.column_height + entry.offset;
         if selected.is_some_and(|selection| selection.contains_row(layout, entry.index)) {
             painter.set_fill_style_str(&style.highlight);
-            painter.fill_rect(0.0, y, metrics.row_width, entry.size);
+            painter.fill_rect(
+                metrics.outline_width,
+                y,
+                metrics.row_width - metrics.outline_width,
+                entry.size,
+            );
         }
         let label = (entry.index + 1).to_string();
         painter.set_fill_style_str(&style.text_color);
         let width = painter.measure_text_width(&label)?;
         painter.fill_text(
             &label,
-            (metrics.row_width - width - 4.0).max(2.0),
+            (metrics.row_width - width - 4.0).max(metrics.outline_width + 2.0),
             y + (entry.size + em * 0.7) / 2.0,
         )?;
     }
+
+    render_outline_gutter(painter, layout, &regions, metrics, style)?;
 
     // The lines that close the bands, and the corner between them.
     painter.set_stroke_style_str(&style.line_color);
@@ -2096,6 +2120,153 @@ fn render_headers<P: Painter>(
     painter.move_to(right, 0.0);
     painter.line_to(right, surface_height);
     painter.stroke();
+    Ok(())
+}
+
+/// The rows (or columns) drawn in the header band, frozen ones first: each
+/// one's index, where it starts along the band and its size, in surface px.
+fn header_entries(
+    layout: &SheetLayout,
+    regions: &jade_xlsx_layout::ViewportRegions,
+    metrics: HeaderMetrics,
+    axis: Axis,
+) -> Vec<(u32, f64, f64)> {
+    let (entries, frozen, frozen_size, band) = match axis {
+        Axis::Rows => (
+            &layout.rows,
+            layout.frozen_rows,
+            regions.frozen_height,
+            metrics.column_height,
+        ),
+        Axis::Columns => (
+            &layout.columns,
+            layout.frozen_columns,
+            regions.frozen_width,
+            metrics.row_width,
+        ),
+    };
+    let mut drawn: Vec<(u32, f64, f64)> = entries
+        .iter()
+        .take(frozen as usize)
+        .take_while(|entry| entry.offset < frozen_size)
+        .map(|entry| (entry.index, band + entry.offset, entry.size))
+        .collect();
+    if let Some(range) = layout.visible_range(regions.main) {
+        let (first, last, scrolled) = match axis {
+            Axis::Rows => (range.first_row, range.last_row, regions.main.y),
+            Axis::Columns => (range.first_column, range.last_column, regions.main.x),
+        };
+        for index in first..=last {
+            let entry = match axis {
+                Axis::Rows => layout.row(index),
+                Axis::Columns => layout.column(index),
+            };
+            if let Some(entry) = entry {
+                drawn.push((
+                    index,
+                    band + frozen_size + entry.offset - scrolled,
+                    entry.size,
+                ));
+            }
+        }
+    }
+    drawn
+}
+
+/// Excel's outline gutter: a numbered button per level, a line beside each
+/// group's rows (or columns) and a box on its summary, `−` while the group
+/// shows and `+` once it is collapsed.
+fn render_outline_gutter<P: Painter>(
+    painter: &P,
+    layout: &SheetLayout,
+    regions: &jade_xlsx_layout::ViewportRegions,
+    metrics: HeaderMetrics,
+    style: &HeaderStyle,
+) -> Result<(), P::Error> {
+    use jade_xlsx_layout::outline_gutter::{lane_center, BUTTON};
+    for axis in [Axis::Rows, Axis::Columns] {
+        let levels = layout.outline_levels(axis);
+        if levels == 0 {
+            continue;
+        }
+        // Rows' gutter runs down the left, columns' along the top: `across`
+        // is the position in the gutter, `along` the position on the axis.
+        let at = |across: f64, along: f64| match axis {
+            Axis::Rows => (across, along),
+            Axis::Columns => (along, across),
+        };
+        let (gutter, band_start, band_end) = match axis {
+            Axis::Rows => (
+                metrics.outline_width,
+                metrics.outline_height,
+                metrics.column_height,
+            ),
+            Axis::Columns => (
+                metrics.outline_height,
+                metrics.outline_width,
+                metrics.row_width,
+            ),
+        };
+        painter.set_stroke_style_str(&style.line_color);
+        painter.set_line_width(1.0);
+        painter.set_line_dash(&[]);
+        let middle = (band_start + band_end) / 2.0;
+        for level in 1..=levels + 1 {
+            let (x, y) = at(lane_center(level), middle);
+            painter.set_fill_style_str(&style.background);
+            painter.fill_rect(x - BUTTON / 2.0, y - BUTTON / 2.0, BUTTON, BUTTON);
+            painter.begin_path();
+            painter.rect(x - BUTTON / 2.0, y - BUTTON / 2.0, BUTTON, BUTTON);
+            painter.stroke();
+            let label = level.to_string();
+            let width = painter.measure_text_width(&label)?;
+            painter.set_fill_style_str(&style.text_color);
+            painter.fill_text(&label, x - width / 2.0, y + BUTTON * 0.35)?;
+        }
+        for (index, start, size) in header_entries(layout, regions, metrics, axis) {
+            if size <= 0.0 {
+                continue;
+            }
+            let own = layout.outline_level(axis, index);
+            painter.begin_path();
+            for level in 1..=own {
+                let (x0, y0) = at(lane_center(level), start);
+                let (x1, y1) = at(lane_center(level), start + size);
+                painter.move_to(x0.floor() + 0.5, y0);
+                painter.line_to(x1.floor() + 0.5, y1);
+            }
+            painter.stroke();
+            for level in layout.outline_summary_levels(axis, index) {
+                let (x, y) = at(lane_center(level), start + size / 2.0);
+                let (left, top) = (x - BUTTON / 2.0, y - BUTTON / 2.0);
+                painter.set_fill_style_str(&style.background);
+                painter.fill_rect(left, top, BUTTON, BUTTON);
+                painter.begin_path();
+                painter.rect(left.floor() + 0.5, top.floor() + 0.5, BUTTON, BUTTON);
+                painter.move_to(left + 2.5, y.floor() + 0.5);
+                painter.line_to(left + BUTTON - 2.5, y.floor() + 0.5);
+                if layout.outline_collapsed(axis, index) {
+                    painter.move_to(x.floor() + 0.5, top + 2.5);
+                    painter.line_to(x.floor() + 0.5, top + BUTTON - 2.5);
+                }
+                painter.stroke();
+            }
+        }
+        // The gutter's edge, between it and the numbers or letters.
+        painter.begin_path();
+        let edge = gutter.floor() + 0.5;
+        let (x0, y0) = at(edge, 0.0);
+        let (x1, y1) = at(
+            edge,
+            match axis {
+                Axis::Rows => metrics.column_height + regions.main.height + regions.frozen_height,
+                Axis::Columns => metrics.row_width + regions.main.width + regions.frozen_width,
+            },
+        );
+        painter.move_to(x0, y0);
+        painter.line_to(x1, y1);
+        painter.stroke();
+    }
     Ok(())
 }
 

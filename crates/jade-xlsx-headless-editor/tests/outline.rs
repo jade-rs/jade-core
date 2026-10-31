@@ -206,3 +206,39 @@ fn a_file_with_summaries_above_reads_and_collapses_that_way() {
     assert!(row_hidden(&book, 1) && row_hidden(&book, 2));
     assert!(sheet(&book).outline.collapsed_rows.contains(&0));
 }
+
+#[test]
+fn level_buttons_collapse_to_a_level_and_show_everything_again() {
+    let (mut book, name) = open();
+    book.outline(&name, Axis::Rows, 1, 5, OutlineChange::Group)
+        .unwrap();
+    book.outline(&name, Axis::Rows, 2, 3, OutlineChange::Group)
+        .unwrap();
+
+    // Level 2: the outer group's own rows show, the inner one collapses.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(2))
+        .unwrap());
+    assert!(!row_hidden(&book, 1) && !row_hidden(&book, 4) && !row_hidden(&book, 5));
+    assert!(row_hidden(&book, 2) && row_hidden(&book, 3));
+    assert!(sheet(&book).outline.collapsed_rows.contains(&4));
+    assert!(!sheet(&book).outline.collapsed_rows.contains(&6));
+
+    // Level 1: everything grouped collapses.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(1))
+        .unwrap());
+    assert!((1..=5).all(|row| row_hidden(&book, row)));
+    assert!(sheet(&book).outline.collapsed_rows.contains(&6));
+
+    // One past the deepest: everything shows, nothing is collapsed.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(3))
+        .unwrap());
+    assert!((1..=5).all(|row| !row_hidden(&book, row)));
+    assert!(sheet(&book).outline.collapsed_rows.is_empty());
+    // Showing what already shows is no step.
+    assert!(!book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(3))
+        .unwrap());
+}
