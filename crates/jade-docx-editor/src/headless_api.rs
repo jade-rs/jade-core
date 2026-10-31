@@ -12119,6 +12119,55 @@ mod tests {
     }
 
     #[test]
+    fn a_section_break_splitting_a_table_gives_its_copies_fresh_ids() {
+        // A section break inside yokohama_table.docx's table splits it, and
+        // the new table's properties are copies. After an edit that had made
+        // new elements, those copies took ids the moved rows still held: two
+        // elements shared an id, and the next edit's walk up their parent
+        // links never ended.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/yokohama_table.docx"),
+        )
+        .expect("read fixture");
+        use jade_docx_reader::docx_xml::XmlNodeId;
+        use std::collections::HashSet;
+        fn duplicate(element: &XmlElement, seen: &mut HashSet<XmlNodeId>) -> Option<XmlNodeId> {
+            if !seen.insert(element.id) {
+                return Some(element.id);
+            }
+            element.children.iter().find_map(|child| match child {
+                XmlNode::Element(child) => duplicate(child, seen),
+                _ => None,
+            })
+        }
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph: 5,
+                        start_offset: 15,
+                        end_paragraph: 7,
+                        end_offset: 8,
+                        text: "x".to_string(),
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 5,
+                        offset: 15,
+                        break_type: jade_docx_headless_api::HeadlessSectionBreakType::Continuous,
+                    },
+                ],
+            },
+        )
+        .expect("section break");
+        let raw = word_doc.raw_document.as_ref().expect("document xml");
+        assert_eq!(duplicate(raw.root(), &mut HashSet::new()), None);
+    }
+
+    #[test]
     fn a_shape_is_not_put_inside_a_text_box() {
         // A shape put inside textbox.docx's text box was written into the
         // box's DrawingML and its VML fallback, and each edit across the box
