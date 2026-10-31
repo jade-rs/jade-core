@@ -275,7 +275,10 @@ pub fn word_families(package: &[u8]) -> BTreeSet<String> {
     use jade_docx_reader::document::{RunFonts, RunProperties};
     use std::rc::Rc;
 
-    let named = families_named_in(package);
+    let mut named = families_named_in(package);
+    // An altChunk's HTML is set in Japanese Word's web font, which no part
+    // of the package names.
+    named.insert(jade_docx_editor::word_document::HTML_ALT_CHUNK_FONT.to_string());
     let mut families = BTreeSet::new();
     for stack in [
         DEFAULT_LATIN_FONT_STACK,
@@ -441,6 +444,20 @@ mod tests {
         assert!(out.is_empty());
         font_names_in_xml(r#"<w:font w:name="Cambria"/>"#, true, &mut out);
         assert!(out.contains("Cambria"));
+    }
+
+    /// `alt-chunk-html` names Times New Roman and Arial Unicode MS only, and
+    /// Word for Mac sets its imported HTML in MS-PGothic.
+    #[test]
+    fn a_document_is_opened_with_the_alt_chunk_web_font() {
+        let package = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/alt-chunk-html.docx"),
+        )
+        .unwrap();
+        let font = jade_docx_editor::word_document::HTML_ALT_CHUNK_FONT;
+        assert!(!families_named_in(&package).contains(font));
+        assert!(word_families(&package).contains(font));
     }
 
     #[test]
