@@ -13364,6 +13364,10 @@ impl WordDocument {
             });
             paragraph.runs.extend(tail);
         }
+        // The reference run takes its styles' fonts and size, as a load
+        // fills every body run: left unset, the mark was measured in no font
+        // until the document was reopened.
+        self.apply_run_font_defaults_at(paragraph_index);
         self.sync_paragraph_text_preserving_drawings(paragraph_index);
 
         let note_paragraph_properties =
@@ -13786,7 +13790,27 @@ impl WordDocument {
             run_index
         };
 
+        // The anchor run, and the shape's text, take what their styles give
+        // them as a load fills it: fonts and size for the runs, and the
+        // paragraph style's properties for the shape's paragraphs. Those come
+        // after the shape's XML is written, which writes a paragraph's model
+        // properties as its own.
+        self.apply_run_font_defaults_at(paragraph_index);
         self.sync_paragraph_text_preserving_drawings(paragraph_index);
+        // The paragraph's other shapes were filled when it loaded, and this
+        // fills only what is unset.
+        if let Some(styles) = self.styles_part.take() {
+            if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
+                for text_box in paragraph
+                    .runs
+                    .iter_mut()
+                    .filter_map(|run| run.text_box.as_mut())
+                {
+                    Self::apply_style_paragraph_defaults_to_elements(&mut text_box.blocks, &styles);
+                }
+            }
+            self.styles_part = Some(styles);
+        }
         self.rebuild_paragraph_surfaces();
         Ok(inserted_run_index)
     }
