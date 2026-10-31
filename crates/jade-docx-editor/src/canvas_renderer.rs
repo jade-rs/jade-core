@@ -2527,7 +2527,7 @@ fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
 /// cannot currently restore that state, so documents that need horizontal
 /// wrapping conservatively render their prefix until exclusions are added to
 /// the seek snapshot itself.
-fn document_has_horizontal_float_wrap(document: &Document) -> bool {
+fn paragraph_has_horizontal_float_wrap(paragraph: &Paragraph) -> bool {
     let drawing_wraps = |layout: &RunImageLayout| {
         layout.kind == RunImageKind::Floating
             && matches!(
@@ -2535,21 +2535,33 @@ fn document_has_horizontal_float_wrap(document: &Document) -> bool {
                 WrapMode::Square | WrapMode::Tight | WrapMode::Through
             )
     };
+    paragraph.runs.iter().any(|run| {
+        run.image
+            .as_ref()
+            .is_some_and(|image| drawing_wraps(&image.layout))
+            || run
+                .text_box
+                .as_ref()
+                .is_some_and(|text_box| drawing_wraps(&text_box.layout))
+    })
+}
+
+fn document_has_horizontal_float_wrap(document: &Document) -> bool {
     document.body.as_ref().is_some_and(|body| {
         body.elements.iter().any(|element| match element {
-            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
-                run.image
-                    .as_ref()
-                    .is_some_and(|image| drawing_wraps(&image.layout))
-                    || run
-                        .text_box
-                        .as_ref()
-                        .is_some_and(|text_box| drawing_wraps(&text_box.layout))
-            }),
+            BodyElement::Paragraph(paragraph) => paragraph_has_horizontal_float_wrap(paragraph),
             BodyElement::Table(table) => table::table_floats(table),
             BodyElement::Math(_) => false,
         })
     })
+}
+
+/// Negative feature facts from the snapshot immediately before a local text
+/// edit. Contains no document references, so it does not make `Rc::make_mut`
+/// copy or relocate the document.
+pub struct LocalTextEditCache {
+    no_comment_anchors: bool,
+    no_horizontal_float_wrap: bool,
 }
 
 /// Cache both answers for an immutable snapshot without retaining it. Release
@@ -5985,7 +5997,18 @@ where
         paragraph_index: usize,
         old_height: f64,
     ) -> bool {
-        if !self.last_layout_complete || self.document_has_notes || self.pageless_mode {
+        if !self.last_layout_complete
+            || self.document_has_notes
+            // Comment annotations are rebuilt by the regular paragraph walk.
+            || self.document_has_comments
+            || self.pageless_mode
+            // An early exit does not rebuild the object hit regions on
+            // untouched pages. Keep the regular walk for these documents.
+            || !self.object_debug_regions.borrow().is_empty()
+            // A cell's text height alone does not prove that its table kept
+            // the same column widths and positions of the other cells.
+            || self.selection.cell_id_for_paragraph(paragraph_index).is_some()
+        {
             return false;
         }
 
@@ -8054,17 +8077,21 @@ where
         next
     }
 
+    fn paragraph_contains_comment_anchors(paragraph: &Paragraph) -> bool {
+        !paragraph.comment_ranges.is_empty()
+            || !paragraph.comment_markers.is_empty()
+            || paragraph.runs.iter().any(|run| {
+                !run.comment_reference_ids.is_empty()
+                    || run.text_box.as_ref().is_some_and(|text_box| {
+                        Self::blocks_contain_comment_anchors(&text_box.blocks)
+                    })
+            })
+    }
+
     fn blocks_contain_comment_anchors(elements: &[BodyElement]) -> bool {
         elements.iter().any(|element| match element {
             BodyElement::Paragraph(paragraph) => {
-                !paragraph.comment_ranges.is_empty()
-                    || !paragraph.comment_markers.is_empty()
-                    || paragraph.runs.iter().any(|run| {
-                        !run.comment_reference_ids.is_empty()
-                            || run.text_box.as_ref().is_some_and(|text_box| {
-                                Self::blocks_contain_comment_anchors(&text_box.blocks)
-                            })
-                    })
+                Self::paragraph_contains_comment_anchors(paragraph)
             }
             BodyElement::Table(table) => table.rows.iter().any(|row| {
                 row.cells
@@ -12451,6 +12478,47 @@ where
         self.invalidate_paragraph_content_hash_cache();
     }
 
+    /// Capture before dropping the document cache for a text edit. Only pass
+    /// this to `restore_local_text_edit_cache` after the recorded command proves
+    /// it changed the text of one existing paragraph and no other story/part.
+    pub fn local_text_edit_cache(&self) -> LocalTextEditCache {
+        LocalTextEditCache {
+            no_comment_anchors: self.last_document.is_some()
+                && self.last_document_comment_anchors == Some(false),
+            no_horizontal_float_wrap: self.last_document.as_ref().is_some_and(|document| {
+                self.horizontal_float_wrap_cache
+                    .document
+                    .ptr_eq(&Rc::downgrade(document))
+                    && !self.horizontal_float_wrap_cache.value
+            }),
+        }
+    }
+
+    /// Reuse absence scans after a proven single-paragraph text edit, on this
+    /// same renderer with unchanged auxiliary stories. Recheck the new paragraph
+    /// (including nested text boxes) before carrying either negative fact to the
+    /// edited immutable snapshot. Positive/unknown answers still rescan normally.
+    pub fn restore_local_text_edit_cache(
+        &mut self,
+        cache: LocalTextEditCache,
+        model: &WordDocument,
+        paragraph_index: usize,
+    ) {
+        let (Some(document), Some(paragraph)) =
+            (model.document.as_ref(), model.paragraph(paragraph_index))
+        else {
+            return;
+        };
+        if cache.no_comment_anchors && !Self::paragraph_contains_comment_anchors(paragraph) {
+            self.last_document_comment_anchors = Some(false);
+            self.last_document = Some(Rc::clone(document));
+        }
+        if cache.no_horizontal_float_wrap && !paragraph_has_horizontal_float_wrap(paragraph) {
+            self.horizontal_float_wrap_cache.document = Rc::downgrade(document);
+            self.horizontal_float_wrap_cache.value = false;
+        }
+    }
+
     /// Whether the renderer holds a document to re-render from.
     ///
     /// `rerender_with_cached_state` silently does nothing without one, so a
@@ -13546,18 +13614,19 @@ where
         // canvases allocated by that walk as a new page count caused redo to
         // report 5 pages after the edit itself had correctly converged to 4.
         let preserve_pixel_pagination = self.preserve_pagination_for_pixel_rerender;
+        let preserve_stable_edit_pagination = self.preserve_completed_pagination_on_stable_edit;
         // Pixel-only renders can stop after the requested window. Table
         // navigation and resize metadata describes the complete unchanged
         // document, so retain it just as we retain the frozen selection.
-        let pixel_table_metadata = preserve_pixel_pagination.then(|| {
-            (
-                self.table_layouts.clone(),
-                self.table_handles.clone(),
-                self.table_row_handles.clone(),
-                self.table_counter,
-            )
-        });
-        let preserve_stable_edit_pagination = self.preserve_completed_pagination_on_stable_edit;
+        let preserved_table_metadata =
+            (preserve_pixel_pagination || preserve_stable_edit_pagination).then(|| {
+                (
+                    self.table_layouts.clone(),
+                    self.table_handles.clone(),
+                    self.table_row_handles.clone(),
+                    self.table_counter,
+                )
+            });
         self.last_completed_pagination_edit_candidate = preserve_stable_edit_pagination;
         self.last_completed_pagination_edit_preserved = false;
         let snapshot_authoritative_pagination =
@@ -13712,15 +13781,19 @@ where
         } else {
             self.selection.cell_layouts().to_vec()
         };
+        let stable_edit_cells = preserve_stable_edit_pagination.then(|| previous_cells.clone());
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
         let selection_suffix = self
             .fast_replay_trigger
-            .filter(|_| incremental_dirty_from.is_some())
+            // A completed-pagination edit can also repaint a whole page.
+            // Full dirty state clears incremental_dirty_from, but the stable
+            // exit still leaves later paragraphs unwalked in that case.
+            .filter(|_| incremental_dirty_from.is_some() || preserve_stable_edit_pagination)
             .map(|(paragraph, _)| {
                 let from = paragraph.saturating_add(1);
-                (from, self.selection.take_paragraph_suffix(from))
+                (from, self.selection.take_selection_suffix(from))
             });
         self.selection
             .begin_render_incremental(incremental_dirty_from);
@@ -14565,7 +14638,7 @@ where
         // Store shared reference to avoid cloning on every render.
         if self.last_fast_replay_stable {
             if let Some((from, suffix)) = selection_suffix {
-                self.selection.restore_paragraph_suffix(from, suffix);
+                self.selection.restore_selection_suffix(from, suffix);
             }
             // As with the selection tail, the saved regions are authoritative
             // for any paragraph after the edited one that the walk re-recorded.
@@ -14575,12 +14648,19 @@ where
                 self.hyperlink_regions.extend(suffix);
                 self.invalidate_hyperlink_regions_js_cache();
             }
+            if let Some(cells) = stable_edit_cells {
+                self.selection.restore_cell_layouts(cells);
+            }
         }
-        if let Some((layouts, handles, row_handles, counter)) = pixel_table_metadata {
-            self.table_layouts = layouts;
-            self.table_handles = handles;
-            self.table_row_handles = row_handles;
-            self.table_counter = counter;
+        if preserve_pixel_pagination
+            || (preserve_stable_edit_pagination && self.last_fast_replay_stable)
+        {
+            if let Some((layouts, handles, row_handles, counter)) = preserved_table_metadata {
+                self.table_layouts = layouts;
+                self.table_handles = handles;
+                self.table_row_handles = row_handles;
+                self.table_counter = counter;
+            }
         }
         // The Rc is already owned by the caller (edit path) or created in render_with_numbering.
         self.last_document = Some(document_rc);
@@ -15734,7 +15814,9 @@ where
         // Truncating afterward cannot restore slots discarded by begin_render.
         let reuse_pages = !self.pageless_mode
             && (self.preserve_pagination_for_pixel_rerender
-                || (!self.render_full_repaint && !layout_changed));
+                || ((!self.render_full_repaint
+                    || self.preserve_completed_pagination_on_stable_edit)
+                    && !layout_changed));
         self.switch_host_page(|host| host.begin_render(reuse_pages))?;
         if !reuse_pages {
             self.host.configure_base_canvas(
@@ -39055,6 +39137,142 @@ mod tests {
     }
 
     #[test]
+    fn local_text_edit_cache_avoids_unchanged_document_scans_without_retaining_it() {
+        let (mut renderer, _) = recording_renderer();
+        let mut model = WordDocument::from_document(doc_with_paragraph_texts(&vec!["plain"; 3000]));
+        let options = Options::default();
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &options,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        let scans = renderer.comment_anchor_document_scans.get();
+        let pointer = Rc::as_ptr(model.document.as_ref().unwrap());
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        assert_eq!(Rc::strong_count(model.document.as_ref().unwrap()), 1);
+        assert_eq!(Rc::weak_count(model.document.as_ref().unwrap()), 0);
+        Rc::make_mut(model.document.as_mut().unwrap())
+            .body
+            .as_mut()
+            .unwrap()
+            .elements[0]
+            .as_paragraph_mut()
+            .unwrap()
+            .runs[0]
+            .text
+            .push('x');
+        assert_eq!(Rc::as_ptr(model.document.as_ref().unwrap()), pointer);
+        renderer.restore_local_text_edit_cache(cache, &model, 0);
+        renderer
+            .render_bounded_to_page_with_parts(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &options,
+                None,
+                None,
+                None,
+                1,
+            )
+            .unwrap();
+        assert_eq!(renderer.comment_anchor_document_scans.get(), scans);
+        assert_eq!(renderer.horizontal_float_wrap_cache.scans, 0);
+    }
+
+    #[test]
+    fn local_text_edit_cache_detects_new_anchors_and_floating_wrap() {
+        for kind in 0..4 {
+            let (mut renderer, _) = recording_renderer();
+            let mut model =
+                WordDocument::from_document(horizontal_wrap_textbox_document(WrapMode::None));
+            let options = Options::default();
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            let scans = renderer.comment_anchor_document_scans.get();
+            let cache = renderer.local_text_edit_cache();
+            renderer.drop_document_cache();
+            let paragraph = Rc::make_mut(model.document.as_mut().unwrap())
+                .body
+                .as_mut()
+                .unwrap()
+                .elements[0]
+                .as_paragraph_mut()
+                .unwrap();
+            let comment = comment_test_paragraph(kind);
+            paragraph.comment_ranges = comment.comment_ranges;
+            paragraph.comment_markers = comment.comment_markers;
+            paragraph.runs[0].comment_reference_ids = comment.runs[0].comment_reference_ids.clone();
+            let text_box = paragraph.runs[0].text_box.as_mut().unwrap();
+            text_box.layout.wrap = WrapMode::Through;
+            if kind == 3 {
+                text_box
+                    .blocks
+                    .push(BodyElement::from_paragraph(comment_test_paragraph(0)));
+            }
+            renderer.restore_local_text_edit_cache(cache, &model, 0);
+            assert_eq!(renderer.last_document_comment_anchors, None, "kind={kind}");
+            assert!(renderer
+                .horizontal_float_wrap_cache
+                .get(model.document.as_ref().unwrap()));
+            assert!(renderer.document_has_comment_anchors(model.document.as_ref().unwrap()));
+            assert_eq!(renderer.comment_anchor_document_scans.get(), scans + 1);
+        }
+    }
+
+    #[test]
+    fn local_text_edit_cache_does_not_reuse_positive_or_unknown_answers() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = horizontal_wrap_textbox_document(WrapMode::Square);
+        document.body.as_mut().unwrap().elements[0]
+            .as_paragraph_mut()
+            .unwrap()
+            .comment_ranges = comment_test_paragraph(0).comment_ranges;
+        let mut model = WordDocument::from_document(document);
+        let unknown = renderer.local_text_edit_cache();
+        renderer.restore_local_text_edit_cache(unknown, &model, 0);
+        assert!(renderer.last_document.is_none());
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &Options::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        let positive = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        let paragraph = Rc::make_mut(model.document.as_mut().unwrap())
+            .body
+            .as_mut()
+            .unwrap()
+            .elements[0]
+            .as_paragraph_mut()
+            .unwrap();
+        paragraph.comment_ranges.clear();
+        paragraph.runs[0].text_box.as_mut().unwrap().layout.wrap = WrapMode::None;
+        renderer.restore_local_text_edit_cache(positive, &model, 0);
+        assert!(renderer.last_document_comment_anchors.is_none());
+        assert!(!renderer
+            .horizontal_float_wrap_cache
+            .get(model.document.as_ref().unwrap()));
+        assert!(!renderer.document_has_comment_anchors(model.document.as_ref().unwrap()));
+    }
+
+    #[test]
     fn horizontal_float_wrap_detection_gates_seek_replay() {
         let mut plain = band_plain_run();
         plain.image = Some(jade_docx_reader::document::RunImage {
@@ -40217,11 +40435,24 @@ mod tests {
         // typing that does not wrap) is proven stable, so the body walk stops
         // after it — and the pages after it must survive that early stop.
         let (mut renderer, document, pages) = fully_laid_out_multi_page_renderer();
+        let layouts = renderer.selection.paragraphs().len();
+        let later_caret = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>| {
+            renderer
+                .caret_metrics_at(TextPosition::new(120, 0))
+                .map(|caret| (caret.x, caret.absolute_top, caret.width, caret.height))
+        };
+        let before = later_caret(&renderer);
+        assert!(before.is_some());
+        // A stable full-page repaint must keep the host's later page slots
+        // as well as the selection registrations for those pages.
+        renderer.mark_full_repaint();
         rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
             renderer.arm_fast_replay_for_complete_layout_edit(0, height);
         });
         assert_eq!(renderer.host.page_count(), pages);
         assert!(renderer.last_layout_complete());
+        assert_eq!(renderer.selection.paragraphs().len(), layouts);
+        assert_eq!(later_caret(&renderer), before);
     }
 
     #[test]
@@ -54693,6 +54924,39 @@ mod tests {
         renderer.preserve_completed_pagination_on_stable_edit = false;
         renderer.fast_replay_trigger = None;
         assert!(!renderer.prepare_completed_pagination_edit(4, 10.0));
+        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
+        assert!(renderer.fast_replay_trigger.is_none());
+    }
+
+    #[test]
+    fn completed_pagination_edit_does_not_skip_object_hit_registration() {
+        let mut renderer = test_renderer();
+        renderer
+            .object_debug_regions
+            .borrow_mut()
+            .push(ObjectDebugInfo {
+                kind: FloatingObjectKind::Image,
+                paragraph_index: 5,
+                run_index: 0,
+                page: 2,
+                x: 96.0,
+                y: 96.0,
+                width: 100.0,
+                height: 100.0,
+                rotation_deg: 0.0,
+            });
+
+        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
+        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
+        assert!(renderer.fast_replay_trigger.is_none());
+    }
+
+    #[test]
+    fn completed_pagination_edit_does_not_skip_comment_registration() {
+        let mut renderer = test_renderer();
+        renderer.document_has_comments = true;
+
+        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
         assert!(!renderer.preserve_completed_pagination_on_stable_edit);
         assert!(renderer.fast_replay_trigger.is_none());
     }

@@ -21,6 +21,53 @@ fn a_comment_can_be_added_to_a_selection() {
     assert_eq!(document.comment_count(), before + 1);
 }
 
+#[test]
+fn typing_before_a_later_page_comment_keeps_its_annotation() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    let later = (0..document.paragraph_count())
+        .rev()
+        .find(|&index| {
+            document
+                .paragraph_text(index)
+                .is_some_and(|text| !text.is_empty())
+        })
+        .unwrap();
+    let caret = document.place_caret(later, 0).expect("later paragraph");
+    assert!(document.page_and_offset(caret.document_y).0 > 0);
+    document.add_comment("later", "reviewer").unwrap();
+    document.set_markup_visible(true).unwrap();
+    // Bounded repaint does not receive comment bodies on the regular path
+    // either. Verify the anchors and geometry that it is expected to retain.
+    let annotations = |document: &NativeDocument| {
+        document
+            .renderer()
+            .comment_annotations()
+            .iter()
+            .map(|annotation| {
+                (
+                    annotation.id.clone(),
+                    annotation.page,
+                    annotation.x,
+                    annotation.y,
+                    annotation.width,
+                    annotation.height,
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let before = annotations(&document);
+    assert!(!document.renderer().comment_annotations().is_empty());
+    let pages = document.page_count();
+
+    document.insert_text(paragraph, 0, "a", pages).unwrap();
+
+    assert!(!document
+        .renderer()
+        .last_completed_pagination_edit_candidate());
+    assert_eq!(annotations(&document), before);
+}
+
 /// A comment has to survive being written out, or it never reaches the other
 /// side — which is the whole point of leaving one.
 #[test]

@@ -504,6 +504,15 @@ impl CommandExecutor {
         self.undo_stack.last().map(|command| command.name())
     }
 
+    /// Render footprint of the newest recorded edit. Callers inspecting an
+    /// edit they just applied must also check that [`Self::history_revision`]
+    /// advanced, since a no-op can leave an older entry at the top.
+    pub fn next_undo_render_footprint(&self) -> Option<HistoryRenderFootprint> {
+        self.undo_stack
+            .last()
+            .map(|command| command.history_render_footprint())
+    }
+
     pub fn next_redo_name(&self) -> Option<&'static str> {
         self.redo_stack.last().map(|command| command.name())
     }

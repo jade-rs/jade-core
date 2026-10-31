@@ -10,7 +10,9 @@ use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::canvas_renderer::{CanvasRenderer, FullLayoutDebugSnapshot};
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
-use jade_docx_editor::commands::{Command, CommandContext, CommandExecutor};
+use jade_docx_editor::commands::{
+    Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
+};
 use jade_docx_editor::field_datetime::FieldDateTime;
 use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
@@ -2700,6 +2702,12 @@ impl NativeDocument {
         visible_end_page_1idx: usize,
         executor_steps: usize,
     ) -> Result<Duration, String> {
+        let old_height = matches!(&command, HeadlessCommand::InsertText { .. })
+            .then(|| self.renderer.cached_paragraph_height(paragraph))
+            .flatten();
+        let text_edit_cache = matches!(&command, HeadlessCommand::InsertText { .. })
+            .then(|| self.renderer.local_text_edit_cache());
+        let recorded = self.executor.history_revision();
         // Through the executor so the edit lands on the undo stack. The plain
         // apply does the same edit without recording anything.
         // A fresh edit drops the redo branch, the same way the executor does.
@@ -2726,6 +2734,23 @@ impl NativeDocument {
             .clone();
 
         let started = Instant::now();
+        // Use the same geometry-checked reuse as browser typing. The recorded
+        // command must prove it only touched this paragraph: InsertText can
+        // instead invoke a content-control or form-field action.
+        if executor_steps == 1
+            && self.executor.history_revision() != recorded
+            && self.executor.next_undo_render_footprint()
+                == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
+        {
+            if let Some(cache) = text_edit_cache {
+                self.renderer
+                    .restore_local_text_edit_cache(cache, &self.word_document, paragraph);
+            }
+            if let Some(height) = old_height {
+                self.renderer
+                    .prepare_completed_pagination_edit(paragraph, height);
+            }
+        }
         // Bounded to what the caller can see, so the pages it stops at are not
         // the document's page count.
         self.pass_covers_whole_document
