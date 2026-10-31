@@ -439,6 +439,7 @@ fn floating_tables_match_word_with_office_arial() {
     }];
     for (directory, name) in [
         ("mac-probes-20261019", "word-mac-probe-floating-order"),
+        ("mac-probes-20261019", "word-mac-probe-float-lookahead"),
         (
             "mac-floating-horizontal-20261030",
             "word-mac-probe-floating-horizontal-14",
