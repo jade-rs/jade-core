@@ -13,6 +13,8 @@
 use jade_docx_layout::layout_cache::TextMeasurer;
 use jade_docx_layout::shaping_measurer::ShapingMeasurer;
 use jade_painter::{Painter, TextMetrics};
+#[cfg(test)]
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::convert::Infallible;
 use std::rc::Rc;
@@ -26,6 +28,8 @@ const MIN_GLYPH_RUN_BATCH_LEN: usize = 4;
 pub struct PerfPainter {
     font: Rc<RefCell<String>>,
     measurer: Rc<ShapingMeasurer>,
+    #[cfg(test)]
+    paragraph_marks: Rc<Cell<usize>>,
 }
 
 impl PerfPainter {
@@ -33,7 +37,14 @@ impl PerfPainter {
         Self {
             font: Rc::default(),
             measurer,
+            #[cfg(test)]
+            paragraph_marks: Rc::default(),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn take_paragraph_mark_count(&self) -> usize {
+        self.paragraph_marks.replace(0)
     }
 
     fn width(&self, text: &str) -> f64 {
@@ -95,6 +106,11 @@ impl Painter for PerfPainter {
     }
     fn set_text_baseline(&self, _value: &str) {}
     fn fill_text(&self, _text: &str, _x: f64, _y: f64) -> Result<(), Self::Error> {
+        #[cfg(test)]
+        // CanvasRenderer's ParagraphEnd mark is U+21B5 (not a pilcrow).
+        if _text == "\u{21B5}" {
+            self.paragraph_marks.set(self.paragraph_marks.get() + 1);
+        }
         Ok(())
     }
     fn stroke_text(&self, _text: &str, _x: f64, _y: f64) -> Result<(), Self::Error> {
