@@ -6598,8 +6598,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     + ruby_trailing
                     + advance_shift)
                     .max(0.0);
-                let trailing_overhang = if computed.monospace_cell {
-                    // Fixed-pitch glyphs stay inside their cell.
+                let trailing_overhang = if computed.monospace_cell
+                    || !crate::line_metrics::word_wraps_on_trailing_ink(
+                        paragraph_style.word_platform,
+                    ) {
+                    // Fixed-pitch glyphs stay inside their cell, and Word
+                    // for Mac fits on advances alone.
                     0.0
                 } else {
                     ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x
