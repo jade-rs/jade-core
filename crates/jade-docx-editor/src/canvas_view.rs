@@ -308,6 +308,23 @@ struct CompositionPreviewState {
     preserves_auxiliary_story_surfaces: bool,
 }
 
+/// Whether a composition insertion and its undo leave auxiliary-story
+/// paragraph indices unchanged. Replacements may remove text boxes; splitting
+/// a text-box host needs a separate proof, so both use a fresh count.
+pub(crate) fn composition_preserves_auxiliary_story_surfaces(
+    document: &WordDocument,
+    range: SelectionRange,
+    text: &str,
+) -> bool {
+    if !range.is_collapsed() || text.contains(['\r', '\n']) {
+        return false;
+    }
+    let position = document.rendered_to_model_text_position(range.focus);
+    document
+        .paragraph(position.paragraph)
+        .is_some_and(|paragraph| paragraph.runs.iter().all(|run| run.text_box.is_none()))
+}
+
 /// Stores revision metadata extracted from the JavaScript payload.
 #[derive(Default)]
 struct RevisionMetadata {
@@ -7237,7 +7254,11 @@ impl OffscreenDocumentView {
                     let insert_command =
                         InsertTextCommand::new(base_selection, text.clone(), inline_properties);
                     preserves_auxiliary_story_surfaces =
-                        insert_command.preserves_auxiliary_story_surfaces(&word_doc);
+                        composition_preserves_auxiliary_story_surfaces(
+                            &word_doc,
+                            base_selection,
+                            &text,
+                        );
                     if !preserves_auxiliary_story_surfaces {
                         auxiliary_story_base = None;
                     }

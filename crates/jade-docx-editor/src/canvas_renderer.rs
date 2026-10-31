@@ -38987,27 +38987,36 @@ mod tests {
 
     #[test]
     fn auxiliary_story_reuse_rejects_replacements_breaks_missing_and_text_box_paragraphs() {
-        use crate::commands::insert_text::InsertTextCommand;
+        use crate::canvas_view::composition_preserves_auxiliary_story_surfaces;
         use crate::word_document::WordDocument;
         let document = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
         let caret = SelectionRange::collapsed(TextPosition::new(0, 1));
-        assert!(InsertTextCommand::new(caret, "日本語 😀".into(), None)
-            .preserves_auxiliary_story_surfaces(&document));
+        assert!(composition_preserves_auxiliary_story_surfaces(
+            &document,
+            caret,
+            "日本語 😀"
+        ));
         for text in ["line\nbreak", "line\rbreak"] {
-            assert!(!InsertTextCommand::new(caret, text.into(), None)
-                .preserves_auxiliary_story_surfaces(&document));
+            assert!(!composition_preserves_auxiliary_story_surfaces(
+                &document, caret, text
+            ));
         }
         let replacement = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 1));
-        assert!(!InsertTextCommand::new(replacement, "a".into(), None)
-            .preserves_auxiliary_story_surfaces(&document));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document,
+            replacement,
+            "a"
+        ));
         let missing = SelectionRange::collapsed(TextPosition::new(999, 0));
-        assert!(!InsertTextCommand::new(missing, "a".into(), None)
-            .preserves_auxiliary_story_surfaces(&document));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document, missing, "a"
+        ));
         let mut boxed = doc_with_paragraph_texts(&["body"]);
         boxed.body.as_mut().unwrap().elements[0] = auxiliary_count_test_block(1);
         let boxed = WordDocument::from_document(boxed);
-        assert!(!InsertTextCommand::new(caret, "a".into(), None)
-            .preserves_auxiliary_story_surfaces(&boxed));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &boxed, caret, "a"
+        ));
     }
 
     proptest::proptest! {
@@ -39081,7 +39090,8 @@ mod tests {
                     if operation == 0 && !texts[text_index].is_empty() {
                         let text = texts[text_index];
                         let mut insert = InsertTextCommand::new(selection.unwrap(), text.into(), None);
-                        pending_preserves_surfaces = insert.preserves_auxiliary_story_surfaces(&word_doc);
+                        pending_preserves_surfaces = crate::canvas_view::composition_preserves_auxiliary_story_surfaces(
+                            &word_doc, selection.unwrap(), text);
                         proptest::prop_assert_eq!(pending_preserves_surfaces,
                             !text.contains('\n'), "step {}", step);
                         if !pending_preserves_surfaces { snapshot = None; }
