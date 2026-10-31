@@ -1355,8 +1355,10 @@ pub(crate) fn paragraph_concatenated_text(paragraph: &Paragraph) -> String {
 
 /// Produces the source heading text Word copies into a generated TOC entry.
 /// Tabs and manual line breaks are flattened independently unless the field
-/// carries `\w` and `\x`, respectively. Keeping this normalization in the
-/// reader model also makes navigation outlines agree with regenerated fields.
+/// carries `\w` and `\x`, respectively. Page and column breaks are always
+/// flattened so internal layout tokens cannot leak into XML text. Keeping this
+/// normalization in the reader model also makes navigation outlines agree with
+/// regenerated fields.
 fn toc_heading_text(paragraph: &Paragraph, options: &TocOptions) -> String {
     let mut text = String::new();
     let first_run = if options.omit_caption_label_and_number {
@@ -1399,6 +1401,7 @@ fn toc_heading_text(paragraph: &Paragraph, options: &TocOptions) -> String {
     };
     text.chars()
         .map(|ch| match ch {
+            PAGE_BREAK_CHAR | COLUMN_BREAK_CHAR => ' ',
             '\t' if !options.preserve_tabs => ' ',
             '\n' if !options.preserve_line_breaks => ' ',
             other => other,
