@@ -249,3 +249,22 @@ fn a_cell_that_does_not_wrap_still_draws_one_line() {
     assert_eq!(drawn.len(), 1);
     assert_eq!(drawn[0].0, "hello there world");
 }
+
+#[test]
+fn distributed_text_keeps_grapheme_clusters_in_one_paint_call() {
+    use jade_xlsx_reader::HorizontalAlignment;
+
+    for cluster in ["👩‍💻", "👍🏽", "🇯🇵", "कि", "a\u{20dd}", "か\u{3099}"] {
+        let mut layout = wrapped_layout(VerticalAlignment::Top);
+        let cell = &mut layout.cells[0];
+        cell.text = format!("{cluster}X");
+        cell.lines = vec![cell.text.clone()];
+        cell.rect.width = 200.0;
+        cell.alignment.horizontal = HorizontalAlignment::Distributed;
+        let drawn: Vec<_> = text_ops(&layout)
+            .into_iter()
+            .map(|(text, _, _)| text)
+            .collect();
+        assert_eq!(drawn, [cluster, "X"], "split a grapheme: {cluster}");
+    }
+}
