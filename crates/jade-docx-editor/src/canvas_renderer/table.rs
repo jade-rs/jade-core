@@ -11960,6 +11960,12 @@ fn grapheme_trailing_overhang<C: LineWrapContext>(
     if jade_docx_layout::line_metrics::word_monospace_advance_px(descriptor, grapheme).is_some() {
         return Ok(0.0);
     }
+    // The wrapper's own rule for when ink past the advance counts.
+    if !jade_docx_layout::line_metrics::word_wraps_on_trailing_ink(
+        jade_docx_layout::line_metrics::word_layout_platform(),
+    ) {
+        return Ok(0.0);
+    }
     Ok(context.measure_trailing_overhang(grapheme, descriptor)? * style.text_scale_x.max(0.01))
 }
 

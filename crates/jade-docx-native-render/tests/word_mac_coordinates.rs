@@ -2,7 +2,7 @@
 mod common;
 use common::repo_path;
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
-use jade_docx_native_render::{FaceSpec, NativeDocument};
+use jade_docx_native_render::{FaceSpec, FontFace, NativeDocument};
 use serde_json::{json, Value};
 
 fn open_with_bundled_faces(bytes: &[u8]) -> NativeDocument {
@@ -551,6 +551,47 @@ fn nested_autofit_word_matches_word_with_office_yu_mincho() {
     .unwrap();
     assert_eq!(reference["docx_sha256"], sha256(&bytes));
     let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+    compare(
+        &word_layout(&reference),
+        &spatial_order(&capture_coordinates(&doc)),
+        WORD_TOLERANCE_PT,
+    )
+    .unwrap();
+}
+
+/// `yokohama_table`'s third column, past the page edge, wraps where Word for
+/// Mac does only when a glyph's ink past its advance is left out of the fit:
+/// its first line keeps a `よ` whose advance ends 0.63pt inside the cell.
+/// `JADE_OFFICE_MS_GOTHIC` is the collection Word for Mac ships
+/// (`Contents/Resources/DFonts/msgothic.ttc`), whose third face is MS PGothic.
+#[test]
+#[ignore = "requires JADE_OFFICE_MS_GOTHIC pointing to the captured Office font"]
+fn wide_table_wraps_like_word_with_office_ms_pgothic() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = std::env::var("JADE_OFFICE_MS_GOTHIC")
+        .expect("set JADE_OFFICE_MS_GOTHIC to Office MS Gothic msgothic.ttc");
+    assert_eq!(
+        sha256(&std::fs::read(&font).unwrap()),
+        "dc68e70dce920b8fc279e56ee86a67950d192d02506515f848dd4d0d12e1bde9",
+        "font differs from the Word capture; remeasure rather than fitting coordinates"
+    );
+    let faces = ["MS PGothic", "ＭＳ Ｐゴシック"].map(|family| FontFace {
+        family: family.to_owned(),
+        weight: 400,
+        italic: false,
+        path: std::path::PathBuf::from(&font),
+        index: 2,
+    });
+    let bytes = std::fs::read(repo_path("public/fixtures/yokohama_table.docx")).unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(
+            "tests/word-oracle/mac-glyph-corpus-20261019/yokohama_table.json",
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    let doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
     compare(
         &word_layout(&reference),
         &spatial_order(&capture_coordinates(&doc)),
