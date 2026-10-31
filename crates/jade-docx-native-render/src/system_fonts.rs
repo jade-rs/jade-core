@@ -290,6 +290,12 @@ pub fn word_families(package: &[u8]) -> BTreeSet<String> {
     // Equations are set in Cambria Math whatever the document names, and its
     // MATH table is what lays them out.
     families.insert(MATH_FAMILY.to_string());
+    // Word for Mac measures a numbering label's suffix space in Arial, named
+    // or not; without it the space takes the fallback face's width.
+    stack_families(
+        jade_docx_layout::line_metrics::WORD_MAC_NUMBERING_SUFFIX_SPACE_STACK,
+        &mut families,
+    );
     for name in &named {
         let name: Rc<str> = Rc::from(name.as_str());
         for language in [None, Some("ja-JP")] {
@@ -458,6 +464,19 @@ mod tests {
         let font = jade_docx_editor::word_document::HTML_ALT_CHUNK_FONT;
         assert!(!families_named_in(&package).contains(font));
         assert!(word_families(&package).contains(font));
+    }
+
+    /// `word-mac-probe-indent` names Century and ＭＳ 明朝 only, and Word for
+    /// Mac still sets its `①` labels' suffix spaces at Arial's 0.278 em.
+    #[test]
+    fn a_document_is_opened_with_the_numbering_suffix_space_face() {
+        let package = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-indent.docx"),
+        )
+        .unwrap();
+        assert!(!families_named_in(&package).contains("Arial"));
+        assert!(word_families(&package).contains("Arial"));
     }
 
     #[test]

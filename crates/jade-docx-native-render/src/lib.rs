@@ -531,6 +531,39 @@ impl CanvasRenderHost for SkiaRenderHost {
 
     // ---- page lifecycle ----------------------------------------------------
 
+    fn begin_render(&mut self, reuse_pages: bool) -> Result<(), JsValue> {
+        if reuse_pages {
+            self.render_error.borrow_mut().take();
+            self.current_page.set(0);
+            Ok(())
+        } else {
+            self.reset_pages()
+        }
+    }
+
+    fn truncate_pages(&mut self, total_pages: usize) -> Result<(), JsValue> {
+        // A stable edit can stop before the retained tail. The renderer
+        // supplies the authoritative count, rather than the last page visited.
+        if self.pass_covers_whole_document.get() {
+            self.rendered_pages.set(total_pages.max(1));
+        }
+        Ok(())
+    }
+
+    fn finish_pagination(
+        &mut self,
+        total_pages: usize,
+        layout_complete: bool,
+    ) -> Result<(), JsValue> {
+        // A bounded pass can reach the new document end after deleting pages.
+        // Its actual completion, rather than the old count used to choose the
+        // bound, decides whether the retained tail still belongs to the layout.
+        if layout_complete {
+            self.rendered_pages.set(total_pages.max(1));
+        }
+        Ok(())
+    }
+
     fn reset_pages(&mut self) -> Result<(), JsValue> {
         self.render_error.borrow_mut().take();
         // The surfaces are kept rather than dropped. The renderer clears a page
@@ -694,6 +727,41 @@ mod tests {
         assert_eq!(host.page_dimensions(1), Some((600.5, 800.25)));
         let (_, w, h) = host.pages.borrow()[1].read_bgra_premultiplied().unwrap();
         assert_eq!((w, h), (601, 801));
+    }
+
+    #[test]
+    fn retained_page_count_follows_authoritative_pagination() {
+        let mut host = SkiaRenderHost::new(300.0, 300.0).unwrap();
+        for _ in 0..2 {
+            host.start_new_page(300.0, 300.0, 0.0).unwrap();
+        }
+        assert_eq!(host.page_count(), 3);
+
+        // A stable edit only visits the first page, then restores the
+        // completed pagination without discarding the retained surfaces.
+        host.begin_render(true).unwrap();
+        assert_eq!(host.page_count(), 3);
+        host.finish_pagination(3, true).unwrap();
+        assert_eq!(host.page_count(), 3);
+
+        // A complete reflow can shrink the logical count while keeping the
+        // allocation pool available for subsequent edits.
+        host.finish_pagination(2, true).unwrap();
+        assert_eq!(host.page_count(), 2);
+        assert_eq!(host.pages.borrow().len(), 3);
+
+        // A bounded fallback cannot decide whether the unseen tail shrank.
+        host.pass_covers_whole_document.set(false);
+        host.begin_render(false).unwrap();
+        host.finish_pagination(1, false).unwrap();
+        assert_eq!(host.page_count(), 2);
+        // The same bound becomes authoritative if this edit removes the tail.
+        host.finish_pagination(1, true).unwrap();
+        assert_eq!(host.page_count(), 1);
+        assert_eq!(host.pages.borrow().len(), 3);
+        host.pass_covers_whole_document.set(true);
+        host.begin_render(false).unwrap();
+        assert_eq!(host.page_count(), 1);
     }
 
     #[test]

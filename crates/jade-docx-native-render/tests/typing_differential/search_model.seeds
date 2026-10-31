@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 0dda889957e831c60495cdc80f8dea91d9571c15feae67306a1c01d5194393e2 # shrinks to operations = [ReplaceAll("a", "aa"), Undo, Insert(40, 0, "x")]
