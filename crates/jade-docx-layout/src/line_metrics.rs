@@ -297,13 +297,15 @@ impl WordAutoSpace {
     }
 }
 
-/// The size Word for Mac draws a superscript or subscript run at: 0.65 of the
-/// run's size in a Latin face and 0.6 in a Japanese one (the faces' own
+/// The size Word for Mac draws a superscript or subscript run at: 1331/2048
+/// of the run's size in a Latin face and 0.6 in a Japanese one (the faces' own
 /// OS/2 superscript sizes), to the nearest half point. Word for Mac 16.114
 /// (`word-mac-probe-vert-align`): 8, 9, 10.5, 12, 14, 16 and 20pt draw at 5,
 /// 6, 7, 8, 9, 10.5 and 13pt in Century and Calibri, and at 5, 5.5, 6.5, 7,
-/// 8.5, 9.5 and 12pt in Yu Mincho and MS Mincho. `latin_ascii_stack` is the
-/// run's CSS family stack; its first family decides.
+/// 8.5, 9.5 and 12pt in Yu Mincho and MS Mincho; `word-mac-probe-vert-align-sweep`
+/// (6–30pt) agrees at all 49 sizes, and its 15 and 25pt draw at 9.5 and
+/// 16pt, which a flat 0.65 would round up. `latin_ascii_stack` is the run's
+/// CSS family stack; its first family decides.
 pub fn word_mac_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
     let family = latin_ascii_stack
         .split(',')
@@ -331,7 +333,7 @@ pub fn word_mac_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) ->
     ]
     .iter()
     .any(|name| family.contains(name));
-    let scale = if japanese { 0.6 } else { 0.65 };
+    let scale = if japanese { 0.6 } else { 1331.0 / 2048.0 };
     ((size_pt * scale * 2.0).round() / 2.0).max(0.5)
 }
 
@@ -379,19 +381,28 @@ const WINDOWS_SUBSCRIPT_LOWER_EM: f32 = 0.15;
 /// baseline, in points: up for a superscript, down for a subscript.
 /// `size_pt` is the run's size before [`word_shifted_script_size_pt`]
 /// reduces it.
+///
+/// Word for Mac moves the run by whole half points, the nearest to its share
+/// of the size, halves rounding up: in `word-mac-probe-vert-align-sweep`
+/// (6–30pt by half points) every superscript and subscript of Century and
+/// Yu Mincho, and every MS Mincho superscript, sits exactly that far off
+/// the baseline (Yu Mincho 15pt 5.5pt up, Century 11pt 3pt up and 11.5pt
+/// 1pt down).
 pub fn word_script_baseline_offset_pt(
     size_pt: f32,
     latin_ascii_stack: &str,
     superscript: bool,
 ) -> f32 {
-    let share = match word_layout_platform() {
+    match word_layout_platform() {
         WordLayoutPlatform::Mac => {
-            word_mac_script_baseline_offset_em(latin_ascii_stack, superscript)
+            let share = word_mac_script_baseline_offset_em(latin_ascii_stack, superscript);
+            // The shares are decimal, so a product that is a half-point tie
+            // in exact arithmetic can land just below it.
+            ((f64::from(size_pt) * f64::from(share) * 2.0 + 1e-6).round() / 2.0) as f32
         }
-        _ if superscript => WINDOWS_SUPERSCRIPT_RAISE_EM,
-        _ => WINDOWS_SUBSCRIPT_LOWER_EM,
-    };
-    size_pt * share
+        _ if superscript => size_pt * WINDOWS_SUPERSCRIPT_RAISE_EM,
+        _ => size_pt * WINDOWS_SUBSCRIPT_LOWER_EM,
+    }
 }
 
 /// The size a superscript or subscript run of `size_pt` is drawn at: two
@@ -3015,25 +3026,26 @@ mod tests {
     }
 
     /// Word for Mac 16.114.2's raises and drops in `word-mac-probe-vert-align`
-    /// (20pt, where a PDF's 0.24pt grid matters least): Century 5.04 and
-    /// 1.44pt, Calibri 6.96 and 1.92pt, Yu Mincho 6.96 and 1.44pt, MS Mincho
-    /// 7.92 and 2.40pt.
+    /// at 20pt, the half points its PDF's 0.24pt grid rounds to Century 5.04
+    /// and 1.44pt, Calibri 6.96 and 1.92pt, Yu Mincho 6.96 and 1.44pt, MS
+    /// Mincho 7.92 and 2.40pt. Calibri and MS Mincho's drop are clamped by
+    /// Word, and stay within a half point of it.
     #[test]
     fn mac_script_offsets_follow_the_face() {
         let previous = word_layout_platform();
         set_word_layout_platform(WordLayoutPlatform::Mac);
-        for (stack, raise, lower) in [
-            ("\"Century\", serif", 5.04, 1.44),
-            ("Calibri, sans-serif", 6.96, 1.92),
-            ("\"Yu Mincho\", \"YuMincho\"", 6.96, 1.44),
-            ("游明朝", 6.96, 1.44),
-            ("\"MS Mincho\", serif", 7.92, 2.40),
-            ("'ＭＳ 明朝', \"MS Mincho\"", 7.92, 2.40),
+        for (stack, raise, lower, slack_up, slack_down) in [
+            ("\"Century\", serif", 5.0, 1.5, 0.0, 0.0),
+            ("Calibri, sans-serif", 7.0, 2.0, 0.5, 0.5),
+            ("\"Yu Mincho\", \"YuMincho\"", 7.0, 1.5, 0.0, 0.0),
+            ("游明朝", 7.0, 1.5, 0.0, 0.0),
+            ("\"MS Mincho\", serif", 8.0, 2.5, 0.0, 0.5),
+            ("'ＭＳ 明朝', \"MS Mincho\"", 8.0, 2.5, 0.0, 0.5),
         ] {
             let up = word_script_baseline_offset_pt(20.0, stack, true);
             let down = word_script_baseline_offset_pt(20.0, stack, false);
-            assert!((up - raise).abs() <= 0.375, "{stack}: raise {up}");
-            assert!((down - lower).abs() <= 0.375, "{stack}: drop {down}");
+            assert!((up - raise).abs() <= slack_up, "{stack}: raise {up}");
+            assert!((down - lower).abs() <= slack_down, "{stack}: drop {down}");
         }
         let near = |value: f32, expected: f32| (value - expected).abs() < 1e-4;
         assert!(near(
@@ -3049,6 +3061,56 @@ mod tests {
             word_script_baseline_offset_pt(20.0, "Century", false),
             3.0
         ));
+        set_word_layout_platform(previous);
+    }
+
+    /// Word for Mac 16.114.3's `word-mac-probe-vert-align-sweep`: four faces,
+    /// 6–30pt by half points, read from the PDF's run matrices. Script sizes
+    /// match everywhere, and so do the moves wherever the face's own OS/2
+    /// offset is drawn. Calibri, and MS Mincho below the baseline, are
+    /// clamped by Word in a way no rule of the run and script sizes
+    /// reproduces (13pt Calibri moves up less than 12.5pt does); they stay
+    /// within a half point of it.
+    #[test]
+    fn mac_script_sizes_and_moves_follow_the_word_sweep() {
+        let oracle: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/word-oracle/mac-probes-20261031/word-mac-probe-vert-align-sweep.json"
+        ))
+        .unwrap();
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut exact = 0;
+        for row in oracle["rows"].as_array().unwrap() {
+            let face = row["face"].as_str().unwrap();
+            let stack = match face {
+                "游明朝" => "游明朝",
+                "Century" => "\"Century\", serif",
+                "ＭＳ 明朝" => "'ＭＳ 明朝', \"MS Mincho\"",
+                "Calibri" => "Calibri, sans-serif",
+                other => panic!("unexpected face {other}"),
+            };
+            let superscript = row["vertAlign"] == "superscript";
+            let size = row["sizeHalfPoints"].as_f64().unwrap() as f32 / 2.0;
+            let script = row["scriptHalfPoints"].as_f64().unwrap() as f32 / 2.0;
+            let shift = row["shiftHalfPoints"].as_f64().unwrap() as f32 / 2.0;
+            assert_eq!(
+                word_shifted_script_size_pt(size, stack),
+                script,
+                "{face} {size}"
+            );
+            let moved = word_script_baseline_offset_pt(size, stack, superscript);
+            let clamped = face == "Calibri" || (face == "ＭＳ 明朝" && !superscript);
+            if clamped {
+                assert!(
+                    (moved - shift).abs() <= 0.5,
+                    "{face} {size} {superscript}: {moved}"
+                );
+                exact += usize::from(moved == shift);
+            } else {
+                assert_eq!(moved, shift, "{face} {size} superscript {superscript}");
+            }
+        }
+        assert!(exact >= 90, "clamped moves matching Word: {exact} of 147");
         set_word_layout_platform(previous);
     }
 
