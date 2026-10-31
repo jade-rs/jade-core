@@ -1065,7 +1065,8 @@ fn layout_sheet_with_workbook(
     let mut columns = column_axis(sheet, column_count, options);
     let normal_style_font = resolve_normal_font(styles, &options.default_font);
 
-    let mut prepared = Vec::new();
+    let mut prepared =
+        Vec::with_capacity(sheet.rows.iter().map(|row| row.cells.len()).sum::<usize>());
     let mut auto_heights = vec![0.0f32; row_count as usize];
     let merges = MergeRows::new(&sheet.merges);
     for row in &sheet.rows {
@@ -1450,104 +1451,102 @@ fn layout_sheet_with_workbook(
         .iter()
         .map(|button| ((button.reference.row, button.reference.column), button.rect))
         .collect();
-    let cells = prepared
-        .into_iter()
-        .filter_map(|cell| {
-            let rect = merged_rect(cell.reference, cell.merge.as_ref(), &columns, &rows)?;
-            Some(PlacedCell {
-                reference: cell.reference,
-                rect,
-                text_clip: {
-                    let clip = cell.overflow.map(|(left, right)| Rect {
-                        x: left,
-                        width: right - left,
+    // Reserved up front: a cell is several hundred bytes, and a vector grown
+    // by doubling moves every one of them each time.
+    let mut cells = Vec::with_capacity(prepared.len());
+    cells.extend(prepared.into_iter().filter_map(|cell| {
+        let rect = merged_rect(cell.reference, cell.merge.as_ref(), &columns, &rows)?;
+        Some(PlacedCell {
+            reference: cell.reference,
+            rect,
+            text_clip: {
+                let clip = cell.overflow.map(|(left, right)| Rect {
+                    x: left,
+                    width: right - left,
+                    ..rect
+                });
+                let end = cell
+                    .merge
+                    .map(|range| range.end.column)
+                    .unwrap_or(cell.reference.column);
+                let button = filter_button_rects
+                    .range((cell.reference.row, cell.reference.column)..=(cell.reference.row, end))
+                    .next();
+                button
+                    .map(|(_, button)| Rect {
+                        width: (button.x - rect.x).max(0.0),
                         ..rect
-                    });
-                    let end = cell
-                        .merge
-                        .map(|range| range.end.column)
-                        .unwrap_or(cell.reference.column);
-                    let button = filter_button_rects
-                        .range(
-                            (cell.reference.row, cell.reference.column)..=(cell.reference.row, end),
-                        )
-                        .next();
-                    button
-                        .map(|(_, button)| Rect {
-                            width: (button.x - rect.x).max(0.0),
-                            ..rect
-                        })
-                        .or(clip)
-                },
-                merge: cell.merge,
-                text: cell.text,
-                lines: cell.lines,
-                font: cell.font.clone(),
-                text_color: cell.text_color,
-                fill: cell.fill,
-                border: cell.border,
-                data_bar: cell.data_bar.map(|bar| {
-                    let inset = 2.0_f64.min(rect.width / 2.0).min(rect.height / 2.0);
-                    let available = (rect.width - 2.0 * inset).max(0.0);
-                    let left = rect.x + inset;
-                    let right = left + available;
-                    let origin = (left + available * bar.origin).round().clamp(left, right);
-                    let capacity = if bar.reverse {
-                        origin - left
-                    } else {
-                        right - origin
-                    };
-                    let width = (rect.width * bar.fraction).round().min(capacity).max(0.0);
-                    PlacedDataBar {
+                    })
+                    .or(clip)
+            },
+            merge: cell.merge,
+            text: cell.text,
+            lines: cell.lines,
+            font: cell.font.clone(),
+            text_color: cell.text_color,
+            fill: cell.fill,
+            border: cell.border,
+            data_bar: cell.data_bar.map(|bar| {
+                let inset = 2.0_f64.min(rect.width / 2.0).min(rect.height / 2.0);
+                let available = (rect.width - 2.0 * inset).max(0.0);
+                let left = rect.x + inset;
+                let right = left + available;
+                let origin = (left + available * bar.origin).round().clamp(left, right);
+                let capacity = if bar.reverse {
+                    origin - left
+                } else {
+                    right - origin
+                };
+                let width = (rect.width * bar.fraction).round().min(capacity).max(0.0);
+                PlacedDataBar {
+                    rect: Rect {
+                        x: if bar.reverse { origin - width } else { origin },
+                        y: rect.y + inset,
+                        width,
+                        height: rect.height - 2.0 * inset,
+                    },
+                    color: bar.color,
+                    show_value: bar.show_value,
+                    gradient: bar.gradient,
+                    reverse: bar.reverse,
+                    border: bar.border,
+                    axis: bar.axis.map(|(axis, color)| PlacedDataBarAxis {
                         rect: Rect {
-                            x: if bar.reverse { origin - width } else { origin },
+                            x: (left + available * axis).round().clamp(left, right) - 0.5,
                             y: rect.y + inset,
-                            width,
+                            width: 1.0,
                             height: rect.height - 2.0 * inset,
                         },
-                        color: bar.color,
-                        show_value: bar.show_value,
-                        gradient: bar.gradient,
-                        reverse: bar.reverse,
-                        border: bar.border,
-                        axis: bar.axis.map(|(axis, color)| PlacedDataBarAxis {
-                            rect: Rect {
-                                x: (left + available * axis).round().clamp(left, right) - 0.5,
-                                y: rect.y + inset,
-                                width: 1.0,
-                                height: rect.height - 2.0 * inset,
-                            },
-                            color,
-                        }),
+                        color,
+                    }),
+                }
+            }),
+            icon: cell.icon.map(|icon| {
+                let size = icon_size_px(&cell.font, rect.height - 2.0);
+                let y = match cell.alignment.vertical {
+                    VerticalAlignment::Top | VerticalAlignment::Justify => rect.y + 1.0,
+                    VerticalAlignment::Center | VerticalAlignment::Distributed => {
+                        rect.y + (rect.height - size) / 2.0
                     }
-                }),
-                icon: cell.icon.map(|icon| {
-                    let size = icon_size_px(&cell.font, rect.height - 2.0);
-                    let y = match cell.alignment.vertical {
-                        VerticalAlignment::Top | VerticalAlignment::Justify => rect.y + 1.0,
-                        VerticalAlignment::Center | VerticalAlignment::Distributed => {
-                            rect.y + (rect.height - size) / 2.0
-                        }
-                        VerticalAlignment::Bottom => rect.y + rect.height - size - 2.0,
-                    };
-                    PlacedIcon {
-                        icon_set: icon.icon_set,
-                        index: icon.index,
-                        rect: Rect {
-                            x: rect.x + 2.0,
-                            y: y.max(rect.y).round(),
-                            width: size,
-                            height: size,
-                        },
-                        show_value: icon.show_value,
-                    }
-                }),
-                alignment: cell.alignment,
-                text_inset_px: cell.text_inset_px,
-                runs: cell.runs,
-            })
+                    VerticalAlignment::Bottom => rect.y + rect.height - size - 2.0,
+                };
+                PlacedIcon {
+                    icon_set: icon.icon_set,
+                    index: icon.index,
+                    rect: Rect {
+                        x: rect.x + 2.0,
+                        y: y.max(rect.y).round(),
+                        width: size,
+                        height: size,
+                    },
+                    show_value: icon.show_value,
+                }
+            }),
+            alignment: cell.alignment,
+            text_inset_px: cell.text_inset_px,
+            runs: cell.runs,
         })
-        .collect();
+    }));
 
     let frozen_columns = sheet
         .freeze_pane
