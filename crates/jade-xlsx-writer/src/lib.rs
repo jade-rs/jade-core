@@ -91,7 +91,7 @@ pub use header_footer::set_header_footer;
 pub use merges::set_merges;
 pub use notes::{delete_note, set_note};
 pub use objects::{delete_shape, set_shape_anchor, ShapeAnchor};
-pub use patch::patch_sheet;
+pub use patch::{patch_sheet, patch_sheet_known};
 pub use pivots::guard_values as guard_pivot_values;
 pub use refresh::{refresh_sheet, CachedValue, CachedValueEdit, SheetCachedValues};
 pub use shift::{restructure, shift_defined_names, shift_sheet};
@@ -497,22 +497,33 @@ pub fn write_cached_values_verified(
 /// what [`write_xlsx_with_parts`] and then [`write_cached_values_verified`]
 /// would write, with each changed sheet deflated once. `complete` says every
 /// formula's cache is current, so the full calculation the edits ask for is
-/// withdrawn again.
+/// withdrawn again; `verified` names the unchanged formula cells the
+/// calculator answered too, which charts may refresh their caches from.
+/// `ordered` says which sheet parts are known to be in order already (see
+/// [`patch_sheet_known`]); the edited parts that come out in order are
+/// returned with the package.
 pub fn write_edits_with_cached_values(
     original: &[u8],
     sheets: &[SheetEdits],
     cached: &[SheetCachedValues],
     complete: bool,
-) -> Result<Vec<u8>> {
+    verified: &VerifiedChartCells,
+    ordered: &dyn Fn(&str) -> bool,
+) -> Result<(Vec<u8>, Vec<String>)> {
     let mut package = OpcPackage::open_preserving(original)?;
     let mut parts: Vec<(String, String)> = Vec::new();
+    let mut in_order = Vec::new();
     for sheet in sheets.iter().filter(|sheet| !sheet.cells.is_empty()) {
         let xml = package
             .part_str(&sheet.part_name)?
             .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
-        parts.push((sheet.part_name.clone(), patch_sheet(&xml, &sheet.cells)?));
+        let (patched, sorted) = patch_sheet_known(&xml, &sheet.cells, ordered(&sheet.part_name))?;
+        if sorted {
+            in_order.push(sheet.part_name.clone());
+        }
+        parts.push((sheet.part_name.clone(), patched));
     }
-    let mut fresh = VerifiedChartCells::new();
+    let mut fresh = verified.clone();
     for sheet in cached.iter().filter(|sheet| !sheet.cells.is_empty()) {
         let position = match parts.iter().position(|(name, _)| *name == sheet.part_name) {
             Some(position) => position,
@@ -531,7 +542,7 @@ pub fn write_edits_with_cached_values(
             .extend(sheet.cells.iter().map(|cell| cell.reference));
     }
     if parts.is_empty() {
-        return Ok(original.to_vec());
+        return Ok((original.to_vec(), in_order));
     }
     let edited = sheets.iter().any(|sheet| !sheet.cells.is_empty());
     for (name, xml) in parts {
@@ -552,5 +563,5 @@ pub fn write_edits_with_cached_values(
         }
     }
     chart_cache::refresh_package(&mut package, &fresh)?;
-    Ok(package.write()?)
+    Ok((package.write()?, in_order))
 }

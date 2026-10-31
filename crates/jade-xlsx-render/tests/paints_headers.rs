@@ -232,3 +232,47 @@ fn a_sheet_drawn_without_headers_is_unchanged() {
     let text = drawn_text(&painter);
     assert!(!text.contains(&"A".to_string()));
 }
+
+#[test]
+fn grouped_rows_draw_level_buttons_and_boxes_left_of_their_numbers() {
+    use jade_xlsx_layout::outline_gutter::{lane_center, BUTTON};
+    let mut layout = laid_out(20);
+    // Rows 2–4 grouped; row 5 is their summary.
+    for row in 1..=3 {
+        layout.outline.row_levels.insert(row, 1);
+    }
+    let metrics = layout.header_metrics();
+    assert!(metrics.outline_width > 0.0);
+    let ops = paint(&layout, WINDOW, None).ops();
+    let texts: Vec<(String, f64)> = ops
+        .iter()
+        .filter_map(|op| match op {
+            Op::FillText(text, x, _) => Some((text.clone(), *x)),
+            _ => None,
+        })
+        .collect();
+    // A button per level and one for all: 1 and 2, in the gutter.
+    for level in ["1", "2"] {
+        assert!(
+            texts
+                .iter()
+                .any(|(text, x)| text == level && *x < metrics.outline_width),
+            "{texts:?}"
+        );
+    }
+    // The row numbers moved right of it.
+    assert!(texts
+        .iter()
+        .filter(|(text, _)| text == "6")
+        .all(|(_, x)| *x >= metrics.outline_width));
+    // The summary row's box sits in the first lane, below the bands.
+    let summary = layout.row(4).unwrap();
+    let middle = metrics.column_height + summary.offset + summary.size / 2.0;
+    assert!(ops.iter().any(|op| matches!(
+        op,
+        Op::FillRect(x, y, width, _)
+            if (*x - (lane_center(1) - BUTTON / 2.0)).abs() < 0.01
+                && (*y - (middle - BUTTON / 2.0)).abs() < 0.01
+                && *width == BUTTON
+    )));
+}

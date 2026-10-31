@@ -168,3 +168,93 @@ fn frozen_boundaries_define_render_and_hit_test_regions_once() {
         (208.0, 430.0)
     );
 }
+
+#[test]
+fn grouped_rows_and_columns_grow_an_outline_gutter_a_click_finds() {
+    use jade_xlsx_layout::outline_gutter::{gutter_size, lane_center, OutlineTarget};
+    use jade_xlsx_reader::Axis;
+    let mut grouped = sheet(10, vec![]);
+    // Rows 2–4 grouped with row 3 inside them: row 4 summarises the inner
+    // group, row 5 the outer one.
+    for row in 1..=3 {
+        grouped.outline.row_levels.insert(row, 1);
+    }
+    grouped.outline.row_levels.insert(2, 2);
+    // Columns B:C grouped and collapsed under D.
+    grouped.outline.column_levels.insert(1, 1);
+    grouped.outline.column_levels.insert(2, 1);
+    grouped.outline.collapsed_columns.insert(3);
+    let options = LayoutOptions {
+        min_column_count: 6,
+        ..LayoutOptions::default()
+    };
+    let plain = layout_sheet(&sheet(10, vec![]), &StyleTable::default(), &options);
+    let layout = layout_sheet(&grouped, &StyleTable::default(), &options);
+    let (before, after) = (plain.header_metrics(), layout.header_metrics());
+    assert_eq!(before.outline_width, 0.0);
+    assert_eq!(after.outline_width, gutter_size(2));
+    assert_eq!(after.row_width, before.row_width + gutter_size(2));
+    assert_eq!(after.outline_height, gutter_size(1));
+    assert_eq!(after.column_height, before.column_height + gutter_size(1));
+
+    // The rows' level buttons sit in their lanes at the letters' height,
+    // one more than the deepest level.
+    let letters = (after.outline_height + after.column_height) / 2.0;
+    let none = (0.0, 0.0);
+    assert_eq!(
+        layout.outline_hit(lane_center(1), letters, none),
+        Some(OutlineTarget::Level {
+            axis: Axis::Rows,
+            level: 1
+        })
+    );
+    assert_eq!(
+        layout.outline_hit(lane_center(3), letters, none),
+        Some(OutlineTarget::Level {
+            axis: Axis::Rows,
+            level: 3
+        })
+    );
+
+    let row_middle = |index| {
+        let entry = layout.row(index).unwrap();
+        after.column_height + entry.offset + entry.size / 2.0
+    };
+    assert_eq!(
+        layout.outline_hit(lane_center(1), row_middle(4), none),
+        Some(OutlineTarget::Toggle {
+            axis: Axis::Rows,
+            summary: 4,
+            collapsed: false
+        })
+    );
+    assert_eq!(
+        layout.outline_hit(lane_center(2), row_middle(3), none),
+        Some(OutlineTarget::Toggle {
+            axis: Axis::Rows,
+            summary: 3,
+            collapsed: false
+        })
+    );
+    // A grouped row that summarises nothing has no box, nor a box's other lane.
+    assert_eq!(
+        layout.outline_hit(lane_center(1), row_middle(2), none),
+        None
+    );
+    assert_eq!(
+        layout.outline_hit(lane_center(1), row_middle(3), none),
+        None
+    );
+
+    let column = layout.column(3).unwrap();
+    let column_middle = after.row_width + column.offset + column.size / 2.0;
+    assert_eq!(
+        layout.outline_hit(column_middle, lane_center(1), none),
+        Some(OutlineTarget::Toggle {
+            axis: Axis::Columns,
+            summary: 3,
+            collapsed: true
+        })
+    );
+    assert_eq!(plain.outline_hit(5.0, 30.0, none), None);
+}

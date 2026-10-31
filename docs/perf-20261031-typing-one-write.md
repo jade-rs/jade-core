@@ -67,3 +67,19 @@ caches change), builds the calculation engine's model from every cell, and
 hashes the engine's cells with SipHash. Each is a few percent to a quarter of
 what is left; keeping the engine's model across edits would remove the
 largest.
+
+## Then: charts and the relayout
+
+Two more costs showed in a sample of jade-office's `xlsx-edit` (typing and
+repainting, as the shells do):
+
+- **A workbook with a chart typed through the two writes**, since the chart
+  caches follow their cells. The single write now refreshes them from every
+  formula cell the recalculation answered, and the model is reread rather
+  than taken in place.
+- **Laying the sheet out again formatted every number again**, parsing each
+  cell's format code each time: a third of the relayout. Formatted numbers
+  are remembered per format code and value.
+
+Five numbers typed and painted on the 20,000-row book went from 3.7–4.2 s to
+2.85 s of the measured region (6.07 s before jade-rs/jade-core#262).

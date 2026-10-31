@@ -24,6 +24,14 @@ pub(crate) struct Splice {
 
 /// Applies `edits` to a worksheet part.
 pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
+    patch_sheet_known(xml, edits, false).map(|(patched, _)| patched)
+}
+
+/// [`patch_sheet`] for a sheet the caller knows to be in order already —
+/// one this writer produced — which is then read only as far as the edits
+/// reach rather than through to its end. Also says whether what it returns
+/// is in order, for the caller to know next time.
+pub fn patch_sheet_known(xml: &str, edits: &[CellEdit], ordered: bool) -> Result<(String, bool)> {
     for edit in edits {
         if edit.reference.column >= jade_xlsx_reader::model::MAX_COLUMN_COUNT
             || edit.reference.row >= jade_xlsx_reader::model::MAX_ROW_COUNT
@@ -80,12 +88,20 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     // A sheet whose rows or cells are already out of order — some writers
     // leave them so — is put in order first: Excel drops such a sheet's
     // cells when it repairs the file, and the splices below assume order.
-    let source = jade_xlsx_reader::cell_content::worksheet_source(&expanded)?;
+    let through = edits.iter().map(|edit| edit.reference.row).max();
+    let source = match through {
+        Some(last) if ordered && !expanded.contains("AlternateContent") => {
+            jade_xlsx_reader::cell_content::worksheet_source_through(&expanded, last)?
+        }
+        _ => jade_xlsx_reader::cell_content::worksheet_source(&expanded)?,
+    };
+    let in_order = source.is_ordered();
     let ordered = if source.is_ordered() {
         None
     } else {
         order_sheet_data(&expanded, &source)?
     };
+    let ordered_now = ordered.is_some();
     let xml = ordered.as_deref().unwrap_or(expanded.as_str());
 
     // Rows and columns in order, because cells and rows have to stay sorted:
@@ -331,7 +347,9 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
         return Err(WriteError::NoSheetData("the worksheet".to_string()));
     }
 
-    Ok(apply(xml, splices))
+    // In order as it came, or put in order above; edits keep it so.
+    let reordered = ordered_now;
+    Ok((apply(xml, splices), in_order || reordered))
 }
 
 fn patch_compatible_cells(xml: &str, edits: &[CellEdit]) -> Result<String> {

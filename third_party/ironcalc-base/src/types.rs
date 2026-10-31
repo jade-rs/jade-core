@@ -203,7 +203,48 @@ pub struct Worksheet {
 
 /// Internal representation of Excel's sheet_data
 /// It is row first and because of this all of our API's should be row first
-pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
+pub type SheetData = HashMap<i32, SheetRow, BuildIndexHasher>;
+
+/// One row of [`SheetData`]: its cells by column.
+pub type SheetRow = HashMap<i32, Cell, BuildIndexHasher>;
+
+/// Hashes the row and column numbers that key a sheet's cells. They are
+/// small integers no outsider chooses, so SipHash's protection buys nothing,
+/// while hashing them costs a large share of building and evaluating a
+/// model.
+#[derive(Default, Clone, Copy)]
+pub struct IndexHasher(u64);
+
+impl std::hash::Hasher for IndexHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for byte in bytes {
+            self.write_u8(*byte);
+        }
+    }
+
+    fn write_u8(&mut self, value: u8) {
+        self.write_u64(u64::from(value));
+    }
+
+    fn write_i32(&mut self, value: i32) {
+        self.write_u64(value as u32 as u64);
+    }
+
+    fn write_u32(&mut self, value: u32) {
+        self.write_u64(u64::from(value));
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        // Fibonacci hashing: spreads consecutive indices across the table.
+        self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    }
+}
+
+pub type BuildIndexHasher = std::hash::BuildHasherDefault<IndexHasher>;
 
 // ECMA-376-1:2016 section 18.3.1.73
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
