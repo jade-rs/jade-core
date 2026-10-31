@@ -13347,6 +13347,88 @@ mod tests {
     }
 
     #[test]
+    fn a_document_without_section_properties_lays_out_on_words_default_page() {
+        // underline-kinds.docx has no `w:sectPr`. Word for Mac lays it out on
+        // Japanese Word's default page: A4, a 35 mm top and 30 mm side margin,
+        // and an 18 pt line grid (first baseline 111.84 pt at x 84.96 pt, a
+        // line every 18 pt). The editor used 1 inch margins and no grid. The
+        // default lives in the model only: the saved file gains no section
+        // properties until page setup changes them.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/underline-kinds.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let page = word_doc
+            .document
+            .as_ref()
+            .and_then(|document| document.page_settings.clone())
+            .expect("page settings");
+        assert_eq!(page.width, Some(595.3));
+        assert_eq!(page.height, Some(841.9));
+        assert_eq!(page.margin_top, Some(99.25));
+        assert_eq!(page.margin_left, Some(85.05));
+        assert_eq!(page.margin_right, Some(85.05));
+        assert_eq!(page.margin_bottom, Some(85.05));
+        let grid = word_doc
+            .document
+            .as_ref()
+            .and_then(|document| document.default_section.as_ref())
+            .and_then(|section| section.doc_grid.clone())
+            .expect("doc grid");
+        assert_eq!(grid.grid_type.as_deref(), Some("lines"));
+        assert_eq!(grid.line_pitch, Some(18.0));
+        let document_xml = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml
+        };
+        assert!(!document_xml(&word_doc).contains("w:sectPr"));
+
+        // Page setup still reaches the file and survives a reload.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetPageMargins {
+                    top: Some(50.0),
+                    bottom: None,
+                    left: None,
+                    right: None,
+                    header: None,
+                    footer: None,
+                    gutter: None,
+                }],
+            },
+        )
+        .expect("margins set");
+        let saved = document_xml(&word_doc);
+        assert!(saved.contains("w:top=\"1000\""), "{saved}");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let margins = |word_doc: &WordDocument| {
+            word_doc
+                .document
+                .as_ref()
+                .and_then(|document| document.page_settings.clone())
+                .map(|page| (page.margin_top, page.margin_left, page.width))
+        };
+        assert_eq!(margins(&reloaded), margins(&word_doc));
+        assert_eq!(margins(&word_doc).and_then(|margins| margins.0), Some(50.0));
+    }
+
+    #[test]
     fn a_list_takes_its_levels_left_indent_past_a_direct_first_line() {
         // table-complex-indented-recursive.docx's "I30F" paragraph sets only
         // `w:firstLine`; its style sets the left indent. Word inherits indent
