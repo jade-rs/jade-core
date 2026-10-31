@@ -1236,9 +1236,9 @@ fn compute_grapheme_advance_with_ascii_width(
     } = context;
 
     // Width classification and font-slot classification are independent:
-    // these observed full-width HAnsi glyphs keep their requested Latin face.
+    // these observed HAnsi glyphs keep their requested Latin face.
     // Check the character before parsing a descriptor on this hot path.
-    let observed_unicode_width = if matches!(grapheme, "…" | "—")
+    let observed_unicode_width = if matches!(grapheme, "…" | "—" | "○")
         && !measured_width_is_oracle
         && paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |style| {
             style.word_platform
@@ -21357,6 +21357,58 @@ mod tests {
                 .is_some_and(|line| line.ends_with("行うものと")),
             "copy clause first line should end with '行うものと' when overflowPunct is off: {lines:?}"
         );
+    }
+
+    #[test]
+    fn observed_mac_noto_circle_preserves_scaling_oracles_and_other_platforms() {
+        use crate::line_metrics::WordLayoutPlatform;
+        assert_eq!(classify_script("○"), ScriptCategory::Latin);
+        let advance = |platform, descriptor, oracle, scale| {
+            let paragraph = ParagraphStyle {
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            compute_grapheme_advance(GraphemeAdvanceContext {
+                paragraph_style: Some(&paragraph),
+                grapheme: "○",
+                script: ScriptCategory::Latin,
+                measured_glyph_width: 14.0,
+                measured_width_is_oracle: oracle,
+                text_scale_x: scale,
+                extra_spacing: 0.0,
+                kerning_adjustment: 0.0,
+                is_line_start: true,
+                prev_prev_grapheme: None,
+                prev_grapheme: None,
+                next_grapheme: Some("横"),
+                prev_glyph_width: None,
+                snap_cell_width: None,
+                font_descriptor: Some(descriptor),
+                prev_auto_space: None,
+                run_letter_spacing: 0.0,
+            })
+        };
+        let face = "10.5pt 'Noto Sans'";
+        for scale in [0.5, 1.0, 2.0] {
+            let expected = 14.0 * 1237.0 / 2048.0 * scale;
+            let result = advance(WordLayoutPlatform::Mac, face, false, scale);
+            assert!((result.glyph_width - expected).abs() < 1e-9);
+            assert!((result.total_advance - expected).abs() < 1e-9);
+            assert_eq!(
+                advance(WordLayoutPlatform::Mac, face, true, scale).glyph_width,
+                14.0
+            );
+            assert_eq!(
+                advance(WordLayoutPlatform::Windows, face, false, scale).glyph_width,
+                14.0 * scale
+            );
+        }
+        for other in ["bold 10.5pt 'Noto Sans'", "10.5pt 'Noto Sans JP'"] {
+            assert_eq!(
+                advance(WordLayoutPlatform::Mac, other, false, 1.0).glyph_width,
+                14.0
+            );
+        }
     }
 
     #[test]
