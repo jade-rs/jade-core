@@ -135,6 +135,98 @@ fn mac_missing_first_footer_stays_blank() {
     assert_eq!(story_text(1, "header"), "SECTION TWO HEADER");
 }
 
+/// Both headers and the inherited footer must retain the frozen Word origins.
+/// Use the outer physical page: a header's inner layout page is story-local.
+#[test]
+fn mac_header_footer_sections_match_original_word_coordinates() {
+    let bytes = std::fs::read(repo_path("public/fixtures/header-footer-sections.docx")).unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(
+            "tests/word-oracle/mac-glyph-corpus-20261019/header-footer-sections.json",
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    let mut doc = open_with_bundled_faces(&bytes);
+    let snapshot = doc.capture_full_layout_debug().unwrap();
+    assert!(snapshot.complete);
+    assert_eq!(snapshot.page_count, 2);
+    let mut actual = Vec::new();
+    for entry in &snapshot.auxiliary_lines {
+        for fragment in &entry.line.fragments {
+            for glyph in &fragment.glyphs {
+                actual.push(json!([
+                    entry.page + 1,
+                    glyph.text,
+                    (fragment.x + glyph.x - 2.0 * entry.line.report_x_offset) * 0.75,
+                    fragment.baseline * 0.75,
+                ]));
+            }
+        }
+    }
+    for line in &snapshot.body_lines {
+        for fragment in &line.fragments {
+            for glyph in &fragment.glyphs {
+                actual.push(json!([
+                    line.page + 1,
+                    glyph.text,
+                    (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                    fragment.baseline * 0.75,
+                ]));
+            }
+        }
+    }
+    // Compare the entire document so the header fix cannot displace body text.
+    let expected = word_layout(&reference);
+    assert_eq!(expected["glyphs"].as_array().unwrap().len(), 163);
+    let actual = spatial_order(&json!({"page_count": snapshot.page_count, "glyphs": actual}));
+    assert_eq!(actual["glyphs"].as_array().unwrap().len(), 163);
+    compare(&expected, &actual, WORD_TOLERANCE_PT).unwrap();
+
+    let evidence: Value = serde_json::from_str(include_str!(
+        "../../../tests/word-oracle/mac-bold-header-footer-origins.json"
+    ))
+    .unwrap();
+    assert_eq!(evidence["docx_sha256"], reference["docx_sha256"]);
+    assert_eq!(evidence["pdf_sha256"], reference["pdf_sha256"]);
+    assert_eq!(
+        evidence["pdf_sha256"],
+        sha256(
+            &std::fs::read(repo_path(
+                "tests/word-oracle/mac-glyph-corpus-20261019/pdf/header-footer-sections.pdf",
+            ))
+            .unwrap()
+        )
+    );
+    let mut checked = 0;
+    for row in evidence["rows"].as_array().unwrap() {
+        let page = row["page"].as_u64().unwrap() as usize - 1;
+        let header = snapshot
+            .auxiliary_lines
+            .iter()
+            .find(|entry| entry.page == page && entry.story == row["story"].as_str().unwrap())
+            .unwrap();
+        let glyphs: Vec<_> = header
+            .line
+            .fragments
+            .iter()
+            .flat_map(|fragment| fragment.glyphs.iter().map(move |glyph| (fragment, glyph)))
+            .collect();
+        let characters = row["characters"].as_array().unwrap();
+        assert_eq!(glyphs.len(), characters.len());
+        for ((fragment, glyph), word) in glyphs.iter().zip(characters) {
+            assert_eq!(glyph.text, word["text"].as_str().unwrap());
+            let x = (fragment.x + glyph.x) * 0.75;
+            let baseline = fragment.baseline * 0.75;
+            assert!((x - word["x_pt"].as_f64().unwrap()).abs() <= WORD_TOLERANCE_PT);
+            assert!((baseline - word["baseline_pt"].as_f64().unwrap()).abs() <= WORD_TOLERANCE_PT);
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 48, "include all five actual PDF spaces");
+}
+
 fn compare(expected: &Value, actual: &Value, tolerance: f64) -> Result<(), String> {
     if expected["page_count"] != actual["page_count"] {
         return Err(format!(
