@@ -918,6 +918,14 @@ mod stateful {
         ) {
             toc_sequence(&suffixes, headings, high_ids, &ops);
         }
+
+        #[test]
+        fn set_assignments_replace_named_ranges_after_each_operation(
+            high_ids in any::<bool>(),
+            ops in prop::collection::vec((0u8..3, 0u16..1000), 1..17),
+        ) {
+            set_sequence(high_ids, &ops);
+        }
     }
 
     proptest! {
@@ -964,8 +972,12 @@ mod stateful {
 
     #[test]
     fn set_results_keep_valid_bookmark_ids_after_edits_and_reload() {
-        let source = toc_source(&[0, 1].into(), 0, true);
-        capture(&source, "SET source with signed-limit bookmark IDs");
+        set_sequence(true, &[(0, 42), (1, 0), (0, 84), (2, 0), (0, 42)]);
+    }
+
+    fn set_sequence(high_ids: bool, ops: &[(u8, u16)]) {
+        let source = toc_source(&[0, 1].into(), 0, high_ids);
+        capture(&source, &format!("SET source, high_ids={high_ids}"));
         let mut session = Session {
             document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
             selection: Some(SelectionRange::collapsed(TextPosition::new(
@@ -975,16 +987,27 @@ mod stateful {
             executor: CommandExecutor::new(),
         };
         session.insert_field_code("SET Answer 42", &host()).unwrap();
-        for value in [42, 84, 42] {
+        let mut value = 42;
+        for &(operation, supplied) in ops {
             session.whole_paragraph();
-            session
-                .edit_field_code(&format!("SET Answer {value}"), &host())
-                .unwrap();
-            session
-                .update_fields(session.field_scope(), &host(), HashMap::new())
-                .unwrap();
+            match operation {
+                0 => {
+                    value = supplied;
+                    let name = if value % 2 == 0 { "Answer" } else { "answer" };
+                    session
+                        .edit_field_code(&format!("SET {name} {value}"), &host())
+                        .unwrap();
+                }
+                1 => session
+                    .update_fields(session.field_scope(), &host(), HashMap::new())
+                    .unwrap(),
+                _ => {}
+            }
             let bytes = session.document.export_docx().unwrap();
-            capture(&bytes, &format!("SET Answer {value}, signed-limit IDs"));
+            capture(
+                &bytes,
+                &format!("SET Answer {value}, high_ids={high_ids}, ops={ops:?}"),
+            );
             session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
             session.whole_paragraph();
             assert_eq!(session.selected_fields()[0].result, value.to_string());
@@ -995,10 +1018,22 @@ mod stateful {
                 .map(|bookmark| bookmark.id.parse::<i32>().unwrap())
                 .collect();
             assert_eq!(ids.len(), 3, "{bookmarks:?}");
+            for (index, suffix) in [0, 1].iter().enumerate() {
+                let original = bookmarks
+                    .iter()
+                    .find(|bookmark| bookmark.name == format!("_Toc{suffix}"))
+                    .unwrap();
+                let expected_id = if high_ids {
+                    i32::MAX as usize - index
+                } else {
+                    index
+                };
+                assert_eq!(original.id, expected_id.to_string());
+            }
             assert_eq!(
                 bookmarks
                     .iter()
-                    .filter(|bookmark| bookmark.name == "Answer")
+                    .filter(|bookmark| bookmark.name.eq_ignore_ascii_case("Answer"))
                     .count(),
                 1
             );
