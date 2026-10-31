@@ -60,6 +60,16 @@ A separate exhaustive unit test covers all variant-presence and flag
 combinations, including blank even stories and first-page precedence on an
 even-numbered section start.
 
+The required `mac_noto_circle_title_matches_original_word_coordinates` test
+also compares all eight characters of `○横浜市市税条例` in the existing
+`noto-yokohama_page6` fixture with its original Word PDF coordinates at the
+same **0.375 pt** tolerance, with unchanged page count and source hashes.
+The leading Noto Sans circle uses the embedded PDF font's 1237/2048-em
+advance; `mac-noto-circle-advance.json` records its ToUnicode/cmap/hmtx
+provenance. Bold, italic, other families, Windows and oracle-supplied widths
+keep their previous behavior. This is a title-row gate only: other known
+differences in this document are not declared fixed.
+
 This is not full Word compatibility coverage. The original
 `layout_debug_lines()` capture omits some painted content; the additional
 auxiliary snapshot gate covers numbering and ruby in these six probes; the
