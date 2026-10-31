@@ -29,6 +29,7 @@ enum Style {
     ListBase,
     ListChild,
     PlainHeading,
+    Missing,
 }
 
 impl Style {
@@ -39,6 +40,7 @@ impl Style {
             Self::ListBase => Some("ListBase"),
             Self::ListChild => Some("ListChild"),
             Self::PlainHeading => Some("PlainHeading"),
+            Self::Missing => Some("UndefinedParagraphStyle"),
         }
     }
 
@@ -168,6 +170,41 @@ impl State {
                 paragraph.style.id(),
                 "{context}: paragraph {index} style"
             );
+            // Assert the fixture's literal defaults independently of loading
+            // the reference package. Otherwise the same reader bug in both
+            // documents could hide a missing style's lost font properties.
+            let heading = paragraph.style == Style::PlainHeading;
+            let runs = &document.word_document().paragraph(index).unwrap().runs;
+            assert!(!runs.is_empty(), "{context}: paragraph {index} has a run");
+            for (run_index, run) in runs.iter().enumerate() {
+                let style = run.properties.as_ref().unwrap();
+                assert_eq!(
+                    (style.font_size, style.font_family.as_deref()),
+                    (
+                        Some(if heading { 16.0 } else { 12.0 }),
+                        Some("Noto Sans JP")
+                    ),
+                    "{context}: paragraph {index} run {run_index} font"
+                );
+            }
+            // The public caret query resolves inherited formatting. Raw run
+            // properties alone do not represent the effective heading weight.
+            for (offset, _) in paragraph.text.char_indices() {
+                let style = document.run_style_at(index, offset).unwrap();
+                assert_eq!(
+                    (
+                        style.bold.unwrap_or(false),
+                        style.font_size,
+                        style.font_family.as_deref()
+                    ),
+                    (
+                        heading,
+                        Some(if heading { 16.0 } else { 12.0 }),
+                        Some("Noto Sans JP")
+                    ),
+                    "{context}: paragraph {index} offset {offset} effective style"
+                );
+            }
             let expected = match paragraph.numbering {
                 Numbering::Inherit if paragraph.style.numbered() => Some(("7".into(), Some(0))),
                 Numbering::Inherit => None,
@@ -498,13 +535,37 @@ fn check_sequence(operations: &[Operation]) {
 fn undo_typing_restores_empty_styled_paragraph() {
     // Rebuilding the restored empty run used to prune its <w:t>, and the run
     // itself, losing the inherited font size both on screen and after saving.
-    for style in [Style::Normal, Style::ListChild, Style::PlainHeading] {
+    for style in [
+        Style::Normal,
+        Style::ListChild,
+        Style::PlainHeading,
+        Style::Missing,
+    ] {
         check_sequence(&[
             Operation::Restyle(Range(3, 3, false, false), style),
             Operation::Append(3, "日".into()),
             Operation::Undo,
         ]);
     }
+}
+
+#[test]
+fn missing_styles_use_defaults_through_lists_history_and_reload() {
+    use Operation::*;
+    check_sequence(&[
+        Restyle(Range(0, 3, true, true), Style::PlainHeading),
+        Restyle(Range(0, 3, false, false), Style::Missing),
+        Append(3, "未定義スタイル 😀".into()),
+        List(Range(0, 3, true, false), Some(8), 0),
+        Undo,
+        Undo,
+        FailedBatch,
+        Redo,
+        Redo,
+        List(Range(1, 3, false, true), None, 0),
+        Restyle(Range(1, 2, true, false), Style::ListChild),
+        Restyle(Range(1, 2, false, true), Style::Missing),
+    ]);
 }
 
 #[test]
@@ -589,6 +650,7 @@ fn operation() -> impl Strategy<Value = Operation> {
         Style::ListBase,
         Style::ListChild,
         Style::PlainHeading,
+        Style::Missing,
     ]);
     let list = prop::sample::select(vec![(None, 0), (Some(7), 0), (Some(7), 1), (Some(8), 0)]);
     prop_oneof![
