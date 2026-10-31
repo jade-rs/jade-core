@@ -1768,6 +1768,9 @@ pub fn relayout_rows(
         .filter(|cell| rows.contains(&cell.reference.row))
         .collect();
     fresh.sort_by_key(|cell| (cell.reference.row, cell.reference.column));
+    if splice_rows(&mut layout.cells, rows, &mut fresh) {
+        return true;
+    }
     let kept: Vec<PlacedCell> = std::mem::take(&mut layout.cells)
         .into_iter()
         .filter(|cell| !(rows.contains(&cell.reference.row) && cell.merge.is_none()))
@@ -1794,6 +1797,46 @@ pub fn relayout_rows(
     }
     cells.extend(fresh);
     layout.cells = cells;
+    true
+}
+
+/// [`relayout_rows`]' cells put in place without rebuilding the rest: each
+/// row's cells are one run of the row-ordered part of `cells`, so its new
+/// ones replace that run where it is, and the cells after it move only when
+/// the row's count changed. `false`, with nothing changed, when a row's old
+/// cells are not where that finds them.
+fn splice_rows(
+    cells: &mut Vec<PlacedCell>,
+    rows: &std::collections::BTreeSet<u32>,
+    fresh: &mut Vec<PlacedCell>,
+) -> bool {
+    let ordered = cells
+        .windows(2)
+        .position(|pair| pair[1].reference.row < pair[0].reference.row)
+        .map_or(cells.len(), |at| at + 1);
+    // The blank merged ranges after it hold no cell of these rows that would
+    // be replaced.
+    if cells[ordered..]
+        .iter()
+        .any(|cell| rows.contains(&cell.reference.row) && cell.merge.is_none())
+    {
+        return false;
+    }
+    let mut runs = Vec::with_capacity(rows.len());
+    for &row in rows {
+        let start = cells[..ordered].partition_point(|cell| cell.reference.row < row);
+        let end = cells[..ordered].partition_point(|cell| cell.reference.row <= row);
+        if cells[start..end].iter().any(|cell| cell.merge.is_some()) {
+            return false;
+        }
+        runs.push((row, start..end));
+    }
+    // From the last row back, so the runs before stay where they are.
+    for (row, run) in runs.into_iter().rev() {
+        let from = fresh.partition_point(|cell| cell.reference.row < row);
+        let new: Vec<PlacedCell> = fresh.drain(from..).collect();
+        cells.splice(run, new);
+    }
     true
 }
 
