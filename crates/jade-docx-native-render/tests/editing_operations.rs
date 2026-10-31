@@ -1,7 +1,7 @@
 //! Deleting and splitting, the operations a keyboard needs beyond typing.
 
 mod common;
-use common::{open_contract, paragraph_on_first_page};
+use common::{open_contract, open_fixture, paragraph_on_first_page};
 
 #[test]
 fn backspace_removes_the_character_before_the_caret() {
@@ -115,4 +115,81 @@ fn typing_on_page_one_does_not_shrink_the_page_count() {
     document.insert_text(paragraph, 0, "あ", 1).expect("insert");
 
     assert_eq!(document.page_count(), before, "the page count shrank");
+}
+
+#[test]
+fn stable_typing_keeps_later_carets_and_matches_a_full_repaint() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    let pages = document.page_count();
+    // Opening leaves full dirty state; a stable bounded edit must retain the
+    // selection tail even though incremental registration starts from zero.
+    assert!(document.renderer().needs_full_repaint());
+    let (later, later_rect) = (0..document.paragraph_count())
+        .rev()
+        .find_map(|index| document.position_rect(index, 0).map(|rect| (index, rect)))
+        .unwrap();
+    assert!(document.page_and_offset(later_rect.document_y).0 > 0);
+
+    for iteration in 0..3 {
+        document.insert_text(paragraph, 0, "a", 1).unwrap();
+        assert!(document
+            .renderer()
+            .last_completed_pagination_edit_preserved());
+        assert_eq!(document.page_count(), pages);
+        assert_eq!(
+            document.position_rect(later, 0),
+            Some(later_rect),
+            "iteration {iteration}, edited paragraph {paragraph}, later paragraph {later}"
+        );
+    }
+
+    let incremental = document.page_pixels(0).unwrap();
+    document.repaint_all().unwrap();
+    assert!(
+        incremental == document.page_pixels(0).unwrap(),
+        "stable typing differs from a full repaint"
+    );
+    assert_eq!(document.position_rect(later, 0), Some(later_rect));
+}
+
+#[test]
+fn typing_that_wraps_matches_a_full_repaint() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    // Change paragraph height so the stable-geometry shortcut must fall back.
+    document
+        .insert_text(paragraph, 0, &"あ".repeat(300), 1)
+        .unwrap();
+    assert!(!document
+        .renderer()
+        .last_completed_pagination_edit_preserved());
+    let incremental = document.page_pixels(0).unwrap();
+    document.repaint_all().unwrap();
+    assert!(
+        incremental == document.page_pixels(0).unwrap(),
+        "typing that wraps differs from a full repaint"
+    );
+}
+
+#[test]
+fn stable_body_typing_keeps_later_table_editing_metadata() {
+    let mut document = open_fixture("public/fixtures/yokohama.docx");
+    let before = serde_json::to_value((
+        document.renderer().table_resize_metadata(),
+        document.renderer().cell_layouts_debug_ref(),
+    ))
+    .unwrap();
+    assert!(!document.renderer().cell_layouts_debug_ref().is_empty());
+
+    document.insert_text(6, 0, "あ", 1).unwrap();
+    assert!(document
+        .renderer()
+        .last_completed_pagination_edit_preserved());
+    let after = serde_json::to_value((
+        document.renderer().table_resize_metadata(),
+        document.renderer().cell_layouts_debug_ref(),
+    ))
+    .unwrap();
+    assert!(before == after, "later table editing metadata was lost");
 }
