@@ -2665,6 +2665,13 @@ impl WordDocument {
                 document.comments = comments_part.comments;
             }
 
+            // Install the fallback before loading any story, so opening and
+            // editing a header/footer use the same defaults as the body.
+            // The package is not given a styles part until an edit writes one.
+            if !styles_read {
+                document.styles_part = Some(StylesPart::word_default());
+            }
+
             // Header/footer stories use the same style-numbering inheritance
             // as the body, so merge numbering definitions before materializing
             // their parsed block models.
@@ -2770,12 +2777,6 @@ impl WordDocument {
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
-            // A package without `styles.xml` is laid out with Word's built-in
-            // styles, not the spec's Times New Roman 10 pt fallback. The
-            // package is not given a styles part until an edit writes one.
-            if !styles_read {
-                document.styles_part = Some(StylesPart::word_default());
-            }
             // Before the styles fill paragraphs in: the paragraph a textless
             // shape is given takes the defaults a `w:p` in its text box would
             // be read with, which it is saved as once edited.

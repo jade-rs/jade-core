@@ -283,6 +283,23 @@ fn check_sequence(operations: &[Operation]) {
 }
 
 #[test]
+fn wrapped_story_edits_preserve_default_metrics_through_history_and_reopen() {
+    use Operation::*;
+    for footer in [false, true] {
+        for paragraph in 0..2 {
+            check_sequence(&[
+                Story(footer, paragraph, "折り返し 日本語 ab ".repeat(10)),
+                Story(footer, paragraph, "短い文".into()),
+                Undo,
+                Undo,
+                Redo,
+                Redo,
+            ]);
+        }
+    }
+}
+
+#[test]
 fn story_edit_after_body_undo_invalidates_the_redo_branch() {
     use Operation::*;
     for footer in [false, true] {
