@@ -81,6 +81,22 @@ impl InsertTextCommand {
         self
     }
 
+    /// Whether this insertion and its undo leave auxiliary-story paragraph
+    /// indices unchanged. Selection replacement can remove text boxes, and a
+    /// run split around a text box needs its own proof, so neither is eligible.
+    pub(crate) fn preserves_auxiliary_story_surfaces(
+        &self,
+        document: &crate::word_document::WordDocument,
+    ) -> bool {
+        if !self.range.is_collapsed() || self.text.contains(['\r', '\n']) {
+            return false;
+        }
+        let position = document.rendered_to_model_text_position(self.range.focus);
+        document
+            .paragraph(position.paragraph)
+            .is_some_and(|paragraph| paragraph.runs.iter().all(|run| run.text_box.is_none()))
+    }
+
     fn apply_edit(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let previous_selection = *ctx.selection;
         let (start, end) = self.range.normalized();
