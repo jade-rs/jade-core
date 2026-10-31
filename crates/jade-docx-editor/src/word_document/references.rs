@@ -798,7 +798,7 @@ impl WordDocument {
                 continue;
             };
             Self::visit_field_markers(element, &mut |marker| match marker {
-                FieldMarker::Begin => stack.push(Frame {
+                FieldMarker::Begin(_, _) => stack.push(Frame {
                     instruction: String::new(),
                     separated: false,
                     begin: current,
@@ -815,7 +815,7 @@ impl WordDocument {
                         top.separated = true;
                     }
                 }
-                FieldMarker::End => {
+                FieldMarker::End(_) => {
                     if let Some(frame) = stack.pop() {
                         // Only the outermost fields that open and close in
                         // different paragraphs, or own a paragraph of their
@@ -842,6 +842,110 @@ impl WordDocument {
                 })
             })
             .collect()
+    }
+
+    /// Validate the whole-paragraph replacement contract before deleting anything.
+    /// Returns the outer field's lock state. Mixed content and interior section
+    /// breaks must stay intact until regeneration supports them.
+    pub(crate) fn validate_field_block(&self, block: &FieldBlock) -> Result<bool, String> {
+        let invalid =
+            "field regeneration requires whole paragraphs without interior section breaks";
+        if !self
+            .field_blocks()
+            .iter()
+            .any(|candidate| candidate == block)
+        {
+            return Err("the field block is unavailable".into());
+        }
+        let raw = self
+            .raw_document
+            .as_ref()
+            .ok_or("document XML is unavailable")?;
+        let paragraph = |surface| {
+            self.paragraph(surface)
+                .and_then(|p| p.node_id)
+                .and_then(|id| raw.element(id))
+                .ok_or("field paragraph XML is unavailable")
+        };
+        let first = paragraph(block.start)?;
+        let last = paragraph(block.end)?;
+        let mut depth = 0usize;
+        let mut outer_count = 0;
+        let mut begin = None;
+        let mut end = None;
+        let mut locked = false;
+        let mut malformed = false;
+        for index in block.start..=block.end {
+            Self::visit_field_markers(paragraph(index)?, &mut |marker| match marker {
+                FieldMarker::Begin(id, lock) => {
+                    if depth == 0 {
+                        outer_count += 1;
+                        begin = Some(id);
+                        locked = lock;
+                    }
+                    depth += 1;
+                }
+                FieldMarker::End(id) => {
+                    if depth == 0 {
+                        malformed = true;
+                    } else {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = Some(id);
+                        }
+                    }
+                }
+                _ => {}
+            });
+        }
+        let outside = |paragraph: &XmlElement, marker: XmlNodeId, before: bool| -> bool {
+            let Some(paragraph_path) = raw.path(paragraph.id) else {
+                return true;
+            };
+            let Some(marker_path) = raw.path(marker) else {
+                return true;
+            };
+            let Some(path) = marker_path
+                .as_slice()
+                .strip_prefix(paragraph_path.as_slice())
+            else {
+                return true;
+            };
+            let mut parent = paragraph;
+            for &index in path {
+                let siblings = if before {
+                    &parent.children[..index]
+                } else {
+                    &parent.children[index + 1..]
+                };
+                if siblings.iter().any(|node| match node {
+                    XmlNode::Element(e) => !matches!(e.name.as_str(), "w:pPr" | "w:rPr"),
+                    XmlNode::Text(text) => !text.trim().is_empty(),
+                    _ => true,
+                }) {
+                    return true;
+                }
+                let XmlNode::Element(child) = &parent.children[index] else {
+                    return true;
+                };
+                parent = child;
+            }
+            false
+        };
+        if malformed
+            || depth != 0
+            || outer_count != 1
+            || begin.is_none_or(|id| outside(first, id, true))
+            || end.is_none_or(|id| outside(last, id, false))
+            || (block.start..block.end).any(|index| {
+                self.paragraph(index)
+                    .and_then(|p| p.properties.as_ref())
+                    .is_some_and(|p| p.section.is_some())
+            })
+        {
+            return Err(invalid.into());
+        }
+        Ok(locked)
     }
 
     /// Inserts a field block after a top-level body paragraph: the field
@@ -872,6 +976,21 @@ impl WordDocument {
         instruction: &str,
         lines: &[FieldBlockLine],
     ) -> Result<SelectionRange, String> {
+        let instruction = Self::validate_field_block_instruction(instruction)?;
+        self.replace_field_block_content(block, |document, start, location| {
+            document.insert_field_block_at(start, instruction, lines, Some(location))
+        })
+    }
+
+    /// Regenerate a block without dropping the section terminated by its last
+    /// paragraph. Keep the raw properties too: header references and extension
+    /// attributes are not all represented in the model.
+    pub(super) fn replace_field_block_content<T>(
+        &mut self,
+        block: &FieldBlock,
+        insert: impl FnOnce(&mut Self, usize, (XmlNodeId, usize)) -> Result<T, String>,
+    ) -> Result<T, String> {
+        self.validate_field_block(block)?;
         let body_element =
             |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
                 Some(ParagraphSurface::Body { path }) => match path.as_slice() {
@@ -885,8 +1004,54 @@ impl WordDocument {
         let end = body_element(self, block.end)
             .ok_or_else(|| "the field's last paragraph is unavailable".to_string())?;
         let location = self.field_block_xml_location(block.start, block.end)?;
+        let ending = self.paragraph(block.end).unwrap();
+        let section = ending.properties.as_ref().and_then(|p| p.section.clone());
+        let raw_section = self.raw_document.as_ref().and_then(|raw| {
+            Self::paragraph_section_properties_id(raw, ending.node_id?)
+                .and_then(|id| raw.element(id).cloned())
+        });
+        let page_settings = self
+            .document
+            .as_ref()
+            .and_then(|doc| doc.page_settings.clone());
         self.remove_body_elements(start, end)?;
-        self.insert_field_block_at(start, instruction, lines, Some(location))
+        // Removing a section break temporarily changes the first section's
+        // page settings. Generate the replacement's tabs with the old metrics.
+        let document = self.document_mut().ok_or("document is unavailable")?;
+        document.page_settings = page_settings;
+        let remaining = document.body.as_ref().unwrap().elements.len();
+        let result = insert(self, start, location)?;
+        let body = self
+            .document_mut()
+            .and_then(|doc| doc.body.as_mut())
+            .unwrap();
+        let inserted = body
+            .elements
+            .len()
+            .checked_sub(remaining)
+            .filter(|count| *count > 0)
+            .ok_or("no replacement field paragraphs were inserted")?;
+        let last = body
+            .elements
+            .get_mut(start + inserted - 1)
+            .and_then(BodyElement::as_paragraph_mut)
+            .ok_or("the replacement field's last paragraph is unavailable")?;
+        if section.is_some() {
+            last.properties
+                .get_or_insert_with(ParagraphProperties::default)
+                .section = section;
+        }
+        let last_id = last.node_id;
+        if let Some(raw_section) = raw_section {
+            self.replace_paragraph_section_properties_raw(
+                last_id.ok_or("the replacement field's paragraph XML is unavailable")?,
+                raw_section,
+            )?;
+        }
+        if let Some(document) = self.document_mut() {
+            Self::rebuild_section_ranges(document);
+        }
+        Ok(result)
     }
 
     /// Removes top-level body elements `start..=end` from the model and the
@@ -974,10 +1139,7 @@ impl WordDocument {
         lines: &[FieldBlockLine],
         location: Option<(XmlNodeId, usize)>,
     ) -> Result<SelectionRange, String> {
-        let instruction = instruction.trim();
-        if instruction.is_empty() || instruction.chars().any(char::is_control) {
-            return Err("the field needs a printable instruction".to_string());
-        }
+        let instruction = Self::validate_field_block_instruction(instruction)?;
         // An empty result still needs a paragraph to hold the field.
         let placeholder = [FieldBlockLine::default()];
         let lines = if lines.is_empty() {
@@ -1155,6 +1317,14 @@ impl WordDocument {
         Ok(SelectionRange::collapsed(
             self.model_to_rendered_text_position(TextPosition::new(last, end)),
         ))
+    }
+
+    fn validate_field_block_instruction(instruction: &str) -> Result<&str, String> {
+        let instruction = instruction.trim();
+        if instruction.is_empty() || instruction.chars().any(char::is_control) {
+            return Err("the field needs a printable instruction".to_string());
+        }
+        Ok(instruction)
     }
 
     // ---- moving top-level blocks ------------------------------------------

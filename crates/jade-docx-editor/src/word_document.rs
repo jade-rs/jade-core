@@ -20913,7 +20913,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, "dot", None)
+        self.generate_and_insert_toc_at(body_insert_index, options, "dot", None, None)
     }
 
     /// Updates the first table of contents in the document (Word's References ▸
@@ -20935,25 +20935,20 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to update".to_string())?;
+        if self.validate_field_block(&block)? {
+            return Err("the table of contents is locked".to_string());
+        }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
-        let start = match self.paragraph_surfaces.get(block.start) {
-            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                [PathEntry::Element(index)] => *index,
-                _ => return Err("the table of contents is not in the body".to_string()),
-            },
-            _ => return Err("the table of contents is not in the body".to_string()),
-        };
-        let end = match self.paragraph_surfaces.get(block.end) {
-            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                [PathEntry::Element(index)] => *index,
-                _ => return Err("the table of contents is not in the body".to_string()),
-            },
-            _ => return Err("the table of contents is not in the body".to_string()),
-        };
-        let location = self.field_block_xml_location(block.start, block.end)?;
-        self.remove_body_elements(start, end)?;
-        self.generate_and_insert_toc_at(start, &options, &leader, Some(location))
+        self.replace_field_block_content(&block, |document, start, location| {
+            document.generate_and_insert_toc_at(
+                start,
+                &options,
+                &leader,
+                Some(location),
+                Some(&block.instruction),
+            )
+        })
     }
 
     /// Replaces the `index`-th table of contents with one built from new
@@ -20969,21 +20964,9 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
-        let element =
-            |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
-                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
-                    [PathEntry::Element(index)] => Some(*index),
-                    _ => None,
-                },
-                _ => None,
-            };
-        let start = element(self, block.start)
-            .ok_or_else(|| "the table of contents is not in the body".to_string())?;
-        let end = element(self, block.end)
-            .ok_or_else(|| "the table of contents is not in the body".to_string())?;
-        let location = self.field_block_xml_location(block.start, block.end)?;
-        self.remove_body_elements(start, end)?;
-        self.generate_and_insert_toc_at(start, options, leader, Some(location))
+        self.replace_field_block_content(&block, |document, start, location| {
+            document.generate_and_insert_toc_at(start, options, leader, Some(location), None)
+        })
     }
 
     /// Inserts a table of contents whose entries' tabs have `leader`
@@ -21011,7 +20994,7 @@ impl WordDocument {
                 }
             }
         };
-        self.generate_and_insert_toc_at(body_insert_index, options, leader, None)
+        self.generate_and_insert_toc_at(body_insert_index, options, leader, None, None)
     }
 
     /// The document's tables of contents and of figures, in order.
@@ -21070,6 +21053,7 @@ impl WordDocument {
         options: &TocOptions,
         leader: &str,
         location: Option<(XmlNodeId, usize)>,
+        original_instruction: Option<&str>,
     ) -> Result<usize, String> {
         let mut entries = self
             .document
@@ -21150,6 +21134,11 @@ impl WordDocument {
             toc_instruction.push_str(" \\n");
         } else if let Some((min, max)) = options.hide_page_number_levels {
             toc_instruction.push_str(&format!(" \\n \"{min}-{max}\""));
+        }
+        // Updating the result does not edit the field's code. Keep switches
+        // that TocOptions does not model, including general format switches.
+        if let Some(original) = original_instruction {
+            toc_instruction = original.to_string();
         }
         // Word does not fail when a generated table of contents collects no
         // headings — it inserts the field with the placeholder result
@@ -21391,9 +21380,15 @@ impl WordDocument {
                         .find(|a| a.name == "w:fldCharType")
                         .map(|a| a.value.as_str());
                     match kind {
-                        Some("begin") => f(FieldMarker::Begin),
+                        Some("begin") => f(FieldMarker::Begin(
+                            el.id,
+                            el.attributes.iter().any(|attribute| {
+                                attribute.name == "w:fldLock"
+                                    && matches!(attribute.value.as_str(), "1" | "true" | "on")
+                            }),
+                        )),
                         Some("separate") => f(FieldMarker::Separate),
-                        Some("end") => f(FieldMarker::End),
+                        Some("end") => f(FieldMarker::End(el.id)),
                         _ => {}
                     }
                 }
@@ -38338,9 +38333,9 @@ struct TocEntryFieldOptions<'a> {
 
 /// A field-structure marker encountered while scanning a paragraph's raw XML.
 enum FieldMarker<'a> {
-    Begin,
+    Begin(XmlNodeId, bool),
     Separate,
-    End,
+    End(XmlNodeId),
     InstrText(&'a str),
 }
 

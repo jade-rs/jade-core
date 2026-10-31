@@ -732,6 +732,9 @@ fn update_fields_in_scope(
         .iter()
         .enumerate()
         .filter(|(_, block)| {
+            if !matches!(doc.validate_field_block(block), Ok(false)) {
+                return false;
+            }
             story.fields.iter().enumerate().any(|(index, field)| {
                 field.parent.is_none()
                     && !field.locked
