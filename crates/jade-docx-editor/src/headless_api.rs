@@ -13669,6 +13669,80 @@ mod tests {
     }
 
     #[test]
+    fn formatting_across_an_inline_equation_leaves_the_equation_as_saved() {
+        // Strike, bold or a size set across an inline equation changed the
+        // equation's run in the editor, but the equation is saved as its
+        // OMML, so the change was gone once the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-indent.docx"),
+        )
+        .expect("read fixture");
+        for format in [
+            HeadlessCommand::ApplyStrike {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                double: false,
+                enabled: true,
+            },
+            HeadlessCommand::ApplyBold {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                enabled: true,
+            },
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                font_size: 20.0,
+            },
+        ] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::InsertEquation {
+                            paragraph: 2,
+                            offset: 39,
+                            omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                            placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                        },
+                        format.clone(),
+                    ],
+                },
+            )
+            .expect("applied");
+            let equation = |word_doc: &WordDocument| {
+                word_doc
+                    .paragraph(2)
+                    .expect("paragraph")
+                    .runs
+                    .iter()
+                    .filter(|run| run.math.is_some())
+                    .map(|run| {
+                        let props = run.properties.clone().unwrap_or_default();
+                        (props.strike, props.bold, props.font_size)
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(equation(&word_doc).len(), 1, "{format:?}");
+            assert_eq!(equation(&word_doc), equation(&reloaded), "{format:?}");
+        }
+    }
+
+    #[test]
     fn an_inserted_inline_equation_takes_its_styles_size() {
         // A load gives an inline equation's run the font and size its styles
         // give it, and the equation is drawn at that size. One inserted had
