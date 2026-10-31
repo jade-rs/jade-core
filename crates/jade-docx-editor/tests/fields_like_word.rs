@@ -738,7 +738,7 @@ mod stateful {
         #[test]
         fn host_values_omit_characters_xml_cannot_carry(
             value in prop::collection::vec(prop::sample::select(vec![
-                'a', '山', '🦀', '&', '<', '>', '\t', '\n',
+                'a', '山', '🦀', '&', '<', '>', '\t', '\n', '\r',
                 '\u{0}', '\u{1}', '\u{b}', '\u{c}', '\u{1f}', '\u{fffe}', '\u{ffff}',
             ]), 0..20),
         ) {

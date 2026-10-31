@@ -1510,7 +1510,7 @@ impl std::fmt::Display for DocxXmlError {
 
 impl std::error::Error for DocxXmlError {}
 
-/// Appends `value` with `&`, `<` and `>` escaped.
+/// Appends `value` with `&`, `<`, `>` and carriage returns escaped.
 ///
 /// Serialising a part escaped every text node and attribute into a new string
 /// grown a character at a time; on a large `document.xml` that was a sizeable
@@ -1520,6 +1520,8 @@ fn push_escaped_text(buffer: &mut String, value: &str) {
         b'&' => Some("&amp;"),
         b'<' => Some("&lt;"),
         b'>' => Some("&gt;"),
+        // XML 1.0 normalizes literal CR/CRLF before parsing text.
+        b'\r' => Some("&#13;"),
         _ => None,
     });
 }
@@ -1563,6 +1565,36 @@ pub(crate) mod tests {
         let serialized = document.to_string().unwrap();
         let reopened = DocxXmlDocument::parse(&serialized).unwrap();
         assert_eq!(reopened.root().attributes[0].value, "a\tb\nc\rd");
+    }
+
+    fn normalized_xml_text(xml: &str) -> String {
+        let mut reader = Reader::from_str(xml);
+        let mut text = String::new();
+        let mut depth = 0;
+        loop {
+            match reader.read_event().unwrap() {
+                Event::Start(_) => depth += 1,
+                Event::End(_) => depth -= 1,
+                Event::Text(event) if depth > 0 => {
+                    text.push_str(&event.xml10_content().unwrap());
+                }
+                Event::GeneralRef(event) if depth > 0 => {
+                    text.push_str(&unescape(&format!("&{};", event.decode().unwrap())).unwrap());
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+        }
+        text
+    }
+
+    #[test]
+    fn text_carriage_returns_survive_xml_line_end_normalization() {
+        let document = DocxXmlDocument::parse("<root>a&#13;b&#13;\nc\td\ne</root>").unwrap();
+        assert_eq!(
+            normalized_xml_text(&document.to_string().unwrap()),
+            "a\rb\r\nc\td\ne"
+        );
     }
 
     use proptest::prelude::*;
@@ -1681,7 +1713,7 @@ pub(crate) mod tests {
                 '"' if attribute => escaped.push_str("&quot;"),
                 '\'' if attribute => escaped.push_str("&apos;"),
                 '\n' if attribute => escaped.push_str("&#10;"),
-                '\r' if attribute => escaped.push_str("&#13;"),
+                '\r' => escaped.push_str("&#13;"),
                 '\t' if attribute => escaped.push_str("&#9;"),
                 _ => escaped.push(ch),
             }
@@ -1690,6 +1722,18 @@ pub(crate) mod tests {
     }
 
     proptest! {
+        #[test]
+        fn text_values_survive_xml_line_end_normalization(
+            value in proptest::collection::vec(proptest::sample::select(vec![
+                'a', '\r', '\n', '\t', '&', '<', '>', '"', '山', '🦀', '\u{85}', '\u{2028}',
+            ]), 0..40),
+        ) {
+            let value: String = value.into_iter().collect();
+            let mut document = DocxXmlDocument::parse("<root/>").unwrap();
+            document.root.children.push(XmlNode::Text(value.clone()));
+            prop_assert_eq!(normalized_xml_text(&document.to_string().unwrap()), value);
+        }
+
         #[test]
         fn buffered_escaping_matches_the_reference(
             prefix in ".{0,8}",
