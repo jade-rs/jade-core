@@ -1537,26 +1537,65 @@ impl HeadlessWorkbook {
         )?;
         let model = &self.workbook.sheets[index];
         let marks = jade_xlsx_writer::outline::plan_outline(model, axis, first, last, change)?;
-        if marks.is_empty() {
+        self.write_outline_marks(index, vec![(axis, marks)])
+    }
+
+    /// Data ▸ Group ▸ Auto Outline: rows grouped under the formulas that
+    /// sum the rows right above them, and columns under those summing the
+    /// columns left of them, replacing the sheet's outline. One undo step;
+    /// `false` when the outline is already so.
+    pub fn auto_outline(&mut self, sheet: &str) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(index, "the outline of a protected sheet cannot change", |_| {
+            false
+        })?;
+        let (rows, columns) =
+            jade_xlsx_writer::outline::plan_auto_outline(&self.workbook.sheets[index])?;
+        self.write_outline_marks(index, vec![(Axis::Rows, rows), (Axis::Columns, columns)])
+    }
+
+    /// Data ▸ Ungroup ▸ Clear Outline on rows or columns: every level taken
+    /// off, hidden ones left hidden. One undo step; `false` when there is
+    /// none.
+    pub fn clear_outline(&mut self, sheet: &str, axis: Axis) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(index, "the outline of a protected sheet cannot change", |_| {
+            false
+        })?;
+        let marks =
+            jade_xlsx_writer::outline::plan_clear_outline(&self.workbook.sheets[index], axis)?;
+        self.write_outline_marks(index, vec![(axis, marks)])
+    }
+
+    /// Writes outline marks on the sheet's rows and columns as one write.
+    fn write_outline_marks(
+        &mut self,
+        index: usize,
+        marks: Vec<(Axis, BTreeMap<u32, jade_xlsx_writer::outline::OutlineMark>)>,
+    ) -> Result<bool> {
+        if marks.iter().all(|(_, marks)| marks.is_empty()) {
             return Ok(false);
         }
-        let deepest = jade_xlsx_writer::outline::deepest_level(model, axis, &marks);
+        let model = &self.workbook.sheets[index];
         let part_name = model.part_name.clone();
         let mut package = jade_opc::OpcPackage::open(&self.source)?;
-        let xml = package
+        let mut xml = package
             .part_str(&part_name)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
-        let patched = jade_xlsx_writer::outline::write_outline(
-            &xml,
-            axis,
-            &marks,
-            deepest,
-            model.default_rows_hidden,
-            model
-                .default_column_width_chars
-                .map_or(DEFAULT_COLUMN_WIDTH, f64::from),
-        )?;
-        package.replace(&part_name, patched.into_bytes());
+        for (axis, marks) in marks.iter().filter(|(_, marks)| !marks.is_empty()) {
+            let deepest = jade_xlsx_writer::outline::deepest_level(model, *axis, marks);
+            xml = jade_xlsx_writer::outline::write_outline(
+                &xml,
+                *axis,
+                marks,
+                deepest,
+                model.default_rows_hidden,
+                model
+                    .default_column_width_chars
+                    .map_or(DEFAULT_COLUMN_WIDTH, f64::from),
+            )?;
+        }
+        package.replace(&part_name, xml.into_bytes());
         let written = package.write()?;
         // Hidden detail changes what SUBTOTAL and AGGREGATE see.
         self.commit_axis_sizes(written)?;

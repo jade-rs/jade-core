@@ -666,3 +666,172 @@ fn format_splice(xml: &str, axis: Axis, deepest: u8) -> Result<Option<Splice>> {
         buf.clear();
     }
 }
+
+/// Data ▸ Group ▸ Auto Outline: the outline the sheet's summary formulas
+/// imply, for rows and for columns. A formula whose range runs down its own
+/// column and ends right above it (`=SUM(B2:B5)` in B6) groups those rows
+/// under it; one whose range runs along its own row and ends right left of
+/// it groups those columns. A group inside another goes a level deeper.
+/// What the sheet had is replaced; hidden rows and columns stay hidden.
+pub fn plan_auto_outline(
+    sheet: &Sheet,
+) -> Result<(BTreeMap<u32, OutlineMark>, BTreeMap<u32, OutlineMark>)> {
+    let mut row_groups = std::collections::BTreeSet::new();
+    let mut column_groups = std::collections::BTreeSet::new();
+    for row in &sheet.rows {
+        for cell in &row.cells {
+            let Some(formula) = &cell.formula else {
+                continue;
+            };
+            let at = cell.reference;
+            for (start, end) in local_ranges(formula) {
+                if start.column == at.column
+                    && end.column == at.column
+                    && end.row + 1 == at.row
+                    && start.row <= end.row
+                {
+                    row_groups.insert((start.row, end.row));
+                } else if start.row == at.row
+                    && end.row == at.row
+                    && end.column + 1 == at.column
+                    && start.column <= end.column
+                {
+                    column_groups.insert((start.column, end.column));
+                }
+            }
+        }
+    }
+    Ok((
+        replaced_outline(sheet, Axis::Rows, &row_groups)?,
+        replaced_outline(sheet, Axis::Columns, &column_groups)?,
+    ))
+}
+
+/// Data ▸ Ungroup ▸ Clear Outline: every level and collapsed mark on the
+/// axis taken off, hidden rows or columns left as they are.
+pub fn plan_clear_outline(sheet: &Sheet, axis: Axis) -> Result<BTreeMap<u32, OutlineMark>> {
+    replaced_outline(sheet, axis, &std::collections::BTreeSet::new())
+}
+
+/// The marks that replace the axis's outline with `groups`, each a range of
+/// detail; only those that change.
+fn replaced_outline(
+    sheet: &Sheet,
+    axis: Axis,
+    groups: &std::collections::BTreeSet<(u32, u32)>,
+) -> Result<BTreeMap<u32, OutlineMark>> {
+    let view = AxisView {
+        sheet,
+        axis,
+        limit: match axis {
+            Axis::Rows => MAX_ROW_COUNT,
+            Axis::Columns => MAX_COLUMN_COUNT,
+        },
+        summary_after: true,
+    };
+    let mut levels: BTreeMap<u32, u8> = BTreeMap::new();
+    for &(first, last) in groups {
+        for index in first..=last {
+            let level = levels.entry(index).or_default();
+            if *level >= MAX_OUTLINE_LEVEL {
+                return Err(WriteError::Outline("an outline has at most seven levels"));
+            }
+            *level += 1;
+        }
+    }
+    let (old_levels, old_collapsed) = match axis {
+        Axis::Rows => (&sheet.outline.row_levels, &sheet.outline.collapsed_rows),
+        Axis::Columns => (&sheet.outline.column_levels, &sheet.outline.collapsed_columns),
+    };
+    let mut marks = BTreeMap::new();
+    let touched = old_levels
+        .keys()
+        .chain(old_collapsed.iter())
+        .chain(levels.keys())
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    for index in touched {
+        let mut mark = view.mark(index);
+        mark.level = levels.get(&index).copied().unwrap_or(0);
+        mark.collapsed = false;
+        if mark != view.mark(index) {
+            marks.insert(index, mark);
+        }
+    }
+    Ok(marks)
+}
+
+/// The ranges a formula names on its own sheet, as their corners: `B2:B5`
+/// and `$B$2:$B$5`, not `Other!B2:B5` nor text in quotes.
+fn local_ranges(formula: &str) -> Vec<(jade_xlsx_reader::CellRef, jade_xlsx_reader::CellRef)> {
+    let bytes = formula.as_bytes();
+    let mut ranges = Vec::new();
+    let mut at = 0;
+    let mut in_text = false;
+    while at < bytes.len() {
+        let byte = bytes[at];
+        if byte == b'"' {
+            in_text = !in_text;
+            at += 1;
+            continue;
+        }
+        let starts_token = at == 0
+            || !(bytes[at - 1].is_ascii_alphanumeric()
+                || matches!(bytes[at - 1], b'!' | b'_' | b'.' | b'$' | b'\''));
+        if in_text || !starts_token || !(byte == b'$' || byte.is_ascii_uppercase()) {
+            at += 1;
+            continue;
+        }
+        let Some((start, after_start)) = reference_at(bytes, at) else {
+            at += 1;
+            continue;
+        };
+        if bytes.get(after_start) == Some(&b':') {
+            if let Some((end, after_end)) = reference_at(bytes, after_start + 1) {
+                let named_after = bytes
+                    .get(after_end)
+                    .is_some_and(|next| next.is_ascii_alphanumeric() || *next == b'(');
+                if !named_after {
+                    ranges.push((start, end));
+                }
+                at = after_end;
+                continue;
+            }
+        }
+        at = after_start;
+    }
+    ranges
+}
+
+/// A cell reference (`B2`, `$B$2`) starting at `at`, and where it ends.
+fn reference_at(bytes: &[u8], at: usize) -> Option<(jade_xlsx_reader::CellRef, usize)> {
+    let mut end = at;
+    let skip_dollar = |end: &mut usize| {
+        if bytes.get(*end) == Some(&b'$') {
+            *end += 1;
+        }
+    };
+    skip_dollar(&mut end);
+    let letters = end;
+    while bytes.get(end).is_some_and(u8::is_ascii_uppercase) && end - letters < 3 {
+        end += 1;
+    }
+    if end == letters {
+        return None;
+    }
+    skip_dollar(&mut end);
+    let digits = end;
+    while bytes.get(end).is_some_and(u8::is_ascii_digit) {
+        end += 1;
+    }
+    if end == digits {
+        return None;
+    }
+    let text: String = std::str::from_utf8(&bytes[at..end])
+        .ok()?
+        .chars()
+        .filter(|character| *character != '$')
+        .collect();
+    let reference = jade_xlsx_reader::CellRef::parse(&text).ok()?;
+    Some((reference, end))
+}
