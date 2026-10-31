@@ -55,6 +55,7 @@ pub mod merges;
 pub mod notes;
 pub mod objects;
 pub mod outline;
+pub mod page_breaks;
 pub mod page_setup;
 mod patch;
 pub(crate) mod pivot_chart;
