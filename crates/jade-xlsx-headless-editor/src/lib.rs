@@ -234,6 +234,10 @@ pub struct HeadlessWorkbook {
     /// the sheet gives it another, so a sheet still matching one needs no
     /// reading through to its end to be sure of its order.
     ordered_sheets: HashSet<jade_opc::EntryFingerprint>,
+    /// The calculation engine's model from the last typing write, and the
+    /// package it was left in step with: typing into that package again
+    /// sets the values in it rather than building it from every cell.
+    calc_session: Option<(Vec<jade_opc::EntryFingerprint>, jade_xlsx_calc::Session)>,
     calculation_time_zone: String,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
@@ -280,6 +284,8 @@ impl HeadlessWorkbook {
                 automatic_height_base: self.automatic_height_base.clone(),
                 fast_entries: self.fast_entries.clone(),
                 ordered_sheets: self.ordered_sheets.clone(),
+                // The engine's model is not copied; the next typing builds it.
+                calc_session: None,
                 calculation_time_zone: self.calculation_time_zone.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
@@ -703,6 +709,7 @@ impl HeadlessWorkbook {
             automatic_height_base: None,
             fast_entries: HashSet::new(),
             ordered_sheets: HashSet::new(),
+            calc_session: None,
             calculation_time_zone: time_zone.to_string(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
@@ -1327,12 +1334,61 @@ impl HeadlessWorkbook {
         }
         self.workbook.full_calculation_on_load = true;
         let manual = self.manual_filter_rows();
-        let Ok(outcome) = jade_xlsx_calc::evaluate_with_manual_filter_rows(
-            &self.workbook,
-            &self.calculation_time_zone,
-            &manual,
-        ) else {
-            return Ok(false);
+        // The model kept from the last typing write, when nothing has written
+        // the package since: only the values just typed go into it.
+        let package = jade_opc::package_fingerprint(&self.source)?;
+        let mut kept = None;
+        if let Some((print, mut session)) = self.calc_session.take() {
+            if print == package {
+                let typed: Vec<(usize, CellRef, CellValue)> = sheets
+                    .iter()
+                    .filter_map(|edits| {
+                        let index = self
+                            .workbook
+                            .sheets
+                            .iter()
+                            .position(|sheet| sheet.part_name == edits.part_name)?;
+                        Some(edits.cells.iter().filter_map(move |edit| {
+                            plain_value(&edit.value).map(|value| (index, edit.reference, value))
+                        }))
+                    })
+                    .flatten()
+                    .collect();
+                if let Ok(Some(outcome)) = jade_xlsx_calc::reevaluate(
+                    &mut session,
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                    &typed,
+                ) {
+                    kept = Some((outcome, session));
+                }
+            }
+        }
+        let (outcome, session) = match kept {
+            Some((outcome, session)) => {
+                debug_assert_eq!(
+                    Some(&outcome.cells),
+                    jade_xlsx_calc::evaluate_with_manual_filter_rows(
+                        &self.workbook,
+                        &self.calculation_time_zone,
+                        &manual,
+                    )
+                    .ok()
+                    .as_ref()
+                    .map(|fresh| &fresh.cells),
+                    "the kept model answers as a model built afresh"
+                );
+                (outcome, Some(session))
+            }
+            None => match jade_xlsx_calc::evaluate_keeping(
+                &self.workbook,
+                &self.calculation_time_zone,
+                &manual,
+            ) {
+                Ok(evaluated) => evaluated,
+                Err(_) => return Ok(false),
+            },
         };
         if !outcome.spills.is_empty() {
             return Ok(false);
@@ -1430,6 +1486,9 @@ impl HeadlessWorkbook {
             );
         } else {
             self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
+        }
+        if let Some(session) = session {
+            self.calc_session = Some((jade_opc::package_fingerprint(&written)?, session));
         }
         let before = std::mem::replace(&mut self.source, written);
         self.remember(before);
