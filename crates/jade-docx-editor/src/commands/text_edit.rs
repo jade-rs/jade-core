@@ -1078,6 +1078,12 @@ pub fn mutate_run_properties(
         {
             continue;
         }
+        // An inline equation keeps the formatting its OMML gives it: the
+        // equation is saved as that OMML, so formatting set on its run here
+        // showed until the document was saved and was gone once reopened.
+        if run.math.is_some() {
+            continue;
+        }
         selected_bytes += run.text.len();
         let before = run.properties.clone().unwrap_or_default();
         let mut props = before.clone();
