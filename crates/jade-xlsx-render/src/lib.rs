@@ -24,6 +24,7 @@ use jade_xlsx_reader::{
     VerticalAlignment,
 };
 use std::cell::RefCell;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
 pub struct RenderOptions {
@@ -1496,18 +1497,7 @@ fn paint_spread_line<P: Painter>(
     let pieces: Vec<&str> = if trimmed.contains(' ') {
         trimmed.split(' ').filter(|word| !word.is_empty()).collect()
     } else {
-        let mut pieces = Vec::new();
-        let mut start = 0;
-        for (at, _) in trimmed.char_indices().skip(1) {
-            // Combining marks stay on the character before them.
-            let next = trimmed[at..].chars().next().unwrap_or(' ');
-            if !is_combining(next) {
-                pieces.push(&trimmed[start..at]);
-                start = at;
-            }
-        }
-        pieces.push(&trimmed[start..]);
-        pieces
+        trimmed.graphemes(true).collect()
     };
     let widths = pieces
         .iter()
@@ -1536,14 +1526,6 @@ fn paint_spread_line<P: Painter>(
     };
     render_text_decorations(painter, cell, start, y, end - start, ascent);
     Ok(())
-}
-
-fn is_combining(character: char) -> bool {
-    matches!(
-        character as u32,
-        0x0300..=0x036F | 0x0E31 | 0x0E34..=0x0E3A | 0x0E47..=0x0E4E | 0x3099..=0x309A
-            | 0xFE00..=0xFE0F | 0x200D
-    )
 }
 
 fn paint_cell_text<P: Painter>(
