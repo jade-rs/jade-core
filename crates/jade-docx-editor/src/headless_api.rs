@@ -12119,6 +12119,73 @@ mod tests {
     }
 
     #[test]
+    fn a_shape_is_not_put_inside_a_text_box() {
+        // A shape put inside textbox.docx's text box was written into the
+        // box's DrawingML and its VML fallback, and each edit across the box
+        // copied it again, until the saved file nested text boxes deeper
+        // than a reload's stack. Word offers no shape inside a text box, and
+        // neither does the editor now; the document is left as it was.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let text_boxes = |word_doc: &WordDocument| {
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            xml.matches("<w:txbxContent").count()
+        };
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(1));
+        let before = text_boxes(&word_doc);
+        let shape = HeadlessCommand::InsertShape {
+            paragraph: 1,
+            offset: 1,
+            shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+            width_px: 40.0,
+            height_px: 20.0,
+            fill_color: None,
+            border_color: None,
+            border_width_px: 1.0,
+            text: String::new(),
+        };
+        let error = apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![shape],
+            },
+        )
+        .expect_err("a shape inside a text box is refused");
+        assert!(
+            format!("{error:?}").contains("inside a text box"),
+            "{error:?}"
+        );
+        assert!(word_doc.insert_text_box_at(1, 1).is_err());
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ApplyItalic {
+                    start_paragraph: 0,
+                    start_offset: 1,
+                    end_paragraph: 1,
+                    end_offset: 1,
+                    enabled: true,
+                }],
+            },
+        )
+        .expect("italic across the box");
+        assert_eq!(text_boxes(&word_doc), before);
+    }
+
+    #[test]
     fn an_inline_object_put_inside_a_toc_link_keeps_its_page_number_once() {
         // toc.docx's fourth entry is a link holding the heading text, a tab
         // and a PAGEREF field. A footnote (or an equation, a shape) put inside
