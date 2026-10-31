@@ -2599,6 +2599,11 @@ struct AuxiliaryStoryBaseCache {
     scans: usize,
 }
 
+/// An already counted value without an Rc/Weak that could force a document
+/// allocation during editing. Only surface-preserving edits may carry it over.
+#[derive(Clone, Copy)]
+pub(crate) struct AuxiliaryStoryBaseSnapshot(usize);
+
 impl AuxiliaryStoryBaseCache {
     fn get(&mut self, document: &Rc<Document>, count: impl FnOnce(&Document) -> usize) -> usize {
         let identity = Rc::downgrade(document);
@@ -3314,6 +3319,7 @@ where
     host: RenderHostSlot<HostPainter>,
     horizontal_float_wrap_cache: HorizontalFloatWrapCache,
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
+    auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
     /// Set while a keepNext group measurement lays out a group member after
@@ -3968,6 +3974,8 @@ where
     /// When true, skip drawing selection highlight on the main canvas
     /// (used when JS-side selection overlay is active to avoid double rendering).
     use_selection_overlay: bool,
+    /// Inline highlights changed since the last paint and can affect retained pages.
+    inline_selection_paint_dirty: bool,
     /// Cache for paragraph render results (DrawCommand + selection layout).
     paragraph_render_cache: RefCell<ParagraphRenderCache>,
     /// Seek snapshots captured at page-start paragraphs to allow O(1) fast-forward
@@ -5999,6 +6007,9 @@ where
     ) -> bool {
         if !self.last_layout_complete
             || self.document_has_notes
+            // Inline selection highlights belong to the page pixels. A
+            // selection change can invalidate pages beyond the edited one.
+            || self.inline_selection_paint_dirty
             // Comment annotations are rebuilt by the regular paragraph walk.
             || self.document_has_comments
             || self.pageless_mode
@@ -8341,6 +8352,7 @@ where
             host: RenderHostSlot::new(host),
             horizontal_float_wrap_cache: HorizontalFloatWrapCache::default(),
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
+            auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -8605,6 +8617,7 @@ where
             dirty_region_tracker: RefCell::new(DirtyRegionTracker::new()),
             selection_overlay: RefCell::new(SelectionOverlay::new()),
             use_selection_overlay: true, // Default to using JS-side overlay
+            inline_selection_paint_dirty: false,
             paragraph_render_cache: RefCell::new(ParagraphRenderCache::default()),
             decoration_registry: crate::plugins::DecorationRegistry::new(),
             decoration_cache: RefCell::new(crate::plugins::DecorationCache::new()),
@@ -9644,51 +9657,49 @@ where
                 .inline_object
                 .map(|object| (object.width.to_bits(), object.height.to_bits()))
                 .hash(&mut hasher);
+            style.properties.is_some().hash(&mut hasher);
             // Hash relevant run properties that affect text measurement
             if let Some(props) = &style.properties {
-                if let Some(size) = props.font_size {
-                    ((size * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(ref family) = props.font_family {
-                    family.hash(&mut hasher);
-                }
-                if let Some(bold) = props.bold {
-                    bold.hash(&mut hasher);
-                }
-                if let Some(italic) = props.italic {
-                    italic.hash(&mut hasher);
-                }
-                if let Some(bold_complex) = props.bold_complex {
-                    bold_complex.hash(&mut hasher);
-                }
-                if let Some(italic_complex) = props.italic_complex {
-                    italic_complex.hash(&mut hasher);
-                }
-                if let Some(spacing) = props.char_spacing {
-                    ((spacing * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(kerning) = props.kerning {
-                    ((kerning * 100.0) as i32).hash(&mut hasher);
-                }
-                if let Some(scale) = props.text_scale {
-                    ((scale * 100.0) as i32).hash(&mut hasher);
-                }
+                // Hash the Options themselves: skipping absent fields aliases
+                // e.g. bold-only and italic-only runs with identical boundaries.
+                // Keep exact float bits, too: the cached lines retain the original
+                // properties and their measured advances, not rounded values.
+                props.font_size.map(f32::to_bits).hash(&mut hasher);
+                props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
+                props.font_family.hash(&mut hasher);
+                props.bold.hash(&mut hasher);
+                props.italic.hash(&mut hasher);
+                props.bold_complex.hash(&mut hasher);
+                props.italic_complex.hash(&mut hasher);
+                props.char_spacing.map(f32::to_bits).hash(&mut hasher);
+                props.kerning.map(f32::to_bits).hash(&mut hasher);
+                props.text_scale.map(f32::to_bits).hash(&mut hasher);
                 props
                     .fit_text
                     .as_ref()
                     .map(|fit| (fit.val, fit.id))
                     .hash(&mut hasher);
-                if let Some(ref fonts) = props.fonts {
-                    if let Some(ascii) = &fonts.ascii {
-                        ascii.hash(&mut hasher);
-                    }
-                    if let Some(east_asia) = &fonts.east_asia {
-                        east_asia.hash(&mut hasher);
-                    }
-                    if let Some(complex) = &fonts.complex {
-                        complex.hash(&mut hasher);
-                    }
-                }
+                props
+                    .fonts
+                    .as_ref()
+                    .map(|fonts| {
+                        (
+                            &fonts.ascii,
+                            &fonts.h_ansi,
+                            &fonts.east_asia,
+                            &fonts.complex,
+                            &fonts.ascii_theme,
+                            &fonts.h_ansi_theme,
+                            &fonts.east_asia_theme,
+                            &fonts.complex_theme,
+                            fonts.hint.as_ref().map(|hint| match hint {
+                                FontHint::Default => 0_u8,
+                                FontHint::EastAsia => 1,
+                                FontHint::Complex => 2,
+                            }),
+                        )
+                    })
+                    .hash(&mut hasher);
                 // Draw-only properties carried verbatim into TextSegment.properties.
                 // These do not affect measurement, but stale values here cause
                 // full-paragraph style changes (color/highlight/underline/strike/
@@ -9720,22 +9731,27 @@ where
                     .map(|effects| format!("{effects:?}"))
                     .hash(&mut hasher);
                 props.emphasis.hash(&mut hasher);
-                if let Some(ruby) = props.ruby.as_ref() {
-                    ruby.text.hash(&mut hasher);
-                    ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
-                    ruby.align.hash(&mut hasher);
-                    ruby.raise_half_points.hash(&mut hasher);
-                    ruby.fonts
-                        .as_ref()
-                        .map(|fonts| (&fonts.ascii, &fonts.east_asia))
-                        .hash(&mut hasher);
-                    ruby.continuation.hash(&mut hasher);
-                }
-                if let Some(border) = props.border.as_ref() {
-                    border.val.hash(&mut hasher);
-                    border.size_eighths.hash(&mut hasher);
-                    border.color.hash(&mut hasher);
-                }
+                props
+                    .ruby
+                    .as_ref()
+                    .map(|ruby| {
+                        (
+                            &ruby.text,
+                            ruby.size_pt.map(f32::to_bits),
+                            &ruby.align,
+                            ruby.raise_half_points,
+                            ruby.fonts
+                                .as_ref()
+                                .map(|fonts| (&fonts.ascii, &fonts.east_asia)),
+                            ruby.continuation,
+                        )
+                    })
+                    .hash(&mut hasher);
+                props
+                    .border
+                    .as_ref()
+                    .map(|border| (&border.val, border.size_eighths, &border.color))
+                    .hash(&mut hasher);
                 props.baseline.as_deref().hash(&mut hasher);
                 props.text_position.map(|v| v.to_bits()).hash(&mut hasher);
             }
@@ -12537,6 +12553,32 @@ where
         self.last_document = Some(document);
     }
 
+    /// Capture only an existing count for this exact immutable document. This
+    /// does not scan or retain the document; drop_document_cache must still run
+    /// before an edit so Rc::make_mut can keep its allocation.
+    pub(crate) fn cached_auxiliary_story_base(
+        &self,
+        document: &Rc<Document>,
+    ) -> Option<AuxiliaryStoryBaseSnapshot> {
+        let cache = self.auxiliary_story_base_cache.borrow();
+        cache
+            .document
+            .ptr_eq(&Rc::downgrade(document))
+            .then_some(AuxiliaryStoryBaseSnapshot(cache.base))
+    }
+
+    /// The caller must prove that every edit since capture, including undo,
+    /// preserves body, note and nested text-box paragraph surface counts.
+    pub(crate) fn restore_auxiliary_story_base(
+        &self,
+        document: &Rc<Document>,
+        snapshot: AuxiliaryStoryBaseSnapshot,
+    ) {
+        let mut cache = self.auxiliary_story_base_cache.borrow_mut();
+        cache.document = Rc::downgrade(document);
+        cache.base = snapshot.0;
+    }
+
     /// Coalesces overlapping dirty regions on the same page.
     ///
     /// This reduces the number of rectangles the frontend needs to process when
@@ -13556,10 +13598,18 @@ where
                 )
             })
         };
+        // A text edit can change the total used height of a centered/bottom
+        // aligned page. Its previous offset is then stale even when the
+        // edited paragraph itself still fits on that page.
+        let remeasure_alignment = has_vertical_alignment && self.forced_dirty_from.is_some();
+        if remeasure_alignment {
+            self.clear_fast_replay();
+            self.preserve_completed_pagination_on_stable_edit = false;
+        }
         let measure_first = !self.render_skip_draw
             && !self.pageless_mode
             && has_vertical_alignment
-            && (self.needs_full_repaint() || self.force_full_repaint_once);
+            && (self.needs_full_repaint() || self.force_full_repaint_once || remeasure_alignment);
 
         if measure_first {
             let saved_skip_draw = self.render_skip_draw;
@@ -13750,6 +13800,11 @@ where
         }
 
         let _ = self.host.update_device_pixel_ratio()?;
+        // Page settings initialize current_y from the page's header and vAlign
+        // offset. Resolve those for page one, not where the previous (possibly
+        // bounded) pass stopped.
+        self.current_page_number = 1;
+        self.active_section_index = 0;
         self.apply_document_page_settings(document)?;
         self.apply_columns(document.default_section.as_ref(), document);
         self.column_index = 0;
@@ -13832,7 +13887,11 @@ where
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
-        self.object_debug_regions.borrow_mut().clear();
+        // Pixel-only walks skip other pages without changing their geometry.
+        // Move the authoritative regions aside rather than cloning every
+        // object in a long document for each bitmap request.
+        let preserved_object_regions = preserve_pixel_pagination
+            .then(|| std::mem::take(&mut *self.object_debug_regions.borrow_mut()));
         self.revision_debug_regions.borrow_mut().clear();
         self.numbering_debug_regions.borrow_mut().clear();
         self.line_overflow_debug_regions.borrow_mut().clear();
@@ -13956,8 +14015,6 @@ where
             self.paragraph_wrap_cache.borrow_mut().clear();
         }
         self.document_east_asian_rules = new_east_asian_rules;
-        self.current_page_number = 1;
-        self.active_section_index = 0;
         self.record_page_section(self.current_page_number);
         // Reset the margin line-number run at the start of each full render pass.
         self.line_number_counter = 0;
@@ -14050,6 +14107,16 @@ where
                     .and_then(|dirty_from| self.try_prepare_seek_start(dirty_from, options))
             })
         };
+        if !preserve_pixel_pagination {
+            let mut regions = self.object_debug_regions.borrow_mut();
+            if let Some(seek) = seek_snapshot.as_ref() {
+                // Keep only the prefix this walk actually skips. A prepared
+                // seek may have been rejected or moved before the dirty point.
+                regions.retain(|region| region.paragraph_index < seek.paragraph_index);
+            } else {
+                regions.clear();
+            }
+        }
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
@@ -14555,8 +14622,11 @@ where
             // on a page/document when no later cache miss forces a flush.
             // Deferred off-window entries belong to a canvas that was not
             // activated in this pass. Never flush them into the visible canvas.
+            // A stable edit also defers the first paragraph beyond its page
+            // cap. That page retained its pixels, so replaying would overpaint
+            // its antialiased text without clearing it first.
             if !self.render_skip_draw
-                && self.should_draw_current_page()
+                && self.should_draw_page_for_current_render(self.current_page_number)
                 && self.deferred_cached_draw_page == self.current_page_number
                 && !self.deferred_cached_draw_commands.is_empty()
             {
@@ -14586,7 +14656,8 @@ where
                 // slots. Remove only speculative tail slots allocated while
                 // repainting; never shrink below the authoritative count when
                 // the partial walk stopped early.
-                self.host.truncate_pages(authoritative_page_count)?;
+                self.host
+                    .finish_pagination(authoritative_page_count, authoritative_layout_complete)?;
                 self.last_layout_complete = authoritative_layout_complete;
                 if let Some(page_sections) = authoritative_page_sections.as_ref() {
                     self.page_section_indices.clone_from(page_sections);
@@ -14595,7 +14666,8 @@ where
                 self.last_completed_pagination_edit_preserved =
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
             } else {
-                self.host.truncate_pages(self.current_page_number)?;
+                self.host
+                    .finish_pagination(self.current_page_number, self.last_layout_complete)?;
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
                     self.page_section_indices.truncate(self.current_page_number);
@@ -14813,6 +14885,10 @@ where
             }
         }
 
+        if let Some(regions) = preserved_object_regions {
+            *self.object_debug_regions.borrow_mut() = regions;
+        }
+
         if preserve_pixel_pagination {
             let (tables, handles, row_handles) = previous_tables.take().unwrap();
             self.table_layouts = tables;
@@ -14823,6 +14899,7 @@ where
         // Clear per-render dirty state.
         self.render_dirty_pages = None;
         self.render_full_repaint = false;
+        self.inline_selection_paint_dirty = false;
         // Fast and shift replay cap the walk to stop this render early. The
         // cap is not the caller's limit: a non-lazy caller that leaves the
         // limit alone between edits would otherwise stop its next walk there
@@ -32992,11 +33069,43 @@ where
     }
 
     pub fn set_selection_range(&mut self, range: Option<SelectionRange>) -> bool {
-        self.selection.set_selection(range)
+        let previous = self.selection.selection_range();
+        let changed = self.selection.set_selection(range);
+        self.invalidate_inline_selection_paint(previous, changed);
+        changed
+    }
+
+    /// Sets a selection validated against the next document snapshot, without
+    /// clamping it against paragraph layouts left over from the previous render.
+    pub fn set_selection_range_for_render(&mut self, range: Option<SelectionRange>) -> bool {
+        let previous = self.selection.selection_range();
+        let changed = self.selection.set_selection_for_render(range);
+        self.invalidate_inline_selection_paint(previous, changed);
+        changed
     }
 
     pub fn clear_selection(&mut self) -> bool {
-        self.selection.clear_selection()
+        self.set_selection_range(None)
+    }
+
+    fn invalidate_inline_selection_paint(
+        &mut self,
+        previous: Option<SelectionRange>,
+        changed: bool,
+    ) {
+        if !self.use_selection_overlay
+            && changed
+            && [previous, self.selection.selection_range()]
+                .into_iter()
+                .flatten()
+                .any(|range| !range.is_collapsed())
+        {
+            // The old highlight may be on a retained page outside the edit's
+            // dirty range, including when selection is cleared before typing.
+            self.inline_selection_paint_dirty = true;
+            self.mark_full_repaint();
+            self.clear_fast_replay();
+        }
     }
 
     pub fn selection_text(&self) -> Option<String> {
@@ -34341,6 +34450,11 @@ where
         self.last_render_body_element_count
     }
 
+    /// Cumulative recursive scans, including scans before document-cache drops.
+    pub fn auxiliary_story_surface_scans(&self) -> u64 {
+        self.auxiliary_story_surface_scans.get()
+    }
+
     /// Non-visible prefix paragraphs skipped via the cached-layout fast path in
     /// the most recent render (diagnostic).
     pub fn last_render_prefix_skips(&self) -> u64 {
@@ -35445,6 +35559,8 @@ where
         self.auxiliary_story_base_cache
             .borrow_mut()
             .get(document, |document| {
+                self.auxiliary_story_surface_scans
+                    .set(self.auxiliary_story_surface_scans.get().saturating_add(1));
                 let body = Self::body_paragraph_surface_count(document);
                 let footnotes = document
                     .footnotes
@@ -38244,6 +38360,18 @@ mod tests {
         fn create_page_bitmap(&self, _page_index: usize) -> Result<js_sys::Promise, JsValue> {
             unreachable!("recording host: bitmap snapshots are browser-side")
         }
+        fn draw_image_data_uri(
+            &self,
+            _data_uri: &str,
+            x: f64,
+            y: f64,
+            width: f64,
+            height: f64,
+            _crop: Option<ImageCropMapping>,
+        ) -> bool {
+            self.pages[self.cursor].fill_rect(x, y, width, height);
+            true
+        }
         fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
             Ok(text.chars().count() as f64 * 10.0)
         }
@@ -38924,6 +39052,161 @@ mod tests {
         renderer.drop_document_cache();
         renderer.paragraph_counter = 9;
         assert_eq!(renderer.auxiliary_story_paragraph_base(), 25);
+    }
+
+    #[test]
+    fn auxiliary_story_snapshot_requires_an_existing_exact_document_count() {
+        let (mut renderer, _) = recording_renderer();
+        let document = Rc::new(doc_with_paragraph_texts(&["body"]));
+        assert!(renderer.cached_auxiliary_story_base(&document).is_none());
+        assert_eq!(renderer.auxiliary_story_surface_scans(), 0);
+        renderer.restore_document_cache(Rc::clone(&document));
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 17);
+        assert!(renderer.cached_auxiliary_story_base(&document).is_some());
+        let replacement = Rc::new(doc_with_paragraph_texts(&["body", "second"]));
+        assert!(renderer.cached_auxiliary_story_base(&replacement).is_none());
+        renderer.drop_document_cache();
+        assert_eq!(Rc::weak_count(&document), 0);
+        assert!(renderer.cached_auxiliary_story_base(&document).is_none());
+        renderer.restore_document_cache(replacement);
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 18);
+        assert_eq!(renderer.auxiliary_story_surface_scans(), 2);
+    }
+
+    #[test]
+    fn auxiliary_story_reuse_rejects_replacements_breaks_missing_and_text_box_paragraphs() {
+        use crate::canvas_view::composition_preserves_auxiliary_story_surfaces;
+        use crate::word_document::WordDocument;
+        let document = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
+        let caret = SelectionRange::collapsed(TextPosition::new(0, 1));
+        assert!(composition_preserves_auxiliary_story_surfaces(
+            &document,
+            caret,
+            "日本語 😀"
+        ));
+        for text in ["line\nbreak", "line\rbreak"] {
+            assert!(!composition_preserves_auxiliary_story_surfaces(
+                &document, caret, text
+            ));
+        }
+        let replacement = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 1));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document,
+            replacement,
+            "a"
+        ));
+        let missing = SelectionRange::collapsed(TextPosition::new(999, 0));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document, missing, "a"
+        ));
+        let mut boxed = doc_with_paragraph_texts(&["body"]);
+        boxed.body.as_mut().unwrap().elements[0] = auxiliary_count_test_block(1);
+        let boxed = WordDocument::from_document(boxed);
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &boxed, caret, "a"
+        ));
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn composition_commands_preserve_auxiliary_story_surfaces(
+            shapes in proptest::collection::vec(0u8..3, 0..8),
+            footnote_shape in 0u8..3,
+            endnote_shape in 0u8..3,
+            operations in proptest::collection::vec((0u8..4, 0usize..6), 1..49),
+        ) {
+            use crate::commands::{apply_underline::ApplyUnderlineCommand, insert_text::InsertTextCommand,
+                insert_paragraph_break::InsertParagraphBreakCommand, Command, CommandContext};
+            use crate::word_document::WordDocument;
+            let mut document = doc_with_paragraph_texts(&["base"]);
+            document.body.as_mut().unwrap().elements.extend(
+                shapes.iter().map(|shape| auxiliary_count_test_block(*shape)));
+            document.footnotes.insert("1".into(), crate::document::Note {
+                id: "1".into(), note_type: None, body: vec![auxiliary_count_test_block(footnote_shape)],
+            });
+            document.endnotes.insert("2".into(), crate::document::Note {
+                id: "2".into(), note_type: None, body: vec![auxiliary_count_test_block(endnote_shape)],
+            });
+            // Independent model: each generated shape has a known count. The
+            // model stores strings and counts, never production snapshots.
+            let surfaces = [1usize, 3, 4];
+            let expected_base = 17 + shapes.iter().map(|shape| surfaces[*shape as usize]).sum::<usize>()
+                + surfaces[footnote_shape as usize] + surfaces[endnote_shape as usize];
+            let mut word_doc = WordDocument::from_document(document);
+            let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 1)));
+            let mut pending: Vec<Box<dyn Command>> = Vec::new();
+            let texts = ["", "a", "にほん", "日本語 😀", "か", "line\nbreak"];
+            let mut committed = "base".to_string();
+            let mut shown = committed.clone();
+            let (mut renderer, _) = recording_renderer();
+            renderer.restore_document_cache(Rc::clone(word_doc.document.as_ref().unwrap()));
+            proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base);
+            let mut pending_preserves_surfaces = true;
+            for (step, (operation, text_index)) in operations.into_iter().enumerate() {
+                let scans_before = renderer.auxiliary_story_surface_scans();
+                let mut snapshot = if pending_preserves_surfaces && operation != 3 {
+                    renderer.cached_auxiliary_story_base(word_doc.document.as_ref().unwrap())
+                } else { None };
+                let mut extra_scans = 0;
+                if operation == 2 {
+                    // Commit a preview; its insertion becomes the next base.
+                    pending.clear();
+                    committed = shown.clone();
+                    pending_preserves_surfaces = true;
+                } else {
+                    renderer.drop_document_cache();
+                    proptest::prop_assert_eq!(Rc::weak_count(word_doc.document.as_ref().unwrap()), 0);
+                    let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+                    for command in pending.iter_mut().rev() { command.undo(&mut ctx).unwrap(); }
+                    pending.clear();
+                    pending_preserves_surfaces = true;
+                    selection = Some(SelectionRange::collapsed(TextPosition::new(0, 1)));
+                    shown = committed.clone();
+                    if operation == 3 {
+                        // A real Enter and its undo must each count the changed
+                        // structure, even when Rc::make_mut retains its address.
+                        let mut enter = InsertParagraphBreakCommand::new(selection.unwrap());
+                        enter.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        renderer.restore_document_cache(Rc::clone(word_doc.document.as_ref().unwrap()));
+                        proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base + 1,
+                            "step {} Enter", step);
+                        renderer.drop_document_cache();
+                        enter.undo(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        extra_scans = 1;
+                    }
+                    if operation == 0 && !texts[text_index].is_empty() {
+                        let text = texts[text_index];
+                        let mut insert = InsertTextCommand::new(selection.unwrap(), text.into(), None);
+                        pending_preserves_surfaces = crate::canvas_view::composition_preserves_auxiliary_story_surfaces(
+                            &word_doc, selection.unwrap(), text);
+                        proptest::prop_assert_eq!(pending_preserves_surfaces,
+                            !text.contains('\n'), "step {}", step);
+                        if !pending_preserves_surfaces { snapshot = None; }
+                        insert.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        let mut underline = ApplyUnderlineCommand::new(SelectionRange::new(
+                            TextPosition::new(0, 1), TextPosition::new(0, 1 + text.len())));
+                        underline.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        pending.push(Box::new(insert));
+                        pending.push(Box::new(underline));
+                        shown.insert_str(1, text);
+                    }
+                }
+                let actual_text = word_doc.paragraph(0).unwrap().runs.iter()
+                    .map(|run| run.text.as_str()).collect::<String>();
+                proptest::prop_assert_eq!(actual_text, shown.clone(), "step {} operation {}", step, operation);
+                let document = word_doc.document.as_ref().unwrap();
+                if let Some(snapshot) = snapshot {
+                    renderer.restore_auxiliary_story_base(document, snapshot);
+                }
+                renderer.restore_document_cache(Rc::clone(document));
+                proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base,
+                    "step {} operation {}", step, operation);
+                let expected_scans = if operation == 2 || snapshot.is_some() { 0 } else { 1 } + extra_scans;
+                proptest::prop_assert_eq!(renderer.auxiliary_story_surface_scans() - scans_before, expected_scans,
+                    "step {} operation {}", step, operation);
+            }
+        }
     }
 
     // Each shape has an independently known number of editable surfaces:
@@ -48166,6 +48449,112 @@ mod tests {
     }
 
     #[test]
+    fn wrap_cache_preserves_each_optional_bold_and_italic_combination() {
+        let mut variants = vec![None];
+        for bold in [None, Some(false), Some(true)] {
+            for italic in [None, Some(false), Some(true)] {
+                for bold_complex in [None, Some(false), Some(true)] {
+                    for italic_complex in [None, Some(false), Some(true)] {
+                        variants.push(Some(RunProperties {
+                            bold,
+                            italic,
+                            bold_complex,
+                            italic_complex,
+                            ..RunProperties::default()
+                        }));
+                    }
+                }
+            }
+        }
+        assert_wrap_cache_preserves_properties(variants);
+    }
+
+    #[test]
+    fn wrap_cache_preserves_font_slots_and_exact_measurement_properties() {
+        let mut variants = vec![Some(RunProperties::default())];
+        for value in [12.0, 12.001] {
+            for field in 0..6 {
+                let mut properties = RunProperties::default();
+                *match field {
+                    0 => &mut properties.font_size,
+                    1 => &mut properties.font_size_complex,
+                    2 => &mut properties.char_spacing,
+                    3 => &mut properties.kerning,
+                    4 => &mut properties.text_scale,
+                    _ => &mut properties.text_position,
+                } = Some(value);
+                variants.push(Some(properties));
+            }
+        }
+        for field in 0..8 {
+            let mut fonts = RunFonts::default();
+            *match field {
+                0 => &mut fonts.ascii,
+                1 => &mut fonts.h_ansi,
+                2 => &mut fonts.east_asia,
+                3 => &mut fonts.complex,
+                4 => &mut fonts.ascii_theme,
+                5 => &mut fonts.h_ansi_theme,
+                6 => &mut fonts.east_asia_theme,
+                _ => &mut fonts.complex_theme,
+            } = Some(Rc::from("Arial"));
+            variants.push(Some(RunProperties {
+                fonts: Some(fonts),
+                ..RunProperties::default()
+            }));
+        }
+        for hint in [
+            None,
+            Some(FontHint::Default),
+            Some(FontHint::EastAsia),
+            Some(FontHint::Complex),
+        ] {
+            variants.push(Some(RunProperties {
+                fonts: Some(RunFonts {
+                    hint,
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            }));
+        }
+        assert_wrap_cache_preserves_properties(variants);
+    }
+
+    fn assert_wrap_cache_preserves_properties(variants: Vec<Option<RunProperties>>) {
+        let renderer = recording_table_renderer(jade_painter::recording::RecordingPainter::new());
+        let text = "Latin 日本語 العربية";
+        let paragraph = ParagraphStyle::default();
+        for properties in variants {
+            let runs = [RunStyle {
+                start: 0,
+                end: text.len(),
+                properties: properties.clone().map(Rc::new),
+                revision: None,
+                hyperlink: None,
+                inline_object: None,
+            }];
+            let wrap = || {
+                renderer
+                    .wrap_text_into_lines_cached(text, &runs, 0.0, &paragraph, 0, 400.0)
+                    .unwrap()
+            };
+            let lines = wrap();
+            assert!(!lines.is_empty());
+            for segment in lines.iter().flat_map(|line| &line.segments) {
+                assert_eq!(
+                    segment.properties.as_deref(),
+                    properties.as_ref(),
+                    "cached run must retain its own properties"
+                );
+            }
+            assert!(
+                Rc::ptr_eq(&lines, &wrap()),
+                "identical inputs must still reuse wrapping"
+            );
+        }
+    }
+
+    #[test]
     fn wrap_content_hash_differs_on_draw_only_property_changes() {
         // Regression test: a pure color/highlight/underline/strike/super-sub change
         // on a fully-selected middle paragraph leaves run boundaries unchanged, so
@@ -53247,6 +53636,158 @@ mod tests {
                 .as_ref()
                 .map(|s| s.page_number),
             Some(30)
+        );
+    }
+
+    fn object_region_test_document() -> Document {
+        let mut document = doc_with_paragraph_texts(&["image"; 10]);
+        for (index, element) in document
+            .body
+            .as_mut()
+            .unwrap()
+            .elements
+            .iter_mut()
+            .enumerate()
+        {
+            let BodyElement::Paragraph(paragraph) = element else {
+                unreachable!()
+            };
+            paragraph.properties = Some(ParagraphProperties {
+                page_break_before: Some(index > 0),
+                ..Default::default()
+            });
+            paragraph.runs[0].text.clear();
+            paragraph.runs[0].image = Some(RunImage {
+                data_uri: Some("data:image/png;base64,eA==".into()),
+                width_px: Some(40.0),
+                height_px: Some(20.0),
+                ..Default::default()
+            });
+        }
+        document
+    }
+
+    #[test]
+    fn page_bitmap_rerenders_preserve_object_selection_and_hit_testing() {
+        let document = object_region_test_document();
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.render(&document, &options).unwrap();
+        let before = renderer.object_debug_regions.borrow().clone();
+        assert_eq!(before.len(), 10);
+        for page_index in [8, 0, 5, 8] {
+            renderer.set_layout_page_limit(Some(page_index + 1));
+            renderer.set_visible_page_range(Some(page_index + 1..=page_index + 1));
+            renderer.prepare_rerender_for_page(page_index);
+            renderer.freeze_selection_for_pixel_rerender();
+            renderer.render(&document, &options).unwrap();
+            assert_eq!(
+                serde_json::to_value(&*renderer.object_debug_regions.borrow()).unwrap(),
+                serde_json::to_value(&before).unwrap(),
+                "bitmap page {page_index}"
+            );
+            for object in &before {
+                let target = FloatingObjectTarget {
+                    kind: object.kind,
+                    paragraph_index: object.paragraph_index,
+                    run_index: object.run_index,
+                };
+                assert!(renderer.object_region(target).is_some());
+                let global_y = renderer.page_top_y(object.page - 1) + object.y;
+                assert!(renderer
+                    .hit_test_object(object.x + 1.0, global_y + 1.0)
+                    .is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn layout_extension_keeps_prefix_object_regions_and_full_relayout_removes_deleted_images() {
+        let document = Rc::new(object_region_test_document());
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.set_layout_page_limit(Some(2));
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        let first = renderer
+            .object_region(FloatingObjectTarget {
+                kind: FloatingObjectKind::Image,
+                paragraph_index: 0,
+                run_index: 0,
+            })
+            .expect("first page image");
+        for (previous, next) in [(2, 5), (5, 10)] {
+            renderer.clear_dirty_regions();
+            renderer.set_layout_page_limit(Some(next));
+            assert!(renderer.prepare_layout_extension_seek(Some(previous), next, &options));
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::clone(&document),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            assert_eq!(
+                serde_json::to_value(renderer.object_region(FloatingObjectTarget {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 0,
+                    run_index: 0,
+                }))
+                .unwrap(),
+                serde_json::to_value(&first).unwrap()
+            );
+        }
+        assert_eq!(renderer.object_debug_regions.borrow().len(), 10);
+        let mut changed = (*document).clone();
+        let BodyElement::Paragraph(paragraph) = &mut changed.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.runs[0].image = None;
+        renderer.set_layout_page_limit(None);
+        renderer.render(&changed, &options).unwrap();
+        assert!(
+            renderer
+                .object_region(FloatingObjectTarget {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 0,
+                    run_index: 0,
+                })
+                .is_none(),
+            "deleted objects must never survive a content relayout"
+        );
+        assert_eq!(renderer.object_debug_regions.borrow().len(), 9);
+    }
+
+    #[test]
+    fn object_regions_are_not_duplicated_when_a_prepared_seek_falls_back() {
+        let document = Rc::new(object_region_test_document());
+        let options = options_for_seek_tests();
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        let before = renderer.object_debug_regions.borrow().clone();
+        renderer.clear_dirty_regions();
+        renderer.set_layout_page_limit(Some(5));
+        assert!(renderer.prepare_layout_extension_seek(Some(2), 5, &options));
+        // The conservative render policy can reject a previously seeded seek.
+        renderer.disable_seek_replay_once = true;
+        renderer.set_layout_page_limit(None);
+        renderer
+            .render_layout_with_numbering_rc(document, &options, None, None, None, None)
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(&*renderer.object_debug_regions.borrow()).unwrap(),
+            serde_json::to_value(&before).unwrap(),
+            "a from-start walk must rebuild, rather than append to, its prefix"
         );
     }
 

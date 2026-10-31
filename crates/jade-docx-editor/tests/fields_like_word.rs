@@ -494,7 +494,6 @@ mod stateful {
         headings: usize,
         high_ids: bool,
     ) -> Vec<u8> {
-        use std::io::Write as _;
         let mut body = String::from("<w:p>");
         for (id, suffix) in suffixes.iter().enumerate() {
             let id = if high_ids { i32::MAX as usize - id } else { id };
@@ -506,6 +505,11 @@ mod stateful {
         for index in 0..headings {
             body.push_str(&format!("<w:p><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr><w:r><w:t>Heading {index}</w:t></w:r></w:p>"));
         }
+        body_source(&body)
+    }
+
+    fn body_source(body: &str) -> Vec<u8> {
+        use std::io::Write as _;
         let xml = format!("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>{body}</w:body></w:document>");
         let mut source =
             zip::ZipArchive::new(std::io::Cursor::new(blank_document(Blank::Japanese))).unwrap();
@@ -920,6 +924,23 @@ mod stateful {
         }
 
         #[test]
+        fn multiple_assignments_follow_scope_order_and_history(
+            values in prop::array::uniform2(0u16..100),
+            simple in prop::array::uniform2(any::<bool>()),
+            ask in prop::array::uniform2(any::<bool>()),
+            ops in prop::collection::vec(prop_oneof![
+                3 => (0u8..2, 0u16..100).prop_map(|(index, value)| AssignmentOp::Edit(index, value)),
+                4 => (0u8..5).prop_map(AssignmentOp::Update),
+                2 => (0u8..4, any::<bool>()).prop_map(|(index, locked)| AssignmentOp::Lock(index, locked)),
+                1 => Just(AssignmentOp::Undo),
+                1 => Just(AssignmentOp::Redo),
+                2 => Just(AssignmentOp::Reload),
+            ], 1..33),
+        ) {
+            assignment_sequence(values, simple, ask, &ops);
+        }
+
+        #[test]
         fn set_assignments_replace_named_ranges_after_each_operation(
             high_ids in any::<bool>(),
             ops in prop::collection::vec((0u8..3, 0u16..1000), 1..17),
@@ -1040,6 +1061,344 @@ mod stateful {
         }
     }
 
+    #[derive(Clone, Debug)]
+    enum AssignmentOp {
+        Edit(u8, u16),
+        Update(u8),
+        Lock(u8, bool),
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct AssignmentModel {
+        values: [u16; 2],
+        ask: [bool; 2],
+        results: [String; 4],
+        locked: [bool; 4],
+        bookmark: String,
+    }
+
+    fn assignment_code(value: u16, ask: bool) -> String {
+        if ask {
+            format!("ASK Answer Prompt \\d {value}")
+        } else {
+            format!("SET Answer {value}")
+        }
+    }
+
+    fn assignment_source(values: [u16; 2], simple: [bool; 2], ask: [bool; 2]) -> Vec<u8> {
+        let mut body = String::new();
+        for index in 0..4 {
+            let code = if index % 2 == 0 {
+                assignment_code(values[index / 2], ask[index / 2])
+            } else {
+                "REF Answer".into()
+            };
+            let result = if index == 0 {
+                "<w:bookmarkStart w:id=\"0\" w:name=\"Answer\"/><w:r><w:t>0</w:t></w:r><w:bookmarkEnd w:id=\"0\"/>"
+            } else {
+                "<w:r><w:t>0</w:t></w:r>"
+            };
+            body.push_str("<w:p>");
+            if simple[index / 2] {
+                body.push_str(&format!(
+                    "<w:fldSimple w:instr=\"{code}\">{result}</w:fldSimple>"
+                ));
+            } else {
+                body.push_str(&format!("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText>{code}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>{result}<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>"));
+            }
+            body.push_str("</w:p>");
+        }
+        body_source(&body)
+    }
+
+    // Observe the persisted bookmark range independently of field evaluation.
+    fn assignment_bookmarks(bytes: &[u8]) -> Vec<String> {
+        use quick_xml::events::Event;
+        use std::io::Read as _;
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut xml = String::new();
+        zip.by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        let mut reader = quick_xml::Reader::from_str(&xml);
+        let mut active = None;
+        let mut text = false;
+        let mut ranges = Vec::new();
+        loop {
+            match reader.read_event().unwrap() {
+                Event::Empty(element) if element.name().as_ref() == b"w:bookmarkStart" => {
+                    let attrs: HashMap<_, _> = element
+                        .attributes()
+                        .map(|attribute| {
+                            let attribute = attribute.unwrap();
+                            (
+                                attribute.key.as_ref().to_vec(),
+                                attribute
+                                    .decoded_and_normalized_value(
+                                        quick_xml::XmlVersion::Implicit1_0,
+                                        reader.decoder(),
+                                    )
+                                    .unwrap()
+                                    .into_owned(),
+                            )
+                        })
+                        .collect();
+                    if attrs
+                        .get(b"w:name".as_slice())
+                        .is_some_and(|name| name.eq_ignore_ascii_case("Answer"))
+                    {
+                        ranges.push(String::new());
+                        active = Some((attrs[b"w:id".as_slice()].clone(), ranges.len() - 1));
+                    }
+                }
+                Event::Empty(element) if element.name().as_ref() == b"w:bookmarkEnd" => {
+                    if let Some((id, _)) = &active {
+                        if element.attributes().any(|attribute| {
+                            let attribute = attribute.unwrap();
+                            attribute.key.as_ref() == b"w:id"
+                                && attribute.value.as_ref() == id.as_bytes()
+                        }) {
+                            active = None;
+                        }
+                    }
+                }
+                Event::Start(element) if element.name().as_ref() == b"w:t" => text = true,
+                Event::End(element) if element.name().as_ref() == b"w:t" => text = false,
+                Event::Text(value) if text => {
+                    if let Some((_, index)) = &active {
+                        ranges[*index].push_str(&value.xml10_content().unwrap());
+                    }
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+        }
+        assert!(active.is_none(), "unclosed Answer bookmark: {xml}");
+        ranges
+    }
+
+    fn select_assignment(session: &mut Session, index: u8) {
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(
+            usize::from(index),
+            0,
+        )));
+    }
+
+    fn assert_assignments(session: &mut Session, model: &AssignmentModel, context: &str) {
+        for index in 0..4 {
+            select_assignment(session, index as u8);
+            let fields = session.selected_fields();
+            assert_eq!(fields.len(), 1, "{context}: paragraph {index}: {fields:?}");
+            let code = if index % 2 == 0 {
+                assignment_code(model.values[index / 2], model.ask[index / 2])
+            } else {
+                "REF Answer".into()
+            };
+            assert_eq!(fields[0].code, code, "{context}: paragraph {index}");
+            assert_eq!(
+                fields[0].result, model.results[index],
+                "{context}: paragraph {index}"
+            );
+            assert_eq!(
+                fields[0].locked, model.locked[index],
+                "{context}: paragraph {index}"
+            );
+        }
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, context);
+        assert_eq!(
+            assignment_bookmarks(&bytes),
+            vec![model.bookmark.clone()],
+            "{context}"
+        );
+        let mut reloaded = Session {
+            document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+            selection: None,
+            executor: CommandExecutor::new(),
+        };
+        for index in 0..4 {
+            select_assignment(&mut reloaded, index as u8);
+            let fields = reloaded.selected_fields();
+            assert_eq!(fields.len(), 1, "reloaded {context}: paragraph {index}");
+            let code = if index % 2 == 0 {
+                assignment_code(model.values[index / 2], model.ask[index / 2])
+            } else {
+                "REF Answer".into()
+            };
+            assert_eq!(
+                fields[0].code, code,
+                "reloaded {context}: paragraph {index}"
+            );
+            assert_eq!(
+                fields[0].result, model.results[index],
+                "reloaded {context}: paragraph {index}"
+            );
+            assert_eq!(
+                fields[0].locked, model.locked[index],
+                "reloaded {context}: paragraph {index}"
+            );
+        }
+    }
+
+    fn assignment_sequence(
+        values: [u16; 2],
+        simple: [bool; 2],
+        ask: [bool; 2],
+        ops: &[AssignmentOp],
+    ) {
+        use jade_docx_editor::fields::FieldScope;
+        let source = assignment_source(values, simple, ask);
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: None,
+            executor: CommandExecutor::new(),
+        };
+        let mut model = AssignmentModel {
+            values,
+            ask,
+            results: std::array::from_fn(|_| "0".into()),
+            locked: [false; 4],
+            bookmark: "0".into(),
+        };
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        assert_assignments(&mut session, &model, "initial assignments");
+        for (step, op) in ops.iter().enumerate() {
+            let before = model.clone();
+            let mut record = true;
+            match *op {
+                AssignmentOp::Edit(index, value) => {
+                    model.values[usize::from(index)] = value;
+                    let field = usize::from(index) * 2;
+                    if !model.locked[field] {
+                        model.bookmark = value.to_string();
+                        model.results[field] = model.bookmark.clone();
+                    }
+                    select_assignment(&mut session, index * 2);
+                    session
+                        .edit_field_code(&assignment_code(value, ask[usize::from(index)]), &host())
+                        .unwrap();
+                }
+                AssignmentOp::Update(index) => {
+                    for field in 0..4 {
+                        if (index == 4 || usize::from(index) == field) && !model.locked[field] {
+                            if field % 2 == 0 {
+                                model.bookmark = model.values[field / 2].to_string();
+                            }
+                            model.results[field] = model.bookmark.clone();
+                        }
+                    }
+                    let scope = if index == 4 {
+                        FieldScope::Document
+                    } else {
+                        select_assignment(&mut session, index);
+                        FieldScope::Selection(session.selection.unwrap())
+                    };
+                    session
+                        .update_fields(scope, &host(), HashMap::new())
+                        .unwrap();
+                }
+                AssignmentOp::Lock(index, locked) => {
+                    model.locked[usize::from(index)] = locked;
+                    select_assignment(&mut session, index);
+                    session.lock_fields(locked).unwrap();
+                }
+                AssignmentOp::Undo | AssignmentOp::Redo => {
+                    record = false;
+                    let (from, to) = if matches!(op, AssignmentOp::Undo) {
+                        (&mut undo, &mut redo)
+                    } else {
+                        (&mut redo, &mut undo)
+                    };
+                    let expected = if let Some(previous) = from.pop() {
+                        to.push(std::mem::replace(&mut model, previous));
+                        true
+                    } else {
+                        false
+                    };
+                    let mut ctx =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let changed = if matches!(op, AssignmentOp::Undo) {
+                        session.executor.undo(&mut ctx)
+                    } else {
+                        session.executor.redo(&mut ctx)
+                    }
+                    .unwrap();
+                    assert_eq!(changed, expected, "step {step}: {op:?}, ops={ops:?}");
+                }
+                AssignmentOp::Reload => {
+                    record = false;
+                    session.document = block_on(WordDocument::load(
+                        &session.document.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                }
+            }
+            if record {
+                undo.push(before);
+                redo.clear();
+            }
+            assert_eq!(
+                session.executor.undo_depth(),
+                undo.len(),
+                "step {step}: {op:?}, ops={ops:?}"
+            );
+            assert_assignments(
+                &mut session,
+                &model,
+                &format!("step {step}: {op:?}, values={values:?}, simple={simple:?}, ops={ops:?}"),
+            );
+        }
+    }
+
+    #[test]
+    fn selection_updates_do_not_assign_unselected_set_fields() {
+        assignment_sequence(
+            [10, 20],
+            [false, false],
+            [false, false],
+            &[AssignmentOp::Update(1)],
+        );
+    }
+
+    #[test]
+    fn last_set_assignment_is_the_saved_bookmark() {
+        assignment_sequence(
+            [10, 20],
+            [false, false],
+            [false, false],
+            &[AssignmentOp::Update(4)],
+        );
+    }
+
+    #[test]
+    fn selection_updates_do_not_assign_unselected_ask_defaults() {
+        assignment_sequence(
+            [10, 20],
+            [true, true],
+            [true, true],
+            &[AssignmentOp::Update(1)],
+        );
+    }
+
+    #[test]
+    fn last_mixed_assignment_is_the_saved_bookmark() {
+        assignment_sequence(
+            [10, 20],
+            [false, true],
+            [false, true],
+            &[AssignmentOp::Update(4)],
+        );
+    }
+
     #[test]
     fn toc_bookmark_suffix_wrap_preserves_existing_names() {
         for high_ids in [false, true] {
@@ -1049,6 +1408,38 @@ mod stateful {
                 high_ids,
                 &[0, 1, 2, 0],
             );
+        }
+    }
+
+    #[test]
+    fn enclosing_assignment_wins_after_its_operand_is_evaluated() {
+        use jade_docx_editor::fields::FieldScope;
+        let source = body_source(concat!(
+            "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>",
+            "<w:r><w:instrText xml:space=\"preserve\">SET Answer 20 </w:instrText></w:r>",
+            "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>",
+            "<w:r><w:instrText>SET Answer 10</w:instrText></w:r>",
+            "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>0</w:t></w:r>",
+            "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>",
+            "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>0</w:t></w:r>",
+            "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>",
+            "<w:p><w:fldSimple w:instr=\"REF Answer\"><w:r><w:t>0</w:t></w:r></w:fldSimple></w:p>",
+        ));
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: None,
+            executor: CommandExecutor::new(),
+        };
+        for _ in 0..2 {
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            select_assignment(&mut session, 1);
+            assert_eq!(session.selected_fields()[0].result, "20");
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, "nested SET execution order");
+            assert_eq!(assignment_bookmarks(&bytes), ["20"]);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
         }
     }
 

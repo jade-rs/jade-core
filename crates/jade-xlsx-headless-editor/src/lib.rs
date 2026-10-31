@@ -1651,6 +1651,35 @@ impl HeadlessWorkbook {
         self.replace_parts(vec![(part_name, patched)])
     }
 
+    /// Page Layout ▸ Breaks: the sheet's manual page breaks on `axis`
+    /// replaced by `breaks`, each the zero-based row (or column) it sits
+    /// above (or left of); the breaks pagination placed stay. One undo step;
+    /// `false` when they are already so.
+    pub fn set_manual_breaks(
+        &mut self,
+        sheet: &str,
+        axis: Axis,
+        breaks: &std::collections::BTreeSet<u32>,
+    ) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(
+            index,
+            "page setup of a protected sheet cannot change",
+            |_| false,
+        )?;
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let package = jade_opc::OpcPackage::open(&self.source)?;
+        let xml = package
+            .part_str(&part_name)?
+            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
+        let patched = jade_xlsx_writer::page_breaks::set_manual_breaks(&xml, axis, breaks)?;
+        if patched == xml {
+            return Ok(false);
+        }
+        self.replace_parts(vec![(part_name, patched)])?;
+        Ok(true)
+    }
+
     /// Data ▸ Group, Ungroup, Hide Detail and Show Detail on the rows or
     /// columns `first..=last` of `sheet`, written as Excel writes an outline.
     /// One undo step; `false` when it changes nothing. A protected sheet's
@@ -1918,6 +1947,44 @@ impl HeadlessWorkbook {
             target: format_range(target_range),
             cells,
         })
+    }
+
+    /// Excel's Clear ▸ Clear Formats on the cells of `range`: each cell there
+    /// that wears a style goes back to the default one, its value, formula
+    /// and cache kept. Row and column defaults stay as they are. Returns how
+    /// many cells changed; none, and nothing is written. One undo step.
+    pub fn clear_formats(&mut self, sheet: &str, range: &str) -> Result<usize> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(index, "formatting cells is not allowed", |p| p.format_cells)?;
+        let range = parse_range(range)?;
+        let model = &self.workbook.sheets[index];
+        let mut edits = Vec::new();
+        for row in &model.rows {
+            if row.index < range.start.row || row.index > range.end.row {
+                continue;
+            }
+            for cell in &row.cells {
+                let column = cell.reference.column;
+                if column < range.start.column || column > range.end.column {
+                    continue;
+                }
+                if effective_style(model, cell.reference) != 0 {
+                    edits.push((
+                        index,
+                        CellEdit {
+                            reference: cell.reference,
+                            value: NewValue::Unchanged,
+                            style_index: Some(0),
+                        },
+                    ));
+                }
+            }
+        }
+        let count = edits.len();
+        if count > 0 {
+            self.write_edits(edits)?;
+        }
+        Ok(count)
     }
 
     /// Base formatting at the merged-cell anchor, independent of conditional styles

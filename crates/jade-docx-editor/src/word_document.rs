@@ -7123,8 +7123,9 @@ impl WordDocument {
     /// 12, 10 and 7.5pt) and `p` a paragraph, both with auto spacing before
     /// and after, and `b`/`strong`, `i`/`em` and `u` format their runs. No
     /// URLs, styles, or event attributes survive this boundary. Word sets the
-    /// imported text in its user interface's web font; the document's own
-    /// faces are kept here.
+    /// imported text in its user interface's web font, ＭＳ Ｐゴシック for the
+    /// Japanese Word whose default page jade lays sectionless documents on,
+    /// and text outside the headings at HTML's 12pt.
     fn sanitized_html_blocks(html: &str) -> Vec<HtmlBlock> {
         let mut blocks = Vec::new();
         let mut current = HtmlBlock::default();
@@ -39040,6 +39041,11 @@ fn schema_valid_part(path: &str, content: &str) -> Vec<u8> {
     content.as_bytes().to_vec()
 }
 
+/// The face imported altChunk HTML is set in: Japanese Word's web font.
+/// Word for Mac 16.114 draws alt-chunk-html's `h1` and `p` in MS-PGothic
+/// between Times New Roman paragraphs, whatever faces the document names.
+pub const HTML_ALT_CHUNK_FONT: &str = "ＭＳ Ｐゴシック";
+
 /// The kind of block an altChunk HTML element becomes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum HtmlBlockKind {
@@ -39114,6 +39120,9 @@ impl HtmlBlock {
 
     fn into_paragraph(self) -> Paragraph {
         const HEADING_SIZES_PT: [f32; 6] = [24.0, 18.0, 13.5, 12.0, 10.0, 7.5];
+        // Word for Mac 16.114 draws alt-chunk-html's `p` at 12pt.
+        const TEXT_SIZE_PT: f32 = 12.0;
+        let web_font: Rc<str> = Rc::from(HTML_ALT_CHUNK_FONT);
         let heading = match self.kind {
             HtmlBlockKind::Heading(level) => Some(level.clamp(1, 6)),
             _ => None,
@@ -39122,7 +39131,16 @@ impl HtmlBlock {
             .runs
             .into_iter()
             .map(|(text, bold, italic, underline)| {
-                let mut properties = RunProperties::default();
+                let mut properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some(Rc::clone(&web_font)),
+                        h_ansi: Some(Rc::clone(&web_font)),
+                        east_asia: Some(Rc::clone(&web_font)),
+                        complex: Some(Rc::clone(&web_font)),
+                        ..RunFonts::default()
+                    }),
+                    ..RunProperties::default()
+                };
                 if bold || heading.is_some() {
                     properties.bold = Some(true);
                     properties.bold_complex = Some(true);
@@ -39134,15 +39152,14 @@ impl HtmlBlock {
                 if underline {
                     properties.underline = Some(true);
                 }
-                if let Some(level) = heading {
-                    let size = HEADING_SIZES_PT[usize::from(level - 1)];
-                    properties.font_size = Some(size);
-                    properties.font_size_complex = Some(size);
-                }
-                let has_properties = bold || italic || underline || heading.is_some();
+                let size = heading.map_or(TEXT_SIZE_PT, |level| {
+                    HEADING_SIZES_PT[usize::from(level - 1)]
+                });
+                properties.font_size = Some(size);
+                properties.font_size_complex = Some(size);
                 Run {
                     text,
-                    properties: has_properties.then_some(properties),
+                    properties: Some(properties),
                     image: None,
                     text_box: None,
                     math: None,
@@ -41507,9 +41524,24 @@ mod tests {
         let texts = paragraph
             .runs
             .iter()
-            .map(|run| (run.text.as_str(), run.properties.is_some()))
+            .map(|run| {
+                let props = run.properties.as_ref().unwrap();
+                (run.text.as_str(), props.bold, props.font_size)
+            })
             .collect::<Vec<_>>();
-        assert_eq!(texts, [("One ", false), ("two", true), (" three", false)]);
+        assert_eq!(
+            texts,
+            [
+                ("One ", None, Some(12.0)),
+                ("two", Some(true), Some(12.0)),
+                (" three", None, Some(12.0))
+            ]
+        );
+        for run in paragraphs.iter().flat_map(|paragraph| &paragraph.runs) {
+            let fonts = run.properties.as_ref().unwrap().fonts.as_ref().unwrap();
+            assert_eq!(fonts.ascii.as_deref(), Some("ＭＳ Ｐゴシック"));
+            assert_eq!(fonts.east_asia.as_deref(), Some("ＭＳ Ｐゴシック"));
+        }
         assert!(paragraphs[2].properties.is_none());
     }
 

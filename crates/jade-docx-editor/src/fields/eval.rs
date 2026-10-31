@@ -134,7 +134,7 @@ pub(crate) struct Evaluation<'a> {
     listnum: HashMap<String, [u32; 9]>,
     listnum_paragraph: Option<(usize, usize)>,
     autonum: [u32; 9],
-    assigned: HashMap<String, String>,
+    assigned: HashMap<String, (usize, String)>,
 }
 
 fn error_text(japanese: bool, english: &str, japanese_text: &str) -> String {
@@ -277,6 +277,18 @@ impl<'a> Evaluation<'a> {
                 (text.clone(), Some(NewResult::Text(text)))
             }
             Evaluated::Bookmarked { name, text } => {
+                if let Some((previous, _)) = self
+                    .assigned
+                    .insert(name.to_lowercase(), (index, text.clone()))
+                {
+                    // XML writes run backwards. Only the last assignment in
+                    // evaluation order owns the bookmark; earlier ones keep text.
+                    if let Some(outcome) = self.outcomes[previous].as_mut() {
+                        if let NewResult::Bookmarked { text, .. } = &mut outcome.result {
+                            outcome.result = NewResult::Text(std::mem::take(text));
+                        }
+                    }
+                }
                 (String::new(), Some(NewResult::Bookmarked { name, text }))
             }
             Evaluated::Paragraphs(paragraphs) => (
@@ -318,12 +330,15 @@ impl<'a> Evaluation<'a> {
     /// its text in the story.
     fn bookmark_text(&self, name: &str) -> Option<String> {
         let key = name.to_lowercase();
-        self.assigned.get(&key).cloned().or_else(|| {
-            self.story
-                .bookmarks
-                .get(&key)
-                .map(|bookmark| bookmark.text.clone())
-        })
+        self.assigned
+            .get(&key)
+            .map(|(_, text)| text.clone())
+            .or_else(|| {
+                self.story
+                    .bookmarks
+                    .get(&key)
+                    .map(|bookmark| bookmark.text.clone())
+            })
     }
 
     fn local_date(&self, w3cdtf: &str) -> Option<FieldDateTime> {
@@ -669,16 +684,21 @@ impl<'a> Evaluation<'a> {
                 }
             }
             "SET" => {
+                if !self.is_selected(index) {
+                    return Evaluated::Keep;
+                }
                 let (Some(name), Some(value)) = (first, code.operand(1)) else {
                     return Evaluated::Keep;
                 };
-                self.assigned.insert(name.to_lowercase(), value.to_string());
                 Evaluated::Bookmarked {
                     name,
                     text: value.to_string(),
                 }
             }
             "ASK" => {
+                if !self.is_selected(index) {
+                    return Evaluated::Keep;
+                }
                 let Some(name) = first else {
                     return Evaluated::Keep;
                 };
@@ -693,7 +713,6 @@ impl<'a> Evaluation<'a> {
                 let Some(answer) = answer else {
                     return Evaluated::Keep;
                 };
-                self.assigned.insert(name.to_lowercase(), answer.clone());
                 Evaluated::Bookmarked { name, text: answer }
             }
             "FILLIN" => {
