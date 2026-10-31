@@ -8160,8 +8160,9 @@ fn autofit_content_widths<C: LineWrapContext>(
                 };
                 let required_width = content_width + overhang;
                 natural_content_width = natural_content_width.max(required_width);
-                unbreakable_content_width =
-                    unbreakable_content_width.max(longest_unbreakable_width(&natural, &text));
+                unbreakable_content_width = unbreakable_content_width.max(
+                    longest_unbreakable_width(context, &natural, &text, &run_styles)?,
+                );
                 natural_paragraph_layouts.push(NaturalParagraphLayout {
                     layout: natural,
                     required_width,
@@ -8225,28 +8226,63 @@ fn autofit_content_widths<C: LineWrapContext>(
 /// The widest run of glyphs in `paragraph` that has no break opportunity: a
 /// word of Latin letters or digits. East Asian characters and whitespace may
 /// break on either side, so they end a run.
-fn longest_unbreakable_width(paragraph: &CellParagraph, text: &str) -> f64 {
+fn longest_unbreakable_width<C: LineWrapContext>(
+    context: &C,
+    paragraph: &CellParagraph,
+    text: &str,
+    run_styles: &[RunStyle],
+) -> Result<f64, C::Error> {
     let mut widest = 0.0_f64;
+    let mut cached_style: Option<(Option<usize>, Rc<ResolvedRunStyle>)> = None;
     for line in paragraph.lines.iter() {
         let mut run = 0.0_f64;
+        let mut origin = f64::INFINITY;
+        let mut ink_right = f64::NEG_INFINITY;
         for glyph in &line.glyphs {
             let grapheme = text.get(glyph.start..glyph.end).unwrap_or("");
+            let whitespace = grapheme.chars().all(char::is_whitespace);
             let breakable = grapheme.is_empty()
-                || grapheme.chars().all(char::is_whitespace)
+                || whitespace
                 || classify_script(grapheme) == ScriptCategory::EastAsia;
             if breakable {
-                widest = widest.max(run);
+                widest = widest.max(run).max(ink_right - origin);
                 run = 0.0;
-                if !grapheme.chars().all(char::is_whitespace) {
-                    widest = widest.max(glyph.width);
+                origin = f64::INFINITY;
+                ink_right = f64::NEG_INFINITY;
+                if grapheme.is_empty() || whitespace {
+                    continue;
                 }
+            }
+            // Collected run styles are in source order. Retain the resolved
+            // style across adjacent glyphs instead of resolving it per glyph.
+            let index = run_styles
+                .partition_point(|style| style.start <= glyph.start)
+                .checked_sub(1)
+                .filter(|index| glyph.start < run_styles[*index].end);
+            if cached_style
+                .as_ref()
+                .is_none_or(|(previous, _)| *previous != index)
+            {
+                let properties = index.and_then(|index| run_styles[index].properties.as_deref());
+                cached_style = Some((index, context.resolve_run_style(properties)?));
+            }
+            let style = &cached_style.as_ref().unwrap().1;
+            let overhang = grapheme_trailing_overhang(context, grapheme, style)?;
+            if breakable {
+                widest = widest.max(glyph.width + overhang);
             } else {
+                // Keep the previous advance floor, but also admit the ink at
+                // every prefix of this word. Shared glyph origins include
+                // pair spacing: summing advances alone loses that spacing
+                // and can leave the final glyph on a second line.
                 run += glyph.width;
+                origin = origin.min(glyph.x);
+                ink_right = ink_right.max(glyph.x + glyph.width + overhang);
             }
         }
-        widest = widest.max(run);
+        widest = widest.max(run).max(ink_right - origin);
     }
-    widest
+    Ok(widest)
 }
 
 /// Whether `cell` gives an absolute preferred width (`w:tcW w:type="dxa"`,
@@ -11910,6 +11946,14 @@ fn paragraph_trailing_overhang<C: LineWrapContext>(
         .find(|run| offset >= run.start && offset < run.end)
         .and_then(|run| run.properties.as_deref());
     let style = context.resolve_run_style(properties)?;
+    grapheme_trailing_overhang(context, grapheme, &style)
+}
+
+fn grapheme_trailing_overhang<C: LineWrapContext>(
+    context: &C,
+    grapheme: &str,
+    style: &ResolvedRunStyle,
+) -> Result<f64, C::Error> {
     let descriptor = style.descriptor_for_grapheme(grapheme, classify_script(grapheme));
     // A fixed-pitch ＭＳ 明朝 / ＭＳ ゴシック glyph stays inside its cell,
     // whatever face the host substitutes for it.
@@ -13447,6 +13491,96 @@ mod tests {
                 })
                 .sum();
             Ok(width)
+        }
+    }
+
+    struct OverhangingWrapContext(FixedWidthWrapContext);
+
+    impl LineWrapContext for OverhangingWrapContext {
+        type Error = ();
+
+        fn resolve_run_style(
+            &self,
+            properties: Option<&RunProperties>,
+        ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+            self.0.resolve_run_style(properties)
+        }
+
+        fn measure_text(&self, text: &str, font: &str) -> Result<f64, Self::Error> {
+            self.0.measure_text(text, font)
+        }
+
+        fn measure_trailing_overhang(&self, text: &str, _font: &str) -> Result<f64, Self::Error> {
+            Ok(if text.trim().is_empty() { 0.0 } else { 3.0 })
+        }
+    }
+
+    fn autofit_overhanging_words(text: &str, scale: f32) -> AutofitContentWidths {
+        let run: Run = serde_json::from_value(serde_json::json!({
+            "text": text,
+            "properties": { "text_scale": scale }
+        }))
+        .unwrap();
+        let paragraph: Paragraph = serde_json::from_value(serde_json::json!({
+            "runs": [run]
+        }))
+        .unwrap();
+        let table = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell {
+                    blocks: vec![BodyElement::from_paragraph(paragraph)],
+                    style: [("width".into(), "10pt".into())].into_iter().collect(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        autofit_content_widths(
+            &OverhangingWrapContext(FixedWidthWrapContext::new()),
+            &table,
+            &[100.0],
+            0.0,
+            &|_| 16.0,
+            &|_| None,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn autofit_unbreakable_words_include_ink_without_disabling_word_breaks() {
+        let widths = autofit_overhanging_words("aa bb", 100.0);
+        assert_eq!(widths.unbreakable, vec![23.0]);
+        assert_eq!(widths.preferred, vec![23.0]);
+        let context = OverhangingWrapContext(FixedWidthWrapContext::new());
+        let paragraph = layout_horizontal_paragraph_with_run_styles_context(
+            &context,
+            "aa",
+            widths.preferred[0],
+            16.0,
+            &plain_text_run_styles("aa"),
+            &ParagraphStyle::default(),
+        )
+        .unwrap();
+        assert_eq!(paragraph.lines.len(), 1);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 96, ..ProptestConfig::default() })]
+
+        #[test]
+        fn autofit_unbreakable_ink_extent_scales_and_preserves_word_breaks(
+            lengths in proptest::collection::vec(1usize..20, 1..5),
+            scale in prop_oneof![Just(50.0_f32), Just(100.0_f32), Just(200.0_f32)],
+        ) {
+            let text = lengths.iter().map(|length| "a".repeat(*length)).collect::<Vec<_>>().join(" ");
+            // Independent fixed-font contract: 10px advance and 3px ink
+            // overhang, both transformed by the authored horizontal scale.
+            let expected = (10.0 * *lengths.iter().max().unwrap() as f64 + 3.0)
+                * scale as f64 / 100.0;
+            let widths = autofit_overhanging_words(&text, scale);
+            prop_assert!((widths.unbreakable[0] - expected).abs() < 1e-6);
+            prop_assert!((widths.preferred[0] - expected).abs() < 1e-6);
         }
     }
 
