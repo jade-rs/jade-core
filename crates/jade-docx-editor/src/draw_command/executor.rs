@@ -96,6 +96,13 @@ pub fn replay_glyph_batch_stats() -> (u64, u64, u64, u64, u64, u64) {
     })
 }
 
+#[derive(Clone, Debug, Default)]
+struct GlyphBatchScratch {
+    text: String,
+    x_positions: Vec<f64>,
+    font_indexes: Vec<u16>,
+}
+
 /// Tracks the current font state to avoid redundant `set_font()` calls.
 ///
 /// Setting fonts on a Canvas context is relatively expensive because the browser
@@ -134,6 +141,9 @@ pub struct FontStateTracker {
     segment_buf: String,
     /// Reusable buffer for pair kerning measurement.
     pair_buf: String,
+    /// Lazily allocated so short-lived non-batch trackers remain allocation-free.
+    /// Boxing keeps three buffer headers out of every tracker on the stack.
+    glyph_batch_scratch: Option<Box<GlyphBatchScratch>>,
 }
 
 impl FontStateTracker {
@@ -1246,69 +1256,82 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
-    let mut text = String::with_capacity(glyphs.len());
-    let mut x_positions = Vec::with_capacity(glyphs.len());
-    // Most replayed runs use one font and take the single-font JS path. Allocate
-    // indexes only after discovering a font change that requires the multi-font path.
-    let mut font_indexes = Vec::new();
-    let mut single_font_index: Option<u16> = None;
-    let mut single_font_run = true;
+    let mut scratch = font_state.glyph_batch_scratch.take().unwrap_or_default();
+    let GlyphBatchScratch {
+        text,
+        x_positions,
+        font_indexes,
+    } = &mut *scratch;
+    text.clear();
+    x_positions.clear();
+    font_indexes.clear();
+    text.reserve(glyphs.len());
+    x_positions.reserve(glyphs.len());
 
-    for glyph in glyphs {
-        if fonts.get(glyph.font_index as usize).is_none() {
-            return Ok(false);
-        }
-        let Some(glyph_text) = glyph.text(run_text) else {
-            return Ok(false);
-        };
-        let mut chars = glyph_text.chars();
-        let Some(ch) = chars.next() else {
-            return Ok(false);
-        };
-        if chars.next().is_some() || ch.len_utf16() != 1 {
-            return Ok(false);
-        }
-        match single_font_index {
-            Some(index) if index != glyph.font_index && single_font_run => {
-                single_font_run = false;
-                font_indexes.reserve(glyphs.len());
-                font_indexes.resize(x_positions.len(), index);
+    // Restore storage on every return, including declined runs and backend errors.
+    let result = (|| {
+        let mut single_font_index: Option<u16> = None;
+        let mut single_font_run = true;
+
+        for glyph in glyphs {
+            if fonts.get(glyph.font_index as usize).is_none() {
+                return Ok(false);
             }
-            None => single_font_index = Some(glyph.font_index),
-            _ => {}
+            let Some(glyph_text) = glyph.text(run_text) else {
+                return Ok(false);
+            };
+            let mut chars = glyph_text.chars();
+            let Some(ch) = chars.next() else {
+                return Ok(false);
+            };
+            if chars.next().is_some() || ch.len_utf16() != 1 {
+                return Ok(false);
+            }
+            match single_font_index {
+                Some(index) if index != glyph.font_index && single_font_run => {
+                    single_font_run = false;
+                    font_indexes.reserve(glyphs.len());
+                    font_indexes.resize(x_positions.len(), index);
+                }
+                None => single_font_index = Some(glyph.font_index),
+                _ => {}
+            }
+            text.push(ch);
+            x_positions.push(x + glyph.x_offset);
+            if !single_font_run {
+                font_indexes.push(glyph.font_index);
+            }
         }
-        text.push(ch);
-        x_positions.push(x + glyph.x_offset);
-        if !single_font_run {
-            font_indexes.push(glyph.font_index);
-        }
-    }
 
-    if single_font_run {
-        let Some(font_descriptor) = single_font_index.and_then(|index| fonts.get(index as usize))
-        else {
-            return Ok(false);
-        };
-        font_state.set_font_rc_if_changed(context, font_descriptor);
-        if !context.try_fill_glyph_run_batch(&text, &x_positions, y)? {
-            return Ok(false);
+        if single_font_run {
+            let Some(font_descriptor) =
+                single_font_index.and_then(|index| fonts.get(index as usize))
+            else {
+                return Ok(false);
+            };
+            font_state.set_font_rc_if_changed(context, font_descriptor);
+            if !context.try_fill_glyph_run_batch(text, x_positions, y)? {
+                return Ok(false);
+            }
+        } else {
+            if !context.try_fill_glyph_run_batch_multi_font(
+                text,
+                x_positions,
+                font_indexes,
+                fonts,
+                y,
+            )? {
+                return Ok(false);
+            }
+            // The multi-font JS helper mutates `ctx.font` directly while preserving exact
+            // glyph positions. Invalidate tracked canvas state so later Rust-side draws do
+            // not assume the pre-batch font is still active.
+            font_state.invalidate();
         }
-    } else {
-        if !context.try_fill_glyph_run_batch_multi_font(
-            &text,
-            &x_positions,
-            &font_indexes,
-            fonts,
-            y,
-        )? {
-            return Ok(false);
-        }
-        // The multi-font JS helper mutates `ctx.font` directly while preserving exact
-        // glyph positions. Invalidate tracked canvas state so later Rust-side draws do
-        // not assume the pre-batch font is still active.
-        font_state.invalidate();
-    }
-    Ok(true)
+        Ok(true)
+    })();
+    font_state.glyph_batch_scratch = Some(scratch);
+    result
 }
 
 /// Executes a list of DrawCommands on the given canvas context.
