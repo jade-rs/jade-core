@@ -13271,6 +13271,96 @@ mod tests {
     }
 
     #[test]
+    fn an_inserted_note_reference_or_shape_takes_its_styles_defaults() {
+        // A load gives every run the font and size its styles give it, and a
+        // shape's paragraphs their style's properties. A footnote reference
+        // or a shape inserted into the body had none of them, so the editor
+        // measured the mark and the anchor in no font, and the shape's text
+        // ignored its style's alignment, until the document was reopened.
+        // The shape's alignment stays out of its XML: it is the style's.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-exact-grid.docx"),
+        )
+        .expect("read fixture");
+        let commands = [
+            HeadlessCommand::InsertFootnote {
+                paragraph: 14,
+                offset: 9,
+                text: "note".to_string(),
+            },
+            HeadlessCommand::InsertShape {
+                paragraph: 0,
+                offset: 6,
+                shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                width_px: 40.0,
+                height_px: 20.0,
+                fill_color: None,
+                border_color: None,
+                border_width_px: 1.0,
+                text: String::new(),
+            },
+        ];
+        let state = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .filter(|&index| !word_doc.is_note_paragraph_surface(index))
+                .filter_map(|index| word_doc.paragraph(index))
+                .map(|paragraph| {
+                    let props = paragraph.properties.as_ref();
+                    // A new shape's empty paragraph keeps an empty run that a
+                    // reload does not read back.
+                    let runs = paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| {
+                            !run.text.is_empty()
+                                || run.text_box.is_some()
+                                || !run.footnote_reference_ids.is_empty()
+                        })
+                        .map(|run| {
+                            let props = run.properties.as_ref();
+                            (
+                                props.and_then(|props| props.font_size),
+                                props
+                                    .and_then(|props| props.fonts.as_ref())
+                                    .map(|fonts| (fonts.ascii.clone(), fonts.east_asia.clone())),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    (props.and_then(|props| props.alignment.clone()), runs)
+                })
+                .collect::<Vec<_>>()
+        };
+        for command in commands {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command.clone()],
+                },
+            )
+            .expect("inserted");
+            let exported = word_doc.export_docx().expect("export");
+            let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+                .expect("reload");
+            assert_eq!(state(&word_doc), state(&reloaded), "{command:?}");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/document.xml").expect("document part"),
+                &mut xml,
+            )
+            .expect("read document part");
+            for content in xml.split("<w:txbxContent>").skip(1) {
+                let content = &content[..content.find("</w:txbxContent>").expect("closed")];
+                assert!(!content.contains("<w:jc "), "{command:?}: {content}");
+            }
+        }
+    }
+
+    #[test]
     fn an_inserted_note_takes_its_styles_fonts() {
         // A note inserted into hello.docx had runs without the font and size
         // their styles give them, which a load resolves into a note's runs:
