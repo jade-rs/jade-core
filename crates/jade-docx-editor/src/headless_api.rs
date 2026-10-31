@@ -13886,6 +13886,52 @@ mod tests {
     }
 
     #[test]
+    fn an_inserted_note_reference_keeps_its_inherited_fonts_out_of_its_rpr() {
+        // The runs of an inserted note reference take their styles' fonts and
+        // size in the model (#206, #271). The reference was built with only
+        // its rStyle, and the fill gave it no provenance, so the inherited
+        // fonts, size and kerning were saved into both references' `w:rPr`
+        // as direct formatting, overriding the reference style.
+        for fixture in ["hello.docx", "footnote.docx"] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertFootnote {
+                        paragraph: 0,
+                        offset: 1,
+                        text: "note".to_string(),
+                    }],
+                },
+            )
+            .expect("footnote inserted");
+            let exported = word_doc.export_docx().expect("export");
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("exported zip");
+            for (part, marker) in [
+                ("word/document.xml", "<w:footnoteReference"),
+                ("word/footnotes.xml", "<w:footnoteRef/>"),
+            ] {
+                let mut xml = String::new();
+                std::io::Read::read_to_string(&mut archive.by_name(part).expect("part"), &mut xml)
+                    .expect("read part");
+                let at = xml.rfind(marker).expect("reference");
+                let run = &xml[xml[..at].rfind("<w:r>").expect("reference run")..at];
+                for inherited in ["<w:rFonts", "<w:sz ", "<w:kern"] {
+                    assert!(!run.contains(inherited), "{fixture} {part}: {run}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn an_inserted_note_takes_its_styles_fonts() {
         // A note inserted into hello.docx had runs without the font and size
         // their styles give them, which a load resolves into a note's runs:
