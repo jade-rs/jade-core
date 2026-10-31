@@ -56,6 +56,7 @@ fn tall_sheet(rows: u32) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        outline: Default::default(),
         protection: None,
     }
 }

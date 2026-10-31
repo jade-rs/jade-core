@@ -2369,6 +2369,77 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// [`Self::update_cell_with_formula`], also saying what the formula
+    /// became: its shared (R1C1) form and whether it is dynamic. Another
+    /// model of the same workbook can set it from those with
+    /// [`Self::update_cell_with_shared_formula`] instead of parsing it again.
+    pub fn update_cell_with_formula_shared(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: String,
+    ) -> Result<(String, bool), String> {
+        let style_index = self.formula_style_index(sheet, row, column)?;
+        let Some(new_formula) = self.formula_without_prefix(&formula) else {
+            return Err(format!("\"{formula}\" is not a valid formula"));
+        };
+        let (index, dynamic) =
+            self.set_cell_with_formula_reporting(sheet, row, column, new_formula, style_index)?;
+        let shared = self.workbook.worksheet(sheet)?.shared_formulas[index as usize].clone();
+        Ok((shared, dynamic))
+    }
+
+    /// Sets the formula whose shared form is `shared` in the cell, as
+    /// another model of the same workbook parsed it there, when this model
+    /// already holds that shared formula. `false`, changing nothing, when it
+    /// does not: the formula has to be parsed here once.
+    pub fn update_cell_with_shared_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        shared: &str,
+        dynamic: bool,
+    ) -> Result<bool, String> {
+        let style_index = self.formula_style_index(sheet, row, column)?;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let Some(index) = find_shared_formula(
+            &mut self.shared_formula_index,
+            sheet,
+            &worksheet.shared_formulas,
+            shared,
+        ) else {
+            return Ok(false);
+        };
+        if dynamic {
+            worksheet.set_cell_with_dynamic_formula(
+                row,
+                column,
+                index as i32,
+                style_index,
+                1,
+                1,
+            )?;
+        } else {
+            worksheet.set_cell_with_formula(row, column, index as i32, style_index)?;
+        }
+        Ok(true)
+    }
+
+    /// The style a formula typed into the cell keeps: its own, without a
+    /// quote prefix.
+    fn formula_style_index(&mut self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
+        if self.workbook.styles.style_is_quote_prefix(style_index) {
+            self.workbook
+                .styles
+                .get_style_without_quote_prefix(style_index)
+        } else {
+            Ok(style_index)
+        }
+    }
+
     // If we are writing in (sheet, row, column). If it is:
     // - A single cell => do nothing
     // - Part of an array formula => we bail
@@ -2676,6 +2747,20 @@ impl<'a> Model<'a> {
         formula: &str,
         style: i32,
     ) -> Result<i32, String> {
+        self.set_cell_with_formula_reporting(sheet, row, column, formula, style)
+            .map(|(index, _)| index)
+    }
+
+    /// [`Self::set_cell_with_formula`], also saying whether the formula is
+    /// dynamic.
+    fn set_cell_with_formula_reporting(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        style: i32,
+    ) -> Result<(i32, bool), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         let cell_reference = CellReferenceRC {
             sheet: worksheet.get_name(),
@@ -2713,7 +2798,7 @@ impl<'a> Model<'a> {
         } else {
             worksheet.set_cell_with_formula(row, column, formula_index, style)?;
         }
-        Ok(formula_index)
+        Ok((formula_index, is_dynamic))
     }
 
     // FIXME

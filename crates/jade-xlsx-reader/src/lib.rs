@@ -69,9 +69,10 @@ pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
     DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, GradientFill, HeaderFooter,
-    HorizontalAlignment, Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape,
-    ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
-    TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
+    HorizontalAlignment, Hyperlink, Outline, PageBreak, PageMargins, PageOrientation, PageSetup,
+    Row, Shape, ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility,
+    StyleTable, Table, TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment,
+    Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
