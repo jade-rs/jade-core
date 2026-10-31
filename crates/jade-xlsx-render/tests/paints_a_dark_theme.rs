@@ -117,6 +117,7 @@ fn laid_out() -> SheetLayout {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        outline: Default::default(),
         protection: None,
     };
     layout_sheet(

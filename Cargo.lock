@@ -2055,6 +2055,7 @@ dependencies = [
  "proptest",
  "serde_json",
  "thiserror",
+ "zip 9.0.5",
 ]
 
 [[package]]

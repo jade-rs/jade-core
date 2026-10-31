@@ -281,6 +281,60 @@ pub struct Sheet {
     /// protected: what it still allows.
     #[serde(default)]
     pub protection: Option<SheetProtection>,
+    /// Rows and columns grouped with Data ▸ Group, and where their summary
+    /// rows and columns sit.
+    #[serde(default)]
+    pub outline: Outline,
+}
+
+/// A sheet's outline: the levels Data ▸ Group gives rows and columns
+/// (`outlineLevel`, 1 to 7), the summary rows and columns whose group is
+/// collapsed (`collapsed`), and which side of a group its summary is on
+/// (`sheetPr/outlinePr`). Rows and columns not listed are not grouped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Outline {
+    /// Zero-based row → level.
+    #[serde(default)]
+    pub row_levels: std::collections::BTreeMap<u32, u8>,
+    /// Zero-based column → level.
+    #[serde(default)]
+    pub column_levels: std::collections::BTreeMap<u32, u8>,
+    #[serde(default)]
+    pub collapsed_rows: std::collections::BTreeSet<u32>,
+    #[serde(default)]
+    pub collapsed_columns: std::collections::BTreeSet<u32>,
+    /// `summaryBelow`: a group's summary row is the one after it (Excel's
+    /// default) rather than the one before.
+    pub summary_below: bool,
+    /// `summaryRight`: likewise for columns.
+    pub summary_right: bool,
+}
+
+impl Default for Outline {
+    fn default() -> Self {
+        Self {
+            row_levels: Default::default(),
+            column_levels: Default::default(),
+            collapsed_rows: Default::default(),
+            collapsed_columns: Default::default(),
+            summary_below: true,
+            summary_right: true,
+        }
+    }
+}
+
+impl Outline {
+    pub fn row_level(&self, row: u32) -> u8 {
+        self.row_levels.get(&row).copied().unwrap_or(0)
+    }
+
+    pub fn column_level(&self, column: u32) -> u8 {
+        self.column_levels.get(&column).copied().unwrap_or(0)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.row_levels.is_empty() && self.column_levels.is_empty()
+    }
 }
 
 /// What a protected sheet still allows, as its `sheetProtection` says. Each

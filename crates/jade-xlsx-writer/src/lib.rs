@@ -54,6 +54,7 @@ pub mod hyperlinks;
 pub mod merges;
 pub mod notes;
 pub mod objects;
+pub mod outline;
 pub mod page_setup;
 mod patch;
 pub(crate) mod pivot_chart;
@@ -166,6 +167,8 @@ pub enum WriteError {
     BadAlignment(&'static str),
     #[error("frozen panes must leave at least one column and row to scroll")]
     BadFreezePane,
+    #[error("{0}")]
+    Outline(&'static str),
     #[error("package: {0}")]
     Package(#[from] jade_opc::OpcError),
     #[error("spreadsheet: {0}")]
@@ -487,5 +490,67 @@ pub fn write_cached_values_verified(
     {
         return Ok(original.to_vec());
     }
+    Ok(package.write()?)
+}
+
+/// Cell edits and the cached values their recalculation gave, in one write:
+/// what [`write_xlsx_with_parts`] and then [`write_cached_values_verified`]
+/// would write, with each changed sheet deflated once. `complete` says every
+/// formula's cache is current, so the full calculation the edits ask for is
+/// withdrawn again.
+pub fn write_edits_with_cached_values(
+    original: &[u8],
+    sheets: &[SheetEdits],
+    cached: &[SheetCachedValues],
+    complete: bool,
+) -> Result<Vec<u8>> {
+    let mut package = OpcPackage::open_preserving(original)?;
+    let mut parts: Vec<(String, String)> = Vec::new();
+    for sheet in sheets.iter().filter(|sheet| !sheet.cells.is_empty()) {
+        let xml = package
+            .part_str(&sheet.part_name)?
+            .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
+        parts.push((sheet.part_name.clone(), patch_sheet(&xml, &sheet.cells)?));
+    }
+    let mut fresh = VerifiedChartCells::new();
+    for sheet in cached.iter().filter(|sheet| !sheet.cells.is_empty()) {
+        let position = match parts.iter().position(|(name, _)| *name == sheet.part_name) {
+            Some(position) => position,
+            None => {
+                let xml = package
+                    .part_str(&sheet.part_name)?
+                    .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
+                parts.push((sheet.part_name.clone(), xml));
+                parts.len() - 1
+            }
+        };
+        parts[position].1 = refresh_sheet(&parts[position].1, &sheet.cells)?;
+        fresh
+            .entry(sheet.part_name.clone())
+            .or_default()
+            .extend(sheet.cells.iter().map(|cell| cell.reference));
+    }
+    if parts.is_empty() {
+        return Ok(original.to_vec());
+    }
+    let edited = sheets.iter().any(|sheet| !sheet.cells.is_empty());
+    for (name, xml) in parts {
+        package.replace(&name, xml.into_bytes());
+    }
+    if edited {
+        let name = workbook_part_name(&package)?;
+        if let Some(xml) = package.part_str(&name)? {
+            let requested = request_full_recalculation(&xml);
+            let settled = if complete {
+                withdraw_full_recalculation(&requested)
+            } else {
+                requested
+            };
+            if settled != xml {
+                package.replace(&name, settled.into_bytes());
+            }
+        }
+    }
+    chart_cache::refresh_package(&mut package, &fresh)?;
     Ok(package.write()?)
 }

@@ -160,6 +160,33 @@ fn text_ending_in_a_number_counts_on() {
 }
 
 #[test]
+fn day_month_and_quarter_names_go_round_excels_lists() {
+    let mut workbook = open();
+    set(
+        &mut workbook,
+        &[
+            ("F1", CellInput::Text("Fri".into())),
+            ("G1", CellInput::Text("November".into())),
+            ("H1", CellInput::Text("11月".into())),
+            ("I1", CellInput::Text("土曜日".into())),
+            ("J1", CellInput::Text("第3四半期".into())),
+            ("K1", CellInput::Text("Q3".into())),
+        ],
+    );
+
+    workbook.fill(SHEET, "F1:K1", "F1:K4").expect("fill");
+
+    assert_eq!(text(&workbook, "F2"), "Sat");
+    assert_eq!(text(&workbook, "F3"), "Sun");
+    assert_eq!(text(&workbook, "G3"), "January");
+    // Not 13月: the Japanese month list wraps where counting would not.
+    assert_eq!(text(&workbook, "H3"), "1月");
+    assert_eq!(text(&workbook, "I2"), "日曜日");
+    assert_eq!(text(&workbook, "J3"), "第1四半期");
+    assert_eq!(text(&workbook, "K4"), "Q2");
+}
+
+#[test]
 fn text_runs_with_different_words_repeat_instead() {
     let mut workbook = open();
     set(
@@ -270,6 +297,7 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        outline: Default::default(),
         protection: None,
     }
 }
@@ -367,6 +395,80 @@ fn a_run_with_a_gap_repeats_rather_than_guessing() {
             (CellRef::new(0, 2), CellInput::Number(1.0)),
             (CellRef::new(0, 3), CellInput::Blank),
             (CellRef::new(0, 4), CellInput::Number(1.0)),
+        ]
+    );
+}
+
+/// The texts a downward fill of column A writes below `source`, `count`
+/// cells of them.
+fn listed(source: &[&str], count: u32) -> Vec<String> {
+    let sheet = sheet_with(
+        source
+            .iter()
+            .enumerate()
+            .map(|(row, text)| {
+                (
+                    CellRef::new(0, row as u32),
+                    CellValue::Text(text.to_string()),
+                    None,
+                )
+            })
+            .collect(),
+    );
+    let last = source.len() as u32 - 1;
+    plan_fill(
+        &sheet,
+        &StyleTable::default(),
+        range(CellRef::new(0, 0), CellRef::new(0, last)),
+        range(CellRef::new(0, 0), CellRef::new(0, last + count)),
+    )
+    .into_iter()
+    .map(|write| match write.value {
+        CellInput::Text(text) => text,
+        other => panic!("{other:?}"),
+    })
+    .collect()
+}
+
+#[test]
+fn list_names_step_wrap_and_keep_their_capitals() {
+    assert_eq!(listed(&["Mon", "Wed"], 3), ["Fri", "Sun", "Tue"]);
+    // The step is counted round the list.
+    assert_eq!(listed(&["Sat", "Sun"], 2), ["Mon", "Tue"]);
+    assert_eq!(listed(&["JAN"], 2), ["FEB", "MAR"]);
+    assert_eq!(listed(&["dec"], 2), ["jan", "feb"]);
+    // May alone is a short month; with June, a long one.
+    assert_eq!(listed(&["May"], 1), ["Jun"]);
+    assert_eq!(listed(&["May", "June"], 1), ["July"]);
+    assert_eq!(listed(&["月", "水"], 2), ["金", "日"]);
+    assert_eq!(listed(&["師走"], 1), ["睦月"]);
+    assert_eq!(listed(&["亥"], 1), ["子"]);
+    // Uneven steps, mixed capitals or a stranger in the run: a pattern.
+    assert_eq!(listed(&["Mon", "Tue", "Thu"], 3), ["Mon", "Tue", "Thu"]);
+    assert_eq!(listed(&["Jan", "FEB"], 2), ["Jan", "FEB"]);
+    assert_eq!(listed(&["Mon", "Lunch"], 2), ["Mon", "Lunch"]);
+    // A name that is not a list entry counts on as before.
+    assert_eq!(listed(&["Week 52"], 1), ["Week 53"]);
+}
+
+#[test]
+fn a_list_filled_upward_runs_backwards_round_it() {
+    let sheet = sheet_with(vec![(
+        CellRef::new(0, 2),
+        CellValue::Text("Tue".into()),
+        None,
+    )]);
+    let writes = plan_fill(
+        &sheet,
+        &StyleTable::default(),
+        range(CellRef::new(0, 2), CellRef::new(0, 2)),
+        range(CellRef::new(0, 0), CellRef::new(0, 2)),
+    );
+    assert_eq!(
+        values(&writes),
+        vec![
+            (CellRef::new(0, 0), CellInput::Text("Sun".into())),
+            (CellRef::new(0, 1), CellInput::Text("Mon".into())),
         ]
     );
 }
