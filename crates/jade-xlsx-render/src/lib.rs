@@ -340,6 +340,14 @@ fn render_body<P: Painter>(
         render_note_marker(painter, note.rect);
     }
 
+    for cell in layout
+        .cells
+        .iter()
+        .filter(|cell| cell.error_flag && cell.rect.intersects(&viewport))
+    {
+        render_error_marker(painter, cell.rect);
+    }
+
     for shape in layout.shapes_in(viewport) {
         painter.save();
         let result = render_shape(painter, shape, layout.cell_padding_px, options);
@@ -413,6 +421,25 @@ fn render_note_marker<P: Painter>(painter: &P, rect: Rect) {
     painter.move_to(right - size, rect.y);
     painter.line_to(right, rect.y);
     painter.line_to(right, rect.y + size);
+    painter.close_path();
+    painter.fill();
+}
+
+/// Excel's error indicator is green whatever the theme is, as the note
+/// marker is red.
+const ERROR_MARKER_COLOR: &str = "#00a000";
+
+/// The green top-left triangle marking a cell error checking flags.
+fn render_error_marker<P: Painter>(painter: &P, rect: Rect) {
+    let size = NOTE_MARKER_PX.min(rect.width).min(rect.height);
+    if size <= 0.0 {
+        return;
+    }
+    painter.set_fill_style_str(ERROR_MARKER_COLOR);
+    painter.begin_path();
+    painter.move_to(rect.x, rect.y);
+    painter.line_to(rect.x + size, rect.y);
+    painter.line_to(rect.x, rect.y + size);
     painter.close_path();
     painter.fill();
 }
