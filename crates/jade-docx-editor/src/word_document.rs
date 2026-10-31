@@ -13465,6 +13465,7 @@ impl WordDocument {
         paragraph_index: usize,
         offset: usize,
     ) -> Result<usize, String> {
+        self.reject_shape_inside_text_box(paragraph_index)?;
         let paragraph_len = self
             .paragraph(paragraph_index)
             .map(paragraph_text_len)
@@ -13547,12 +13548,25 @@ impl WordDocument {
         )
     }
 
+    /// Word offers no shape or text box while the caret is in a text box.
+    /// One nested anyway was written into both the box's DrawingML and its
+    /// VML fallback, and every edit that rewrote the box copied it again:
+    /// the file grew a text box inside a text box per edit until reading it
+    /// back overflowed the stack.
+    fn reject_shape_inside_text_box(&self, paragraph_index: usize) -> Result<(), String> {
+        if self.is_text_box_paragraph_surface(paragraph_index) {
+            return Err("a shape cannot be inserted inside a text box".to_string());
+        }
+        Ok(())
+    }
+
     pub fn insert_shape_at(
         &mut self,
         paragraph_index: usize,
         offset: usize,
         mut spec: ShapeInsertSpec,
     ) -> Result<usize, String> {
+        self.reject_shape_inside_text_box(paragraph_index)?;
         let paragraph_text = self
             .paragraph(paragraph_index)
             .map(|paragraph| {
