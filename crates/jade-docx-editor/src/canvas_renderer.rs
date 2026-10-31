@@ -5999,7 +5999,12 @@ where
     ) -> bool {
         if !self.last_layout_complete
             || self.document_has_notes
+            // Comment annotations are rebuilt by the regular paragraph walk.
+            || self.document_has_comments
             || self.pageless_mode
+            // An early exit does not rebuild the object hit regions on
+            // untouched pages. Keep the regular walk for these documents.
+            || !self.object_debug_regions.borrow().is_empty()
             // A cell's text height alone does not prove that its table kept
             // the same column widths and positions of the other cells.
             || self.selection.cell_id_for_paragraph(paragraph_index).is_some()
@@ -13788,7 +13793,7 @@ where
             .filter(|_| incremental_dirty_from.is_some() || preserve_stable_edit_pagination)
             .map(|(paragraph, _)| {
                 let from = paragraph.saturating_add(1);
-                (from, self.selection.take_paragraph_suffix(from))
+                (from, self.selection.take_selection_suffix(from))
             });
         self.selection
             .begin_render_incremental(incremental_dirty_from);
@@ -14633,7 +14638,7 @@ where
         // Store shared reference to avoid cloning on every render.
         if self.last_fast_replay_stable {
             if let Some((from, suffix)) = selection_suffix {
-                self.selection.restore_paragraph_suffix(from, suffix);
+                self.selection.restore_selection_suffix(from, suffix);
             }
             // As with the selection tail, the saved regions are authoritative
             // for any paragraph after the edited one that the walk re-recorded.
@@ -54919,6 +54924,39 @@ mod tests {
         renderer.preserve_completed_pagination_on_stable_edit = false;
         renderer.fast_replay_trigger = None;
         assert!(!renderer.prepare_completed_pagination_edit(4, 10.0));
+        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
+        assert!(renderer.fast_replay_trigger.is_none());
+    }
+
+    #[test]
+    fn completed_pagination_edit_does_not_skip_object_hit_registration() {
+        let mut renderer = test_renderer();
+        renderer
+            .object_debug_regions
+            .borrow_mut()
+            .push(ObjectDebugInfo {
+                kind: FloatingObjectKind::Image,
+                paragraph_index: 5,
+                run_index: 0,
+                page: 2,
+                x: 96.0,
+                y: 96.0,
+                width: 100.0,
+                height: 100.0,
+                rotation_deg: 0.0,
+            });
+
+        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
+        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
+        assert!(renderer.fast_replay_trigger.is_none());
+    }
+
+    #[test]
+    fn completed_pagination_edit_does_not_skip_comment_registration() {
+        let mut renderer = test_renderer();
+        renderer.document_has_comments = true;
+
+        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
         assert!(!renderer.preserve_completed_pagination_on_stable_edit);
         assert!(renderer.fast_replay_trigger.is_none());
     }
