@@ -289,7 +289,12 @@ mod tests {
                 let paragraph = reopened.paragraph(index).expect("cover paragraph");
                 prop_assert_eq!(paragraph_text(&reopened, index), expected.text.clone());
                 let properties = paragraph.properties.as_ref().expect("paragraph properties");
-                prop_assert_eq!(properties.alignment.as_deref(), expected.alignment.as_deref());
+                // The package has no styles part, so a paragraph that sets
+                // no alignment takes Word's built-in Normal: justified.
+                prop_assert_eq!(
+                    properties.alignment.as_deref(),
+                    expected.alignment.as_deref().or(Some("both")),
+                );
                 prop_assert_eq!(properties.spacing.as_ref().and_then(|spacing| spacing.before), expected.space_before);
                 prop_assert_eq!(properties.spacing.as_ref().and_then(|spacing| spacing.after), expected.space_after);
                 prop_assert_eq!(properties.indent.as_ref().and_then(|indent| indent.left), expected.indent_left);
