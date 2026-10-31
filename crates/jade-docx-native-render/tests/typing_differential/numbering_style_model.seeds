@@ -1,0 +1,2 @@
+# Proptest records minimized numbering/style history regressions here.
+cc de748c6823c25c134b14856dbe7fd45c29b35c97f4a67d16e0a26aded09a2f5e # shrinks to operations = [Restyle(Range(3, 0, false, false), PlainHeading), Append(3, "日")]

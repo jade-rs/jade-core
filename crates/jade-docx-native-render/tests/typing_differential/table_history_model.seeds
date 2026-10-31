@@ -1,0 +1,3 @@
+# Proptest records minimized structural table editing regressions here.
+cc 1ed1cc05cd0be2bbba5e83c1739f9b2af4695f1999b21da33ecbb138407283f3 # shrinks to operations = [Row(0, 0, true), Undo, Outside(false)]
+cc 4f602bd4e4dc1898fb6ad18b50472beda6646db60a310001fafe37aa894d87c6 # shrinks to operations = [Outside(false), Row(1, 0, false)]
