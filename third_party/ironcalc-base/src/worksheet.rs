@@ -4,7 +4,6 @@ use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::model::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct WorksheetDimension {
     pub min_row: i32,
