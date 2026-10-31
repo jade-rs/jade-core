@@ -102,11 +102,15 @@ pub fn format_value(value: &CellValue, code: Option<&str>, dates: DateSystem) ->
     format_uncached(value, code, dates)
 }
 
+/// Numbers formatted under one code, by their bits and whether the 1904
+/// date system applied.
+type FormattedValues = HashMap<(u64, bool), Formatted>;
+
 thread_local! {
     /// Numbers formatted so far, by format code and then by value: a sheet
     /// is laid out again after every edit, and parsing each cell's format
     /// code again was most of what formatting cost.
-    static FORMATTED: std::cell::RefCell<HashMap<String, HashMap<(u64, bool), Formatted>>> =
+    static FORMATTED: std::cell::RefCell<HashMap<String, FormattedValues>> =
         std::cell::RefCell::new(HashMap::new());
 }
 
