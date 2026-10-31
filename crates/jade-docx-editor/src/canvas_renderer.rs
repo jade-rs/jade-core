@@ -21655,6 +21655,8 @@ where
             }
             let mut min_top_offset = f64::INFINITY;
             let mut max_bottom_offset = f64::NEG_INFINITY;
+            let mac_line_ignores_script_shift = paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             let sizes_line = |prepared: &PreparedSegment| {
                 // SYMBOL \h still uses its own font for width and drawing,
                 // but its ascent/descent must not enlarge this line box.
@@ -21676,8 +21678,19 @@ where
                 {
                     continue;
                 }
-                min_top_offset = min_top_offset.min(prepared.top_offset);
-                max_bottom_offset = max_bottom_offset.max(prepared.bottom_offset);
+                // Word for Mac places and sizes a line as though its
+                // superscript and subscript runs sat on the baseline: in
+                // probe vert-align (20261030) a raised and a lowered run of
+                // the same face and size give the same line pitch, in MS
+                // Mincho and Calibri too, whose raised top passes the
+                // unshifted run's. `w:position` still moves the line.
+                let script_shift = if mac_line_ignores_script_shift {
+                    prepared.style.script_shift_px
+                } else {
+                    0.0
+                };
+                min_top_offset = min_top_offset.min(prepared.top_offset - script_shift);
+                max_bottom_offset = max_bottom_offset.max(prepared.bottom_offset - script_shift);
             }
             let mut has_inline_object = false;
             let mut object_top = 0.0_f64;
@@ -30376,6 +30389,7 @@ where
         let mut text_scale_x = 1.0_f64;
         let mut enable_pair_kerning = false;
         let mut baseline_shift_px = 0.0_f64;
+        let mut script_shift_px = 0.0_f64;
         let mut strike = false;
         let mut double_strike = false;
         let mut shadow = false;
@@ -30535,6 +30549,8 @@ where
                 }
             }
 
+            script_shift_px = baseline_shift_px;
+
             // `w:position` (§17.3.2.24) raises (positive) or lowers (negative)
             // the baseline without changing the font size, combining additively
             // with any super/subscript shift above. Canvas y grows downward, so a
@@ -30626,6 +30642,7 @@ where
             text_scale_x,
             enable_pair_kerning,
             baseline_shift_px,
+            script_shift_px,
             strike,
             double_strike,
             shadow,
@@ -36816,6 +36833,8 @@ struct AppliedRunStyle {
     text_scale_x: f64,
     enable_pair_kerning: bool,
     baseline_shift_px: f64,
+    /// The part of `baseline_shift_px` that `w:vertAlign` contributes.
+    script_shift_px: f64,
     strike: bool,
     double_strike: bool,
     shadow: bool,
@@ -45140,6 +45159,7 @@ mod tests {
             text_scale_x,
             enable_pair_kerning: false,
             baseline_shift_px: 0.0,
+            script_shift_px: 0.0,
             strike: false,
             double_strike: false,
             shadow: false,
@@ -49401,6 +49421,70 @@ mod tests {
             );
             assert!((line.baseline + mark.baseline_shift_px - y_for("1")).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn mac_script_runs_neither_move_nor_size_their_line() {
+        let _platform = RestoreWordPlatform::mac();
+        // Probe vert-align (Word 16.114.2, 20261030): a raised and a lowered
+        // run give the same line pitch as unshifted text; `w:position` still
+        // raises the line.
+        let baselines = |alignment: Option<&str>, position: Option<f32>| {
+            let properties = RunProperties {
+                font_size: Some(10.5),
+                font_family: Some("MS Mincho".into()),
+                ..RunProperties::default()
+            };
+            let mut first = note_test_paragraph("A", None);
+            first.runs[0].properties = Some(properties.clone());
+            let mut shifted = note_test_run("1", None);
+            shifted.properties = Some(RunProperties {
+                baseline: alignment.map(Rc::from),
+                text_position: position,
+                ..properties.clone()
+            });
+            first.runs.push(shifted);
+            let mut second = note_test_paragraph("B", None);
+            second.runs[0].properties = Some(properties);
+            let document = Document {
+                body: Some(Body {
+                    elements: vec![
+                        BodyElement::from_paragraph(first),
+                        BodyElement::from_paragraph(second),
+                    ],
+                }),
+                ..Document::default()
+            };
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::with_width_per_char(8.0),
+                }),
+                false,
+            )
+            .unwrap();
+            renderer
+                .render(&document, &options_for_seek_tests())
+                .unwrap();
+            let paragraphs = renderer.selection.paragraphs();
+            (
+                paragraphs[0].lines[0].baseline,
+                paragraphs[1].lines[0].baseline,
+            )
+        };
+        let plain = baselines(None, None);
+        for alignment in ["superscript", "subscript"] {
+            let (first, second) = baselines(Some(alignment), None);
+            assert!(
+                (first - plain.0).abs() < 1e-6,
+                "{alignment}: {first} vs {plain:?}"
+            );
+            assert!(
+                (second - plain.1).abs() < 1e-6,
+                "{alignment}: {second} vs {plain:?}"
+            );
+        }
+        let raised = baselines(None, Some(12.0));
+        assert!(raised.0 > plain.0 + 1.0, "{raised:?} vs {plain:?}");
     }
 
     #[test]
