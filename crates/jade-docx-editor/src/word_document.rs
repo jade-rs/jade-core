@@ -14405,6 +14405,9 @@ impl WordDocument {
                     revision: None,
                 });
                 paragraph.runs.extend(tail);
+                // The equation's run takes its styles' font and size, as a
+                // load fills it: the equation is drawn at that size.
+                self.apply_run_font_defaults_at(model_position.paragraph);
                 self.sync_paragraph_text_preserving_drawings(model_position.paragraph);
                 self.rebuild_paragraph_surfaces();
                 Ok(position)
