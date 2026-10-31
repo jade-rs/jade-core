@@ -355,6 +355,14 @@ pub enum CaretAffinity {
     Downstream,
 }
 
+/// Selection registration for an unchanged paragraph tail, including metadata
+/// whose lifetime must match the saved line layouts.
+pub struct SelectionSuffix {
+    paragraphs: Vec<ParagraphLayout>,
+    caret_x_overrides: HashMap<(usize, usize), f64>,
+    non_selectable_paragraphs: HashSet<usize>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
     paragraphs: Vec<ParagraphLayout>,
@@ -501,6 +509,46 @@ impl SelectionManager {
         self.paragraphs.truncate(from);
         *self.paragraph_bounds_index.get_mut() = None;
         self.paragraphs.extend(suffix);
+    }
+
+    /// Save the unchanged tail before an incremental render clears its
+    /// registration. Cell layouts are saved separately by the caller.
+    pub fn take_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
+        let paragraphs = self.take_paragraph_suffix(from);
+        let mut caret_x_overrides = HashMap::new();
+        self.caret_x_overrides.retain(|&(paragraph, line), x| {
+            if paragraph < from {
+                true
+            } else {
+                caret_x_overrides.insert((paragraph, line), *x);
+                false
+            }
+        });
+        let mut non_selectable_paragraphs = HashSet::new();
+        self.non_selectable_paragraphs.retain(|&paragraph| {
+            if paragraph < from {
+                true
+            } else {
+                non_selectable_paragraphs.insert(paragraph);
+                false
+            }
+        });
+        SelectionSuffix {
+            paragraphs,
+            caret_x_overrides,
+            non_selectable_paragraphs,
+        }
+    }
+
+    pub fn restore_selection_suffix(&mut self, from: usize, suffix: SelectionSuffix) {
+        self.restore_paragraph_suffix(from, suffix.paragraphs);
+        self.caret_x_overrides
+            .retain(|&(paragraph, _), _| paragraph < from);
+        self.caret_x_overrides.extend(suffix.caret_x_overrides);
+        self.non_selectable_paragraphs
+            .retain(|&paragraph| paragraph < from);
+        self.non_selectable_paragraphs
+            .extend(suffix.non_selectable_paragraphs);
     }
 
     /// Begins an incremental render pass, preserving paragraphs before `dirty_from`.
@@ -5975,19 +6023,30 @@ mod tests {
         for (index, text) in ["before", "unchanged", "tail"].iter().enumerate() {
             manager.append_paragraph_text(index, text);
         }
+        manager.record_line_with_caret_start(1, make_line("", 8.0, 20.0, 20.0), 112.0);
+        manager.set_paragraph_selectable(2, false);
 
-        let suffix = manager.take_paragraph_suffix(1);
+        let suffix = manager.take_selection_suffix(1);
         manager.begin_render_incremental(Some(0));
         manager.append_paragraph_text(0, "edited");
+        manager.record_line_with_caret_start(0, make_line("", 8.0, 10.0, 10.0), 64.0);
+        manager.set_paragraph_selectable(0, false);
         // A nested story may register part of the unchanged tail before the
         // body render takes its stable-edit exit.
         manager.append_paragraph_text(1, "partial replay");
-        manager.restore_paragraph_suffix(1, suffix);
+        manager.record_line_with_caret_start(1, make_line("", 8.0, 20.0, 20.0), 48.0);
+        manager.set_paragraph_selectable(1, false);
+        manager.restore_selection_suffix(1, suffix);
 
         assert_eq!(
             manager.paragraph_debug_texts(),
             vec!["edited", "unchanged", "tail"]
         );
+        assert_eq!(manager.caret_x_on_line(0, 0, 0), Some(64.0));
+        assert_eq!(manager.caret_x_on_line(1, 0, 0), Some(112.0));
+        assert!(!manager.is_paragraph_selectable(0));
+        assert!(manager.is_paragraph_selectable(1));
+        assert!(!manager.is_paragraph_selectable(2));
     }
 
     #[test]

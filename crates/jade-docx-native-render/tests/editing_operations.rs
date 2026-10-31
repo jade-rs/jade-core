@@ -193,3 +193,128 @@ fn stable_body_typing_keeps_later_table_editing_metadata() {
     .unwrap();
     assert!(before == after, "later table editing metadata was lost");
 }
+
+#[test]
+fn stable_body_typing_keeps_empty_cell_caret_origin() {
+    use std::io::{Cursor, Write};
+
+    // An empty cell uses the full cell for hit testing but starts its caret
+    // inside the padding. Saving only paragraph lines loses that distinction.
+    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, xml) in [
+        (
+            "[Content_Types].xml",
+            r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#,
+        ),
+        (
+            "_rels/.rels",
+            r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+        ),
+        (
+            "word/document.xml",
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+            <w:p><w:r><w:t>before</w:t></w:r></w:p>
+            <w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>
+            <w:tblGrid><w:gridCol w:w="6000"/></w:tblGrid><w:tr><w:tc>
+            <w:tcPr><w:tcW w:w="6000" w:type="dxa"/><w:tcMar><w:left w:w="480" w:type="dxa"/></w:tcMar></w:tcPr><w:p/>
+            </w:tc></w:tr></w:tbl><w:p><w:r><w:t>after</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>
+            </w:body></w:document>"#,
+        ),
+    ] {
+        zip.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(xml.as_bytes()).unwrap();
+    }
+    let bytes = zip.finish().unwrap().into_inner();
+    let mut document = common::open_bytes(&bytes);
+    assert_eq!(document.paragraph_text(1).as_deref(), Some(""));
+    let before = document.position_rect(1, 0).expect("empty cell caret");
+    assert!(before.x > document.renderer().cell_layouts_debug_ref()[0].left + 20.0);
+
+    for _ in 0..3 {
+        document.insert_text(0, 0, "a", 1).unwrap();
+        assert!(document
+            .renderer()
+            .last_completed_pagination_edit_preserved());
+        assert_eq!(document.position_rect(1, 0), Some(before));
+    }
+}
+
+#[test]
+fn stable_typing_matches_reopening_and_survives_undo_redo() {
+    for fixture in ["contract", "nda", "yokohama"] {
+        let mut document = open_fixture(&format!("public/fixtures/{fixture}.docx"));
+        let paragraph = (6..document.paragraph_count())
+            .chain(0..document.paragraph_count().min(6))
+            .find(|&index| {
+                document
+                    .paragraph_text(index)
+                    .is_some_and(|text| !text.is_empty())
+                    && document
+                        .position_rect(index, 0)
+                        .is_some_and(|rect| document.page_and_offset(rect.document_y).0 == 0)
+            })
+            .expect("nonempty paragraph on page one");
+        let before = document.page_pixels(0).unwrap();
+        let pages = document.page_count();
+        let text = document.paragraph_text(paragraph).unwrap();
+        let later = document.paragraph_count() - 1;
+        let later_rect = document.position_rect(later, 0);
+
+        document.insert_text(paragraph, 0, "あ", 1).unwrap();
+        assert!(
+            document
+                .renderer()
+                .last_completed_pagination_edit_preserved(),
+            "{fixture}: stable pagination was not exercised"
+        );
+        let edited = document.page_pixels(0).unwrap();
+        assert!(before != edited, "{fixture}: typing did not change pixels");
+        assert_eq!(document.page_count(), pages, "{fixture}");
+        assert_eq!(document.position_rect(later, 0), later_rect, "{fixture}");
+
+        // Use a fresh renderer as well as the full-repaint oracle: reusing this
+        // renderer's caches could hide stale drawing commands or layout data.
+        let mut reopened = common::open_bytes(&document.export_docx().unwrap());
+        assert!(
+            edited == reopened.page_pixels(0).unwrap(),
+            "{fixture}: reopened pixels"
+        );
+        assert_eq!(
+            reopened.page_count(),
+            pages,
+            "{fixture}: reopened page count"
+        );
+        assert_eq!(reopened.position_rect(later, 0), later_rect, "{fixture}");
+
+        document.undo().unwrap();
+        assert!(
+            document.page_pixels(0).unwrap() == before,
+            "{fixture}: undo pixels"
+        );
+        assert_eq!(
+            document.paragraph_text(paragraph).unwrap(),
+            text,
+            "{fixture}"
+        );
+        assert_eq!(document.page_count(), pages, "{fixture}: undo page count");
+        assert_eq!(
+            document.position_rect(later, 0),
+            later_rect,
+            "{fixture}: undo caret"
+        );
+
+        document.redo().unwrap();
+        assert!(
+            document.page_pixels(0).unwrap() == edited,
+            "{fixture}: redo pixels"
+        );
+        assert_eq!(document.page_count(), pages, "{fixture}: redo page count");
+        assert_eq!(
+            document.position_rect(later, 0),
+            later_rect,
+            "{fixture}: redo caret"
+        );
+    }
+}

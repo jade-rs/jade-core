@@ -26,7 +26,11 @@ fn text_paragraph() -> String {
 /// Ten paragraphs of text from the top margin (1in) down, with the shape
 /// anchored in the first or the last of them.
 fn docx(behind_doc: bool, anchor_last: bool) -> Vec<u8> {
-    let mut body = String::new();
+    docx_with_prefix(behind_doc, anchor_last, "")
+}
+
+fn docx_with_prefix(behind_doc: bool, anchor_last: bool, prefix: &str) -> Vec<u8> {
+    let mut body = prefix.to_string();
     for index in 0..10 {
         let anchor = if anchor_last { index == 9 } else { index == 0 };
         if anchor {
@@ -104,4 +108,30 @@ fn a_shape_behind_text_lies_under_the_paragraphs_before_its_anchor() {
         dark > 100,
         "the earlier paragraphs' text is drawn over the shape"
     );
+}
+
+#[test]
+fn typing_on_an_earlier_page_keeps_later_shapes_selectable() {
+    let bytes = docx_with_prefix(
+        false,
+        true,
+        r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><w:r><w:br w:type="page"/></w:r></w:p>"#,
+    );
+    let mut document = open_bytes(&bytes);
+    assert_eq!(document.page_count(), 2);
+    let (x, y) = (200.0, document.document_y(1, 150.0));
+    let before = document.object_at(x, y).expect("shape on page two");
+    let pixels = document.page_pixels(1).expect("page two pixels");
+
+    document
+        .insert_text(0, 0, "a", 2)
+        .expect("type on page one");
+
+    let after = document
+        .object_at(x, y)
+        .expect("untouched shape remains selectable after typing");
+    assert_eq!(after.paragraph, before.paragraph);
+    assert_eq!(after.run, before.run);
+    assert_eq!((after.x, after.y), (before.x, before.y));
+    assert_eq!(document.page_pixels(1).expect("page two pixels"), pixels);
 }

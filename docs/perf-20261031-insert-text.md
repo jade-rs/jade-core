@@ -24,8 +24,10 @@ request type alone does not establish the scope of the edit.
 
 The renderer checks the edited paragraph's geometry before keeping the later
 layout and selection data. A change in height, page, column or position follows
-the existing invalidation path. Incomplete layouts, notes, pageless mode and
-edits inside table cells keep the regular layout path. A cell's text height
+the existing invalidation path. Incomplete layouts, notes, comments, registered
+objects, pageless mode and edits inside table cells keep the regular layout
+path. Comments and objects need the regular walk to rebuild annotations and
+hit regions on later pages. A cell's text height
 alone cannot prove that its table's columns and other cells stayed unchanged.
 Browser typing already uses this renderer mechanism;
 this change connects native typing to it without changing the layout algorithm.
@@ -35,6 +37,8 @@ saving the tail even when pagination reuse succeeded. Save that tail for
 completed-pagination edit candidates too, restoring it only after the same
 geometry checks succeed.
 This also covers a full-page repaint that stops after the stable edit.
+The snapshot includes caret origins and paragraph selectability, not just line
+layouts: empty cells use a padded caret origin distinct from their hit bounds.
 The host must retain the later page slots before that repaint too; truncation
 after the partial walk cannot restore slots discarded at render entry.
 
@@ -67,6 +71,11 @@ work; elapsed-time improvements are measured separately below.
 
 ## Measurements
 
+The timings and profiles below are historical measurements from before the
+rebase onto `0f19e5d` and the subsequent regression fixes. They compare the
+frozen `ba2d090` baseline with the pre-rebase optimization, not the current
+reviewed tree. They must not be read as current post-fix latency results.
+
 First input after complete layout, 500 fresh processes per fixture and version:
 
 | Fixture | Baseline median / p95 | Final median / p95 | Final inputs over 1 ms |
@@ -98,7 +107,7 @@ to locate work rather than to compare elapsed latency with this final series.
 ## Measurement method
 
 Compare the frozen baseline (renderer at `ba2d090`, with the workload using the
-previous typing path) and the final renderer using the same `profiling` build
+previous typing path) and the pre-rebase renderer using the same `profiling` build
 profile. Timings are elapsed wall-clock time, including editing and visible-page
 rendering inside `measure_insert_text`.
 
@@ -117,20 +126,40 @@ from the fresh-process first-input measurements.
 
 ## Correctness checks
 
-The editor and layout unit suites passed: 2,342 and 703 tests respectively
+The editor and layout unit suites passed: 2,357 and 703 tests respectively
 (21 and 12 existing ignored tests). Native rendering's editing operations,
-tables, view geometry, content controls, and selection/history suites passed:
-42 tests, with two existing ignored tests.
+tables, view geometry, content controls, selection/history, floating layers,
+headers/objects and comments/revisions suites passed: 61 tests, with two
+existing ignored tests.
 
 The new regressions compare stable typing and wrapping text against a full
 pixel repaint, retain later-page carets across repeated typing, and verify the
 complete table resize/cell metadata in the Yokohama document. The renderer unit
 regression also starts with full dirty state and checks the later host pages
 and selection entries.
+Fresh renderers reopened from exported contract, NDA and Yokohama documents
+also match edited pixels and page counts. Undo and Redo preserve the expected
+pixels, text and later carets. A dedicated empty-cell document checks the padded
+caret origin across repeated stable typing.
 Three cache regressions additionally verify that a local edit skips the full
 scans without retaining a strong/weak document reference across mutation, that
 new anchors (including nested text boxes) and horizontal wrapping are detected,
 and that positive or unknown answers are never carried forward as negative ones.
+
+Regression review found and corrected three losses of registration state:
+
+1. The selection suffix discarded caret origins and nonselectable paragraph
+   flags. A unit test failed with caret x = 8 instead of 112 before the fix;
+   the suffix now retains both alongside its line layouts.
+2. Early exit discarded later-page object hit regions. The native regression
+   failed with the optimization and passed with the regular path. Documents
+   with registered objects now retain the regular path.
+3. Early exit discarded a later-page comment annotation. The native regression
+   observed an empty annotation list after typing. Documents with comments now
+   retain the regular path as well.
+
+These tests request the affected later pages, so their failures specifically
+exercise the early-exit optimization rather than a narrower visible range.
 
 Clippy passed for editor/layout/perf (`--all-targets --all-features`) and the
 native crate (`--all-targets`), both with `-D warnings`.
@@ -139,7 +168,8 @@ native crate (`--all-targets`), both with `-D warnings`.
 cargo test -j 2 -p jade-docx-editor -p jade-docx-layout --lib
 cargo test -j 2 --manifest-path crates/jade-docx-native-render/Cargo.toml --locked \
   --test editing_operations --test tables --test view_geometry \
-  --test content_controls --test selection_and_history -- --test-threads=1
+  --test content_controls --test selection_and_history --test floating_layers \
+  --test header_and_objects --test comments_and_revisions -- --test-threads=1
 ```
 
 ## Reproduction
