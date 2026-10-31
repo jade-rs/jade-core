@@ -56,6 +56,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -140,4 +141,26 @@ fn the_workbooks_epoch_reaches_the_formatter() {
     );
     assert_eq!(windows, "2023-03-15");
     assert_eq!(mac, "2027-03-16");
+}
+
+#[test]
+fn show_formulas_shows_a_formula_as_typed_on_the_left() {
+    let mut sheet = sheet_with(CellValue::Number(1234.0));
+    sheet.rows[0].cells[0].formula = Some("_xlfn.XLOOKUP(B1,C:C,D:D)".into());
+    let shown = |sheet: &Sheet| {
+        let layout = layout_sheet(sheet, &styles("#,##0"), &LayoutOptions::default());
+        layout.cell(CellRef::new(0, 0)).expect("A1").text.clone()
+    };
+    assert_eq!(shown(&sheet), "1,234");
+    sheet.show_formulas = true;
+    assert_eq!(shown(&sheet), "=XLOOKUP(B1,C:C,D:D)");
+    let layout = layout_sheet(&sheet, &styles("#,##0"), &LayoutOptions::default());
+    assert_eq!(
+        layout
+            .cell(CellRef::new(0, 0))
+            .expect("A1")
+            .alignment
+            .horizontal,
+        jade_xlsx_reader::HorizontalAlignment::Left
+    );
 }
