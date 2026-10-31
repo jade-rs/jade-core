@@ -8076,7 +8076,11 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                 if width - trailing_space_width <= effective_available + WRAP_FIT_TOLERANCE_PX {
                     break;
                 }
-                if is_justified_alignment(&paragraph_style.alignment) {
+                // Direct word transfer needs an existing next line. A final
+                // line uses the continuation-creation path below instead.
+                if is_justified_alignment(&paragraph_style.alignment)
+                    && line_index + 1 < lines.len()
+                {
                     if lines[line_index].clusters.len() <= 1 {
                         break;
                     }
@@ -21810,6 +21814,131 @@ mod tests {
             vec!["x", "ab ", "cd"]
         );
         assert!(infos.iter().all(|line| line.width <= 3.75 + 1e-9));
+    }
+
+    fn final_line_repair_fixture(text: &str) -> Vec<WrappedLine> {
+        [
+            ("x", LineBreakKind::Soft),
+            (text, LineBreakKind::ParagraphEnd),
+        ]
+        .into_iter()
+        .scan(0, |offset, (text, break_kind)| {
+            let start = *offset;
+            *offset += text.len();
+            Some(WrappedLine {
+                segments: vec![TextSegment {
+                    text: text.into(),
+                    start,
+                    end: *offset,
+                    properties: None,
+                    revision: None,
+                    hyperlink: None,
+                    leading_width: 0.0,
+                }],
+                break_kind,
+                break_range: (break_kind == LineBreakKind::ParagraphEnd)
+                    .then_some((*offset, *offset)),
+                break_properties: None,
+                leaders: Vec::new(),
+                tab_stops: Vec::new(),
+                hyphen: None,
+                clusters: text
+                    .grapheme_indices(true)
+                    .map(|(index, grapheme)| {
+                        InlineCluster::grapheme(
+                            start + index,
+                            start + index + grapheme.len(),
+                            1.0,
+                            grapheme,
+                            grapheme.chars().all(char::is_whitespace),
+                            false,
+                            false,
+                        )
+                    })
+                    .collect(),
+            })
+        })
+        .collect()
+    }
+
+    #[test]
+    fn justified_final_line_with_trailing_space_creates_a_continuation() {
+        let ctx = TestContext::new(1.0);
+        let mut lines = final_line_repair_fixture("ab cd ");
+        let paragraph = ParagraphStyle {
+            alignment: "both".into(),
+            word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        ensure_lines_fit_available_width(
+            &ctx,
+            false,
+            &mut lines,
+            0.0,
+            &paragraph,
+            4.5,
+            &mut FxHashMap::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            collect_line_infos(&lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            ["x", "ab ", "cd "]
+        );
+        assert!(lines[..lines.len() - 1]
+            .iter()
+            .all(|line| line.break_kind == LineBreakKind::Soft));
+        let last = lines.last().unwrap();
+        assert_eq!(last.break_kind, LineBreakKind::ParagraphEnd);
+        assert_eq!(last.break_range, Some((7, 7)));
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+        #[test]
+        fn justified_final_line_repair_preserves_words_offsets_and_breaks(
+            first_len in 1usize..12,
+            second_len in 1usize..12,
+            separator_len in 1usize..4,
+            trailing_len in 1usize..4,
+            full_width_space in any::<bool>(),
+            alignment in prop::sample::select(vec!["both", "justify", "distribute"]),
+            mac in any::<bool>(),
+        ) {
+            let first = "a".repeat(first_len);
+            let second = "b".repeat(second_len);
+            let space = if full_width_space { "　" } else { " " };
+            let text = format!("{first}{}{second}{}", space.repeat(separator_len), space.repeat(trailing_len));
+            let mut lines = final_line_repair_fixture(&text);
+            let original_clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster|
+                (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
+            let paragraph = ParagraphStyle {
+                alignment: alignment.into(),
+                word_platform: if mac { crate::line_metrics::WordLayoutPlatform::Mac }
+                    else { crate::line_metrics::WordLayoutPlatform::Windows },
+                ..ParagraphStyle::default()
+            };
+            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines,
+                0.0, &paragraph, first_len.max(second_len) as f64 + 1.5,
+                &mut FxHashMap::default()).unwrap();
+            let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment|
+                segment.text.as_str())).collect::<String>();
+            prop_assert_eq!(output, format!("x{text}"));
+            let clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster|
+                (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
+            prop_assert_eq!(clusters, original_clusters);
+            let infos = collect_line_infos(&lines);
+            prop_assert!(infos.iter().any(|line| line.text.contains(&first)));
+            prop_assert!(infos.iter().any(|line| line.text.contains(&second)));
+            prop_assert!(infos.iter().all(|line| !line.text.is_empty() && line.width.is_finite()));
+            prop_assert!(lines[..lines.len() - 1].iter().all(|line|
+                line.break_kind == LineBreakKind::Soft && line.break_range.is_none()));
+            let last = lines.last().unwrap();
+            prop_assert_eq!(last.break_kind, LineBreakKind::ParagraphEnd);
+            prop_assert_eq!(last.break_range, Some((text.len() + 1, text.len() + 1)));
+        }
     }
 
     #[test]
