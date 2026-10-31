@@ -119,8 +119,8 @@ pub struct FontStateTracker {
     /// pointer comparison with incoming Rc<str> font descriptors is O(1).
     current_font: Option<Rc<str>>,
     current_font_hash: Option<u64>,
-    /// Cached fill style to avoid redundant `set_fill_style_str()` calls.
-    current_fill_style: Option<String>,
+    /// Retains the command's fill style without copying its color string.
+    current_fill_style: Option<Rc<str>>,
     /// Cached line width to avoid redundant `set_line_width()` calls.
     current_line_width: Option<f64>,
     /// Whether textBaseline is already set to "alphabetic".
@@ -228,12 +228,30 @@ impl FontStateTracker {
     #[inline]
     pub fn set_fill_style_if_changed<P: Painter>(&mut self, context: &P, color: &str) -> bool {
         if let Some(ref current) = self.current_fill_style {
-            if current.len() == color.len() && current.as_str() == color {
+            if current.len() == color.len() && current.as_ref() == color {
                 return false;
             }
         }
         context.set_fill_style_str(color);
-        self.current_fill_style = Some(color.to_string());
+        self.current_fill_style = Some(Rc::from(color));
+        true
+    }
+
+    /// Sets a shared fill style without allocating a second color string.
+    /// Equal values from separate allocations still skip the backend setter.
+    #[inline]
+    pub fn set_fill_style_rc_if_changed<P: Painter>(
+        &mut self,
+        context: &P,
+        color: &Rc<str>,
+    ) -> bool {
+        if let Some(ref current) = self.current_fill_style {
+            if Rc::ptr_eq(current, color) || current.as_ref() == color.as_ref() {
+                return false;
+            }
+        }
+        context.set_fill_style_str(color);
+        self.current_fill_style = Some(Rc::clone(color));
         true
     }
 
@@ -749,7 +767,7 @@ pub fn execute_command_with_font_state<P: Painter>(
             font_state.invalidate();
         }
         DrawCommand::SetFillStyle { color } => {
-            font_state.set_fill_style_if_changed(context, color);
+            font_state.set_fill_style_rc_if_changed(context, color);
         }
         DrawCommand::SetFont { font } => {
             font_state.set_font_rc_if_changed(context, font);
@@ -873,7 +891,7 @@ fn draw_combined_characters<P: Painter>(
 ) -> Result<(), P::Error> {
     let split = glyphs.len().div_ceil(2);
     let mut start_x = x + glyphs.first().map_or(0.0, |glyph| glyph.x_offset);
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
     let first_font = glyphs
         .first()
@@ -943,7 +961,7 @@ fn draw_enclosed_character<P: Painter>(
     };
     let start_x = x + first.x_offset;
     let inner: String = glyphs.iter().filter_map(|glyph| glyph.text(text)).collect();
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
     font_state.set_font_rc_if_changed(context, font);
     let enclosure_width = context.measure_text_width(enclosure)?;
@@ -1059,7 +1077,7 @@ fn draw_text_run_glyphs<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<(), P::Error> {
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
 
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
@@ -1390,7 +1408,7 @@ fn execute_text_with_font_state<P: Painter>(
         );
     }
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     record_replay_text_run(text.graphemes(true).count() as u64);
 
     let mut width = 0.0;
@@ -1483,7 +1501,7 @@ fn execute_text_with_spacing_and_font_state<P: Painter>(
 
     // Keep replayed body text on alphabetic baseline even if callers changed it.
     font_state.ensure_text_baseline_alphabetic(context);
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
 
     if letter_spacing.abs() < f64::EPSILON && !style.requires_advanced_layout() {
         return execute_text_with_font_state(context, text, x, y, style, font_state);
@@ -1847,7 +1865,7 @@ fn execute_tab_leader_with_font_state<P: Painter>(
         return Ok(());
     }
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     let font = &style.font_descriptor_latin_ascii;
     font_state.set_font_if_changed(context, font);
 
@@ -1885,7 +1903,7 @@ fn execute_control_mark_with_font_state<P: Painter>(
 
     const CONTROL_MARK_FONT_SCALE: f64 = 0.75;
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
 
     let scaled_font_size_pt = (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
     let scaled_descriptor = format!(
@@ -1916,6 +1934,9 @@ fn extract_font_family(descriptor: &str) -> &str {
         descriptor
     }
 }
+
+#[cfg(test)]
+mod fill_style_tests;
 
 #[cfg(test)]
 mod tests {
