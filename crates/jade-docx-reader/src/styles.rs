@@ -360,7 +360,7 @@ impl StylesPart {
     /// `basedOn` links until a numbering definition is found or the chain
     /// terminates.
     pub fn resolve_numbering(&self, style_id: &str) -> Option<Numbering> {
-        let mut current = Some(style_id);
+        let mut current = Some(self.paragraph_style_or_default(style_id));
         let mut visited = HashSet::new();
 
         while let Some(id) = current {
@@ -379,6 +379,19 @@ impl StylesPart {
         }
 
         None
+    }
+
+    /// `style_id` when the document defines it as a paragraph style, else
+    /// the default paragraph style: a `w:pStyle` naming a style that does
+    /// not exist formats the paragraph with the default paragraph style
+    /// (ECMA-376 §17.3.1.27), as Word does. Resolved as no style, such a
+    /// paragraph lost the default style's alignment and spacing on reload
+    /// while the editor, applying it, gave them.
+    fn paragraph_style_or_default<'a>(&'a self, style_id: &'a str) -> &'a str {
+        if self.paragraph_styles.contains_key(style_id) {
+            return style_id;
+        }
+        self.default_paragraph_style_id().unwrap_or(style_id)
     }
 
     /// Returns the paragraph style id Word treats as the default style.
@@ -473,7 +486,10 @@ impl StylesPart {
     }
 
     pub fn resolve_paragraph_properties(&self, style_id: &str) -> Option<ParagraphProperties> {
-        Self::resolve_style_paragraph_properties(&self.paragraph_styles, style_id)
+        Self::resolve_style_paragraph_properties(
+            &self.paragraph_styles,
+            self.paragraph_style_or_default(style_id),
+        )
     }
 
     /// The paragraph properties (`w:pPr`, outside any `w:tblStylePr`) a table
@@ -573,7 +589,10 @@ impl StylesPart {
     }
 
     pub fn resolve_run_properties(&self, style_id: &str) -> Option<RunProperties> {
-        self.resolve_style_run_properties(style_id, &self.paragraph_styles)
+        self.resolve_style_run_properties(
+            self.paragraph_style_or_default(style_id),
+            &self.paragraph_styles,
+        )
     }
 
     pub fn resolve_character_run_properties(&self, style_id: &str) -> Option<RunProperties> {
@@ -2820,6 +2839,28 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
+        let styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="both"/><w:spacing w:after="40"/></w:pPr><w:rPr><w:sz w:val="22"/></w:rPr></w:style></w:styles>"#,
+        )
+        .expect("styles");
+        let paragraph = styles
+            .resolve_paragraph_properties("missing")
+            .expect("default");
+        assert_eq!(paragraph.alignment.as_deref(), Some("both"));
+        assert_eq!(
+            paragraph.spacing.and_then(|spacing| spacing.after),
+            Some(2.0)
+        );
+        assert_eq!(
+            styles
+                .resolve_run_properties("missing")
+                .and_then(|run| run.font_size),
+            Some(11.0)
+        );
+    }
     use super::*;
 
     /// `w:szCs` sizes complex-script text only: Word for Mac draws Latin and
