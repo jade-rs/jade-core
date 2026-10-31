@@ -31,7 +31,22 @@ fn document() -> WordDocument {
 #[test]
 fn the_font_dialog_opens_on_the_run_at_the_offset() {
     let mut document = document();
-    assert_eq!(document.run_format_at(0, 0), HeadlessRunFormat::default());
+    // The package has no styles part: the dialog opens on Word's built-in
+    // Normal, 游明朝 10.5 pt with kerning.
+    assert_eq!(
+        document.run_format_at(0, 0),
+        HeadlessRunFormat {
+            latin_font: Some("游明朝".into()),
+            east_asia_font: Some("游明朝".into()),
+            complex_font: Some("Times New Roman".into()),
+            font_size: Some(10.5),
+            complex_font_size: Some(10.5),
+            kerning: Some(1.0),
+            language: Some("en-US".into()),
+            east_asia_language: Some("ja-JP".into()),
+            ..Default::default()
+        }
+    );
     apply(
         &mut document,
         HeadlessCommand::SetRunFormat {
