@@ -13534,6 +13534,59 @@ mod tests {
     }
 
     #[test]
+    fn an_inserted_inline_equation_takes_its_styles_size() {
+        // A load gives an inline equation's run the font and size its styles
+        // give it, and the equation is drawn at that size. One inserted had
+        // neither until the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-pairs-kerned.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertEquation {
+                    paragraph: 15,
+                    offset: 6,
+                    omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                    placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                }],
+            },
+        )
+        .expect("equation inserted");
+        let equation = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(15)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .filter(|run| run.math.is_some())
+                .map(|run| {
+                    let props = run.properties.as_ref();
+                    (
+                        props.and_then(|props| props.font_size),
+                        props
+                            .and_then(|props| props.fonts.as_ref())
+                            .map(|fonts| (fonts.ascii.clone(), fonts.east_asia.clone())),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let inserted = equation(&word_doc);
+        assert_eq!(inserted.len(), 1);
+        assert!(inserted[0].0.is_some(), "{inserted:?}");
+        assert_eq!(inserted, equation(&reloaded));
+    }
+
+    #[test]
     fn text_typed_into_a_new_shape_takes_the_theme_east_asian_face() {
         // A new shape's empty paragraph takes the font defaults, which name
         // the theme's East Asian face. That name was resolved for the anchor
