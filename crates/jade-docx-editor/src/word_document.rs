@@ -10688,8 +10688,16 @@ impl WordDocument {
     }
 
     /// Finds the default section's `<w:sectPr>` (the last one under the body),
-    /// creating an empty one at the end of the body if absent. Returns `None`
-    /// when there is no raw document to edit (e.g. a synthetic test document).
+    /// creating it at the end of the body if absent. Returns `None` when
+    /// there is no raw document to edit (e.g. a synthetic test document).
+    ///
+    /// A created one states Word's default section, which a document without
+    /// section properties is laid out with
+    /// ([`SectionProperties::word_default`]): written empty, the page setup
+    /// edit that created it saved its own change but dropped the page size
+    /// and line grid, and the reopened document laid out differently.
+    ///
+    /// [`SectionProperties::word_default`]: jade_docx_reader::SectionProperties::word_default
     fn ensure_default_sect_pr_id(&mut self) -> Result<Option<XmlNodeId>, String> {
         let Some(raw) = self.raw_document.as_mut() else {
             return Ok(None);
@@ -10705,7 +10713,41 @@ impl WordDocument {
             .last()
             .copied()
             .ok_or_else(|| "document body is unavailable".to_string())?;
-        let sect_pr = raw.create_element("w:sectPr", Vec::new(), Vec::new());
+        let attributes = |pairs: &[(&str, &str)]| {
+            pairs
+                .iter()
+                .map(|(name, value)| XmlAttribute {
+                    name: (*name).to_string(),
+                    value: (*value).to_string(),
+                })
+                .collect::<Vec<_>>()
+        };
+        let children = [
+            ("w:pgSz", attributes(&[("w:w", "11906"), ("w:h", "16838")])),
+            (
+                "w:pgMar",
+                attributes(&[
+                    ("w:top", "1985"),
+                    ("w:right", "1701"),
+                    ("w:bottom", "1701"),
+                    ("w:left", "1701"),
+                    ("w:header", "851"),
+                    ("w:footer", "992"),
+                    ("w:gutter", "0"),
+                ]),
+            ),
+            ("w:cols", attributes(&[("w:space", "425")])),
+            (
+                "w:docGrid",
+                attributes(&[("w:type", "lines"), ("w:linePitch", "360")]),
+            ),
+        ]
+        .into_iter()
+        .map(|(name, attributes)| {
+            XmlNode::Element(raw.create_element(name, attributes, Vec::new()))
+        })
+        .collect();
+        let sect_pr = raw.create_element("w:sectPr", Vec::new(), children);
         let id = raw
             .insert_node(
                 body_id,
