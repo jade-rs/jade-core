@@ -1598,46 +1598,80 @@ fn text_rotation_radians(rotation: u16) -> Option<f64> {
 /// anyway.
 pub struct PainterMeasure<P: Painter> {
     painter: P,
-    /// The font last pushed to the painter — bold, italic, size bits and
-    /// family. Setting it per call is the expensive part of measuring a
-    /// grapheme at a time, and so is spelling its descriptor out per cell.
-    last_font: RefCell<Option<(bool, bool, u32, String)>>,
+    /// Each font measured so far — bold, italic, size bits and family — with
+    /// the widths of the texts measured in it. A sheet laid out again after
+    /// an edit measures the same texts again; with the measure kept, only
+    /// the edited cells reach the painter.
+    fonts: RefCell<Vec<FontWidths>>,
+    /// Which of `fonts` the painter has set. Setting it per call is the
+    /// expensive part of measuring a grapheme at a time.
+    current: std::cell::Cell<Option<usize>>,
 }
+
+struct FontWidths {
+    font: (bool, bool, u32, String),
+    widths: std::collections::HashMap<String, f64>,
+}
+
+/// Widths kept per font before they are let go, so a measure kept for the
+/// life of a workbook stays a few megabytes at most.
+const MEASURED_TEXTS_PER_FONT: usize = 1 << 16;
 
 impl<P: Painter> PainterMeasure<P> {
     pub fn new(painter: P) -> Self {
         Self {
             painter,
-            last_font: RefCell::new(None),
+            fonts: RefCell::new(Vec::new()),
+            current: std::cell::Cell::new(None),
         }
     }
 }
 
 impl<P: Painter> TextMeasure for PainterMeasure<P> {
     fn measure(&self, text: &str, font: &ResolvedFont) -> f64 {
-        let current = matches!(
-            &*self.last_font.borrow(),
-            Some((bold, italic, size, family))
-                if *bold == font.bold
-                    && *italic == font.italic
-                    && *size == font.size_points.to_bits()
-                    && *family == font.family
-        );
-        if !current {
-            self.painter.set_font(&font_shorthand(font));
-            *self.last_font.borrow_mut() = Some((
-                font.bold,
-                font.italic,
-                font.size_points.to_bits(),
-                font.family.clone(),
-            ));
+        let mut fonts = self.fonts.borrow_mut();
+        let index = match fonts.iter().position(|known| {
+            let (bold, italic, size, family) = &known.font;
+            *bold == font.bold
+                && *italic == font.italic
+                && *size == font.size_points.to_bits()
+                && *family == font.family
+        }) {
+            Some(index) => index,
+            None => {
+                fonts.push(FontWidths {
+                    font: (
+                        font.bold,
+                        font.italic,
+                        font.size_points.to_bits(),
+                        font.family.clone(),
+                    ),
+                    widths: std::collections::HashMap::new(),
+                });
+                fonts.len() - 1
+            }
+        };
+        if let Some(&width) = fonts[index].widths.get(text) {
+            return width;
         }
-        self.painter
-            .measure_text_width(text)
-            // A backend that cannot measure is not a reason to stop laying out;
-            // the stand-in wraps plausibly and the failure shows as line ends
-            // that do not match the glyphs.
-            .unwrap_or_else(|_| HeuristicMeasure.measure(text, font))
+        if self.current.get() != Some(index) {
+            self.painter.set_font(&font_shorthand(font));
+            self.current.set(Some(index));
+        }
+        match self.painter.measure_text_width(text) {
+            Ok(width) => {
+                let widths = &mut fonts[index].widths;
+                if widths.len() >= MEASURED_TEXTS_PER_FONT {
+                    widths.clear();
+                }
+                widths.insert(text.to_string(), width);
+                width
+            }
+            // A backend that cannot measure is not a reason to stop laying
+            // out; the stand-in wraps plausibly and the failure shows as line
+            // ends that do not match the glyphs.
+            Err(_) => HeuristicMeasure.measure(text, font),
+        }
     }
 }
 

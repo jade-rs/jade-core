@@ -6,6 +6,7 @@ use quick_xml::{
     name::ResolveResult,
     NsReader, Writer,
 };
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 #[derive(Default)]
@@ -14,8 +15,16 @@ pub struct WorksheetSource {
     ends: Vec<usize>,
     cells: Vec<CellSource>,
     drawing_links: [Vec<Option<String>>; 2],
+    /// Every row after the one before it and every cell after the one
+    /// before it in its row, with no compatibility branches to reorder.
+    ordered: bool,
 }
 impl WorksheetSource {
+    /// Whether the sheet's rows, and each row's cells, are already in
+    /// order, so a writer need not sort them.
+    pub fn is_ordered(&self) -> bool {
+        self.ordered
+    }
     fn drawing_relationship(&self, legacy: bool) -> Result<Option<String>> {
         if self.starts.is_empty() {
             return Err(crate::XlsxError::BadDrawingProtection(
@@ -186,8 +195,25 @@ fn main_namespace(ns: &[u8]) -> bool {
             | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
     )
 }
-fn allowed(path: &[String], name: &str) -> bool {
-    let parent = path.last().map(String::as_str).unwrap_or("");
+/// An element's local name, borrowed for those every sheet is made of so
+/// that reading one does not allocate per cell.
+fn element_name(local: &[u8]) -> Cow<'static, str> {
+    match local {
+        b"c" => Cow::Borrowed("c"),
+        b"v" => Cow::Borrowed("v"),
+        b"f" => Cow::Borrowed("f"),
+        b"row" => Cow::Borrowed("row"),
+        b"is" => Cow::Borrowed("is"),
+        b"t" => Cow::Borrowed("t"),
+        b"r" => Cow::Borrowed("r"),
+        b"rPr" => Cow::Borrowed("rPr"),
+        b"si" => Cow::Borrowed("si"),
+        b"sheetData" => Cow::Borrowed("sheetData"),
+        _ => Cow::Owned(String::from_utf8_lossy(local).into_owned()),
+    }
+}
+fn allowed(path: &[Cow<'static, str>], name: &str) -> bool {
+    let parent = path.last().map(|n| n.as_ref()).unwrap_or("");
     match parent {
         "worksheet" => matches!(
             name,
@@ -213,7 +239,7 @@ fn allowed(path: &[String], name: &str) -> bool {
         "commentList" => name == "comment",
         "comment" => name == "text",
         "text" => matches!(name, "t" | "r" | "rPh" | "phoneticPr"),
-        "sheetPr" => matches!(name, "tabColor" | "pageSetUpPr"),
+        "sheetPr" => matches!(name, "tabColor" | "outlinePr" | "pageSetUpPr"),
         "sheetViews" => name == "sheetView",
         "sheetView" => name == "pane",
         "cols" => name == "col",
@@ -251,10 +277,10 @@ fn allowed(path: &[String], name: &str) -> bool {
         _ => false,
     }
 }
-fn text_leaf(path: &[String]) -> bool {
+fn text_leaf(path: &[Cow<'static, str>]) -> bool {
     path.last().is_some_and(|n| {
         matches!(
-            n.as_str(),
+            n.as_ref(),
             "v" | "f"
                 | "t"
                 | "author"
@@ -274,11 +300,21 @@ fn emit(writer: &mut Writer<Vec<u8>>, event: Event<'_>, enabled: bool) -> Result
     writer.write_event(event).map_err(quick_xml::Error::from)?;
     Ok(())
 }
-fn attribute(e: &BytesStart<'_>, name: &[u8]) -> Result<Option<String>> {
-    for a in e.attributes() {
+/// An attribute's value, borrowed from the tag when it needs no unescaping:
+/// read for every row and cell of a sheet, so it allocates as little as it
+/// can.
+fn attribute<'b>(e: &'b BytesStart<'_>, name: &[u8]) -> Result<Option<Cow<'b, str>>> {
+    for a in e.attributes().with_checks(false) {
         let a = a?;
         if a.key.as_ref() == name {
-            return Ok(Some(a.unescape_value()?.into_owned()));
+            if let Cow::Borrowed(raw) = a.value {
+                if !raw.contains(&b'&') {
+                    if let Ok(text) = std::str::from_utf8(raw) {
+                        return Ok(Some(Cow::Borrowed(text)));
+                    }
+                }
+            }
+            return Ok(Some(Cow::Owned(a.unescape_value()?.into_owned())));
         }
     }
     Ok(None)
@@ -310,19 +346,32 @@ fn project(
     let mut writer = Writer::new(Vec::new());
     let mut source = WorksheetSource::default();
     let mut frames: Vec<Frame> = Vec::new();
-    let mut path: Vec<String> = Vec::new();
+    let mut path: Vec<Cow<'static, str>> = Vec::new();
     let mut namespace = None::<Vec<u8>>;
     let mut coordinates: Coordinates = (0, 0, 0);
     let mut current_cell = None::<CellSource>;
     let mut cell_frame = 0usize;
+    source.ordered = true;
+    let mut last_row = None::<u32>;
+    let mut last_column = None::<u32>;
+    // Looking for given cells in a sheet without compatibility branches,
+    // where each cell is written once: done once all are found.
+    let stop_when_found = references
+        .filter(|wanted| all_known && !wanted.is_empty() && !xml.contains("AlternateContent"))
+        .map(HashSet::len);
     loop {
+        if stop_when_found.is_some_and(|wanted| source.cells.len() >= wanted)
+            && current_cell.is_none()
+        {
+            break;
+        }
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         let end = reader.buffer_position() as usize;
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
-                let name = String::from_utf8_lossy(e.local_name().as_ref()).into_owned();
+                let name = element_name(e.local_name().as_ref());
                 // The element's namespace, compared where it is resolved; it
                 // is copied only where it is kept: the root's, and a cell's.
                 let (is_mc, is_main, in_namespace, kept_ns) = {
@@ -335,11 +384,14 @@ fn project(
                         ns == MC_NAMESPACE,
                         main_namespace(ns),
                         namespace.as_deref() == Some(ns),
-                        (path.is_empty() || name == "c").then(|| ns.to_vec()),
+                        // A cell's namespace is kept only where the cell
+                        // is recorded.
+                        (path.is_empty() || (all_known && name == "c")).then(|| ns.to_vec()),
                     )
                 };
                 let ns = kept_ns.as_deref().unwrap_or_default();
                 if is_mc && name == "AlternateContent" && !path.is_empty() {
+                    source.ordered = false;
                     if !empty {
                         frames.push(Frame::Alternate {
                             chosen: false,
@@ -352,7 +404,7 @@ fn project(
                     }
                     continue;
                 }
-                if is_mc && matches!(name.as_str(), "Choice" | "Fallback") {
+                if is_mc && matches!(name.as_ref(), "Choice" | "Fallback") {
                     let supported = name == "Fallback"
                         || crate::data_validations::choice_supported(&reader, e)?;
                     let (include, selected) = if let Some(Frame::Alternate {
@@ -414,7 +466,7 @@ fn project(
                         && allowed(&path, &name)
                         && (!metadata_only
                             || (path.len() == 1
-                                && matches!(name.as_str(), "drawing" | "legacyDrawing")))
+                                && matches!(name.as_ref(), "drawing" | "legacyDrawing")))
                         && !matches!(frames.last(), Some(Frame::Alternate { .. }))
                 };
                 if !owned {
@@ -426,9 +478,9 @@ fn project(
                 if path.is_empty() {
                     namespace = Some(ns.to_vec());
                 }
-                let mut clean = BytesStart::new(name.as_str());
+                let mut clean = BytesStart::new(name.as_ref());
                 let drawing =
-                    if path.len() == 1 && matches!(name.as_str(), "drawing" | "legacyDrawing") {
+                    if path.len() == 1 && matches!(name.as_ref(), "drawing" | "legacyDrawing") {
                         Some(usize::from(name == "legacyDrawing"))
                     } else {
                         None
@@ -480,6 +532,11 @@ fn project(
                         .unwrap_or(coordinates.0);
                     coordinates.0 = coordinates.1.saturating_add(1);
                     coordinates.2 = 0;
+                    if last_row.is_some_and(|last| coordinates.1 <= last) {
+                        source.ordered = false;
+                    }
+                    last_row = Some(coordinates.1);
+                    last_column = None;
                 } else if is_cell {
                     let explicit = attribute(e, b"r")?;
                     let cell = explicit
@@ -487,6 +544,10 @@ fn project(
                         .and_then(|v| CellRef::parse(v).ok())
                         .unwrap_or(CellRef::new(coordinates.2, coordinates.1));
                     coordinates.2 = cell.column.saturating_add(1);
+                    if last_column.is_some_and(|last| cell.column <= last) {
+                        source.ordered = false;
+                    }
+                    last_column = Some(cell.column);
                     if explicit.is_none() && !record_structure {
                         clean.push_attribute(("r", address(cell).as_str()));
                     }
@@ -524,7 +585,7 @@ fn project(
                 }
                 let leaf = if let Some(cell) = current_cell
                     .as_mut()
-                    .filter(|_| all_known && matches!(name.as_str(), "f" | "v"))
+                    .filter(|_| all_known && matches!(name.as_ref(), "f" | "v"))
                 {
                     let direct = frames.len() == cell_frame + 1;
                     if name == "v" {
@@ -565,7 +626,7 @@ fn project(
                 let record = record_structure
                     && !all_known
                     && matches!(
-                        name.as_str(),
+                        name.as_ref(),
                         "worksheet"
                             | "chartsheet"
                             | "dialogsheet"

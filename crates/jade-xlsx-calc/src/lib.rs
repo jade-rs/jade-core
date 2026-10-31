@@ -325,6 +325,75 @@ fn project<'a>(
     })
 }
 
+/// Formulas the engine parsed in an earlier model of the same workbook:
+/// each cell's formula text and the shared form it parsed to. A model is
+/// built afresh for every recalculation, and parsing every formula again is
+/// most of its cost; a formula whose shared form the new model already holds
+/// — every row of a filled-down column after the first — needs no parse.
+struct ParsedFormulas {
+    /// What the parses depend on besides the text and the cell: the sheets,
+    /// tables and names. Another set of them empties the cache.
+    context: u64,
+    cells: HashMap<(u32, i32, i32), (String, String, bool)>,
+}
+
+thread_local! {
+    static PARSED: std::cell::RefCell<ParsedFormulas> = std::cell::RefCell::new(ParsedFormulas {
+        context: 0,
+        cells: HashMap::new(),
+    });
+}
+
+/// Cells remembered before the cache is let go, so that it stays tens of
+/// megabytes at most.
+const PARSED_FORMULA_LIMIT: usize = 1 << 20;
+
+/// What a formula parses against in [`project_structure`].
+fn parse_context(workbook: &Workbook) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for sheet in &workbook.sheets {
+        sheet.name.hash(&mut hasher);
+        for table in &sheet.tables {
+            table.name.hash(&mut hasher);
+            table.display_name.hash(&mut hasher);
+            (table.reference.start, table.reference.end).hash(&mut hasher);
+            table.columns.hash(&mut hasher);
+            (table.header_row_count, table.totals_row_count).hash(&mut hasher);
+        }
+    }
+    for name in &workbook.defined_names {
+        (&name.name, name.local_sheet_index, &name.formula).hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+/// Sets `formula` in the cell, from the shared form an earlier model parsed
+/// it to when this model holds that already, else by parsing it.
+fn set_formula(
+    model: &mut Model<'_>,
+    cache: &mut ParsedFormulas,
+    (sheet, row, column): (u32, i32, i32),
+    formula: String,
+) -> std::result::Result<(), String> {
+    if let Some((text, shared, dynamic)) = cache.cells.get(&(sheet, row, column)) {
+        if *text == formula
+            && model.update_cell_with_shared_formula(sheet, row, column, shared, *dynamic)?
+        {
+            return Ok(());
+        }
+    }
+    let (shared, dynamic) =
+        model.update_cell_with_formula_shared(sheet, row, column, formula.clone())?;
+    if cache.cells.len() >= PARSED_FORMULA_LIMIT {
+        cache.cells.clear();
+    }
+    cache
+        .cells
+        .insert((sheet, row, column), (formula, shared, dynamic));
+    Ok(())
+}
+
 fn project_with_epoch<'a>(
     workbook: &Workbook,
     skipped: &HashMap<(usize, CellRef), CellValue>,
@@ -332,6 +401,14 @@ fn project_with_epoch<'a>(
     trace: bool,
 ) -> Result<Projection<'a>> {
     let mut model = project_structure(workbook, time_zone)?;
+    let context = parse_context(workbook);
+    PARSED.with(|parsed| {
+        let mut parsed = parsed.borrow_mut();
+        if parsed.context != context {
+            parsed.context = context;
+            parsed.cells.clear();
+        }
+    });
     let mut projected = Vec::new();
     let mut unparsed = Vec::new();
     for (index, sheet) in workbook.sheets.iter().enumerate() {
@@ -353,25 +430,26 @@ fn project_with_epoch<'a>(
                 }
                 let held = skipped.get(&(index, cell.reference));
                 if let (Some(formula), None) = (&cell.formula, held) {
-                    if model
-                        .update_cell_with_formula(
-                            engine_sheet,
-                            engine_row,
-                            engine_column,
-                            // A reference into a deleted sheet reads `#REF!B4`
-                            // in the file; Excel evaluates it as `#REF!`.
-                            format!(
-                                "={}",
-                                jade_xlsx_reader::collapse_ref_errors(&table_formula(
-                                    workbook,
-                                    index,
-                                    Some(cell.reference),
-                                    formula
-                                ))
-                            ),
+                    // A reference into a deleted sheet reads `#REF!B4` in
+                    // the file; Excel evaluates it as `#REF!`.
+                    let text = format!(
+                        "={}",
+                        jade_xlsx_reader::collapse_ref_errors(&table_formula(
+                            workbook,
+                            index,
+                            Some(cell.reference),
+                            formula
+                        ))
+                    );
+                    let set = PARSED.with(|parsed| {
+                        set_formula(
+                            &mut model,
+                            &mut parsed.borrow_mut(),
+                            (engine_sheet, engine_row, engine_column),
+                            text,
                         )
-                        .is_ok()
-                    {
+                    });
+                    if set.is_ok() {
                         projected.push((index, cell.reference));
                         continue;
                     }
