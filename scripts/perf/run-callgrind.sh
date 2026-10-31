@@ -12,7 +12,7 @@ bin=$1
 out=$2
 shift 2
 fixtures=("$@")
-scenarios=(load layout repaint keystroke export)
+scenarios=(load layout repaint keystroke keystroke-marks export)
 fixture_dir="$(cd "$(dirname "$0")/../.." && pwd)/public/fixtures"
 
 mkdir -p "$out"
