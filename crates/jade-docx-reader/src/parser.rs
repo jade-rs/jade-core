@@ -3770,6 +3770,19 @@ impl DocumentParser {
         if let Some(body) = document.body.as_ref() {
             document.sections =
                 Self::build_section_ranges(&body.elements, document.default_section.clone());
+            // No `w:sectPr` anywhere: Word lays the body out with its default
+            // section, not with no margins or grid at all. Only the model
+            // takes it; the document's XML still has no section properties.
+            let no_sections = document.default_section.is_none()
+                && document
+                    .sections
+                    .iter()
+                    .all(|section| section.properties.is_none());
+            if no_sections {
+                document.default_section = Some(SectionProperties::word_default());
+                document.sections =
+                    Self::build_section_ranges(&body.elements, document.default_section.clone());
+            }
         }
 
         if document.page_settings.is_none() {

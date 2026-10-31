@@ -6097,6 +6097,40 @@ pub struct PageSettings {
     pub gutter: Option<f32>,
 }
 
+impl SectionProperties {
+    /// The section Word lays a body out with when the document gives no
+    /// `w:sectPr` at all: Japanese Word's default page setup (its Normal
+    /// template). A4 (11906 × 16838 twips), margins of 35 mm at the top and
+    /// 30 mm elsewhere (1985 / 1701 twips), the header 15 mm and the footer
+    /// 17.5 mm from the edge (851 / 992), and an 18 pt line grid
+    /// (`w:docGrid w:type="lines" w:linePitch="360"`). Word for Mac 16.11x
+    /// draws underline-kinds.docx and note-styles-creation.docx, which have
+    /// no section properties, with exactly these margins and that pitch.
+    pub fn word_default() -> Self {
+        let twips = |value: f32| value / 20.0;
+        Self {
+            page_settings: Some(PageSettings {
+                width: Some(twips(11906.0)),
+                height: Some(twips(16838.0)),
+                margin_left: Some(twips(1701.0)),
+                margin_right: Some(twips(1701.0)),
+                margin_top: Some(twips(1985.0)),
+                margin_bottom: Some(twips(1701.0)),
+                header_distance: Some(twips(851.0)),
+                footer_distance: Some(twips(992.0)),
+                orientation: None,
+                gutter: Some(0.0),
+            }),
+            doc_grid: Some(DocGrid {
+                grid_type: Some("lines".to_string()),
+                line_pitch: Some(twips(360.0)),
+                char_space: None,
+            }),
+            ..Self::default()
+        }
+    }
+}
+
 /// Section-level properties that may affect page layout or header/footer links.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SectionProperties {
