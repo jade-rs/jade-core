@@ -238,6 +238,14 @@ pub struct HeadlessWorkbook {
     /// package it was left in step with: typing into that package again
     /// sets the values in it rather than building it from every cell.
     calc_session: Option<(Vec<jade_opc::EntryFingerprint>, jade_xlsx_calc::Session)>,
+    /// The cells the last typing write changed — those typed and the
+    /// formulas they recalculated — with the packages it found and left, for
+    /// a view to lay out again only where they are (see
+    /// [`Self::take_typed_changes`]).
+    typed_changes: Option<TypedChanges>,
+    /// The package as it was when a view last asked for the typed changes,
+    /// and so laid itself out.
+    laid_out: Option<Vec<jade_opc::EntryFingerprint>>,
     calculation_time_zone: String,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
@@ -267,6 +275,13 @@ pub struct EditCheckpoint {
 /// bounds memory at roughly a hundred copies of the file.
 pub const UNDO_LIMIT: usize = 100;
 
+/// What one typing write changed, between the packages it found and left.
+struct TypedChanges {
+    before: Vec<jade_opc::EntryFingerprint>,
+    after: Vec<jade_opc::EntryFingerprint>,
+    cells: Vec<(usize, CellRef)>,
+}
+
 /// The width, in characters, Excel gives a column of a Calibri 11 sheet that
 /// states no default.
 const DEFAULT_COLUMN_WIDTH: f64 = 9.140625;
@@ -286,6 +301,8 @@ impl HeadlessWorkbook {
                 ordered_sheets: self.ordered_sheets.clone(),
                 // The engine's model is not copied; the next typing builds it.
                 calc_session: None,
+                typed_changes: None,
+                laid_out: None,
                 calculation_time_zone: self.calculation_time_zone.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
@@ -710,6 +727,8 @@ impl HeadlessWorkbook {
             fast_entries: HashSet::new(),
             ordered_sheets: HashSet::new(),
             calc_session: None,
+            typed_changes: None,
+            laid_out: None,
             calculation_time_zone: time_zone.to_string(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
@@ -1393,6 +1412,18 @@ impl HeadlessWorkbook {
         if !outcome.spills.is_empty() {
             return Ok(false);
         }
+        let typed_cells: Vec<(usize, CellRef)> = sheets
+            .iter()
+            .filter_map(|edits| {
+                let index = self
+                    .workbook
+                    .sheets
+                    .iter()
+                    .position(|sheet| sheet.part_name == edits.part_name)?;
+                Some(edits.cells.iter().map(move |edit| (index, edit.reference)))
+            })
+            .flatten()
+            .collect();
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut updates = Vec::new();
         // Every formula the engine answered, for the charts reading them.
@@ -1424,6 +1455,10 @@ impl HeadlessWorkbook {
                 });
         }
         let complete = outcome.skipped.is_empty();
+        let changed_formulas: Vec<(usize, CellRef)> = updates
+            .iter()
+            .map(|(index, reference, _)| (*index, *reference))
+            .collect();
         let in_place = !charts
             && updates.iter().all(|(index, reference, _)| {
                 self.workbook.sheets[*index]
@@ -1487,13 +1522,37 @@ impl HeadlessWorkbook {
         } else {
             self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         }
+        let after = jade_opc::package_fingerprint(&written)?;
+        let mut cells: Vec<(usize, CellRef)> = typed_cells.clone();
+        cells.extend(changed_formulas);
+        self.typed_changes = Some(TypedChanges {
+            before: package,
+            after: after.clone(),
+            cells,
+        });
         if let Some(session) = session {
-            self.calc_session = Some((jade_opc::package_fingerprint(&written)?, session));
+            self.calc_session = Some((after, session));
         }
         let before = std::mem::replace(&mut self.source, written);
         self.remember(before);
         self.source_time_zone = self.calculation_time_zone.clone();
         Ok(true)
+    }
+
+    /// The cells the last write changed when it was typing — the values typed
+    /// and the formulas they recalculated, by sheet index — and nothing has
+    /// written the workbook since; `None` otherwise. Taken once: a view lays
+    /// out again only those cells' rows rather than the whole sheet.
+    ///
+    /// Each call also notes the package as the one the view now shows, so
+    /// the changes come back only when that typing write is all that
+    /// happened since the view last asked — not one write among several.
+    pub fn take_typed_changes(&mut self) -> Option<Vec<(usize, CellRef)>> {
+        let now = jade_opc::package_fingerprint(&self.source).ok();
+        let shown = std::mem::replace(&mut self.laid_out, now.clone());
+        let changes = self.typed_changes.take()?;
+        (now.as_ref() == Some(&changes.after) && shown.as_ref() == Some(&changes.before))
+            .then_some(changes.cells)
     }
 
     /// Rows hidden by hand under each sheet's filter, which SUBTOTAL skips.
