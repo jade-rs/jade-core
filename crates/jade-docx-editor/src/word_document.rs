@@ -32458,10 +32458,37 @@ impl WordDocument {
     /// unresolved, and the text draws in the run's fallback face until a reload.
     pub(crate) fn apply_theme_fonts_at(&mut self, paragraph_index: usize, theme: &ThemePart) {
         if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
-            for run in &mut paragraph.runs {
-                if let Some(props) = run.properties.as_mut() {
-                    Self::apply_theme_fonts_to_run_props(props, theme);
+            Self::apply_theme_fonts_to_paragraph_runs(paragraph, theme);
+        }
+    }
+
+    /// Resolves the theme fonts of `paragraph`'s runs and of the runs in its
+    /// text boxes, as a load does. The font defaults filled into a new
+    /// shape's paragraph name the theme's faces; left unresolved there, text
+    /// typed into the shape took no East Asian face until reopened.
+    fn apply_theme_fonts_to_paragraph_runs(paragraph: &mut Paragraph, theme: &ThemePart) {
+        for run in &mut paragraph.runs {
+            if let Some(props) = run.properties.as_mut() {
+                Self::apply_theme_fonts_to_run_props(props, theme);
+            }
+            if let Some(text_box) = run.text_box.as_mut() {
+                Self::apply_theme_fonts_to_blocks(&mut text_box.blocks, theme);
+            }
+        }
+    }
+
+    fn apply_theme_fonts_to_blocks(elements: &mut [BodyElement], theme: &ThemePart) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    Self::apply_theme_fonts_to_paragraph_runs(paragraph, theme);
                 }
+                BodyElement::Table(table) => {
+                    for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                        Self::apply_theme_fonts_to_blocks(&mut cell.blocks, theme);
+                    }
+                }
+                BodyElement::Math(_) => {}
             }
         }
     }
