@@ -788,8 +788,13 @@ pub(crate) fn code_runs(code: &str, rpr: Option<&XmlElement>, with_begin: bool) 
         }
     };
     let mut in_quotes = false;
-    for character in code.chars() {
+    let mut chars = code.chars().peekable();
+    while let Some(character) = chars.next() {
         match character {
+            '\\' if in_quotes && chars.peek() == Some(&'"') => {
+                text.push(character);
+                text.push(chars.next().expect("peeked"));
+            }
             '"' => {
                 in_quotes = !in_quotes;
                 text.push(character);
