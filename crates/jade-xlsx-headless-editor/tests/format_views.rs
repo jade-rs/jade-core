@@ -26,6 +26,9 @@ fn source_format_query_resolves_axis_defaults_and_history_without_writing() {
         horizontal: Some(HorizontalAlignment::Center),
         vertical: Some(VerticalAlignment::Top),
         wrap_text: Some(true),
+        shrink_to_fit: Some(false),
+        indent: Some(0),
+        text_rotation: Some(45),
         border_left: Some(BorderLine {
             style: BorderStyle::Thin,
             color: Some("FF0000".into()),

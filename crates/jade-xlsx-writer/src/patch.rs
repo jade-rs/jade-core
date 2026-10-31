@@ -80,7 +80,8 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     // A sheet whose rows or cells are already out of order — some writers
     // leave them so — is put in order first: Excel drops such a sheet's
     // cells when it repairs the file, and the splices below assume order.
-    let ordered = order_sheet_data(&expanded)?;
+    let source = jade_xlsx_reader::cell_content::worksheet_source(&expanded)?;
+    let ordered = order_sheet_data(&expanded, &source)?;
     let xml = ordered.as_deref().unwrap_or(expanded.as_str());
 
     // Rows and columns in order, because cells and rows have to stay sorted:
@@ -93,7 +94,13 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
             .insert(edit.reference.column, edit);
     }
 
-    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
+    // The sheet's structure was found above; only a reordered sheet has to
+    // be read for it again.
+    let owned = if ordered.is_some() {
+        jade_xlsx_reader::cell_content::worksheet_source(xml)?
+    } else {
+        source
+    };
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut splices: Vec<Splice> = Vec::new();
@@ -394,8 +401,10 @@ struct Span {
 /// The sheet with `<sheetData>`'s rows sorted by row and each row's cells by
 /// column, or `None` when they already are (or cannot be sorted safely: an
 /// element without an `r`, or anything else among them).
-pub(crate) fn order_sheet_data(xml: &str) -> Result<Option<String>> {
-    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
+fn order_sheet_data(
+    xml: &str,
+    owned: &jade_xlsx_reader::cell_content::WorksheetSource,
+) -> Result<Option<String>> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();

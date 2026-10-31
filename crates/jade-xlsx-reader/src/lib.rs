@@ -68,7 +68,7 @@ pub use jade_opc::OpcPackage;
 pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
-    DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, HeaderFooter,
+    DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, GradientFill, HeaderFooter,
     HorizontalAlignment, Hyperlink, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Shape,
     ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
     TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,

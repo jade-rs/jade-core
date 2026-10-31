@@ -170,6 +170,17 @@ pub struct FormatChange {
     pub vertical: Option<VerticalAlignment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wrap_text: Option<bool>,
+    /// Shrink the text to fit the column instead of overflowing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shrink_to_fit: Option<bool>,
+    /// Indent level (0–250), each three spaces of the Normal font. Excel
+    /// keeps it only with left, right or distributed alignment.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indent: Option<u32>,
+    /// SpreadsheetML's rotation: 0–90 degrees up, 91–180 for 1–90 down,
+    /// 255 for vertical (stacked) text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_rotation: Option<u16>,
     /// The left edge; a line of style `none` removes it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub border_left: Option<BorderLine>,
@@ -218,7 +229,12 @@ impl FormatChange {
     }
 
     fn touches_alignment(&self) -> bool {
-        self.horizontal.is_some() || self.vertical.is_some() || self.wrap_text.is_some()
+        self.horizontal.is_some()
+            || self.vertical.is_some()
+            || self.wrap_text.is_some()
+            || self.shrink_to_fit.is_some()
+            || self.indent.is_some()
+            || self.text_rotation.is_some()
     }
 }
 
@@ -268,6 +284,17 @@ pub fn add_cell_format(
         .is_some_and(|size| !size.is_finite() || !(1.0..=409.0).contains(&size))
     {
         return Err(WriteError::BadFontSize);
+    }
+    if change.indent.is_some_and(|indent| indent > 250) {
+        return Err(WriteError::BadAlignment("an indent is 0 to 250"));
+    }
+    if change
+        .text_rotation
+        .is_some_and(|rotation| rotation > 180 && rotation != 255)
+    {
+        return Err(WriteError::BadAlignment(
+            "a rotation is 0 to 180, or 255 for vertical text",
+        ));
     }
     let layout = scan(styles_xml)?;
     let base_index = base.unwrap_or(0) as usize;
@@ -381,6 +408,10 @@ pub fn add_cell_format(
                 HorizontalAlignment::Left => Some("left"),
                 HorizontalAlignment::Center => Some("center"),
                 HorizontalAlignment::Right => Some("right"),
+                HorizontalAlignment::Fill => Some("fill"),
+                HorizontalAlignment::Justify => Some("justify"),
+                HorizontalAlignment::CenterContinuous => Some("centerContinuous"),
+                HorizontalAlignment::Distributed => Some("distributed"),
             };
             match value {
                 Some(value) => set_attribute(&mut alignment, "horizontal", value),
@@ -392,6 +423,8 @@ pub fn add_cell_format(
                 VerticalAlignment::Bottom => None,
                 VerticalAlignment::Top => Some("top"),
                 VerticalAlignment::Center => Some("center"),
+                VerticalAlignment::Justify => Some("justify"),
+                VerticalAlignment::Distributed => Some("distributed"),
             };
             match value {
                 Some(value) => set_attribute(&mut alignment, "vertical", value),
@@ -404,6 +437,41 @@ pub fn add_cell_format(
             } else {
                 alignment.retain(|(key, _)| key != "wrapText");
             }
+        }
+        if let Some(shrink) = change.shrink_to_fit {
+            if shrink {
+                set_attribute(&mut alignment, "shrinkToFit", "1");
+            } else {
+                alignment.retain(|(key, _)| key != "shrinkToFit");
+            }
+        }
+        if let Some(rotation) = change.text_rotation {
+            if rotation == 0 {
+                alignment.retain(|(key, _)| key != "textRotation");
+            } else {
+                set_attribute(&mut alignment, "textRotation", &rotation.to_string());
+            }
+        }
+        if let Some(indent) = change.indent {
+            if indent == 0 {
+                alignment.retain(|(key, _)| key != "indent");
+            } else {
+                set_attribute(&mut alignment, "indent", &indent.to_string());
+            }
+        }
+        // Excel keeps an indent only where it means something: on left,
+        // right and distributed text. Indenting General text makes it
+        // left-aligned, as the Increase Indent button does.
+        if change.indent.is_some_and(|indent| indent > 0)
+            && !alignment.iter().any(|(key, _)| key == "horizontal")
+        {
+            set_attribute(&mut alignment, "horizontal", "left");
+        }
+        let indents = alignment.iter().any(|(key, value)| {
+            key == "horizontal" && matches!(value.as_str(), "left" | "right" | "distributed")
+        });
+        if !indents {
+            alignment.retain(|(key, _)| key != "indent");
         }
         set_attribute(&mut xf_attributes, "applyAlignment", "1");
     }

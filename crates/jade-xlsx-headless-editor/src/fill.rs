@@ -134,11 +134,7 @@ fn pattern_index(position: i64, period: usize) -> u32 {
 }
 
 fn cell_at(sheet: &Sheet, reference: CellRef) -> Option<&Cell> {
-    sheet
-        .rows
-        .iter()
-        .find(|row| row.index == reference.row)
-        .and_then(|row| row.cells.iter().find(|cell| cell.reference == reference))
+    sheet.cell_at(reference)
 }
 
 /// How one run continues.

@@ -48,6 +48,7 @@ pub mod drawing;
 mod filter;
 pub mod filter_state;
 pub mod format_axes;
+pub mod freeze_panes;
 pub mod header_footer;
 pub mod hyperlinks;
 pub mod merges;
@@ -161,6 +162,10 @@ pub enum WriteError {
     BadColor { value: String },
     #[error("font size must be finite and between 1 and 409 points")]
     BadFontSize,
+    #[error("{0}")]
+    BadAlignment(&'static str),
+    #[error("frozen panes must leave at least one column and row to scroll")]
+    BadFreezePane,
     #[error("package: {0}")]
     Package(#[from] jade_opc::OpcError),
     #[error("spreadsheet: {0}")]
@@ -381,14 +386,15 @@ pub fn write_xlsx_with_parts(
     Ok(prepare_xlsx_with_parts(original, styles, sheets, parts, true)?.write()?)
 }
 
-pub(crate) fn prepare_xlsx_with_parts(
-    original: &[u8],
+pub(crate) fn prepare_xlsx_with_parts<'a>(
+    original: &'a [u8],
     styles: Option<(&str, &str)>,
     sheets: &[SheetEdits],
     parts: &[(String, String)],
     refresh_caches: bool,
-) -> Result<OpcPackage> {
-    let mut package = OpcPackage::open(original)?;
+) -> Result<jade_opc::PreservingOpcPackage<'a>> {
+    // Parts the edit leaves alone are copied compressed, not deflated again.
+    let mut package = OpcPackage::open_preserving(original)?;
     let mut changed = false;
     if let Some((name, xml)) = styles {
         styles::install_styles_relationship(&mut package, name)?;
@@ -452,7 +458,7 @@ pub fn write_cached_values_verified(
     withdraw_recalculation: bool,
     verified: &VerifiedChartCells,
 ) -> Result<Vec<u8>> {
-    let mut package = OpcPackage::open(original)?;
+    let mut package = OpcPackage::open_preserving(original)?;
     let mut fresh = verified.clone();
     for sheet in sheets {
         if sheet.cells.is_empty() {

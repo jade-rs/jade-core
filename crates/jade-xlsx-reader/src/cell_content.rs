@@ -83,7 +83,6 @@ impl CellSource {
 type Coordinates = (u32, u32, u32);
 enum Frame {
     Element {
-        name: String,
         record: bool,
         cell: bool,
         leaf: Option<(usize, bool, bool, bool)>,
@@ -139,6 +138,10 @@ pub(crate) fn worksheet_drawing_relationship(xml: &str, legacy: bool) -> Result<
         return Err(crate::XlsxError::BadDrawingProtection(
             "not a supported sheet".into(),
         ));
+    }
+    // Neither `drawing` nor `legacyDrawing` anywhere: nothing to find.
+    if !xml.contains("rawing") {
+        return Ok(None);
     }
     project(xml, &root, true, false, None, true)?
         .1
@@ -319,13 +322,24 @@ fn project(
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
-                let ns = match reader.resolver().resolve_element(e.name()).0 {
-                    ResolveResult::Unbound => Vec::new(),
-                    ResolveResult::Bound(n) => n.as_ref().to_vec(),
-                    _ => b"?unknown".to_vec(),
-                };
                 let name = String::from_utf8_lossy(e.local_name().as_ref()).into_owned();
-                if ns == MC_NAMESPACE && name == "AlternateContent" && !path.is_empty() {
+                // The element's namespace, compared where it is resolved; it
+                // is copied only where it is kept: the root's, and a cell's.
+                let (is_mc, is_main, in_namespace, kept_ns) = {
+                    let ns: &[u8] = match reader.resolver().resolve_element(e.name()).0 {
+                        ResolveResult::Unbound => b"",
+                        ResolveResult::Bound(n) => n.0,
+                        _ => b"?unknown",
+                    };
+                    (
+                        ns == MC_NAMESPACE,
+                        main_namespace(ns),
+                        namespace.as_deref() == Some(ns),
+                        (path.is_empty() || name == "c").then(|| ns.to_vec()),
+                    )
+                };
+                let ns = kept_ns.as_deref().unwrap_or_default();
+                if is_mc && name == "AlternateContent" && !path.is_empty() {
                     if !empty {
                         frames.push(Frame::Alternate {
                             chosen: false,
@@ -338,7 +352,7 @@ fn project(
                     }
                     continue;
                 }
-                if ns == MC_NAMESPACE && matches!(name.as_str(), "Choice" | "Fallback") {
+                if is_mc && matches!(name.as_str(), "Choice" | "Fallback") {
                     let supported = name == "Fallback"
                         || crate::data_validations::choice_supported(&reader, e)?;
                     let (include, selected) = if let Some(Frame::Alternate {
@@ -394,9 +408,9 @@ fn project(
                     continue;
                 }
                 let owned = if path.is_empty() {
-                    name == root && namespace.is_none() && main_namespace(&ns)
+                    name == root && namespace.is_none() && is_main
                 } else {
-                    namespace.as_ref() == Some(&ns)
+                    in_namespace
                         && allowed(&path, &name)
                         && (!metadata_only
                             || (path.len() == 1
@@ -410,7 +424,7 @@ fn project(
                     continue;
                 }
                 if path.is_empty() {
-                    namespace = Some(ns.clone());
+                    namespace = Some(ns.to_vec());
                 }
                 let mut clean = BytesStart::new(name.as_str());
                 let drawing =
@@ -420,7 +434,12 @@ fn project(
                         None
                     };
                 let mut drawing_ids = Vec::new();
-                for a in e.attributes() {
+                // Only the projected text needs the cleaned attributes; the
+                // offset views read just the drawing relationship.
+                for a in e
+                    .attributes()
+                    .filter(|_| !record_structure || drawing.is_some())
+                {
                     let a = a?;
                     if drawing.is_some() {
                         let (uri, local) = reader.resolver().resolve_attribute(a.key);
@@ -431,7 +450,10 @@ fn project(
                         }
                     }
                     let key = a.key.as_ref();
-                    if key != b"xmlns" && (!key.contains(&b':') || key == b"xml:space") {
+                    if !record_structure
+                        && key != b"xmlns"
+                        && (!key.contains(&b':') || key == b"xml:space")
+                    {
                         let value = a.unescape_value()?;
                         clean.push_attribute((
                             String::from_utf8_lossy(key).as_ref(),
@@ -447,7 +469,7 @@ fn project(
                     });
                 }
                 if path.is_empty() && !ns.is_empty() {
-                    clean.push_attribute(("xmlns", String::from_utf8_lossy(&ns).as_ref()));
+                    clean.push_attribute(("xmlns", String::from_utf8_lossy(ns).as_ref()));
                 }
                 let is_cell = name == "c" && path.last().is_some_and(|n| n == "row");
                 if name == "row" && path.last().is_some_and(|n| n == "sheetData") {
@@ -465,13 +487,13 @@ fn project(
                         .and_then(|v| CellRef::parse(v).ok())
                         .unwrap_or(CellRef::new(coordinates.2, coordinates.1));
                     coordinates.2 = cell.column.saturating_add(1);
-                    if explicit.is_none() {
+                    if explicit.is_none() && !record_structure {
                         clean.push_attribute(("r", address(cell).as_str()));
                     }
                     if all_known && references.is_none_or(|wanted| wanted.contains(&cell)) {
                         let parsed = CellSource {
                             reference: cell,
-                            namespace: String::from_utf8_lossy(&ns).into_owned(),
+                            namespace: String::from_utf8_lossy(ns).into_owned(),
                             range: start..end,
                             head_end: end,
                             selected: frames.iter().all(|f| {
@@ -570,9 +592,8 @@ fn project(
                     emit(&mut writer, Event::Empty(clean), !record_structure)?;
                 } else {
                     emit(&mut writer, Event::Start(clean), !record_structure)?;
-                    path.push(name.clone());
+                    path.push(name);
                     frames.push(Frame::Element {
-                        name,
                         record,
                         cell: all_known && is_cell,
                         leaf,
@@ -580,12 +601,7 @@ fn project(
                 }
             }
             Event::End(_) => match frames.pop() {
-                Some(Frame::Element {
-                    name,
-                    record,
-                    cell,
-                    leaf,
-                }) => {
+                Some(Frame::Element { record, cell, leaf }) => {
                     if record {
                         source.ends.push(start);
                     }
@@ -616,12 +632,13 @@ fn project(
                             source.cells.push(cell);
                         }
                     }
+                    // Element frames and path entries are pushed together.
+                    let name = path.pop().unwrap_or_default();
                     emit(
                         &mut writer,
                         Event::End(BytesEnd::new(name)),
                         !record_structure,
                     )?;
-                    path.pop();
                 }
                 Some(Frame::Branch { selected, head_end }) if all_known => {
                     let local = current_cell.is_some()

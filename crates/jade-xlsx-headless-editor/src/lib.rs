@@ -79,6 +79,7 @@ use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
 };
+pub use jade_xlsx_writer::freeze_panes::Frozen;
 pub use jade_xlsx_writer::pivot_refresh::{
     pivot_configuration, PivotCreate, PivotDestination, PivotFieldOptions, PivotFilterSelection,
     PivotLayout, PivotMeasure, PivotMemberFilter, PivotPage, PivotReportLayout, PivotSource,
@@ -174,6 +175,8 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::Sort(_)
                         | jade_xlsx_writer::WriteError::BadColor { .. }
                         | jade_xlsx_writer::WriteError::BadFontSize
+                        | jade_xlsx_writer::WriteError::BadAlignment(_)
+                        | jade_xlsx_writer::WriteError::BadFreezePane
                         | jade_xlsx_writer::WriteError::NoSuchStyle { .. }
                         | jade_xlsx_writer::WriteError::NoSuchSheet(_)
                         | jade_xlsx_writer::WriteError::EmptyStructureChange
@@ -1181,7 +1184,63 @@ impl HeadlessWorkbook {
         }
         written = jade_xlsx_writer::tables::after_cell_entries(&self.workbook, &written, &sheets)?;
         written = jade_xlsx_writer::tables::follow_total_cells(&self.workbook, &written, &sheets)?;
-        self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
+        // Plain values typed over cells without formulas change nothing the
+        // model derives from elsewhere: it takes them in place rather than
+        // reading the whole package again.
+        let plain = !sheets.is_empty()
+            && styles.is_none()
+            && parts.is_empty()
+            && base.is_none()
+            && blocked.is_empty()
+            && !headers_changed
+            // Tables follow their cells, and chart and pivot caches are
+            // refreshed from them.
+            && self.workbook.pivots.is_empty()
+            && self.workbook.sheets.iter().all(|sheet| {
+                sheet.tables.is_empty() && sheet.shapes.iter().all(|shape| shape.chart.is_none())
+            })
+            && sheets.iter().all(|edits| {
+                self.workbook
+                    .sheets
+                    .iter()
+                    .find(|sheet| sheet.part_name == edits.part_name)
+                    .is_some_and(|sheet| {
+                        sheet.array_formulas.is_empty()
+                            && edits.cells.iter().all(|edit| {
+                                plain_value(&edit.value).is_some()
+                                    && sheet
+                                        .cell_at(edit.reference)
+                                        .is_none_or(|cell| cell.formula.is_none())
+                            })
+                    })
+            });
+        self.workbook = if plain {
+            let mut workbook = std::mem::take(&mut self.workbook);
+            for edits in &sheets {
+                if let Some(sheet) = workbook
+                    .sheets
+                    .iter_mut()
+                    .find(|sheet| sheet.part_name == edits.part_name)
+                {
+                    for edit in &edits.cells {
+                        if let Some(value) = plain_value(&edit.value) {
+                            put_value(sheet, edit.reference, value, edit.style_index);
+                        }
+                    }
+                }
+            }
+            // Formulas reading the cells now hold stale caches, so the
+            // writer asked for a full calculation on load.
+            workbook.full_calculation_on_load = true;
+            debug_assert_eq!(
+                Some(&workbook),
+                jade_xlsx_reader::read_xlsx(&written).ok().as_ref(),
+                "values taken in place read as the written package does"
+            );
+            workbook
+        } else {
+            jade_xlsx_reader::read_xlsx(&written)?
+        };
         let before = std::mem::replace(&mut self.source, written);
         // One undo step per write; the recalculation below folds into it.
         self.remember(before);
@@ -1256,6 +1315,24 @@ impl HeadlessWorkbook {
             .as_ref()
             .map(header_footer_view)
             .unwrap_or_default())
+    }
+
+    /// View ▸ Freeze Panes: keeps `frozen.columns` on the left and
+    /// `frozen.rows` at the top of the sheet's first view in place while the
+    /// rest scrolls; `None` unfreezes. A view setting, so a protected sheet
+    /// allows it as Excel does. One undo step.
+    pub fn set_freeze_panes(&mut self, sheet: &str, frozen: Option<Frozen>) -> Result<()> {
+        let index = self.sheet_index(sheet)?;
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let package = jade_opc::OpcPackage::open(&self.source)?;
+        let xml = package
+            .part_str(&part_name)?
+            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
+        let patched = jade_xlsx_writer::freeze_panes::set_freeze_pane(&xml, frozen)?;
+        if patched == xml {
+            return Ok(());
+        }
+        self.replace_parts(vec![(part_name, patched)])
     }
 
     /// Puts a note (a legacy comment) on a cell, replacing the one it has.
@@ -1459,6 +1536,8 @@ impl HeadlessWorkbook {
         let fill = format.and_then(|format| styles.fill(format));
         let border = format.and_then(|format| styles.border(format));
         let fill_color = match fill.and_then(|fill| fill.pattern.as_deref()) {
+            // A gradient is neither no fill nor one colour.
+            _ if fill.is_some_and(|fill| fill.gradient.is_some()) => None,
             None | Some("none") => Some(String::new()),
             Some("solid") => fill.and_then(|fill| fill.foreground).and_then(color),
             _ => None,
@@ -1482,6 +1561,9 @@ impl HeadlessWorkbook {
             horizontal: Some(alignment.horizontal),
             vertical: Some(alignment.vertical),
             wrap_text: Some(alignment.wrap_text),
+            shrink_to_fit: Some(alignment.shrink_to_fit),
+            indent: Some(alignment.indent),
+            text_rotation: Some(alignment.text_rotation),
             border_left: Some(border_line(border.and_then(|b| b.left.as_ref()))),
             border_right: Some(border_line(border.and_then(|b| b.right.as_ref()))),
             border_top: Some(border_line(border.and_then(|b| b.top.as_ref()))),
@@ -1789,6 +1871,30 @@ impl HeadlessWorkbook {
             .iter()
             .any(|sheet| sheet.shapes.iter().any(|shape| shape.chart.is_some()));
         if refreshed > 0 || withdraw || request || (charts && !verified.is_empty()) {
+            // Only cached values change when no chart caches follow them and
+            // no full calculation is asked for: the model takes them in
+            // place rather than reading the whole package again.
+            let in_place = !charts
+                && !request
+                && grouped.iter().all(|(index, cells)| {
+                    cells.iter().all(|cell| {
+                        self.workbook.sheets[*index]
+                            .cell_at(cell.reference)
+                            .is_some_and(|found| found.formula.is_some())
+                    })
+                });
+            let updates: Vec<(usize, CellRef, CellValue)> = if in_place {
+                grouped
+                    .iter()
+                    .flat_map(|(index, cells)| {
+                        cells.iter().map(move |cell| {
+                            (*index, cell.reference, cached_cell_value(&cell.value))
+                        })
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
             let sheets: Vec<SheetCachedValues> = grouped
                 .into_iter()
                 .map(|(index, cells)| SheetCachedValues {
@@ -1805,7 +1911,25 @@ impl HeadlessWorkbook {
             if request {
                 written = jade_xlsx_writer::mark_for_recalculation(&written)?;
             }
-            let workbook = jade_xlsx_reader::read_xlsx(&written)?;
+            let workbook = if in_place {
+                let mut workbook = std::mem::take(&mut self.workbook);
+                for (index, reference, value) in updates {
+                    if let Some(cell) = workbook.sheets[index].cell_at_mut(reference) {
+                        cell.value = value;
+                    }
+                }
+                if withdraw {
+                    workbook.full_calculation_on_load = false;
+                }
+                debug_assert_eq!(
+                    Some(&workbook),
+                    jade_xlsx_reader::read_xlsx(&written).ok().as_ref(),
+                    "cached values taken in place read as the written package does"
+                );
+                workbook
+            } else {
+                jade_xlsx_reader::read_xlsx(&written)?
+            };
             if self.automatic_height_base.is_none() {
                 self.automatic_height_base = Some(self.source.clone());
             }
@@ -1946,10 +2070,7 @@ impl HeadlessWorkbook {
 
     fn cached_value(&self, sheet: usize, reference: CellRef) -> CellValue {
         self.workbook.sheets[sheet]
-            .rows
-            .iter()
-            .find(|row| row.index == reference.row)
-            .and_then(|row| row.cells.iter().find(|cell| cell.reference == reference))
+            .cell_at(reference)
             .map(|cell| cell.value.clone())
             .unwrap_or(CellValue::Empty)
     }
@@ -1961,11 +2082,7 @@ impl HeadlessWorkbook {
 
     pub fn formula_state(&self, sheet_index: usize, reference: CellRef) -> Option<FormulaState> {
         let sheet = self.workbook.sheets.get(sheet_index)?;
-        let row = sheet.rows.iter().find(|row| row.index == reference.row)?;
-        formula_cache_state(
-            find_cell(row, reference.column)?,
-            self.calculation_is_stale(),
-        )
+        formula_cache_state(sheet.cell_at(reference)?, self.calculation_is_stale())
     }
 
     fn calculation_is_stale(&self) -> bool {
@@ -2644,14 +2761,77 @@ fn ensure_dense_result_fits(columns: u32, rows: u32) -> Result<()> {
     Ok(())
 }
 
+/// The model's value for a typed number, text or boolean, which the
+/// writer stores as it is; `None` for anything else.
+fn plain_value(value: &NewValue) -> Option<CellValue> {
+    match value {
+        NewValue::Number(number) if number.is_finite() => Some(CellValue::Number(*number)),
+        NewValue::Text(text) if !text.is_empty() => Some(CellValue::Text(text.clone())),
+        NewValue::Bool(flag) => Some(CellValue::Bool(*flag)),
+        _ => None,
+    }
+}
+
+/// Puts `value` in the model's cell at `at` as the writer puts it in the
+/// part: the cell (and its row) made when missing, its style kept unless
+/// `style` names one, and the runs and reading of the text it replaces gone.
+fn put_value(sheet: &mut Sheet, at: CellRef, value: CellValue, style: Option<u32>) {
+    let row = match sheet.rows.binary_search_by_key(&at.row, |row| row.index) {
+        Ok(row) => row,
+        Err(position) => {
+            sheet.rows.insert(
+                position,
+                jade_xlsx_reader::Row {
+                    index: at.row,
+                    height_points: None,
+                    custom_height: sheet.default_row_custom_height,
+                    custom_format: false,
+                    hidden: sheet.default_rows_hidden,
+                    style_index: None,
+                    cells: Vec::new(),
+                },
+            );
+            position
+        }
+    };
+    let cells = &mut sheet.rows[row].cells;
+    match cells.binary_search_by_key(&at.column, |cell| cell.reference.column) {
+        Ok(found) => {
+            let cell = &mut cells[found];
+            cell.value = value;
+            cell.style_index = style.or(cell.style_index);
+            cell.formula = None;
+        }
+        Err(position) => cells.insert(
+            position,
+            Cell {
+                reference: at,
+                value,
+                style_index: style,
+                formula: None,
+            },
+        ),
+    }
+    sheet.rich_text.remove(&at);
+    sheet.phonetic_readings.remove(&at);
+}
+
+/// The model's value for a cached value the writer stores.
+fn cached_cell_value(value: &CachedValue) -> CellValue {
+    match value {
+        CachedValue::Number(number) => CellValue::Number(*number),
+        CachedValue::Text(text) => CellValue::Text(text.clone()),
+        CachedValue::Bool(flag) => CellValue::Bool(*flag),
+        CachedValue::Error(error) => CellValue::Error(error.clone()),
+    }
+}
+
 fn find_row(sheet: &Sheet, row: u32) -> Option<&jade_xlsx_reader::Row> {
-    sheet.rows.iter().find(|candidate| candidate.index == row)
+    sheet.row(row)
 }
 
 fn find_cell(row: &jade_xlsx_reader::Row, column: u32) -> Option<&Cell> {
-    row.cells
-        .iter()
-        .find(|cell| cell.reference.column == column)
+    row.cell(column)
 }
 
 /// `A1`, the way a spreadsheet names a cell.

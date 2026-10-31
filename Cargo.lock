@@ -2051,6 +2051,7 @@ dependencies = [
  "jade-xlsx-layout",
  "jade-xlsx-reader",
  "jade-xlsx-writer",
+ "libc",
  "proptest",
  "serde_json",
  "thiserror",
@@ -2101,6 +2102,7 @@ dependencies = [
  "jade-painter",
  "jade-xlsx-layout",
  "jade-xlsx-reader",
+ "unicode-segmentation",
  "zip 8.6.0",
 ]
 

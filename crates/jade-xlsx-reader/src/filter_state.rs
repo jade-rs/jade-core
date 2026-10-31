@@ -94,6 +94,10 @@ fn attribute(element: &quick_xml::events::BytesStart<'_>, key: &[u8]) -> Result<
     Ok(None)
 }
 pub fn read(xml: &str, sheet: &Sheet) -> Result<Option<FilterRowState>> {
+    // Only an extension with this URI carries the state.
+    if !xml.contains(URI) {
+        return Ok(None);
+    }
     let mut reader = NsReader::from_str(xml);
     let mut depth = 0;
     let mut root_ns = None;

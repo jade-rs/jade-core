@@ -601,10 +601,7 @@ fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Option<S
 
 fn cached_value(workbook: &Workbook, sheet: usize, reference: CellRef) -> CellValue {
     workbook.sheets[sheet]
-        .rows
-        .iter()
-        .find(|row| row.index == reference.row)
-        .and_then(|row| row.cells.iter().find(|cell| cell.reference == reference))
+        .cell_at(reference)
         .map(|cell| cell.value.clone())
         .unwrap_or(CellValue::Empty)
 }
