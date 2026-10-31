@@ -4116,6 +4116,14 @@ impl WordDocument {
 
             match run.properties.as_mut() {
                 Some(props) => {
+                    // What the run states before the fill is its own; what
+                    // the fill adds is inherited. A run the editor built (a
+                    // note reference with its rStyle) had no provenance yet,
+                    // so the filled fonts, size and kerning were written into
+                    // its `w:rPr` as direct formatting.
+                    if !props.direct_font_properties.known {
+                        props.capture_direct_font_properties();
+                    }
                     Self::fill_missing_font_props(props, &run_fallback_props);
                 }
                 None => {
