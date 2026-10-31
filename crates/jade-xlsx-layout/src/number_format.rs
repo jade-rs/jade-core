@@ -10,6 +10,7 @@
 //! locale tag says, since no other locale has them.
 
 use jade_xlsx_reader::{CellValue, DateSystem};
+use std::collections::HashMap;
 
 /// A value formatted for display, with the colour the format asked for.
 ///
@@ -95,6 +96,51 @@ impl FormatColor {
 ///
 /// `code` is the format code from the style table; `None` means General.
 pub fn format_value(value: &CellValue, code: Option<&str>, dates: DateSystem) -> Formatted {
+    if let CellValue::Number(number) = value {
+        return formatted_number(*number, code, dates);
+    }
+    format_uncached(value, code, dates)
+}
+
+thread_local! {
+    /// Numbers formatted so far, by format code and then by value: a sheet
+    /// is laid out again after every edit, and parsing each cell's format
+    /// code again was most of what formatting cost.
+    static FORMATTED: std::cell::RefCell<HashMap<String, HashMap<(u64, bool), Formatted>>> =
+        std::cell::RefCell::new(HashMap::new());
+}
+
+/// Values remembered per format code before they are let go.
+const FORMATTED_PER_CODE: usize = 1 << 16;
+
+fn formatted_number(number: f64, code: Option<&str>, dates: DateSystem) -> Formatted {
+    let key = (number.to_bits(), dates == DateSystem::Nineteen04);
+    // No code is General, kept apart from any code a file spells out.
+    let code_key = code.unwrap_or("\u{0}General");
+    if let Some(found) = FORMATTED.with(|cache| {
+        cache
+            .borrow()
+            .get(code_key)
+            .and_then(|values| values.get(&key).cloned())
+    }) {
+        return found;
+    }
+    let formatted = format_uncached(&CellValue::Number(number), code, dates);
+    FORMATTED.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let values = match cache.get_mut(code_key) {
+            Some(values) => values,
+            None => cache.entry(code_key.to_string()).or_default(),
+        };
+        if values.len() >= FORMATTED_PER_CODE {
+            values.clear();
+        }
+        values.insert(key, formatted.clone());
+    });
+    formatted
+}
+
+fn format_uncached(value: &CellValue, code: Option<&str>, dates: DateSystem) -> Formatted {
     let mut formatted = match value {
         CellValue::Empty => Formatted::plain(String::new()),
         CellValue::Bool(flag) => Formatted::plain(if *flag { "TRUE" } else { "FALSE" }.to_string()),

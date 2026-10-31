@@ -1187,18 +1187,23 @@ impl HeadlessWorkbook {
         // Plain values typed over cells without formulas change nothing the
         // model derives from elsewhere: it takes them in place rather than
         // reading the whole package again.
-        let plain = !sheets.is_empty()
+        // Charts read their caches from cells, so a chart's model is reread
+        // rather than taken in place.
+        let charts = self
+            .workbook
+            .sheets
+            .iter()
+            .any(|sheet| sheet.shapes.iter().any(|shape| shape.chart.is_some()));
+        let typed = !sheets.is_empty()
             && styles.is_none()
             && parts.is_empty()
             && base.is_none()
             && blocked.is_empty()
             && !headers_changed
-            // Tables follow their cells, and chart and pivot caches are
-            // refreshed from them.
+            // Tables follow their cells, and pivot caches are refreshed from
+            // them.
             && self.workbook.pivots.is_empty()
-            && self.workbook.sheets.iter().all(|sheet| {
-                sheet.tables.is_empty() && sheet.shapes.iter().all(|shape| shape.chart.is_none())
-            })
+            && self.workbook.sheets.iter().all(|sheet| sheet.tables.is_empty())
             && sheets.iter().all(|edits| {
                 self.workbook
                     .sheets
@@ -1214,11 +1219,12 @@ impl HeadlessWorkbook {
                             })
                     })
             });
+        let plain = typed && !charts;
         // Typed into a sheet that recalculates as it goes: the values and
         // the caches they change are written together.
-        if plain
+        if typed
             && self.workbook.calculation_mode.calculates_on_edit()
-            && self.write_typed_and_recalculated(&sheets)?
+            && self.write_typed_and_recalculated(&sheets, charts)?
         {
             return Ok(());
         }
@@ -1286,7 +1292,11 @@ impl HeadlessWorkbook {
     /// again after its recalculation. `false` when the recalculation spills
     /// or fails, the model holding the values and nothing written, for the
     /// usual two writes to follow.
-    fn write_typed_and_recalculated(&mut self, sheets: &[SheetEdits]) -> Result<bool> {
+    fn write_typed_and_recalculated(
+        &mut self,
+        sheets: &[SheetEdits],
+        charts: bool,
+    ) -> Result<bool> {
         if self
             .workbook
             .sheets
@@ -1323,6 +1333,8 @@ impl HeadlessWorkbook {
         }
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut updates = Vec::new();
+        // Every formula the engine answered, for the charts reading them.
+        let mut verified = jade_xlsx_writer::VerifiedChartCells::new();
         for cell in &outcome.cells {
             let value = match &cell.value {
                 CellValue::Number(number) => CachedValue::Number(*number),
@@ -1331,6 +1343,12 @@ impl HeadlessWorkbook {
                 CellValue::Error(error) => CachedValue::Error(error.clone()),
                 CellValue::Empty => continue,
             };
+            if charts {
+                verified
+                    .entry(self.workbook.sheets[cell.sheet].part_name.clone())
+                    .or_default()
+                    .insert(cell.reference);
+            }
             if self.cached_value(cell.sheet, cell.reference) == cell.value {
                 continue;
             }
@@ -1344,11 +1362,12 @@ impl HeadlessWorkbook {
                 });
         }
         let complete = outcome.skipped.is_empty();
-        let in_place = updates.iter().all(|(index, reference, _)| {
-            self.workbook.sheets[*index]
-                .cell_at(*reference)
-                .is_some_and(|found| found.formula.is_some())
-        });
+        let in_place = !charts
+            && updates.iter().all(|(index, reference, _)| {
+                self.workbook.sheets[*index]
+                    .cell_at(*reference)
+                    .is_some_and(|found| found.formula.is_some())
+            });
         let cached: Vec<SheetCachedValues> = grouped
             .into_iter()
             .map(|(index, cells)| SheetCachedValues {
@@ -1364,6 +1383,7 @@ impl HeadlessWorkbook {
                 sheets,
                 &cached,
                 complete,
+                &verified,
             )
         });
         let written = match written {
