@@ -489,6 +489,155 @@ mod stateful {
         }
     }
 
+    fn toc_source(
+        suffixes: &std::collections::BTreeSet<u32>,
+        headings: usize,
+        high_ids: bool,
+    ) -> Vec<u8> {
+        use std::io::Write as _;
+        let mut body = String::from("<w:p>");
+        for (id, suffix) in suffixes.iter().enumerate() {
+            let id = if high_ids { i32::MAX as usize - id } else { id };
+            body.push_str(&format!(
+                "<w:bookmarkStart w:id=\"{id}\" w:name=\"_Toc{suffix}\"/><w:bookmarkEnd w:id=\"{id}\"/>"
+            ));
+        }
+        body.push_str("<w:r><w:t>Existing</w:t></w:r></w:p>");
+        for index in 0..headings {
+            body.push_str(&format!("<w:p><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr><w:r><w:t>Heading {index}</w:t></w:r></w:p>"));
+        }
+        let xml = format!("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>{body}</w:body></w:document>");
+        let mut source =
+            zip::ZipArchive::new(std::io::Cursor::new(blank_document(Blank::Japanese))).unwrap();
+        let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..source.len() {
+            let mut part = source.by_index(index).unwrap();
+            let name = part.name().unwrap().into_owned();
+            output
+                .start_file(&name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            if name == "word/document.xml" {
+                output.write_all(xml.as_bytes()).unwrap();
+            } else {
+                std::io::copy(&mut part, &mut output).unwrap();
+            }
+        }
+        output.finish().unwrap().into_inner()
+    }
+
+    fn toc_sequence(
+        suffixes: &std::collections::BTreeSet<u32>,
+        headings: usize,
+        high_ids: bool,
+        ops: &[u8],
+    ) {
+        let source = toc_source(suffixes, headings, high_ids);
+        let context =
+            format!("suffixes={suffixes:?}, headings={headings}, high_ids={high_ids}, ops={ops:?}");
+        capture(&source, &context);
+        let mut document = block_on(WordDocument::load(&source, &Options::default())).unwrap();
+        let options = jade_docx_editor::document::TocOptions {
+            use_applied_outline_levels: true,
+            hide_page_numbers: true,
+            hyperlinks: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            document.insert_table_of_contents(0, &options).unwrap(),
+            headings
+        );
+        for operation in std::iter::once(&2).chain(ops) {
+            match operation {
+                0 => assert_eq!(document.update_table_of_contents_at(0).unwrap(), headings),
+                1 => assert_eq!(
+                    document
+                        .replace_table_of_contents(0, &options, "hyphen")
+                        .unwrap(),
+                    headings
+                ),
+                _ => {}
+            }
+            for persisted in [false, true] {
+                if persisted {
+                    let bytes = document.export_docx().unwrap();
+                    capture(&bytes, &context);
+                    document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+                let bookmarks = &document.document.as_ref().unwrap().bookmarks;
+                let names: std::collections::HashSet<_> = bookmarks
+                    .iter()
+                    .map(|bookmark| bookmark.name.as_str())
+                    .collect();
+                assert_eq!(names.len(), bookmarks.len(), "duplicate names: {context}");
+                assert_eq!(names.len(), suffixes.len() + headings, "{context}");
+                let ids: std::collections::HashSet<_> = bookmarks
+                    .iter()
+                    .map(|bookmark| {
+                        bookmark
+                            .id
+                            .parse::<i32>()
+                            .expect("OOXML bookmark ID must fit i32")
+                    })
+                    .collect();
+                assert_eq!(ids.len(), bookmarks.len(), "duplicate IDs: {context}");
+                for (id, suffix) in suffixes.iter().enumerate() {
+                    let original = bookmarks
+                        .iter()
+                        .find(|bookmark| bookmark.name == format!("_Toc{suffix}"))
+                        .unwrap();
+                    let expected_id = if high_ids { i32::MAX as usize - id } else { id };
+                    assert_eq!(original.id, expected_id.to_string(), "{context}");
+                }
+                let tables = document.tables_of_contents();
+                assert_eq!(tables.len(), 1, "{context}");
+                let table = &tables[0];
+                let mut targets = std::collections::HashSet::new();
+                for (heading, index) in (table.start..=table.end).enumerate() {
+                    let paragraph = document.paragraph(index).unwrap();
+                    let anchor = paragraph
+                        .runs
+                        .iter()
+                        .find_map(|run| run.hyperlink.as_ref()?.anchor.as_deref())
+                        .unwrap();
+                    assert!(
+                        targets.insert(anchor.to_string()),
+                        "reused heading target: {context}"
+                    );
+                    let bookmark = bookmarks
+                        .iter()
+                        .find(|bookmark| bookmark.name == anchor)
+                        .unwrap();
+                    let target_text: String = document
+                        .paragraph(bookmark.start_paragraph)
+                        .unwrap()
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect();
+                    assert_eq!(target_text, format!("Heading {heading}"), "{context}");
+                }
+                let entries: Vec<String> = (table.start..=table.end)
+                    .map(|index| {
+                        document
+                            .paragraph(index)
+                            .unwrap()
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect()
+                    })
+                    .collect();
+                assert_eq!(
+                    entries,
+                    (0..headings)
+                        .map(|index| format!("Heading {index}"))
+                        .collect::<Vec<_>>(),
+                    "{context}"
+                );
+            }
+        }
+    }
+
     fn run(ops: &[Op]) {
         let mut session = Session::blank();
         let mut state = State::default();
@@ -756,6 +905,19 @@ mod stateful {
             session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
             prop_assert_eq!(&observe(&mut session).field.unwrap().result, &expected);
         }
+
+        #[test]
+        fn toc_bookmark_boundaries_survive_update_and_reload(
+            suffixes in prop::collection::btree_set(prop_oneof![
+                0u32..8,
+                Just(u32::MAX - 2), Just(u32::MAX - 1), Just(u32::MAX),
+            ], 1..7),
+            headings in 1usize..5,
+            high_ids in any::<bool>(),
+            ops in prop::collection::vec(0u8..3, 1..13),
+        ) {
+            toc_sequence(&suffixes, headings, high_ids, &ops);
+        }
     }
 
     proptest! {
@@ -797,6 +959,61 @@ mod stateful {
                 Op::Undo,
                 Op::Redo,
             ]);
+        }
+    }
+
+    #[test]
+    fn set_results_keep_valid_bookmark_ids_after_edits_and_reload() {
+        let source = toc_source(&[0, 1].into(), 0, true);
+        capture(&source, "SET source with signed-limit bookmark IDs");
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: Some(SelectionRange::collapsed(TextPosition::new(
+                0,
+                "Existing".len(),
+            ))),
+            executor: CommandExecutor::new(),
+        };
+        session.insert_field_code("SET Answer 42", &host()).unwrap();
+        for value in [42, 84, 42] {
+            session.whole_paragraph();
+            session
+                .edit_field_code(&format!("SET Answer {value}"), &host())
+                .unwrap();
+            session
+                .update_fields(session.field_scope(), &host(), HashMap::new())
+                .unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("SET Answer {value}, signed-limit IDs"));
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            session.whole_paragraph();
+            assert_eq!(session.selected_fields()[0].result, value.to_string());
+            let bookmarks = &session.document.document.as_ref().unwrap().bookmarks;
+            assert_eq!(bookmarks.len(), 3, "{bookmarks:?}");
+            let ids: std::collections::HashSet<_> = bookmarks
+                .iter()
+                .map(|bookmark| bookmark.id.parse::<i32>().unwrap())
+                .collect();
+            assert_eq!(ids.len(), 3, "{bookmarks:?}");
+            assert_eq!(
+                bookmarks
+                    .iter()
+                    .filter(|bookmark| bookmark.name == "Answer")
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn toc_bookmark_suffix_wrap_preserves_existing_names() {
+        for high_ids in [false, true] {
+            toc_sequence(
+                &[0, 1, u32::MAX - 1, u32::MAX].into(),
+                3,
+                high_ids,
+                &[0, 1, 2, 0],
+            );
         }
     }
 
