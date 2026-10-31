@@ -53,6 +53,37 @@ fn part(document: &WordDocument, name: &str) -> String {
     xml
 }
 
+#[test]
+fn toc_update_after_editing_a_heading_with_a_page_break_keeps_xml_valid() {
+    for fixture in ["hello.docx", "hyperlink.docx", "mirror-margins.docx"] {
+        let mut document = load(fixture);
+        let paragraph = body(&document)
+            .into_iter()
+            .find(|&index| text_len(&document, index) >= 2)
+            .unwrap();
+        let end = text_len(&document, paragraph);
+        apply(
+            &mut document,
+            json!([
+                { "type": "set_paragraph_style", "start_paragraph": paragraph,
+                  "end_paragraph": paragraph, "style_id": "Heading1" },
+                { "type": "insert_table_of_contents", "after_paragraph": paragraph,
+                  "outline_min": 1, "outline_max": 1 },
+                { "type": "insert_text", "paragraph": paragraph, "offset": end,
+                  "text": " 見出しの更新" },
+                { "type": "update_table_of_contents" }
+            ]),
+        );
+        let xml = part(&document, "word/document.xml");
+        assert!(!xml.contains(['\u{000C}', '\u{000E}']), "{fixture}");
+        assert!(
+            xml.contains("w:type=\"page\""),
+            "source break lost: {fixture}"
+        );
+        assert_eq!(xml.matches("見出しの更新").count(), 2, "{fixture}");
+    }
+}
+
 /// The root element's start tag.
 fn root_tag(xml: &str) -> &str {
     let start = xml.find("?>").map_or(0, |end| end + 2);
