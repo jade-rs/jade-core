@@ -832,11 +832,12 @@ pub fn code_field_name(code: &str) -> Option<String> {
         .map(|name| name.to_ascii_uppercase())
 }
 
-/// A code's tokens: words, and quoted strings with their quotes.
+/// A code's tokens: words, quoted strings and intact nested instructions.
 fn code_tokens(code: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
+    let mut depth = 0usize;
     let mut chars = code.chars().peekable();
     while let Some(character) = chars.next() {
         match character {
@@ -848,7 +849,15 @@ fn code_tokens(code: &str) -> Vec<String> {
                 current.push(character);
                 in_quotes = !in_quotes;
             }
-            c if c.is_whitespace() && !in_quotes => {
+            '{' if !in_quotes => {
+                depth += 1;
+                current.push(character);
+            }
+            '}' if !in_quotes => {
+                depth = depth.saturating_sub(1);
+                current.push(character);
+            }
+            c if c.is_whitespace() && !in_quotes && depth == 0 => {
                 if !current.is_empty() {
                     tokens.push(std::mem::take(&mut current));
                 }
@@ -884,7 +893,7 @@ struct ParsedCode {
 }
 
 fn parse_code(code: &str) -> ParsedCode {
-    let tokens = code_tokens(code.trim().trim_start_matches('{').trim_end_matches('}'));
+    let tokens = code_tokens(crate::fields::unwrapped_code(code).unwrap_or_else(|_| code.trim()));
     let mut tokens = tokens.into_iter();
     let name = tokens.next().unwrap_or_default();
     let upper = name.to_ascii_uppercase();

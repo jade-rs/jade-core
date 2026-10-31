@@ -986,6 +986,44 @@ pub fn unlink_fields(doc: &mut WordDocument, scope: FieldScope) -> Result<usize,
     })
 }
 
+/// A single balanced outer pair is optional. A nested field at the end of
+/// an unwrapped instruction must retain its closing brace.
+pub(crate) fn unwrapped_code(code: &str) -> Result<&str, String> {
+    let code = code.trim();
+    let mut depth = 0usize;
+    let mut outer_end = None;
+    let mut quoted = false;
+    let mut chars = code.char_indices().peekable();
+    while let Some((index, character)) = chars.next() {
+        match character {
+            '\\' if quoted && chars.peek().is_some_and(|(_, c)| *c == '"') => {
+                chars.next();
+            }
+            '"' => quoted = !quoted,
+            '{' if !quoted => depth += 1,
+            '}' if !quoted => {
+                depth = depth
+                    .checked_sub(1)
+                    .ok_or("unbalanced braces in field code")?;
+                if depth == 0 && outer_end.is_none() {
+                    outer_end = Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err("unbalanced braces in field code".to_string());
+    }
+    Ok(
+        if code.starts_with('{') && outer_end == Some(code.len() - 1) {
+            code[1..code.len() - 1].trim()
+        } else {
+            code
+        },
+    )
+}
+
 /// Replaces the code of the field at the selection and updates it.
 pub fn edit_field_code(
     doc: &mut WordDocument,
@@ -993,11 +1031,7 @@ pub fn edit_field_code(
     code: &str,
     env: &FieldEnvironment,
 ) -> Result<(), String> {
-    let code = code
-        .trim()
-        .trim_start_matches('{')
-        .trim_end_matches('}')
-        .trim();
+    let code = unwrapped_code(code)?;
     if code.is_empty() {
         return Err("the field code is empty".to_string());
     }
@@ -1022,6 +1056,34 @@ pub fn edit_field_code(
 
 const PLACEHOLDER: &str = "\u{E000}jade-field\u{E001}";
 
+fn insertion_placeholder(doc: &mut WordDocument) -> Result<String, String> {
+    doc.ensure_roundtrip_xml()
+        .map_err(|error| error.to_string())?;
+    fn collect(element: &XmlElement, text: &mut String) {
+        for child in &element.children {
+            match child {
+                XmlNode::Element(child) => collect(child, text),
+                XmlNode::Text(value) => text.push_str(value),
+                _ => {}
+            }
+        }
+    }
+    // Inspect the live tree, including computed results and text split over
+    // runs, without another package export. Insertion edits the body before
+    // searching the auxiliary stories.
+    let mut text = String::new();
+    if let Some(raw) = &doc.raw_document {
+        collect(raw.root(), &mut text);
+    }
+    let mut placeholder = PLACEHOLDER.to_string();
+    let mut suffix = 0usize;
+    while text.contains(&placeholder) {
+        placeholder = format!("{PLACEHOLDER}{suffix}");
+        suffix += 1;
+    }
+    Ok(placeholder)
+}
+
 /// Inserts a field with `code` (nested fields in `{ }`) at the selection,
 /// replacing what it selects, and evaluates it. Returns where the caret
 /// goes: after the field.
@@ -1031,24 +1093,17 @@ pub fn insert_field(
     code: &str,
     env: &FieldEnvironment,
 ) -> Result<(), String> {
-    let code = code
-        .trim()
-        .trim_start_matches('{')
-        .trim_end_matches('}')
-        .trim()
-        .to_string();
+    let code = unwrapped_code(code)?.to_string();
     if code.is_empty() {
         return Err("the field code is empty".to_string());
     }
     let range = selection.ok_or("there is no insertion point")?;
     let (start, _) = ordered(range);
+    let placeholder = insertion_placeholder(doc)?;
     {
         let mut ctx = CommandContext::new(doc, selection);
-        let mut insert = crate::commands::insert_text::InsertTextCommand::new(
-            range,
-            PLACEHOLDER.to_string(),
-            None,
-        );
+        let mut insert =
+            crate::commands::insert_text::InsertTextCommand::new(range, placeholder.clone(), None);
         insert
             .apply(&mut ctx)
             .map_err(|error| format!("{error:?}"))?;
@@ -1060,7 +1115,7 @@ pub fn insert_field(
     for part in parts {
         if !files
             .get(&part)
-            .is_some_and(|bytes| String::from_utf8_lossy(bytes).contains(PLACEHOLDER))
+            .is_some_and(|bytes| String::from_utf8_lossy(bytes).contains(&placeholder))
         {
             continue;
         }
@@ -1076,7 +1131,7 @@ pub fn insert_field(
         let Some(mut part_doc) = part_doc else {
             continue;
         };
-        let new_field = place_field(root_mut(&mut part_doc), &code)?;
+        let new_field = place_field(root_mut(&mut part_doc), &code, &placeholder)?;
         part_doc.rebuild_index();
         // Evaluate the new field where it now stands.
         let story = if part == "word/document.xml" {
@@ -1162,8 +1217,8 @@ pub fn insert_field(
 /// Replaces the placeholder text in a run with a new field. Returns the id
 /// the field's begin run will have once the tree is reindexed — a
 /// placeholder id, so the caller finds it by the run it splits.
-fn place_field(root: &mut XmlElement, code: &str) -> Result<XmlNodeId, String> {
-    fn find(element: &XmlElement, path: &mut Vec<usize>) -> bool {
+fn place_field(root: &mut XmlElement, code: &str, placeholder: &str) -> Result<XmlNodeId, String> {
+    fn find(element: &XmlElement, path: &mut Vec<usize>, placeholder: &str) -> bool {
         for (index, child) in element.children.iter().enumerate() {
             let XmlNode::Element(child) = child else {
                 continue;
@@ -1171,12 +1226,12 @@ fn place_field(root: &mut XmlElement, code: &str) -> Result<XmlNodeId, String> {
             path.push(index);
             if child.name == "w:r"
                 && child.children.iter().any(|node| {
-                    matches!(node, XmlNode::Element(t) if t.name == "w:t" && t.children.iter().any(|text| matches!(text, XmlNode::Text(text) if text.contains(PLACEHOLDER))))
+                    matches!(node, XmlNode::Element(t) if t.name == "w:t" && t.children.iter().any(|text| matches!(text, XmlNode::Text(text) if text.contains(placeholder))))
                 })
             {
                 return true;
             }
-            if find(child, path) {
+            if find(child, path, placeholder) {
                 return true;
             }
             path.pop();
@@ -1184,7 +1239,7 @@ fn place_field(root: &mut XmlElement, code: &str) -> Result<XmlNodeId, String> {
         false
     }
     let mut path = Vec::new();
-    if !find(root, &mut path) {
+    if !find(root, &mut path, placeholder) {
         return Err("the insertion point was not found".to_string());
     }
     // Give the begin run a real id now so the caller can find the field;
@@ -1206,29 +1261,72 @@ fn place_field(root: &mut XmlElement, code: &str) -> Result<XmlNodeId, String> {
         return Err("insertion run lost".to_string());
     };
     let rpr = write::run_properties(&run).cloned();
-    let text: String = run
-        .children
-        .iter()
-        .filter_map(|node| match node {
-            XmlNode::Element(t) if t.name == "w:t" => Some(
-                t.children
-                    .iter()
-                    .filter_map(|text| match text {
-                        XmlNode::Text(text) => Some(text.as_str()),
-                        _ => None,
-                    })
-                    .collect::<String>(),
-            ),
-            _ => None,
-        })
-        .collect();
-    let (before, after) = text.split_once(PLACEHOLDER).unwrap_or((&text, ""));
-    let mut runs = write::text_runs(before, rpr.as_ref());
+    let mut before = run.clone();
+    before.children.clear();
+    let mut after = write::fresh_copy(&run);
+    after.children.clear();
+    if let Some(rpr) = &rpr {
+        before
+            .children
+            .push(XmlNode::Element(write::fresh_copy(rpr)));
+        after
+            .children
+            .push(XmlNode::Element(write::fresh_copy(rpr)));
+    }
+    let mut found = false;
+    for child in run.children {
+        if matches!(&child, XmlNode::Element(element) if element.name == "w:rPr") {
+            continue;
+        }
+        if !found {
+            if let XmlNode::Element(element) = &child {
+                if element.name == "w:t" {
+                    if let Some((prefix, suffix)) = element.children.iter().find_map(|node| {
+                        if let XmlNode::Text(text) = node {
+                            text.split_once(placeholder)
+                        } else {
+                            None
+                        }
+                    }) {
+                        // Split only the insertion text. Other run children,
+                        // including tabs, breaks and drawings, stay in order.
+                        for (side, text) in [(&mut before, prefix), (&mut after, suffix)] {
+                            side.children.extend(
+                                write::text_runs(text, None)
+                                    .into_iter()
+                                    .flat_map(|run| run.children),
+                            );
+                        }
+                        found = true;
+                        continue;
+                    }
+                }
+            }
+        }
+        if found {
+            after.children.push(child);
+        } else {
+            before.children.push(child);
+        }
+    }
+    if !found {
+        return Err("insertion text lost".to_string());
+    }
+    let has_content = |run: &XmlElement| {
+        run.children
+            .iter()
+            .any(|child| !matches!(child, XmlNode::Element(element) if element.name == "w:rPr"))
+    };
+    let mut runs = Vec::new();
+    if has_content(&before) {
+        runs.push(before);
+    }
     let mut field = write::field_runs(code, "", rpr.as_ref());
-
     field[0].id = begin_id;
     runs.extend(field);
-    runs.extend(write::text_runs(after, rpr.as_ref()));
+    if has_content(&after) {
+        runs.push(after);
+    }
     parent
         .children
         .splice(index[0]..index[0], runs.into_iter().map(XmlNode::Element));
