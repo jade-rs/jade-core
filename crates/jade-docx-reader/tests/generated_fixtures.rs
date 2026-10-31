@@ -548,6 +548,23 @@ fn focused_toc_direct_outline_fixture_requires_u_for_direct_formatting() {
 }
 
 #[test]
+fn toc_heading_page_and_column_breaks_are_flattened_with_or_without_x() {
+    let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+        <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
+        <w:r><w:t>Before</w:t><w:br w:type="page"/><w:t>After</w:t><w:br w:type="column"/><w:t>Column</w:t></w:r>
+        </w:p></w:body></w:document>"#;
+    let document = DocumentParser::new().parse_document_xml(xml).unwrap();
+    for preserve_line_breaks in [false, true] {
+        let entries = document.generate_outline(&TocOptions {
+            preserve_line_breaks,
+            ..TocOptions::default()
+        });
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].text, "Before After Column");
+    }
+}
+
+#[test]
 fn focused_tc_field_fixture_filters_hidden_entries_by_type_and_level() {
     let xml = read_document_xml("toc-tc-field-edge-cases.docx");
     let document = DocumentParser::new()
