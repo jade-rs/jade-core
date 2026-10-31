@@ -1,2 +1,3 @@
 # Proptest records minimized note-story history regressions here.
 cc 7e41cea3f7e9de4dcc43854cf274265d90205d29b1943f809205dba195ee71b9 # shrinks to operations = [Replace(5, 0, 0, false, "日")]
+cc c45671ac3b0f0fea066c2cccbdd9f8970a3432ec8dfcadd429edd076c19965b1 # CI323: Replace(0,117,242,false,"") then Append(0,"日")
