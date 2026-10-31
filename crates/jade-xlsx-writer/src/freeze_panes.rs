@@ -97,7 +97,10 @@ pub fn set_freeze_pane(xml: &str, frozen: Option<Frozen>) -> Result<String> {
             }],
         ));
     };
-    let children = view_children(&prefix, frozen, sheet_view.active_selection.as_ref());
+    // A view can use a different prefix or locally override the default namespace.
+    // Its own qualified name identifies the namespace for its new children.
+    let prefix = &sheet_view.prefix;
+    let children = view_children(prefix, frozen, sheet_view.active_selection.as_ref());
     let mut splices: Vec<Splice> = sheet_view
         .replaced
         .iter()
@@ -196,6 +199,7 @@ fn address(cell: CellRef) -> String {
 
 #[derive(Default)]
 struct SheetView {
+    prefix: String,
     /// `<sheetView …/>`'s span, when it has no children.
     empty_head: Option<(usize, usize)>,
     /// Where new children go: right after the opening tag.
@@ -248,6 +252,7 @@ fn scan(xml: &str) -> Result<Scan> {
                     }
                     2 if in_views && name == b"sheetView" && found.sheet_view.is_none() => {
                         found.sheet_view = Some(SheetView {
+                            prefix: crate::patch::namespace_prefix(&qualified),
                             empty_head: empty.then_some((start, end)),
                             children_at: end,
                             ..SheetView::default()
